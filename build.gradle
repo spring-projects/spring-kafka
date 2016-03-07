@@ -132,10 +132,10 @@ project ('spring-kafka') {
 
 	dependencies {
 		compile "org.springframework:spring-messaging:$springVersion"
-		compile ("org.apache.avro:avro:$avroVersion", optional)
-		compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
-		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
-		compile "io.projectreactor:reactor-core:$reactor2Version"
+//		compile ("org.apache.avro:avro:$avroVersion", optional)
+//		compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
+//		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+//		compile "io.projectreactor:reactor-core:$reactor2Version"
 
 		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
 
@@ -147,16 +147,7 @@ project ('spring-kafka-test') {
 	description = 'Spring Kafka Test Support'
 
 	dependencies {
-		// compile "org.springframework:spring-context:$springVersion"
-		// compile ("org.apache.avro:avro:$avroVersion", optional)
-		// compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
 		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
-		// compile "io.projectreactor:reactor-core:$reactor2Version"
-		//
-		// compile "org.apache.kafka:kafka-clients:$kafkaVersion"
-
-	//	runtime "com.yammer.metrics:metrics-core:$metricsVersion"
-	//	runtime "com.yammer.metrics:metrics-annotation:$metricsVersion"
 
 		compile "org.springframework:spring-test:$springVersion"
 		compile "org.springframework.retry:spring-retry:$springRetryVersion"
@@ -247,37 +238,10 @@ task api(type: Javadoc) {
 	destinationDir = new File(buildDir, "api")
 }
 
-/*
-task schemaZip(type: Zip) {
-	group = 'Distribution'
-	classifier = 'schema'
-	description = "Builds -${classifier} archive containing all " +
-			"XSDs for deployment at static.springframework.org/schema."
-
-	def Properties schemas = new Properties();
-	def shortName = idPrefix.replaceFirst("${idPrefix}-", '')
-
-	project.sourceSets.main.resources.find {
-		it.path.endsWith("META-INF${File.separator}spring.schemas")
-	}?.withInputStream { schemas.load(it) }
-
-//	for (def key : schemas.keySet()) {
-//		File xsdFile = project.sourceSets.main.resources.find {
-//			it.path.replaceAll('\\\\', '/').endsWith(schemas.get(key))
-//		}
-//		assert xsdFile != null
-//		into ("kafka/${shortName}") {
-//			from xsdFile.path
-//		}
-//	}
-
-}
-*/
-
 task docsZip(type: Zip) {
 	group = 'Distribution'
 	classifier = 'docs'
-	description = "Builds -${classifier} archive containing api " +
+	description = "Builds -${classifier} archive containing api and reference " +
 			"for deployment at static.spring.io/spring-kafka/docs."
 
 	from('src/dist') {
@@ -286,6 +250,10 @@ task docsZip(type: Zip) {
 
 	from(api) {
 		into 'api'
+	}
+
+	from (reference) {
+		into 'reference'
 	}
 }
 
@@ -307,12 +275,6 @@ task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 	from(zipTree(docsZip.archivePath)) {
 		into "${baseDir}/docs"
 	}
-
-/*
-	from(zipTree(schemaZip.archivePath)) {
-		into "${baseDir}/schema"
-	}
-*/
 
 	subprojects.each { subproject ->
 		into ("${baseDir}/libs") {
@@ -357,12 +319,11 @@ task depsZip(type: Zip, dependsOn: distZip) { zipTask ->
 artifacts {
 	archives distZip
 	archives docsZip
-//	archives schemaZip
 }
 
 task dist(dependsOn: assemble) {
 	group = 'Distribution'
-	description = 'Builds -dist, -docs distribution archives.' // and -schema
+	description = 'Builds -dist, -docs distribution archives.'
 }
 
 task wrapper(type: Wrapper) {
