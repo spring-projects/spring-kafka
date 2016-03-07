@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.commons.logging.Log;
@@ -98,6 +99,52 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	public Future<RecordMetadata>  convertAndSend(String topic, int partition, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
 		return doSend(producerRecord);
+	}
+
+
+	@Override
+	public RecordMetadata syncConvertAndSend(V data) throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = convertAndSend(data);
+		flush();
+		return future.get();
+	}
+
+	@Override
+	public RecordMetadata syncConvertAndSend(K key, V data) throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = convertAndSend(key, data);
+		flush();
+		return future.get();
+	}
+
+	@Override
+	public RecordMetadata syncConvertAndSend(int partition, K key, V data)
+			throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = convertAndSend(partition, key, data);
+		flush();
+		return future.get();
+	}
+
+	@Override
+	public RecordMetadata syncConvertAndSend(String topic, V data) throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = convertAndSend(topic, data);
+		flush();
+		return future.get();
+	}
+
+	@Override
+	public RecordMetadata syncConvertAndSend(String topic, K key, V data)
+			throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = convertAndSend(topic, key, data);
+		flush();
+		return future.get();
+	}
+
+	@Override
+	public RecordMetadata syncConvertAndSend(String topic, int partition, K key, V data)
+			throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = convertAndSend(topic, partition, key, data);
+		flush();
+		return future.get();
 	}
 
 	/**

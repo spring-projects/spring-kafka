@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.rule;
+package org.springframework.kafka.test.rule;
 
 import java.io.File;
 import java.net.ServerSocket;
@@ -33,7 +33,7 @@ import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.protocol.SecurityProtocol;
 import org.junit.rules.ExternalResource;
 
-import org.springframework.kafka.core.BrokerAddress;
+import org.springframework.kafka.test.core.BrokerAddress;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
