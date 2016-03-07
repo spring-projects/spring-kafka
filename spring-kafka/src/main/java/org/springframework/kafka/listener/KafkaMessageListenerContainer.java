@@ -54,7 +54,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  *
  */
-public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> implements SchedulingAwareRunnable {
+public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
 	private final ConsumerFactory<K, V> consumerFactory;
 
@@ -64,15 +64,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private final TopicPartition[] partitions;
 
-	private final boolean autoCommit;
-
-	private final Map<String, Map<Integer, Long>> offsets = new HashMap<String, Map<Integer, Long>>();
-
-	private final ConcurrentMap<String, ConcurrentMap<Integer, Long>> manualOffsets = new ConcurrentHashMap<>();
-
-	private final CommitCallback callback = new CommitCallback();
-
-	private Consumer<K, V> consumer;
+	private ListenerConsumer listenerConsumer;
 
 	private ContainerOffsetResetStrategy resetStrategy = ContainerOffsetResetStrategy.NONE;
 
@@ -81,10 +73,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	private MessageListener<K, V> listener;
 
 	private AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
-
-	private volatile Collection<TopicPartition> definedPartitions;
-
-	private volatile Collection<TopicPartition> assignedPartitions;
 
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
@@ -134,7 +122,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		this.topicPattern = topicPattern;
 		this.partitions = topicPartitions == null ? null
 				: new LinkedHashSet<>(Arrays.asList(topicPartitions)).toArray(new TopicPartition[0]);
-		this.autoCommit = consumerFactory.isAutoCommit();
 	}
 
 	/**
@@ -166,11 +153,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 * either explicitly or by Kafka; may be null if not assigned yet.
 	 */
 	public Collection<TopicPartition> getAssignedPartitions() {
-		if (this.definedPartitions != null) {
-			return Collections.unmodifiableCollection(this.definedPartitions);
+		if (this.listenerConsumer.definedPartitions != null) {
+			return Collections.unmodifiableCollection(this.listenerConsumer.definedPartitions);
 		}
-		else if (this.assignedPartitions != null) {
-			return Collections.unmodifiableCollection(this.assignedPartitions);
+		else if (this.listenerConsumer.assignedPartitions != null) {
+			return Collections.unmodifiableCollection(this.listenerConsumer.assignedPartitions);
 		}
 		else {
 			return null;
@@ -183,9 +170,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		if (isRunning()) {
 			return;
 		}
-		Assert.state(getAckMode().equals(AckMode.MANUAL) || getAckMode().equals(AckMode.MANUAL_IMMEDIATE)
-					? !this.autoCommit : true,
-				"Consumer cannot be configured for auto commit for ackMode " + getAckMode());
 		setRunning(true);
 		Object messageListener = getMessageListener();
 		Assert.state(messageListener != null, "A MessageListener is required");
@@ -199,256 +183,314 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			throw new IllegalStateException("messageListener must be 'MessageListener' "
 					+ "or 'AcknowledgingMessageListener', not " + messageListener.getClass().getName());
 		}
-		Consumer<K, V> consumer = this.consumerFactory.createConsumer();
-		ConsumerRebalanceListener rebalanceListener = new ConsumerRebalanceListener() {
-
-			@Override
-			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				logger.info("partitions revoked:" + partitions);
-			}
-
-			@Override
-			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				assignedPartitions = partitions;
-				logger.info("partitions assigned:" + partitions);
-			}
-
-		};
-		if (this.partitions == null) {
-			if (topicPattern != null) {
-				consumer.subscribe(topicPattern, rebalanceListener);
-			}
-			else {
-				consumer.subscribe(Arrays.asList(topics), rebalanceListener);
-			}
-		}
-		else {
-			List<TopicPartition> topicPartitions = Arrays.asList(partitions);
-			this.definedPartitions = topicPartitions;
-			consumer.assign(topicPartitions);
-		}
-		this.consumer = consumer;
 		if (getTaskExecutor() == null) {
 			setTaskExecutor(
 					new SimpleAsyncTaskExecutor(getBeanName() == null ? "kafka-" : (getBeanName() + "-kafka-")));
 		}
-		getTaskExecutor().execute(this);
+		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener,
+				this.resetStrategy, this.recentOffset);
+		getTaskExecutor().execute(this.listenerConsumer);
 	}
 
 	@Override
 	protected void doStop() {
 		if (isRunning()) {
 			setRunning(false);
-			this.consumer.wakeup();
+			this.listenerConsumer.consumer.wakeup();
 		}
 	}
 
-	@Override
-	public void run() {
-		int count = 0;
-		long last = System.currentTimeMillis();
-		long now;
-		if (isRunning() && this.definedPartitions != null) {
-			initPartitionsIfNeeded();
-		}
-		final AckMode ackMode = getAckMode();
-		while (isRunning()) {
-			try {
-				if (logger.isTraceEnabled()) {
-					logger.trace("Polling...");
+
+
+	private class ListenerConsumer implements SchedulingAwareRunnable {
+
+		private final Log logger = LogFactory.getLog(this.getClass());
+
+		private final CommitCallback callback = new CommitCallback();
+
+		private final Consumer<K, V> consumer;
+
+		private final ConcurrentMap<String, ConcurrentMap<Integer, Long>> manualOffsets = new ConcurrentHashMap<>();
+
+		private final Map<String, Map<Integer, Long>> offsets = new HashMap<String, Map<Integer, Long>>();
+
+		private final MessageListener<K, V> listener;
+
+		private final AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
+
+		private final ContainerOffsetResetStrategy resetStrategy;
+
+		private final long recentOffset;
+
+		private final boolean autoCommit = consumerFactory.isAutoCommit();
+
+		private Thread consumerThread;
+
+		private volatile Collection<TopicPartition> definedPartitions;
+
+		private volatile Collection<TopicPartition> assignedPartitions;
+
+		public ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
+				ContainerOffsetResetStrategy resetStrategy, long recentOffset) {
+			Assert.state(getAckMode().equals(AckMode.MANUAL) || getAckMode().equals(AckMode.MANUAL_IMMEDIATE)
+					? !this.autoCommit : true,
+				"Consumer cannot be configured for auto commit for ackMode " + getAckMode());
+			Consumer<K, V> consumer = consumerFactory.createConsumer();
+			ConsumerRebalanceListener rebalanceListener = new ConsumerRebalanceListener() {
+
+				@Override
+				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+					logger.info("partitions revoked:" + partitions);
 				}
-				ConsumerRecords<K, V> records = consumer.poll(getPollTimeout());
-				if (records != null) {
-					count += records.count();
-					if (logger.isDebugEnabled()) {
-						logger.debug("Received: " + records.count() + " records");
-					}
-					Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-					while (iterator.hasNext()) {
-						final ConsumerRecord<K, V> record = iterator.next();
-						invokeListener(record);
-						if (!this.autoCommit && ackMode.equals(AckMode.RECORD)) {
-							this.consumer.commitAsync(
-									Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-											new OffsetAndMetadata(record.offset())), callback);
-						}
-					}
-					if (!this.autoCommit) {
-						if (ackMode.equals(AckMode.BATCH)) {
-							if (!records.isEmpty()) {
-								this.consumer.commitAsync(callback);
-							}
-						}
-						else {
-							if (!ackMode.equals(AckMode.MANUAL)) {
-								updatePendingOffsets(records);
-							}
-							boolean countExceeded = count >= getAckCount();
-							if (ackMode.equals(AckMode.COUNT) && countExceeded) {
-								commitIfNecessary();
-								count = 0;
-							}
-							else {
-								now = System.currentTimeMillis();
-								boolean elapsed = now - last > getAckTime();
-								if (ackMode.equals(AckMode.TIME) && elapsed) {
-									commitIfNecessary();
-									last = now;
-								}
-								else if ((ackMode.equals(AckMode.COUNT_TIME) || ackMode.equals(AckMode.MANUAL))
-										&& (elapsed || countExceeded)) {
-									commitIfNecessary();
-									last = now;
-									count = 0;
-								}
-							}
-						}
-					}
+
+				@Override
+				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+					assignedPartitions = partitions;
+					logger.info("partitions assigned:" + partitions);
+				}
+
+			};
+			if (partitions == null) {
+				if (topicPattern != null) {
+					consumer.subscribe(topicPattern, rebalanceListener);
 				}
 				else {
-					if (logger.isDebugEnabled()) {
-						logger.debug("No records");
+					consumer.subscribe(Arrays.asList(topics), rebalanceListener);
+				}
+			}
+			else {
+				List<TopicPartition> topicPartitions = Arrays.asList(partitions);
+				this.definedPartitions = topicPartitions;
+				consumer.assign(topicPartitions);
+			}
+			this.consumer = consumer;
+			this.listener = listener;
+			this.acknowledgingMessageListener = ackListener;
+			this.resetStrategy = resetStrategy;
+			this.recentOffset = recentOffset;
+		}
+
+		@Override
+		public boolean isLongLived() {
+			return true;
+		}
+
+		@Override
+		public void run() {
+			this.consumerThread = Thread.currentThread();
+			int count = 0;
+			long last = System.currentTimeMillis();
+			long now;
+			if (isRunning() && definedPartitions != null) {
+				initPartitionsIfNeeded();
+			}
+			final AckMode ackMode = getAckMode();
+			while (isRunning()) {
+				try {
+					if (logger.isTraceEnabled()) {
+						logger.trace("Polling...");
+					}
+					ConsumerRecords<K, V> records = consumer.poll(getPollTimeout());
+					if (records != null) {
+						count += records.count();
+						if (logger.isDebugEnabled()) {
+							logger.debug("Received: " + records.count() + " records");
+						}
+						Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+						while (iterator.hasNext()) {
+							final ConsumerRecord<K, V> record = iterator.next();
+							invokeListener(record);
+							if (!autoCommit && ackMode.equals(AckMode.RECORD)) {
+								this.consumer.commitAsync(
+										Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
+												new OffsetAndMetadata(record.offset() + 1)), this.callback);
+							}
+						}
+						if (!this.autoCommit) {
+							if (ackMode.equals(AckMode.BATCH)) {
+								if (!records.isEmpty()) {
+									this.consumer.commitAsync(this.callback);
+								}
+							}
+							else if (!ackMode.equals(AckMode.MANUAL_IMMEDIATE)) {
+								if (!ackMode.equals(AckMode.MANUAL)) {
+									updatePendingOffsets(records);
+								}
+								boolean countExceeded = count >= getAckCount();
+								if (ackMode.equals(AckMode.COUNT) && countExceeded) {
+									commitIfNecessary();
+									count = 0;
+								}
+								else {
+									now = System.currentTimeMillis();
+									boolean elapsed = now - last > getAckTime();
+									if (ackMode.equals(AckMode.TIME) && elapsed) {
+										commitIfNecessary();
+										last = now;
+									}
+									else if ((ackMode.equals(AckMode.COUNT_TIME) || ackMode.equals(AckMode.MANUAL))
+											&& (elapsed || countExceeded)) {
+										commitIfNecessary();
+										last = now;
+										count = 0;
+									}
+								}
+							}
+						}
+					}
+					else {
+						if (logger.isDebugEnabled()) {
+							logger.debug("No records");
+						}
 					}
 				}
+				catch (WakeupException e) {
+					;
+				}
+				catch (Exception e) {
+					if (getErrorHandler() != null) {
+						getErrorHandler().handle(e, null);
+					}
+					else {
+						logger.error("Container exception", e);
+					}
+				}
+			}
+			if (offsets.size() > 0) {
+				commitIfNecessary();
+			}
+			try {
+				this.consumer.unsubscribe();
 			}
 			catch (WakeupException e) {
 				;
 			}
-			catch (Exception e) {
-				if (getErrorHandler() != null) {
-					getErrorHandler().handle(e, null);
+			this.consumer.close();
+			if (logger.isInfoEnabled()) {
+				logger.info("Consumer stopped");
+			}
+		}
+
+		private void invokeListener(final ConsumerRecord<K, V> record) {
+			try {
+				if (this.acknowledgingMessageListener != null) {
+					this.acknowledgingMessageListener.onMessage(record, new Acknowledgment() {
+
+						@Override
+						public void acknowledge() {
+							if (getAckMode().equals(AckMode.MANUAL)) {
+								updateManualOffset(record);
+							}
+							else if (getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
+								if (Thread.currentThread().equals(consumerThread)) {
+									Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
+											new TopicPartition(record.topic(), record.partition()),
+											new OffsetAndMetadata(record.offset() + 1));
+									if (logger.isDebugEnabled()) {
+										logger.debug("Committing: " + commits);
+									}
+									consumer.commitAsync(commits, callback);
+								}
+								else {
+									throw new IllegalStateException(
+											"With MANUAL_IMMEDIATE ack mode, acknowledget must be invoked on the "
+											+ "consumer thread");
+								}
+							}
+							else {
+								throw new IllegalStateException("AckMode must be MANUAL or MANUAL_IMMEDIATE "
+										+ "for manual acks");
+							}
+						}
+
+					});
 				}
 				else {
-					logger.error("Container exception", e);
+					listener.onMessage(record);
+				}
+			}
+			catch (Exception e) {
+				if (getErrorHandler() != null) {
+					getErrorHandler().handle(e, record);
+				}
+				else {
+					logger.error("Listener threw an exception and no error handler for " + record, e);
 				}
 			}
 		}
-		if (this.offsets.size() > 0) {
-			commitIfNecessary();
-		}
-		try {
-			this.consumer.unsubscribe();
-		}
-		catch (WakeupException e) {
-			;
-		}
-		this.consumer.close();
-		if (logger.isInfoEnabled()) {
-			logger.info("Consumer stopped");
-		}
-	}
 
-	private void invokeListener(final ConsumerRecord<K, V> record) {
-		try {
-			if (this.acknowledgingMessageListener != null) {
-				this.acknowledgingMessageListener.onMessage(record, new Acknowledgment() {
-
-					@Override
-					public void acknowledge() {
-						if (getAckMode().equals(AckMode.MANUAL)) {
-							updateManualOffset(record);
-						}
-						else if (getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
-							updateManualOffset(record);
-							consumer.wakeup();
-						}
-						else {
-							throw new IllegalStateException("AckMode must be MANUAL or MANUAL_IMMEDIATE "
-									+ "for manual acks");
-						}
+		private void initPartitionsIfNeeded() {
+			/*
+			 * Note: initial position setting is only supported with explicit topic assignment.
+			 * When using auto assignment (subscribe), the ConsumerRebalanceListener is not
+			 * called until we poll() the consumer.
+			 */
+			if (this.resetStrategy.equals(ContainerOffsetResetStrategy.EARLIEST)) {
+				this.consumer.seekToBeginning(
+						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
+			}
+			else if (this.resetStrategy.equals(ContainerOffsetResetStrategy.LATEST)) {
+				this.consumer.seekToEnd(
+						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
+			}
+			else if (this.resetStrategy.equals(ContainerOffsetResetStrategy.RECENT)) {
+				this.consumer.seekToEnd(
+						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
+				for (TopicPartition topicPartition : this.definedPartitions) {
+					long newOffset = this.consumer.position(topicPartition) - this.recentOffset;
+					this.consumer.seek(topicPartition, newOffset);
+					if (logger.isDebugEnabled()) {
+						logger.debug("Reset " + topicPartition + " to offset " + newOffset);
 					}
+				}
+			}
+		}
 
-				});
+		private void updatePendingOffsets(ConsumerRecords<K, V> records) {
+			for (ConsumerRecord<K, V> record : records) {
+				if (!this.offsets.containsKey(record.topic())) {
+					this.offsets.put(record.topic(), new HashMap<Integer, Long>());
+				}
+				this.offsets.get(record.topic()).put(record.partition(), record.offset());
+			}
+		}
+
+		private void updateManualOffset(ConsumerRecord<K, V> record) {
+			if (!this.manualOffsets.containsKey(record.topic())) {
+				this.manualOffsets.putIfAbsent(record.topic(), new ConcurrentHashMap<Integer, Long>());
+			}
+			this.manualOffsets.get(record.topic()).put(record.partition(), record.offset());
+		}
+
+		private void commitIfNecessary() {
+			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
+			if (AckMode.MANUAL.equals(getAckMode())) {
+				for (Entry<String, ConcurrentMap<Integer, Long>> entry : this.manualOffsets.entrySet()) {
+					Iterator<Entry<Integer, Long>> iterator = entry.getValue().entrySet().iterator();
+					while (iterator.hasNext()) {
+						Entry<Integer, Long> offset = iterator.next();
+						commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
+								new OffsetAndMetadata(offset.getValue() + 1));
+						iterator.remove();
+					}
+				}
 			}
 			else {
-				this.listener.onMessage(record);
-			}
-		}
-		catch (Exception e) {
-			if (getErrorHandler() != null) {
-				getErrorHandler().handle(e, record);
-			}
-			else {
-				logger.error("Listener threw an exception and no error handler for " + record, e);
-			}
-		}
-	}
-
-	private void initPartitionsIfNeeded() {
-		/*
-		 * Note: initial position setting is only supported with explicit topic assignment.
-		 * When using auto assignment (subscribe), the ConsumerRebalanceListener is not
-		 * called until we poll() the consumer.
-		 */
-		if (this.resetStrategy.equals(ContainerOffsetResetStrategy.EARLIEST)) {
-			this.consumer.seekToBeginning(
-					this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
-		}
-		else if (this.resetStrategy.equals(ContainerOffsetResetStrategy.LATEST)) {
-			this.consumer.seekToEnd(
-					this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
-		}
-		else if (this.resetStrategy.equals(ContainerOffsetResetStrategy.RECENT)) {
-			this.consumer.seekToEnd(
-					this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
-			for (TopicPartition topicPartition : this.definedPartitions) {
-				long newOffset = this.consumer.position(topicPartition) - this.recentOffset;
-				this.consumer.seek(topicPartition, newOffset);
-				if (logger.isDebugEnabled()) {
-					logger.debug("Reset " + topicPartition + " to offset " + newOffset);
+				for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
+					for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
+						commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
+								new OffsetAndMetadata(offset.getValue() + 1));
+					}
 				}
 			}
-		}
-	}
-
-	private void updatePendingOffsets(ConsumerRecords<K, V> records) {
-		for (ConsumerRecord<K, V> record : records) {
-			if (!this.offsets.containsKey(record.topic())) {
-				this.offsets.put(record.topic(), new HashMap<Integer, Long>());
+			this.offsets.clear();
+			if (logger.isDebugEnabled()) {
+				logger.debug("Committing: " + commits);
 			}
-			this.offsets.get(record.topic()).put(record.partition(), record.offset());
-		}
-	}
-
-	private void updateManualOffset(ConsumerRecord<K, V> record) {
-		if (!this.manualOffsets.containsKey(record.topic())) {
-			this.manualOffsets.putIfAbsent(record.topic(), new ConcurrentHashMap<Integer, Long>());
-		}
-		this.manualOffsets.get(record.topic()).put(record.partition(), record.offset());
-	}
-
-	private void commitIfNecessary() {
-		Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
-		if (AckMode.MANUAL.equals(getAckMode())) {
-			for (Entry<String, ConcurrentMap<Integer, Long>> entry : this.manualOffsets.entrySet()) {
-				Iterator<Entry<Integer, Long>> iterator = entry.getValue().entrySet().iterator();
-				while (iterator.hasNext()) {
-					Entry<Integer, Long> offset = iterator.next();
-					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
-							new OffsetAndMetadata(offset.getValue()));
-				}
+			if (!commits.isEmpty()) {
+				this.consumer.commitAsync(commits, this.callback);
 			}
 		}
-		else {
-			for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
-				for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
-					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
-							new OffsetAndMetadata(offset.getValue()));
-				}
-			}
-		}
-		this.offsets.clear();
-		if (logger.isDebugEnabled()) {
-			logger.debug("Committing: " + commits);
-		}
-		if (!commits.isEmpty()) {
-			this.consumer.commitAsync(commits, this.callback);
-		}
-	}
-
-	@Override
-	public boolean isLongLived() {
-		return true;
 	}
 
 	private static final class CommitCallback implements OffsetCommitCallback {

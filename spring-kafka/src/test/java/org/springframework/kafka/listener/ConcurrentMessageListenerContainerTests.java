@@ -242,6 +242,8 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testManualCommit() throws Exception {
 		testManualCommitGuts(AckMode.MANUAL, topic4);
 		testManualCommitGuts(AckMode.MANUAL_IMMEDIATE, topic5);
+		testManualCommitGuts(AckMode.MANUAL, topic4);
+		testManualCommitGuts(AckMode.MANUAL_IMMEDIATE, topic5);
 	}
 
 	private void testManualCommitGuts(AckMode ackMode, String topic) throws Exception {
