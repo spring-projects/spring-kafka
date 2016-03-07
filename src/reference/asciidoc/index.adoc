@@ -1,4 +1,4 @@
-[[spring-amqp-reference]]
+[[spring-kafka-reference]]
 
 = Spring for Apache Kafka
 
@@ -36,7 +36,8 @@ include::si-kafka.adoc[]
 
 == Other Resources
 
-In addition to this reference documentation, there exist a number of other resources that may help you learn about AMQP.
+In addition to this reference documentation, there exist a number of other resources that may help you learn about
+Spring and Apache Kafka.
 
 [appendix]
 include::appendix.adoc[]

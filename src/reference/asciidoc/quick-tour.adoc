@@ -3,7 +3,7 @@
 
 ==== Introduction
 
-This is the 5 minute tour to get started with Spring AMQP.
+This is the 5 minute tour to get started with Spring Kafka.
 
 Prerequisites: install and run Apache Kafka
 Then grab the spring-kafka JAR and all of its dependencies - the easiest way to do that is to declare a dependency in
