@@ -471,6 +471,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						Entry<Integer, Long> offset = iterator.next();
 						commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
 								new OffsetAndMetadata(offset.getValue() + 1));
+						iterator.remove();
 					}
 				}
 			}
