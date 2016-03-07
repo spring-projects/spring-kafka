@@ -15,10 +15,19 @@
  */
 package org.springframework.kafka.annotation;
 
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+
 /**
+ * Used to add topic/partition information to a {@code KafkaListener}.
+ *
  * @author Gary Russell
  *
  */
+@Target({})
+@Retention(RUNTIME)
 public @interface TopicPartition {
 
 	String topic() default "";

@@ -41,7 +41,7 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 
 	private Integer concurrency;
 
-	private Long receentOffset;
+	private Long recentOffset;
 
 	private ContainerOffsetResetStrategy resetStrategy;
 
@@ -54,11 +54,11 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 	}
 
 	/**
-	 * @param receentOffset the recent offset.
+	 * @param recentOffset the recent offset.
 	 * @see ConcurrentMessageListenerContainer#setRecentOffset(long)
 	 */
-	public void setReceentOffset(Long receentOffset) {
-		this.receentOffset = receentOffset;
+	public void setRecentOffset(Long recentOffset) {
+		this.recentOffset = recentOffset;
 	}
 
 	/**
@@ -95,8 +95,8 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 		if (this.concurrency != null) {
 			instance.setConcurrency(this.concurrency);
 		}
-		if (this.receentOffset != null) {
-			instance.setRecentOffset(this.receentOffset);
+		if (this.recentOffset != null) {
+			instance.setRecentOffset(this.recentOffset);
 		}
 		if (this.resetStrategy != null) {
 			instance.setResetStrategy(this.resetStrategy);

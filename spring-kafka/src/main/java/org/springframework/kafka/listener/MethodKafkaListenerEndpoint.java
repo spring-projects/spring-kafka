@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
  *
  * @author Stephane Nicoll
  * @author Artem Bilan
- * @since 1.4
+ * @author Gary Russell
  */
 public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndpoint<K, V> {
 

@@ -49,7 +49,6 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 	 * Generate {@code timestamp} for produced messages. If set to {@code false}, -1 is
 	 * used instead. By default set to {@code false}.
 	 * @param generateTimestamp true if a timestamp should be generated
-	 * @since 1.1
 	 */
 	public void setGenerateTimestamp(boolean generateTimestamp) {
 		this.generateTimestamp = generateTimestamp;

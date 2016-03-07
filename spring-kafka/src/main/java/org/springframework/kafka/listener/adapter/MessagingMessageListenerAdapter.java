@@ -39,7 +39,6 @@ import org.springframework.messaging.converter.MessageConversionException;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
- * @since 1.4
  */
 public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMessageListener<K, V> {
 
