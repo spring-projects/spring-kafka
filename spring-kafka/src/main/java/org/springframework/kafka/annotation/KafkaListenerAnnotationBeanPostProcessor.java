@@ -76,7 +76,6 @@ import org.springframework.util.StringUtils;
  * @author Stephane Nicoll
  * @author Juergen Hoeller
  * @author Gary Russell
- * @since 1.4
  * @see KafkaListener
  * @see EnableKafka
  * @see KafkaListenerConfigurer

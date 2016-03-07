@@ -18,10 +18,6 @@ package org.springframework.kafka.config;
 
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
@@ -39,8 +35,6 @@ import org.springframework.kafka.listener.KafkaListenerEndpoint;
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
 		implements KafkaListenerContainerFactory<C> {
 
-	protected final Log logger = LogFactory.getLog(getClass());
-
 	private ConsumerFactory<K, V> consumerFactory;
 
 	private ErrorHandler errorHandler;
@@ -48,8 +42,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Boolean autoStartup;
 
 	private Integer phase;
-
-	protected final AtomicInteger counter = new AtomicInteger();
 
 	private Executor taskExecutor;
 
@@ -172,7 +164,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * Further initialize the specified container.
 	 * <p>Subclasses can inherit from this method to apply extra
 	 * configuration if necessary.
-	 * @param instance the containe instance to configure.
+	 * @param instance the container instance to configure.
 	 */
 	protected void initializeContainer(C instance) {
 	}

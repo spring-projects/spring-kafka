@@ -162,7 +162,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	/**
 	 * Set the group for the corresponding listener container.
 	 * @param group the group.
-	 * @since 1.5
 	 */
 	public void setGroup(String group) {
 		this.group = group;

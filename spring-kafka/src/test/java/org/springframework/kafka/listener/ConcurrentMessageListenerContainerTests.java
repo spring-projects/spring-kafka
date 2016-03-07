@@ -55,7 +55,6 @@ import org.springframework.kafka.rule.KafkaEmbedded;
 
 /**
  * @author Gary Russell
- * @since 2.0
  *
  */
 public class ConcurrentMessageListenerContainerTests {

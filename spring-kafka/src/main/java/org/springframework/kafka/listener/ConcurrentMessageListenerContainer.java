@@ -40,8 +40,6 @@ import org.springframework.util.Assert;
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
-	private static final int DEFAULT_STOP_TIMEOUT = 1000;
-
 	private final ConsumerFactory<K, V> consumerFactory;
 
 	private final String[] topics;
@@ -57,8 +55,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	TopicPartition[] partitions;
 
 	int concurrency = 1;
-
-	private int stopTimeout = DEFAULT_STOP_TIMEOUT;
 
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
@@ -146,20 +142,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void setConcurrency(int concurrency) {
 		Assert.isTrue(concurrency > 0, "concurrency must be greater than 0");
 		this.concurrency = concurrency;
-	}
-
-	/**
-	 * The timeout for waiting for each concurrent {@link MessageListener} to finish on
-	 * stopping.
-	 * @param stopTimeout timeout in milliseconds
-	 * @since 1.1
-	 */
-	public void setStopTimeout(int stopTimeout) {
-		this.stopTimeout = stopTimeout;
-	}
-
-	public int getStopTimeout() {
-		return stopTimeout;
 	}
 
 	/**

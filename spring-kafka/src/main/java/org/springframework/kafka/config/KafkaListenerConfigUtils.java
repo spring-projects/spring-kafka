@@ -21,7 +21,6 @@ package org.springframework.kafka.config;
  *
  * @author Juergen Hoeller
  * @author Gary Russell
- * @since 1.4
  */
 public abstract class KafkaListenerConfigUtils {
 

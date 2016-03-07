@@ -28,7 +28,6 @@ import org.apache.kafka.common.TopicPartition;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
- * @since 1.4
  */
 public interface KafkaListenerEndpoint {
 

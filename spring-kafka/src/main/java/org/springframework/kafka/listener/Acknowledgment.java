@@ -24,7 +24,6 @@ package org.springframework.kafka.listener;
  *
  * @author Marius Bogoevici
  * @author Gary Russell
- * @since 1.0.1
  */
 public interface Acknowledgment {
 

@@ -130,7 +130,6 @@ public @interface KafkaListener {
 	 * This allows, for example, iteration over the collection to start/stop a subset
 	 * of containers.
 	 * @return the bean name for the group.
-	 * @since 1.5
 	 */
 	String group() default "";
 

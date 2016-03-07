@@ -31,7 +31,6 @@ import org.springframework.kafka.listener.KafkaListenerEndpointRegistrar;
  * <p>See @{@link EnableKafka} for detailed usage examples.
  *
  * @author Stephane Nicoll
- * @since 1.4
  * @see EnableKafka
  * @see org.springframework.kafka.listener.KafkaListenerEndpointRegistrar
  */
