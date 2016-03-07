@@ -45,7 +45,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final Map<String, Object> configs;
 
-	private volatile Producer<K, V> producer;
+	private volatile CloseSafeProducer<K, V> producer;
 
 	private volatile boolean running;
 
@@ -55,10 +55,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	@Override
 	public void destroy() throws Exception {
-		Producer<K, V> producer = this.producer;
+		CloseSafeProducer<K, V> producer = this.producer;
 		this.producer = null;
 		if (producer != null) {
-			producer.close();
+			producer.delegate.close();
 		}
 	}
 
