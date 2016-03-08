@@ -195,7 +195,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	}
 
 
-	private static class KafkaListenerEndpointDescriptor {
+	private static final class KafkaListenerEndpointDescriptor {
 
 		private final KafkaListenerEndpoint endpoint;
 

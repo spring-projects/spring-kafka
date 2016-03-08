@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.kafka.listener.adapter;
 
 import java.lang.annotation.Annotation;
@@ -60,7 +61,7 @@ public class DelegatingInvocableHandler {
 	 * @return the bean
 	 */
 	public Object getBean() {
-		return bean;
+		return this.bean;
 	}
 
 	/**
@@ -88,7 +89,7 @@ public class DelegatingInvocableHandler {
 			if (handler == null) {
 				throw new KafkaException("No method found for " + payloadClass);
 			}
-			this.cachedHandlers.putIfAbsent(payloadClass, handler);//NOSONAR
+			this.cachedHandlers.putIfAbsent(payloadClass, handler); //NOSONAR
 		}
 		return handler;
 	}
@@ -141,7 +142,7 @@ public class DelegatingInvocableHandler {
 	 */
 	public String getMethodNameFor(Object payload) {
 		InvocableHandlerMethod handlerForPayload = getHandlerForPayload(payload.getClass());
-		return handlerForPayload == null ? "no match" : handlerForPayload.getMethod().toGenericString();//NOSONAR
+		return handlerForPayload == null ? "no match" : handlerForPayload.getMethod().toGenericString(); //NOSONAR
 	}
 
 }

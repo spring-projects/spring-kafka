@@ -79,7 +79,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 * @return the messageHandlerMethodFactory
 	 */
 	protected MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
-		return messageHandlerMethodFactory;
+		return this.messageHandlerMethodFactory;
 	}
 
 	@Override

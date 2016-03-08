@@ -71,7 +71,7 @@ public abstract class AbstractAdaptableMessageListener<K, V> implements MessageL
 	 * @see #onMessage(ConsumerRecord)
 	 */
 	protected void handleListenerException(Throwable ex) {
-		logger.error("Listener execution failed", ex);
+		this.logger.error("Listener execution failed", ex);
 	}
 
 	/**

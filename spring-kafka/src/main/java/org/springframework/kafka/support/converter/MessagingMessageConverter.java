@@ -56,7 +56,7 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 
 	@Override
 	public Message<?> toMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
-		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(generateMessageId, generateTimestamp);
+		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId, this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
 		rawHeaders.put(KafkaHeaders.MESSAGE_KEY, record.key());

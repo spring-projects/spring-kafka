@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2015 the original author or authors.
+ * Copyright 2014-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,15 +72,15 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	protected BeanFactory getBeanFactory() {
-		return beanFactory;
+		return this.beanFactory;
 	}
 
 	protected BeanExpressionResolver getResolver() {
-		return resolver;
+		return this.resolver;
 	}
 
 	protected BeanExpressionContext getBeanExpressionContext() {
-		return expressionContext;
+		return this.expressionContext;
 	}
 
 	public void setId(String id) {

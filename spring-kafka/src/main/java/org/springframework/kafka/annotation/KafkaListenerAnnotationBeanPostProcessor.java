@@ -343,7 +343,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 			catch (NoSuchBeanDefinitionException ex) {
 				throw new BeanInitializationException("Could not register Kafka listener endpoint on [" +
-						adminTarget + "] for bean " + beanName + ", no " + KafkaListenerContainerFactory.class.getSimpleName() + " with id '" +
+						adminTarget + "] for bean " + beanName + ", no "
+						+ KafkaListenerContainerFactory.class.getSimpleName() + " with id '" +
 						containerFactoryBeanName + "' was found in the application context", ex);
 			}
 		}
@@ -356,7 +357,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return resolve(KafkaListener.id());
 		}
 		else {
-			return "org.springframework.kafka.KafkaListenerEndpointContainer#" + counter.getAndIncrement();
+			return "org.springframework.kafka.KafkaListenerEndpointContainer#" + this.counter.getAndIncrement();
 		}
 	}
 
@@ -414,17 +415,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	@SuppressWarnings("unchecked")
 	private void resolveAsString(Object resolvedValue, List<String> result) {
-		Object resolvedValueToUse = resolvedValue;
 		if (resolvedValue instanceof String[]) {
 			for (Object object : (String[]) resolvedValue) {
 				resolveAsString(object, result);
 			}
 		}
-		if (resolvedValueToUse instanceof String) {
-			result.add((String) resolvedValueToUse);
+		if (resolvedValue instanceof String) {
+			result.add((String) resolvedValue);
 		}
-		else if (resolvedValueToUse instanceof Iterable) {
-			for (Object object : (Iterable<Object>) resolvedValueToUse) {
+		else if (resolvedValue instanceof Iterable) {
+			for (Object object : (Iterable<Object>) resolvedValue) {
 				resolveAsString(object, result);
 			}
 		}
@@ -484,7 +484,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 		private MessageHandlerMethodFactory createDefaultMessageHandlerMethodFactory() {
 			DefaultMessageHandlerMethodFactory defaultFactory = new DefaultMessageHandlerMethodFactory();
-			defaultFactory.setBeanFactory(beanFactory);
+			defaultFactory.setBeanFactory(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory);
 			defaultFactory.afterPropertiesSet();
 			return defaultFactory;
 		}
