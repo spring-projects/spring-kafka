@@ -362,21 +362,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private org.apache.kafka.common.TopicPartition[] resolveTopicPartitions(KafkaListener kafkaListener) {
-		TopicPartition[] partitions = kafkaListener.topicPartitions();
+		TopicPartition[] topicPartitions = kafkaListener.topicPartitions();
 		List<org.apache.kafka.common.TopicPartition> result = new ArrayList<>();
-		if (partitions.length > 0) {
-			for (int i = 0; i < partitions.length; i++) {
-				Object topic = resolveExpression(partitions[i].topic());
-				Assert.state(topic instanceof String, "topic in @TopicPartition must resolve to a String, not"
-							+ topic.getClass());
-				Object partition = resolveExpression(partitions[i].partition());
-				Assert.state(partition instanceof Integer || partition instanceof String,
-						"partition in @TopicPartition must resolve to an Integer or String, not a "
-								+ partition.getClass());
-				if (partition instanceof String) {
-					partition = Integer.valueOf((String) partition);
-				}
-				result.add(new org.apache.kafka.common.TopicPartition((String) topic, (Integer) partition));
+		if (topicPartitions.length > 0) {
+			for (TopicPartition topicPartition : topicPartitions) {
+				result.addAll(resolveTopicPartitionsList(topicPartition));
 			}
 		}
 		return result.toArray(new org.apache.kafka.common.TopicPartition[result.size()]);
@@ -413,6 +403,20 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return pattern;
 	}
 
+	private List<org.apache.kafka.common.TopicPartition> resolveTopicPartitionsList(TopicPartition topicPartition) {
+		Object topic = resolveExpression(topicPartition.topic());
+		Assert.state(topic instanceof String, "topic in @TopicPartition must resolve to a String, not"
+					+ topic.getClass());
+		String[] partitions = topicPartition.partitions();
+		List<org.apache.kafka.common.TopicPartition> result = new ArrayList<>();
+		if (partitions.length > 0) {
+			for (int i = 0; i < partitions.length; i++) {
+				resolvePartitionAsInteger((String) topic, partitions[i], result);
+			}
+		}
+		return result;
+	}
+
 	@SuppressWarnings("unchecked")
 	private void resolveAsString(Object resolvedValue, List<String> result) {
 		if (resolvedValue instanceof String[]) {
@@ -431,6 +435,35 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else {
 			throw new IllegalArgumentException(String.format(
 					"@KafKaListener can't resolve '%s' as a String", resolvedValue));
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void resolvePartitionAsInteger(String topic, Object resolvedValue, List<org.apache.kafka.common.TopicPartition> result) {
+		if (resolvedValue instanceof String[]) {
+			for (Object object : (String[]) resolvedValue) {
+				resolvePartitionAsInteger(topic, object, result);
+			}
+		}
+		if (resolvedValue instanceof String) {
+			result.add(new org.apache.kafka.common.TopicPartition(topic, Integer.valueOf((String) resolvedValue)));
+		}
+		else if (resolvedValue instanceof Integer[]) {
+			for (Integer partition : (Integer[]) resolvedValue) {
+				result.add(new org.apache.kafka.common.TopicPartition(topic, partition));
+			}
+		}
+		else if (resolvedValue instanceof Integer) {
+			result.add(new org.apache.kafka.common.TopicPartition(topic, (Integer) resolvedValue));
+		}
+		else if (resolvedValue instanceof Iterable) {
+			for (Object object : (Iterable<Object>) resolvedValue) {
+				resolvePartitionAsInteger(topic, object, result);
+			}
+		}
+		else {
+			throw new IllegalArgumentException(String.format(
+					"@KafKaListener can't resolve '%s' as an Integer or String", resolvedValue));
 		}
 	}
 
