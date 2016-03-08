@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.kafka.listener;
 
 import java.util.concurrent.Executor;
@@ -127,7 +128,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	public Object getMessageListener() {
-		return messageListener;
+		return this.messageListener;
 	}
 
 	@Override
@@ -159,7 +160,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @see #setAckMode(AckMode)
 	 */
 	public AckMode getAckMode() {
-		return ackMode;
+		return this.ackMode;
 	}
 
 	/**
@@ -175,7 +176,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @see #setPollTimeout(long)
 	 */
 	public long getPollTimeout() {
-		return pollTimeout;
+		return this.pollTimeout;
 	}
 
 	/**

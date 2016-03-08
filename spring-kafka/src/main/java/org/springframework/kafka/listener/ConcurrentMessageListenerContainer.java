@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -65,12 +65,14 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, TopicPartition... topicPartitions) {
+	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+	                                          TopicPartition... topicPartitions) {
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 		Assert.notEmpty(topicPartitions, "A list of partitions must be provided");
 		Assert.noNullElements(topicPartitions, "The list of partitions cannot contain null elements");
 		this.consumerFactory = consumerFactory;
-		this.partitions = new LinkedHashSet<>(Arrays.asList(topicPartitions)).toArray(new TopicPartition[0]);
+		this.partitions = new LinkedHashSet<>(Arrays.asList(topicPartitions))
+				.toArray(new TopicPartition[topicPartitions.length]);
 		this.topics = null;
 		this.topicPattern = null;
 	}
@@ -131,7 +133,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	public int getConcurrency() {
-		return concurrency;
+		return this.concurrency;
 	}
 
 	/**
@@ -207,7 +209,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				int perContainer = numPartitions / this.concurrency;
 				TopicPartition[] subset;
 				if (i == this.concurrency - 1) {
-					subset = Arrays.copyOfRange(this.partitions, i * perContainer, partitions.length);
+					subset = Arrays.copyOfRange(this.partitions, i * perContainer, this.partitions.length);
 				}
 				else {
 					subset = Arrays.copyOfRange(this.partitions, i * perContainer, (i + 1) * perContainer);

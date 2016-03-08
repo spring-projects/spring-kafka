@@ -60,7 +60,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	public ConsumerFactory<K, V> getConsumerFactory() {
-		return consumerFactory;
+		return this.consumerFactory;
 	}
 
 	/**

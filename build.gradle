@@ -47,6 +47,7 @@ subprojects { subproject ->
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
 	apply plugin: 'jacoco'
+	apply plugin: 'checkstyle'
 
 	if (project.hasProperty('platformVersion')) {
 		apply plugin: 'spring-io'
@@ -98,6 +99,11 @@ subprojects { subproject ->
 			append = false
 			destinationFile = file("$buildDir/jacoco.exec")
 		}
+	}
+
+	checkstyle {
+		configFile = new File(rootDir, "src/checkstyle/checkstyle.xml")
+		toolVersion = "6.16.1"
 	}
 
 	jacocoTestReport {
@@ -324,10 +330,4 @@ artifacts {
 task dist(dependsOn: assemble) {
 	group = 'Distribution'
 	description = 'Builds -dist, -docs distribution archives.'
-}
-
-task wrapper(type: Wrapper) {
-	description = 'Generates gradlew[.bat] scripts'
-	gradleVersion = '2.5'
-	distributionUrl = "http://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }

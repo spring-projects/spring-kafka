@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,7 +55,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * @return the topic.
 	 */
 	public String getDefaultTopic() {
-		return defaultTopic;
+		return this.defaultTopic;
 	}
 
 	/**
@@ -113,12 +113,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 				}
 			}
 		}
-		if (logger.isTraceEnabled()) {
-			logger.trace("Sending: " + producerRecord);
+		if (this.logger.isTraceEnabled()) {
+			this.logger.trace("Sending: " + producerRecord);
 		}
 		Future<RecordMetadata> future = this.producer.send(producerRecord);
-		if (logger.isTraceEnabled()) {
-			logger.trace("Sent: " + producerRecord);
+		if (this.logger.isTraceEnabled()) {
+			this.logger.trace("Sent: " + producerRecord);
 		}
 		return future;
 	}

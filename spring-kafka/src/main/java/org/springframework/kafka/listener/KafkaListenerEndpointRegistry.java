@@ -204,7 +204,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 					((DisposableBean) listenerContainer).destroy();
 				}
 				catch (Exception ex) {
-					logger.warn("Failed to destroy message listener container", ex);
+					this.logger.warn("Failed to destroy message listener container", ex);
 				}
 			}
 		}
@@ -270,7 +270,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	}
 
 
-	private static class AggregatingCallback implements Runnable {
+	private static final class AggregatingCallback implements Runnable {
 
 		private final AtomicInteger count;
 

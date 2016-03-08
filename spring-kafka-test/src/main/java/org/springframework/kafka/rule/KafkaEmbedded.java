@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 
 package org.springframework.kafka.rule;
 
@@ -116,10 +115,10 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 		int zkSessionTimeout = 6000;
 
 		this.zkConnect = "127.0.0.1:" + this.zookeeper.port();
-		zookeeperClient = new ZkClient(zkConnect, zkSessionTimeout, zkConnectionTimeout,
+		this.zookeeperClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
 				ZKStringSerializer$.MODULE$);
-		kafkaServers = new ArrayList<KafkaServer>();
-		for (int i = 0; i < count; i++) {
+		this.kafkaServers = new ArrayList<>();
+		for (int i = 0; i < this.count; i++) {
 			ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
 			int randomPort = ss.getLocalPort();
 			ss.close();
@@ -128,22 +127,22 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 					scala.Option.<SecurityProtocol>apply(null),
 					scala.Option.<File>apply(null),
 					true, false, 0, false, 0, false, 0);
-			brokerConfigProperties.setProperty("replica.socket.timeout.ms","1000");
-			brokerConfigProperties.setProperty("controller.socket.timeout.ms","1000");
-			brokerConfigProperties.setProperty("offsets.topic.replication.factor","1");
+			brokerConfigProperties.setProperty("replica.socket.timeout.ms", "1000");
+			brokerConfigProperties.setProperty("controller.socket.timeout.ms", "1000");
+			brokerConfigProperties.setProperty("offsets.topic.replication.factor", "1");
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), SystemTime$.MODULE$);
-			kafkaServers.add(server);
+			this.kafkaServers.add(server);
 		}
 		ZkUtils zkUtils = new ZkUtils(getZkClient(), null, false);
 		Properties props = new Properties();
-		for (String topic : topics) {
+		for (String topic : this.topics) {
 			AdminUtils.createTopic(zkUtils, topic, this.partitionsPerTopic, this.count, props);
 		}
 	}
 
 	@Override
 	protected void after() {
-		for (KafkaServer kafkaServer : kafkaServers) {
+		for (KafkaServer kafkaServer : this.kafkaServers) {
 			try {
 				if (kafkaServer.brokerState().currentState() != (NotRunning.state())) {
 					kafkaServer.shutdown();
@@ -161,13 +160,13 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 			}
 		}
 		try {
-			zookeeperClient.close();
+			this.zookeeperClient.close();
 		}
 		catch (ZkInterruptedException e) {
 			// do nothing
 		}
 		try {
-			zookeeper.shutdown();
+			this.zookeeper.shutdown();
 		}
 		catch (Exception e) {
 			// do nothing
@@ -176,25 +175,25 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 
 	@Override
 	public List<KafkaServer> getKafkaServers() {
-		return kafkaServers;
+		return this.kafkaServers;
 	}
 
 	public KafkaServer getKafkaServer(int id) {
-		return kafkaServers.get(id);
+		return this.kafkaServers.get(id);
 	}
 
 	public EmbeddedZookeeper getZookeeper() {
-		return zookeeper;
+		return this.zookeeper;
 	}
 
 	@Override
 	public ZkClient getZkClient() {
-		return zookeeperClient;
+		return this.zookeeperClient;
 	}
 
 	@Override
 	public String getZookeeperConnectionString() {
-		return zkConnect;
+		return this.zkConnect;
 	}
 
 	public BrokerAddress getBrokerAddress(int i) {
@@ -231,11 +230,11 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 	}
 
 	public void startZookeeper() {
-		zookeeper = new EmbeddedZookeeper();
+		this.zookeeper = new EmbeddedZookeeper();
 	}
 
 	public void bounce(int index, boolean waitForPropagation) {
-		kafkaServers.get(index).shutdown();
+		this.kafkaServers.get(index).shutdown();
 		if (waitForPropagation) {
 			long initialTime = System.currentTimeMillis();
 			boolean canExit = false;
@@ -255,7 +254,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 					if (Errors.forCode(topicMetadata.errorCode()).exception() == null) {
 						for (PartitionMetadata partitionMetadata :
 								JavaConversions.asJavaCollection(topicMetadata.partitionsMetadata())) {
-							Collection<BrokerEndPoint> inSyncReplicas = JavaConversions.asJavaCollection(partitionMetadata.isr());
+							Collection<BrokerEndPoint> inSyncReplicas =
+									JavaConversions.asJavaCollection(partitionMetadata.isr());
 							for (BrokerEndPoint broker : inSyncReplicas) {
 								if (broker.id() == index) {
 									canExit = false;
@@ -279,7 +279,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 		// retry restarting repeatedly, first attempts may fail
 
 		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(10,
-				Collections.<Class<? extends Throwable>,Boolean>singletonMap(Exception.class, true));
+				Collections.<Class<? extends Throwable>, Boolean>singletonMap(Exception.class, true));
 
 		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
 		backOffPolicy.setInitialInterval(100);
@@ -292,9 +292,10 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 
 
 		retryTemplate.execute(new RetryCallback<Void, Exception>() {
+
 			@Override
 			public Void doWithRetry(RetryContext context) throws Exception {
-				kafkaServers.get(index).startup();
+				KafkaEmbedded.this.kafkaServers.get(index).startup();
 				return null;
 			}
 		});

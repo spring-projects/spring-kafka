@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.kafka.annotation;
 
 import static org.junit.Assert.assertEquals;
@@ -116,7 +117,7 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-							kafkaListenerContainerFactory() {
+		kafkaListenerContainerFactory() {
 			SimpleKafkaListenerContainerFactory<Integer, String> factory = new SimpleKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			return factory;
@@ -124,7 +125,7 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-							kafkaManualAckListenerContainerFactory() {
+		kafkaManualAckListenerContainerFactory() {
 			SimpleKafkaListenerContainerFactory<Integer, String> factory = new SimpleKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(manualConsumerFactory());
 			factory.setAckMode(AckMode.MANUAL_IMMEDIATE);
@@ -204,24 +205,24 @@ public class EnableKafkaIntegrationTests {
 
 		private volatile Acknowledgment ack;
 
-		@KafkaListener(id="foo", topics = "annotated1")
+		@KafkaListener(id = "foo", topics = "annotated1")
 		public void listen1(String foo) {
 			this.latch1.countDown();
 		}
 
-		@KafkaListener(id="bar", topicPattern = "annotated2")
+		@KafkaListener(id = "bar", topicPattern = "annotated2")
 		public void listen2(@Payload String foo, @Header(KafkaHeaders.PARTITION_ID) int partitionHeader) {
 			this.partition = partitionHeader;
 			this.latch2.countDown();
 		}
 
-		@KafkaListener(id="baz", topicPartitions = @TopicPartition(topic = "annotated3", partition="0"))
+		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "annotated3", partition = "0"))
 		public void listen3(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch3.countDown();
 		}
 
-		@KafkaListener(id="qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory")
+		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory")
 		public void listen4(@Payload String foo, Acknowledgment ack) {
 			this.ack = ack;
 			this.ack.acknowledge();
