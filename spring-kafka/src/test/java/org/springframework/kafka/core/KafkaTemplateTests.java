@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.kafka.core;
 
 import static org.junit.Assert.assertThat;
-import static org.springframework.kafka.utils.KafkaTestUtils.hasKey;
-import static org.springframework.kafka.utils.KafkaTestUtils.hasPartition;
-import static org.springframework.kafka.utils.KafkaTestUtils.hasValue;
+import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasKey;
+import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasPartition;
+import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasValue;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -29,10 +30,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import org.springframework.kafka.listener.ContainerTestUtils;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
-import org.springframework.kafka.utils.KafkaTestUtils;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 
 /**
@@ -65,7 +67,7 @@ public class KafkaTemplateTests {
 		});
 		container.setBeanName("templateTests");
 		container.start();
-		KafkaTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.senderProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -74,14 +76,14 @@ public class KafkaTemplateTests {
 		assertThat(records.poll(10, TimeUnit.SECONDS), hasValue("foo"));
 		template.syncConvertAndSend(0, 2, "bar");
 		ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
-		assertThat(received, hasValue("bar"));
 		assertThat(received, hasKey(2));
 		assertThat(received, hasPartition(0));
-		template.syncConvertAndSend(TEMPLATE_TOPIC, 0, 2, "bar");
+		assertThat(received, hasValue("bar"));
+		template.syncConvertAndSend(TEMPLATE_TOPIC, 0, 2, "baz");
 		received = records.poll(10, TimeUnit.SECONDS);
-		assertThat(received, hasValue("bar"));
-		assertThat(received, hasPartition(0));
 		assertThat(received, hasKey(2));
+		assertThat(received, hasPartition(0));
+		assertThat(received, hasValue("baz"));
 	}
 
 }

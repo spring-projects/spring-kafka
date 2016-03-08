@@ -92,10 +92,24 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 		this(count, false);
 	}
 
+	/**
+	 * Create embedded Kafka brokers.
+	 * @param count the number of brokers.
+	 * @param controlledShutdown passed into TestUtils.createBrokerConfig.
+	 * @param topics the topics to create (2 partitions per).
+	 */
 	public KafkaEmbedded(int count, boolean controlledShutdown, String... topics) {
 		this(count, controlledShutdown, 2, topics);
 	}
 
+	/**
+	 *
+	 * Create embedded Kafka brokers.
+	 * @param count the number of brokers.
+	 * @param controlledShutdown passed into TestUtils.createBrokerConfig.
+	 * @param partitions partitions per topic.
+	 * @param topics the topics to create.
+	 */
 	public KafkaEmbedded(int count, boolean controlledShutdown, int partitions, String... topics) {
 		this.count = count;
 		this.controlledShutdown = controlledShutdown;
