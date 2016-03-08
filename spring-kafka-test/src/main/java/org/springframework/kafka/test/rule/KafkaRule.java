@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.rule;
+package org.springframework.kafka.test.rule;
 
 import java.util.List;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.junit.rules.TestRule;
 
-import org.springframework.kafka.core.BrokerAddress;
+import org.springframework.kafka.test.core.BrokerAddress;
 
 import kafka.server.KafkaServer;
 

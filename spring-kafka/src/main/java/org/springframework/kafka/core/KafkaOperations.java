@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -28,6 +29,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  * @param <V> the value type.
  */
 public interface KafkaOperations<K, V> {
+
+	// Async methods
 
 	/**
 	 * Send the data to the default topic with no key or partition.
@@ -79,6 +82,79 @@ public interface KafkaOperations<K, V> {
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
 	Future<RecordMetadata> convertAndSend(String topic, int partition, K key, V data);
+
+
+	// Sync methods
+
+
+	/**
+	 * Send the data to the default topic with no key or partition;
+	 * wait for result.
+	 * @param data The data.
+	 * @return a {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 */
+	RecordMetadata syncConvertAndSend(V data) throws InterruptedException, ExecutionException;
+
+	/**
+	 * Send the data to the default topic with the provided key and no partition;
+	 * wait for result.
+	 * @param key the key.
+	 * @param data The data.
+	 * @return a {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 */
+	RecordMetadata syncConvertAndSend(K key, V data) throws InterruptedException, ExecutionException;
+
+	/**
+	 * Send the data to the default topic with the provided key and partition.
+	 * wait for result.
+	 * @param partition the partition.
+	 * @param key the key.
+	 * @param data the data.
+	 * @return a {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 */
+	RecordMetadata syncConvertAndSend(int partition, K key, V data) throws InterruptedException, ExecutionException;
+
+	/**
+	 * Send the data to the provided topic with no key or partition.;
+	 * wait for result.
+	 * @param topic the topic.
+	 * @param data The data.
+	 * @return a {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 */
+	RecordMetadata syncConvertAndSend(String topic, V data) throws InterruptedException, ExecutionException;
+
+	/**
+	 * Send the data to the provided topic with the provided key and no partition;
+	 * wait for result.
+	 * @param topic the topic.
+	 * @param key the key.
+	 * @param data The data.
+	 * @return a {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 */
+	RecordMetadata syncConvertAndSend(String topic, K key, V data) throws InterruptedException, ExecutionException;
+
+	/**
+	 * Send the data to the provided topic with the provided key and partition;
+	 * wait for result.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param key the key.
+	 * @param data the data.
+	 * @return a {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 */
+	RecordMetadata syncConvertAndSend(String topic, int partition, K key, V data) throws InterruptedException, ExecutionException;
 
 	/**
 	 * Flush the producer.
