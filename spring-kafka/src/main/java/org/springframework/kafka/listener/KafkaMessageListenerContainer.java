@@ -42,7 +42,7 @@ import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer.ContainerOffsetResetStrategy;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
 
@@ -133,9 +133,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 * <li>LATEST: Set to the last message; receive new messages only</li>
 	 * <li>RECENT: Set to a recent message based on {@link #setRecentOffset(long) recentOffset}</li>
 	 * </ul>
-	 * @param resetStrategy the {@link ContainerOffsetResetStrategy}
+	 * @param resetStrategy the {@link KafkaMessageListenerContainer.ContainerOffsetResetStrategy}
 	 */
-	public void setResetStrategy(ContainerOffsetResetStrategy resetStrategy) {
+	public void setResetStrategy(KafkaMessageListenerContainer.ContainerOffsetResetStrategy resetStrategy) {
 		this.resetStrategy = resetStrategy;
 	}
 
@@ -506,6 +506,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+	}
+
+	public enum ContainerOffsetResetStrategy {
+		LATEST, EARLIEST, NONE, RECENT
 	}
 
 }

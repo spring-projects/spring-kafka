@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.config;
 
 import java.lang.reflect.Method;
 
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;

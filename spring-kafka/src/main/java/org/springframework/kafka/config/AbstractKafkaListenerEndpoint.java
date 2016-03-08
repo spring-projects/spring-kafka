@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.config;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +31,8 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.util.Assert;
 
 /**

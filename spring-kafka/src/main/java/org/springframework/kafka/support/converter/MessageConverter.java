@@ -18,7 +18,7 @@ package org.springframework.kafka.support.converter;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.Acknowledgment;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 
 /**

@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.config;
 
 import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.TopicPartition;
+
+import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
  * Model for a Kafka listener endpoint. Can be used against a

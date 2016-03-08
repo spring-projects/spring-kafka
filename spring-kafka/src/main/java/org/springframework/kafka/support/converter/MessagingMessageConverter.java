@@ -20,7 +20,7 @@ import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.Acknowledgment;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;

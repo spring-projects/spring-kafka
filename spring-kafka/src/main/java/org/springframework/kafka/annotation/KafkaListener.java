@@ -32,7 +32,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
  * listener on the specified topics.
  *
  * The {@link #containerFactory()}
- * identifies the {@link org.springframework.kafka.listener.KafkaListenerContainerFactory
+ * identifies the {@link org.springframework.kafka.config.KafkaListenerContainerFactory
  * KafkaListenerContainerFactory} to use to build the Kafka listener container. If not
  * set, a <em>default</em> container factory is assumed to be available with a bean
  * name of {@code kafkaListenerContainerFactory} unless an explicit default has been
@@ -47,7 +47,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
  * <ul>
  * <li>{@link org.apache.kafka.clients.consumer.ConsumerRecord} to
  * access to the raw Kafka message</li>
- * <li>{@link org.springframework.kafka.listener.Acknowledgment} to manually ack</li>
+ * <li>{@link org.springframework.kafka.support.Acknowledgment} to manually ack</li>
  * <li>{@link org.springframework.messaging.handler.annotation.Payload @Payload}-annotated method
  * arguments including the support of validation</li>
  * <li>{@link org.springframework.messaging.handler.annotation.Header @Header}-annotated method
@@ -64,13 +64,13 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
  *
  * <p>When defined at the method level, a listener container is created for each method. The
  * {@link MessageListener} is a {@link MessagingMessageListenerAdapter}, configured with a
- * {@link org.springframework.kafka.listener.MethodKafkaListenerEndpoint}.
+ * {@link org.springframework.kafka.config.MethodKafkaListenerEndpoint}.
  *
  * <p>When defined at the class level, a single message listener container is used to service
  * all methods annotated with {@code @KafkaHandler}. Method signatures of such annotated
  * methods must not cause any ambiguity such that a single method can be resolved for a
  * particular inbound message. The {@link MessagingMessageListenerAdapter} is configured with
- * a {@link org.springframework.kafka.listener.MultiMethodKafkaListenerEndpoint}.
+ * a {@link org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint}.
  *
  * @author Gary Russell
  *
@@ -89,12 +89,12 @@ public @interface KafkaListener {
 	 * The unique identifier of the container managing for this endpoint.
 	 * <p>If none is specified an auto-generated one is provided.
 	 * @return the {@code id} for the container managing for this endpoint.
-	 * @see org.springframework.kafka.listener.KafkaListenerEndpointRegistry#getListenerContainer(String)
+	 * @see org.springframework.kafka.config.KafkaListenerEndpointRegistry#getListenerContainer(String)
 	 */
 	String id() default "";
 
 	/**
-	 * The bean name of the {@link org.springframework.kafka.listener.KafkaListenerContainerFactory}
+	 * The bean name of the {@link org.springframework.kafka.config.KafkaListenerContainerFactory}
 	 * to use to create the message listener container responsible to serve this endpoint.
 	 * <p>If not specified, the default container factory is used, if any.
 	 * @return the container factory bean name.

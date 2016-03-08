@@ -23,8 +23,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ErrorHandler;
-import org.springframework.kafka.listener.KafkaListenerContainerFactory;
-import org.springframework.kafka.listener.KafkaListenerEndpoint;
 
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.

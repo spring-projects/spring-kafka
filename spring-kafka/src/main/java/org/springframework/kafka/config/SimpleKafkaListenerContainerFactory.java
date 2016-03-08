@@ -21,9 +21,7 @@ import java.util.Collection;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer.ContainerOffsetResetStrategy;
-import org.springframework.kafka.listener.KafkaListenerContainerFactory;
-import org.springframework.kafka.listener.KafkaListenerEndpoint;
+import org.springframework.kafka.listener.KafkaMessageListenerContainer.ContainerOffsetResetStrategy;
 
 /**
  * A {@link KafkaListenerContainerFactory} implementation to build a regular

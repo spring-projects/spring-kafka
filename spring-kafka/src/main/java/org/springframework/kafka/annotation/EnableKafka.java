@@ -106,7 +106,7 @@ import org.springframework.context.annotation.Import;
  *
  * Note that the created containers are not registered with the application context but
  * can be easily located for management purposes using the
- * {@link org.springframework.kafka.listener.KafkaListenerEndpointRegistry
+ * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistry
  * KafkaListenerEndpointRegistry}.
  *
  * <p>
@@ -133,7 +133,7 @@ import org.springframework.context.annotation.Import;
  * <p>
  * When more control is desired, a {@code @Configuration} class may implement
  * {@link KafkaListenerConfigurer}. This allows access to the underlying
- * {@link org.springframework.kafka.listener.KafkaListenerEndpointRegistrar
+ * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistrar
  * KafkaListenerEndpointRegistrar} instance. The following example demonstrates how to
  * specify an explicit default {@code KafkaListenerContainerFactory}
  *
@@ -162,7 +162,7 @@ import org.springframework.context.annotation.Import;
  * </pre>
  *
  * It is also possible to specify a custom
- * {@link org.springframework.kafka.listener.KafkaListenerEndpointRegistry
+ * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistry
  * KafkaListenerEndpointRegistry} in case you need more control on the way the containers
  * are created and managed. The example below also demonstrates how to customize the
  * {@code KafkaHandlerMethodFactory} to use with a custom
@@ -243,8 +243,8 @@ import org.springframework.context.annotation.Import;
  *
  * @see KafkaListener
  * @see KafkaListenerAnnotationBeanPostProcessor
- * @see org.springframework.kafka.listener.KafkaListenerEndpointRegistrar
- * @see org.springframework.kafka.listener.KafkaListenerEndpointRegistry
+ * @see org.springframework.kafka.config.KafkaListenerEndpointRegistrar
+ * @see org.springframework.kafka.config.KafkaListenerEndpointRegistry
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

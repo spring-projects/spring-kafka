@@ -34,6 +34,7 @@ public final class KafkaMatchers {
 
 	/**
 	 * @param key the key
+	 * @param <K> the type.
 	 * @return a Matcher that matches the key in a consumer record.
 	 */
 	public static <K> Matcher<ConsumerRecord<K, ?>> hasKey(K key) {
@@ -42,6 +43,7 @@ public final class KafkaMatchers {
 
 	/**
 	 * @param value the value.
+	 * @param <V> the type.
 	 * @return a Matcher that matches the value in a consumer record.
 	 */
 	public static <V> Matcher<ConsumerRecord<?, V>> hasValue(V value) {

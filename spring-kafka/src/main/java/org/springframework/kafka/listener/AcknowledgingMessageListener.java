@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.support.Acknowledgment;
+
 /**
  * Listener for handling incoming Kafka messages, propagating an acknowledgment handle that recipients
  * can invoke when the message has been processed.

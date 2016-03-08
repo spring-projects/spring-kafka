@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
-import org.springframework.kafka.listener.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 
 /**
  * {@code @Configuration} class that registers a {@link KafkaListenerAnnotationBeanPostProcessor}

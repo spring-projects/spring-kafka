@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.listener.KafkaMessageListenerContainer.ContainerOffsetResetStrategy;
 import org.springframework.util.Assert;
 
 /**
@@ -59,14 +60,15 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
 	 * topics/partitions - when using this constructor, a
-	 * {@link #setResetStrategy(ContainerOffsetResetStrategy)} can be used.
+	 * {@link #setResetStrategy(KafkaMessageListenerContainer.ContainerOffsetResetStrategy)
+	 * ContainerOffsetResetStrategy} can be used.
 	 * The topic partitions are distributed evenly across the delegate
 	 * {@link KafkaMessageListenerContainer}s.
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 */
 	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-	                                          TopicPartition... topicPartitions) {
+			TopicPartition... topicPartitions) {
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 		Assert.notEmpty(topicPartitions, "A list of partitions must be provided");
 		Assert.noNullElements(topicPartitions, "The list of partitions cannot contain null elements");
@@ -80,7 +82,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	/**
 	 * Construct an instance with the supplied configuration properties and topics.
 	 * When using this constructor, a
-	 * {@link #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
+	 * {@link #setResetStrategy(KafkaMessageListenerContainer.ContainerOffsetResetStrategy)
+	 * ContainerOffSetResetStrategy} cannot be used.
 	 * @param consumerFactory the consumer factory.
 	 * @param topics the topics.
 	 */
@@ -96,7 +99,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	/**
 	 * Construct an instance with the supplied configuration properties and topic
 	 * pattern. When using this constructor, a
-	 * {@link #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
+	 * {@link #setResetStrategy(KafkaMessageListenerContainer.ContainerOffsetResetStrategy)
+	 * ContainerOffSetResetStrategy} cannot be used.
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPattern the topic pattern.
 	 */
@@ -117,7 +121,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * <li>RECENT: Set to a recent message based on {@link #setRecentOffset(long) recentOffset}</li>
 	 * </ul>
 	 *
-	 * @param resetStrategy the {@link ContainerOffsetResetStrategy}
+	 * @param resetStrategy the {@link KafkaMessageListenerContainer.ContainerOffsetResetStrategy}
 	 */
 	public void setResetStrategy(ContainerOffsetResetStrategy resetStrategy) {
 		this.resetStrategy = resetStrategy;
@@ -125,7 +129,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	/**
 	 * Set the number of records back from the latest when using
-	 * {@link ContainerOffsetResetStrategy#RECENT}.
+	 * {@link KafkaMessageListenerContainer.ContainerOffsetResetStrategy#RECENT}.
 	 * @param recentOffset the offset from the latest; default 1.
 	 */
 	public void setRecentOffset(long recentOffset) {
@@ -231,10 +235,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			this.containers.clear();
 		}
-	}
-
-	public enum ContainerOffsetResetStrategy {
-		LATEST, EARLIEST, NONE, RECENT
 	}
 
 }

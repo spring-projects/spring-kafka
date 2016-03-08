@@ -45,11 +45,11 @@ import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
-import org.springframework.kafka.listener.KafkaListenerContainerFactory;
-import org.springframework.kafka.listener.KafkaListenerEndpointRegistrar;
-import org.springframework.kafka.listener.KafkaListenerEndpointRegistry;
-import org.springframework.kafka.listener.MethodKafkaListenerEndpoint;
-import org.springframework.kafka.listener.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
+import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -60,7 +60,7 @@ import org.springframework.util.StringUtils;
 /**
  * Bean post-processor that registers methods annotated with {@link KafkaListener}
  * to be invoked by a Kafka message listener container created under the covers
- * by a {@link org.springframework.kafka.listener.KafkaListenerContainerFactory}
+ * by a {@link org.springframework.kafka.config.KafkaListenerContainerFactory}
  * according to the parameters of the annotation.
  *
  * <p>Annotated methods can use flexible arguments as defined by {@link KafkaListener}.
@@ -82,14 +82,14 @@ import org.springframework.util.StringUtils;
  * @see KafkaListenerConfigurer
  * @see KafkaListenerEndpointRegistrar
  * @see KafkaListenerEndpointRegistry
- * @see org.springframework.kafka.listener.KafkaListenerEndpoint
+ * @see org.springframework.kafka.config.KafkaListenerEndpoint
  * @see MethodKafkaListenerEndpoint
  */
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		implements BeanPostProcessor, Ordered, BeanFactoryAware, SmartInitializingSingleton {
 
 	/**
-	 * The bean name of the default {@link org.springframework.kafka.listener.KafkaListenerContainerFactory}.
+	 * The bean name of the default {@link org.springframework.kafka.config.KafkaListenerContainerFactory}.
 	 */
 	static final String DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "kafkaListenerContainerFactory";
 

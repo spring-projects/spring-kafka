@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.config;
 
 import java.util.ArrayList;
 import java.util.List;

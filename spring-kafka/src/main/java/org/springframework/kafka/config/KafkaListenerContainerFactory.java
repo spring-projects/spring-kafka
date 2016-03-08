@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.config;
 
-
+import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
  * Factory of {@link MessageListenerContainer} based on a

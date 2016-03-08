@@ -17,8 +17,6 @@
 package org.springframework.kafka.config;
 
 
-import org.springframework.kafka.listener.AbstractKafkaListenerEndpoint;
-import org.springframework.kafka.listener.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
 

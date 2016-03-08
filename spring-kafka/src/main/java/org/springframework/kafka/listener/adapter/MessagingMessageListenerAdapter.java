@@ -18,8 +18,8 @@ package org.springframework.kafka.listener.adapter;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.Acknowledgment;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.messaging.Message;

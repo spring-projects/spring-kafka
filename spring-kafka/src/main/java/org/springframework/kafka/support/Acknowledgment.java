@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.support;
 
 /**
  * Handle for acknowledging the processing of a
