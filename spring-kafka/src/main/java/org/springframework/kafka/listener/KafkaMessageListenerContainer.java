@@ -402,6 +402,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							}
 						}
 
+						@Override
+						public String toString() {
+							return "Acknowledgment for " + record;
+						}
+
 					});
 				}
 				else {

@@ -30,8 +30,19 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface TopicPartition {
 
-	String topic() default "";
+	/**
+	 * @return the topic to listen on. Property place holders
+	 * and SpEL expressions are supported, which must resolve
+	 * to a String.
+	 */
+	String topic();
 
-	String partition() default "";
+	/**
+	 * @return the partitions within the topic. Property place
+	 * holders and SpEL expressions are supported, which must
+	 * resolve to Integers (or Strings that can be parsed as
+	 * Integers).
+	 */
+	String[] partitions() default {};
 
 }

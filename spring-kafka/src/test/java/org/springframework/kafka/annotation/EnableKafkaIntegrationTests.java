@@ -65,7 +65,7 @@ public class EnableKafkaIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
-			"annotated4");
+			"annotated4", "annotated5", "annotated6");
 
 	@Autowired
 	public Listener listener;
@@ -80,23 +80,35 @@ public class EnableKafkaIntegrationTests {
 	public void testSimple() throws Exception {
 		waitListening("foo");
 		template.convertAndSend("annotated1", 0, "foo");
+		template.flush();
 		assertTrue(this.listener.latch1.await(10, TimeUnit.SECONDS));
 
 		waitListening("bar");
 		template.convertAndSend("annotated2", 0, "foo");
+		template.flush();
 		assertTrue(this.listener.latch2.await(10, TimeUnit.SECONDS));
 		assertNotNull(this.listener.partition);
 
 		waitListening("baz");
 		template.convertAndSend("annotated3", 0, "foo");
+		template.flush();
 		assertTrue(this.listener.latch3.await(10, TimeUnit.SECONDS));
 		assertEquals("foo", this.listener.record.value());
 
 		waitListening("qux");
 		template.convertAndSend("annotated4", 0, "foo");
+		template.flush();
 		assertTrue(this.listener.latch4.await(10, TimeUnit.SECONDS));
 		assertEquals("foo", this.listener.record.value());
 		assertNotNull(this.listener.ack);
+
+		waitListening("fiz");
+		template.convertAndSend("annotated5", 0, 0, "foo");
+		template.convertAndSend("annotated5", 1, 0, "bar");
+		template.convertAndSend("annotated6", 0, 0, "baz");
+		template.convertAndSend("annotated6", 1, 0, "qux");
+		template.flush();
+		assertTrue(this.listener.latch5.await(10, TimeUnit.SECONDS));
 	}
 
 	private void waitListening(String id) throws InterruptedException {
@@ -199,6 +211,8 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch4 = new CountDownLatch(1);
 
+		private final CountDownLatch latch5 = new CountDownLatch(1);
+
 		private volatile Integer partition;
 
 		private volatile ConsumerRecord<?, ?> record;
@@ -216,7 +230,7 @@ public class EnableKafkaIntegrationTests {
 			this.latch2.countDown();
 		}
 
-		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "annotated3", partition = "0"))
+		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "annotated3", partitions = "0"))
 		public void listen3(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch3.countDown();
@@ -227,6 +241,15 @@ public class EnableKafkaIntegrationTests {
 			this.ack = ack;
 			this.ack.acknowledge();
 			this.latch4.countDown();
+		}
+
+		@KafkaListener(id = "fiz", topicPartitions =
+				{ @TopicPartition(topic = "annotated5", partitions = { "0", "1" }),
+				  @TopicPartition(topic = "annotated6", partitions = { "0", "1" })
+				})
+		public void listen5(ConsumerRecord<?, ?> record) {
+			this.record = record;
+			this.latch5.countDown();
 		}
 
 	}
