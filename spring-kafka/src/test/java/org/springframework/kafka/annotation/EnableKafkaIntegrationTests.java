@@ -108,7 +108,7 @@ public class EnableKafkaIntegrationTests {
 		template.convertAndSend("annotated6", 0, 0, "baz");
 		template.convertAndSend("annotated6", 1, 0, "qux");
 		template.flush();
-		assertTrue(this.listener.latch4.await(10, TimeUnit.SECONDS));
+		assertTrue(this.listener.latch5.await(10, TimeUnit.SECONDS));
 	}
 
 	private void waitListening(String id) throws InterruptedException {

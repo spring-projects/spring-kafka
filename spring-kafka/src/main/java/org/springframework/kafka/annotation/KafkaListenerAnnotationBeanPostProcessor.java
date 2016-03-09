@@ -405,9 +405,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private List<org.apache.kafka.common.TopicPartition> resolveTopicPartitionsList(TopicPartition topicPartition) {
 		Object topic = resolveExpression(topicPartition.topic());
-		Assert.state(topic instanceof String, "topic in @TopicPartition must resolve to a String, not"
-					+ topic.getClass());
+		Assert.state(topic instanceof String, "topic in @TopicPartition must resolve to a String, not "
+						+ topic.getClass());
+		Assert.state(StringUtils.hasText((String) topic), "topic in @TopicPartition must not be empty");
 		String[] partitions = topicPartition.partitions();
+		Assert.state(partitions.length > 0, "At least one partition required in @TopicPartition for topic '"
+								+ topic + "'");
 		List<org.apache.kafka.common.TopicPartition> result = new ArrayList<>();
 		if (partitions.length > 0) {
 			for (int i = 0; i < partitions.length; i++) {
@@ -439,13 +442,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	@SuppressWarnings("unchecked")
-	private void resolvePartitionAsInteger(String topic, Object resolvedValue, List<org.apache.kafka.common.TopicPartition> result) {
+	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
+			List<org.apache.kafka.common.TopicPartition> result) {
 		if (resolvedValue instanceof String[]) {
 			for (Object object : (String[]) resolvedValue) {
 				resolvePartitionAsInteger(topic, object, result);
 			}
 		}
 		if (resolvedValue instanceof String) {
+			Assert.state(StringUtils.hasText((String) resolvedValue), "partition in @TopicPartition for topic '"
+					+ topic + "' cannot be empty");
 			result.add(new org.apache.kafka.common.TopicPartition(topic, Integer.valueOf((String) resolvedValue)));
 		}
 		else if (resolvedValue instanceof Integer[]) {

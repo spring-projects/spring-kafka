@@ -35,7 +35,7 @@ public @interface TopicPartition {
 	 * and SpEL expressions are supported, which must resolve
 	 * to a String.
 	 */
-	String topic() default "";
+	String topic();
 
 	/**
 	 * @return the partitions within the topic. Property place
