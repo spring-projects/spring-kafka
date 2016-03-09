@@ -5,4 +5,5 @@
 <suppressions>
 	<suppress files="package-info\.java" checks=".*" />
 	<suppress files="[\\/]test[\\/]" checks="RequireThis" />
+	<suppress files="[\\/]test[\\/]" checks="Javadoc*" />
 </suppressions>

@@ -49,17 +49,17 @@ public interface KafkaListenerEndpoint {
 	/**
 	 * @return the topics for this endpoint.
 	 */
-	public Collection<String> getTopics();
+	Collection<String> getTopics();
 
 	/**
 	 * @return the topicPartitions for this endpoint.
 	 */
-	public Collection<TopicPartition> getTopicPartitions();
+	Collection<TopicPartition> getTopicPartitions();
 
 	/**
 	 * @return the topicPattern for this endpoint.
 	 */
-	public Pattern getTopicPattern();
+	Pattern getTopicPattern();
 
 	/**
 	 * Setup the specified message listener container with the model
