@@ -36,7 +36,7 @@ versions of Spring.
 
 ===== Very, Very Quick
 
-Using plain, imperative Java to send and receive a message:
+Using plain Java to send and receive a message:
 
 [source,java]
 ----
@@ -49,9 +49,10 @@ public void testAutoCommit() throws Exception {
 
         @Override
         public void onMessage(ConsumerRecord<Integer, String> message) {
-            logger.info("auto: " + message);
+            logger.info("received: " + message);
             latch.countDown();
         }
+
     });
     container.setBeanName("testAuto");
     container.start();
@@ -88,25 +89,29 @@ private KafkaTemplate<Integer, String> createTemplate() {
 
 private Map<String, Object> consumerProps() {
     Map<String, Object> props = new HashMap<>();
-    props.put("bootstrap.servers", "localhost:9092");
-    props.put("group.id", "myGroup");
-    props.put("enable.auto.commit", "true");
-    props.put("auto.commit.interval.ms", "100");
-    props.put("session.timeout.ms", "15000");
-    props.put("key.deserializer", "org.apache.kafka.common.serialization.IntegerDeserializer");
-    props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, group);
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+    props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "100");
+    props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "15000");
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.IntegerDeserializer");
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.StringDeserializer");
     return props;
 }
 
 private Map<String, Object> senderProps() {
     Map<String, Object> props = new HashMap<>();
-    props.put("bootstrap.servers", "localhost:9092");
-    props.put("retries", 0);
-    props.put("batch.size", 16384);
-    props.put("linger.ms", 1);
-    props.put("buffer.memory", 33554432);
-    props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
-    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    props.put(ProducerConfig.RETRIES_CONFIG, 0);
+    props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
+    props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+    props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
+    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.IntegerSerializer");
+    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.StringSerializer");
     return props;
 }
 ----
@@ -148,10 +153,11 @@ public class Config {
         return new DefaultKafkaConsumerFactory<>(consumerConfigs());
     }
 
+    @Bean
     public Map<String, Object> consumerConfigs() {
         Map<String, Object> props = new HashMap<>();
-        props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-        ......
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
+        ...
         return props;
     }
 
@@ -165,10 +171,11 @@ public class Config {
         return new DefaultKafkaProducerFactory<>(producerConfigs());
     }
 
+    @Bean
     public Map<String, Object> producerConfigs() {
         Map<String, Object> props = new HashMap<>();
-        props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-        ......
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
+        ...
         return props;
     }
 
