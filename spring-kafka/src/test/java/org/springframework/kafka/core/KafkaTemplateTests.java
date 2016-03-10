@@ -16,10 +16,10 @@
 
 package org.springframework.kafka.core;
 
-import static org.junit.Assert.assertThat;
-import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasKey;
-import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasPartition;
-import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasValue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.kafka.test.assertj.KafkaConditions.hasKey;
+import static org.springframework.kafka.test.assertj.KafkaConditions.hasPartition;
+import static org.springframework.kafka.test.assertj.KafkaConditions.hasValue;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -39,6 +39,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
  *
  */
 public class KafkaTemplateTests {
@@ -73,17 +74,17 @@ public class KafkaTemplateTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(TEMPLATE_TOPIC);
 		template.syncConvertAndSend("foo");
-		assertThat(records.poll(10, TimeUnit.SECONDS), hasValue("foo"));
+		assertThat(records.poll(10, TimeUnit.SECONDS)).is(hasValue("foo"));
 		template.syncConvertAndSend(0, 2, "bar");
 		ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
-		assertThat(received, hasKey(2));
-		assertThat(received, hasPartition(0));
-		assertThat(received, hasValue("bar"));
+		assertThat(received).is(hasKey(2));
+		assertThat(received).is(hasPartition(0));
+		assertThat(received).is(hasValue("bar"));
 		template.syncConvertAndSend(TEMPLATE_TOPIC, 0, 2, "baz");
 		received = records.poll(10, TimeUnit.SECONDS);
-		assertThat(received, hasKey(2));
-		assertThat(received, hasPartition(0));
-		assertThat(received, hasValue("baz"));
+		assertThat(received).is(hasKey(2));
+		assertThat(received).is(hasPartition(0));
+		assertThat(received).is(hasValue("baz"));
 	}
 
 }

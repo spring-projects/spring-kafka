@@ -16,9 +16,7 @@
 
 package org.springframework.kafka.annotation;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -56,6 +54,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
  *
  */
 @ContextConfiguration
@@ -81,26 +80,26 @@ public class EnableKafkaIntegrationTests {
 		waitListening("foo");
 		template.convertAndSend("annotated1", 0, "foo");
 		template.flush();
-		assertTrue(this.listener.latch1.await(10, TimeUnit.SECONDS));
+		assertThat(this.listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 
 		waitListening("bar");
 		template.convertAndSend("annotated2", 0, "foo");
 		template.flush();
-		assertTrue(this.listener.latch2.await(10, TimeUnit.SECONDS));
-		assertNotNull(this.listener.partition);
+		assertThat(this.listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.partition).isNotNull();
 
 		waitListening("baz");
 		template.convertAndSend("annotated3", 0, "foo");
 		template.flush();
-		assertTrue(this.listener.latch3.await(10, TimeUnit.SECONDS));
-		assertEquals("foo", this.listener.record.value());
+		assertThat(this.listener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.record.value()).isEqualTo("foo");
 
 		waitListening("qux");
 		template.convertAndSend("annotated4", 0, "foo");
 		template.flush();
-		assertTrue(this.listener.latch4.await(10, TimeUnit.SECONDS));
-		assertEquals("foo", this.listener.record.value());
-		assertNotNull(this.listener.ack);
+		assertThat(this.listener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.record.value()).isEqualTo("foo");
+		assertThat(this.listener.ack).isNotNull();
 
 		waitListening("fiz");
 		template.convertAndSend("annotated5", 0, 0, "foo");
@@ -108,7 +107,7 @@ public class EnableKafkaIntegrationTests {
 		template.convertAndSend("annotated6", 0, 0, "baz");
 		template.convertAndSend("annotated6", 1, 0, "qux");
 		template.flush();
-		assertTrue(this.listener.latch5.await(10, TimeUnit.SECONDS));
+		assertThat(this.listener.latch5.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	private void waitListening(String id) throws InterruptedException {
@@ -120,7 +119,7 @@ public class EnableKafkaIntegrationTests {
 		while (n++ < 6000 && (kmlc.getAssignedPartitions() == null || kmlc.getAssignedPartitions().size() == 0)) {
 			Thread.sleep(100);
 		}
-		assertTrue(kmlc.getAssignedPartitions().size() > 0);
+		assertThat(kmlc.getAssignedPartitions().size()).isGreaterThan(0);
 	}
 
 	@Configuration

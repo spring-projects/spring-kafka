@@ -16,11 +16,7 @@
 
 package org.springframework.kafka.listener;
 
-import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -109,7 +105,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.convertAndSend(0, "baz");
 		template.convertAndSend(2, "qux");
 		template.flush();
-		assertTrue(latch.await(60, TimeUnit.SECONDS));
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		logger.info("Stop auto");
 	}
@@ -143,7 +139,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.convertAndSend(0, "baz");
 		template.convertAndSend(2, "qux");
 		template.flush();
-		assertTrue(latch.await(60, TimeUnit.SECONDS));
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		logger.info("Stop manual");
 	}
@@ -208,7 +204,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container2.setBeanName("b2");
 		container2.start();
 
-		assertTrue(initialConsumersLatch.await(20, TimeUnit.SECONDS));
+		assertThat(initialConsumersLatch.await(20, TimeUnit.SECONDS)).isTrue();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
@@ -220,8 +216,8 @@ public class ConcurrentMessageListenerContainerTests {
 		template.convertAndSend(2, "qux");
 		template.flush();
 
-		assertTrue(latch1.await(60, TimeUnit.SECONDS));
-		assertTrue(latch2.await(60, TimeUnit.SECONDS));
+		assertThat(latch1.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(latch2.await(60, TimeUnit.SECONDS)).isTrue();
 		container1.stop();
 		container2.stop();
 
@@ -241,9 +237,9 @@ public class ConcurrentMessageListenerContainerTests {
 			}
 		});
 		resettingContainer.start();
-		assertTrue(latch3.await(60, TimeUnit.SECONDS));
+		assertThat(latch3.await(60, TimeUnit.SECONDS)).isTrue();
 		resettingContainer.stop();
-		assertThat(latch3.getCount(), equalTo(0L));
+		assertThat(latch3.getCount()).isEqualTo(0L);
 
 		props.put("auto.offset.reset", "earliest");
 		cf = new DefaultKafkaConsumerFactory<>(props);
@@ -263,10 +259,10 @@ public class ConcurrentMessageListenerContainerTests {
 			}
 		});
 		resettingContainer.start();
-		assertTrue(latch4.await(60, TimeUnit.SECONDS));
+		assertThat(latch4.await(60, TimeUnit.SECONDS)).isTrue();
 		resettingContainer.stop();
-		assertThat(receivedMessage.get(), anyOf(equalTo("baz"), equalTo("qux")));
-		assertThat(latch4.getCount(), equalTo(0L));
+		assertThat(receivedMessage.get()).isIn("baz", "qux");
+		assertThat(latch4.getCount()).isEqualTo(0L);
 
 		logger.info("Stop auto parts");
 	}
@@ -311,7 +307,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.convertAndSend(0, "baz");
 		template.convertAndSend(2, "qux");
 		template.flush();
-		assertTrue(latch.await(60, TimeUnit.SECONDS));
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		logger.info("Stop " + ackMode);
 	}
@@ -355,10 +351,10 @@ public class ConcurrentMessageListenerContainerTests {
 		List<KafkaMessageListenerContainer<Integer, String>> containers =
 				(List<KafkaMessageListenerContainer<Integer, String>>) new DirectFieldAccessor(
 				container).getPropertyValue("containers");
-		assertEquals(3, containers.size());
+		assertThat(containers.size()).isEqualTo(3);
 		for (int i = 0; i < 3; i++) {
-			assertEquals(i < 2 ? 2 : 3, ((TopicPartition[]) new DirectFieldAccessor(containers.get(i))
-					.getPropertyValue("partitions")).length);
+			assertThat(((TopicPartition[]) new DirectFieldAccessor(containers.get(i))
+					.getPropertyValue("partitions")).length).isEqualTo(i < 2 ? 2 : 3);
 		}
 		container.stop();
 	}
@@ -393,7 +389,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.convertAndSend(0, "baz");
 		template.convertAndSend(2, "qux");
 		template.flush();
-		assertTrue(latch.await(60, TimeUnit.SECONDS));
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		logger.info("Stop exception");
 
