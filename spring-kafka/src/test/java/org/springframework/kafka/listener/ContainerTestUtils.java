@@ -16,8 +16,7 @@
 
 package org.springframework.kafka.listener;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
@@ -47,7 +46,7 @@ public final class ContainerTestUtils {
 				Thread.sleep(100);
 			}
 		}
-		assertThat(count, equalTo(partitions));
+		assertThat(count).isEqualTo(partitions);
 	}
 
 	public static void waitForAssignment(KafkaMessageListenerContainer<Integer, String> container, int partitions)
@@ -63,7 +62,7 @@ public final class ContainerTestUtils {
 				Thread.sleep(100);
 			}
 		}
-		assertThat(count, equalTo(partitions));
+		assertThat(count).isEqualTo(partitions);
 	}
 
 }

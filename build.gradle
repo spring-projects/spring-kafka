@@ -65,10 +65,11 @@ subprojects { subproject ->
 	targetCompatibility = 1.7
 
 	ext {
+		assertjVersion = '3.3.0'
 		avroVersion = '1.7.6'
 		gsCollectionsVersion = '5.0.0'
 		hamcrestVersion = '1.3'
-		junitVersion = '4.11'
+		junitVersion = '4.12'
 		kafkaVersion = '0.9.0.1'
 		log4jVersion = '1.2.17'
 		mockitoVersion = '1.9.5'
@@ -146,6 +147,7 @@ project ('spring-kafka') {
 		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
 
 		testCompile project (":spring-kafka-test")
+		testCompile "org.assertj:assertj-core:$assertjVersion"
 	}
 }
 
@@ -167,8 +169,8 @@ project ('spring-kafka-test') {
 		compile ("org.mockito:mockito-core:$mockitoVersion") {
 			exclude group: 'org.hamcrest'
 		}
-		compile "org.hamcrest:hamcrest-all:$hamcrestVersion"
-
+		compile ("org.hamcrest:hamcrest-all:$hamcrestVersion", optional)
+		compile ("org.assertj:assertj-core:$assertjVersion", optional)
 	}
 }
 
