@@ -21,7 +21,6 @@ import java.util.Collection;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.KafkaMessageListenerContainer.ContainerOffsetResetStrategy;
 
 /**
  * A {@link KafkaListenerContainerFactory} implementation to build a regular
@@ -41,8 +40,6 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 
 	private Long recentOffset;
 
-	private ContainerOffsetResetStrategy resetStrategy;
-
 	/**
 	 * @param concurrency the number of consumers to create.
 	 * @see ConcurrentMessageListenerContainer#setConcurrency(int)
@@ -57,14 +54,6 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 	 */
 	public void setRecentOffset(Long recentOffset) {
 		this.recentOffset = recentOffset;
-	}
-
-	/**
-	 * @param resetStrategy the reset strategy
-	 * @see ConcurrentMessageListenerContainer#setResetStrategy
-	 */
-	public void setResetStrategy(ContainerOffsetResetStrategy resetStrategy) {
-		this.resetStrategy = resetStrategy;
 	}
 
 	@Override
@@ -95,9 +84,6 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 		}
 		if (this.recentOffset != null) {
 			instance.setRecentOffset(this.recentOffset);
-		}
-		if (this.resetStrategy != null) {
-			instance.setResetStrategy(this.resetStrategy);
 		}
 	}
 
