@@ -70,6 +70,9 @@ The template can also be configured using standard `<bean/>` definitions.
 
 Then, to use the template, simply invoke one of its methods.
 
+Optionally, you can configure the `KafkaTemplate` with a `ProducerListener` to get an async callback with the
+results of the send (success or failure) instead of waiting for the `Future` to complete.
+
 ==== Receiving Messages
 
 Messages can be received by configuring a `MessageListenerContainer` and providing a `MessageListener`, or by
