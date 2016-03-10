@@ -67,9 +67,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private ListenerConsumer listenerConsumer;
 
-	private ContainerOffsetResetStrategy resetStrategy = ContainerOffsetResetStrategy.NONE;
-
-	private long recentOffset = 1;
+	private long recentOffset;
 
 	private MessageListener<K, V> listener;
 
@@ -77,8 +75,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions - when using this constructor, a
-	 * {@code #setResetStrategy(ContainerOffsetResetStrategy)} can be used.
+	 * topics/partitions - when using this constructor, {@link #setRecentOffset(long)
+	 * recentOffset} can be specified.
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 */
@@ -88,8 +86,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	/**
 	 * Construct an instance with the supplied configuration properties and topics.
-	 * When using this constructor, a
-	 * {@code #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
+	 * When using this constructor, {@link #setRecentOffset(long) recentOffset} is
+	 * ignored.
 	 * @param consumerFactory the consumer factory.
 	 * @param topics the topics.
 	 */
@@ -99,8 +97,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	/**
 	 * Construct an instance with the supplied configuration properties and topic
-	 * pattern. When using this constructor, a
-	 * {@code #setResetStrategy(ContainerOffsetResetStrategy)} cannot be used.
+	 * pattern. When using this constructor, {@link #setRecentOffset(long) recentOffset} is
+	 * ignored.
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPattern the topic pattern.
 	 */
@@ -126,23 +124,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 	/**
-	 * The initial offset reset strategy, when explicit partitions are provided.
-	 * <ul>
-	 * <li>NONE: No reset</li>
-	 * <li>EARLIEST: Set to the earliest message</li>
-	 * <li>LATEST: Set to the last message; receive new messages only</li>
-	 * <li>RECENT: Set to a recent message based on {@link #setRecentOffset(long) recentOffset}</li>
-	 * </ul>
-	 * @param resetStrategy the {@link KafkaMessageListenerContainer.ContainerOffsetResetStrategy}
-	 */
-	public void setResetStrategy(KafkaMessageListenerContainer.ContainerOffsetResetStrategy resetStrategy) {
-		this.resetStrategy = resetStrategy;
-	}
-
-	/**
-	 * Set the number of records back from the latest when using
-	 * {@link ContainerOffsetResetStrategy#RECENT}.
-	 * @param recentOffset the offset from the latest; default 1.
+	 * Set the offset to this number of records back from the latest when starting.
+	 * Overrides any consumer properties (earliest, latest).
+	 * Only applies when explicit topic/partition assignment is provided.
+	 * @param recentOffset the offset from the latest; default 0.
 	 */
 	public void setRecentOffset(long recentOffset) {
 		this.recentOffset = recentOffset;
@@ -188,7 +173,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					new SimpleAsyncTaskExecutor(getBeanName() == null ? "kafka-" : (getBeanName() + "-kafka-")));
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener,
-				this.resetStrategy, this.recentOffset);
+				this.recentOffset);
 		getTaskExecutor().execute(this.listenerConsumer);
 	}
 
@@ -217,8 +202,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
 
-		private final ContainerOffsetResetStrategy resetStrategy;
-
 		private final long recentOffset;
 
 		private final boolean autoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
@@ -234,7 +217,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private long last;
 
 		public ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
-				ContainerOffsetResetStrategy resetStrategy, long recentOffset) {
+				long recentOffset) {
 			Assert.state(!(getAckMode().equals(AckMode.MANUAL) || getAckMode().equals(AckMode.MANUAL_IMMEDIATE))
 					|| !this.autoCommit,
 					"Consumer cannot be configured for auto commit for ackMode " + getAckMode());
@@ -269,7 +252,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.consumer = consumer;
 			this.listener = listener;
 			this.acknowledgingMessageListener = ackListener;
-			this.resetStrategy = resetStrategy;
 			this.recentOffset = recentOffset;
 		}
 
@@ -437,15 +419,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			 * When using auto assignment (subscribe), the ConsumerRebalanceListener is not
 			 * called until we poll() the consumer.
 			 */
-			if (this.resetStrategy.equals(ContainerOffsetResetStrategy.EARLIEST)) {
-				this.consumer.seekToBeginning(
-						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
-			}
-			else if (this.resetStrategy.equals(ContainerOffsetResetStrategy.LATEST)) {
-				this.consumer.seekToEnd(
-						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
-			}
-			else if (this.resetStrategy.equals(ContainerOffsetResetStrategy.RECENT)) {
+			if (this.recentOffset > 0) {
 				this.consumer.seekToEnd(
 						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
 				for (TopicPartition topicPartition : this.definedPartitions) {
@@ -519,10 +493,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-	}
-
-	public enum ContainerOffsetResetStrategy {
-		LATEST, EARLIEST, NONE, RECENT
 	}
 
 }

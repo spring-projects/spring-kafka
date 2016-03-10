@@ -51,7 +51,6 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
-import org.springframework.kafka.listener.KafkaMessageListenerContainer.ContainerOffsetResetStrategy;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -226,6 +225,8 @@ public class ConcurrentMessageListenerContainerTests {
 		container1.stop();
 		container2.stop();
 
+		props.put("auto.offset.reset", "earliest");
+		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset earliest
 		ConcurrentMessageListenerContainer<Integer, String> resettingContainer =
 				new ConcurrentMessageListenerContainer<>(cf, topic1Partition0, topic1Partition1);
@@ -239,15 +240,17 @@ public class ConcurrentMessageListenerContainerTests {
 				latch3.countDown();
 			}
 		});
-		resettingContainer.setResetStrategy(ContainerOffsetResetStrategy.EARLIEST);
 		resettingContainer.start();
 		assertTrue(latch3.await(60, TimeUnit.SECONDS));
 		resettingContainer.stop();
 		assertThat(latch3.getCount(), equalTo(0L));
 
+		props.put("auto.offset.reset", "earliest");
+		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset minusone
 		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, topic1Partition0, topic1Partition1);
 		resettingContainer.setBeanName("b4");
+		resettingContainer.setRecentOffset(1);
 		final CountDownLatch latch4 = new CountDownLatch(2);
 		final AtomicReference<String> receivedMessage = new AtomicReference<>();
 		resettingContainer.setMessageListener(new MessageListener<Integer, String>() {
@@ -259,7 +262,6 @@ public class ConcurrentMessageListenerContainerTests {
 				latch4.countDown();
 			}
 		});
-		resettingContainer.setResetStrategy(ContainerOffsetResetStrategy.RECENT);
 		resettingContainer.start();
 		assertTrue(latch4.await(60, TimeUnit.SECONDS));
 		resettingContainer.stop();
