@@ -102,7 +102,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		private final Producer<K, V> delegate;
 
-		public CloseSafeProducer(Producer<K, V> delegate) {
+		CloseSafeProducer(Producer<K, V> delegate) {
 			this.delegate = delegate;
 		}
 

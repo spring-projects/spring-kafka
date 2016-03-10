@@ -83,7 +83,7 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 	@SuppressWarnings("serial")
 	private static class KafkaMessageHeaders extends MessageHeaders {
 
-		public KafkaMessageHeaders(boolean generateId, boolean generateTimestamp) {
+		KafkaMessageHeaders(boolean generateId, boolean generateTimestamp) {
 			super(null, generateId ? null : ID_VALUE_NONE, generateTimestamp ? null : -1L);
 		}
 

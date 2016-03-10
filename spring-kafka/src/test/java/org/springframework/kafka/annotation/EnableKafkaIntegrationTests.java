@@ -65,7 +65,7 @@ public class EnableKafkaIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
-			"annotated4", "annotated5", "annotated6");
+			                                                             "annotated4", "annotated5", "annotated6");
 
 	@Autowired
 	public Listener listener;
@@ -160,7 +160,7 @@ public class EnableKafkaIntegrationTests {
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-//			props.put("bootstrap.servers", "localhost:9092");
+			//props.put("bootstrap.servers", "localhost:9092");
 			props.put("group.id", "testAnnot");
 			props.put("enable.auto.commit", true);
 			props.put("auto.commit.interval.ms", "100");
@@ -184,7 +184,7 @@ public class EnableKafkaIntegrationTests {
 		public Map<String, Object> producerConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-//			props.put("bootstrap.servers", "localhost:9092");
+			//props.put("bootstrap.servers", "localhost:9092");
 			props.put("retries", 0);
 			props.put("batch.size", 16384);
 			props.put("linger.ms", 1);
@@ -244,9 +244,9 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "fiz", topicPartitions =
-				{ @TopicPartition(topic = "annotated5", partitions = { "0", "1" }),
-				  @TopicPartition(topic = "annotated6", partitions = { "0", "1" })
-				})
+				                           {@TopicPartition(topic = "annotated5", partitions = {"0", "1"}),
+						                           @TopicPartition(topic = "annotated6", partitions = {"0", "1"})
+				                           })
 		public void listen5(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch5.countDown();
