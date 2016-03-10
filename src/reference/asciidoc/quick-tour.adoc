@@ -36,7 +36,7 @@ versions of Spring.
 
 ===== Very, Very Quick
 
-Using plain, imperative Java to send and receive a message:
+Using plain Java to send and receive a message:
 
 [source,java]
 ----
@@ -49,9 +49,10 @@ public void testAutoCommit() throws Exception {
 
         @Override
         public void onMessage(ConsumerRecord<Integer, String> message) {
-            logger.info("auto: " + message);
+            logger.info("received: " + message);
             latch.countDown();
         }
+
     });
     container.setBeanName("testAuto");
     container.start();
@@ -148,10 +149,11 @@ public class Config {
         return new DefaultKafkaConsumerFactory<>(consumerConfigs());
     }
 
+    @Bean
     public Map<String, Object> consumerConfigs() {
         Map<String, Object> props = new HashMap<>();
         props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-        ......
+        ...
         return props;
     }
 
@@ -165,10 +167,11 @@ public class Config {
         return new DefaultKafkaProducerFactory<>(producerConfigs());
     }
 
+    @Bean
     public Map<String, Object> producerConfigs() {
         Map<String, Object> props = new HashMap<>();
         props.put("bootstrap.servers", embeddedKafka.getBrokersAsString());
-        ......
+        ...
         return props;
     }
 
