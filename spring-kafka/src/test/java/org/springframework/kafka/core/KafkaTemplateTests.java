@@ -23,16 +23,19 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.kafka.listener.ContainerTestUtils;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.DefaultProducerListener;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -85,6 +88,27 @@ public class KafkaTemplateTests {
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("baz"));
+	}
+
+	@Test
+	public void withListener() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(TEMPLATE_TOPIC);
+		final CountDownLatch latch = new CountDownLatch(1);
+		template.setProducerListener(new DefaultProducerListener<Integer, String>() {
+
+			@Override
+			public void onSuccess(String topic, Integer partition, Integer key, String value,
+					RecordMetadata recordMetadata) {
+				latch.countDown();
+			}
+
+		});
+		template.syncConvertAndSend("foo");
+		template.flush();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 }

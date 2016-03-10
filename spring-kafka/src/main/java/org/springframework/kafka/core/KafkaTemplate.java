@@ -25,6 +25,9 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
+import org.springframework.kafka.support.ProducerListener;
+import org.springframework.kafka.support.ProducerListenerInvokingCallback;
+
 
 /**
  * A template for executing high-level operations.
@@ -41,6 +44,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	private volatile Producer<K, V> producer;
 
 	private volatile String defaultTopic;
+
+	private volatile ProducerListener<K, V> producerListener;
 
 	/**
 	 * Create an instance using the supplied producer factory.
@@ -66,6 +71,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 */
 	public void setDefaultTopic(String defaultTopic) {
 		this.defaultTopic = defaultTopic;
+	}
+
+	/**
+	 * Set a {@link ProducerListener} which will be invoked when kafka acknowledges
+	 * a send operation.
+	 * @param producerListener the listener.
+	 */
+	public void setProducerListener(ProducerListener<K, V> producerListener) {
+		this.producerListener = producerListener;
 	}
 
 	@Override
@@ -163,7 +177,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		if (this.logger.isTraceEnabled()) {
 			this.logger.trace("Sending: " + producerRecord);
 		}
-		Future<RecordMetadata> future = this.producer.send(producerRecord);
+		Future<RecordMetadata> future;
+		if (this.producerListener == null) {
+			future = this.producer.send(producerRecord);
+		}
+		else {
+			future = this.producer.send(producerRecord,
+					new ProducerListenerInvokingCallback<K, V>(producerRecord.topic(), producerRecord.partition(),
+							producerRecord.key(), producerRecord.value(), this.producerListener));
+		}
 		if (this.logger.isTraceEnabled()) {
 			this.logger.trace("Sent: " + producerRecord);
 		}
