@@ -19,7 +19,7 @@ package org.springframework.kafka.listener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
- * Handles errors thrown during the execution of a {@link MessageListener}
+ * Handles errors thrown during the execution of a {@link MessageListener}.
  *
  * @author Marius Bogoevici
  * @author Gary Russell

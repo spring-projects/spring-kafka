@@ -35,6 +35,9 @@ import org.springframework.util.Assert;
  * constructor is used, the {@link TopicPartition}s are distributed evenly across the
  * instances.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */
@@ -131,6 +134,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	/**
+	 * Return the list of {@link KafkaMessageListenerContainer}s created by
+	 * this container.
 	 * @return the list of {@link KafkaMessageListenerContainer}s created by
 	 * this container.
 	 */

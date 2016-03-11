@@ -27,6 +27,10 @@ import org.springframework.kafka.listener.ErrorHandler;
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
  *
+ * @param <C> the {@link AbstractMessageListenerContainer} implementation type.
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Stephane Nicoll
  *
  * @see AbstractMessageListenerContainer
@@ -51,6 +55,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Long pollTimeout;
 
 	/**
+	 * Specify a {@link ConsumerFactory} to use.
 	 * @param consumerFactory The consumer factory.
 	 */
 	public void setConsumerFactory(ConsumerFactory<K, V> consumerFactory) {
@@ -62,6 +67,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Specify an {@link ErrorHandler} to use.
 	 * @param errorHandler The error handler.
 	 * @see AbstractMessageListenerContainer#setErrorHandler(ErrorHandler)
 	 */
@@ -70,6 +76,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Specify an {@link Executor} to use.
 	 * @param taskExecutor the {@link Executor} to use.
 	 * @see AbstractKafkaListenerContainerFactory#setTaskExecutor
 	 */
@@ -78,6 +85,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Specify an {@code autoStartup boolean} flag.
 	 * @param autoStartup true for auto startup.
 	 * @see AbstractMessageListenerContainer#setAutoStartup(boolean)
 	 */
@@ -86,6 +94,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Specify a {@code phase} to use.
 	 * @param phase The phase.
 	 * @see AbstractMessageListenerContainer#setPhase(int)
 	 */
@@ -94,6 +103,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Specify an {@code ackCount} to use.
 	 * @param ackCount the ack count.
 	 * @see AbstractMessageListenerContainer#setAckCount(int)
 	 */
@@ -102,6 +112,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Specify an {@link AckMode} to use.
 	 * @param ackMode the ack mode.
 	 * @see AbstractMessageListenerContainer#setAckMode(AckMode)
 	 */
@@ -110,6 +121,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Specify a {@code pollTimeout} to use.
 	 * @param pollTimeout the poll timeout
 	 * @see AbstractMessageListenerContainer#setPollTimeout(long)
 	 */

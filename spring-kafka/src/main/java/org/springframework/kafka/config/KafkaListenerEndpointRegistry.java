@@ -104,6 +104,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	}
 
 	/**
+	 * Return the managed {@link MessageListenerContainer} instance(s).
 	 * @return the managed {@link MessageListenerContainer} instance(s).
 	 */
 	public Collection<MessageListenerContainer> getListenerContainers() {
@@ -262,6 +263,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	/**
 	 * Start the specified {@link MessageListenerContainer} if it should be started
 	 * on startup.
+	 * @param listenerContainer the listener container to start.
 	 * @see MessageListenerContainer#isAutoStartup()
 	 */
 	private static void startIfNecessary(MessageListenerContainer listenerContainer) {

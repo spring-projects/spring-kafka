@@ -27,6 +27,13 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
+ * The Messaging specific {@link MessageConverter} implementation.
+ * <p>
+ * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned message.
+ *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */

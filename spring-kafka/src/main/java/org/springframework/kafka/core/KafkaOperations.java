@@ -22,11 +22,13 @@ import java.util.concurrent.Future;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
 /**
- * @author Marius Bogoevici
- * @author Gary Russell
+ * The basic Kafka operation contract.
  *
  * @param <K> the key type.
  * @param <V> the value type.
+ *
+ * @author Marius Bogoevici
+ * @author Gary Russell
  */
 public interface KafkaOperations<K, V> {
 

@@ -24,6 +24,9 @@ import org.springframework.kafka.listener.MessageListenerContainer;
  * A {@link KafkaListenerEndpoint} simply providing the {@link MessageListener} to
  * invoke to process an incoming message for this endpoint.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Stephane Nicoll
  * @author Gary Russell
  */
@@ -42,6 +45,8 @@ public class SimpleKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	}
 
 	/**
+	 * Return the {@link MessageListener} to invoke when a message matching
+	 * the endpoint is received.
 	 * @return the {@link MessageListener} to invoke when a message matching
 	 * the endpoint is received.
 	 */

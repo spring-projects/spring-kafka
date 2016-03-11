@@ -17,6 +17,8 @@
 package org.springframework.kafka.support;
 
 /**
+ * The Kafka specific message headers constants.
+ *
  * @author Artem Bilan
  * @author Marius Bogoevici
  */
@@ -24,14 +26,30 @@ public abstract class KafkaHeaders {
 
 	private static final String PREFIX = "kafka_";
 
+	/**
+	 * The header for topic.
+	 */
 	public static final String TOPIC = PREFIX + "topic";
 
+
+	/**
+	 * The header for message key.
+	 */
 	public static final String MESSAGE_KEY = PREFIX + "messageKey";
 
+	/**
+	 * The header for topic partition.
+	 */
 	public static final String PARTITION_ID = PREFIX + "partitionId";
 
+	/**
+	 * The header for partition offset.
+	 */
 	public static final String OFFSET = PREFIX + "offset";
 
+	/**
+	 * The header for {@link Acknowledgment}.
+	 */
 	public static final String ACKNOWLEDGMENT = PREFIX + "acknowledgment";
 
 }

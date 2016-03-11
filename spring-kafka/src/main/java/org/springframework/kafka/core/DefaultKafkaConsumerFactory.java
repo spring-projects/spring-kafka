@@ -24,8 +24,14 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 /**
- * @author Gary Russell
+ * The {@link ConsumerFactory} implementation to produce a new {@link Consumer} instance
+ * for provided {@link Map} {@code configs} on each {@link #createConsumer()}
+ * invocation.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
+ * @author Gary Russell
  */
 public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 

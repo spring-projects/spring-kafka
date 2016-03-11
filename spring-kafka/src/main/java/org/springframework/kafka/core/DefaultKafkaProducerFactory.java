@@ -37,8 +37,17 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
 
 /**
- * @author Gary Russell
+ * The {@link ProducerFactory} implementation for the {@code singleton} shared {@link Producer}
+ * instance.
+ * <p>
+ * The {@link Producer} instance is freed from the external {@link Producer#close()} invocation
+ * with the internal wrapper. The real {@link Producer#close()} is called on the target
+ * {@link Producer} during the {@link Lifecycle#stop()} or {@link DisposableBean#destroy()}.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
+ * @author Gary Russell
  */
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, Lifecycle, DisposableBean {
 

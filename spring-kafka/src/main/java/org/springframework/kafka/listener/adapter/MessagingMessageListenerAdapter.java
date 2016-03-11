@@ -36,6 +36,9 @@ import org.springframework.messaging.converter.MessageConversionException;
  * the {@link Acknowledgment} are provided as additional arguments so that these can
  * be injected as method arguments if necessary.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
@@ -56,7 +59,7 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	}
 
 	/**
-	 * Set the MessageConverter
+	 * Set the MessageConverter.
 	 * @param messageConverter the converter.
 	 */
 	public void setMessageConverter(MessageConverter<K, V> messageConverter) {
@@ -64,6 +67,8 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	}
 
 	/**
+	 * Return the {@link MessagingMessageConverter} for this listener,
+	 * being able to convert {@link org.springframework.messaging.Message}.
 	 * @return the {@link MessagingMessageConverter} for this listener,
 	 * being able to convert {@link org.springframework.messaging.Message}.
 	 */
@@ -88,6 +93,10 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	/**
 	 * Invoke the handler, wrapping any exception to a {@link ListenerExecutionFailedException}
 	 * with a dedicated error message.
+	 * @param record the record to process during invocation.
+	 * @param acknowledgment the acknowledgment to use if any.
+	 * @param message the message to process.
+	 * @return the result of invocation.
 	 */
 	private Object invokeHandler(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Message<?> message) {
 		try {

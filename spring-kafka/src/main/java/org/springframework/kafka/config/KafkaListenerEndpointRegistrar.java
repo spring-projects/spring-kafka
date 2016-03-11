@@ -63,6 +63,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	}
 
 	/**
+	 * Return the {@link KafkaListenerEndpointRegistry} instance for this
+	 * registrar, may be {@code null}.
 	 * @return the {@link KafkaListenerEndpointRegistry} instance for this
 	 * registrar, may be {@code null}.
 	 */
@@ -84,6 +86,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	}
 
 	/**
+	 * Return the custom {@link MessageHandlerMethodFactory} to use, if any.
 	 * @return the custom {@link MessageHandlerMethodFactory} to use, if any.
 	 */
 	public MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
@@ -201,7 +204,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 
 		private final KafkaListenerContainerFactory<?> containerFactory;
 
-		private KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint, KafkaListenerContainerFactory<?> containerFactory) {
+		private KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint,
+							KafkaListenerContainerFactory<?> containerFactory) {
 			this.endpoint = endpoint;
 			this.containerFactory = containerFactory;
 		}

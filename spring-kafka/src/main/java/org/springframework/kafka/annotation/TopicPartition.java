@@ -31,6 +31,7 @@ import java.lang.annotation.Target;
 public @interface TopicPartition {
 
 	/**
+	 * The topic to listen on.
 	 * @return the topic to listen on. Property place holders
 	 * and SpEL expressions are supported, which must resolve
 	 * to a String.
@@ -38,6 +39,7 @@ public @interface TopicPartition {
 	String topic();
 
 	/**
+	 * The partitions within the topic.
 	 * @return the partitions within the topic. Property place
 	 * holders and SpEL expressions are supported, which must
 	 * resolve to Integers (or Strings that can be parsed as

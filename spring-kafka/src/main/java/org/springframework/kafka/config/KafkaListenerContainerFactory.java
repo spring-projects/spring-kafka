@@ -16,13 +16,17 @@
 
 package org.springframework.kafka.config;
 
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
  * Factory of {@link MessageListenerContainer} based on a
  * {@link KafkaListenerEndpoint} definition.
  *
+ * @param <C> the {@link AbstractMessageListenerContainer} implementation type.
+ *
  * @author Stephane Nicoll
+ *
  * @see KafkaListenerEndpoint
  */
 public interface KafkaListenerContainerFactory<C extends MessageListenerContainer> {

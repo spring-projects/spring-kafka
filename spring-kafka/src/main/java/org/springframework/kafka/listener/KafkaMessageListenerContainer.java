@@ -52,8 +52,10 @@ import org.springframework.util.Assert;
  * <p>
  * With the latter, initial partition offsets can be provided.
  *
- * @author Gary Russell
+ * @param <K> the key type.
+ * @param <V> the value type.
  *
+ * @author Gary Russell
  */
 public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -134,6 +136,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 	/**
+	 * Return the {@link TopicPartition}s currently assigned to this container,
+	 * either explicitly or by Kafka; may be null if not assigned yet.
 	 * @return the {@link TopicPartition}s currently assigned to this container,
 	 * either explicitly or by Kafka; may be null if not assigned yet.
 	 */

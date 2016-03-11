@@ -73,6 +73,9 @@ import org.springframework.util.StringUtils;
  * factory or for fine-grained control over endpoints registration. See
  * {@link EnableKafka} Javadoc for complete usage details.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Stephane Nicoll
  * @author Juergen Hoeller
  * @author Gary Russell
@@ -485,7 +488,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	/**
 	 * Resolve the specified value if possible.
-	 *
+	 * @param value the value to resolve
+	 * @return the resolved value
 	 * @see ConfigurableBeanFactory#resolveEmbeddedValue
 	 */
 	private String resolve(String value) {

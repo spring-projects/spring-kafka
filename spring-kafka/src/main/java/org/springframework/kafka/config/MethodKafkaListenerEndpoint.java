@@ -29,6 +29,9 @@ import org.springframework.util.Assert;
  * A {@link KafkaListenerEndpoint} providing the method to invoke to process
  * an incoming message for this endpoint.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Stephane Nicoll
  * @author Artem Bilan
  * @author Gary Russell
@@ -77,6 +80,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	}
 
 	/**
+	 * Return the {@link MessageHandlerMethodFactory}.
 	 * @return the messageHandlerMethodFactory
 	 */
 	protected MessageHandlerMethodFactory getMessageHandlerMethodFactory() {

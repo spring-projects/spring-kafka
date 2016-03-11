@@ -24,6 +24,9 @@ import org.springframework.util.ObjectUtils;
 /**
  * The {@link ProducerListener} that logs exceptions thrown when sending messages.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */

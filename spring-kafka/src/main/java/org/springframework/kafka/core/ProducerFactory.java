@@ -19,8 +19,12 @@ package org.springframework.kafka.core;
 import org.apache.kafka.clients.producer.Producer;
 
 /**
- * @author Gary Russell
+ * The strategy to produce a {@link Producer} instance(s).
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
+ * @author Gary Russell
  */
 public interface ProducerFactory<K, V> {
 

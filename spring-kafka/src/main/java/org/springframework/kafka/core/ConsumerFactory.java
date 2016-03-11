@@ -19,8 +19,12 @@ package org.springframework.kafka.core;
 import org.apache.kafka.clients.consumer.Consumer;
 
 /**
- * @author Gary Russell
+ * The strategy to produce a {@link Consumer} instance(s).
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
+ * @author Gary Russell
  */
 public interface ConsumerFactory<K, V> {
 

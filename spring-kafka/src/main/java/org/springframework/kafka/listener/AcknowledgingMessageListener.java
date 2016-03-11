@@ -24,14 +24,16 @@ import org.springframework.kafka.support.Acknowledgment;
  * Listener for handling incoming Kafka messages, propagating an acknowledgment handle that recipients
  * can invoke when the message has been processed.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */
 public interface AcknowledgingMessageListener<K, V> {
 
 	/**
-	 * Executes when a Kafka message is received
-	 *
+	 * Executes when a Kafka message is received.
 	 * @param record the Kafka message to be processed
 	 * @param acknowledgment a handle for acknowledging the message processing
 	 */

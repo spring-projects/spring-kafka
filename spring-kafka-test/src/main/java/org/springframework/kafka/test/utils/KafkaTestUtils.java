@@ -25,6 +25,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 
 /**
+ * The Kafka specific testing utilities.
+ *
  * @author Gary Russell
  *
  */
