@@ -19,7 +19,10 @@ package org.springframework.kafka.listener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
- * Listener for handling incoming Kafka messages
+ * Listener for handling incoming Kafka messages.
+ *
+ * @param <K> the key type.
+ * @param <V> the value type.
  *
  * @author Marius Bogoevici
  * @author Gary Russell

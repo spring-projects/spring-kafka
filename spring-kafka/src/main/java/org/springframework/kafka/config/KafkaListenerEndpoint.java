@@ -34,6 +34,7 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 public interface KafkaListenerEndpoint {
 
 	/**
+	 * Return the id of this endpoint.
 	 * @return the id of this endpoint. The id can be further qualified
 	 * when the endpoint is resolved against its actual listener
 	 * container.
@@ -42,21 +43,25 @@ public interface KafkaListenerEndpoint {
 	String getId();
 
 	/**
+	 * Return the group of this endpoint or null if not in a group.
 	 * @return the group of this endpoint or null if not in a group.
 	 */
 	String getGroup();
 
 	/**
+	 * Return the topics for this endpoint.
 	 * @return the topics for this endpoint.
 	 */
 	Collection<String> getTopics();
 
 	/**
+	 * Return the topicPartitions for this endpoint.
 	 * @return the topicPartitions for this endpoint.
 	 */
 	Collection<TopicPartition> getTopicPartitions();
 
 	/**
+	 * Return the topicPattern for this endpoint.
 	 * @return the topicPattern for this endpoint.
 	 */
 	Pattern getTopicPattern();

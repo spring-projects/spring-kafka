@@ -23,6 +23,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.util.ObjectUtils;
 
 /**
+ * The {@link ErrorHandler} implementation for logging purpose.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */

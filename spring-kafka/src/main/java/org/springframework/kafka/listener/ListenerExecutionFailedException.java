@@ -19,8 +19,9 @@ package org.springframework.kafka.listener;
 import org.springframework.kafka.core.KafkaException;
 
 /**
- * @author Gary Russell
+ * The listener specif {@link KafkaException} extension.
  *
+ * @author Gary Russell
  */
 @SuppressWarnings("serial")
 public class ListenerExecutionFailedException extends KafkaException {

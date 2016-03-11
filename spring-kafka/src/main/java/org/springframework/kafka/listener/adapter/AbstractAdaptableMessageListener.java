@@ -27,6 +27,9 @@ import org.springframework.kafka.listener.MessageListener;
  * An abstract {@link MessageListener} adapter providing the necessary infrastructure
  * to extract the payload of a {@link org.springframework.messaging.Message}.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Stephane Nicoll
  * @author Gary Russell
  *
@@ -36,16 +39,13 @@ import org.springframework.kafka.listener.MessageListener;
 public abstract class AbstractAdaptableMessageListener<K, V> implements MessageListener<K, V>,
 			AcknowledgingMessageListener<K, V> {
 
-	/** Logger available to subclasses */
 	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
 
 
 	/**
 	 * Kafka {@link MessageListener} entry point.
-	 * <p>
-	 * Delegates the message to the target listener method, with appropriate conversion of the message argument.
+	 * <p> Delegates the message to the target listener method, with appropriate conversion of the message argument.
 	 * In case of an exception, the {@link #handleListenerException(Throwable)} method will be invoked.
-	 * <p>
 	 * @param record the incoming Kafka {@link ConsumerRecord}.
 	 * @see #handleListenerException
 	 * @see AcknowledgingMessageListener#onMessage(ConsumerRecord, org.springframework.kafka.support.Acknowledgment)

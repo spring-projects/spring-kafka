@@ -63,6 +63,8 @@ import scala.collection.Map;
 import scala.collection.Set;
 
 /**
+ * The {@link KafkaRule} implementation for the embedded Kafka Broker and Zookeeper.
+ *
  * @author Marius Bogoevici
  * @author Artem Bilan
  * @author Gary Russell

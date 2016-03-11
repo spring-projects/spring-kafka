@@ -27,6 +27,10 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.util.Assert;
 
 /**
+ * The base implementation for the {@link MessageListenerContainer}.
+ *
+ * @param <K> the key type.
+ * @param <V> the value type.
  *
  * @author Gary Russell
  */
@@ -35,6 +39,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected final Log logger = LogFactory.getLog(this.getClass()); //NOSONAR
 
+	/**
+	 * The offset commit behavior enumeration.
+	 */
 	public enum AckMode {
 		/**
 		 * Call {@link Consumer#commitAsync()} after each record is passed to the listener.
@@ -156,6 +163,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
+	 * Return the {@link AckMode}.
 	 * @return the {@link AckMode}
 	 * @see #setAckMode(AckMode)
 	 */
@@ -172,6 +180,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
+	 * Return the poll timeout.
 	 * @return the poll timeout.
 	 * @see #setPollTimeout(long)
 	 */
@@ -189,6 +198,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
+	 * Return the count.
 	 * @return the count.
 	 * @see #setAckCount(int)
 	 */
@@ -207,7 +217,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * @return the time.
+	 * Return the ack time.
+	 * @return the ack time.
 	 * @see AbstractMessageListenerContainer#setAckTime(long)
 	 */
 	public long getAckTime() {

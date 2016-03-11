@@ -25,6 +25,9 @@ import org.springframework.util.Assert;
  * Adapts the {@link org.apache.kafka.clients.producer.Callback} interface of the
  * {@link org.apache.kafka.clients.producer.Producer} to a {@link ProducerListener}.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */

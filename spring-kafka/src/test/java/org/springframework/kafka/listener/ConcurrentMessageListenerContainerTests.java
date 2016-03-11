@@ -17,10 +17,9 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
@@ -328,16 +327,17 @@ public class ConcurrentMessageListenerContainerTests {
 		};
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		when(cf.createConsumer()).thenReturn(consumer);
-		doAnswer(new Answer<ConsumerRecords<Integer, String>>() {
+		given(cf.createConsumer()).willReturn(consumer);
+		given(consumer.poll(anyLong()))
+			.willAnswer(new Answer<ConsumerRecords<Integer, String>>() {
 
-			@Override
-			public ConsumerRecords<Integer, String> answer(InvocationOnMock invocation) throws Throwable {
-				Thread.sleep(100);
-				return null;
-			}
+				@Override
+				public ConsumerRecords<Integer, String> answer(InvocationOnMock invocation) throws Throwable {
+					Thread.sleep(100);
+					return null;
+				}
 
-		}).when(consumer).poll(anyLong());
+			});
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic1PartitionS);
 		container.setMessageListener(new MessageListener<Integer, String>() {

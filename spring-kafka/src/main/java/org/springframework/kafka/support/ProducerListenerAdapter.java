@@ -21,6 +21,9 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 /**
  * No-op implementation of {@link ProducerListener}, to be used as base class for other implementations.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Artem Bilan

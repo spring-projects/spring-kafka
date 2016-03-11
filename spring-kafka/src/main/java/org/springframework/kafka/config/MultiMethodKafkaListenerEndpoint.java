@@ -26,8 +26,16 @@ import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapte
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
 /**
+ * The {@link MethodKafkaListenerEndpoint} extension for several POJO methods
+ * based on the {@link org.springframework.kafka.annotation.KafkaHandler}.
+ *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Gary Russell
  *
+ * @see org.springframework.kafka.annotation.KafkaHandler
+ * @see DelegatingInvocableHandler
  */
 public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerEndpoint<K, V> {
 

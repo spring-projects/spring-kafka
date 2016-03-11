@@ -16,12 +16,16 @@
 
 package org.springframework.kafka.core;
 
+import org.springframework.core.NestedRuntimeException;
+
 /**
- * @author Gary Russell
+ * The Spring Kafka specif {@link NestedRuntimeException} implementation.
  *
+ * @author Gary Russell
+ * @author Artem Bilan
  */
 @SuppressWarnings("serial")
-public class KafkaException extends RuntimeException {
+public class KafkaException extends NestedRuntimeException {
 
 	public KafkaException(String message) {
 		super(message);

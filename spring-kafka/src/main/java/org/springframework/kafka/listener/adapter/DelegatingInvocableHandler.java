@@ -58,7 +58,8 @@ public class DelegatingInvocableHandler {
 	}
 
 	/**
-	 * @return the bean
+	 * Return the bean for this handler.
+	 * @return the bean.
 	 */
 	public Object getBean() {
 		return this.bean;
@@ -68,9 +69,9 @@ public class DelegatingInvocableHandler {
 	 * Invoke the method with the given message.
 	 * @param message the message.
 	 * @param providedArgs additional arguments.
+	 * @return the result of the invocation.
 	 * @throws Exception raised if no suitable argument resolver can be found,
 	 * or the method raised an exception.
-	 * @return the result of the invocation.
 	 */
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
 		Class<? extends Object> payloadClass = message.getPayload().getClass();
@@ -79,6 +80,7 @@ public class DelegatingInvocableHandler {
 	}
 
 	/**
+	 * Determine the {@link InvocableHandlerMethod} for the provided type.
 	 * @param payloadClass the payload class.
 	 * @return the handler.
 	 */

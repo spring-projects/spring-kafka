@@ -82,6 +82,7 @@
 				org.hamcrest.CoreMatchers.*,
 				org.hamcrest.Matchers.*,
 				org.mockito.Mockito.*,
+				org.mockito.BDDMockito.*,
 				org.mockito.Matchers.*,
 				org.springframework.kafka.test.hamcrest.KafkaMatchers.*,
 				org.springframework.kafka.test.assertj.KafkaConditions.*" />
@@ -100,31 +101,31 @@
 		</module>
 
 		<!-- Javadoc Comments -->
-<!--		<module name="JavadocType"> -->
-<!--			<property name="scope" value="package"/> -->
-<!--			<property name="authorFormat" value=".+\s.+"/> -->
-<!--		</module> -->
-<!--		<module name="JavadocMethod"> -->
-<!--			<property name="allowMissingJavadoc" value="true" /> -->
-<!--		</module> -->
-<!--		<module name="JavadocVariable"> -->
-<!--			<property name="scope" value="public"/> -->
-<!--		</module> -->
-<!--		<module name="JavadocStyle"> -->
-<!--			<property name="checkEmptyJavadoc" value="true"/> -->
-<!--		</module> -->
-<!--		<module name="NonEmptyAtclauseDescription" /> -->
-<!--		<module name="JavadocTagContinuationIndentation"> -->
-<!--			<property name="offset" value="0"/> -->
-<!--		</module> -->
-<!--		<module name="AtclauseOrder"> -->
-<!--			<property name="target" value="CLASS_DEF, INTERFACE_DEF, ENUM_DEF"/> -->
-<!--		<property name="tagOrder" value="@param, @author, @since, @see, @version, @serial, @deprecated"/> -->
-<!--		</module> -->
-<!--		<module name="AtclauseOrder"> -->
-<!--			<property name="target" value="METHOD_DEF, CTOR_DEF, VARIABLE_DEF"/> -->
-<!--		<property name="tagOrder" value="@param, @return, @throws, @since, @deprecated, @see"/> -->
-<!--		</module> -->
+		<module name="JavadocType">
+			<property name="scope" value="package"/>
+			<property name="authorFormat" value=".+\s.+"/>
+		</module>
+		<module name="JavadocMethod">
+			<property name="allowMissingJavadoc" value="true" />
+		</module>
+		<module name="JavadocVariable">
+			<property name="scope" value="public"/>
+		</module>
+		<module name="JavadocStyle">
+			<property name="checkEmptyJavadoc" value="true"/>
+		</module>
+		<module name="NonEmptyAtclauseDescription" />
+		<module name="JavadocTagContinuationIndentation">
+			<property name="offset" value="0"/>
+		</module>
+		<module name="AtclauseOrder">
+			<property name="target" value="CLASS_DEF, INTERFACE_DEF, ENUM_DEF"/>
+		<property name="tagOrder" value="@param, @author, @since, @see, @version, @serial, @deprecated"/>
+		</module>
+		<module name="AtclauseOrder">
+			<property name="target" value="METHOD_DEF, CTOR_DEF, VARIABLE_DEF"/>
+		<property name="tagOrder" value="@param, @return, @throws, @since, @deprecated, @see"/>
+		</module>
 
 		<!-- Miscellaneous -->
 		<module name="CommentsIndentation">
@@ -144,13 +145,13 @@
 				value="Line has leading space characters; indentation should be performed with tabs only." />
 			<property name="ignoreComments" value="true" />
 		</module>
-<!-- 		<module name="RegexpSinglelineJava"> -->
-<!-- 			<property name="maximum" value="0"/> -->
-<!-- 			<property name="format" value="org\.mockito\.Mockito\.(when|doThrow|doAnswer)" /> -->
-<!-- 			<property name="message" -->
-<!-- 				value="Please use BDDMockito imports." /> -->
-<!-- 			<property name="ignoreComments" value="true" /> -->
-<!-- 		</module> -->
+ 		<module name="RegexpSinglelineJava">
+ 			<property name="maximum" value="0"/>
+ 			<property name="format" value="org\.mockito\..*Mockito\.(when|doThrow|doAnswer)" />
+ 			<property name="message"
+ 				value="Please use BDDMockito instead of Mockito.(when|doThrow|doAnswer)." />
+ 			<property name="ignoreComments" value="true" />
+ 		</module>
 		<module name="RegexpSinglelineJava">
 			<property name="maximum" value="0"/>
 			<property name="format" value="org\.junit\.Assert\.assert" />

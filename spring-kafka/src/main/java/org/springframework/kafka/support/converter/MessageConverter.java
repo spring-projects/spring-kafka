@@ -22,8 +22,12 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 
 /**
- * @author Gary Russell
+ * The Kafka specific {@link Message} converter strategy.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
+ * @author Gary Russell
  */
 public interface MessageConverter<K, V> {
 

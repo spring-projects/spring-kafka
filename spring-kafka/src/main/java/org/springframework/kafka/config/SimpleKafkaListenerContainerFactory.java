@@ -25,9 +25,12 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 /**
  * A {@link KafkaListenerContainerFactory} implementation to build a regular
  * {@link ConcurrentMessageListenerContainer}.
- *
- * <p>This should be the default for most users and a good transition paths
+ * <p>
+ * This should be the default for most users and a good transition paths
  * for those that are used to build such container definition manually.
+ *
+ * @param <K> the key type.
+ * @param <V> the value type.
  *
  * @author Stephane Nicoll
  * @author Gary Russell
@@ -41,6 +44,7 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 	private Long recentOffset;
 
 	/**
+	 * Specify the container concurrency.
 	 * @param concurrency the number of consumers to create.
 	 * @see ConcurrentMessageListenerContainer#setConcurrency(int)
 	 */
@@ -49,6 +53,7 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 	}
 
 	/**
+	 * Specify the offset lag from the end of commit.
 	 * @param recentOffset the recent offset.
 	 * @see ConcurrentMessageListenerContainer#setRecentOffset(long)
 	 */

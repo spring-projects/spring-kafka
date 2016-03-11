@@ -25,6 +25,9 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  * Its main goal is to provide a stateless singleton delegate for {@link org.apache.kafka.clients.producer.Callback}s,
  * which, in all but the most trivial cases, requires creating a separate instance per message.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  *
@@ -33,7 +36,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 public interface ProducerListener<K, V> {
 
 	/**
-	 * Invoked after the successful send of a message (that is, after it has been acknowledged by the broker)
+	 * Invoked after the successful send of a message (that is, after it has been acknowledged by the broker).
 	 * @param topic the destination topic
 	 * @param partition the destination partition (could be null)
 	 * @param key the key of the outbound message
@@ -43,7 +46,7 @@ public interface ProducerListener<K, V> {
 	void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata);
 
 	/**
-	 * Invoked after an attempt to send a message has failed
+	 * Invoked after an attempt to send a message has failed.
 	 * @param topic the destination topic
 	 * @param partition the destination partition (could be null)
 	 * @param key the key of the outbound message

@@ -36,7 +36,10 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.util.Assert;
 
 /**
- * Base model for a Kafka listener endpoint
+ * Base model for a Kafka listener endpoint.
+ *
+ * @param <K> the key type.
+ * @param <V> the value type.
  *
  * @author Stephane Nicoll
  * @author Gary Russell
@@ -95,8 +98,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set the topics to use. Either these or 'topicPattern'
-	 * or 'topicPartitions'
+	 * Set the topics to use. Either these or 'topicPattern' or 'topicPartitions'
 	 * should be provided, but not a mixture.
 	 * @param topics to set.
 	 * @see #setTopicPartitions(TopicPartition...)
@@ -109,6 +111,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
+	 * Return the topics for this endpoint.
 	 * @return the topics for this endpoint.
 	 */
 	@Override
@@ -131,6 +134,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
+	 * Return the topicPartitions for this endpoint.
 	 * @return the topicPartitions for this endpoint.
 	 */
 	@Override
@@ -150,6 +154,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
+	 * Return the topicPattern for this endpoint.
 	 * @return the topicPattern for this endpoint.
 	 */
 	@Override
@@ -207,6 +212,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
+	 * Return a description for this endpoint.
 	 * @return a description for this endpoint.
 	 * <p>Available to subclasses, for inclusion in their {@code toString()} result.
 	 */

@@ -32,6 +32,9 @@ import org.springframework.kafka.support.ProducerListenerInvokingCallback;
 /**
  * A template for executing high-level operations.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */
