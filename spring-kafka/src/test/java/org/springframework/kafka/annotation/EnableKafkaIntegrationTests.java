@@ -78,34 +78,34 @@ public class EnableKafkaIntegrationTests {
 	@Test
 	public void testSimple() throws Exception {
 		waitListening("foo");
-		template.convertAndSend("annotated1", 0, "foo");
+		template.send("annotated1", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 
 		waitListening("bar");
-		template.convertAndSend("annotated2", 0, "foo");
+		template.send("annotated2", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.partition).isNotNull();
 
 		waitListening("baz");
-		template.convertAndSend("annotated3", 0, "foo");
+		template.send("annotated3", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 
 		waitListening("qux");
-		template.convertAndSend("annotated4", 0, "foo");
+		template.send("annotated4", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
 
 		waitListening("fiz");
-		template.convertAndSend("annotated5", 0, 0, "foo");
-		template.convertAndSend("annotated5", 1, 0, "bar");
-		template.convertAndSend("annotated6", 0, 0, "baz");
-		template.convertAndSend("annotated6", 1, 0, "qux");
+		template.send("annotated5", 0, 0, "foo");
+		template.send("annotated5", 1, 0, "bar");
+		template.send("annotated6", 0, 0, "baz");
+		template.send("annotated6", 1, 0, "qux");
 		template.flush();
 		assertThat(this.listener.latch5.await(10, TimeUnit.SECONDS)).isTrue();
 	}

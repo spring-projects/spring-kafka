@@ -10,38 +10,43 @@ Both asynchronous and synchronous methods are provided, with the async methods r
 ----
 // Async methods
 
-Future<RecordMetadata> convertAndSend(V data);
+Future<RecordMetadata> send(V data);
 
-Future<RecordMetadata> convertAndSend(K key, V data);
+Future<RecordMetadata> send(K key, V data);
 
-Future<RecordMetadata> convertAndSend(int partition, K key, V data);
+Future<RecordMetadata> send(int partition, K key, V data);
 
-Future<RecordMetadata> convertAndSend(String topic, V data);
+Future<RecordMetadata> send(String topic, V data);
 
-Future<RecordMetadata> convertAndSend(String topic, K key, V data);
+Future<RecordMetadata> send(String topic, K key, V data);
 
-Future<RecordMetadata> convertAndSend(String topic, int partition, K key, V data);
+Future<RecordMetadata> send(String topic, int partition, V data);
+
+Future<RecordMetadata> send(String topic, int partition, K key, V data);
 
 
 // Sync methods
 
 
-RecordMetadata syncConvertAndSend(V data)
+RecordMetadata syncSend(V data)
                                  throws InterruptedException, ExecutionException;
 
-RecordMetadata syncConvertAndSend(K key, V data)
+RecordMetadata syncSend(K key, V data)
                                  throws InterruptedException, ExecutionException;
 
-RecordMetadata syncConvertAndSend(int partition, K key, V data)
+RecordMetadata syncSend(int partition, K key, V data)
                                  throws InterruptedException, ExecutionException;
 
-RecordMetadata syncConvertAndSend(String topic, V data)
+RecordMetadata syncSend(String topic, V data)
                                  throws InterruptedException, ExecutionException;
 
-RecordMetadata syncConvertAndSend(String topic, K key, V data)
+RecordMetadata syncSend(String topic, K key, V data)
                                  throws InterruptedException, ExecutionException;
 
-RecordMetadata syncConvertAndSend(String topic, int partition, K key, V data)
+RecordMetadata syncSend(String topic, int partition, V data)
+                                 throws InterruptedException, ExecutionException;
+
+RecordMetadata syncSend(String topic, int partition, K key, V data)
                                  throws InterruptedException, ExecutionException;
 
 // Flush the producer.
@@ -78,6 +83,23 @@ Then, to use the template, simply invoke one of its methods.
 
 Optionally, you can configure the `KafkaTemplate` with a `ProducerListener` to get an async callback with the
 results of the send (success or failure) instead of waiting for the `Future` to complete.
+
+[source, java]
+----
+public interface ProducerListener<K, V> {
+
+	void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata);
+
+	void onError(String topic, Integer partition, K key, V value, Exception exception);
+
+}
+----
+
+By default, the template is configured with a `LoggingProducerListener` which logs errors and does nothing when the
+send is successful.
+
+For convenience, the abstract `ProducerListenerAdapter` is provided in case you only want to implement one of the
+methods.
 
 ==== Receiving Messages
 
