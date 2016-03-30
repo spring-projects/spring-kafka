@@ -68,7 +68,7 @@ public final class KafkaConditions {
 
 		@Override
 		public boolean matches(ConsumerRecord<K, ?> value) {
-			return value != null && value.key().equals(this.key);
+			return value != null && ((value.key() == null && this.key == null) || value.key().equals(this.key));
 		}
 
 	}

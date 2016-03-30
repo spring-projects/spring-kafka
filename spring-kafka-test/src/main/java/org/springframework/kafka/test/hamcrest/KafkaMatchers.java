@@ -77,7 +77,8 @@ public final class KafkaMatchers {
 		protected boolean matches(Object item, Description mismatchDescription) {
 			@SuppressWarnings("unchecked")
 			ConsumerRecord<K, Object> record = (ConsumerRecord<K, Object>) item;
-			boolean matches = record != null && record.key().equals(this.key);
+			boolean matches = record != null
+					&& ((record.key() == null && this.key == null) || record.key().equals(this.key));
 			if (!matches) {
 				mismatchDescription.appendText("is ").appendValue(record);
 			}

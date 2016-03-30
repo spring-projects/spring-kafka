@@ -76,18 +76,23 @@ public class KafkaTemplateTests {
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(TEMPLATE_TOPIC);
-		template.syncConvertAndSend("foo");
+		template.syncSend("foo");
 		assertThat(records.poll(10, TimeUnit.SECONDS)).has(value("foo"));
-		template.syncConvertAndSend(0, 2, "bar");
+		template.syncSend(0, 2, "bar");
 		ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("bar"));
-		template.syncConvertAndSend(TEMPLATE_TOPIC, 0, 2, "baz");
+		template.syncSend(TEMPLATE_TOPIC, 0, 2, "baz");
 		received = records.poll(10, TimeUnit.SECONDS);
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("baz"));
+		template.syncSend(TEMPLATE_TOPIC, 0, "qux");
+		received = records.poll(10, TimeUnit.SECONDS);
+		assertThat(received).has(key((Integer) null));
+		assertThat(received).has(partition(0));
+		assertThat(received).has(value("qux"));
 	}
 
 	@Test
@@ -106,7 +111,7 @@ public class KafkaTemplateTests {
 			}
 
 		});
-		template.syncConvertAndSend("foo");
+		template.syncSend("foo");
 		template.flush();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 	}

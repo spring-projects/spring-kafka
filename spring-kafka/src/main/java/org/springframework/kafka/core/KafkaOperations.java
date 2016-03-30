@@ -39,7 +39,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
-	Future<RecordMetadata> convertAndSend(V data);
+	Future<RecordMetadata> send(V data);
 
 	/**
 	 * Send the data to the default topic with the provided key and no partition.
@@ -47,7 +47,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
-	Future<RecordMetadata> convertAndSend(K key, V data);
+	Future<RecordMetadata> send(K key, V data);
 
 	/**
 	 * Send the data to the default topic with the provided key and partition.
@@ -56,7 +56,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
-	Future<RecordMetadata> convertAndSend(int partition, K key, V data);
+	Future<RecordMetadata> send(int partition, K key, V data);
 
 	/**
 	 * Send the data to the provided topic with no key or partition.
@@ -64,7 +64,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
-	Future<RecordMetadata> convertAndSend(String topic, V data);
+	Future<RecordMetadata> send(String topic, V data);
 
 	/**
 	 * Send the data to the provided topic with the provided key and no partition.
@@ -73,7 +73,16 @@ public interface KafkaOperations<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
-	Future<RecordMetadata> convertAndSend(String topic, K key, V data);
+	Future<RecordMetadata> send(String topic, K key, V data);
+
+	/**
+	 * Send the data to the provided topic with the provided partition and no key.
+	 * @param topic the topic.
+	 * @param partition the key.
+	 * @param data The data.
+	 * @return a Future for the {@link RecordMetadata}.
+	 */
+	Future<RecordMetadata> send(String topic, int partition, V data);
 
 	/**
 	 * Send the data to the provided topic with the provided key and partition.
@@ -83,7 +92,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
-	Future<RecordMetadata> convertAndSend(String topic, int partition, K key, V data);
+	Future<RecordMetadata> send(String topic, int partition, K key, V data);
 
 
 	// Sync methods
@@ -97,7 +106,7 @@ public interface KafkaOperations<K, V> {
 	 * @throws ExecutionException execution exception while awaiting result.
 	 * @throws InterruptedException thread interrupted while awaiting result.
 	 */
-	RecordMetadata syncConvertAndSend(V data) throws InterruptedException, ExecutionException;
+	RecordMetadata syncSend(V data) throws InterruptedException, ExecutionException;
 
 	/**
 	 * Send the data to the default topic with the provided key and no partition;
@@ -108,7 +117,7 @@ public interface KafkaOperations<K, V> {
 	 * @throws ExecutionException execution exception while awaiting result.
 	 * @throws InterruptedException thread interrupted while awaiting result.
 	 */
-	RecordMetadata syncConvertAndSend(K key, V data) throws InterruptedException, ExecutionException;
+	RecordMetadata syncSend(K key, V data) throws InterruptedException, ExecutionException;
 
 	/**
 	 * Send the data to the default topic with the provided key and partition.
@@ -120,7 +129,7 @@ public interface KafkaOperations<K, V> {
 	 * @throws ExecutionException execution exception while awaiting result.
 	 * @throws InterruptedException thread interrupted while awaiting result.
 	 */
-	RecordMetadata syncConvertAndSend(int partition, K key, V data) throws InterruptedException, ExecutionException;
+	RecordMetadata syncSend(int partition, K key, V data) throws InterruptedException, ExecutionException;
 
 	/**
 	 * Send the data to the provided topic with no key or partition.;
@@ -131,7 +140,7 @@ public interface KafkaOperations<K, V> {
 	 * @throws ExecutionException execution exception while awaiting result.
 	 * @throws InterruptedException thread interrupted while awaiting result.
 	 */
-	RecordMetadata syncConvertAndSend(String topic, V data) throws InterruptedException, ExecutionException;
+	RecordMetadata syncSend(String topic, V data) throws InterruptedException, ExecutionException;
 
 	/**
 	 * Send the data to the provided topic with the provided key and no partition;
@@ -143,7 +152,19 @@ public interface KafkaOperations<K, V> {
 	 * @throws ExecutionException execution exception while awaiting result.
 	 * @throws InterruptedException thread interrupted while awaiting result.
 	 */
-	RecordMetadata syncConvertAndSend(String topic, K key, V data) throws InterruptedException, ExecutionException;
+	RecordMetadata syncSend(String topic, K key, V data) throws InterruptedException, ExecutionException;
+
+	/**
+	 * Send the data to the provided topic with the provided partition and no key;
+	 * wait for result.
+	 * @param topic the topic.
+	 * @param partition the key.
+	 * @param data The data.
+	 * @return a {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 */
+	RecordMetadata syncSend(String topic, int partition, V data) throws InterruptedException, ExecutionException;
 
 	/**
 	 * Send the data to the provided topic with the provided key and partition;
@@ -156,7 +177,7 @@ public interface KafkaOperations<K, V> {
 	 * @throws ExecutionException execution exception while awaiting result.
 	 * @throws InterruptedException thread interrupted while awaiting result.
 	 */
-	RecordMetadata syncConvertAndSend(String topic, int partition, K key, V data)
+	RecordMetadata syncSend(String topic, int partition, K key, V data)
 		throws InterruptedException, ExecutionException;
 
 	/**

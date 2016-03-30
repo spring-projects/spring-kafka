@@ -86,80 +86,93 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	@Override
-	public Future<RecordMetadata>  convertAndSend(V data) {
-		return convertAndSend(this.defaultTopic, data);
+	public Future<RecordMetadata>  send(V data) {
+		return send(this.defaultTopic, data);
 	}
 
 	@Override
-	public Future<RecordMetadata>  convertAndSend(K key, V data) {
-		return convertAndSend(this.defaultTopic, key, data);
+	public Future<RecordMetadata>  send(K key, V data) {
+		return send(this.defaultTopic, key, data);
 	}
 
 	@Override
-	public Future<RecordMetadata>  convertAndSend(int partition, K key, V data) {
-		return convertAndSend(this.defaultTopic, partition, key, data);
+	public Future<RecordMetadata>  send(int partition, K key, V data) {
+		return send(this.defaultTopic, partition, key, data);
 	}
 
 	@Override
-	public Future<RecordMetadata>  convertAndSend(String topic, V data) {
+	public Future<RecordMetadata>  send(String topic, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public Future<RecordMetadata>  convertAndSend(String topic, K key, V data) {
+	public Future<RecordMetadata>  send(String topic, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public Future<RecordMetadata>  convertAndSend(String topic, int partition, K key, V data) {
+	public Future<RecordMetadata> send(String topic, int partition, V data) {
+		ProducerRecord<K, V> producerRecord = new ProducerRecord<K, V>(topic, partition, null, data);
+		return doSend(producerRecord);
+	}
+
+	@Override
+	public Future<RecordMetadata>  send(String topic, int partition, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
 		return doSend(producerRecord);
 	}
 
 
 	@Override
-	public RecordMetadata syncConvertAndSend(V data) throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = convertAndSend(data);
+	public RecordMetadata syncSend(V data) throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = send(data);
 		flush();
 		return future.get();
 	}
 
 	@Override
-	public RecordMetadata syncConvertAndSend(K key, V data) throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = convertAndSend(key, data);
+	public RecordMetadata syncSend(K key, V data) throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = send(key, data);
 		flush();
 		return future.get();
 	}
 
 	@Override
-	public RecordMetadata syncConvertAndSend(int partition, K key, V data)
+	public RecordMetadata syncSend(int partition, K key, V data)
 			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = convertAndSend(partition, key, data);
+		Future<RecordMetadata> future = send(partition, key, data);
 		flush();
 		return future.get();
 	}
 
 	@Override
-	public RecordMetadata syncConvertAndSend(String topic, V data) throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = convertAndSend(topic, data);
+	public RecordMetadata syncSend(String topic, V data) throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = send(topic, data);
 		flush();
 		return future.get();
 	}
 
 	@Override
-	public RecordMetadata syncConvertAndSend(String topic, K key, V data)
+	public RecordMetadata syncSend(String topic, K key, V data)
 			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = convertAndSend(topic, key, data);
+		Future<RecordMetadata> future = send(topic, key, data);
 		flush();
 		return future.get();
 	}
 
 	@Override
-	public RecordMetadata syncConvertAndSend(String topic, int partition, K key, V data)
+	public RecordMetadata syncSend(String topic, int partition, V data)
 			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = convertAndSend(topic, partition, key, data);
+		Future<RecordMetadata> future = send(topic, partition, data);
+		return future.get();
+	}
+
+	@Override
+	public RecordMetadata syncSend(String topic, int partition, K key, V data)
+			throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = send(topic, partition, key, data);
 		flush();
 		return future.get();
 	}
