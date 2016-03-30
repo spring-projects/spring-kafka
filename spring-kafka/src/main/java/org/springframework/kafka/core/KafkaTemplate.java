@@ -31,7 +31,6 @@ import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.ProducerListenerInvokingCallback;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.util.Assert;
 
 
 /**
@@ -233,21 +232,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return future;
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private ProducerRecord<K, V> messageToProducerRecord(Message<?> message) {
 		MessageHeaders headers = message.getHeaders();
-		Object topic = headers.get(KafkaHeaders.TOPIC);
-		Object partition = headers.get(KafkaHeaders.PARTITION_ID);
+		String topic = headers.get(KafkaHeaders.TOPIC, String.class);
+		Integer partition = headers.get(KafkaHeaders.PARTITION_ID, Integer.class);
 		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
 		Object payload = message.getPayload();
-		Assert.isTrue(topic == null || topic instanceof String, "topic header must be a String");
-		Assert.isTrue(partition == null || partition instanceof Integer, "partition header must be an Integer");
-		@SuppressWarnings({ "rawtypes", "unchecked" })
-		ProducerRecord<K, V> producerRecord = new ProducerRecord(
-				topic == null ? this.defaultTopic : (String) topic,
-				((Integer) partition).intValue(),
-				key,
-				payload);
-		return producerRecord;
+		return new ProducerRecord(topic == null ? this.defaultTopic : topic, partition, key, payload);
 	}
 
 }
