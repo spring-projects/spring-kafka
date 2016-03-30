@@ -25,6 +25,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
+import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.ProducerListenerInvokingCallback;
 
@@ -48,7 +49,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private volatile String defaultTopic;
 
-	private volatile ProducerListener<K, V> producerListener;
+	private volatile ProducerListener<K, V> producerListener = new LoggingProducerListener<K, V>();
 
 	/**
 	 * Create an instance using the supplied producer factory.
@@ -78,8 +79,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	/**
 	 * Set a {@link ProducerListener} which will be invoked when Kafka acknowledges
-	 * a send operation.
-	 * @param producerListener the listener.
+	 * a send operation. By default a {@link LoggingProducerListener} is configured
+	 * which logs errors only.
+	 * @param producerListener the listener; may be {@code null}.
 	 */
 	public void setProducerListener(ProducerListener<K, V> producerListener) {
 		this.producerListener = producerListener;
