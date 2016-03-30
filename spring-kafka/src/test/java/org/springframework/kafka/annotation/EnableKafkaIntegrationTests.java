@@ -83,10 +83,12 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 
 		waitListening("bar");
-		template.send("annotated2", 0, "foo");
+		template.send("annotated2", 0, 123, "foo");
 		template.flush();
 		assertThat(this.listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.key).isEqualTo(123);
 		assertThat(this.listener.partition).isNotNull();
+		assertThat(this.listener.topic).isEqualTo("annotated2");
 
 		waitListening("baz");
 		template.send("annotated3", 0, "foo");
@@ -200,14 +202,23 @@ public class EnableKafkaIntegrationTests {
 
 		private volatile Acknowledgment ack;
 
+		private Integer key;
+
+		private String topic;
+
 		@KafkaListener(id = "foo", topics = "annotated1")
 		public void listen1(String foo) {
 			this.latch1.countDown();
 		}
 
 		@KafkaListener(id = "bar", topicPattern = "annotated2")
-		public void listen2(@Payload String foo, @Header(KafkaHeaders.PARTITION_ID) int partitionHeader) {
-			this.partition = partitionHeader;
+		public void listen2(@Payload String foo,
+				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
+				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+			this.key = key;
+			this.partition = partition;
+			this.topic = topic;
 			this.latch2.countDown();
 		}
 

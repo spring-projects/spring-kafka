@@ -25,9 +25,13 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.ProducerListenerInvokingCallback;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.util.Assert;
 
 
 /**
@@ -126,6 +130,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return doSend(producerRecord);
 	}
 
+	@Override
+	public Future<RecordMetadata> send(Message<?> message) {
+		ProducerRecord<K, V> producerRecord = messageToProducerRecord(message);
+		return doSend(producerRecord);
+	}
 
 	@Override
 	public RecordMetadata syncSend(V data) throws InterruptedException, ExecutionException {
@@ -180,6 +189,19 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return future.get();
 	}
 
+	@Override
+	public RecordMetadata syncSend(Message<?> message)
+			throws InterruptedException, ExecutionException {
+		Future<RecordMetadata> future = send(message);
+		flush();
+		return future.get();
+	}
+
+	@Override
+	public void flush() {
+		this.producer.flush();
+	}
+
 	/**
 	 * Send the producer record.
 	 * @param producerRecord the producer record.
@@ -211,9 +233,21 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return future;
 	}
 
-	@Override
-	public void flush() {
-		this.producer.flush();
+	private ProducerRecord<K, V> messageToProducerRecord(Message<?> message) {
+		MessageHeaders headers = message.getHeaders();
+		Object topic = headers.get(KafkaHeaders.TOPIC);
+		Object partition = headers.get(KafkaHeaders.PARTITION_ID);
+		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
+		Object payload = message.getPayload();
+		Assert.isTrue(topic == null || topic instanceof String, "topic header must be a String");
+		Assert.isTrue(partition == null || partition instanceof Integer, "partition header must be an Integer");
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		ProducerRecord<K, V> producerRecord = new ProducerRecord(
+				topic == null ? this.defaultTopic : (String) topic,
+				((Integer) partition).intValue(),
+				key,
+				payload);
+		return producerRecord;
 	}
 
 }

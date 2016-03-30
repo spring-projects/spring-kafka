@@ -21,6 +21,8 @@ import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.producer.RecordMetadata;
 
+import org.springframework.messaging.Message;
+
 /**
  * The basic Kafka operations contract.
  *
@@ -94,9 +96,18 @@ public interface KafkaOperations<K, V> {
 	 */
 	Future<RecordMetadata> send(String topic, int partition, K key, V data);
 
+	/**
+	 * Send a message with routing information in message headers.
+	 * @param message the message to send.
+	 * @return a Future for the {@link RecordMetadata}.
+	 * @see org.springframework.kafka.support.KafkaHeaders#TOPIC
+	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION_ID
+	 * @see org.springframework.kafka.support.KafkaHeaders#MESSAGE_KEY
+	 */
+	Future<RecordMetadata> send(Message<?> message);
+
 
 	// Sync methods
-
 
 	/**
 	 * Send the data to the default topic with no key or partition;
@@ -178,6 +189,19 @@ public interface KafkaOperations<K, V> {
 	 * @throws InterruptedException thread interrupted while awaiting result.
 	 */
 	RecordMetadata syncSend(String topic, int partition, K key, V data)
+		throws InterruptedException, ExecutionException;
+
+	/**
+	 * Send a message with routing information in message headers.
+	 * @param message the message to send.
+	 * @return a Future for the {@link RecordMetadata}.
+	 * @throws ExecutionException execution exception while awaiting result.
+	 * @throws InterruptedException thread interrupted while awaiting result.
+	 * @see org.springframework.kafka.support.KafkaHeaders#TOPIC
+	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION_ID
+	 * @see org.springframework.kafka.support.KafkaHeaders#MESSAGE_KEY
+	 */
+	RecordMetadata syncSend(Message<?> message)
 		throws InterruptedException, ExecutionException;
 
 	/**

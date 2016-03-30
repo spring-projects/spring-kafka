@@ -21,24 +21,24 @@ package org.springframework.kafka.support;
  *
  * @author Artem Bilan
  * @author Marius Bogoevici
+ * @author Gary Russell
  */
 public abstract class KafkaHeaders {
 
 	private static final String PREFIX = "kafka_";
 
 	/**
-	 * The header for topic.
+	 * The header containing the topic when sending data to Kafka.
 	 */
 	public static final String TOPIC = PREFIX + "topic";
 
-
 	/**
-	 * The header for message key.
+	 * The header containing the message key when sending data to Kafka.
 	 */
 	public static final String MESSAGE_KEY = PREFIX + "messageKey";
 
 	/**
-	 * The header for topic partition.
+	 * The header containing the topic partition when sending data to Kafka.
 	 */
 	public static final String PARTITION_ID = PREFIX + "partitionId";
 
@@ -51,5 +51,20 @@ public abstract class KafkaHeaders {
 	 * The header for {@link Acknowledgment}.
 	 */
 	public static final String ACKNOWLEDGMENT = PREFIX + "acknowledgment";
+
+	/**
+	 * The header containing the topic from which the message was received.
+	 */
+	public static final String RECEIVED_TOPIC = PREFIX + "receivedTopic";
+
+	/**
+	 * The header containing the message key for the received message.
+	 */
+	public static final String RECEIVED_MESSAGE_KEY = PREFIX + "receivedMessageKey";
+
+	/**
+	 * The header containing the topic partition for the received message.
+	 */
+	public static final String RECEIVED_PARTITION_ID = PREFIX + "receivedPartitionId";
 
 }

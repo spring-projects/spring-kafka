@@ -24,6 +24,7 @@ Future<RecordMetadata> send(String topic, int partition, V data);
 
 Future<RecordMetadata> send(String topic, int partition, K key, V data);
 
+Future<RecordMetadata> send(Message<?> message);
 
 // Sync methods
 
@@ -47,6 +48,9 @@ RecordMetadata syncSend(String topic, int partition, V data)
                                  throws InterruptedException, ExecutionException;
 
 RecordMetadata syncSend(String topic, int partition, K key, V data)
+                                 throws InterruptedException, ExecutionException;
+
+RecordMetadata syncSend(Message<?> message)
                                  throws InterruptedException, ExecutionException;
 
 // Flush the producer.
@@ -80,6 +84,15 @@ public KafkaTemplate<Integer, String> kafkaTemplate() {
 The template can also be configured using standard `<bean/>` definitions.
 
 Then, to use the template, simply invoke one of its methods.
+
+When using the methods with a `Message<?>` parameter, topic, partition and key information is provided in a message
+header:
+
+- `KafkaHeaders.TOPIC`
+- `KafkaHeaders.PARTITION_ID`
+- `KafkaHeaders.MESSAGE_KEY`
+
+with the message payload being the data.
 
 Optionally, you can configure the `KafkaTemplate` with a `ProducerListener` to get an async callback with the
 results of the send (success or failure) instead of waiting for the `Future` to complete.
@@ -274,5 +287,18 @@ how to use a different container factory.
 public void listen(String data, Acknowledgment ack) {
     ...
     ack.acknowledge();
+}
+----
+
+Finally, metadata about the message is available from message headers:
+
+[source, java]
+----
+@KafkaListener(id = "qux", topicPattern = "myTopic1")
+public void listen(@Payload String foo,
+        @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
+        @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+        @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+    ...
 }
 ----

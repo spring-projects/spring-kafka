@@ -66,9 +66,9 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId, this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
-		rawHeaders.put(KafkaHeaders.MESSAGE_KEY, record.key());
-		rawHeaders.put(KafkaHeaders.TOPIC, record.topic());
-		rawHeaders.put(KafkaHeaders.PARTITION_ID, record.partition());
+		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, record.key());
+		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, record.topic());
+		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, record.partition());
 		rawHeaders.put(KafkaHeaders.OFFSET, record.offset());
 
 		if (acknowledgment != null) {

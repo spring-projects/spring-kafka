@@ -35,9 +35,11 @@ import org.junit.Test;
 import org.springframework.kafka.listener.ContainerTestUtils;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.ProducerListenerAdapter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.support.MessageBuilder;
 
 
 /**
@@ -64,7 +66,6 @@ public class KafkaTemplateTests {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> record) {
-				System.out.println(record);
 				records.add(record);
 			}
 
@@ -93,6 +94,23 @@ public class KafkaTemplateTests {
 		assertThat(received).has(key((Integer) null));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("qux"));
+		template.syncSend(MessageBuilder.withPayload("fiz")
+				.setHeader(KafkaHeaders.TOPIC, TEMPLATE_TOPIC)
+				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.build());
+		received = records.poll(10, TimeUnit.SECONDS);
+		assertThat(received).has(key(2));
+		assertThat(received).has(partition(0));
+		assertThat(received).has(value("fiz"));
+		template.syncSend(MessageBuilder.withPayload("buz")
+				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.build());
+		received = records.poll(10, TimeUnit.SECONDS);
+		assertThat(received).has(key(2));
+		assertThat(received).has(partition(0));
+		assertThat(received).has(value("buz"));
 	}
 
 	@Test
