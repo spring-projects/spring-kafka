@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka;
 
 import org.springframework.core.NestedRuntimeException;
 

@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
+import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
@@ -88,11 +89,15 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	}
 
 	@Override
-	protected MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container) {
+	protected MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
+			MessageConverter messageConverter) {
 		Assert.state(this.messageHandlerMethodFactory != null,
 				"Could not create message listener - MessageHandlerMethodFactory not set");
 		MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance();
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
+		if (messageConverter != null) {
+			messageListener.setMessageConverter(messageConverter);
+		}
 		return messageListener;
 	}
 
@@ -112,7 +117,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 * @return the {@link MessagingMessageListenerAdapter} instance.
 	 */
 	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance() {
-		return new MessagingMessageListenerAdapter<K, V>();
+		return new MessagingMessageListenerAdapter<K, V>(this.method);
 	}
 
 	@Override

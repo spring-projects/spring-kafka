@@ -33,6 +33,7 @@ import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.util.Assert;
 
 /**
@@ -193,20 +194,22 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
-	public void setupListenerContainer(MessageListenerContainer listenerContainer) {
-		setupMessageListener(listenerContainer);
+	public void setupListenerContainer(MessageListenerContainer listenerContainer, MessageConverter messageConverter) {
+		setupMessageListener(listenerContainer, messageConverter);
 	}
 
 	/**
 	 * Create a {@link MessageListener} that is able to serve this endpoint for the
 	 * specified container.
 	 * @param container the {@link MessageListenerContainer} to create a {@link MessageListener}.
+	 * @param messageConverter the message converter - may be null.
 	 * @return a a {@link MessageListener} instance.
 	 */
-	protected abstract MessageListener<K, V> createMessageListener(MessageListenerContainer container);
+	protected abstract MessageListener<K, V> createMessageListener(MessageListenerContainer container,
+			MessageConverter messageConverter);
 
-	private void setupMessageListener(MessageListenerContainer container) {
-		MessageListener<K, V> messageListener = createMessageListener(container);
+	private void setupMessageListener(MessageListenerContainer container, MessageConverter messageConverter) {
+		MessageListener<K, V> messageListener = createMessageListener(container, messageConverter);
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		container.setupMessageListener(messageListener);
 	}

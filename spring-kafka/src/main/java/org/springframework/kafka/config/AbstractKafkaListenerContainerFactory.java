@@ -23,6 +23,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ErrorHandler;
+import org.springframework.kafka.support.converter.MessageConverter;
 
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
@@ -53,6 +54,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private AckMode ackMode;
 
 	private Long pollTimeout;
+
+	private MessageConverter messageConverter;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -129,6 +132,14 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.pollTimeout = pollTimeout;
 	}
 
+	/**
+	 * Set the message converter to use if dynamic argument type matching is needed.
+	 * @param messageConverter the converter.
+	 */
+	public void setMessageConverter(MessageConverter messageConverter) {
+		this.messageConverter = messageConverter;
+	}
+
 	@Override
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
 		C instance = createContainerInstance(endpoint);
@@ -158,7 +169,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			instance.setPollTimeout(this.pollTimeout);
 		}
 
-		endpoint.setupListenerContainer(instance);
+		endpoint.setupListenerContainer(instance, this.messageConverter);
 		initializeContainer(instance);
 
 		return instance;

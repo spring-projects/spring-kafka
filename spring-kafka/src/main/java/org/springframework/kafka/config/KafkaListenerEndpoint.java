@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.support.converter.MessageConverter;
 
 /**
  * Model for a Kafka listener endpoint. Can be used against a
@@ -75,7 +76,8 @@ public interface KafkaListenerEndpoint {
 	 * use but an implementation may override any default setting that
 	 * was already set.
 	 * @param listenerContainer the listener container to configure
+	 * @param messageConverter the message converter - can be null
 	 */
-	void setupListenerContainer(MessageListenerContainer listenerContainer);
+	void setupListenerContainer(MessageListenerContainer listenerContainer, MessageConverter messageConverter);
 
 }

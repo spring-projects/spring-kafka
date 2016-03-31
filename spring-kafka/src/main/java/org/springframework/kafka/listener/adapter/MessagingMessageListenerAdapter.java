@@ -16,8 +16,14 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.core.MethodParameter;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -25,6 +31,8 @@ import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.messaging.handler.annotation.Payload;
+
 
 /**
  * A {@link org.springframework.kafka.listener.MessageListener MessageListener}
@@ -45,9 +53,16 @@ import org.springframework.messaging.converter.MessageConversionException;
  */
 public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMessageListener<K, V> {
 
+	private final Type inferredType;
+
 	private HandlerAdapter handlerMethod;
 
-	private MessageConverter<K, V> messageConverter = new MessagingMessageConverter<>();
+	private MessageConverter messageConverter = new MessagingMessageConverter<K, V>();
+
+
+	public MessagingMessageListenerAdapter(Method method) {
+		this.inferredType = determineInferredType(method);
+	}
 
 	/**
 	 * Set the {@link HandlerAdapter} to use to invoke the method
@@ -62,7 +77,7 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	 * Set the MessageConverter.
 	 * @param messageConverter the converter.
 	 */
-	public void setMessageConverter(MessageConverter<K, V> messageConverter) {
+	public void setMessageConverter(MessageConverter messageConverter) {
 		this.messageConverter = messageConverter;
 	}
 
@@ -72,7 +87,7 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	 * @return the {@link MessagingMessageConverter} for this listener,
 	 * being able to convert {@link org.springframework.messaging.Message}.
 	 */
-	protected final MessageConverter<K, V> getMessageConverter() {
+	protected final MessageConverter getMessageConverter() {
 		return this.messageConverter;
 	}
 
@@ -87,7 +102,7 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	}
 
 	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
-		return getMessageConverter().toMessage(record, acknowledgment);
+		return getMessageConverter().toMessage(record, acknowledgment, this.inferredType);
 	}
 
 	/**
@@ -122,6 +137,63 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 				+ "Endpoint handler details:\n"
 				+ "Method [" + this.handlerMethod.getMethodAsString(payload) + "]\n"
 				+ "Bean [" + this.handlerMethod.getBean() + "]";
+	}
+
+	private Type determineInferredType(Method method) {
+		if (method == null) {
+			return null;
+		}
+
+		Type genericParameterType = null;
+
+		for (int i = 0; i < method.getParameterTypes().length; i++) {
+			MethodParameter methodParameter = new MethodParameter(method, i);
+			/*
+			 * We're looking for a single non-annotated parameter, or one annotated with @Payload.
+			 * We ignore parameters with type Message because they are not involved with conversion.
+			 */
+			if (eligibleParameter(methodParameter)
+					&& (methodParameter.getParameterAnnotations().length == 0
+					|| methodParameter.hasParameterAnnotation(Payload.class))) {
+				if (genericParameterType == null) {
+					genericParameterType = methodParameter.getGenericParameterType();
+					if (genericParameterType instanceof ParameterizedType) {
+						ParameterizedType parameterizedType = (ParameterizedType) genericParameterType;
+						if (parameterizedType.getRawType().equals(Message.class)) {
+							genericParameterType = ((ParameterizedType) genericParameterType)
+								.getActualTypeArguments()[0];
+						}
+					}
+				}
+				else {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("Ambiguous parameters for target payload for method " + method
+										+ "; no inferred type available");
+					}
+					return null;
+				}
+			}
+		}
+
+		return genericParameterType;
+	}
+
+	/*
+	 * Don't consider parameter types that are available after conversion.
+	 * Acknowledgment, ConsumerRecord and Message<?>.
+	 */
+	private boolean eligibleParameter(MethodParameter methodParameter) {
+		Type parameterType = methodParameter.getGenericParameterType();
+		if (parameterType.equals(Acknowledgment.class) || parameterType.equals(ConsumerRecord.class)) {
+			return false;
+		}
+		if (parameterType instanceof ParameterizedType) {
+			ParameterizedType parameterizedType = (ParameterizedType) parameterType;
+			if (parameterizedType.getRawType().equals(Message.class)) {
+				return !(parameterizedType.getActualTypeArguments()[0] instanceof WildcardType);
+			}
+		}
+		return !parameterType.equals(Message.class); // could be Message without a generic type
 	}
 
 }

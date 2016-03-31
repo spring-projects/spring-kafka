@@ -16,21 +16,36 @@
 
 package org.springframework.kafka.support.converter;
 
+import java.lang.reflect.Type;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 
 /**
- * The Kafka specific {@link Message} converter strategy.
- *
- * @param <K> the key type.
- * @param <V> the value type.
+ * A Kafka-specific {@link Message} converter strategy.
  *
  * @author Gary Russell
  */
-public interface MessageConverter<K, V> {
+public interface MessageConverter {
 
-	Message<?> toMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment);
+	/**
+	 * Convert a {@link ConsumerRecord} to a {@link Message}.
+	 * @param record the record.
+	 * @param acknowledgment the acknowledment.
+	 * @param payloadType the required payload type.
+	 * @return the message.
+	 */
+	Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Type payloadType);
+
+	/**
+	 * Convert a message to a producer record.
+	 * @param message the message.
+	 * @param defaultTopic the default topic to use if no header found.
+	 * @return the producer record.
+	 */
+	ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic);
 
 }

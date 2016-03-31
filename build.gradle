@@ -73,6 +73,7 @@ subprojects { subproject ->
 		avroVersion = '1.7.6'
 		gsCollectionsVersion = '5.0.0'
 		hamcrestVersion = '1.3'
+		jacksonVersion = '2.3.2'
 		junitVersion = '4.12'
 		kafkaVersion = '0.9.0.1'
 		log4jVersion = '1.2.17'
@@ -143,12 +144,9 @@ project ('spring-kafka') {
 
 	dependencies {
 		compile "org.springframework:spring-messaging:$springVersion"
-//		compile ("org.apache.avro:avro:$avroVersion", optional)
-//		compile ("org.apache.avro:avro-compiler:$avroVersion", optional)
-//		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
-//		compile "io.projectreactor:reactor-core:$reactor2Version"
-
 		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
+		compile ("com.fasterxml.jackson.core:jackson-core:$jacksonVersion", optional)
+		compile ("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion", optional)
 
 		testCompile project (":spring-kafka-test")
 		testCompile "org.assertj:assertj-core:$assertjVersion"

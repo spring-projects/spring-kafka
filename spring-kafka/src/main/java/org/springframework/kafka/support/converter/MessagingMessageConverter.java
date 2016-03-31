@@ -16,9 +16,11 @@
 
 package org.springframework.kafka.support.converter;
 
+import java.lang.reflect.Type;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -37,7 +39,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Marius Bogoevici
  * @author Gary Russell
  */
-public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
+public class MessagingMessageConverter<K, V> implements MessageConverter {
 
 	private boolean generateMessageId = false;
 
@@ -62,8 +64,9 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 	}
 
 	@Override
-	public Message<?> toMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
-		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId, this.generateTimestamp);
+	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Type type) {
+		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
+				this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
 		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, record.key());
@@ -75,15 +78,36 @@ public class MessagingMessageConverter<K, V> implements MessageConverter<K, V> {
 			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
 		}
 
-		return MessageBuilder.createMessage(extractAndConvertValue(record), kafkaMessageHeaders);
+		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Override
+	public ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic) {
+		MessageHeaders headers = message.getHeaders();
+		String topic = headers.get(KafkaHeaders.TOPIC, String.class);
+		Integer partition = headers.get(KafkaHeaders.PARTITION_ID, Integer.class);
+		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
+		Object payload = convertPayload(message);
+		return new ProducerRecord(topic == null ? defaultTopic : topic, partition, key, payload);
+	}
+
+	/**
+	 * Subclasses can convert the payload; by default, it's sent unchanged to Kafka.
+	 * @param message the message.
+	 * @return the payload.
+	 */
+	protected Object convertPayload(Message<?> message) {
+		return message.getPayload();
 	}
 
 	/**
 	 * Subclasses can convert the value; by default, it's returned as provided by Kafka.
 	 * @param record the record.
+	 * @param type the required type.
 	 * @return the value.
 	 */
-	protected V extractAndConvertValue(ConsumerRecord<K, V> record) {
+	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
 		return record.value();
 	}
 

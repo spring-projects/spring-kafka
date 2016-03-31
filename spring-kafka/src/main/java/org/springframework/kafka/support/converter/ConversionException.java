@@ -14,23 +14,20 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.support.converter;
 
 import org.springframework.kafka.KafkaException;
 
 /**
- * The listener specific {@link KafkaException} extension.
+ * Exception for conversions.
  *
  * @author Gary Russell
+ *
  */
 @SuppressWarnings("serial")
-public class ListenerExecutionFailedException extends KafkaException {
+public class ConversionException extends KafkaException {
 
-	public ListenerExecutionFailedException(String message) {
-		super(message);
-	}
-
-	public ListenerExecutionFailedException(String message, Throwable cause) {
+	public ConversionException(String message, Throwable cause) {
 		super(message, cause);
 	}
 

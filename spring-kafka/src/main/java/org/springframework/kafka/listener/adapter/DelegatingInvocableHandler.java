@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.springframework.core.MethodParameter;
-import org.springframework.kafka.core.KafkaException;
+import org.springframework.kafka.KafkaException;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;

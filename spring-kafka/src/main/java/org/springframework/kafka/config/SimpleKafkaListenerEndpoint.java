@@ -19,6 +19,7 @@ package org.springframework.kafka.config;
 
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.support.converter.MessageConverter;
 
 /**
  * A {@link KafkaListenerEndpoint} simply providing the {@link MessageListener} to
@@ -56,7 +57,8 @@ public class SimpleKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 
 
 	@Override
-	protected MessageListener<K, V> createMessageListener(MessageListenerContainer container) {
+	protected MessageListener<K, V> createMessageListener(MessageListenerContainer container,
+			MessageConverter messageConverter) {
 		return getMessageListener();
 	}
 

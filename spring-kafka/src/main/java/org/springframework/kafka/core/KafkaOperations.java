@@ -97,14 +97,15 @@ public interface KafkaOperations<K, V> {
 	Future<RecordMetadata> send(String topic, int partition, K key, V data);
 
 	/**
-	 * Send a message with routing information in message headers.
+	 * Send a message with routing information in message headers. The message payload
+	 * may be converted before sending.
 	 * @param message the message to send.
 	 * @return a Future for the {@link RecordMetadata}.
 	 * @see org.springframework.kafka.support.KafkaHeaders#TOPIC
 	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION_ID
 	 * @see org.springframework.kafka.support.KafkaHeaders#MESSAGE_KEY
 	 */
-	Future<RecordMetadata> send(Message<?> message);
+	Future<RecordMetadata> convertAndSend(Message<?> message);
 
 
 	// Sync methods
@@ -192,7 +193,8 @@ public interface KafkaOperations<K, V> {
 		throws InterruptedException, ExecutionException;
 
 	/**
-	 * Send a message with routing information in message headers.
+	 * Send a message with routing information in message headers. The message payload
+	 * may be converted before sending.
 	 * @param message the message to send.
 	 * @return a Future for the {@link RecordMetadata}.
 	 * @throws ExecutionException execution exception while awaiting result.
@@ -201,7 +203,7 @@ public interface KafkaOperations<K, V> {
 	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION_ID
 	 * @see org.springframework.kafka.support.KafkaHeaders#MESSAGE_KEY
 	 */
-	RecordMetadata syncSend(Message<?> message)
+	RecordMetadata syncConvertAndSend(Message<?> message)
 		throws InterruptedException, ExecutionException;
 
 	/**

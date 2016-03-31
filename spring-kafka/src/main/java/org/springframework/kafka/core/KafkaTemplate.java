@@ -25,12 +25,12 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
-import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.ProducerListenerInvokingCallback;
+import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 
 
 /**
@@ -47,6 +47,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	protected final Log logger = LogFactory.getLog(this.getClass()); //NOSONAR
 
 	private final ProducerFactory<K, V> producerFactory;
+
+	private MessageConverter messageConverter = new MessagingMessageConverter<K, V>();
 
 	private volatile Producer<K, V> producer;
 
@@ -90,6 +92,22 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		this.producerListener = producerListener;
 	}
 
+	/**
+	 * Return the message converter.
+	 * @return the message converter.
+	 */
+	public MessageConverter getMessageConverter() {
+		return this.messageConverter;
+	}
+
+	/**
+	 * Set the message converter to use.
+	 * @param messageConverter the message converter.
+	 */
+	public void setMessageConverter(MessageConverter messageConverter) {
+		this.messageConverter = messageConverter;
+	}
+
 	@Override
 	public Future<RecordMetadata> send(V data) {
 		return send(this.defaultTopic, data);
@@ -129,10 +147,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return doSend(producerRecord);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public Future<RecordMetadata> send(Message<?> message) {
-		ProducerRecord<K, V> producerRecord = messageToProducerRecord(message);
-		return doSend(producerRecord);
+	public Future<RecordMetadata> convertAndSend(Message<?> message) {
+		ProducerRecord<?, ?> producerRecord = this.messageConverter.fromMessage(message, this.defaultTopic);
+		return doSend((ProducerRecord<K, V>) producerRecord);
 	}
 
 	@Override
@@ -189,9 +208,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	@Override
-	public RecordMetadata syncSend(Message<?> message)
+	public RecordMetadata syncConvertAndSend(Message<?> message)
 			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(message);
+		Future<RecordMetadata> future = convertAndSend(message);
 		flush();
 		return future.get();
 	}
@@ -230,16 +249,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			this.logger.trace("Sent: " + producerRecord);
 		}
 		return future;
-	}
-
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private ProducerRecord<K, V> messageToProducerRecord(Message<?> message) {
-		MessageHeaders headers = message.getHeaders();
-		String topic = headers.get(KafkaHeaders.TOPIC, String.class);
-		Integer partition = headers.get(KafkaHeaders.PARTITION_ID, Integer.class);
-		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
-		Object payload = message.getPayload();
-		return new ProducerRecord(topic == null ? this.defaultTopic : topic, partition, key, payload);
 	}
 
 }

@@ -79,7 +79,7 @@ public class KafkaTemplateTests {
 		assertThat(received).has(key((Integer) null));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("qux"));
-		template.syncSend(MessageBuilder.withPayload("fiz")
+		template.syncConvertAndSend(MessageBuilder.withPayload("fiz")
 				.setHeader(KafkaHeaders.TOPIC, TEMPLATE_TOPIC)
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
@@ -88,7 +88,7 @@ public class KafkaTemplateTests {
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("fiz"));
-		template.syncSend(MessageBuilder.withPayload("buz")
+		template.syncConvertAndSend(MessageBuilder.withPayload("buz")
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());

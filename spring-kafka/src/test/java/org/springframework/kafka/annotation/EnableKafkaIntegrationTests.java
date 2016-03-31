@@ -44,10 +44,12 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -70,7 +72,7 @@ public class EnableKafkaIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
-			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9");
+			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10");
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -80,6 +82,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	public KafkaTemplate<Integer, String> template;
+
+	@Autowired
+	public KafkaTemplate<Integer, String> kafkaJsonTemplate;
 
 	@Autowired
 	public KafkaListenerEndpointRegistry registry;
@@ -137,6 +142,19 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.ifaceListener.getLatch2().await(20, TimeUnit.SECONDS)).isTrue();
 	}
 
+	@Test
+	public void testJson() throws Exception {
+		Foo foo = new Foo();
+		foo.setBar("bar");
+		kafkaJsonTemplate.convertAndSend(MessageBuilder.withPayload(foo)
+				.setHeader(KafkaHeaders.TOPIC, "annotated10")
+				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.build());
+		assertThat(this.listener.latch6.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -149,9 +167,18 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaListenerContainerFactory() {
+				kafkaListenerContainerFactory() {
 			SimpleKafkaListenerContainerFactory<Integer, String> factory = new SimpleKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+				kafkaJsonListenerContainerFactory() {
+			SimpleKafkaListenerContainerFactory<Integer, String> factory = new SimpleKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			factory.setMessageConverter(new StringJsonMessageConverter<Integer, String>());
 			return factory;
 		}
 
@@ -209,8 +236,15 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
-		public KafkaTemplate<Integer, String> kafkaTemplate() {
+		public KafkaTemplate<Integer, String> template() {
 			return new KafkaTemplate<Integer, String>(producerFactory());
+		}
+
+		@Bean
+		public KafkaTemplate<Integer, String> kafkaJsonTemplate() {
+			KafkaTemplate<Integer, String> kafkaTemplate = new KafkaTemplate<Integer, String>(producerFactory());
+			kafkaTemplate.setMessageConverter(new StringJsonMessageConverter<Integer, String>());
+			return kafkaTemplate;
 		}
 
 	}
@@ -227,6 +261,8 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch5 = new CountDownLatch(1);
 
+		private final CountDownLatch latch6 = new CountDownLatch(1);
+
 		private volatile Integer partition;
 
 		private volatile ConsumerRecord<?, ?> record;
@@ -236,6 +272,8 @@ public class EnableKafkaIntegrationTests {
 		private Integer key;
 
 		private String topic;
+
+		private Foo foo;
 
 		@KafkaListener(id = "foo", topics = "annotated1")
 		public void listen1(String foo) {
@@ -273,6 +311,12 @@ public class EnableKafkaIntegrationTests {
 		public void listen5(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch5.countDown();
+		}
+
+		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory")
+		public void listen6(Foo foo) {
+			this.foo = foo;
+			this.latch6.countDown();
 		}
 
 	}
@@ -325,5 +369,18 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
+	public static class Foo {
+
+		private String bar;
+
+		public String getBar() {
+			return this.bar;
+		}
+
+		public void setBar(String bar) {
+			this.bar = bar;
+		}
+
+	}
 
 }
