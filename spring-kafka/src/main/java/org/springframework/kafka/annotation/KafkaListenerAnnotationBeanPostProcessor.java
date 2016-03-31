@@ -229,7 +229,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					}
 				}
 			}
-		});
+		}, ReflectionUtils.USER_DECLARED_METHODS);
 		if (hasClassLevelListeners) {
 			processMultiMethodListeners(classLevelListeners, multiMethods, bean, beanName);
 		}
