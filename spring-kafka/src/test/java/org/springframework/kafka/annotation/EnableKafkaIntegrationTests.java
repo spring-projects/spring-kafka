@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -40,8 +41,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.KafkaMessageListenerContainer;
-import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -64,10 +63,16 @@ public class EnableKafkaIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
-			"annotated4", "annotated5", "annotated6");
+			"annotated4", "annotated5", "annotated6", "annotated7");
 
 	@Autowired
 	public Listener listener;
+
+	@Autowired
+	public IfaceListenerImpl ifaceListener;
+
+	@Autowired
+	public MultiListenerBean multiListener;
 
 	@Autowired
 	public KafkaTemplate<Integer, String> template;
@@ -77,12 +82,10 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testSimple() throws Exception {
-		waitListening("foo");
 		template.send("annotated1", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 
-		waitListening("bar");
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
 		assertThat(this.listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
@@ -90,20 +93,17 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.partition).isNotNull();
 		assertThat(this.listener.topic).isEqualTo("annotated2");
 
-		waitListening("baz");
 		template.send("annotated3", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 
-		waitListening("qux");
 		template.send("annotated4", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
 
-		waitListening("fiz");
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
 		template.send("annotated6", 0, 0, "baz");
@@ -112,16 +112,18 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.latch5.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
-	private void waitListening(String id) throws InterruptedException {
-		MessageListenerContainer container = registry.getListenerContainer(id);
-		@SuppressWarnings("unchecked")
-		KafkaMessageListenerContainer<Integer, String> kmlc =
-				((ConcurrentMessageListenerContainer<Integer, String>) container).getContainers().get(0);
-		int n = 0;
-		while (n++ < 6000 && (kmlc.getAssignedPartitions() == null || kmlc.getAssignedPartitions().size() == 0)) {
-			Thread.sleep(100);
-		}
-		assertThat(kmlc.getAssignedPartitions().size()).isGreaterThan(0);
+	@Test
+	public void testInterface() throws Exception {
+		template.send("annotated7", 0, "foo");
+		template.flush();
+		assertThat(this.ifaceListener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	public void testMulti() throws Exception {
+		template.send("annotated8", 0, "foo");
+		template.flush();
+		assertThat(this.multiListener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Configuration
@@ -153,18 +155,30 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public ConsumerFactory<Integer, String> manualConsumerFactory() {
 			Map<String, Object> configs = consumerConfigs();
-			configs.put("enable.auto.commit", "false");
+			configs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 			return new DefaultKafkaConsumerFactory<>(configs);
 		}
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			return KafkaTestUtils.consumerProps("testAnnot", "true", embeddedKafka);
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testAnnot", "true", embeddedKafka);
+			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+			return consumerProps;
 		}
 
 		@Bean
 		public Listener listener() {
 			return new Listener();
+		}
+
+		@Bean
+		public IfaceListener<String> ifaceListener() {
+			return new IfaceListenerImpl();
+		}
+
+		@Bean
+		public MultiListenerBean multiListener() {
+			return new MultiListenerBean();
 		}
 
 		@Bean
@@ -184,7 +198,7 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public static class Listener {
+	static class Listener {
 
 		private final CountDownLatch latch1 = new CountDownLatch(1);
 
@@ -245,5 +259,36 @@ public class EnableKafkaIntegrationTests {
 		}
 
 	}
+
+	interface IfaceListener<T> {
+
+		void listen(T foo);
+
+	}
+
+	static class IfaceListenerImpl implements IfaceListener<String> {
+
+		private final CountDownLatch latch1 = new CountDownLatch(1);
+
+		@Override
+		@KafkaListener(id = "ifc", topics = "annotated7")
+		public void listen(String foo) {
+			latch1.countDown();
+		}
+
+	}
+
+	@KafkaListener(topics = "annotated8")
+	static class MultiListenerBean {
+
+		private final CountDownLatch latch1 = new CountDownLatch(1);
+
+		@KafkaHandler
+		public void bar(String bar) {
+			latch1.countDown();
+		}
+
+	}
+
 
 }

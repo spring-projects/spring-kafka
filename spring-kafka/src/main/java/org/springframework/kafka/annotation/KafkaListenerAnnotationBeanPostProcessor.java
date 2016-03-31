@@ -20,12 +20,17 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
@@ -42,6 +47,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
+import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
@@ -96,6 +102,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 */
 	static final String DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "kafkaListenerContainerFactory";
 
+	private final Set<Class<?>> nonAnnotatedClasses =
+			Collections.newSetFromMap(new ConcurrentHashMap<Class<?>, Boolean>(64));
+
+	private final Log logger = LogFactory.getLog(getClass());
 
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
@@ -211,27 +221,55 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	@Override
 	public Object postProcessAfterInitialization(final Object bean, final String beanName) throws BeansException {
-		Class<?> targetClass = AopUtils.getTargetClass(bean);
-		Collection<KafkaListener> classLevelListeners = findListenerAnnotations(targetClass);
-		final boolean hasClassLevelListeners = classLevelListeners.size() > 0;
-		final List<Method> multiMethods = new ArrayList<Method>();
-		ReflectionUtils.doWithMethods(targetClass, new ReflectionUtils.MethodCallback() {
+		if (!this.nonAnnotatedClasses.contains(bean.getClass())) {
+			Class<?> targetClass = AopUtils.getTargetClass(bean);
+			Collection<KafkaListener> classLevelListeners = findListenerAnnotations(targetClass);
+			final boolean hasClassLevelListeners = classLevelListeners.size() > 0;
+			final List<Method> multiMethods = new ArrayList<Method>();
+			Map<Method, Set<KafkaListener>> annotatedMethods = MethodIntrospector.selectMethods(targetClass,
+					new MethodIntrospector.MetadataLookup<Set<KafkaListener>>() {
 
-			@Override
-			public void doWith(Method method) throws IllegalArgumentException, IllegalAccessException {
-				for (KafkaListener kafkaListener : findListenerAnnotations(method)) {
-					processKafkaListener(kafkaListener, method, bean, beanName);
-				}
-				if (hasClassLevelListeners) {
-					KafkaHandler kafkaHandler = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
-					if (kafkaHandler != null) {
-						multiMethods.add(method);
-					}
+						@Override
+						public Set<KafkaListener> inspect(Method method) {
+							Set<KafkaListener> listenerMethods = findListenerAnnotations(method);
+							return (!listenerMethods.isEmpty() ? listenerMethods : null);
+						}
+
+					});
+			if (hasClassLevelListeners) {
+				Map<Method, Boolean> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
+						new MethodIntrospector.MetadataLookup<Boolean>() {
+
+							@Override
+							public Boolean inspect(Method method) {
+								return AnnotationUtils.findAnnotation(method, KafkaHandler.class) == null ? null : true;
+							}
+
+						});
+				multiMethods.addAll(methodsWithHandler.keySet());
+			}
+			if (annotatedMethods.isEmpty()) {
+				this.nonAnnotatedClasses.add(bean.getClass());
+				if (this.logger.isTraceEnabled()) {
+					this.logger.trace("No @KafkaListener annotations found on bean type: " + bean.getClass());
 				}
 			}
-		});
-		if (hasClassLevelListeners) {
-			processMultiMethodListeners(classLevelListeners, multiMethods, bean, beanName);
+			else {
+				// Non-empty set of methods
+				for (Map.Entry<Method, Set<KafkaListener>> entry : annotatedMethods.entrySet()) {
+					Method method = entry.getKey();
+					for (KafkaListener listener : entry.getValue()) {
+						processKafkaListener(listener, method, bean, beanName);
+					}
+				}
+				if (this.logger.isDebugEnabled()) {
+					this.logger.debug(annotatedMethods.size() + " @KafkaListener methods processed on bean '" + beanName +
+							"': " + annotatedMethods);
+				}
+			}
+			if (hasClassLevelListeners) {
+				processMultiMethodListeners(classLevelListeners, multiMethods, bean, beanName);
+			}
 		}
 		return bean;
 	}
@@ -255,7 +293,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	/*
 	 * AnnotationUtils.getRepeatableAnnotations does not look at interfaces
 	 */
-	private Collection<KafkaListener> findListenerAnnotations(Method method) {
+	private Set<KafkaListener> findListenerAnnotations(Method method) {
 		Set<KafkaListener> listeners = new HashSet<KafkaListener>();
 		KafkaListener ann = AnnotationUtils.findAnnotation(method, KafkaListener.class);
 		if (ann != null) {
