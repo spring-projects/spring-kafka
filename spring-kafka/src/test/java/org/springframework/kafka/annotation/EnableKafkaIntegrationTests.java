@@ -72,6 +72,9 @@ public class EnableKafkaIntegrationTests {
 	public IfaceListenerImpl ifaceListener;
 
 	@Autowired
+	public MultiListenerBean multiListener;
+
+	@Autowired
 	public KafkaTemplate<Integer, String> template;
 
 	@Autowired
@@ -114,6 +117,13 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated7", 0, "foo");
 		template.flush();
 		assertThat(this.ifaceListener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	public void testMulti() throws Exception {
+		template.send("annotated8", 0, "foo");
+		template.flush();
+		assertThat(this.multiListener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Configuration
@@ -167,6 +177,11 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		public MultiListenerBean multiListener() {
+			return new MultiListenerBean();
+		}
+
+		@Bean
 		public ProducerFactory<Integer, String> producerFactory() {
 			return new DefaultKafkaProducerFactory<>(producerConfigs());
 		}
@@ -183,7 +198,7 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public static class Listener {
+	static class Listener {
 
 		private final CountDownLatch latch1 = new CountDownLatch(1);
 
@@ -245,22 +260,35 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public interface IfaceListener<T> {
+	interface IfaceListener<T> {
 
 		void listen(T foo);
 
 	}
 
-	public static class IfaceListenerImpl implements IfaceListener<String> {
+	static class IfaceListenerImpl implements IfaceListener<String> {
 
 		private final CountDownLatch latch1 = new CountDownLatch(1);
 
 		@Override
-		@KafkaListener(id="ifc", topics="annotated7")
+		@KafkaListener(id = "ifc", topics = "annotated7")
 		public void listen(String foo) {
 			latch1.countDown();
 		}
 
 	}
+
+	@KafkaListener(topics = "annotated8")
+	static class MultiListenerBean {
+
+		private final CountDownLatch latch1 = new CountDownLatch(1);
+
+		@KafkaHandler
+		public void bar(String bar) {
+			latch1.countDown();
+		}
+
+	}
+
 
 }
