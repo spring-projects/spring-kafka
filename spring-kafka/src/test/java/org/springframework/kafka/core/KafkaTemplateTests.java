@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
@@ -24,18 +25,23 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.ProducerListenerAdapter;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 
 
 /**
@@ -50,14 +56,20 @@ public class KafkaTemplateTests {
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, TEMPLATE_TOPIC);
 
-	@Test
-	public void testTemplate() throws Exception {
+	private static Consumer<Integer, String> consumer;
+
+	@BeforeClass
+	public static void setUp() throws Exception {
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(
 				consumerProps);
-		Consumer<Integer, String> consumer = cf.createConsumer();
+		consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
+	}
 
+
+	@Test
+	public void testTemplate() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -121,4 +133,30 @@ public class KafkaTemplateTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
+	@Test
+	public void testAsyncTemplate() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		AsyncKafkaTemplate<Integer, String> template = new AsyncKafkaTemplate<>(pf);
+		template.setDefaultTopic(TEMPLATE_TOPIC);
+		ListenableFuture<SendResult<Integer, String>> future = template.send("foo");
+		template.flush();
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
+		future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
+
+			@Override
+			public void onSuccess(SendResult<Integer, String> result) {
+				theResult.set(result);
+				latch.countDown();
+			}
+
+			@Override
+			public void onFailure(Throwable ex) {
+			}
+
+		});
+		assertThat(KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC)).has(value("foo"));
+		assertTrue(latch.await(10, TimeUnit.SECONDS));
+	}
 }
