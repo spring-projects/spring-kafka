@@ -8,50 +8,21 @@ Both asynchronous and synchronous methods are provided, with the async methods r
 
 [source, java]
 ----
-// Async methods
+ListenableFuture<SendResult<K, V>> send(V data);
 
-Future<RecordMetadata> send(V data);
+ListenableFuture<SendResult<K, V>> send(K key, V data);
 
-Future<RecordMetadata> send(K key, V data);
+ListenableFuture<SendResult<K, V>> send(int partition, K key, V data);
 
-Future<RecordMetadata> send(int partition, K key, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, V data);
 
-Future<RecordMetadata> send(String topic, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, K key, V data);
 
-Future<RecordMetadata> send(String topic, K key, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, int partition, V data);
 
-Future<RecordMetadata> send(String topic, int partition, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data);
 
-Future<RecordMetadata> send(String topic, int partition, K key, V data);
-
-Future<RecordMetadata> send(Message<?> message);
-
-// Sync methods
-
-
-RecordMetadata syncSend(V data)
-                                 throws InterruptedException, ExecutionException;
-
-RecordMetadata syncSend(K key, V data)
-                                 throws InterruptedException, ExecutionException;
-
-RecordMetadata syncSend(int partition, K key, V data)
-                                 throws InterruptedException, ExecutionException;
-
-RecordMetadata syncSend(String topic, V data)
-                                 throws InterruptedException, ExecutionException;
-
-RecordMetadata syncSend(String topic, K key, V data)
-                                 throws InterruptedException, ExecutionException;
-
-RecordMetadata syncSend(String topic, int partition, V data)
-                                 throws InterruptedException, ExecutionException;
-
-RecordMetadata syncSend(String topic, int partition, K key, V data)
-                                 throws InterruptedException, ExecutionException;
-
-RecordMetadata syncSend(Message<?> message)
-                                 throws InterruptedException, ExecutionException;
+ListenableFuture<SendResult<K, V>> send(Message<?> message);
 
 // Flush the producer.
 
@@ -101,9 +72,11 @@ results of the send (success or failure) instead of waiting for the `Future` to 
 ----
 public interface ProducerListener<K, V> {
 
-	void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata);
+    void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata);
 
-	void onError(String topic, Integer partition, K key, V value, Exception exception);
+    void onError(String topic, Integer partition, K key, V value, Exception exception);
+
+    boolean isInterestedInSuccess();
 
 }
 ----
@@ -111,8 +84,40 @@ public interface ProducerListener<K, V> {
 By default, the template is configured with a `LoggingProducerListener` which logs errors and does nothing when the
 send is successful.
 
+`onSuccess` is only called if `isInterestedInSuccess` returns `true`.
+
 For convenience, the abstract `ProducerListenerAdapter` is provided in case you only want to implement one of the
 methods.
+It returns `false` for `isInterestedInSuccess`.
+
+Notice that the send methods return a `ListenableFuture<SendResult>`.
+You can register a callback with the listener to receive the result of the send asynchronously.
+
+[source, java]
+----
+ListenableFuture<SendResult<Integer, String>> future = template.send("foo");
+future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
+
+    @Override
+    public void onSuccess(SendResult<Integer, String> result) {
+        ...
+    }
+
+    @Override
+    public void onFailure(Throwable ex) {
+        ...
+    }
+
+});
+----
+
+The `SendResult` has two properties, a `ProducerRecord` and `RecordMetadata`; refer to the Kafka API documentation
+for information about those objects.
+
+If you wish to block the sending thread, to await the result, you can invoke the future's `get()` method.
+You may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush`
+parameter which will cause the template to `flush()` on each send.
+Note, however that flushing will likely significantly reduce performance.
 
 ==== Receiving Messages
 

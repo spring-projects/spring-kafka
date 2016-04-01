@@ -16,11 +16,11 @@
 
 package org.springframework.kafka.core;
 
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -28,9 +28,11 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
-import org.springframework.kafka.support.ProducerListenerInvokingCallback;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 
 /**
@@ -48,18 +50,33 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private final ProducerFactory<K, V> producerFactory;
 
+	private final boolean autoFlush;
+
 	private volatile Producer<K, V> producer;
 
 	private volatile String defaultTopic;
 
 	private volatile ProducerListener<K, V> producerListener = new LoggingProducerListener<K, V>();
 
+
 	/**
-	 * Create an instance using the supplied producer factory.
+	 * Create an instance using the supplied producer factory and autoFlush false.
 	 * @param producerFactory the producer factory.
 	 */
 	public KafkaTemplate(ProducerFactory<K, V> producerFactory) {
+		this(producerFactory, false);
+	}
+
+	/**
+	 * Create an instance using the supplied producer factory and autoFlush setting.
+	 * Set autoFlush to true if you wish to synchronously interact with Kafaka, calling
+	 * {@link Future#get()} on the result.
+	 * @param producerFactory the producer factory.
+	 * @param autoFlush true to flush after each send.
+	 */
+	public KafkaTemplate(ProducerFactory<K, V> producerFactory, boolean autoFlush) {
 		this.producerFactory = producerFactory;
+		this.autoFlush = autoFlush;
 	}
 
 	/**
@@ -91,109 +108,48 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	@Override
-	public Future<RecordMetadata> send(V data) {
+	public ListenableFuture<SendResult<K, V>> send(V data) {
 		return send(this.defaultTopic, data);
 	}
 
 	@Override
-	public Future<RecordMetadata> send(K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(K key, V data) {
 		return send(this.defaultTopic, key, data);
 	}
 
 	@Override
-	public Future<RecordMetadata> send(int partition, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(int partition, K key, V data) {
 		return send(this.defaultTopic, partition, key, data);
 	}
 
 	@Override
-	public Future<RecordMetadata> send(String topic, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public Future<RecordMetadata> send(String topic, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public Future<RecordMetadata> send(String topic, int partition, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<K, V>(topic, partition, null, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public Future<RecordMetadata> send(String topic, int partition, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public Future<RecordMetadata> send(Message<?> message) {
+	public ListenableFuture<SendResult<K, V>> send(Message<?> message) {
 		ProducerRecord<K, V> producerRecord = messageToProducerRecord(message);
 		return doSend(producerRecord);
-	}
-
-	@Override
-	public RecordMetadata syncSend(V data) throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(data);
-		flush();
-		return future.get();
-	}
-
-	@Override
-	public RecordMetadata syncSend(K key, V data) throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(key, data);
-		flush();
-		return future.get();
-	}
-
-	@Override
-	public RecordMetadata syncSend(int partition, K key, V data)
-			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(partition, key, data);
-		flush();
-		return future.get();
-	}
-
-	@Override
-	public RecordMetadata syncSend(String topic, V data) throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(topic, data);
-		flush();
-		return future.get();
-	}
-
-	@Override
-	public RecordMetadata syncSend(String topic, K key, V data)
-			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(topic, key, data);
-		flush();
-		return future.get();
-	}
-
-	@Override
-	public RecordMetadata syncSend(String topic, int partition, V data)
-			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(topic, partition, data);
-		flush();
-		return future.get();
-	}
-
-	@Override
-	public RecordMetadata syncSend(String topic, int partition, K key, V data)
-			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(topic, partition, key, data);
-		flush();
-		return future.get();
-	}
-
-	@Override
-	public RecordMetadata syncSend(Message<?> message)
-			throws InterruptedException, ExecutionException {
-		Future<RecordMetadata> future = send(message);
-		flush();
-		return future.get();
 	}
 
 	@Override
@@ -206,7 +162,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * @param producerRecord the producer record.
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
-	protected Future<RecordMetadata> doSend(ProducerRecord<K, V> producerRecord) {
+	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
 		if (this.producer == null) {
 			synchronized (this) {
 				if (this.producer == null) {
@@ -217,14 +173,31 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		if (this.logger.isTraceEnabled()) {
 			this.logger.trace("Sending: " + producerRecord);
 		}
-		Future<RecordMetadata> future;
-		if (this.producerListener == null) {
-			future = this.producer.send(producerRecord);
-		}
-		else {
-			future = this.producer.send(producerRecord,
-					new ProducerListenerInvokingCallback<>(producerRecord.topic(), producerRecord.partition(),
-							producerRecord.key(), producerRecord.value(), this.producerListener));
+		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
+		this.producer.send(producerRecord, new Callback() {
+
+			@Override
+			public void onCompletion(RecordMetadata metadata, Exception exception) {
+				if (exception == null) {
+					future.set(new SendResult<>(producerRecord, metadata));
+					if (KafkaTemplate.this.producerListener != null
+							&& KafkaTemplate.this.producerListener.isInterestedInSuccess()) {
+						KafkaTemplate.this.producerListener.onSuccess(producerRecord.topic(),
+								producerRecord.partition(), producerRecord.key(), producerRecord.value(), metadata);
+					}
+				}
+				else {
+					future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
+					if (KafkaTemplate.this.producerListener != null) {
+						KafkaTemplate.this.producerListener.onError(producerRecord.topic(),
+								producerRecord.partition(), producerRecord.key(), producerRecord.value(), exception);
+					}
+				}
+			}
+
+		});
+		if (this.autoFlush) {
+			flush();
 		}
 		if (this.logger.isTraceEnabled()) {
 			this.logger.trace("Sent: " + producerRecord);

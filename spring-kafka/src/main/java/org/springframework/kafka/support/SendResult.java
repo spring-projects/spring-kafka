@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,31 +16,35 @@
 
 package org.springframework.kafka.support;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
 /**
- * No-op implementation of {@link ProducerListener}, to be used as base class for other implementations.
+ * Result for a Listenablefuture after a send.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
- * @author Marius Bogoevici
  * @author Gary Russell
- * @author Artem Bilan
+ *
  */
-public abstract class ProducerListenerAdapter<K, V> implements ProducerListener<K, V> {
+public class SendResult<K, V> {
 
-	@Override
-	public void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata) {
+	private final ProducerRecord<K, V> producerRecord;
+
+	private final RecordMetadata recordMetadata;
+
+	public SendResult(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata) {
+		this.producerRecord = producerRecord;
+		this.recordMetadata = recordMetadata;
 	}
 
-	@Override
-	public void onError(String topic, Integer partition, K key, V value, Exception exception) {
+	public ProducerRecord<K, V> getProducerRecord() {
+		return this.producerRecord;
 	}
 
-	@Override
-	public boolean isInterestedInSuccess() {
-		return false;
+	public RecordMetadata getRecordMetadata() {
+		return this.recordMetadata;
 	}
 
 }

@@ -105,6 +105,8 @@ public final class KafkaTestUtils {
 	 * Poll the consumer, expecting a single record for the specified topic.
 	 * @param consumer the consumer.
 	 * @param topic the topic.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
 	 * @return the record.
 	 * @throws org.junit.ComparisonFailure if exactly one record is not received.
 	 */
@@ -117,6 +119,8 @@ public final class KafkaTestUtils {
 	/**
 	 * Poll the consumer for records.
 	 * @param consumer the consumer.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
 	 * @return the records.
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer) {

@@ -55,4 +55,10 @@ public interface ProducerListener<K, V> {
 	 */
 	void onError(String topic, Integer partition, K key, V value, Exception exception);
 
+	/**
+	 * Return true if this listener is interested in success as well as failure.
+	 * @return true to express interest in successful sends.
+	 */
+	boolean isInterestedInSuccess();
+
 }
