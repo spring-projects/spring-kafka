@@ -70,7 +70,6 @@ subprojects { subproject ->
 
 	ext {
 		assertjVersion = '3.3.0'
-		avroVersion = '1.7.6'
 		gsCollectionsVersion = '5.0.0'
 		hamcrestVersion = '1.3'
 		jacksonVersion = '2.3.2'
@@ -78,9 +77,7 @@ subprojects { subproject ->
 		kafkaVersion = '0.9.0.1'
 		log4jVersion = '1.2.17'
 		mockitoVersion = '1.9.5'
-	//	metricsVersion = '2.2.0'
 		scalaVersion = '2.11'
-		reactor2Version = '2.0.6.RELEASE'
 		springRetryVersion = '1.1.2.RELEASE'
 		springVersion = '4.2.5.RELEASE'
 

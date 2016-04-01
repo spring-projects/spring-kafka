@@ -33,13 +33,10 @@ import org.springframework.messaging.support.MessageBuilder;
  * <p>
  * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned message.
  *
- * @param <K> the key type.
- * @param <V> the value type.
- *
  * @author Marius Bogoevici
  * @author Gary Russell
  */
-public class MessagingMessageConverter<K, V> implements MessageConverter {
+public class MessagingMessageConverter implements MessageConverter {
 
 	private boolean generateMessageId = false;
 

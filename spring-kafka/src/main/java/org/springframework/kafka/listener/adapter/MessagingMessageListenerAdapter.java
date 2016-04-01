@@ -57,7 +57,7 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 
 	private HandlerAdapter handlerMethod;
 
-	private MessageConverter messageConverter = new MessagingMessageConverter<K, V>();
+	private MessageConverter messageConverter = new MessagingMessageConverter();
 
 
 	public MessagingMessageListenerAdapter(Method method) {

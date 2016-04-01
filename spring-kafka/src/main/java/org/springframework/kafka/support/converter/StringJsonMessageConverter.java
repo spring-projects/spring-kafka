@@ -31,13 +31,10 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 /**
  * JSON Message converter - String on output, String or byte[] on input.
  *
- * @param <K> the key type.
- * @param <V> the value type.
- *
  * @author Gary Russell
  *
  */
-public class StringJsonMessageConverter<K, V> extends MessagingMessageConverter<K, V> {
+public class StringJsonMessageConverter extends MessagingMessageConverter {
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 

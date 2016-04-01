@@ -48,7 +48,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private final ProducerFactory<K, V> producerFactory;
 
-	private MessageConverter messageConverter = new MessagingMessageConverter<K, V>();
+	private MessageConverter messageConverter = new MessagingMessageConverter();
 
 	private volatile Producer<K, V> producer;
 

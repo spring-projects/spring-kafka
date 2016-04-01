@@ -34,7 +34,7 @@ public interface MessageConverter {
 	/**
 	 * Convert a {@link ConsumerRecord} to a {@link Message}.
 	 * @param record the record.
-	 * @param acknowledgment the acknowledment.
+	 * @param acknowledgment the acknowledgment.
 	 * @param payloadType the required payload type.
 	 * @return the message.
 	 */

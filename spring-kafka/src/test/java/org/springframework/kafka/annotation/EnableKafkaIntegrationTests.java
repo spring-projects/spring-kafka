@@ -178,7 +178,7 @@ public class EnableKafkaIntegrationTests {
 				kafkaJsonListenerContainerFactory() {
 			SimpleKafkaListenerContainerFactory<Integer, String> factory = new SimpleKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setMessageConverter(new StringJsonMessageConverter<Integer, String>());
+			factory.setMessageConverter(new StringJsonMessageConverter());
 			return factory;
 		}
 
@@ -243,7 +243,7 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public KafkaTemplate<Integer, String> kafkaJsonTemplate() {
 			KafkaTemplate<Integer, String> kafkaTemplate = new KafkaTemplate<Integer, String>(producerFactory());
-			kafkaTemplate.setMessageConverter(new StringJsonMessageConverter<Integer, String>());
+			kafkaTemplate.setMessageConverter(new StringJsonMessageConverter());
 			return kafkaTemplate;
 		}
 
