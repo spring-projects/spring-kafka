@@ -204,8 +204,11 @@ records have been received since the last commit.
 after which, the same semantics as `COUNT_TIME` are applied.
 - MANUAL_IMMEDIATE - call `commitAsync()`` immediately when the `Acknowledgment.acknowledge()` method is called by the
 listener - must be executed on the container's thread.
+- MANUAL_IMMEDIATE_SYNC - call `commitSync()`` immediately when the `Acknowledgment.acknowledge()` method is called by
+the listener - must be executed on the container's thread.
 
-NOTE: `MANUAL` and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener`.
+NOTE: `MANUAL`, `MANUAL_IMMEDIATE`, and `MANUAL_IMMEDIATE_SYNC` require the listener to be an
+`AcknowledgingMessageListener`.
 
 [source, java]
 ----
