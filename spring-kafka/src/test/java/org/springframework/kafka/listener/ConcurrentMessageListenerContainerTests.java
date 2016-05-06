@@ -74,9 +74,11 @@ public class ConcurrentMessageListenerContainerTests {
 
 	private static String topic7 = "testTopic7";
 
+	private static String topic8 = "testTopic8";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7);
+			topic6, topic7, topic8);
 
 	@Test
 	public void testAutoCommit() throws Exception {
@@ -357,6 +359,48 @@ public class ConcurrentMessageListenerContainerTests {
 		logger.info("Stop MANUAL_IMMEDIATE with Existing");
 	}
 
+	@Test
+	public void testManualCommitSyncExisting() throws Exception {
+		logger.info("Start MANUAL_IMMEDIATE_SYNC with Existing");
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic8);
+		template.send(0, "foo");
+		template.send(2, "bar");
+		template.send(0, "baz");
+		template.send(2, "qux");
+		template.flush();
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testManualExistingSync", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, topic8);
+		final CountDownLatch latch = new CountDownLatch(8);
+		container.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message, Acknowledgment ack) {
+				logger.info("manualExisting: " + message);
+				ack.acknowledge();
+				latch.countDown();
+			}
+
+		});
+		container.setConcurrency(1);
+		container.setAckMode(AckMode.MANUAL_IMMEDIATE_SYNC);
+		container.setBeanName("testManualExisting");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		template.send(0, "fooo");
+		template.send(2, "barr");
+		template.send(0, "bazz");
+		template.send(2, "quxx");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		logger.info("Stop MANUAL_IMMEDIATE_SYNC with Existing");
+	}
 
 	@SuppressWarnings("unchecked")
 	@Test
