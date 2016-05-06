@@ -83,7 +83,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		/**
 		 * Call {@link Consumer#commitAsync()} immediately for pending acks.
 		 */
-		MANUAL_IMMEDIATE
+		MANUAL_IMMEDIATE,
+
+		/**
+		 * Call {@link Consumer#commitSync()} immediately for pending acks.
+		 */
+		MANUAL_IMMEDIATE_SYNC
 
 	}
 

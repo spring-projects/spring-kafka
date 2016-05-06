@@ -210,6 +210,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final boolean autoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
 
+		private final AckMode ackMode = getAckMode();
+
 		private Thread consumerThread;
 
 		private volatile Collection<TopicPartition> definedPartitions;
@@ -222,9 +224,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
 				long recentOffset) {
-			Assert.state(!(getAckMode().equals(AckMode.MANUAL) || getAckMode().equals(AckMode.MANUAL_IMMEDIATE))
+			Assert.state(!(this.ackMode.equals(AckMode.MANUAL)
+						|| this.ackMode.equals(AckMode.MANUAL_IMMEDIATE)
+						|| this.ackMode.equals(AckMode.MANUAL_IMMEDIATE_SYNC))
 					|| !this.autoCommit,
-					"Consumer cannot be configured for auto commit for ackMode " + getAckMode());
+					"Consumer cannot be configured for auto commit for ackMode " + this.ackMode);
 			Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
 			ConsumerRebalanceListener rebalanceListener = new ConsumerRebalanceListener() {
 
@@ -272,7 +276,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (isRunning() && this.definedPartitions != null) {
 				initPartitionsIfNeeded();
 			}
-			final AckMode ackMode = getAckMode();
 			while (isRunning()) {
 				try {
 					if (this.logger.isTraceEnabled()) {
@@ -287,14 +290,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						while (iterator.hasNext()) {
 							final ConsumerRecord<K, V> record = iterator.next();
 							invokeListener(record);
-							if (!this.autoCommit && ackMode.equals(AckMode.RECORD)) {
+							if (!this.autoCommit && this.ackMode.equals(AckMode.RECORD)) {
 								this.consumer.commitAsync(
 										Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 												new OffsetAndMetadata(record.offset() + 1)), this.callback);
 							}
 						}
 						if (!this.autoCommit) {
-							processCommits(ackMode, records);
+							processCommits(this.ackMode, records);
 						}
 					}
 					else {
@@ -337,28 +340,39 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 						@Override
 						public void acknowledge() {
-							if (getAckMode().equals(AckMode.MANUAL)) {
+							if (ListenerConsumer.this.ackMode.equals(AckMode.MANUAL)) {
 								updateManualOffset(record);
 							}
-							else if (getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
-								if (Thread.currentThread().equals(ListenerConsumer.this.consumerThread)) {
-									Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
-											new TopicPartition(record.topic(), record.partition()),
-											new OffsetAndMetadata(record.offset() + 1));
-									if (ListenerConsumer.this.logger.isDebugEnabled()) {
-										ListenerConsumer.this.logger.debug("Committing: " + commits);
-									}
-									ListenerConsumer.this.consumer.commitAsync(commits, ListenerConsumer.this.callback);
-								}
-								else {
-									throw new IllegalStateException(
-											"With MANUAL_IMMEDIATE ack mode, acknowledge() must be invoked on the "
-													+ "consumer thread");
-								}
+							else if (ListenerConsumer.this.ackMode.equals(AckMode.MANUAL_IMMEDIATE)
+									|| ListenerConsumer.this.ackMode.equals(AckMode.MANUAL_IMMEDIATE_SYNC)) {
+								ackImmediate(record);
 							}
 							else {
 								throw new IllegalStateException("AckMode must be MANUAL or MANUAL_IMMEDIATE "
 										+ "for manual acks");
+							}
+						}
+
+						private void ackImmediate(final ConsumerRecord<K, V> record) {
+							if (Thread.currentThread().equals(ListenerConsumer.this.consumerThread)) {
+								Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
+										new TopicPartition(record.topic(), record.partition()),
+										new OffsetAndMetadata(record.offset() + 1));
+								if (ListenerConsumer.this.logger.isDebugEnabled()) {
+									ListenerConsumer.this.logger.debug("Committing: " + commits);
+								}
+								if (ListenerConsumer.this.ackMode.equals(AckMode.MANUAL_IMMEDIATE)) {
+									ListenerConsumer.this.consumer.commitAsync(commits,
+											ListenerConsumer.this.callback);
+								}
+								else {
+									ListenerConsumer.this.consumer.commitSync(commits);
+								}
+							}
+							else {
+								throw new IllegalStateException(
+										"With " + ListenerConsumer.this.ackMode.name()
+										+ " ack mode, acknowledge() must be invoked on the consumer thread");
 							}
 						}
 
