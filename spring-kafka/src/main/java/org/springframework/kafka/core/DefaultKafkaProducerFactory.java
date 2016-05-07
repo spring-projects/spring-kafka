@@ -61,6 +61,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private volatile boolean running;
 
+	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
+		this.configs = new HashMap<>(configs);
+		this.strategy = new DefaultKafkaConsumerProducerStrategy<K, V>(configs);
+	}
+
 	public DefaultKafkaProducerFactory(Map<String, Object> configs, KafkaConsumerProducerStrategy<K, V> strategy) {
 		this.configs = new HashMap<>(configs);
 		this.strategy = strategy;

@@ -40,6 +40,11 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 
 	private KafkaConsumerProducerStrategy<K, V> strategy;
 
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs) {
+		this.configs = new HashMap<>(configs);
+		this.strategy = new DefaultKafkaConsumerProducerStrategy<K, V>(configs);
+	}
+
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs, KafkaConsumerProducerStrategy<K, V> strategy) {
 		this.configs = new HashMap<>(configs);
 		this.strategy = strategy;
