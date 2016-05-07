@@ -25,28 +25,28 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 
 /**
  * Default implementation of Kafka Consumer and Producer strategy contract.
- * 
+ *
  *
  * @param <K> the key type.
  * @param <V> the value type.
- * 
- * @author Murali Reddy 
+ *
+ * @author Murali Reddy
  */
-public class DefaultKafkaConsumerProducerStrategy<K,V> implements KafkaConsumerProducerStrategy<K,V> {
-	
+public class DefaultKafkaConsumerProducerStrategy<K, V> implements KafkaConsumerProducerStrategy<K, V> {
+
 	private final Map<String, Object> configs;
-	
+
 	public DefaultKafkaConsumerProducerStrategy(Map<String, Object> configs) {
 		this.configs = new HashMap<>(configs);
 	}
-	
+
 	@Override
-	public KafkaConsumer<K,V> createKafkaConsumer() {
-		return new KafkaConsumer<K,V>(this.configs);
+	public KafkaConsumer<K, V> createKafkaConsumer() {
+		return new KafkaConsumer<K, V>(this.configs);
 	}
 
 	@Override
-	public KafkaProducer<K,V> createKafkaProducer() {
+	public KafkaProducer<K, V> createKafkaProducer() {
 		return new KafkaProducer<K, V>(this.configs);
 	}
 

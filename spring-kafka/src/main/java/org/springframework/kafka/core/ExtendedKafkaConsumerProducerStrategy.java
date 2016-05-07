@@ -26,21 +26,21 @@ import org.apache.kafka.common.serialization.Serializer;
 
 /**
  * Extended implementation of Kafka Consumer and Producer strategy contract.
- * 
+ *
  *
  * @param <K> the key type.
  * @param <V> the value type.
- * 
+ *
  * @author Murali Reddy
  */
-public class ExtendedKafkaConsumerProducerStrategy<K,V> implements KafkaConsumerProducerStrategy<K,V> {
+public class ExtendedKafkaConsumerProducerStrategy<K, V> implements KafkaConsumerProducerStrategy<K, V> {
 
 	private final Map<String, Object> configs;
 	private Serializer<K> keySerializer;
 	private Serializer<V> valueSerializer;
 	private Deserializer<K> keyDeserializer;
 	private Deserializer<V> valueDeserializer;
-	
+
 	public ExtendedKafkaConsumerProducerStrategy(Map<String, Object> configs, Serializer<K> keySerializer,
 			Serializer<V> valueSerializer, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
 		this.configs = new HashMap<>(configs);
@@ -68,12 +68,12 @@ public class ExtendedKafkaConsumerProducerStrategy<K,V> implements KafkaConsumer
 
 	@Override
 	public KafkaConsumer<K, V> createKafkaConsumer() {
-		return new KafkaConsumer<K,V>(this.configs,this.keyDeserializer,this.valueDeserializer);
+		return new KafkaConsumer<K, V>(this.configs, this.keyDeserializer, this.valueDeserializer);
 	}
 
 	@Override
 	public KafkaProducer<K, V> createKafkaProducer() {
-		return new KafkaProducer<K,V>(this.configs,this.keySerializer,this.valueSerializer);
+		return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
 	}
 
 }
