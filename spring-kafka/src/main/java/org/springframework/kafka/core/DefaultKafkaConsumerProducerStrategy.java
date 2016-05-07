@@ -24,8 +24,11 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 
 
 /**
- * Default implementation of Kafka Consumer and Producer strategy contract.
- *
+ * Default implementation of Kafka Consumer and Producer strategy.
+ * <p>
+ * This {@link KafkaConsumerProducerStrategy} implementation will produce a new {@link KafkaConsumer} or
+ * a new {@link KafkaProducer} instance(s) for the provided {@link Map} {@code configs} on each {@link #createKafkaConsumer()}
+ * or {@link #createKafkaProducer()} invocations respectively.
  *
  * @param <K> the key type.
  * @param <V> the value type.

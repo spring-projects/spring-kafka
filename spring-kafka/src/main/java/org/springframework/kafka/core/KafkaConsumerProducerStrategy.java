@@ -20,7 +20,9 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 
 /**
- * Kafka Consumer and Producer strategy contract.
+ * The Kafka Consumer and Producer strategy contract.
+ * This strategy is used to produce a {@link KafkaConsumer} and/or
+ * {@link KafkaProducer} instance(s).
  *
  *
  * @param <K> the key type.
@@ -31,5 +33,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 public interface KafkaConsumerProducerStrategy<K, V> {
 
 	KafkaConsumer<K, V> createKafkaConsumer();
+
 	KafkaProducer<K, V> createKafkaProducer();
 }

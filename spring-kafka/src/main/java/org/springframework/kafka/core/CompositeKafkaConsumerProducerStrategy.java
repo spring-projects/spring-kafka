@@ -25,23 +25,33 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
 
 /**
- * Extended implementation of Kafka Consumer and Producer strategy contract.
- *
+ * Composite implementation of Kafka Consumer and Producer strategy contract.
+ * <p>
+ * This {@link KafkaConsumerProducerStrategy} implementation will produce
+ * a new {@link KafkaConsumer} for provided {@link Map} {@code configs}, {@link Serializer} {@code keySerializer}
+ * and {@link Serializer} {@code valueSerializer} on {@link #createKafkaConsumer()} invocation.
+ * <p>
+ * This strategy will also produce {@link KafkaProducer} for provided {@link Map} {@code configs}, {@link Deserializer} {@code keyDeserializer}
+ * and {@link Deserializer} {@code valueDeserializer} on {@link #createKafkaProducer()} invocation.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Murali Reddy
  */
-public class ExtendedKafkaConsumerProducerStrategy<K, V> implements KafkaConsumerProducerStrategy<K, V> {
+public class CompositeKafkaConsumerProducerStrategy<K, V> implements KafkaConsumerProducerStrategy<K, V> {
 
 	private final Map<String, Object> configs;
+
 	private Serializer<K> keySerializer;
+
 	private Serializer<V> valueSerializer;
+
 	private Deserializer<K> keyDeserializer;
+
 	private Deserializer<V> valueDeserializer;
 
-	public ExtendedKafkaConsumerProducerStrategy(Map<String, Object> configs, Serializer<K> keySerializer,
+	public CompositeKafkaConsumerProducerStrategy(Map<String, Object> configs, Serializer<K> keySerializer,
 			Serializer<V> valueSerializer, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
 		this.configs = new HashMap<>(configs);
 		this.keySerializer = keySerializer;
@@ -50,7 +60,7 @@ public class ExtendedKafkaConsumerProducerStrategy<K, V> implements KafkaConsume
 		this.valueDeserializer = valueDeserializer;
 	}
 
-	public ExtendedKafkaConsumerProducerStrategy(Map<String, Object> configs, Deserializer<K> keyDeserializer,
+	public CompositeKafkaConsumerProducerStrategy(Map<String, Object> configs, Deserializer<K> keyDeserializer,
 			Deserializer<V> valueDeserializer) {
 		super();
 		this.configs = configs;
@@ -58,7 +68,7 @@ public class ExtendedKafkaConsumerProducerStrategy<K, V> implements KafkaConsume
 		this.valueDeserializer = valueDeserializer;
 	}
 
-	public ExtendedKafkaConsumerProducerStrategy(Map<String, Object> configs, Serializer<K> keySerializer,
+	public CompositeKafkaConsumerProducerStrategy(Map<String, Object> configs, Serializer<K> keySerializer,
 			Serializer<V> valueSerializer) {
 		super();
 		this.configs = configs;

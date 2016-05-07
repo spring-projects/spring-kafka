@@ -41,6 +41,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import org.springframework.beans.DirectFieldAccessor;
+import org.springframework.kafka.core.CompositeKafkaConsumerProducerStrategy;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerProducerStrategy;
@@ -103,6 +104,48 @@ public class ConcurrentMessageListenerContainerTests {
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.send(0, "foo");
+		template.send(2, "bar");
+		template.send(0, "baz");
+		template.send(2, "qux");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		logger.info("Stop auto");
+	}
+
+	@Test
+	public void testAutoCommitWithCompositeStrategy() throws Exception {
+		logger.info("Start auto");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy =
+						new CompositeKafkaConsumerProducerStrategy<Integer, String>(props,
+									new org.apache.kafka.common.serialization.IntegerDeserializer(),
+									new org.apache.kafka.common.serialization.StringDeserializer());
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy);
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, topic1);
+		final CountDownLatch latch = new CountDownLatch(4);
+		container.setMessageListener(new MessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				logger.info("auto: " + message);
+				latch.countDown();
+			}
+		});
+		container.setConcurrency(2);
+		container.setBeanName("testAuto");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		KafkaConsumerProducerStrategy<Integer, String> producerStrategy =
+					new CompositeKafkaConsumerProducerStrategy<Integer, String>(props,
+									new org.apache.kafka.common.serialization.IntegerSerializer(),
+									new org.apache.kafka.common.serialization.StringSerializer());
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
