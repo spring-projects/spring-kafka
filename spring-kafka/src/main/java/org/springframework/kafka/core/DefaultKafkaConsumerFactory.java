@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 package org.springframework.kafka.core;
 
 import java.util.HashMap;
@@ -36,14 +37,21 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
 	private final Map<String, Object> configs;
+	
+	private KafkaConsumerProducerStrategy<K,V> strategy;
 
-	public DefaultKafkaConsumerFactory(Map<String, Object> configs) {
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs, KafkaConsumerProducerStrategy<K,V> strategy) {
 		this.configs = new HashMap<>(configs);
+		this.strategy = strategy;
 	}
-
+	
 	@Override
 	public Consumer<K, V> createConsumer() {
-		return new KafkaConsumer<>(this.configs);
+		return createKafkaConsumer();
+	}
+
+	protected KafkaConsumer<K, V> createKafkaConsumer() {
+		return this.strategy.createKafkaConsumer();
 	}
 
 	@Override

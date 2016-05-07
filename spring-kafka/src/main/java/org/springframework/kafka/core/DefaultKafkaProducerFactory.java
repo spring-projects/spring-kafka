@@ -57,12 +57,15 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private volatile CloseSafeProducer<K, V> producer;
 
+	private KafkaConsumerProducerStrategy<K,V> strategy;
+	
 	private volatile boolean running;
 
-	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
+	public DefaultKafkaProducerFactory(Map<String, Object> configs, KafkaConsumerProducerStrategy<K,V> strategy) {
 		this.configs = new HashMap<>(configs);
+		this.strategy = strategy;
 	}
-
+	
 	@Override
 	public void destroy() throws Exception { //NOSONAR
 		CloseSafeProducer<K, V> producer = this.producer;
@@ -100,11 +103,15 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		if (this.producer == null) {
 			synchronized (this) {
 				if (this.producer == null) {
-					this.producer = new CloseSafeProducer<K, V>(new KafkaProducer<K, V>(this.configs));
+					this.producer = new CloseSafeProducer<K, V>(createKafkaProducer());
 				}
 			}
 		}
 		return this.producer;
+	}
+
+	protected KafkaProducer<K, V> createKafkaProducer() {
+		return this.strategy.createKafkaProducer();
 	}
 
 	private static class CloseSafeProducer<K, V> implements Producer<K, V> {
