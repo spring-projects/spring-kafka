@@ -60,9 +60,8 @@ public class KafkaTemplateTests {
 	@BeforeClass
 	public static void setUp() throws Exception {
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false", embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy = new DefaultKafkaConsumerProducerStrategy<>(consumerProps);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(
-				consumerProps, consumerStrategy);
+				consumerProps);
 		consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
 	}
@@ -71,8 +70,7 @@ public class KafkaTemplateTests {
 	@Test
 	public void testTemplate() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic(TEMPLATE_TOPIC);
 		template.send("foo");
@@ -116,8 +114,7 @@ public class KafkaTemplateTests {
 	@Test
 	public void withListener() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(TEMPLATE_TOPIC);
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -143,8 +140,7 @@ public class KafkaTemplateTests {
 	@Test
 	public void testWithCallback() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic(TEMPLATE_TOPIC);
 		ListenableFuture<SendResult<Integer, String>> future = template.send("foo");

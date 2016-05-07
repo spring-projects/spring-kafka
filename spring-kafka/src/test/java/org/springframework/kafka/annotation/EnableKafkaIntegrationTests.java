@@ -30,19 +30,19 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.mockito.Mockito;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.SimpleKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerProducerStrategy;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaConsumerProducerStrategy;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
@@ -53,12 +53,15 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
+
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
@@ -234,14 +237,14 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public ConsumerFactory<Integer, String> consumerFactory() {
 			Map<String, Object> configs = consumerConfigs();
-			return new DefaultKafkaConsumerFactory<>(configs, consumerStrategy(configs));
+			return new DefaultKafkaConsumerFactory<>(configs);
 		}
 
 		@Bean
 		public ConsumerFactory<Integer, String> manualConsumerFactory() {
 			Map<String, Object> configs = consumerConfigs();
 			configs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-			return new DefaultKafkaConsumerFactory<>(configs, consumerStrategy(configs));
+			return new DefaultKafkaConsumerFactory<>(configs);
 		}
 
 		@Bean
@@ -249,16 +252,6 @@ public class EnableKafkaIntegrationTests {
 			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testAnnot", "true", embeddedKafka);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
-		}
-
-		@Bean
-		public KafkaConsumerProducerStrategy<Integer, String> consumerStrategy(Map<String, Object> configs) {
-			return new DefaultKafkaConsumerProducerStrategy<>(configs);
-		}
-
-		@Bean
-		public KafkaConsumerProducerStrategy<Integer, String> producerStrategy(Map<String, Object> configs) {
-			return new DefaultKafkaConsumerProducerStrategy<>(configs);
 		}
 
 		@Bean
@@ -279,7 +272,7 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public ProducerFactory<Integer, String> producerFactory() {
 			Map<String, Object> configs = producerConfigs();
-			return new DefaultKafkaProducerFactory<>(configs, producerStrategy(configs));
+			return new DefaultKafkaProducerFactory<>(configs);
 		}
 
 		@Bean
