@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -29,26 +30,31 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+
 import org.junit.ClassRule;
 import org.junit.Test;
+
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import org.springframework.beans.DirectFieldAccessor;
-import org.springframework.kafka.core.CompositeKafkaConsumerProducerStrategy;
+
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerProducerStrategy;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaConsumerProducerStrategy;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.core.strategy.CompositeKafkaConsumerStrategy;
+import org.springframework.kafka.core.strategy.CompositeKafkaProducerStrategy;
+import org.springframework.kafka.core.strategy.KafkaConsumerStrategy;
+import org.springframework.kafka.core.strategy.KafkaProducerStrategy;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -85,8 +91,7 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testAutoCommit() throws Exception {
 		logger.info("Start auto");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy = new DefaultKafkaConsumerProducerStrategy<>(props);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic1);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -103,8 +108,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
 		template.send(0, "foo");
@@ -121,8 +125,8 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testAutoCommitWithCompositeStrategy() throws Exception {
 		logger.info("Start auto");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy =
-						new CompositeKafkaConsumerProducerStrategy<Integer, String>(props,
+		KafkaConsumerStrategy<Integer, String> consumerStrategy =
+						new CompositeKafkaConsumerStrategy<Integer, String>(props,
 									new org.apache.kafka.common.serialization.IntegerDeserializer(),
 									new org.apache.kafka.common.serialization.StringDeserializer());
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy);
@@ -142,11 +146,11 @@ public class ConcurrentMessageListenerContainerTests {
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy =
-					new CompositeKafkaConsumerProducerStrategy<Integer, String>(props,
+		KafkaProducerStrategy<Integer, String> producerStrategy =
+					new CompositeKafkaProducerStrategy<Integer, String>(senderProps,
 									new org.apache.kafka.common.serialization.IntegerSerializer(),
 									new org.apache.kafka.common.serialization.StringSerializer());
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(producerStrategy);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
 		template.send(0, "foo");
@@ -163,8 +167,7 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testAfterListenCommit() throws Exception {
 		logger.info("Start manual");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test2", "false", embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy = new DefaultKafkaConsumerProducerStrategy<>(props);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic2);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -181,8 +184,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic2);
 		template.send(0, "foo");
@@ -199,12 +201,11 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testDefinedPartitions() throws Exception {
 		logger.info("Start auto parts");
 		final Map<String, Object> props = KafkaTestUtils.consumerProps("test3", "true", embeddedKafka);
-		final KafkaConsumerProducerStrategy<Integer, String> consumerStrategy = new DefaultKafkaConsumerProducerStrategy<>(props);
 		TopicPartition topic1Partition0 = new TopicPartition(topic3, 0);
 
 		final CountDownLatch initialConsumersLatch = new CountDownLatch(2);
 
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy) {
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
 
 			@Override
 			public Consumer<Integer, String> createConsumer() {
@@ -259,8 +260,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(initialConsumersLatch.await(20, TimeUnit.SECONDS)).isTrue();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic3);
 		template.send(0, "foo");
@@ -275,8 +275,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container2.stop();
 
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy2 = new DefaultKafkaConsumerProducerStrategy<>(props);
-		cf = new DefaultKafkaConsumerFactory<>(props, consumerStrategy2);
+		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset earliest
 		ConcurrentMessageListenerContainer<Integer, String> resettingContainer =
 				new ConcurrentMessageListenerContainer<>(cf, topic1Partition0, topic1Partition1);
@@ -296,8 +295,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(latch3.getCount()).isEqualTo(0L);
 
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy3 = new DefaultKafkaConsumerProducerStrategy<>(props);
-		cf = new DefaultKafkaConsumerFactory<>(props, consumerStrategy3);
+		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset minusone
 		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, topic1Partition0, topic1Partition1);
 		resettingContainer.setBeanName("b4");
@@ -334,8 +332,7 @@ public class ConcurrentMessageListenerContainerTests {
 	private void testManualCommitGuts(AckMode ackMode, String topic) throws Exception {
 		logger.info("Start " + ackMode);
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test" + ackMode, "false", embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy = new DefaultKafkaConsumerProducerStrategy<>(props);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -355,8 +352,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic);
 		template.send(0, "foo");
@@ -373,8 +369,7 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testManualCommitExisting() throws Exception {
 		logger.info("Start MANUAL_IMMEDIATE with Existing");
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic7);
 		template.send(0, "foo");
@@ -384,8 +379,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testManualExisting", "false", embeddedKafka);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy = new DefaultKafkaConsumerProducerStrategy<>(props);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic7);
 		final CountDownLatch latch = new CountDownLatch(8);
@@ -466,8 +460,7 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testListenerException() throws Exception {
 		logger.info("Start exception");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> consumerStrategy = new DefaultKafkaConsumerProducerStrategy<>(props);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props, consumerStrategy);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic6);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -485,8 +478,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		KafkaConsumerProducerStrategy<Integer, String> producerStrategy = new DefaultKafkaConsumerProducerStrategy<>(senderProps);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps, producerStrategy);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic6);
 		template.send(0, "foo");

@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka.core.strategy;
 
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 
 /**
- * The Kafka Consumer and Producer strategy contract.
- * This strategy is used to produce a {@link KafkaConsumer} and/or
- * {@link KafkaProducer} instance(s).
- *
+ * The Kafka Producer strategy contract.
+ * This strategy is used to produce a {@link KafkaProducer} instance(s).
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Murali Reddy
  */
-public interface KafkaConsumerProducerStrategy<K, V> {
-
-	KafkaConsumer<K, V> createKafkaConsumer();
+public interface KafkaProducerStrategy<K, V> {
 
 	KafkaProducer<K, V> createKafkaProducer();
 }

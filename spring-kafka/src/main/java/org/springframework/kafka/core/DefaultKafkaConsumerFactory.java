@@ -24,6 +24,9 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
+import org.springframework.kafka.core.strategy.DefaultKafkaConsumerStrategy;
+import org.springframework.kafka.core.strategy.KafkaConsumerStrategy;
+
 /**
  * The {@link ConsumerFactory} implementation to produce a new {@link Consumer} instance
  * for provided {@link Map} {@code configs} on each {@link #createConsumer()}
@@ -38,14 +41,14 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 
 	private final Map<String, Object> configs;
 
-	private KafkaConsumerProducerStrategy<K, V> strategy;
+	private KafkaConsumerStrategy<K, V> strategy;
 
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs) {
 		this.configs = new HashMap<>(configs);
-		this.strategy = new DefaultKafkaConsumerProducerStrategy<K, V>(configs);
+		this.strategy = new DefaultKafkaConsumerStrategy<K, V>(configs);
 	}
 
-	public DefaultKafkaConsumerFactory(Map<String, Object> configs, KafkaConsumerProducerStrategy<K, V> strategy) {
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs, KafkaConsumerStrategy<K, V> strategy) {
 		this.configs = new HashMap<>(configs);
 		this.strategy = strategy;
 	}

@@ -14,43 +14,37 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka.core.strategy;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
 
 
 /**
- * Default implementation of Kafka Consumer and Producer strategy.
+ * Default implementation of Kafka Consumer strategy.
  * <p>
- * This {@link KafkaConsumerProducerStrategy} implementation will produce a new {@link KafkaConsumer} or
- * a new {@link KafkaProducer} instance(s) for the provided {@link Map} {@code configs} on each {@link #createKafkaConsumer()}
- * or {@link #createKafkaProducer()} invocations respectively.
+ * This {@link KafkaConsumerStrategy} implementation will produce a new {@link KafkaConsumer}
+ * instance(s) for the provided {@link Map} {@code configs} on each {@link #createKafkaConsumer()}
+ * invocation.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Murali Reddy
  */
-public class DefaultKafkaConsumerProducerStrategy<K, V> implements KafkaConsumerProducerStrategy<K, V> {
+public class DefaultKafkaConsumerStrategy<K, V> implements KafkaConsumerStrategy<K, V> {
 
 	private final Map<String, Object> configs;
 
-	public DefaultKafkaConsumerProducerStrategy(Map<String, Object> configs) {
+	public DefaultKafkaConsumerStrategy(Map<String, Object> configs) {
 		this.configs = new HashMap<>(configs);
 	}
 
 	@Override
 	public KafkaConsumer<K, V> createKafkaConsumer() {
 		return new KafkaConsumer<K, V>(this.configs);
-	}
-
-	@Override
-	public KafkaProducer<K, V> createKafkaProducer() {
-		return new KafkaProducer<K, V>(this.configs);
 	}
 
 }

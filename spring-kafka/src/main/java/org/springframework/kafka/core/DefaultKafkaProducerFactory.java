@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.core;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -24,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -35,6 +35,8 @@ import org.apache.kafka.common.PartitionInfo;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
+import org.springframework.kafka.core.strategy.DefaultKafkaProducerStrategy;
+import org.springframework.kafka.core.strategy.KafkaProducerStrategy;
 
 /**
  * The {@link ProducerFactory} implementation for the {@code singleton} shared {@link Producer}
@@ -53,21 +55,17 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private static final Log logger = LogFactory.getLog(DefaultKafkaProducerFactory.class);
 
-	private final Map<String, Object> configs;
-
 	private volatile CloseSafeProducer<K, V> producer;
 
-	private KafkaConsumerProducerStrategy<K, V> strategy;
+	private KafkaProducerStrategy<K, V> strategy;
 
 	private volatile boolean running;
 
 	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
-		this.configs = new HashMap<>(configs);
-		this.strategy = new DefaultKafkaConsumerProducerStrategy<K, V>(configs);
+		this.strategy = new DefaultKafkaProducerStrategy<K, V>(configs);
 	}
 
-	public DefaultKafkaProducerFactory(Map<String, Object> configs, KafkaConsumerProducerStrategy<K, V> strategy) {
-		this.configs = new HashMap<>(configs);
+	public DefaultKafkaProducerFactory(KafkaProducerStrategy<K, V> strategy) {
 		this.strategy = strategy;
 	}
 
