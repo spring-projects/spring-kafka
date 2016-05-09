@@ -169,7 +169,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				this.concurrency = this.partitions.length;
 			}
 			setRunning(true);
-			logger.info("Topics from ConcurrentMessageListenerContainer-->:" + (this.topics));
+
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container;
 				if (this.partitions == null) {

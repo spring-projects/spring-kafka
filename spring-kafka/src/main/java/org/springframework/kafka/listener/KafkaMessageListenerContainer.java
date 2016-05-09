@@ -172,7 +172,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 * @param consumerRebalanceListener the {@link ConsumerRebalanceListener} instance
 	 */
-	KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, ConsumerRebalanceListener consumerRebalanceListener,
+	KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+					ConsumerRebalanceListener consumerRebalanceListener,
 					String[] topics, Pattern topicPattern, TopicPartition[] topicPartitions) {
 		this.consumerFactory = consumerFactory;
 		this.consumerRebalanceListener = (consumerRebalanceListener == null) ? createConsumerRebalanceListener() :
