@@ -57,6 +57,14 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		this.valueDeserializer = valueDeserializer;
 	}
 
+	public void setKeyDeserializer(Deserializer<K> keyDeserializer) {
+		this.keyDeserializer = keyDeserializer;
+	}
+
+	public void setValueDeserializer(Deserializer<V> valueDeserializer) {
+		this.valueDeserializer = valueDeserializer;
+	}
+
 	@Override
 	public Consumer<K, V> createConsumer() {
 		return createKafkaConsumer();

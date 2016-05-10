@@ -82,6 +82,14 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		this.valueSerializer = valueSerializer;
 	}
 
+	public void setKeySerializer(Serializer<K> keySerializer) {
+		this.keySerializer = keySerializer;
+	}
+
+	public void setValueSerializer(Serializer<V> valueSerializer) {
+		this.valueSerializer = valueSerializer;
+	}
+
 	@Override
 	public void destroy() throws Exception { //NOSONAR
 		CloseSafeProducer<K, V> producer = this.producer;
