@@ -21,6 +21,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -31,12 +32,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+
 import org.junit.ClassRule;
 import org.junit.Test;
+
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -110,6 +114,60 @@ public class ConcurrentMessageListenerContainerTests {
 		template.send(2, "qux");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		logger.info("Stop auto");
+	}
+
+	@Test
+	public void testAutoCommitWithRebalanceListener() throws Exception {
+		logger.info("Start auto");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test10", "true", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, topic1);
+		final CountDownLatch latch = new CountDownLatch(4);
+		container.setMessageListener(new MessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				logger.info("auto: " + message);
+				latch.countDown();
+			}
+		});
+		final CountDownLatch rebalancePartitionsAssignedLatch = new CountDownLatch(2);
+		final CountDownLatch rebalancePartitionsRevokedLatch = new CountDownLatch(2);
+		container.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				logger.info("In test, partitions revoked:" + partitions);
+				rebalancePartitionsRevokedLatch.countDown();
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				logger.info("In test, partitions assigned:" + partitions);
+				rebalancePartitionsAssignedLatch.countDown();
+			}
+
+		});
+
+		container.setConcurrency(2);
+		container.setBeanName("testAuto");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.send(0, "foo");
+		template.send(2, "bar");
+		template.send(0, "baz");
+		template.send(2, "qux");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(rebalancePartitionsAssignedLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(rebalancePartitionsRevokedLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		logger.info("Stop auto");
 	}
