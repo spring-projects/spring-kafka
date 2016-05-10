@@ -23,34 +23,38 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-
-import org.springframework.kafka.core.strategy.DefaultKafkaConsumerStrategy;
-import org.springframework.kafka.core.strategy.KafkaConsumerStrategy;
+import org.apache.kafka.common.serialization.Deserializer;
 
 /**
  * The {@link ConsumerFactory} implementation to produce a new {@link Consumer} instance
- * for provided {@link Map} {@code configs} on each {@link #createConsumer()}
+ * for provided {@link Map} {@code configs} and optional {@link Deserializer} {@code keyDeserializer},
+ * {@code valueDeserializer} implementations on each {@link #createConsumer()}
  * invocation.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Murali Reddy
  */
 public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
 	private final Map<String, Object> configs;
 
-	private KafkaConsumerStrategy<K, V> strategy;
+	private Deserializer<K> keyDeserializer;
+
+	private Deserializer<V> valueDeserializer;
 
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs) {
 		this.configs = new HashMap<>(configs);
-		this.strategy = new DefaultKafkaConsumerStrategy<K, V>(configs);
 	}
 
-	public DefaultKafkaConsumerFactory(Map<String, Object> configs, KafkaConsumerStrategy<K, V> strategy) {
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
+			Deserializer<K> keyDeserializer,
+			Deserializer<V> valueDeserializer) {
 		this.configs = new HashMap<>(configs);
-		this.strategy = strategy;
+		this.keyDeserializer = keyDeserializer;
+		this.valueDeserializer = valueDeserializer;
 	}
 
 	@Override
@@ -59,7 +63,13 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer() {
-		return this.strategy.createKafkaConsumer();
+		if (this.keyDeserializer != null &&
+				this.valueDeserializer != null) {
+			return new KafkaConsumer<K, V>(this.configs, this.keyDeserializer, this.valueDeserializer);
+		}
+		else {
+			return new KafkaConsumer<K, V>(this.configs);
+		}
 	}
 
 	@Override

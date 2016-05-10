@@ -59,10 +59,10 @@ public void testAutoCommit() throws Exception {
     Thread.sleep(1000); // wait a bit for the container to start
     KafkaTemplate<Integer, String> template = createTemplate();
     template.setDefaultTopic(topic1);
-    template.convertAndSend(0, "foo");
-    template.convertAndSend(2, "bar");
-    template.convertAndSend(0, "baz");
-    template.convertAndSend(2, "qux");
+    template.send(0, "foo");
+    template.send(2, "bar");
+    template.send(0, "baz");
+    template.send(2, "qux");
     template.flush();
     assertTrue(latch.await(60, TimeUnit.SECONDS));
     container.stop();
@@ -94,10 +94,8 @@ private Map<String, Object> consumerProps() {
     props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
     props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "100");
     props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "15000");
-    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-            "org.apache.kafka.common.serialization.IntegerDeserializer");
-    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-            "org.apache.kafka.common.serialization.StringDeserializer");
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     return props;
 }
 
@@ -108,10 +106,8 @@ private Map<String, Object> senderProps() {
     props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
     props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
     props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
-    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-            "org.apache.kafka.common.serialization.IntegerSerializer");
-    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-            "org.apache.kafka.common.serialization.StringSerializer");
+    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     return props;
 }
 ----
@@ -131,7 +127,7 @@ private KafkaTemplate<Integer, String> template;
 @Test
 public void testSimple() throws Exception {
     waitListening("foo");
-    template.convertAndSend("annotated1", 0, "foo");
+    template.send("annotated1", 0, "foo");
     assertTrue(this.listener.latch1.await(10, TimeUnit.SECONDS));
 }
 

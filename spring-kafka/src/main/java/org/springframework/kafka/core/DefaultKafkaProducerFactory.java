@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -32,15 +33,19 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
-import org.springframework.kafka.core.strategy.DefaultKafkaProducerStrategy;
-import org.springframework.kafka.core.strategy.KafkaProducerStrategy;
 
 /**
  * The {@link ProducerFactory} implementation for the {@code singleton} shared {@link Producer}
  * instance.
+ * <p>
+ * This implementation will produce a new {@link Producer} instance
+ * for provided {@link Map} {@code configs} and optional {@link Serializer} {@code keySerializer},
+ * {@code valueSerializer} implementations on each {@link #createProducer()}
+ * invocation.
  * <p>
  * The {@link Producer} instance is freed from the external {@link Producer#close()} invocation
  * with the internal wrapper. The real {@link Producer#close()} is called on the target
@@ -50,23 +55,31 @@ import org.springframework.kafka.core.strategy.KafkaProducerStrategy;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Murali Reddy
  */
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, Lifecycle, DisposableBean {
 
 	private static final Log logger = LogFactory.getLog(DefaultKafkaProducerFactory.class);
 
+	private final Map<String, Object> configs;
+
 	private volatile CloseSafeProducer<K, V> producer;
 
-	private KafkaProducerStrategy<K, V> strategy;
+	private Serializer<K> keySerializer;
+
+	private Serializer<V> valueSerializer;
 
 	private volatile boolean running;
 
 	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
-		this.strategy = new DefaultKafkaProducerStrategy<K, V>(configs);
+		this.configs = new HashMap<>(configs);
 	}
 
-	public DefaultKafkaProducerFactory(KafkaProducerStrategy<K, V> strategy) {
-		this.strategy = strategy;
+	public DefaultKafkaProducerFactory(Map<String, Object> configs, Serializer<K> keySerializer,
+			Serializer<V> valueSerializer) {
+		this.configs = configs;
+		this.keySerializer = keySerializer;
+		this.valueSerializer = valueSerializer;
 	}
 
 	@Override
@@ -114,7 +127,13 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	protected KafkaProducer<K, V> createKafkaProducer() {
-		return this.strategy.createKafkaProducer();
+		if (this.keySerializer != null &&
+				this.valueSerializer != null) {
+			return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
+		}
+		else {
+			return new KafkaProducer<K, V>(this.configs);
+		}
 	}
 
 	private static class CloseSafeProducer<K, V> implements Producer<K, V> {

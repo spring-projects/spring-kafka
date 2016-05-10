@@ -18,11 +18,13 @@ package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.junit.ClassRule;
@@ -79,7 +81,8 @@ public class EnableKafkaIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
-			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10");
+			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10",
+			"annotated11");
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -126,6 +129,11 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated6", 1, 0, "qux");
 		template.flush();
 		assertThat(this.listener.latch5.await(20, TimeUnit.SECONDS)).isTrue();
+
+		template.send("annotated11", 0, "foo");
+		template.flush();
+		assertThat(this.listener.latch7.await(10, TimeUnit.SECONDS)).isTrue();
+
 	}
 
 	@Test
@@ -218,6 +226,15 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+				kafkaRebalanceListenerContainerFactory() {
+			SimpleKafkaListenerContainerFactory<Integer, String> factory = new SimpleKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			factory.setConsumerRebalanceListener(consumerRebalanceListener());
+			return factory;
+		}
+
+		@Bean
 		public ConsumerFactory<Integer, String> consumerFactory() {
 			Map<String, Object> configs = consumerConfigs();
 			return new DefaultKafkaConsumerFactory<>(configs);
@@ -275,6 +292,22 @@ public class EnableKafkaIntegrationTests {
 			return kafkaTemplate;
 		}
 
+		private ConsumerRebalanceListener consumerRebalanceListener() {
+			return new ConsumerRebalanceListener() {
+
+				@Override
+				public void onPartitionsRevoked(Collection<org.apache.kafka.common.TopicPartition> partitions) {
+
+				}
+
+				@Override
+				public void onPartitionsAssigned(Collection<org.apache.kafka.common.TopicPartition> partitions) {
+
+				}
+
+			};
+		}
+
 	}
 
 	static class Listener {
@@ -290,6 +323,8 @@ public class EnableKafkaIntegrationTests {
 		private final CountDownLatch latch5 = new CountDownLatch(1);
 
 		private final CountDownLatch latch6 = new CountDownLatch(1);
+
+		private final CountDownLatch latch7 = new CountDownLatch(1);
 
 		private volatile Integer partition;
 
@@ -350,6 +385,12 @@ public class EnableKafkaIntegrationTests {
 		public void listen6(Foo foo) {
 			this.foo = foo;
 			this.latch6.countDown();
+		}
+
+		@KafkaListener(id = "rebalancerListener", topics = "annotated11",
+				containerFactory = "kafkaRebalanceListenerContainerFactory")
+		public void listen7(String foo) {
+			this.latch7.countDown();
 		}
 
 	}

@@ -23,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
@@ -40,6 +41,7 @@ import org.springframework.util.Assert;
  *
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @author Murali Reddy
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -56,6 +58,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	private TopicPartition[] partitions;
 
 	private int concurrency = 1;
+
+	private ConsumerRebalanceListener consumerRebalanceListener;
 
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
@@ -134,6 +138,15 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	/**
+	 * Set the user defined {@link ConsumerRebalanceListener} implementation.
+	 *
+	 * @param consumerRebalanceListener the {@link ConsumerRebalanceListener} instance
+	 */
+	public void setConsumerRebalanceListener(ConsumerRebalanceListener consumerRebalanceListener) {
+		this.consumerRebalanceListener = consumerRebalanceListener;
+	}
+
+	/**
 	 * Return the list of {@link KafkaMessageListenerContainer}s created by
 	 * this container.
 	 * @return the list of {@link KafkaMessageListenerContainer}s created by
@@ -156,15 +169,16 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				this.concurrency = this.partitions.length;
 			}
 			setRunning(true);
+
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container;
 				if (this.partitions == null) {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.topics,
-							this.topicPattern, this.partitions);
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.consumerRebalanceListener,
+							this.topics, this.topicPattern, this.partitions);
 				}
 				else {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.topics,
-							this.topicPattern, partitionSubset(i));
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.consumerRebalanceListener,
+							this.topics, this.topicPattern, partitionSubset(i));
 				}
 				container.setAckMode(getAckMode());
 				container.setAckCount(getAckCount());

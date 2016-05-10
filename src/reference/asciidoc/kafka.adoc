@@ -144,9 +144,21 @@ The following constructors are available.
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
                                                         TopicPartition... topicPartitions)
 
+public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+														ConsumerRebalanceListener consumerRebalanceListener,
+                                                        TopicPartition... topicPartitions)
+
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, String... topics)
 
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+														ConsumerRebalanceListener consumerRebalanceListener,
+														String... topics)
+
+public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+                                                        Pattern topicPattern)
+
+public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+														ConsumerRebalanceListener consumerRebalanceListener,
                                                         Pattern topicPattern)
 ----
 
@@ -154,9 +166,11 @@ Each takes a `ConsumerFactory` and information about topics and partitions.
 
 The first takes a list of `TopicPartition` arguments to explicitly instruct the container which partitions to use
 (using the consumer `assign()` method).
-The second takes a list of topics and Kafka allocates the partitions based on the `group.id` property - distributing
+The third takes a list of topics and Kafka allocates the partitions based on the `group.id` property - distributing
 partitions across the group.
-The third is similar to the second, but uses a regex `Pattern` to select the topics.
+The fifth is similar to the third, but uses a regex `Pattern` to select the topics.
+The second, forth and sixth constructors are similar to first, third and fifth respectively with additional
+user-provided `consumerRebalanceListener` implementation.
 
 ====== ConcurrentMessageListenerContainer
 
@@ -173,6 +187,8 @@ public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
 
 It also has a property `concurrency`, e.g. `container.setConcurrency(3)` will create 3
 `KafkaMessageListenerContainer` s.
+
+You can also configure rebalance listener by using `consumerRebalanceListener` property.
 
 For the second and third container, kafka will distribute the partitions across the consumers.
 For the first constructor, the `ConcurrentMessageListenerContainer` distributes the `TopicPartition` s across the
@@ -202,10 +218,13 @@ records have been received since the last commit.
 - COUNT_TIME - similar to TIME and COUNT but the commit is performed if either condition is true.
 - MANUAL - the message listener (`AcknowledgingMessageListener`) is responsible to `acknowledge()` the `Acknowledgment`;
 after which, the same semantics as `COUNT_TIME` are applied.
-- MANUAL_IMMEDIATE - call `commitAsync()`` immediately when the `Acknowledgment.acknowledge()` method is called by the
+- MANUAL_IMMEDIATE - call `commitAsync()` immediately when the `Acknowledgment.acknowledge()` method is called by the
 listener - must be executed on the container's thread.
+- MANUAL_IMMEDIATE_SYNC - call `commitSync()` immediately when the `Acknowledgment.acknowledge()` method is called by
+the listener - must be executed on the container's thread.
 
-NOTE: `MANUAL` and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener`.
+NOTE: `MANUAL`, `MANUAL_IMMEDIATE`, and `MANUAL_IMMEDIATE_SYNC` require the listener to be an
+`AcknowledgingMessageListener`.
 
 [source, java]
 ----
