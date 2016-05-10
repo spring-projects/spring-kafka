@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 package org.springframework.kafka.core;
 
 import java.util.HashMap;
@@ -22,28 +23,53 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.Deserializer;
 
 /**
  * The {@link ConsumerFactory} implementation to produce a new {@link Consumer} instance
- * for provided {@link Map} {@code configs} on each {@link #createConsumer()}
+ * for provided {@link Map} {@code configs} and optional {@link Deserializer} {@code keyDeserializer},
+ * {@code valueDeserializer} implementations on each {@link #createConsumer()}
  * invocation.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Murali Reddy
  */
 public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
 	private final Map<String, Object> configs;
 
+	private Deserializer<K> keyDeserializer;
+
+	private Deserializer<V> valueDeserializer;
+
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs) {
 		this.configs = new HashMap<>(configs);
 	}
 
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
+			Deserializer<K> keyDeserializer,
+			Deserializer<V> valueDeserializer) {
+		this.configs = new HashMap<>(configs);
+		this.keyDeserializer = keyDeserializer;
+		this.valueDeserializer = valueDeserializer;
+	}
+
 	@Override
 	public Consumer<K, V> createConsumer() {
-		return new KafkaConsumer<>(this.configs);
+		return createKafkaConsumer();
+	}
+
+	protected KafkaConsumer<K, V> createKafkaConsumer() {
+		if (this.keyDeserializer != null &&
+				this.valueDeserializer != null) {
+			return new KafkaConsumer<K, V>(this.configs, this.keyDeserializer, this.valueDeserializer);
+		}
+		else {
+			return new KafkaConsumer<K, V>(this.configs);
+		}
 	}
 
 	@Override

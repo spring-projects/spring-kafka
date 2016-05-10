@@ -58,6 +58,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Murali Reddy
  *
  */
 public class ConcurrentMessageListenerContainerTests {
@@ -168,6 +169,48 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(rebalancePartitionsAssignedLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(rebalancePartitionsRevokedLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		logger.info("Stop auto");
+	}
+
+	@Test
+	public void testAutoCommitWithCompositeStrategy() throws Exception {
+		logger.info("Start auto");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+
+		DefaultKafkaConsumerFactory<Integer, String> cf =
+				new DefaultKafkaConsumerFactory<Integer, String>(props,
+						new org.apache.kafka.common.serialization.IntegerDeserializer(),
+						new org.apache.kafka.common.serialization.StringDeserializer());
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, topic1);
+		final CountDownLatch latch = new CountDownLatch(4);
+		container.setMessageListener(new MessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				logger.info("auto: " + message);
+				latch.countDown();
+			}
+		});
+		container.setConcurrency(2);
+		container.setBeanName("testAuto");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+
+		ProducerFactory<Integer, String> pf =
+				new DefaultKafkaProducerFactory<Integer, String>(senderProps,
+						new org.apache.kafka.common.serialization.IntegerSerializer(),
+						new org.apache.kafka.common.serialization.StringSerializer());
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.send(0, "foo");
+		template.send(2, "bar");
+		template.send(0, "baz");
+		template.send(2, "qux");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		logger.info("Stop auto");
 	}
