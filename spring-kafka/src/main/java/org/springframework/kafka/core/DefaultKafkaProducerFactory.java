@@ -127,13 +127,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	protected KafkaProducer<K, V> createKafkaProducer() {
-		if (this.keySerializer != null &&
-				this.valueSerializer != null) {
-			return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
-		}
-		else {
-			return new KafkaProducer<K, V>(this.configs);
-		}
+		return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
 	}
 
 	private static class CloseSafeProducer<K, V> implements Producer<K, V> {

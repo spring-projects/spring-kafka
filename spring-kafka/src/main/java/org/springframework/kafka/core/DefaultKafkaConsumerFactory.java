@@ -63,13 +63,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer() {
-		if (this.keyDeserializer != null &&
-				this.valueDeserializer != null) {
-			return new KafkaConsumer<K, V>(this.configs, this.keyDeserializer, this.valueDeserializer);
-		}
-		else {
-			return new KafkaConsumer<K, V>(this.configs);
-		}
+		return new KafkaConsumer<K, V>(this.configs, this.keyDeserializer, this.valueDeserializer);
 	}
 
 	@Override
