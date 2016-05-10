@@ -69,6 +69,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Murali Reddy
  *
  */
 @ContextConfiguration
