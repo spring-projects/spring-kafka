@@ -188,7 +188,7 @@ public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
 It also has a property `concurrency`, e.g. `container.setConcurrency(3)` will create 3
 `KafkaMessageListenerContainer` s.
 
-You can also configure rebalance listener by using `consumerRebalanceListener` proerty.
+You can also configure rebalance listener by using `consumerRebalanceListener` property.
 
 For the second and third container, kafka will distribute the partitions across the consumers.
 For the first constructor, the `ConcurrentMessageListenerContainer` distributes the `TopicPartition` s across the

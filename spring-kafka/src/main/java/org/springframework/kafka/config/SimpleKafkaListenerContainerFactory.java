@@ -18,6 +18,7 @@ package org.springframework.kafka.config;
 
 import java.util.Collection;
 
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -35,6 +36,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Murali Reddy
  */
 public class SimpleKafkaListenerContainerFactory<K, V>
 		extends AbstractKafkaListenerContainerFactory<ConcurrentMessageListenerContainer<K, V>, K, V> {
@@ -42,6 +44,8 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 	private Integer concurrency;
 
 	private Long recentOffset;
+
+	private ConsumerRebalanceListener consumerRebalanceListener;
 
 	/**
 	 * Specify the container concurrency.
@@ -59,6 +63,16 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 	 */
 	public void setRecentOffset(Long recentOffset) {
 		this.recentOffset = recentOffset;
+	}
+
+
+	/**
+	 * Specify the rebalance listener of container.
+	 * @param consumerRebalanceListener the rebalance listener.
+	 * @see ConcurrentMessageListenerContainer#setConsumerRebalanceListener(ConsumerRebalanceListener)
+	 */
+	public void setConsumerRebalanceListener(ConsumerRebalanceListener consumerRebalanceListener) {
+		this.consumerRebalanceListener = consumerRebalanceListener;
 	}
 
 	@Override
@@ -89,6 +103,9 @@ public class SimpleKafkaListenerContainerFactory<K, V>
 		}
 		if (this.recentOffset != null) {
 			instance.setRecentOffset(this.recentOffset);
+		}
+		if (this.consumerRebalanceListener != null) {
+			instance.setConsumerRebalanceListener(this.consumerRebalanceListener);
 		}
 	}
 
