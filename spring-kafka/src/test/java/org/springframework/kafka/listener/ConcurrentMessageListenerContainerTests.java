@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -37,6 +38,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -174,14 +179,14 @@ public class ConcurrentMessageListenerContainerTests {
 	}
 
 	@Test
-	public void testAutoCommitWithCompositeStrategy() throws Exception {
+	public void testAutoCommitWithDeSerializer() throws Exception {
 		logger.info("Start auto");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
 
 		DefaultKafkaConsumerFactory<Integer, String> cf =
 				new DefaultKafkaConsumerFactory<Integer, String>(props,
-						new org.apache.kafka.common.serialization.IntegerDeserializer(),
-						new org.apache.kafka.common.serialization.StringDeserializer());
+						new IntegerDeserializer(),
+						new StringDeserializer());
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic1);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -201,8 +206,8 @@ public class ConcurrentMessageListenerContainerTests {
 
 		ProducerFactory<Integer, String> pf =
 				new DefaultKafkaProducerFactory<Integer, String>(senderProps,
-						new org.apache.kafka.common.serialization.IntegerSerializer(),
-						new org.apache.kafka.common.serialization.StringSerializer());
+						new IntegerSerializer(),
+						new StringSerializer());
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
 		template.send(0, "foo");
