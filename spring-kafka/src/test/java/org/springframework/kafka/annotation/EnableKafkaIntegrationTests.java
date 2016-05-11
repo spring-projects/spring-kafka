@@ -30,11 +30,13 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.mockito.Mockito;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.SimpleKafkaListenerContainerFactory;
@@ -51,12 +53,15 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
+
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,6 +69,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Murali Reddy
  *
  */
 @ContextConfiguration
@@ -231,7 +237,8 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public ConsumerFactory<Integer, String> consumerFactory() {
-			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+			Map<String, Object> configs = consumerConfigs();
+			return new DefaultKafkaConsumerFactory<>(configs);
 		}
 
 		@Bean
@@ -265,7 +272,8 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public ProducerFactory<Integer, String> producerFactory() {
-			return new DefaultKafkaProducerFactory<>(producerConfigs());
+			Map<String, Object> configs = producerConfigs();
+			return new DefaultKafkaProducerFactory<>(configs);
 		}
 
 		@Bean
