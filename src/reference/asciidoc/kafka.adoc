@@ -1,18 +1,20 @@
 [[kafka]]
 === Using Spring for Apache Kafka
 
-==== Sending Messages with the KafkaTemplate
+==== Sending Messages
+
+===== KafkaTemplate
 
 The `KafkaTemplate` wraps a producer and provides convenience methods to send data to kafka topics.
 Both asynchronous and synchronous methods are provided, with the async methods returning a `Future`.
 
 [source, java]
 ----
-ListenableFuture<SendResult<K, V>> send(V data);
+ListenableFuture<SendResult<K, V>> sendDefault(V data);
 
-ListenableFuture<SendResult<K, V>> send(K key, V data);
+ListenableFuture<SendResult<K, V>> sendDefault(K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(int partition, K key, V data);
+ListenableFuture<SendResult<K, V>> sendDefault(int partition, K key, V data);
 
 ListenableFuture<SendResult<K, V>> send(String topic, V data);
 
@@ -28,6 +30,8 @@ ListenableFuture<SendResult<K, V>> send(Message<?> message);
 
 void flush();
 ----
+
+The first 3 methods require that a default topic has been provided to the template.
 
 To use the template, configure a producer factory and provide it in the template's constructor:
 

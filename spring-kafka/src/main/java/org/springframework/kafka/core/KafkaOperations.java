@@ -36,7 +36,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	ListenableFuture<SendResult<K, V>> send(V data);
+	ListenableFuture<SendResult<K, V>> sendDefault(V data);
 
 	/**
 	 * Send the data to the default topic with the provided key and no partition.
@@ -44,7 +44,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	ListenableFuture<SendResult<K, V>> send(K key, V data);
+	ListenableFuture<SendResult<K, V>> sendDefault(K key, V data);
 
 	/**
 	 * Send the data to the default topic with the provided key and partition.
@@ -53,7 +53,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	ListenableFuture<SendResult<K, V>> send(int partition, K key, V data);
+	ListenableFuture<SendResult<K, V>> sendDefault(int partition, K key, V data);
 
 	/**
 	 * Send the data to the provided topic with no key or partition.

@@ -29,6 +29,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.assertj.core.api.Assertions;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -50,10 +54,12 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  */
 public class KafkaTemplateTests {
 
-	private static final String TEMPLATE_TOPIC = "templateTopic";
+	private static final String INT_KEY_TOPIC = "intKeyTopic";
+
+	private static final String STRING_KEY_TOPIC = "stringKeyTopic";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, TEMPLATE_TOPIC);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, INT_KEY_TOPIC, STRING_KEY_TOPIC);
 
 	private static Consumer<Integer, String> consumer;
 
@@ -63,39 +69,43 @@ public class KafkaTemplateTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(
 				consumerProps);
 		consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, INT_KEY_TOPIC);
 	}
 
+	@AfterClass
+	public static void tearDown() {
+		consumer.close();
+	}
 
 	@Test
 	public void testTemplate() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
-		template.setDefaultTopic(TEMPLATE_TOPIC);
-		template.send("foo");
-		assertThat(KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC)).has(value("foo"));
-		template.send(0, 2, "bar");
-		ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC);
+		template.setDefaultTopic(INT_KEY_TOPIC);
+		template.sendDefault("foo");
+		assertThat(KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC)).has(value("foo"));
+		template.sendDefault(0, 2, "bar");
+		ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("bar"));
-		template.send(TEMPLATE_TOPIC, 0, 2, "baz");
-		received = KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC);
+		template.send(INT_KEY_TOPIC, 0, 2, "baz");
+		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("baz"));
-		template.send(TEMPLATE_TOPIC, 0, "qux");
-		received = KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC);
+		template.send(INT_KEY_TOPIC, 0, "qux");
+		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(key((Integer) null));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("qux"));
 		template.send(MessageBuilder.withPayload("fiz")
-				.setHeader(KafkaHeaders.TOPIC, TEMPLATE_TOPIC)
+				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
-		received = KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC);
+		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("fiz"));
@@ -103,12 +113,11 @@ public class KafkaTemplateTests {
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
-		received = KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC);
+		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("buz"));
-
-		consumer.close();
+		pf.createProducer().close();
 	}
 
 	@Test
@@ -116,7 +125,7 @@ public class KafkaTemplateTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(TEMPLATE_TOPIC);
+		template.setDefaultTopic(INT_KEY_TOPIC);
 		final CountDownLatch latch = new CountDownLatch(1);
 		template.setProducerListener(new ProducerListenerAdapter<Integer, String>() {
 
@@ -132,9 +141,10 @@ public class KafkaTemplateTests {
 			}
 
 		});
-		template.send("foo");
+		template.sendDefault("foo");
 		template.flush();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		pf.createProducer().close();
 	}
 
 	@Test
@@ -142,8 +152,8 @@ public class KafkaTemplateTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
-		template.setDefaultTopic(TEMPLATE_TOPIC);
-		ListenableFuture<SendResult<Integer, String>> future = template.send("foo");
+		template.setDefaultTopic(INT_KEY_TOPIC);
+		ListenableFuture<SendResult<Integer, String>> future = template.sendDefault("foo");
 		template.flush();
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
@@ -160,7 +170,29 @@ public class KafkaTemplateTests {
 			}
 
 		});
-		assertThat(KafkaTestUtils.getSingleRecord(consumer, TEMPLATE_TOPIC)).has(value("foo"));
+		assertThat(KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC)).has(value("foo"));
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		pf.createProducer().close();
 	}
+
+	@Test
+	public void testTemplateDisambiguation() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<String, String>(senderProps);
+		pf.setKeySerializer(new StringSerializer());
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testTString", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<String, String>(consumerProps);
+		cf.setKeyDeserializer(new StringDeserializer());
+		Consumer<String, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, STRING_KEY_TOPIC);
+		template.sendDefault("foo", "bar");
+		template.flush();
+		ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, STRING_KEY_TOPIC);
+		assertThat(record).has(Assertions.<ConsumerRecord<String, String>>allOf(key("foo"), value("bar")));
+		consumer.close();
+		pf.createProducer().close();
+	}
+
 }
