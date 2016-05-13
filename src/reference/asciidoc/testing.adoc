@@ -89,7 +89,7 @@ Usage:
 [source, java]
 ----
 ...
-template.syncSend(0, 2, "bar");
+template.sendDefault(0, 2, "bar");
 ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consumer, "topic");
 ...
 ----
@@ -188,9 +188,9 @@ public class KafkaTemplateTests {
                              new DefaultKafkaProducerFactory<Integer, String>(senderProps);
         KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
         template.setDefaultTopic(TEMPLATE_TOPIC);
-        template.send("foo");
+        template.sendDefault("foo");
         assertThat(records.poll(10, TimeUnit.SECONDS), hasValue("foo"));
-        template.send(0, 2, "bar");
+        template.sendDefault(0, 2, "bar");
         ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
         assertThat(received, hasKey(2));
         assertThat(received, hasPartition(0));
@@ -211,7 +211,7 @@ The above uses the hamcrest matchers; with `AssertJ`, the final part looks like 
 ----
 ...
         assertThat(records.poll(10, TimeUnit.SECONDS)).has(value("foo"));
-        template.send(0, 2, "bar");
+        template.sendDefault(0, 2, "bar");
         ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
         assertThat(received).has(key(2));
         assertThat(received).has(partition(0));

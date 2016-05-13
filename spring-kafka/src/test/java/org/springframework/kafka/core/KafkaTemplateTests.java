@@ -83,9 +83,9 @@ public class KafkaTemplateTests {
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic(INT_KEY_TOPIC);
-		template.send("foo");
+		template.sendDefault("foo");
 		assertThat(KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC)).has(value("foo"));
-		template.send(0, 2, "bar");
+		template.sendDefault(0, 2, "bar");
 		ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(key(2));
 		assertThat(received).has(partition(0));
@@ -141,7 +141,7 @@ public class KafkaTemplateTests {
 			}
 
 		});
-		template.send("foo");
+		template.sendDefault("foo");
 		template.flush();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		pf.createProducer().close();
@@ -153,7 +153,7 @@ public class KafkaTemplateTests {
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic(INT_KEY_TOPIC);
-		ListenableFuture<SendResult<Integer, String>> future = template.send("foo");
+		ListenableFuture<SendResult<Integer, String>> future = template.sendDefault("foo");
 		template.flush();
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
@@ -187,7 +187,7 @@ public class KafkaTemplateTests {
 		cf.setKeyDeserializer(new StringDeserializer());
 		Consumer<String, String> consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, STRING_KEY_TOPIC);
-		template.sendKeyValue("foo", "bar");
+		template.sendDefault("foo", "bar");
 		template.flush();
 		ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, STRING_KEY_TOPIC);
 		assertThat(record).has(Assertions.<ConsumerRecord<String, String>>allOf(key("foo"), value("bar")));
