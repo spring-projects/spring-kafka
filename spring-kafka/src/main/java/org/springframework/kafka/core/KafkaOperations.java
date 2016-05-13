@@ -40,10 +40,6 @@ public interface KafkaOperations<K, V> {
 
 	/**
 	 * Send the data to the default topic with the provided key and no partition.
-	 * <p><em>Note: when the generic type K is {@link String}, this method is
-	 * ambiguous with {@code send(partition, data)}.
-	 * {@link #sendKeyValue(Object, Object)} is provided as an alternative
-	 * method to use in that situation</em>
 	 * @param key the key.
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.

@@ -164,6 +164,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 
 	@Override
 	protected void after() {
+		System.getProperties().remove(SPRING_EMBEDDED_KAFKA_BROKERS);
 		for (KafkaServer kafkaServer : this.kafkaServers) {
 			try {
 				if (kafkaServer.brokerState().currentState() != (NotRunning.state())) {
