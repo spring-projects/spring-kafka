@@ -94,6 +94,10 @@ ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consum
 ...
 ----
 
+When the embedded server is started by JUnit, it sets a system property `spring.embedded.kafka.brokers` to the address
+of the broker(s).
+A convenient constant `KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS` is provided for this property.
+
 ==== Hamcrest Matchers
 
 The `o.s.kafka.test.hamcrest.KafkaMatchers` provides the following matchers:

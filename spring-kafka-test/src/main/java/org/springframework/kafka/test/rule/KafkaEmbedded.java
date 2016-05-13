@@ -75,6 +75,8 @@ import scala.collection.Set;
 @SuppressWarnings("serial")
 public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 
+	public static final String SPRING_EMBEDDED_KAFKA_BROKERS = "spring.embedded.kafka.brokers";
+
 	public static final long METADATA_PROPAGATION_TIMEOUT = 10000L;
 
 	private final int count;
@@ -157,6 +159,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 		for (String topic : this.topics) {
 			AdminUtils.createTopic(zkUtils, topic, this.partitionsPerTopic, this.count, props);
 		}
+		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 	}
 
 	@Override
@@ -362,9 +365,41 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 		return true;
 	}
 
+	/**
+	 * Subscribe a consumer to all the embedded topics.
+	 * @param consumer the consumer.
+	 * @throws Exception an exception.
+	 */
 	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) throws Exception {
 		final CountDownLatch consumerLatch = new CountDownLatch(1);
 		consumer.subscribe(Arrays.asList(this.topics), new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				consumerLatch.countDown();
+			}
+
+		});
+		consumer.poll(0); // force assignment
+		assertThat(consumerLatch.await(30, TimeUnit.SECONDS))
+			.as("Failed to be assigned partitions from the embedded topics")
+			.isTrue();
+	}
+
+	/**
+	 * Subscribe a consumer to one of the embedded topics.
+	 * @param consumer the consumer.
+	 * @param topic the topic.
+	 * @throws Exception an exception.
+	 */
+	public void consumeFromAnEmbeddedTopic(Consumer<?, ?> consumer, String topic) throws Exception {
+		assertThat(Arrays.asList(this.topics).contains(topic)).as("topic is not in emebedded topic list").isTrue();
+		final CountDownLatch consumerLatch = new CountDownLatch(1);
+		consumer.subscribe(Collections.singletonList(topic), new ConsumerRebalanceListener() {
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {

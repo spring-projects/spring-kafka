@@ -1,7 +1,9 @@
 [[kafka]]
 === Using Spring for Apache Kafka
 
-==== Sending Messages with the KafkaTemplate
+==== Sending Messages
+
+===== KafkaTemplate
 
 The `KafkaTemplate` wraps a producer and provides convenience methods to send data to kafka topics.
 Both asynchronous and synchronous methods are provided, with the async methods returning a `Future`.
@@ -11,6 +13,8 @@ Both asynchronous and synchronous methods are provided, with the async methods r
 ListenableFuture<SendResult<K, V>> send(V data);
 
 ListenableFuture<SendResult<K, V>> send(K key, V data);
+
+ListenableFuture<SendResult<K, V>> sendKeyValue(K key, V data);
 
 ListenableFuture<SendResult<K, V>> send(int partition, K key, V data);
 
@@ -118,6 +122,13 @@ If you wish to block the sending thread, to await the result, you can invoke the
 You may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush`
 parameter which will cause the template to `flush()` on each send.
 Note, however that flushing will likely significantly reduce performance.
+
+===== Ambiguous Methods
+
+As you can see, the template has generic types `K` and `V` for key and value types.
+Notice there is one method `sendKeyValue` - this is to resolve an ambiguity when the generic type `K` is `String`.
+The `send(K key, V data)` method is ambiguous with `send(String partition, V data)` when the key type is `String`;
+the compiler cannot determine which method to call.
 
 ==== Receiving Messages
 

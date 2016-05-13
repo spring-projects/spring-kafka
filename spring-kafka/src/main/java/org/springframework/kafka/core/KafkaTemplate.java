@@ -135,6 +135,11 @@ private final boolean autoFlush;
 	}
 
 	@Override
+	public ListenableFuture<SendResult<K, V>> sendKeyValue(K key, V data) {
+		return send(this.defaultTopic, key, data);
+	}
+
+	@Override
 	public ListenableFuture<SendResult<K, V>> send(int partition, K key, V data) {
 		return send(this.defaultTopic, partition, key, data);
 	}
