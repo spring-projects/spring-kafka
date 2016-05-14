@@ -21,9 +21,9 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ResolvableType;
 
 import java.io.IOException;
-import java.lang.reflect.ParameterizedType;
 import java.util.Map;
 
 /**
@@ -35,14 +35,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonDeserializer.class);
 
-    private Class<T> type;
+    private Class<?> type;
     private ObjectReader reader;
 
     public void configure(Map<String, ?> configs, boolean isKey) {
         LOGGER.debug("Start configuring");
-        // Getting class object:
-        // http://blog.xebia.com/acessing-generic-types-at-runtime-in-java/
-        type = ((Class<T>) ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments()[0]);
+        type = ResolvableType.forClass(this.getClass()).getSuperType().resolveGeneric(0);
         reader = JsonDatabindFactory.createDeserializer(type, configs, isKey);
         LOGGER.debug("Finish configuring");
     }
