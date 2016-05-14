@@ -47,6 +47,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
@@ -95,6 +96,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	public KafkaListenerEndpointRegistry registry;
 
+	@Autowired
+	private DeDuper deDuper;
+
 	@Test
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
@@ -130,6 +134,7 @@ public class EnableKafkaIntegrationTests {
 		template.flush();
 		assertThat(this.listener.latch7.await(10, TimeUnit.SECONDS)).isTrue();
 
+		assertThat(this.deDuper.called).isTrue();
 	}
 
 	@Test
@@ -195,7 +200,13 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
+			factory.setDeDuplicationStrategy(deDuper());
 			return factory;
+		}
+
+		@Bean
+		public DeDuper deDuper() {
+			return new DeDuper();
 		}
 
 		@Bean
@@ -458,6 +469,18 @@ public class EnableKafkaIntegrationTests {
 
 		public void setBar(String bar) {
 			this.bar = bar;
+		}
+
+	}
+
+	public static class DeDuper implements DeDuplicationStrategy<Integer, String> {
+
+		private boolean called;
+
+		@Override
+		public boolean isDuplicate(ConsumerRecord<Integer, String> consumerRecord) {
+			called = true;
+			return false;
 		}
 
 	}

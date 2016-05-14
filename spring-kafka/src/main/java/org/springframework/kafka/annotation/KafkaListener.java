@@ -24,53 +24,57 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.springframework.kafka.listener.MessageListener;
-import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 
 /**
- * Annotation that marks a method to be the target of a Kafka message
- * listener on the specified topics.
+ * Annotation that marks a method to be the target of a Kafka message listener on the
+ * specified topics.
  *
- * The {@link #containerFactory()}
- * identifies the {@link org.springframework.kafka.config.KafkaListenerContainerFactory
+ * The {@link #containerFactory()} identifies the
+ * {@link org.springframework.kafka.config.KafkaListenerContainerFactory
  * KafkaListenerContainerFactory} to use to build the Kafka listener container. If not
- * set, a <em>default</em> container factory is assumed to be available with a bean
- * name of {@code kafkaListenerContainerFactory} unless an explicit default has been
- * provided through configuration.
+ * set, a <em>default</em> container factory is assumed to be available with a bean name
+ * of {@code kafkaListenerContainerFactory} unless an explicit default has been provided
+ * through configuration.
  *
- * <p>Processing of {@code @KafkaListener} annotations is performed by
- * registering a {@link KafkaListenerAnnotationBeanPostProcessor}. This can be
- * done manually or, more conveniently, through {@link EnableKafka} annotation.
+ * <p>
+ * Processing of {@code @KafkaListener} annotations is performed by registering a
+ * {@link KafkaListenerAnnotationBeanPostProcessor}. This can be done manually or, more
+ * conveniently, through {@link EnableKafka} annotation.
  *
- * <p>Annotated methods are allowed to have flexible signatures similar to what
+ * <p>
+ * Annotated methods are allowed to have flexible signatures similar to what
  * {@link MessageMapping} provides, that is
  * <ul>
- * <li>{@link org.apache.kafka.clients.consumer.ConsumerRecord} to
- * access to the raw Kafka message</li>
+ * <li>{@link org.apache.kafka.clients.consumer.ConsumerRecord} to access to the raw Kafka
+ * message</li>
  * <li>{@link org.springframework.kafka.support.Acknowledgment} to manually ack</li>
- * <li>{@link org.springframework.messaging.handler.annotation.Payload @Payload}-annotated method
- * arguments including the support of validation</li>
- * <li>{@link org.springframework.messaging.handler.annotation.Header @Header}-annotated method
- * arguments to extract a specific header value, defined by
+ * <li>{@link org.springframework.messaging.handler.annotation.Payload @Payload}-annotated
+ * method arguments including the support of validation</li>
+ * <li>{@link org.springframework.messaging.handler.annotation.Header @Header}-annotated
+ * method arguments to extract a specific header value, defined by
  * {@link org.springframework.kafka.support.KafkaHeaders KafkaHeaders}</li>
  * <li>{@link org.springframework.messaging.handler.annotation.Headers @Headers}-annotated
- * argument that must also be assignable to {@link java.util.Map} for getting access to all
- * headers.</li>
+ * argument that must also be assignable to {@link java.util.Map} for getting access to
+ * all headers.</li>
  * <li>{@link org.springframework.messaging.MessageHeaders MessageHeaders} arguments for
  * getting access to all headers.</li>
- * <li>{@link org.springframework.messaging.support.MessageHeaderAccessor MessageHeaderAccessor}
- * for convenient access to all method arguments.</li>
+ * <li>{@link org.springframework.messaging.support.MessageHeaderAccessor
+ * MessageHeaderAccessor} for convenient access to all method arguments.</li>
  * </ul>
  *
- * <p>When defined at the method level, a listener container is created for each method. The
- * {@link MessageListener} is a {@link MessagingMessageListenerAdapter}, configured with a
- * {@link org.springframework.kafka.config.MethodKafkaListenerEndpoint}.
+ * <p>When defined at the method level, a listener container is created for each method.
+ * The {@link MessageListener} is a
+ * {@link org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter},
+ * configured with a {@link org.springframework.kafka.config.MethodKafkaListenerEndpoint}.
  *
- * <p>When defined at the class level, a single message listener container is used to service
- * all methods annotated with {@code @KafkaHandler}. Method signatures of such annotated
- * methods must not cause any ambiguity such that a single method can be resolved for a
- * particular inbound message. The {@link MessagingMessageListenerAdapter} is configured with
- * a {@link org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint}.
+ * <p>When defined at the class level, a single message listener container is used to
+ * service all methods annotated with {@code @KafkaHandler}. Method signatures of such
+ * annotated methods must not cause any ambiguity such that a single method can be
+ * resolved for a particular inbound message. The
+ * {@link org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter} is
+ * configured with a
+ * {@link org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint}.
  *
  * @author Gary Russell
  *

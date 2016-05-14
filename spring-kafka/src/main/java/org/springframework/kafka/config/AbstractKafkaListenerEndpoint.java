@@ -33,6 +33,7 @@ import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.util.Assert;
 
@@ -66,6 +67,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private BeanExpressionContext expressionContext;
 
 	private String group;
+
+	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
 
 
 	@Override
@@ -191,6 +194,18 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 			throw new IllegalStateException("At least one of topics, topicPartitions or topicPattern must be provided "
 					+ "for " + this);
 		}
+	}
+
+	protected DeDuplicationStrategy<K, V> getDeDuplicationStrategy() {
+		return this.deDuplicationStrategy;
+	}
+
+	/**
+	 * Set a {@link DeDuplicationStrategy} implementation.
+	 * @param deDuplicationStrategy the strategy implementation.
+	 */
+	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
+		this.deDuplicationStrategy = deDuplicationStrategy;
 	}
 
 	@Override

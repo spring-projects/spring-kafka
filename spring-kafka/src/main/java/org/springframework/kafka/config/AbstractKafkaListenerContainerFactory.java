@@ -23,6 +23,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ErrorHandler;
+import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
 import org.springframework.kafka.support.converter.MessageConverter;
 
 /**
@@ -56,6 +57,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Long pollTimeout;
 
 	private MessageConverter messageConverter;
+
+	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -140,6 +143,11 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.messageConverter = messageConverter;
 	}
 
+	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
+		this.deDuplicationStrategy = deDuplicationStrategy;
+	}
+
+	@SuppressWarnings("unchecked")
 	@Override
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
 		C instance = createContainerInstance(endpoint);
@@ -169,6 +177,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			instance.setPollTimeout(this.pollTimeout);
 		}
 
+		if (this.deDuplicationStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {
+			((AbstractKafkaListenerEndpoint<K, V>) endpoint).setDeDuplicationStrategy(this.deDuplicationStrategy);
+		}
 		endpoint.setupListenerContainer(instance, this.messageConverter);
 		initializeContainer(instance);
 

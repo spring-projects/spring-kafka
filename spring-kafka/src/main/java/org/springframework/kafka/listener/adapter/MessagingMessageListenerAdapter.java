@@ -59,6 +59,8 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 
 	private MessageConverter messageConverter = new MessagingMessageConverter();
 
+	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
+
 
 	public MessagingMessageListenerAdapter(Method method) {
 		this.inferredType = determineInferredType(method);
@@ -101,6 +103,18 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 		invokeHandler(record, acknowledgment, message);
 	}
 
+	protected DeDuplicationStrategy<K, V> getDeDuplicationStrategy() {
+		return this.deDuplicationStrategy;
+	}
+
+	/**
+	 * Set a {@link DeDuplicationStrategy} implementation.
+	 * @param deDuplicationStrategy the strategy implementation.
+	 */
+	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
+		this.deDuplicationStrategy = deDuplicationStrategy;
+	}
+
 	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
 		return getMessageConverter().toMessage(record, acknowledgment, this.inferredType);
 	}
@@ -114,6 +128,9 @@ public class MessagingMessageListenerAdapter<K, V> extends AbstractAdaptableMess
 	 * @return the result of invocation.
 	 */
 	private Object invokeHandler(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Message<?> message) {
+		if (this.deDuplicationStrategy != null && this.deDuplicationStrategy.isDuplicate(record)) {
+			return null;
+		}
 		try {
 			return this.handlerMethod.invoke(message, record, acknowledgment);
 		}
