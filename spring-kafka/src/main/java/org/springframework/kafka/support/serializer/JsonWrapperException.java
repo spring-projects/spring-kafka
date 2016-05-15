@@ -25,9 +25,9 @@ import org.apache.kafka.common.KafkaException;
  */
 public class JsonWrapperException extends KafkaException {
 
-    private static final long serialVersionUID = -4682389372221504570L;
+	private static final long serialVersionUID = -4682389372221504570L;
 
-    public JsonWrapperException(Throwable cause) {
-        super(cause);
-    }
+	public JsonWrapperException(Throwable cause) {
+		super(cause);
+	}
 }

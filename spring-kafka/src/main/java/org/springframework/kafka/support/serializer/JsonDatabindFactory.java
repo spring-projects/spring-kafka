@@ -16,14 +16,15 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 /**
  * Main class for jackson JSON configuration.
@@ -31,62 +32,68 @@ import java.util.Map;
  *
  * @author Igor Stepanov
  */
-public class JsonDatabindFactory {
+public final class JsonDatabindFactory {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(JsonDatabindFactory.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(JsonDatabindFactory.class);
 
-    private static ObjectMapper MAPPER;
-    private static ObjectWriter WRITER;
+	private static ObjectMapper MAPPER;
+	private static ObjectWriter WRITER;
 
-    static {
-        // these classes are thread-safe, so using single instance per class is performance-efficient
-        MAPPER = new ObjectMapper();
-        MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        WRITER = MAPPER.writer();
-    }
+	static {
+		// these classes are thread-safe, so using single instance per class is performance-efficient
+		MAPPER = new ObjectMapper();
+		MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+		WRITER = MAPPER.writer();
+	}
 
-    /*
-     * Creates {@link ObjectMapper} for the specified config, returns static instance as of now.
-     *
-     * @param configs configs in key/value pairs
-     * @param isKey whether is for key or value
-     * @return technical entity to create ObjectReader/ObjectWriter
-     */
-    private static ObjectMapper createMapper(Map<String, ?> configs, boolean isKey) {
-        LOGGER.debug("Start configuring mapper");
-        // TODO: config-based customization can be implemented here
-        ObjectMapper result = MAPPER;
-        LOGGER.debug("Finish configuring mapper");
-        return result;
-    }
+	/*
+	 * Utility classes should not have a public or default constructor.
+	 */
+	private JsonDatabindFactory() {
+	}
 
-    /**
-     * Creates {@link ObjectWriter} for the specified config, returns static instance as of now.
-     *
-     * @param configs configs in key/value pairs
-     * @param isKey whether is for key or value
-     * @return writer for sending Kafka messages
-     */
-    public static ObjectWriter createSerializer(Map<String, ?> configs, boolean isKey) {
-        LOGGER.debug("Start configuring writer");
-        // TODO: config-based customization can be implemented here
-        ObjectWriter result = WRITER;
-        LOGGER.debug("Finish configuring writer");
-        return result;
-    }
+	/*
+	 * Creates {@link ObjectMapper} for the specified config, returns static instance as of now.
+	 *
+	 * @param configs configs in key/value pairs
+	 * @param isKey whether is for key or value
+	 * @return technical entity to create ObjectReader/ObjectWriter
+	 */
+	private static ObjectMapper createMapper(Map<String, ?> configs, boolean isKey) {
+		LOGGER.debug("Start configuring mapper");
+		// TODO: config-based customization can be implemented here
+		ObjectMapper result = MAPPER;
+		LOGGER.debug("Finish configuring mapper");
+		return result;
+	}
 
-    /**
-     * Creates {@link ObjectReader} for the specified class and config, ignores config as of now.
-     *
-     * @param type java class, used to parse messages into POJO
-     * @param configs configs in key/value pairs
-     * @param isKey whether is for key or value
-     * @return reader for parsing Kafka messages
-     */
-    public static ObjectReader createDeserializer(Class<?> type, Map<String, ?> configs, boolean isKey) {
-        LOGGER.debug("Start configuring reader");
-        ObjectReader result = createMapper(configs, isKey).readerFor(type);
-        LOGGER.debug("Finish configuring reader");
-        return result;
-    }
+	/**
+	 * Creates {@link ObjectWriter} for the specified config, returns static instance as of now.
+	 *
+	 * @param configs configs in key/value pairs
+	 * @param isKey whether is for key or value
+	 * @return writer for sending Kafka messages
+	 */
+	public static ObjectWriter createSerializer(Map<String, ?> configs, boolean isKey) {
+		LOGGER.debug("Start configuring writer");
+		// TODO: config-based customization can be implemented here
+		ObjectWriter result = WRITER;
+		LOGGER.debug("Finish configuring writer");
+		return result;
+	}
+
+	/**
+	 * Creates {@link ObjectReader} for the specified class and config, ignores config as of now.
+	 *
+	 * @param type java class, used to parse messages into POJO
+	 * @param configs configs in key/value pairs
+	 * @param isKey whether is for key or value
+	 * @return reader for parsing Kafka messages
+	 */
+	public static ObjectReader createDeserializer(Class<?> type, Map<String, ?> configs, boolean isKey) {
+		LOGGER.debug("Start configuring reader");
+		ObjectReader result = createMapper(configs, isKey).readerFor(type);
+		LOGGER.debug("Finish configuring reader");
+		return result;
+	}
 }

@@ -16,47 +16,51 @@
 
 package org.springframework.kafka.support.serializer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectWriter;
+import java.util.Map;
+
 import org.apache.kafka.common.serialization.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectWriter;
 
 /**
  * Generic {@link Serializer} for sending Java objects to Kafka as JSON.
+ *
+ * @param <T> class of the entity, representing messages
  *
  * @author Igor Stepanov
  */
 public class JsonSerializer<T> implements Serializer<T> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(JsonSerializer.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(JsonSerializer.class);
 
-    private ObjectWriter writer;
+	private ObjectWriter writer;
 
-    public void configure(Map<String, ?> configs, boolean isKey) {
-        LOGGER.debug("Start configuring");
-        writer = JsonDatabindFactory.createSerializer(configs, isKey);
-        LOGGER.debug("Finish configuring");
-    }
+	public void configure(Map<String, ?> configs, boolean isKey) {
+		LOGGER.debug("Start configuring");
+		this.writer = JsonDatabindFactory.createSerializer(configs, isKey);
+		LOGGER.debug("Finish configuring");
+	}
 
-    public byte[] serialize(String topic, T data) {
-        try {
-            LOGGER.debug("Start processing");
-            byte [] result = null;
-            if (data != null) {
-                result = writer.writeValueAsBytes(data);
-            }
-            LOGGER.debug("Finish processing");
-            return result;
-        } catch (JsonProcessingException ex) {
-            LOGGER.debug("Failed processing");
-            throw new JsonWrapperException(ex);
-        }
-    }
+	public byte[] serialize(String topic, T data) {
+		try {
+			LOGGER.debug("Start processing");
+			byte[] result = null;
+			if (data != null) {
+				result = this.writer.writeValueAsBytes(data);
+			}
+			LOGGER.debug("Finish processing");
+			return result;
+		}
+		catch (JsonProcessingException ex) {
+			LOGGER.debug("Failed processing");
+			throw new JsonWrapperException(ex);
+		}
+	}
 
-    public void close() {
-        LOGGER.debug("Nothing to close");
-    }
+	public void close() {
+		LOGGER.debug("Nothing to close");
+	}
 }
