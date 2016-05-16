@@ -18,8 +18,10 @@ package org.springframework.kafka.listener.adapter;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.util.Assert;
+
 /**
- * A abstract message listener adapter that implements de-duplication logic
+ * An abstract message listener adapter that implements de-duplication logic
  * via a {@link DeDuplicationStrategy}.
  *
  * @param <K> the key type.
@@ -33,6 +35,7 @@ public abstract class AbstractDeDuplicatingMessageListener<K, V> {
 	private final DeDuplicationStrategy<K, V> deDupStrategy;
 
 	protected AbstractDeDuplicatingMessageListener(DeDuplicationStrategy<K, V> deDupStrategy) {
+		Assert.notNull(deDupStrategy, "'deDupStrategy' cannot be null");
 		this.deDupStrategy = deDupStrategy;
 	}
 

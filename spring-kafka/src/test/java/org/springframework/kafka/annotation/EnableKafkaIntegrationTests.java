@@ -97,7 +97,7 @@ public class EnableKafkaIntegrationTests {
 	public KafkaListenerEndpointRegistry registry;
 
 	@Autowired
-	private DeDuper deDuper;
+	private DeDupImpl deDup;
 
 	@Test
 	public void testSimple() throws Exception {
@@ -134,7 +134,7 @@ public class EnableKafkaIntegrationTests {
 		template.flush();
 		assertThat(this.listener.latch7.await(10, TimeUnit.SECONDS)).isTrue();
 
-		assertThat(this.deDuper.called).isTrue();
+		assertThat(this.deDup.called).isTrue();
 	}
 
 	@Test
@@ -200,13 +200,13 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setDeDuplicationStrategy(deDuper());
+			factory.setDeDuplicationStrategy(deDup());
 			return factory;
 		}
 
 		@Bean
-		public DeDuper deDuper() {
-			return new DeDuper();
+		public DeDupImpl deDup() {
+			return new DeDupImpl();
 		}
 
 		@Bean
@@ -473,7 +473,7 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public static class DeDuper implements DeDuplicationStrategy<Integer, String> {
+	public static class DeDupImpl implements DeDuplicationStrategy<Integer, String> {
 
 		private boolean called;
 

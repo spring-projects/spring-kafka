@@ -458,8 +458,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 								ackImmediate(record);
 							}
 							else {
-								throw new IllegalStateException("AckMode must be MANUAL or MANUAL_IMMEDIATE "
-										+ "for manual acks");
+								throw new IllegalStateException("AckMode must be MANUAL, "
+										+ "MANUAL_IMMEDIATE, or MANUAL_IMMEDIATE_SYNC for manual acks");
 							}
 						}
 

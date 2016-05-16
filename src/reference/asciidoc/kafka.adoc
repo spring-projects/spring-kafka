@@ -330,19 +330,19 @@ public void listen(@Payload String foo,
 ===== Handling Duplicates
 
 In certain scenarios, such as rebalancing, a message may be redelivered that has already been processed.
-The framework cannot know whether or not such a message has been processed or not, that is an application-level
+The framework cannot know whether such a message has been processed or not, that is an application-level
 function.
 This is known as the http://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html[Idempotent
-Receiver] pattern and Spring Integration provides an http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver
+Receiver] pattern and Spring Integration provides an
+http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver
 [implementation thereof].
 
-The Spring for Apache Kafka project also provides some assistance by means of the `DeduplicatingMessageListenerAdapter`
-and `DeduplicatingAcknowledgingMessageListenerAdapter` classes, which can wrap your `MessageListener` or
-`AcknowledgingMessageLister` respectively.
-Each of these classes takes an implementation of `DeDuplicationStrategy` where
-you implement the `isDuplicate` method to signal that a message is a duplicate and should be discarded.
+The Spring for Apache Kafka project also provides some assistance by means of the `DeDuplicatingMessageListenerAdapter`
+classe, which can wrap your `MessageListener`.
+This class takes an implementation of `DeDuplicationStrategy` where you implement the `isDuplicate` method to signal
+that a message is a duplicate and should be discarded.
 
-Similarly, when using `@KafkaListener`, the `DeduplicationStrategy` can be injected into the container factory.
+Similarly, when using `@KafkaListener`, the `DeDuplicationStrategy` can be injected into the container factory.
 
-Of course, if you are using manual acknowledgments you should not use these classes because you would need to
-acknowledge the duplicated message.
+A wrapper is not provided for the `AcknowledgingMessageListener` because you might need to acknowledge the duplicated
+message.

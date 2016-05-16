@@ -18,11 +18,10 @@ package org.springframework.kafka.listener.adapter;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.AcknowledgingMessageListener;
-import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.listener.MessageListener;
 
 /**
- * A {@link AcknowledgingMessageListener} adapter that implements de-duplication logic
+ * A {@link MessageListener} adapter that implements de-duplication logic
  * via a DeDuplicationStrategy.
  *
  * @param <K> the key type.
@@ -31,21 +30,21 @@ import org.springframework.kafka.support.Acknowledgment;
  * @author Gary Russell
  *
  */
-public class DeduplicatingAcknowledgingMessageListenerAdapter<K, V> extends AbstractDeDuplicatingMessageListener<K, V>
-		implements AcknowledgingMessageListener<K, V> {
+public class DeDuplicatingMessageListenerAdapter<K, V> extends AbstractDeDuplicatingMessageListener<K, V>
+		implements MessageListener<K, V> {
 
-	private final AcknowledgingMessageListener<K, V> delegate;
+	private final MessageListener<K, V> delegate;
 
-	public DeduplicatingAcknowledgingMessageListenerAdapter(DeDuplicationStrategy<K, V> deDupStrategy,
-			AcknowledgingMessageListener<K, V> delegate) {
+	public DeDuplicatingMessageListenerAdapter(DeDuplicationStrategy<K, V> deDupStrategy,
+			MessageListener<K, V> delegate) {
 		super(deDupStrategy);
 		this.delegate = delegate;
 	}
 
 	@Override
-	public void onMessage(ConsumerRecord<K, V> consumerRecord, Acknowledgment acknowledgment) {
+	public void onMessage(ConsumerRecord<K, V> consumerRecord) {
 		if (!isDuplicate(consumerRecord)) {
-			this.delegate.onMessage(consumerRecord, acknowledgment);
+			this.delegate.onMessage(consumerRecord);
 		}
 	}
 
