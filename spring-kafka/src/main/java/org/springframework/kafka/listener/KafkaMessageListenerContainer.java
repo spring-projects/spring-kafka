@@ -25,8 +25,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
@@ -43,6 +45,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
 
@@ -52,11 +55,18 @@ import org.springframework.util.Assert;
  * <p>
  * With the latter, initial partition offsets can be provided.
  *
+ * Flow control:
+ *   This listener pauses the consumer when the downstream message listener throws a MessageDeliveryException.
+ *   It will keep trying to deliver the message every pollTimeout ms and resume the consumption
+ *   when the last batch is fully delivered. The KafkaConsumer is kept alive and
+ *   sends heartbeats in between delivery attempts.
+ *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Gary Russell
  * @author Murali Reddy
+ * @author Martin Dam
  */
 public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -330,6 +340,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private long last;
 
+		private Queue<ConsumerRecord<K, V>> queuedRecords = new LinkedBlockingQueue<>();
+
 		ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
 				long recentOffset) {
 			Assert.state(!(this.ackMode.equals(AckMode.MANUAL)
@@ -343,6 +355,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 				@Override
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+					ListenerConsumer.this.queuedRecords.clear();
 					KafkaMessageListenerContainer.this.consumerRebalanceListener.onPartitionsRevoked(partitions);
 				}
 
@@ -392,29 +405,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						this.logger.trace("Polling...");
 					}
 					ConsumerRecords<K, V> records = this.consumer.poll(getPollTimeout());
-					if (records != null) {
-						if (this.logger.isDebugEnabled()) {
-							this.logger.debug("Received: " + records.count() + " records");
-						}
-						Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-						while (iterator.hasNext()) {
-							final ConsumerRecord<K, V> record = iterator.next();
-							invokeListener(record);
-							if (!this.autoCommit && this.ackMode.equals(AckMode.RECORD)) {
-								this.consumer.commitAsync(
-										Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-												new OffsetAndMetadata(record.offset() + 1)), this.commitCallback);
-							}
-						}
-						if (!this.autoCommit) {
-							processCommits(this.ackMode, records);
-						}
-					}
-					else {
-						if (this.logger.isDebugEnabled()) {
-							this.logger.debug("No records");
-						}
-					}
+					consumeRecords(records);
 				}
 				catch (WakeupException e) {
 					// No-op. Continue process
@@ -433,6 +424,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			try {
 				this.consumer.unsubscribe();
+				this.queuedRecords.clear();
 			}
 			catch (WakeupException e) {
 				// No-op. Continue process
@@ -440,6 +432,77 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.consumer.close();
 			if (this.logger.isInfoEnabled()) {
 				this.logger.info("Consumer stopped");
+			}
+		}
+
+		private void consumeRecords(ConsumerRecords<K, V> records) {
+			boolean deliveryException = false;
+			boolean queueHadEntries = false;
+
+			// Always emit queued records first to keep kafka ordering
+			while (!this.queuedRecords.isEmpty()) {
+				queueHadEntries = true;
+				ConsumerRecord<K, V> record = this.queuedRecords.peek();
+				try {
+					invokeListener(record);
+					offsetProcessSingleRecord(record);
+					this.queuedRecords.poll();
+				}
+				catch (MessageDeliveryException e) {
+					deliveryException = true;
+					// Pause all partitions until downstream listener can accept
+					this.consumer.pause(this.consumer.assignment()
+													.toArray(new TopicPartition[this.consumer.assignment()
+																							.size()]));
+					break;
+				}
+			}
+
+			if (queueHadEntries && this.queuedRecords.isEmpty()) {
+				// Resume the consumer as the queue have been emptied
+				this.consumer.resume(this.consumer.assignment()
+												.toArray(new TopicPartition[this.consumer.assignment()
+																						.size()]));
+				this.logger.debug("FlowControl: Resuming Kafka consumer");
+			}
+
+			// Process newly fetched records
+			if (records != null) {
+				if (this.logger.isDebugEnabled()) {
+					this.logger.debug("Received: " + records.count() + " records");
+				}
+				Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+
+				while (iterator.hasNext()) {
+					final ConsumerRecord<K, V> record = iterator.next();
+					try {
+						if (!deliveryException) {
+							invokeListener(record);
+							offsetProcessSingleRecord(record);
+						}
+						else {
+							this.queuedRecords.add(record);
+						}
+					}
+					catch (MessageDeliveryException e) {
+						this.logger.debug("FlowControl: Pausing Kafka consumer");
+						this.queuedRecords.add(record);
+						deliveryException = true;
+						// Pause all partitions to downstream listener can accept
+						this.consumer.pause(this.consumer.assignment()
+														.toArray(new TopicPartition[this.consumer.assignment()
+																								.size()]));
+					}
+				}
+			}
+			else {
+				if (this.logger.isDebugEnabled()) {
+					this.logger.debug("No records");
+				}
+			}
+
+			if (!this.autoCommit) {
+				processCommits(this.ackMode, records);
 			}
 		}
 
@@ -497,6 +560,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.listener.onMessage(record);
 				}
 			}
+			catch (MessageDeliveryException e) {
+				throw e;
+			}
 			catch (Exception e) {
 				if (getErrorHandler() != null) {
 					getErrorHandler().handle(e, record);
@@ -507,8 +573,24 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		private void offsetProcessSingleRecord(ConsumerRecord<K, V> record) {
+			if (!this.autoCommit && this.ackMode.equals(AckMode.RECORD)) {
+				this.consumer.commitAsync(Collections.singletonMap(new TopicPartition(record.topic(),
+																						record.partition()),
+																	new OffsetAndMetadata(record.offset() +
+																		1)),
+											this.commitCallback);
+			}
+
+			if (!this.autoCommit && (this.ackMode.equals(AckMode.TIME) || this.ackMode.equals(AckMode.COUNT)
+					|| this.ackMode.equals(AckMode.COUNT_TIME))) {
+				updatePendingOffsets(record);
+			}
+
+			this.count++;
+		}
+
 		private void processCommits(final AckMode ackMode, ConsumerRecords<K, V> records) {
-			this.count += records.count();
 			long now;
 			if (ackMode.equals(AckMode.BATCH)) {
 				if (!records.isEmpty()) {
@@ -521,9 +603,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			else if (!ackMode.equals(AckMode.MANUAL_IMMEDIATE) && !ackMode.equals(AckMode.MANUAL_IMMEDIATE_SYNC)) {
-				if (!ackMode.equals(AckMode.MANUAL)) {
-					updatePendingOffsets(records);
-				}
 				boolean countExceeded = this.count >= getAckCount();
 				if (ackMode.equals(AckMode.COUNT) && countExceeded) {
 					commitIfNecessary();
@@ -565,13 +644,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void updatePendingOffsets(ConsumerRecords<K, V> records) {
-			for (ConsumerRecord<K, V> record : records) {
-				if (!this.offsets.containsKey(record.topic())) {
-					this.offsets.put(record.topic(), new HashMap<Integer, Long>());
-				}
-				this.offsets.get(record.topic()).put(record.partition(), record.offset());
+		private void updatePendingOffsets(ConsumerRecord<K, V> record) {
+			if (!this.offsets.containsKey(record.topic())) {
+				this.offsets.put(record.topic(), new HashMap<Integer, Long>());
 			}
+			this.offsets.get(record.topic()).put(record.partition(), record.offset());
 		}
 
 		private void updateManualOffset(ConsumerRecord<K, V> record) {
