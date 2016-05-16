@@ -18,6 +18,16 @@ package org.springframework.kafka.listener.adapter;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+/**
+ * Implementations of this interface can signal that a message about
+ * to be delivered to a message listener is a duplicate.
+ *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
+ * @author Gary Russell
+ *
+ */
 public interface DeDuplicationStrategy<K, V> {
 
 	/**

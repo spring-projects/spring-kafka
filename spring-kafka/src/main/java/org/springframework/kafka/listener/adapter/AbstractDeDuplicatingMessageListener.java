@@ -22,6 +22,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * A abstract message listener adapter that implements de-duplication logic
  * via a {@link DeDuplicationStrategy}.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Gary Russell
  *
  */

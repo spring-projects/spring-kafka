@@ -25,6 +25,9 @@ import org.springframework.kafka.support.Acknowledgment;
  * A {@link AcknowledgingMessageListener} adapter that implements de-duplication logic
  * via a DeDuplicationStrategy.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Gary Russell
  *
  */

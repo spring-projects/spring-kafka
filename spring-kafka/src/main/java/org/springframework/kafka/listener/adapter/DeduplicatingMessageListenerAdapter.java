@@ -24,6 +24,9 @@ import org.springframework.kafka.listener.MessageListener;
  * A {@link MessageListener} adapter that implements de-duplication logic
  * via a DeDuplicationStrategy.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Gary Russell
  *
  */
