@@ -22,8 +22,6 @@ import java.util.Map;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.util.Assert;
@@ -42,8 +40,6 @@ import com.fasterxml.jackson.databind.ObjectReader;
  * @author Artem Bilan
  */
 public class JsonDeserializer<T> implements Deserializer<T> {
-
-	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final ObjectMapper objectMapper;
 
