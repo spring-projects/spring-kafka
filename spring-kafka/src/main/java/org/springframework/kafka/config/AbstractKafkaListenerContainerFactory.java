@@ -19,6 +19,7 @@ package org.springframework.kafka.config;
 
 import java.util.concurrent.Executor;
 
+import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
@@ -48,7 +49,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private Integer phase;
 
-	private Executor taskExecutor;
+	private Executor consumerTaskExecutor;
+
+	private AsyncListenableTaskExecutor listenerTaskExecutor;
 
 	private Integer ackCount;
 
@@ -59,6 +62,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private MessageConverter messageConverter;
 
 	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
+
+	private Boolean pauseEnabled;
+
+	private Long pauseAfter;
+
+	private Class<? extends Exception> pauseException;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -83,11 +92,22 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	/**
 	 * Specify an {@link Executor} to use.
-	 * @param taskExecutor the {@link Executor} to use.
-	 * @see AbstractKafkaListenerContainerFactory#setTaskExecutor
+	 * @param consumerTaskExecutor the {@link Executor} to use to poll
+	 * Kafka.
+	 * @see AbstractKafkaListenerContainerFactory#setConsumerTaskExecutor
 	 */
-	public void setTaskExecutor(Executor taskExecutor) {
-		this.taskExecutor = taskExecutor;
+	public void setConsumerTaskExecutor(Executor consumerTaskExecutor) {
+		this.consumerTaskExecutor = consumerTaskExecutor;
+	}
+
+	/**
+	 * Specify an {@link Executor} to use.
+	 * @param listenerTaskExecutor the {@link Executor} to use to invoke
+	 * the listener.
+	 * @see AbstractKafkaListenerContainerFactory#setListenerTaskExecutor
+	 */
+	public void setListenerTaskExecutor(AsyncListenableTaskExecutor listenerTaskExecutor) {
+		this.listenerTaskExecutor = listenerTaskExecutor;
 	}
 
 	/**
@@ -143,8 +163,39 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.messageConverter = messageConverter;
 	}
 
+	/**
+	 * Set the de-duplication strategy.
+	 * @param deDuplicationStrategy the strategy.
+	 */
 	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
 		this.deDuplicationStrategy = deDuplicationStrategy;
+	}
+
+	/**
+	 * Set to true to enable pausing the consumer.
+	 * @param pauseEnabled the pauseWhenSlow to set.
+	 * @see AbstractMessageListenerContainer#setPauseEnabled(boolean)
+	 */
+	public void setPauseEnabled(boolean pauseEnabled) {
+		this.pauseEnabled = pauseEnabled;
+	}
+
+	/**
+	 * Set the time after which the consumer should be paused.
+	 * @param pauseAfter the pauseAfter to set.
+	 * @see AbstractMessageListenerContainer#setPauseAfter(long)
+	 */
+	public void setPauseAfter(long pauseAfter) {
+		this.pauseAfter = pauseAfter;
+	}
+
+	/**
+	 * Set the pause exception.
+	 * @param pauseException the pauseException to set.
+	 * @see AbstractMessageListenerContainer#setPauseException(Class)
+	 */
+	public void setPauseException(Class<? extends Exception> pauseException) {
+		this.pauseException = pauseException;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -152,8 +203,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
 		C instance = createContainerInstance(endpoint);
 
-		if (this.taskExecutor != null) {
-			instance.setTaskExecutor(this.taskExecutor);
+		if (this.consumerTaskExecutor != null) {
+			instance.setConsumerTaskExecutor(this.consumerTaskExecutor);
 		}
 		if (this.errorHandler != null) {
 			instance.setErrorHandler(this.errorHandler);
@@ -175,6 +226,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		}
 		if (this.pollTimeout != null) {
 			instance.setPollTimeout(this.pollTimeout);
+		}
+		if (this.pauseEnabled != null) {
+			instance.setPauseEnabled(this.pauseEnabled);
+		}
+		if (this.pauseAfter != null) {
+			instance.setPauseAfter(this.pauseAfter);
+		}
+		if (this.pauseException != null) {
+			instance.setPauseException(this.pauseException);
 		}
 
 		if (this.deDuplicationStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {

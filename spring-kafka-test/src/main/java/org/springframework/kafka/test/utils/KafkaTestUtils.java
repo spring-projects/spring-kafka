@@ -161,7 +161,8 @@ public final class KafkaTestUtils {
 	 * A typed version of {@link #getPropertyValue(Object, String)}.
 	 * @param root the object.
 	 * @param propertyPath the path.
-	 * @param type the type to cast the object to
+	 * @param type the type to cast the object to.
+	 * @param <T> the type.
 	 * @return the field value.
 	 * @see #getPropertyValue(Object, String)
 	 */

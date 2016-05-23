@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.util.Assert;
 
 /**
@@ -36,6 +37,8 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements MessageListenerContainer, BeanNameAware, SmartLifecycle {
+
+	private static final int DEFAULT_PAUSE_AFTER = 10000;
 
 	protected final Log logger = LogFactory.getLog(this.getClass()); //NOSONAR
 
@@ -112,9 +115,17 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean running = false;
 
-	private Executor taskExecutor;
+	private Executor consumerTaskExecutor;
+
+	private AsyncListenableTaskExecutor listenerTaskExecutor;
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
+
+	private long pauseAfter = DEFAULT_PAUSE_AFTER;
+
+	private boolean pauseEnabled = true;
+
+	private Class<? extends Exception> pauseException;
 
 
 	@Override
@@ -291,12 +302,70 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.errorHandler = errorHandler;
 	}
 
-	public Executor getTaskExecutor() {
-		return this.taskExecutor;
+	protected Executor getConsumerTaskExecutor() {
+		return this.consumerTaskExecutor;
 	}
 
-	public void setTaskExecutor(Executor fetchTaskExecutor) {
-		this.taskExecutor = fetchTaskExecutor;
+	/**
+	 * Set the executor for threads that invoke the listener.
+	 * @param consumerTaskExecutor the executor
+	 */
+	public void setConsumerTaskExecutor(Executor consumerTaskExecutor) {
+		this.consumerTaskExecutor = consumerTaskExecutor;
+	}
+
+	protected AsyncListenableTaskExecutor getListenerTaskExecutor() {
+		return this.listenerTaskExecutor;
+	}
+
+	/**
+	 * Set the executor for threads that poll the consmer.
+	 * @param listenerTaskExecutor the executor.
+	 */
+	public void setListenerTaskExecutor(AsyncListenableTaskExecutor listenerTaskExecutor) {
+		this.listenerTaskExecutor = listenerTaskExecutor;
+	}
+
+	protected long getPauseAfter() {
+		return this.pauseAfter;
+	}
+
+	/**
+	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
+	 * true, the delay after which the consumer should be paused. Default 10000.
+	 * @param pauseAfter the delay.
+	 */
+	public void setPauseAfter(long pauseAfter) {
+		this.pauseAfter = pauseAfter;
+	}
+
+	protected boolean isPauseEnabled() {
+		return this.pauseEnabled;
+	}
+
+	/**
+	 * Set to true to avoid rebalancing when this consumer is slow or throws a
+	 * qualifying exception - pause the consumer.
+	 * Default: true.
+	 * @param pauseEnabled true to pause.
+	 * @see #setPauseAfter(long)
+	 */
+	public void setPauseEnabled(boolean pauseEnabled) {
+		this.pauseEnabled = pauseEnabled;
+	}
+
+	protected Class<? extends Exception> getPauseException() {
+		return this.pauseException;
+	}
+
+	/**
+	 * When {@link #setPauseEnabled(boolean)} is true, if the listener throws an exception
+	 * to which this class is assignable, pause the consumer. The delivery will be retried
+	 * until successful or some other exception is thrown.
+	 * @param pauseException the exception.
+	 */
+	public void setPauseException(Class<? extends Exception> pauseException) {
+		this.pauseException = pauseException;
 	}
 
 }

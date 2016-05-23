@@ -21,6 +21,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
 
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -454,12 +455,14 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic8);
 		final CountDownLatch latch = new CountDownLatch(8);
+		final BitSet bitSet = new BitSet(8);
 		container.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message, Acknowledgment ack) {
 				logger.info("manualExisting: " + message);
 				ack.acknowledge();
+				bitSet.set((int) (message.partition() * 4 + message.offset()));
 				latch.countDown();
 			}
 
@@ -475,6 +478,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "quxx");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(bitSet.cardinality()).isEqualTo(8);
 		container.stop();
 		logger.info("Stop MANUAL_IMMEDIATE_SYNC with Existing");
 	}
