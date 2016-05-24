@@ -438,7 +438,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 					if (records != null && records.count() > 0) {
 						handleManualAcks();
-						if (sendToListener(records) && this.pauseEnabled) {
+						if (sendToListener(records)) {
 							if (this.assignedPartitions != null) {
 								// avoid group management rebalance due to a slow consumer
 								this.consumer.pause(this.assignedPartitions
@@ -501,7 +501,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private boolean sendToListener(final ConsumerRecords<K, V> records) throws InterruptedException {
-			return !this.recordsToProcess.offer(records, this.pauseAfter, TimeUnit.MILLISECONDS);
+			if (this.pauseEnabled) {
+				return !this.recordsToProcess.offer(records, this.pauseAfter, TimeUnit.MILLISECONDS);
+			}
+			else {
+				this.recordsToProcess.put(records);
+				return false;
+			}
 		}
 
 		/**

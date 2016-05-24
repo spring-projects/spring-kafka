@@ -104,11 +104,11 @@ public class EnableKafkaIntegrationTests {
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch1.await(20, TimeUnit.SECONDS)).isTrue();
 
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
-		assertThat(this.listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch2.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.key).isEqualTo(123);
 		assertThat(this.listener.partition).isNotNull();
 		assertThat(this.listener.topic).isEqualTo("annotated2");
@@ -181,7 +181,7 @@ public class EnableKafkaIntegrationTests {
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
-		assertThat(this.listener.latch6.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch6.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
 	}
 
