@@ -115,12 +115,12 @@ public class EnableKafkaIntegrationTests {
 
 		template.send("annotated3", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch3.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 
 		template.send("annotated4", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch4.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
 
@@ -133,7 +133,7 @@ public class EnableKafkaIntegrationTests {
 
 		template.send("annotated11", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch7.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch7.await(20, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(this.deDup.called).isTrue();
 	}

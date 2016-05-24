@@ -351,7 +351,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final Class<? extends Exception> pauseException = getPauseException();
 
-		private final boolean pauseWhenSlow = isPauseEnabled();
+		private final boolean pauseEnabled = isPauseEnabled();
 
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
@@ -574,7 +574,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			catch (ExecutionException e) {
 				this.logger.debug("Failure for " + record + ": " + e.getMessage());
-				if (this.pauseWhenSlow && this.pauseException != null
+				if (this.pauseEnabled && this.pauseException != null
 						&& this.pauseException.isAssignableFrom(e.getCause().getClass())) {
 					this.shouldPause = true;
 					this.listenerHasReturned = true;
@@ -590,46 +590,52 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			catch (TimeoutException e) {
-				if (this.pauseWhenSlow) {
+				if (this.pauseEnabled) {
+					/*
+					 * Getting the result from the consumer timed out, we will pause the consumer to
+					 * keep heartbeats going to the broker.
+					 */
 					this.shouldPause = true;
-					future.addCallback(new ListenableFutureCallback<Void>() {
+				}
+				future.addCallback(new ListenableFutureCallback<Void>() {
 
-						@Override
-						public void onSuccess(Void result) {
-							if (ListenerConsumer.this.logger.isDebugEnabled()) {
-								ListenerConsumer.this.logger.debug("Delayed success for " + record);
+					@Override
+					public void onSuccess(Void result) {
+						if (ListenerConsumer.this.logger.isDebugEnabled()) {
+							ListenerConsumer.this.logger.debug("Delayed success for " + record);
+						}
+						if (ListenerConsumer.this.pauseEnabled) {
+							ListenerConsumer.this.listenerHasReturned = true;
+							ListenerConsumer.this.consumer.wakeup();
+						}
+					}
+
+					@Override
+					public void onFailure(Throwable ex) {
+						if (ListenerConsumer.this.logger.isDebugEnabled()) {
+							ListenerConsumer.this.logger.debug(
+									"Delayed failure for " + record + ": " + ex.getMessage());
+						}
+						if (ListenerConsumer.this.pauseEnabled
+								&& ListenerConsumer.this.pauseException.isAssignableFrom(ex.getClass())) {
+							ListenerConsumer.this.shouldPause = true;
+							ListenerConsumer.this.pausedForException = true;
+							ListenerConsumer.this.listenerHasReturned = true;
+						}
+						else {
+							if (getErrorHandler() != null && ex instanceof Exception) {
+								getErrorHandler().handle((Exception) ex, record);
+							}
+							else {
+								ListenerConsumer.this.logger
+										.error("Listener threw an exception and no error handler for " + record, ex);
 							}
 							ListenerConsumer.this.listenerHasReturned = true;
 							ListenerConsumer.this.consumer.wakeup();
 						}
+					}
 
-						@Override
-						public void onFailure(Throwable ex) {
-							if (ListenerConsumer.this.logger.isDebugEnabled()) {
-								ListenerConsumer.this.logger.debug(
-										"Delayed failure for " + record + ": " + ex.getMessage());
-							}
-							if (ListenerConsumer.this.pauseWhenSlow
-									&& ListenerConsumer.this.pauseException.isAssignableFrom(ex.getClass())) {
-								ListenerConsumer.this.shouldPause = true;
-								ListenerConsumer.this.pausedForException = true;
-								ListenerConsumer.this.listenerHasReturned = true;
-							}
-							else {
-								if (getErrorHandler() != null && ex instanceof Exception) {
-									getErrorHandler().handle((Exception) ex, record);
-								}
-								else {
-									ListenerConsumer.this.logger
-											.error("Listener threw an exception and no error handler for " + record, ex);
-								}
-								ListenerConsumer.this.listenerHasReturned = true;
-								ListenerConsumer.this.consumer.wakeup();
-							}
-						}
-
-					});
-				}
+				});
 			}
 		}
 
