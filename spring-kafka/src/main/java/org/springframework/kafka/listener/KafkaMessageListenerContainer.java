@@ -26,13 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
@@ -50,11 +47,12 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.RetryCallback;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.scheduling.SchedulingAwareRunnable;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * Single-threaded Message listener container using the Java {@link Consumer} supporting
@@ -287,16 +285,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					+ "or 'AcknowledgingMessageListener', not " + messageListener.getClass().getName());
 		}
 		if (getConsumerTaskExecutor() == null) {
-			SimpleAsyncTaskExecutor pooledExecutor = new SimpleAsyncTaskExecutor(
+			SimpleAsyncTaskExecutor consumerExecutor = new SimpleAsyncTaskExecutor(
 					(getBeanName() == null ? "" : getBeanName()) + "-kafka-consumer-");
-			setConsumerTaskExecutor(pooledExecutor);
+			setConsumerTaskExecutor(consumerExecutor);
 		}
 		if (getListenerTaskExecutor() == null) {
-			ThreadPoolTaskExecutor pooledExecutor = new ThreadPoolTaskExecutor();
-			pooledExecutor.setThreadNamePrefix((getBeanName() == null ? "" : getBeanName()) + "-kafka-listener-");
-			pooledExecutor.setCorePoolSize(1);
-			pooledExecutor.afterPropertiesSet();
-			setListenerTaskExecutor(pooledExecutor);
+			SimpleAsyncTaskExecutor listenerExecutor = new SimpleAsyncTaskExecutor(
+					(getBeanName() == null ? "" : getBeanName()) + "-kafka-listener-");
+			setListenerTaskExecutor(listenerExecutor);
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener,
 				this.recentOffset);
@@ -313,8 +309,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 
 	private class ListenerConsumer implements SchedulingAwareRunnable {
-
-		private final Iterator<ConsumerRecord<K, V>> emptyIterator = Collections.emptyListIterator();
 
 		private final Log logger = LogFactory.getLog(ListenerConsumer.class);
 
@@ -345,15 +339,23 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final boolean isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
 
+		private final boolean isRecordAck = this.ackMode.equals(AckMode.RECORD);
+
 		private final boolean syncCommits = KafkaMessageListenerContainer.this.syncCommits;
 
 		private final long pauseAfter = getPauseAfter();
 
-		private final Class<? extends Exception> pauseException = getPauseException();
-
 		private final boolean pauseEnabled = isPauseEnabled();
 
+		private final BlockingQueue<ConsumerRecords<K, V>> recordsToProcess = new LinkedBlockingQueue<>(getQueueDepth());
+
+		private final int queueDepth = getQueueDepth();
+
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
+
+		private final RetryTemplate retryTemplate = getRetryTemplate();
+
+		private final RecoveryCallback<Void> recoveryCallback = getRecoveryCallback();
 
 		private volatile Collection<TopicPartition> definedPartitions;
 
@@ -364,32 +366,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private long last;
 
 		/**
-		 * The consumer is currently paused due to a slow listener, or because it
-		 * threw a qualifying exception. The consumer will be resumed when the
-		 * current batch of records has been processed but will continue to be
-		 * polled.
+		 * The consumer is currently paused due to a slow listener. The consumer will be
+		 * resumed when the current batch of records has been processed but will continue
+		 * to be polled.
 		 */
 		private boolean paused;
-
-		/**
-		 * Indicates that the listener either timed out or threw a qualifying
-		 * exception and the consumer should be paused.
-		 */
-		private volatile boolean shouldPause;
-
-		/**
-		 * Indicates that {@link #shouldPause} was set because the listener threw
-		 * a qualifying exception - the consumer will be paused and the current
-		 * record replayed after the next poll.
-		 */
-		private volatile boolean pausedForException;
-
-		/**
-		 * Indicates the listener has returned - either immediately or after we
-		 * paused the consumer; we can now proceed to the next record, or replay
-		 * the current one if the listener threw a qualifying exception.
-		 */
-		private volatile boolean listenerHasReturned;
 
 		ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
 				long recentOffset) {
@@ -443,86 +424,37 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (isRunning() && this.definedPartitions != null) {
 				initPartitionsIfNeeded();
 			}
-			ConsumerRecords<K, V> currentRecords = null;
-			Iterator<ConsumerRecord<K, V>> currentRecordsIterator = this.emptyIterator;
-			ConsumerRecord<K, V> currentRecord = null;
+			ListenerInvoker invoker = new ListenerInvoker();
+			getListenerTaskExecutor().execute(invoker);
+			ConsumerRecords<K, V> unsent = null;
 			while (isRunning()) {
 				try {
 					if (this.logger.isTraceEnabled()) {
 						this.logger.trace("Polling (paused=" + this.paused + ")...");
 					}
-					if (this.paused || !currentRecordsIterator.hasNext()) {
-						ConsumerRecords<K, V> records = this.consumer.poll(getPollTimeout());
-						if (this.logger.isDebugEnabled()) {
-							this.logger.debug("Received: " + records.count() + " records");
-						}
-						if (!this.paused) {
-							currentRecords = records;
-							currentRecordsIterator = records != null ? records.iterator() : this.emptyIterator;
-						}
+					ConsumerRecords<K, V> records = this.consumer.poll(getPollTimeout());
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("Received: " + records.count() + " records");
 					}
-					if (this.paused && !this.pausedForException && !this.listenerHasReturned) {
-						this.logger.trace("Paused consumer exited poll and listener has still not returned");
-						continue;
-					}
-					while (currentRecords != null && (currentRecord != null || currentRecordsIterator.hasNext())) {
+					if (records != null && records.count() > 0) {
 						handleManualAcks();
-						if (this.listenerHasReturned && !this.pausedForException) {
-							currentRecord = null;
-							if (!currentRecordsIterator.hasNext()) {
-								break;
-							}
-						}
-						final ConsumerRecord<K, V> record =
-								currentRecord != null ? currentRecord : currentRecordsIterator.next();
-						currentRecord = record;
-						if (!this.paused || this.listenerHasReturned) {
-							this.listenerHasReturned = false;
-							this.pausedForException = false;
-							invokeListener(record);
-							if (this.shouldPause) {
-								break;
-							}
-							else {
-								currentRecord = null;
-							}
-							if (!this.autoCommit && this.ackMode.equals(AckMode.RECORD)) {
-								try {
-									this.consumer.commitAsync(
-										Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-												new OffsetAndMetadata(record.offset() + 1)), this.commitCallback);
-								}
-								catch (WakeupException e) {
-									// ignore - not polling
-								}
+						if (sendToListener(records) && this.pauseEnabled) {
+							if (this.assignedPartitions != null) {
+								// avoid group management rebalance due to a slow consumer
+								this.consumer.pause(this.assignedPartitions
+										.toArray(new TopicPartition[this.assignedPartitions.size()]));
+								this.paused = true;
+								unsent = records;
 							}
 						}
 					}
-					if (this.paused && currentRecord == null && !currentRecordsIterator.hasNext()) {
-						// Listener has caught up.
-						this.consumer.resume(
-								this.assignedPartitions.toArray(new TopicPartition[this.assignedPartitions.size()]));
-						this.paused = false;
-						this.listenerHasReturned = false;
-					}
-					if (this.shouldPause) {
-						if (!this.paused && this.assignedPartitions != null) {
-							// avoid group management rebalance due to a slow consumer
-							this.consumer.pause(this.assignedPartitions
-									.toArray(new TopicPartition[this.assignedPartitions.size()]));
-							this.paused = true;
-						}
-						this.shouldPause = false;
-					}
-					else {
-						currentRecordsIterator = this.emptyIterator;
-					}
-					if (!this.autoCommit && currentRecords != null && !currentRecordsIterator.hasNext()) {
+					unsent = checkPause(unsent);
+					if (!this.paused && !this.autoCommit) {
 						processCommits();
 					}
 				}
 				catch (WakeupException e) {
-					// No-op. Continue process
+					unsent = checkPause(unsent);
 				}
 				catch (Exception e) {
 					if (getErrorHandler() != null) {
@@ -548,95 +480,28 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void invokeListener(final ConsumerRecord<K, V> record) {
-			final ConsumerAcknowledgment acknowledgment = this.acknowledgingMessageListener != null
-					? new ConsumerAcknowledgment(record) : null;
-			ListenableFuture<Void> future = getListenerTaskExecutor().submitListenable(new Callable<Void>() {
-
-				@Override
-				public Void call() throws Exception {
-					actualInvokeListener(record, acknowledgment);
-					return null;
-				}
-
-			});
-			try {
-				future.get(this.pauseAfter, TimeUnit.MILLISECONDS);
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("Success for " + record);
-				}
-				handleManualAcks();
-				this.listenerHasReturned = true;
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				throw new KafkaException("Listener thread interrupted", e);
-			}
-			catch (ExecutionException e) {
-				this.logger.debug("Failure for " + record + ": " + e.getMessage());
-				if (this.pauseEnabled && this.pauseException != null
-						&& this.pauseException.isAssignableFrom(e.getCause().getClass())) {
-					this.shouldPause = true;
-					this.listenerHasReturned = true;
-					this.pausedForException = true;
-				}
-				else {
-					if (getErrorHandler() != null) {
-						getErrorHandler().handle(e, record);
+		private ConsumerRecords<K, V> checkPause(ConsumerRecords<K, V> unsent) {
+			if (this.paused && this.recordsToProcess.size() < this.queueDepth) {
+				// Listener has caught up.
+				this.consumer.resume(
+						this.assignedPartitions.toArray(new TopicPartition[this.assignedPartitions.size()]));
+				this.paused = false;
+				if (unsent != null) {
+					try {
+						sendToListener(unsent);
 					}
-					else {
-						this.logger.error("Listener threw an exception and no error handler for " + record, e);
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						throw new KafkaException("Interrupted while sending to listener", e);
 					}
 				}
+				return null;
 			}
-			catch (TimeoutException e) {
-				if (this.pauseEnabled) {
-					/*
-					 * Getting the result from the consumer timed out, we will pause the consumer to
-					 * keep heartbeats going to the broker.
-					 */
-					this.shouldPause = true;
-				}
-				future.addCallback(new ListenableFutureCallback<Void>() {
+			return unsent;
+		}
 
-					@Override
-					public void onSuccess(Void result) {
-						if (ListenerConsumer.this.logger.isDebugEnabled()) {
-							ListenerConsumer.this.logger.debug("Delayed success for " + record);
-						}
-						if (ListenerConsumer.this.pauseEnabled) {
-							ListenerConsumer.this.listenerHasReturned = true;
-							ListenerConsumer.this.consumer.wakeup();
-						}
-					}
-
-					@Override
-					public void onFailure(Throwable ex) {
-						if (ListenerConsumer.this.logger.isDebugEnabled()) {
-							ListenerConsumer.this.logger.debug(
-									"Delayed failure for " + record + ": " + ex.getMessage());
-						}
-						if (ListenerConsumer.this.pauseEnabled
-								&& ListenerConsumer.this.pauseException.isAssignableFrom(ex.getClass())) {
-							ListenerConsumer.this.shouldPause = true;
-							ListenerConsumer.this.pausedForException = true;
-							ListenerConsumer.this.listenerHasReturned = true;
-						}
-						else {
-							if (getErrorHandler() != null && ex instanceof Exception) {
-								getErrorHandler().handle((Exception) ex, record);
-							}
-							else {
-								ListenerConsumer.this.logger
-										.error("Listener threw an exception and no error handler for " + record, ex);
-							}
-							ListenerConsumer.this.listenerHasReturned = true;
-							ListenerConsumer.this.consumer.wakeup();
-						}
-					}
-
-				});
-			}
+		private boolean sendToListener(final ConsumerRecords<K, V> records) throws InterruptedException {
+			return !this.recordsToProcess.offer(records, this.pauseAfter, TimeUnit.MILLISECONDS);
 		}
 
 		/**
@@ -646,19 +511,23 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (ListenerConsumer.this.isAnyManualAck) {
 				ConsumerRecord<K, V> record = this.acks.poll();
 				while (record != null) {
-					if (ListenerConsumer.this.isManualImmediateAck) {
-						try {
-							ackImmediate(record);
-						}
-						catch (WakeupException e) {
-							// ignore - not polling
-						}
-					}
-					else {
-						updateManualOffset(record);
-					}
+					manualAck(record);
 					record = this.acks.poll();
 				}
+			}
+		}
+
+		private void manualAck(ConsumerRecord<K, V> record) {
+			if (ListenerConsumer.this.isManualImmediateAck) {
+				try {
+					ackImmediate(record);
+				}
+				catch (WakeupException e) {
+					// ignore - not polling
+				}
+			}
+			else {
+				updateManualOffset(record);
 			}
 		}
 
@@ -678,12 +547,62 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void actualInvokeListener(final ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
-			if (this.acknowledgingMessageListener != null) {
-				this.acknowledgingMessageListener.onMessage(record, acknowledgment);
-			}
-			else {
-				this.listener.onMessage(record);
+		private void invokeListener(final ConsumerRecords<K, V> records) {
+			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+			while (iterator.hasNext()) {
+				final ConsumerRecord<K, V> record = iterator.next();
+				if (this.logger.isTraceEnabled()) {
+					this.logger.trace("Processing " + record);
+				}
+				try {
+					if (this.acknowledgingMessageListener != null) {
+						if (this.retryTemplate != null) {
+							this.retryTemplate.execute(new RetryCallback<Void, KafkaException>() {
+
+								@Override
+								public Void doWithRetry(RetryContext context) throws KafkaException {
+									context.setAttribute("record", record);
+									ListenerConsumer.this.acknowledgingMessageListener.onMessage(record,
+											new ConsumerAcknowledgment(record));
+									return null;
+								}
+
+							}, this.recoveryCallback);
+						}
+						else {
+							this.acknowledgingMessageListener.onMessage(record, new ConsumerAcknowledgment(record));
+						}
+					}
+					else {
+						if (this.retryTemplate != null) {
+							this.retryTemplate.execute(new RetryCallback<Void, KafkaException>() {
+
+								@Override
+								public Void doWithRetry(RetryContext context) throws KafkaException {
+									context.setAttribute("record", record);
+									ListenerConsumer.this.listener.onMessage(record);
+									return null;
+								}
+
+							}, this.recoveryCallback);
+						}
+						else {
+							this.listener.onMessage(record);
+						}
+					}
+					this.acks.add(record);
+					if (this.isManualImmediateAck || this.isRecordAck) {
+						this.consumer.wakeup();
+					}
+				}
+				catch (Exception e) {
+					if (getErrorHandler() != null) {
+						getErrorHandler().handle(e, record);
+					}
+					else {
+						this.logger.error("Listener threw an exception and no error handler for " + record, e);
+					}
+				}
 			}
 		}
 
@@ -691,23 +610,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.count += this.acks.size();
 			long now;
 			AckMode ackMode = this.ackMode;
-			if (ackMode.equals(AckMode.BATCH)) {
-				if (!this.acks.isEmpty()) {
-					if (this.syncCommits) {
-						this.consumer.commitSync();
-					}
-					else {
-						this.consumer.commitAsync(this.commitCallback);
-					}
-					this.acks.clear();
-				}
-			}
-			else if (!this.isManualImmediateAck) {
+			if (!this.isManualImmediateAck) {
 				if (!this.isManualAck) {
 					updatePendingOffsets();
 				}
 				boolean countExceeded = this.count >= getAckCount();
-				if (ackMode.equals(AckMode.COUNT) && countExceeded) {
+				if (ackMode.equals(AckMode.BATCH) || ackMode.equals(AckMode.COUNT) && countExceeded) {
 					commitIfNecessary();
 					this.count = 0;
 				}
@@ -750,12 +658,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private void updatePendingOffsets() {
 			ConsumerRecord<K, V> record = this.acks.poll();
 			while (record != null) {
-				if (!this.offsets.containsKey(record.topic())) {
-					this.offsets.put(record.topic(), new HashMap<Integer, Long>());
-				}
-				this.offsets.get(record.topic()).put(record.partition(), record.offset());
+				addOffset(record);
 				record = this.acks.poll();
 			}
+		}
+
+		private void addOffset(ConsumerRecord<K, V> record) {
+			if (!this.offsets.containsKey(record.topic())) {
+				this.offsets.put(record.topic(), new HashMap<Integer, Long>());
+			}
+			this.offsets.get(record.topic()).put(record.partition(), record.offset());
 		}
 
 		private void updateManualOffset(ConsumerRecord<K, V> record) {
@@ -803,6 +715,43 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					// ignore - not polling
 				}
 			}
+		}
+
+		private final class ListenerInvoker implements SchedulingAwareRunnable {
+
+			@Override
+			public void run() {
+				while (isRunning()) {
+					try {
+						ConsumerRecords<K, V> records = ListenerConsumer.this.recordsToProcess.poll(1, TimeUnit.SECONDS);
+						if (records != null) {
+							invokeListener(records);
+						}
+						else {
+							if (ListenerConsumer.this.logger.isTraceEnabled()) {
+								ListenerConsumer.this.logger.trace("No records to process");
+							}
+						}
+					}
+					catch (InterruptedException e) {
+						if (!isRunning()) {
+							Thread.currentThread().interrupt();
+						}
+						else {
+							ListenerConsumer.this.logger.debug("Interrupt ignored");
+						}
+					}
+					if (!ListenerConsumer.this.isManualImmediateAck) {
+						ListenerConsumer.this.consumer.wakeup();
+					}
+				}
+			}
+
+			@Override
+			public boolean isLongLived() {
+				return true;
+			}
+
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {

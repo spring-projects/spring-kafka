@@ -26,6 +26,8 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.support.RetryTemplate;
 
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
@@ -67,7 +69,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private Long pauseAfter;
 
-	private Class<? extends Exception> pauseException;
+	private RetryTemplate retryTemplate;
+
+	private RecoveryCallback<Void> recoveryCallback;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -189,13 +193,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.pauseAfter = pauseAfter;
 	}
 
-	/**
-	 * Set the pause exception.
-	 * @param pauseException the pauseException to set.
-	 * @see AbstractMessageListenerContainer#setPauseException(Class)
-	 */
-	public void setPauseException(Class<? extends Exception> pauseException) {
-		this.pauseException = pauseException;
+	public void setRetryTemplate(RetryTemplate retryTemplate) {
+		this.retryTemplate = retryTemplate;
+	}
+
+	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+		this.recoveryCallback = recoveryCallback;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -205,6 +208,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 		if (this.consumerTaskExecutor != null) {
 			instance.setConsumerTaskExecutor(this.consumerTaskExecutor);
+		}
+		if (this.listenerTaskExecutor != null) {
+			instance.setListenerTaskExecutor(this.listenerTaskExecutor);
 		}
 		if (this.errorHandler != null) {
 			instance.setErrorHandler(this.errorHandler);
@@ -233,8 +239,11 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (this.pauseAfter != null) {
 			instance.setPauseAfter(this.pauseAfter);
 		}
-		if (this.pauseException != null) {
-			instance.setPauseException(this.pauseException);
+		if (this.retryTemplate != null) {
+			instance.setRetryTemplate(this.retryTemplate);
+		}
+		if (this.recoveryCallback != null) {
+			instance.setRecoveryCallback(this.recoveryCallback);
 		}
 
 		if (this.deDuplicationStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {

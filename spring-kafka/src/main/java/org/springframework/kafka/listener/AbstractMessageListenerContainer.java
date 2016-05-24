@@ -21,10 +21,13 @@ import java.util.concurrent.Executor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
 /**
@@ -46,32 +49,32 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * The offset commit behavior enumeration.
 	 */
 	public enum AckMode {
+
 		/**
-		 * Call {@link Consumer#commitAsync()} after each record is passed to the listener.
+		 * Commit after each record is processed by the listener.
 		 */
 		RECORD,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} after the results of each poll have been
-		 * passed to the listener.
+		 * Commit whatever has already been processed before the next poll.
 		 */
 		BATCH,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} for pending updates after
+		 * Commit pending updates after
 		 * {@link AbstractMessageListenerContainer#setAckTime(long) ackTime} has elapsed.
 		 */
 		TIME,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} for pending updates after
+		 * Commit pending updates after
 		 * {@link AbstractMessageListenerContainer#setAckCount(int) ackCount} has been
 		 * exceeded.
 		 */
 		COUNT,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} for pending updates after
+		 * Commit pending updates after
 		 * {@link AbstractMessageListenerContainer#setAckCount(int) ackCount} has been
 		 * exceeded or after {@link AbstractMessageListenerContainer#setAckTime(long)
 		 * ackTime} has elapsed.
@@ -117,7 +120,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private Executor consumerTaskExecutor;
 
-	private AsyncListenableTaskExecutor listenerTaskExecutor;
+	private Executor listenerTaskExecutor;
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
@@ -125,8 +128,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private boolean pauseEnabled = true;
 
-	private Class<? extends Exception> pauseException;
+	private RetryTemplate retryTemplate;
 
+	private RecoveryCallback<Void> recoveryCallback;
+
+	private int queueDepth;
 
 	@Override
 	public void setBeanName(String name) {
@@ -250,6 +256,123 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.autoStartup = autoStartup;
 	}
 
+	public ErrorHandler getErrorHandler() {
+		return this.errorHandler;
+	}
+
+	public void setErrorHandler(ErrorHandler errorHandler) {
+		this.errorHandler = errorHandler;
+	}
+
+	protected Executor getConsumerTaskExecutor() {
+		return this.consumerTaskExecutor;
+	}
+
+	/**
+	 * Set the executor for threads that poll the consumer.
+	 * @param consumerTaskExecutor the executor
+	 */
+	public void setConsumerTaskExecutor(Executor consumerTaskExecutor) {
+		this.consumerTaskExecutor = consumerTaskExecutor;
+	}
+
+	protected Executor getListenerTaskExecutor() {
+		return this.listenerTaskExecutor;
+	}
+
+	/**
+	 * Set the executor for threads that invoke the listener.
+	 * @param listenerTaskExecutor the executor.
+	 */
+	public void setListenerTaskExecutor(Executor listenerTaskExecutor) {
+		this.listenerTaskExecutor = listenerTaskExecutor;
+	}
+
+	protected long getPauseAfter() {
+		return this.pauseAfter;
+	}
+
+	/**
+	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
+	 * true, the delay after which the consumer should be paused. Default 10000.
+	 * @param pauseAfter the delay.
+	 */
+	public void setPauseAfter(long pauseAfter) {
+		this.pauseAfter = pauseAfter;
+	}
+
+	protected boolean isPauseEnabled() {
+		return this.pauseEnabled;
+	}
+
+	/**
+	 * Set to true to avoid rebalancing when this consumer is slow or throws a
+	 * qualifying exception - pause the consumer.
+	 * Default: true.
+	 * @param pauseEnabled true to pause.
+	 * @see #setPauseAfter(long)
+	 */
+	public void setPauseEnabled(boolean pauseEnabled) {
+		this.pauseEnabled = pauseEnabled;
+	}
+
+	protected RetryTemplate getRetryTemplate() {
+		return this.retryTemplate;
+	}
+
+	/**
+	 * Set a retry template to retry deliveries.
+	 * @param retryTemplate the retry template.
+	 */
+	public void setRetryTemplate(RetryTemplate retryTemplate) {
+		this.retryTemplate = retryTemplate;
+	}
+
+	protected RecoveryCallback<Void> getRecoveryCallback() {
+		return this.recoveryCallback != null ? this.recoveryCallback :
+			new RecoveryCallback<Void>() {
+
+				@Override
+				public Void recover(RetryContext context) throws Exception {
+					@SuppressWarnings("unchecked")
+					ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) context.getAttribute("record");
+					Throwable lastThrowable = context.getLastThrowable();
+					if (getErrorHandler() != null && lastThrowable instanceof Exception) {
+						getErrorHandler().handle((Exception) lastThrowable, record);
+					}
+					else {
+						AbstractMessageListenerContainer.this.logger
+							.error("Listener threw an exception and no error handler for " + record, lastThrowable);
+					}
+					return null;
+				}
+
+			};
+	}
+
+	/**
+	 * Set a recovery callback to be invoked when retries are exhausted. By
+	 * default the error handler is invoked.
+	 * @param recoveryCallback the recovery callback.
+	 */
+	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+		this.recoveryCallback = recoveryCallback;
+	}
+
+
+	protected int getQueueDepth() {
+		return this.queueDepth > 0 ? this.queueDepth : 1;
+	}
+
+	/**
+	 * Set the queue depth for handoffs from the consumer thread to the listener thread.
+	 * Default 2.
+	 * @param queueDepth the queue depth.
+	 */
+	public void setQueueDepth(int queueDepth) {
+		this.queueDepth = queueDepth;
+	}
+
 	@Override
 	public final void start() {
 		synchronized (this.lifecycleMonitor) {
@@ -292,80 +415,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Override
 	public int getPhase() {
 		return this.phase;
-	}
-
-	public ErrorHandler getErrorHandler() {
-		return this.errorHandler;
-	}
-
-	public void setErrorHandler(ErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
-	protected Executor getConsumerTaskExecutor() {
-		return this.consumerTaskExecutor;
-	}
-
-	/**
-	 * Set the executor for threads that invoke the listener.
-	 * @param consumerTaskExecutor the executor
-	 */
-	public void setConsumerTaskExecutor(Executor consumerTaskExecutor) {
-		this.consumerTaskExecutor = consumerTaskExecutor;
-	}
-
-	protected AsyncListenableTaskExecutor getListenerTaskExecutor() {
-		return this.listenerTaskExecutor;
-	}
-
-	/**
-	 * Set the executor for threads that poll the consmer.
-	 * @param listenerTaskExecutor the executor.
-	 */
-	public void setListenerTaskExecutor(AsyncListenableTaskExecutor listenerTaskExecutor) {
-		this.listenerTaskExecutor = listenerTaskExecutor;
-	}
-
-	protected long getPauseAfter() {
-		return this.pauseAfter;
-	}
-
-	/**
-	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
-	 * true, the delay after which the consumer should be paused. Default 10000.
-	 * @param pauseAfter the delay.
-	 */
-	public void setPauseAfter(long pauseAfter) {
-		this.pauseAfter = pauseAfter;
-	}
-
-	protected boolean isPauseEnabled() {
-		return this.pauseEnabled;
-	}
-
-	/**
-	 * Set to true to avoid rebalancing when this consumer is slow or throws a
-	 * qualifying exception - pause the consumer.
-	 * Default: true.
-	 * @param pauseEnabled true to pause.
-	 * @see #setPauseAfter(long)
-	 */
-	public void setPauseEnabled(boolean pauseEnabled) {
-		this.pauseEnabled = pauseEnabled;
-	}
-
-	protected Class<? extends Exception> getPauseException() {
-		return this.pauseException;
-	}
-
-	/**
-	 * When {@link #setPauseEnabled(boolean)} is true, if the listener throws an exception
-	 * to which this class is assignable, pause the consumer. The delivery will be retried
-	 * until successful or some other exception is thrown.
-	 * @param pauseException the exception.
-	 */
-	public void setPauseException(Class<? extends Exception> pauseException) {
-		this.pauseException = pauseException;
 	}
 
 }

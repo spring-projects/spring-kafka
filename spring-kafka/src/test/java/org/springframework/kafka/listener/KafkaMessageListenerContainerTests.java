@@ -23,6 +23,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -48,6 +49,9 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.retry.backoff.FixedBackOffPolicy;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+import org.springframework.retry.support.RetryTemplate;
 
 /**
  * Tests for the listener container.
@@ -77,17 +81,18 @@ public class KafkaMessageListenerContainerTests {
 	public void testSlowListener() throws Exception {
 		logger.info("Start " + this.testName.getMethodName());
 		Map<String, Object> props = KafkaTestUtils.consumerProps("slow1", "true", embeddedKafka);
+//		props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, 6); // 2 per poll
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, topic1);
-		final CountDownLatch latch = new CountDownLatch(4);
-		final BitSet bitSet = new BitSet(4);
+		final CountDownLatch latch = new CountDownLatch(6);
+		final BitSet bitSet = new BitSet(6);
 		container.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
 				logger.info("slow1: " + message);
-				bitSet.set((int) (message.partition() * 2 + message.offset()));
+				bitSet.set((int) (message.partition() * 3 + message.offset()));
 				try {
 					Thread.sleep(1000);
 				}
@@ -113,8 +118,12 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(0, "baz");
 		template.sendDefault(2, "qux");
 		template.flush();
+		Thread.sleep(300);
+		template.sendDefault(0, "fiz");
+		template.sendDefault(2, "buz");
+		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(bitSet.cardinality()).isEqualTo(4);
+		assertThat(bitSet.cardinality()).isEqualTo(6);
 		verify(consumer, atLeastOnce()).pause(any(TopicPartition.class), any(TopicPartition.class));
 		verify(consumer, atLeastOnce()).resume(any(TopicPartition.class), any(TopicPartition.class));
 		container.stop();
@@ -134,14 +143,14 @@ public class KafkaMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, topic);
-		final CountDownLatch latch = new CountDownLatch(4);
+		final CountDownLatch latch = new CountDownLatch(6);
 		final BitSet bitSet = new BitSet(4);
 		container.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message, Acknowledgment ack) {
 				logger.info("slow2: " + message);
-				bitSet.set((int) (message.partition() * 2 + message.offset()));
+				bitSet.set((int) (message.partition() * 3 + message.offset()));
 				try {
 					Thread.sleep(1000);
 				}
@@ -169,8 +178,12 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(0, "baz");
 		template.sendDefault(2, "qux");
 		template.flush();
+		Thread.sleep(300);
+		template.sendDefault(0, "fiz");
+		template.sendDefault(2, "buz");
+		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(bitSet.cardinality()).isEqualTo(4);
+		assertThat(bitSet.cardinality()).isEqualTo(6);
 		verify(consumer, atLeastOnce()).pause(any(TopicPartition.class), any(TopicPartition.class));
 		verify(consumer, atLeastOnce()).resume(any(TopicPartition.class), any(TopicPartition.class));
 		container.stop();
@@ -184,15 +197,15 @@ public class KafkaMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, topic3);
-		final CountDownLatch latch = new CountDownLatch(12);
-		final BitSet bitSet = new BitSet(4);
+		final CountDownLatch latch = new CountDownLatch(18);
+		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
 		container.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
 				logger.info("slow3: " + message);
-				bitSet.set((int) (message.partition() * 2 + message.offset()));
+				bitSet.set((int) (message.partition() * 3 + message.offset()));
 				String key = message.topic() + message.partition() + message.offset();
 				if (faults.get(key) == null) {
 					faults.put(key, new AtomicInteger(1));
@@ -200,14 +213,15 @@ public class KafkaMessageListenerContainerTests {
 				else {
 					faults.get(key).incrementAndGet();
 				}
-				latch.countDown(); // 3 per = 12
+				latch.countDown(); // 3 per = 18
 				if (faults.get(key).get() < 3) { // succeed on the third attempt
 					throw new FooEx();
 				}
 			}
 
 		});
-		container.setPauseException(FooEx.class);
+		addRetry(container);
+		container.setPauseAfter(100);
 		container.setBeanName("testSlow3");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -222,8 +236,12 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(0, "baz");
 		template.sendDefault(2, "qux");
 		template.flush();
+		Thread.sleep(300);
+		template.sendDefault(0, "fiz");
+		template.sendDefault(2, "buz");
+		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(bitSet.cardinality()).isEqualTo(4);
+		assertThat(bitSet.cardinality()).isEqualTo(6);
 		verify(consumer, atLeastOnce()).pause(any(TopicPartition.class), any(TopicPartition.class));
 		verify(consumer, atLeastOnce()).resume(any(TopicPartition.class), any(TopicPartition.class));
 		container.stop();
@@ -237,15 +255,15 @@ public class KafkaMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, topic4);
-		final CountDownLatch latch = new CountDownLatch(12);
-		final BitSet bitSet = new BitSet(4);
+		final CountDownLatch latch = new CountDownLatch(18);
+		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
 		container.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
 				logger.info("slow4: " + message);
-				bitSet.set((int) (message.partition() * 2 + message.offset()));
+				bitSet.set((int) (message.partition() * 4 + message.offset()));
 				String key = message.topic() + message.partition() + message.offset();
 				if (faults.get(key) == null) {
 					faults.put(key, new AtomicInteger(1));
@@ -253,7 +271,7 @@ public class KafkaMessageListenerContainerTests {
 				else {
 					faults.get(key).incrementAndGet();
 				}
-				latch.countDown(); // 3 per = 12
+				latch.countDown(); // 3 per = 18
 				if (faults.get(key).get() == 1) {
 					try {
 						Thread.sleep(1000);
@@ -268,7 +286,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		});
-		container.setPauseException(FooEx.class);
+		addRetry(container);
 		container.setPauseAfter(100);
 		container.setBeanName("testSlow4");
 		container.start();
@@ -284,12 +302,26 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(0, "baz");
 		template.sendDefault(2, "qux");
 		template.flush();
+		Thread.sleep(300);
+		template.sendDefault(0, "fiz");
+		template.sendDefault(2, "buz");
+		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(bitSet.cardinality()).isEqualTo(4);
+		assertThat(bitSet.cardinality()).isEqualTo(6);
 		verify(consumer, atLeastOnce()).pause(any(TopicPartition.class), any(TopicPartition.class));
 		verify(consumer, atLeastOnce()).resume(any(TopicPartition.class), any(TopicPartition.class));
 		container.stop();
 		logger.info("Stop " + this.testName.getMethodName());
+	}
+
+	private void addRetry(KafkaMessageListenerContainer<Integer, String> container) {
+		SimpleRetryPolicy policy = new SimpleRetryPolicy(3, Collections.singletonMap(FooEx.class, true));
+		RetryTemplate retryTemplate = new RetryTemplate();
+		retryTemplate.setRetryPolicy(policy);
+		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
+		backOffPolicy.setBackOffPeriod(1000);
+		retryTemplate.setBackOffPolicy(backOffPolicy);
+		container.setRetryTemplate(retryTemplate);
 	}
 
 	@SuppressWarnings("rawtypes")
