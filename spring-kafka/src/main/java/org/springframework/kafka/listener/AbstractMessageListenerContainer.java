@@ -25,9 +25,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor;
 import org.springframework.util.Assert;
 
 /**
@@ -37,13 +39,14 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Marius Bogoevici
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements MessageListenerContainer, BeanNameAware, SmartLifecycle {
 
 	private static final int DEFAULT_PAUSE_AFTER = 10000;
 
-	protected final Log logger = LogFactory.getLog(this.getClass()); //NOSONAR
+	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
 
 	/**
 	 * The offset commit behavior enumeration.
@@ -118,9 +121,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean running = false;
 
-	private Executor consumerTaskExecutor;
+	private AsyncTaskExecutor consumerTaskExecutor;
 
-	private Executor listenerTaskExecutor;
+	private AsyncTaskExecutor listenerTaskExecutor;
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
@@ -133,6 +136,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	private RecoveryCallback<Void> recoveryCallback;
 
 	private int queueDepth;
+
+	private long shutdownTimeout = 10000;
 
 	@Override
 	public void setBeanName(String name) {
@@ -166,14 +171,13 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * The ack mode to use when auto ack (in the configuration properties) is
-	 * false.
+	 * The ack mode to use when auto ack (in the configuration properties) is false.
 	 * <ul>
 	 * <li>RECORD: Ack after each record has been passed to the listener.</li>
-	 * <li>BATCH: Ack after each batch of records received from the consumer has
-	 * been passed to the listener</li>
-	 * <li>TIME: Ack after this number of milliseconds;
-	 * (should be greater than {@code #setPollTimeout(long) pollTimeout}.</li>
+	 * <li>BATCH: Ack after each batch of records received from the consumer has been
+	 * passed to the listener</li>
+	 * <li>TIME: Ack after this number of milliseconds; (should be greater than
+	 * {@code #setPollTimeout(long) pollTimeout}.</li>
 	 * <li>COUNT: Ack after at least this number of records have been received</li>
 	 * <li>MANUAL: Listener is responsible for acking - use a
 	 * {@link AcknowledgingMessageListener}.
@@ -229,9 +233,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * Set the time (ms) after which outstanding offsets should be committed
-	 * when {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should
-	 * be larger than
+	 * Set the time (ms) after which outstanding offsets should be committed when
+	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be larger
+	 * than
 	 * @param millis the time
 	 */
 	public void setAckTime(long millis) {
@@ -264,28 +268,40 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.errorHandler = errorHandler;
 	}
 
-	protected Executor getConsumerTaskExecutor() {
+	protected AsyncTaskExecutor getConsumerTaskExecutor() {
 		return this.consumerTaskExecutor;
 	}
 
 	/**
-	 * Set the executor for threads that poll the consumer.
+	 * Set the executor for threads that poll the consumer. If the instance set is not a
+	 * {@link AsyncTaskExecutor} it will be wrapped into one.
 	 * @param consumerTaskExecutor the executor
 	 */
 	public void setConsumerTaskExecutor(Executor consumerTaskExecutor) {
-		this.consumerTaskExecutor = consumerTaskExecutor;
+		if (consumerTaskExecutor instanceof AsyncTaskExecutor) {
+			this.consumerTaskExecutor = (AsyncTaskExecutor) consumerTaskExecutor;
+		}
+		else {
+			this.consumerTaskExecutor = new ConcurrentTaskExecutor(consumerTaskExecutor);
+		}
 	}
 
-	protected Executor getListenerTaskExecutor() {
+	protected AsyncTaskExecutor getListenerTaskExecutor() {
 		return this.listenerTaskExecutor;
 	}
 
 	/**
-	 * Set the executor for threads that invoke the listener.
+	 * Set the executor for threads that invoke the listener. If the instance set is not a
+	 * {@link AsyncTaskExecutor} it will be wrapped into one.
 	 * @param listenerTaskExecutor the executor.
 	 */
 	public void setListenerTaskExecutor(Executor listenerTaskExecutor) {
-		this.listenerTaskExecutor = listenerTaskExecutor;
+		if (listenerTaskExecutor instanceof AsyncTaskExecutor) {
+			this.listenerTaskExecutor = (AsyncTaskExecutor) listenerTaskExecutor;
+		}
+		else {
+			this.listenerTaskExecutor = new ConcurrentTaskExecutor(listenerTaskExecutor);
+		}
 	}
 
 	protected long getPauseAfter() {
@@ -293,8 +309,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
-	 * true, the delay after which the consumer should be paused. Default 10000.
+	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is true,
+	 * the delay after which the consumer should be paused. Default 10000.
 	 * @param pauseAfter the delay.
 	 */
 	public void setPauseAfter(long pauseAfter) {
@@ -306,9 +322,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * Set to true to avoid rebalancing when this consumer is slow or throws a
-	 * qualifying exception - pause the consumer.
-	 * Default: true.
+	 * Set to true to avoid rebalancing when this consumer is slow or throws a qualifying
+	 * exception - pause the consumer. Default: true.
 	 * @param pauseEnabled true to pause.
 	 * @see #setPauseAfter(long)
 	 */
@@ -329,36 +344,33 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	protected RecoveryCallback<Void> getRecoveryCallback() {
-		return this.recoveryCallback != null ? this.recoveryCallback :
-			new RecoveryCallback<Void>() {
+		return this.recoveryCallback != null ? this.recoveryCallback : new RecoveryCallback<Void>() {
 
-				@Override
-				public Void recover(RetryContext context) throws Exception {
-					@SuppressWarnings("unchecked")
-					ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) context.getAttribute("record");
-					Throwable lastThrowable = context.getLastThrowable();
-					if (getErrorHandler() != null && lastThrowable instanceof Exception) {
-						getErrorHandler().handle((Exception) lastThrowable, record);
-					}
-					else {
-						AbstractMessageListenerContainer.this.logger
-							.error("Listener threw an exception and no error handler for " + record, lastThrowable);
-					}
-					return null;
+			@Override
+			public Void recover(RetryContext context) throws Exception {
+				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) context.getAttribute("record");
+				Throwable lastThrowable = context.getLastThrowable();
+				if (getErrorHandler() != null && lastThrowable instanceof Exception) {
+					getErrorHandler().handle((Exception) lastThrowable, record);
 				}
+				else {
+					AbstractMessageListenerContainer.this.logger
+							.error("Listener threw an exception and no error handler for " + record, lastThrowable);
+				}
+				return null;
+			}
 
-			};
+		};
 	}
 
 	/**
-	 * Set a recovery callback to be invoked when retries are exhausted. By
-	 * default the error handler is invoked.
+	 * Set a recovery callback to be invoked when retries are exhausted. By default the
+	 * error handler is invoked.
 	 * @param recoveryCallback the recovery callback.
 	 */
 	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
 	}
-
 
 	protected int getQueueDepth() {
 		return this.queueDepth > 0 ? this.queueDepth : 1;
@@ -371,6 +383,19 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	public void setQueueDepth(int queueDepth) {
 		this.queueDepth = queueDepth;
+	}
+
+	public long getShutdownTimeout() {
+		return this.shutdownTimeout;
+	}
+
+	/**
+	 * Set the timeout for shutting down the container. This is the maximum amount of time
+	 * that the invocation to {@link #stop(Runnable)} will block for, before returning.
+	 * @param shutdownTimeout the shutdown timeout.
+	 */
+	public void setShutdownTimeout(long shutdownTimeout) {
+		this.shutdownTimeout = shutdownTimeout;
 	}
 
 	@Override

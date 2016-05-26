@@ -28,8 +28,11 @@ import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
@@ -53,6 +56,7 @@ import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Single-threaded Message listener container using the Java {@link Consumer} supporting
@@ -65,6 +69,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Murali Reddy
+ * @author Marius Bogoevici
  */
 public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -79,6 +84,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	private final ConsumerRebalanceListener consumerRebalanceListener;
 
 	private ListenerConsumer listenerConsumer;
+
+	private Future<?> listenerConsumerFuture;
 
 	private long recentOffset;
 
@@ -254,18 +261,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				logger.info("partitions revoked:" + partitions);
+				KafkaMessageListenerContainer.this.logger.info("partitions revoked:" + partitions);
 			}
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				logger.info("partitions assigned:" + partitions);
+				KafkaMessageListenerContainer.this.logger.info("partitions assigned:" + partitions);
 			}
 
 		};
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	protected void doStart() {
 		if (isRunning()) {
@@ -296,7 +302,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener,
 				this.recentOffset);
-		getConsumerTaskExecutor().execute(this.listenerConsumer);
+		this.listenerConsumerFuture = getConsumerTaskExecutor().submit(this.listenerConsumer);
 	}
 
 	@Override
@@ -304,9 +310,24 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		if (isRunning()) {
 			setRunning(false);
 			this.listenerConsumer.consumer.wakeup();
+			try {
+				this.listenerConsumerFuture.get(getShutdownTimeout(), TimeUnit.MILLISECONDS);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			catch (ExecutionException e) {
+				this.logger.error("Exception thrown while shutting down the listener consumer:", e);
+			}
+			catch (TimeoutException e) {
+				this.logger.error("The listener consumer timed out while shutting down and will be canceled.");
+				this.listenerConsumerFuture.cancel(true);
+			}
+			finally {
+				this.listenerConsumerFuture = null;
+			}
 		}
 	}
-
 
 	private class ListenerConsumer implements SchedulingAwareRunnable {
 
@@ -363,7 +384,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private int count;
 
+		private volatile ListenerInvoker invoker;
+
 		private long last;
+
+		private volatile Future<?> listenerInvokerFuture;
 
 		/**
 		 * The consumer is currently paused due to a slow listener. The consumer will be
@@ -382,12 +407,23 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 				@Override
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+					// do not stop the invoker if it is not started yet
+					// this will occur on the initial start on a subscription
+					if (ListenerConsumer.this.listenerInvokerFuture != null) {
+						stopInvokerAndCommitManualAcks();
+						ListenerConsumer.this.recordsToProcess.clear();
+					}
+					else {
+						Assert.isTrue(CollectionUtils.isEmpty(partitions), "Invalid state: the invoker was not active, "
+								+ " but the consumer had allocated partitions");
+					}
 					KafkaMessageListenerContainer.this.consumerRebalanceListener.onPartitionsRevoked(partitions);
 				}
 
 				@Override
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					ListenerConsumer.this.assignedPartitions = partitions;
+					startInvoker();
 					KafkaMessageListenerContainer.this.consumerRebalanceListener.onPartitionsAssigned(partitions);
 				}
 
@@ -412,6 +448,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.recentOffset = recentOffset;
 		}
 
+		private void startInvoker() {
+			ListenerConsumer.this.invoker = new ListenerInvoker();
+			ListenerConsumer.this.listenerInvokerFuture = getListenerTaskExecutor()
+					.submit(ListenerConsumer.this.invoker);
+		}
+
 		@Override
 		public boolean isLongLived() {
 			return true;
@@ -423,9 +465,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.last = System.currentTimeMillis();
 			if (isRunning() && this.definedPartitions != null) {
 				initPartitionsIfNeeded();
+				// we start the invoker here as there will be no rebalance calls to
+				// trigger it
+				startInvoker();
 			}
-			ListenerInvoker invoker = new ListenerInvoker();
-			getListenerTaskExecutor().execute(invoker);
 			ConsumerRecords<K, V> unsent = null;
 			while (isRunning()) {
 				try {
@@ -465,8 +508,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 			}
-			if (this.offsets.size() > 0) {
-				commitIfNecessary();
+			if (this.listenerInvokerFuture != null) {
+				stopInvokerAndCommitManualAcks();
 			}
 			try {
 				this.consumer.unsubscribe();
@@ -478,6 +521,33 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (this.logger.isInfoEnabled()) {
 				this.logger.info("Consumer stopped");
 			}
+		}
+
+		private void stopInvokerAndCommitManualAcks() {
+			this.invoker.stop();
+			try {
+				this.listenerInvokerFuture.get(getShutdownTimeout(), TimeUnit.MILLISECONDS);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			catch (ExecutionException e) {
+				this.logger.error("Error while shutting down the listener invoker:", e);
+			}
+			catch (TimeoutException e) {
+				this.logger.error("Invoker timed out while shutting down and will be canceled.");
+				this.listenerInvokerFuture.cancel(true);
+			}
+			finally {
+				this.listenerInvokerFuture = null;
+			}
+			// handle the last manual acks, after the listeners have closed
+			handleManualAcks();
+			if (this.offsets.size() > 0) {
+				// we always commit after stoping the invoker
+				commitIfNecessary();
+			}
+			this.invoker = null;
 		}
 
 		private ConsumerRecords<K, V> checkPause(ConsumerRecords<K, V> unsent) {
@@ -501,7 +571,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private boolean sendToListener(final ConsumerRecords<K, V> records) throws InterruptedException {
-			if (this.pauseEnabled) {
+			if (isPauseEnabled() && CollectionUtils.isEmpty(this.definedPartitions)) {
 				return !this.recordsToProcess.offer(records, this.pauseAfter, TimeUnit.MILLISECONDS);
 			}
 			else {
@@ -725,9 +795,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final class ListenerInvoker implements SchedulingAwareRunnable {
 
+			private volatile boolean active = true;
+
 			@Override
 			public void run() {
-				while (isRunning()) {
+				while (this.active) {
 					try {
 						ConsumerRecords<K, V> records = ListenerConsumer.this.recordsToProcess.poll(1, TimeUnit.SECONDS);
 						if (records != null) {
@@ -758,6 +830,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				return true;
 			}
 
+			private void stop() {
+				this.active = false;
+			}
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {
