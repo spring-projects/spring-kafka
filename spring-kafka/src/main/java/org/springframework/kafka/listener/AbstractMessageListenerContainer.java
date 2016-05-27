@@ -348,6 +348,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 			@Override
 			public Void recover(RetryContext context) throws Exception {
+				@SuppressWarnings("unchecked")
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) context.getAttribute("record");
 				Throwable lastThrowable = context.getLastThrowable();
 				if (getErrorHandler() != null && lastThrowable instanceof Exception) {

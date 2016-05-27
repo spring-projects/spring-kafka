@@ -273,6 +273,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	protected void doStart() {
 		if (isRunning()) {
 			return;
@@ -409,13 +410,27 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 					// do not stop the invoker if it is not started yet
 					// this will occur on the initial start on a subscription
-					if (ListenerConsumer.this.listenerInvokerFuture != null) {
-						stopInvokerAndCommitManualAcks();
-						ListenerConsumer.this.recordsToProcess.clear();
+					if (!ListenerConsumer.this.autoCommit) {
+						if (ListenerConsumer.this.logger.isTraceEnabled()) {
+							ListenerConsumer.this.logger
+									.trace("Received partition revocation notification, and will stop the invoker.");
+						}
+						if (ListenerConsumer.this.listenerInvokerFuture != null) {
+							stopInvokerAndCommitManualAcks();
+							ListenerConsumer.this.recordsToProcess.clear();
+						}
+						else {
+							ListenerConsumer.this.logger
+									.error("Invalid state: the invoker was not active, but the consumer had allocated "
+											+ "partitions");
+						}
 					}
 					else {
-						Assert.isTrue(CollectionUtils.isEmpty(partitions), "Invalid state: the invoker was not active, "
-								+ " but the consumer had allocated partitions");
+						if (ListenerConsumer.this.logger.isTraceEnabled()) {
+							ListenerConsumer.this.logger
+									.trace("Received partition revocation notification, but the container is in "
+											+ "autocommit mode, so transition will be handled by the consumer");
+						}
 					}
 					KafkaMessageListenerContainer.this.consumerRebalanceListener.onPartitionsRevoked(partitions);
 				}
@@ -423,7 +438,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				@Override
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					ListenerConsumer.this.assignedPartitions = partitions;
-					startInvoker();
+					if (!ListenerConsumer.this.autoCommit) {
+						if (ListenerConsumer.this.logger.isTraceEnabled()) {
+							ListenerConsumer.this.logger
+									.trace("Received partition assignment notification, but the container is in "
+											+ "autocommit mode, so transition will be handled by the consumer");
+						}
+						startInvoker();
+					}
 					KafkaMessageListenerContainer.this.consumerRebalanceListener.onPartitionsAssigned(partitions);
 				}
 
@@ -466,8 +488,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (isRunning() && this.definedPartitions != null) {
 				initPartitionsIfNeeded();
 				// we start the invoker here as there will be no rebalance calls to
-				// trigger it
-				startInvoker();
+				// trigger it, but only if the container is not set to autocommit
+				// otherwise we will process records on a separate thread
+				if (!this.autoCommit) {
+					startInvoker();
+				}
 			}
 			ConsumerRecords<K, V> unsent = null;
 			while (isRunning()) {
@@ -481,13 +506,22 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 					if (records != null && records.count() > 0) {
 						handleManualAcks();
-						if (sendToListener(records)) {
-							if (this.assignedPartitions != null) {
-								// avoid group management rebalance due to a slow consumer
-								this.consumer.pause(this.assignedPartitions
-										.toArray(new TopicPartition[this.assignedPartitions.size()]));
-								this.paused = true;
-								unsent = records;
+						// if the container is set to auto-commit, then execute in the
+						// same thread
+						// otherwise send to the buffering queue
+						if (this.autoCommit) {
+							invokeListener(records);
+						}
+						else {
+							if (sendToListener(records)) {
+								if (this.assignedPartitions != null) {
+									// avoid group management rebalance due to a slow
+									// consumer
+									this.consumer.pause(this.assignedPartitions
+											.toArray(new TopicPartition[this.assignedPartitions.size()]));
+									this.paused = true;
+									unsent = records;
+								}
 							}
 						}
 					}
