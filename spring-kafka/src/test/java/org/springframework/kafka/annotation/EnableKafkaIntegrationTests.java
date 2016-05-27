@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +35,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -188,6 +190,18 @@ public class EnableKafkaIntegrationTests {
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
 	public static class Config {
+
+		@Bean
+		public static PropertyPlaceholderConfigurer ppc() {
+			PropertyPlaceholderConfigurer configurer = new PropertyPlaceholderConfigurer();
+			Properties properties = new Properties();
+			properties.setProperty("zero", "0");
+			properties.setProperty("topicOne", "annotated1");
+			properties.setProperty("topicTwo", "annotated2");
+			properties.setProperty("topicThree", "annotated3");
+			configurer.setProperties(properties);
+			return configurer;
+		}
 
 		@Bean
 		public PlatformTransactionManager transactionManager() {
@@ -358,12 +372,12 @@ public class EnableKafkaIntegrationTests {
 		public void manualStart(String foo) {
 		}
 
-		@KafkaListener(id = "foo", topics = "annotated1")
+		@KafkaListener(id = "foo", topics = "${topicOne}")
 		public void listen1(String foo) {
 			this.latch1.countDown();
 		}
 
-		@KafkaListener(id = "bar", topicPattern = "annotated2")
+		@KafkaListener(id = "bar", topicPattern = "${topicTwo}")
 		public void listen2(@Payload String foo,
 				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
@@ -374,7 +388,7 @@ public class EnableKafkaIntegrationTests {
 			this.latch2.countDown();
 		}
 
-		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "annotated3", partitions = "0"))
+		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "${topicThree}", partitions = "${zero}"))
 		public void listen3(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch3.countDown();
