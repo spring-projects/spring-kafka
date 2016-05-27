@@ -395,7 +395,9 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "fiz", topicPartitions = {
-				@TopicPartition(topic = "annotated5", partitions = { "0", "1" }),
+				@TopicPartition(topic = "annotated5",
+					partitions = {
+						"#{T(org.springframework.util.StringUtils).commaDelimitedListToStringArray('${foo:0,1}')}" }),
 				@TopicPartition(topic = "annotated6", partitions = { "0", "1" })
 		})
 		public void listen5(ConsumerRecord<?, ?> record) {
