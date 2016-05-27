@@ -438,12 +438,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				@Override
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					ListenerConsumer.this.assignedPartitions = partitions;
-					if (!ListenerConsumer.this.autoCommit) {
-						if (ListenerConsumer.this.logger.isTraceEnabled()) {
-							ListenerConsumer.this.logger
-									.trace("Received partition assignment notification, but the container is in "
-											+ "autocommit mode, so transition will be handled by the consumer");
-						}
+					// We will not start the invoker thread if we are in autocommit mode,
+					// as we will execute
+					// synchronously then
+					// We will not start the invoker thread if the container is stopped
+					// We will not start the invoker thread if there are no partitions to
+					// listen to
+					if (!ListenerConsumer.this.autoCommit && KafkaMessageListenerContainer.this.isRunning()
+							&& !CollectionUtils.isEmpty(partitions)) {
 						startInvoker();
 					}
 					KafkaMessageListenerContainer.this.consumerRebalanceListener.onPartitionsAssigned(partitions);
