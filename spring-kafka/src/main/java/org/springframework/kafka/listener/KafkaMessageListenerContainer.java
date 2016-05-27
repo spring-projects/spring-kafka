@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -57,6 +58,8 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * Single-threaded Message listener container using the Java {@link Consumer} supporting
@@ -85,7 +88,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private ListenerConsumer listenerConsumer;
 
-	private Future<?> listenerConsumerFuture;
+	private ListenableFuture<?> listenerConsumerFuture;
 
 	private long recentOffset;
 
@@ -303,30 +306,30 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener,
 				this.recentOffset);
-		this.listenerConsumerFuture = getConsumerTaskExecutor().submit(this.listenerConsumer);
+		this.listenerConsumerFuture = getConsumerTaskExecutor().submitListenable(this.listenerConsumer);
 	}
 
 	@Override
-	protected void doStop() {
+	protected void doStop(final Runnable callback) {
 		if (isRunning()) {
+			this.listenerConsumerFuture.addCallback(new ListenableFutureCallback<Object>() {
+				@Override
+				public void onFailure(Throwable e) {
+					KafkaMessageListenerContainer.this.logger.error("Error while stopping the container: ", e);
+					if (callback != null) {
+						callback.run();
+					}
+				}
+
+				@Override
+				public void onSuccess(Object result) {
+					if (callback != null) {
+						callback.run();
+					}
+				}
+			});
 			setRunning(false);
 			this.listenerConsumer.consumer.wakeup();
-			try {
-				this.listenerConsumerFuture.get(getShutdownTimeout(), TimeUnit.MILLISECONDS);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			catch (ExecutionException e) {
-				this.logger.error("Exception thrown while shutting down the listener consumer:", e);
-			}
-			catch (TimeoutException e) {
-				this.logger.error("The listener consumer timed out while shutting down and will be canceled.");
-				this.listenerConsumerFuture.cancel(true);
-			}
-			finally {
-				this.listenerConsumerFuture = null;
-			}
 		}
 	}
 
@@ -561,18 +564,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private void stopInvokerAndCommitManualAcks() {
 			this.invoker.stop();
+			this.listenerInvokerFuture.cancel(true);
 			try {
 				this.listenerInvokerFuture.get(getShutdownTimeout(), TimeUnit.MILLISECONDS);
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
+			catch (CancellationException e) {
+				// do nothing, this is the most typical outcome
+			}
 			catch (ExecutionException e) {
 				this.logger.error("Error while shutting down the listener invoker:", e);
 			}
 			catch (TimeoutException e) {
-				this.logger.error("Invoker timed out while shutting down and will be canceled.");
-				this.listenerInvokerFuture.cancel(true);
+				this.logger.error("Invoker timed out while waiting for shutdown");
 			}
 			finally {
 				this.listenerInvokerFuture = null;
@@ -838,17 +844,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				while (this.active) {
 					try {
 						ConsumerRecords<K, V> records = ListenerConsumer.this.recordsToProcess.poll(1, TimeUnit.SECONDS);
-						if (records != null) {
-							invokeListener(records);
-						}
-						else {
-							if (ListenerConsumer.this.logger.isTraceEnabled()) {
-								ListenerConsumer.this.logger.trace("No records to process");
+						if (this.active) {
+							if (records != null) {
+								invokeListener(records);
+							}
+							else {
+								if (ListenerConsumer.this.logger.isTraceEnabled()) {
+									ListenerConsumer.this.logger.trace("No records to process");
+								}
 							}
 						}
 					}
 					catch (InterruptedException e) {
-						if (!isRunning()) {
+						if (!this.active) {
 							Thread.currentThread().interrupt();
 						}
 						else {

@@ -21,11 +21,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -98,7 +98,7 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic1);
 		final CountDownLatch latch = new CountDownLatch(4);
-		final ConcurrentSkipListSet<String> listenerThreadNames = new ConcurrentSkipListSet<>();
+		final List<String> listenerThreadNames = new ArrayList<>();
 		container.setMessageListener(new MessageListener<Integer, String>() {
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -121,13 +121,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "qux");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(listenerThreadNames).allMatch(new Predicate<String>() {
-
-			@Override
-			public boolean test(String threadName) {
-				return threadName.contains("-consumer-");
-			}
-		});
+		assertThat(listenerThreadNames).allMatch(threadName -> threadName.contains("-consumer-"));
 		container.stop();
 		this.logger.info("Stop auto");
 	}
@@ -140,7 +134,7 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic1);
 		final CountDownLatch latch = new CountDownLatch(4);
-		final ConcurrentSkipListSet<String> listenerThreadNames = new ConcurrentSkipListSet<>();
+		final List<String> listenerThreadNames = new ArrayList<>();
 		container.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
@@ -184,13 +178,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(rebalancePartitionsAssignedLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(rebalancePartitionsRevokedLatch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(listenerThreadNames).allMatch(new Predicate<String>() {
-
-			@Override
-			public boolean test(String threadName) {
-				return threadName.contains("-consumer-");
-			}
-		});
+		assertThat(listenerThreadNames).allMatch(threadName -> threadName.contains("-consumer-"));
 		container.stop();
 		this.logger.info("Stop auto");
 	}
@@ -203,7 +191,7 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic2);
 		final CountDownLatch latch = new CountDownLatch(4);
-		final ConcurrentSkipListSet<String> listenerThreadNames = new ConcurrentSkipListSet<>();
+		final ArrayList<String> listenerThreadNames = new ArrayList<>();
 		container.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override

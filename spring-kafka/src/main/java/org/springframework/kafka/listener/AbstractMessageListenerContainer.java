@@ -16,7 +16,8 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.concurrent.Executor;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,11 +26,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
-import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor;
 import org.springframework.util.Assert;
 
 /**
@@ -121,9 +121,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean running = false;
 
-	private AsyncTaskExecutor consumerTaskExecutor;
+	private AsyncListenableTaskExecutor consumerTaskExecutor;
 
-	private AsyncTaskExecutor listenerTaskExecutor;
+	private AsyncListenableTaskExecutor listenerTaskExecutor;
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
@@ -268,40 +268,28 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.errorHandler = errorHandler;
 	}
 
-	protected AsyncTaskExecutor getConsumerTaskExecutor() {
+	protected AsyncListenableTaskExecutor getConsumerTaskExecutor() {
 		return this.consumerTaskExecutor;
 	}
 
 	/**
-	 * Set the executor for threads that poll the consumer. If the instance set is not a
-	 * {@link AsyncTaskExecutor} it will be wrapped into one.
+	 * Set the executor for threads that poll the consumer.
 	 * @param consumerTaskExecutor the executor
 	 */
-	public void setConsumerTaskExecutor(Executor consumerTaskExecutor) {
-		if (consumerTaskExecutor instanceof AsyncTaskExecutor) {
-			this.consumerTaskExecutor = (AsyncTaskExecutor) consumerTaskExecutor;
-		}
-		else {
-			this.consumerTaskExecutor = new ConcurrentTaskExecutor(consumerTaskExecutor);
-		}
+	public void setConsumerTaskExecutor(AsyncListenableTaskExecutor consumerTaskExecutor) {
+		this.consumerTaskExecutor = consumerTaskExecutor;
 	}
 
-	protected AsyncTaskExecutor getListenerTaskExecutor() {
+	protected AsyncListenableTaskExecutor getListenerTaskExecutor() {
 		return this.listenerTaskExecutor;
 	}
 
 	/**
-	 * Set the executor for threads that invoke the listener. If the instance set is not a
-	 * {@link AsyncTaskExecutor} it will be wrapped into one.
+	 * Set the executor for threads that invoke the listener.
 	 * @param listenerTaskExecutor the executor.
 	 */
-	public void setListenerTaskExecutor(Executor listenerTaskExecutor) {
-		if (listenerTaskExecutor instanceof AsyncTaskExecutor) {
-			this.listenerTaskExecutor = (AsyncTaskExecutor) listenerTaskExecutor;
-		}
-		else {
-			this.listenerTaskExecutor = new ConcurrentTaskExecutor(listenerTaskExecutor);
-		}
+	public void setListenerTaskExecutor(AsyncListenableTaskExecutor listenerTaskExecutor) {
+		this.listenerTaskExecutor = listenerTaskExecutor;
 	}
 
 	protected long getPauseAfter() {
@@ -410,20 +398,28 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public final void stop() {
-		stop(null);
+		final CountDownLatch latch = new CountDownLatch(1);
+		stop(new Runnable() {
+			@Override
+			public void run() {
+				latch.countDown();
+			}
+		});
+		try {
+			latch.await(this.shutdownTimeout, TimeUnit.MILLISECONDS);
+		}
+		catch (InterruptedException e) {
+		}
 	}
 
 	@Override
 	public void stop(Runnable callback) {
 		synchronized (this.lifecycleMonitor) {
-			doStop();
-		}
-		if (callback != null) {
-			callback.run();
+			doStop(callback);
 		}
 	}
 
-	protected abstract void doStop();
+	protected abstract void doStop(Runnable callback);
 
 	protected void setRunning(boolean running) {
 		this.running = running;

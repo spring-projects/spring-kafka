@@ -51,7 +51,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private Integer phase;
 
-	private Executor consumerTaskExecutor;
+	private AsyncListenableTaskExecutor consumerTaskExecutor;
 
 	private AsyncListenableTaskExecutor listenerTaskExecutor;
 
@@ -100,7 +100,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * Kafka.
 	 * @see AbstractKafkaListenerContainerFactory#setConsumerTaskExecutor
 	 */
-	public void setConsumerTaskExecutor(Executor consumerTaskExecutor) {
+	public void setConsumerTaskExecutor(AsyncListenableTaskExecutor consumerTaskExecutor) {
 		this.consumerTaskExecutor = consumerTaskExecutor;
 	}
 
