@@ -213,6 +213,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				container.setRecentOffset(this.recentOffset);
 				container.setAutoStartup(false);
 				container.setMessageListener(getMessageListener());
+                container.setErrorHandler(getErrorHandler());
 				if (getTaskExecutor() != null) {
 					container.setTaskExecutor(getTaskExecutor());
 				}
