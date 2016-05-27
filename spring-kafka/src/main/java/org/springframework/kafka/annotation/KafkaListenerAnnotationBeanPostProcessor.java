@@ -455,7 +455,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		List<org.apache.kafka.common.TopicPartition> result = new ArrayList<>();
 		if (partitions.length > 0) {
 			for (int i = 0; i < partitions.length; i++) {
-				resolvePartitionAsInteger((String) topic, partitions[i], result);
+				resolvePartitionAsInteger((String) topic, resolveExpression(partitions[i]), result);
 			}
 		}
 		return result;
