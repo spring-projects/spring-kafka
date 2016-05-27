@@ -116,6 +116,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
+	private volatile boolean ackOnError = true;
 
 	@Override
 	public void setBeanName(String name) {
@@ -228,6 +229,30 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	public long getAckTime() {
 		return this.ackTime;
+	}
+
+	/**
+	 * Flag that controls whether the container should ack messages that throw exceptions.
+	 * This works in conjunction with {@link #getAckMode()} and is effective only when
+	 * auto ack is false. When this property is set to {@code true}, all messages handled
+	 * will be acked. When set to {@code false}, acks will be produced only for successful
+	 * messages, and allows a component that starts throwing exceptions consistently to
+	 * resume from the last successfully processed message.
+	 * @param ackOnError whether the container should acknowledge messages that throw
+	 * exceptions.
+	 */
+	public void setAckOnError(boolean ackOnError) {
+		this.ackOnError = ackOnError;
+	}
+
+	/**
+	 * Return whether messages are acknowledged when exceptions are thrown by the
+	 * listener.
+	 * @return whether messages are acknowledged when exceptions are thrown by the
+	 * listener.
+	 */
+	public boolean isAckOnError() {
+		return this.ackOnError;
 	}
 
 	@Override

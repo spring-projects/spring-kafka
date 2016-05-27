@@ -399,15 +399,41 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 						while (iterator.hasNext()) {
 							final ConsumerRecord<K, V> record = iterator.next();
-							invokeListener(record);
-							if (!this.autoCommit && this.ackMode.equals(AckMode.RECORD)) {
-								this.consumer.commitAsync(
-										Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-												new OffsetAndMetadata(record.offset() + 1)), this.commitCallback);
+							boolean invocationSuccessful = invokeListener(record);
+							if (!this.autoCommit) {
+								if (this.ackMode.equals(AckMode.RECORD)) {
+									Map<TopicPartition, OffsetAndMetadata> committedOffset = Collections.singletonMap(
+											new TopicPartition(record.topic(), record.partition()),
+											new OffsetAndMetadata(record.offset() + 1));
+									if (invocationSuccessful || isAckOnError()) {
+										if (!this.syncCommits) {
+											this.consumer.commitAsync(committedOffset, this.commitCallback);
+										}
+										else {
+											this.consumer.commitSync(committedOffset);
+										}
+									}
+								}
+								else if (invocationSuccessful || isAckOnError()) {
+									processCommit(this.ackMode, record);
+								}
 							}
 						}
-						if (!this.autoCommit) {
-							processCommits(this.ackMode, records);
+						if (!this.autoCommit && this.ackMode.equals(AckMode.BATCH)) {
+							if (isAckOnError()) {
+								// if we will commit always then can just commit the batch
+								if (!records.isEmpty()) {
+									if (this.syncCommits) {
+										this.consumer.commitSync();
+									}
+									else {
+										this.consumer.commitAsync(this.commitCallback);
+									}
+								}
+							}
+							else {
+								commitIfNecessary();
+							}
 						}
 					}
 					else {
@@ -443,7 +469,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void invokeListener(final ConsumerRecord<K, V> record) {
+		private boolean invokeListener(final ConsumerRecord<K, V> record) {
 			try {
 				if (this.acknowledgingMessageListener != null) {
 					this.acknowledgingMessageListener.onMessage(record, new Acknowledgment() { //NOSONAR - long anon.
@@ -485,7 +511,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 										+ " ack mode, acknowledge() must be invoked on the consumer thread");
 							}
 						}
-
 						@Override
 						public String toString() {
 							return "Acknowledgment for " + record;
@@ -504,26 +529,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				else {
 					this.logger.error("Listener threw an exception and no error handler for " + record, e);
 				}
+				return false;
 			}
+			return true;
 		}
 
-		private void processCommits(final AckMode ackMode, ConsumerRecords<K, V> records) {
-			this.count += records.count();
+		private void processCommit(final AckMode ackMode, ConsumerRecord<K, V> record) {
+			this.count += 1;
 			long now;
-			if (ackMode.equals(AckMode.BATCH)) {
-				if (!records.isEmpty()) {
-					if (this.syncCommits) {
-						this.consumer.commitSync();
-					}
-					else {
-						this.consumer.commitAsync(this.commitCallback);
-					}
-				}
-			}
-			else if (!ackMode.equals(AckMode.MANUAL_IMMEDIATE) && !ackMode.equals(AckMode.MANUAL_IMMEDIATE_SYNC)) {
-				if (!ackMode.equals(AckMode.MANUAL)) {
-					updatePendingOffsets(records);
-				}
+			if (!ackMode.equals(AckMode.MANUAL_IMMEDIATE) && !ackMode.equals(AckMode.MANUAL_IMMEDIATE_SYNC)) {
+				updateOffset(record);
 				boolean countExceeded = this.count >= getAckCount();
 				if (ackMode.equals(AckMode.COUNT) && countExceeded) {
 					commitIfNecessary();
@@ -565,13 +580,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void updatePendingOffsets(ConsumerRecords<K, V> records) {
-			for (ConsumerRecord<K, V> record : records) {
-				if (!this.offsets.containsKey(record.topic())) {
-					this.offsets.put(record.topic(), new HashMap<Integer, Long>());
-				}
-				this.offsets.get(record.topic()).put(record.partition(), record.offset());
+		private void updateOffset(ConsumerRecord<K, V> record) {
+			if (!this.offsets.containsKey(record.topic())) {
+				this.offsets.put(record.topic(), new HashMap<Integer, Long>());
 			}
+			this.offsets.get(record.topic()).put(record.partition(), record.offset());
 		}
 
 		private void updateManualOffset(ConsumerRecord<K, V> record) {
