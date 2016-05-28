@@ -60,6 +60,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Jérôme Mirc
  *
  */
 public class ConcurrentMessageListenerContainerTests {
