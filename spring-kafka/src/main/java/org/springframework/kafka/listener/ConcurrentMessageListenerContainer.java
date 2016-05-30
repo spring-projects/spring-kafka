@@ -43,6 +43,7 @@ import org.springframework.util.Assert;
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Murali Reddy
+ * @author Jerome Mirc
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -213,6 +214,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				container.setRecentOffset(this.recentOffset);
 				container.setAutoStartup(false);
 				container.setMessageListener(getMessageListener());
+				container.setErrorHandler(getErrorHandler());
 				if (getTaskExecutor() != null) {
 					container.setTaskExecutor(getTaskExecutor());
 				}

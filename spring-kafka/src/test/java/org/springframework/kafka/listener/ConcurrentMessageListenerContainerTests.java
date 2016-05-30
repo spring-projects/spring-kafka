@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
@@ -59,6 +60,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Jerome Mirc
  *
  */
 public class ConcurrentMessageListenerContainerTests {
@@ -532,6 +534,7 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic6);
 		final CountDownLatch latch = new CountDownLatch(4);
+		final AtomicBoolean catchError = new AtomicBoolean(false);
 		container.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
@@ -543,6 +546,12 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 		container.setConcurrency(2);
 		container.setBeanName("testException");
+		container.setErrorHandler(new ErrorHandler() {
+			@Override
+			public void handle(Exception thrownException, ConsumerRecord<?, ?> record) {
+				catchError.set(true);
+			}
+		});
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -555,9 +564,9 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "qux");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(catchError.get()).isTrue();
 		container.stop();
 		logger.info("Stop exception");
 
 	}
-
 }
