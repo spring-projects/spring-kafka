@@ -455,7 +455,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		List<org.apache.kafka.common.TopicPartition> result = new ArrayList<>();
 		if (partitions.length > 0) {
 			for (int i = 0; i < partitions.length; i++) {
-				resolvePartitionAsInteger((String) topic, partitions[i], result);
+				resolvePartitionAsInteger((String) topic, resolveExpression(partitions[i]), result);
 			}
 		}
 		return result;
@@ -490,7 +490,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				resolvePartitionAsInteger(topic, object, result);
 			}
 		}
-		if (resolvedValue instanceof String) {
+		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
 					"partition in @TopicPartition for topic '" + topic + "' cannot be empty");
 			result.add(new org.apache.kafka.common.TopicPartition(topic, Integer.valueOf((String) resolvedValue)));

@@ -36,6 +36,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -188,6 +189,11 @@ public class EnableKafkaIntegrationTests {
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
 	public static class Config {
+
+		@Bean
+		public static PropertySourcesPlaceholderConfigurer ppc() {
+			return new PropertySourcesPlaceholderConfigurer();
+		}
 
 		@Bean
 		public PlatformTransactionManager transactionManager() {
@@ -358,12 +364,12 @@ public class EnableKafkaIntegrationTests {
 		public void manualStart(String foo) {
 		}
 
-		@KafkaListener(id = "foo", topics = "annotated1")
+		@KafkaListener(id = "foo", topics = "${topicOne:annotated1}")
 		public void listen1(String foo) {
 			this.latch1.countDown();
 		}
 
-		@KafkaListener(id = "bar", topicPattern = "annotated2")
+		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}")
 		public void listen2(@Payload String foo,
 				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
@@ -374,7 +380,8 @@ public class EnableKafkaIntegrationTests {
 			this.latch2.countDown();
 		}
 
-		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "annotated3", partitions = "0"))
+		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "${topicThree:annotated3}",
+				partitions = "${zero:0}"))
 		public void listen3(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch3.countDown();
@@ -388,7 +395,7 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "fiz", topicPartitions = {
-				@TopicPartition(topic = "annotated5", partitions = { "0", "1" }),
+				@TopicPartition(topic = "annotated5", partitions = { "#{'${foo:0,1}'.split(',')}" }),
 				@TopicPartition(topic = "annotated6", partitions = { "0", "1" })
 		})
 		public void listen5(ConsumerRecord<?, ?> record) {
