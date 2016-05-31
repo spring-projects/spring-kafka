@@ -613,7 +613,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private boolean sendToListener(final ConsumerRecords<K, V> records) throws InterruptedException {
-			if (isPauseEnabled() && CollectionUtils.isEmpty(this.definedPartitions)) {
+			if (this.pauseEnabled && CollectionUtils.isEmpty(this.definedPartitions)) {
 				return !this.recordsToProcess.offer(records, this.pauseAfter, TimeUnit.MILLISECONDS);
 			}
 			else {
