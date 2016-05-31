@@ -17,18 +17,12 @@
 package org.springframework.kafka.config;
 
 
-import java.util.concurrent.Executor;
-
-import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.ContainerProperties;
-import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
 import org.springframework.kafka.support.converter.MessageConverter;
-import org.springframework.retry.RecoveryCallback;
-import org.springframework.retry.support.RetryTemplate;
 
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
@@ -44,35 +38,17 @@ import org.springframework.retry.support.RetryTemplate;
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
 		implements KafkaListenerContainerFactory<C> {
 
-	private ConsumerFactory<K, V> consumerFactory;
+	private final ContainerProperties containerProperties = new ContainerProperties("propertiesFactory");
 
-	private ErrorHandler errorHandler;
+	private ConsumerFactory<K, V> consumerFactory;
 
 	private Boolean autoStartup;
 
 	private Integer phase;
 
-	private AsyncListenableTaskExecutor consumerTaskExecutor;
-
-	private AsyncListenableTaskExecutor listenerTaskExecutor;
-
-	private Integer ackCount;
-
-	private AckMode ackMode;
-
-	private Long pollTimeout;
-
 	private MessageConverter messageConverter;
 
 	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
-
-	private Boolean pauseEnabled;
-
-	private Long pauseAfter;
-
-	private RetryTemplate retryTemplate;
-
-	private RecoveryCallback<Void> recoveryCallback;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -84,35 +60,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	public ConsumerFactory<K, V> getConsumerFactory() {
 		return this.consumerFactory;
-	}
-
-	/**
-	 * Specify an {@link ErrorHandler} to use.
-	 * @param errorHandler The error handler.
-	 * @see ContainerProperties#setErrorHandler(ErrorHandler)
-	 */
-	public void setErrorHandler(ErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
-	/**
-	 * Specify an {@link Executor} to use.
-	 * @param consumerTaskExecutor the {@link Executor} to use to poll
-	 * Kafka.
-	 * @see ContainerProperties#setConsumerTaskExecutor
-	 */
-	public void setConsumerTaskExecutor(AsyncListenableTaskExecutor consumerTaskExecutor) {
-		this.consumerTaskExecutor = consumerTaskExecutor;
-	}
-
-	/**
-	 * Specify an {@link Executor} to use.
-	 * @param listenerTaskExecutor the {@link Executor} to use to invoke
-	 * the listener.
-	 * @see ContainerProperties#setListenerTaskExecutor
-	 */
-	public void setListenerTaskExecutor(AsyncListenableTaskExecutor listenerTaskExecutor) {
-		this.listenerTaskExecutor = listenerTaskExecutor;
 	}
 
 	/**
@@ -134,33 +81,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
-	 * Specify an {@code ackCount} to use.
-	 * @param ackCount the ack count.
-	 * @see ContainerProperties#setAckCount(int)
-	 */
-	public void setAckCount(Integer ackCount) {
-		this.ackCount = ackCount;
-	}
-
-	/**
-	 * Specify an {@link AckMode} to use.
-	 * @param ackMode the ack mode.
-	 * @see ContainerProperties#ackMode
-	 */
-	public void setAckMode(AckMode ackMode) {
-		this.ackMode = ackMode;
-	}
-
-	/**
-	 * Specify a {@code pollTimeout} to use.
-	 * @param pollTimeout the poll timeout
-	 * @see ContainerProperties#setPollTimeout(long)
-	 */
-	public void setPollTimeout(Long pollTimeout) {
-		this.pollTimeout = pollTimeout;
-	}
-
-	/**
 	 * Set the message converter to use if dynamic argument type matching is needed.
 	 * @param messageConverter the converter.
 	 */
@@ -177,29 +97,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
-	 * Set to true to enable pausing the consumer.
-	 * @param pauseEnabled the pauseWhenSlow to set.
-	 * @see ContainerProperties#setPauseEnabled(boolean)
+	 * Obtain the properties template for this factory - set properties as needed
+	 * and they will be copied to a final properties instance for the endpoint.
+	 * @return the properties.
 	 */
-	public void setPauseEnabled(boolean pauseEnabled) {
-		this.pauseEnabled = pauseEnabled;
-	}
-
-	/**
-	 * Set the time after which the consumer should be paused.
-	 * @param pauseAfter the pauseAfter to set.
-	 * @see ContainerProperties#setPauseAfter(long)
-	 */
-	public void setPauseAfter(long pauseAfter) {
-		this.pauseAfter = pauseAfter;
-	}
-
-	public void setRetryTemplate(RetryTemplate retryTemplate) {
-		this.retryTemplate = retryTemplate;
-	}
-
-	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
-		this.recoveryCallback = recoveryCallback;
+	public ContainerProperties getContainerProperties() {
+		return this.containerProperties;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -216,43 +119,11 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (endpoint.getId() != null) {
 			instance.setBeanName(endpoint.getId());
 		}
-		ContainerProperties properties = new ContainerProperties();
-		if (this.consumerTaskExecutor != null) {
-			properties.setConsumerTaskExecutor(this.consumerTaskExecutor);
-		}
-		if (this.listenerTaskExecutor != null) {
-			properties.setListenerTaskExecutor(this.listenerTaskExecutor);
-		}
-		if (this.errorHandler != null) {
-			properties.setErrorHandler(this.errorHandler);
-		}
-		if (this.ackCount != null) {
-			properties.setAckCount(this.ackCount);
-		}
-		if (this.ackMode != null) {
-			properties.setAckMode(this.ackMode);
-		}
-		if (this.pollTimeout != null) {
-			properties.setPollTimeout(this.pollTimeout);
-		}
-		if (this.pauseEnabled != null) {
-			properties.setPauseEnabled(this.pauseEnabled);
-		}
-		if (this.pauseAfter != null) {
-			properties.setPauseAfter(this.pauseAfter);
-		}
-		if (this.retryTemplate != null) {
-			properties.setRetryTemplate(this.retryTemplate);
-		}
-		if (this.recoveryCallback != null) {
-			properties.setRecoveryCallback(this.recoveryCallback);
-		}
 
 		if (this.deDuplicationStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {
 			((AbstractKafkaListenerEndpoint<K, V>) endpoint).setDeDuplicationStrategy(this.deDuplicationStrategy);
 		}
 
-		instance.setContainerProperties(properties);
 		endpoint.setupListenerContainer(instance, this.messageConverter);
 		initializeContainer(instance);
 
@@ -273,6 +144,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @param instance the container instance to configure.
 	 */
 	protected void initializeContainer(C instance) {
+		ContainerProperties properties = instance.getContainerProperties();
+		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
+				"messageListener");
 	}
 
 }

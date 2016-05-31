@@ -84,12 +84,11 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("slow1", "false", embeddedKafka);
 //		props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, 6); // 2 per poll
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic1);
 		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, topic1);
+				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(6);
 		final BitSet bitSet = new BitSet(6);
-		ContainerProperties containerProps = new ContainerProperties();
-		container.setContainerProperties(containerProps);
 		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
@@ -143,12 +142,11 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Start " + this.testName.getMethodName() + ackMode);
 		Map<String, Object> props = KafkaTestUtils.consumerProps("slow2", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic);
 		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, topic);
+				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(6);
 		final BitSet bitSet = new BitSet(4);
-		ContainerProperties containerProps = new ContainerProperties();
-		container.setContainerProperties(containerProps);
 		containerProps.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
 
 			@Override
@@ -198,13 +196,12 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Start " + this.testName.getMethodName());
 		Map<String, Object> props = KafkaTestUtils.consumerProps("slow3", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic3);
 		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, topic3);
+				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(18);
 		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
-		ContainerProperties containerProps = new ContainerProperties();
-		container.setContainerProperties(containerProps);
 		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
@@ -257,13 +254,12 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Start " + this.testName.getMethodName());
 		Map<String, Object> props = KafkaTestUtils.consumerProps("slow4", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic4);
 		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, topic4);
+				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(18);
 		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
-		ContainerProperties containerProps = new ContainerProperties();
-		container.setContainerProperties(containerProps);
 		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override

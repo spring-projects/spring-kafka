@@ -16,8 +16,12 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,6 +29,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.SmartLifecycle;
@@ -103,17 +108,25 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	}
 
+	private final ContainerProperties containerProperties;
+
 	private final Object lifecycleMonitor = new Object();
 
 	private String beanName;
-
-	private ContainerProperties containerProperties = new ContainerProperties();
 
 	private boolean autoStartup = true;
 
 	private int phase = 0;
 
 	private volatile boolean running = false;
+
+	protected AbstractMessageListenerContainer(ContainerProperties containerProperties) {
+		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
+		this.containerProperties = containerProperties;
+		if (containerProperties.consumerRebalanceListener == null) {
+			containerProperties.consumerRebalanceListener = createConsumerRebalanceListener();
+		}
+	}
 
 	@Override
 	public void setBeanName(String name) {
@@ -155,11 +168,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.containerProperties;
 	}
 
-	public void setContainerProperties(ContainerProperties containerProperties) {
-		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
-		this.containerProperties = containerProperties;
-	}
-
 	@Override
 	public void setupMessageListener(Object messageListener) {
 		this.containerProperties.messageListener = messageListener;
@@ -168,6 +176,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Override
 	public final void start() {
 		synchronized (this.lifecycleMonitor) {
+			Assert.isTrue(
+					this.containerProperties.messageListener instanceof MessageListener
+							|| this.containerProperties.messageListener instanceof AcknowledgingMessageListener,
+					"Either a " + MessageListener.class.getName() + " or a "
+							+ AcknowledgingMessageListener.class.getName() + " must be provided");
 			if (this.containerProperties.recoveryCallback == null) {
 				this.containerProperties.recoveryCallback = new RecoveryCallback<Void>() {
 
@@ -222,6 +235,26 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	protected abstract void doStop(Runnable callback);
 
 	/**
+	 * Return default implementation of {@link ConsumerRebalanceListener} instance.
+	 * @return the {@link ConsumerRebalanceListener} currently assigned to this container.
+	 */
+	protected final ConsumerRebalanceListener createConsumerRebalanceListener() {
+		return new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				AbstractMessageListenerContainer.this.logger.info("partitions revoked:" + partitions);
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				AbstractMessageListenerContainer.this.logger.info("partitions assigned:" + partitions);
+			}
+
+		};
+	}
+
+	/**
 	 * Contains runtime properties for a listener container.
 	 *
 	 */
@@ -230,6 +263,21 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		private static final int DEFAULT_SHUTDOWN_TIMEOUT = 10000;
 
 		private static final int DEFAULT_QUEUE_DEPTH = 1;
+
+		/**
+		 * Topic names.
+		 */
+		public final String[] topics;
+
+		/**
+		 * Topic pattern.
+		 */
+		public final Pattern topicPattern;
+
+		/**
+		 * Topics/partitions.
+		 */
+		public final TopicPartition[] topicPartitions;
 
 		/**
 		 * The ack mode to use when auto ack (in the configuration properties) is false.
@@ -349,17 +397,33 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		 */
 		public boolean syncCommits = true;
 
+		public ContainerProperties(String... topics) {
+			Assert.notEmpty(topics, "An array of topicPartitions must be provided");
+			this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
+			this.topicPattern = null;
+			this.topicPartitions = null;
+		}
+
+		public ContainerProperties(Pattern topicPattern) {
+			this.topics = null;
+			this.topicPattern = topicPattern;
+			this.topicPartitions = null;
+		}
+
+		public ContainerProperties(TopicPartition... topicPartitions) {
+			this.topics = null;
+			this.topicPattern = null;
+			Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
+			this.topicPartitions = new LinkedHashSet<>(Arrays.asList(topicPartitions))
+					.toArray(new TopicPartition[topicPartitions.length]);
+		}
+
 		/**
 		 * Set the message listener; must be a {@link MessageListener} or
 		 * {@link AcknowledgingMessageListener}.
 		 * @param messageListener the listener.
 		 */
 		public void setMessageListener(Object messageListener) {
-			Assert.isTrue(
-					messageListener instanceof MessageListener
-							|| messageListener instanceof AcknowledgingMessageListener,
-					"Either a " + MessageListener.class.getName() + " or a "
-							+ AcknowledgingMessageListener.class.getName() + " must be provided");
 			this.messageListener = messageListener;
 		}
 
@@ -397,15 +461,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		 */
 		public void setAckCount(int count) {
 			this.ackCount = count;
-		}
-
-		/**
-		 * Return the count.
-		 * @return the count.
-		 * @see #setAckCount(int)
-		 */
-		public int getAckCount() {
-			return this.ackCount;
 		}
 
 		/**
@@ -533,6 +588,95 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		 */
 		public void setSyncCommits(boolean syncCommits) {
 			this.syncCommits = syncCommits;
+		}
+
+		/*
+		 * Although we generally use field access, we need the getters so we can copy
+		 * the properties from the factory when creating an annotated listener.
+		 */
+
+		public String[] getTopics() {
+			return this.topics;
+		}
+
+		public Pattern getTopicPattern() {
+			return this.topicPattern;
+		}
+
+		public TopicPartition[] getTopicPartitions() {
+			return this.topicPartitions;
+		}
+
+		public AckMode getAckMode() {
+			return this.ackMode;
+		}
+
+		public int getAckCount() {
+			return this.ackCount;
+		}
+
+		public long getAckTime() {
+			return this.ackTime;
+		}
+
+		public Object getMessageListener() {
+			return this.messageListener;
+		}
+
+		public long getPollTimeout() {
+			return this.pollTimeout;
+		}
+
+		public AsyncListenableTaskExecutor getConsumerTaskExecutor() {
+			return this.consumerTaskExecutor;
+		}
+
+		public AsyncListenableTaskExecutor getListenerTaskExecutor() {
+			return this.listenerTaskExecutor;
+		}
+
+		public ErrorHandler getErrorHandler() {
+			return this.errorHandler;
+		}
+
+		public long getPauseAfter() {
+			return this.pauseAfter;
+		}
+
+		public boolean isPauseEnabled() {
+			return this.pauseEnabled;
+		}
+
+		public RetryTemplate getRetryTemplate() {
+			return this.retryTemplate;
+		}
+
+		public RecoveryCallback<Void> getRecoveryCallback() {
+			return this.recoveryCallback;
+		}
+
+		public int getQueueDepth() {
+			return this.queueDepth;
+		}
+
+		public long getShutdownTimeout() {
+			return this.shutdownTimeout;
+		}
+
+		public long getRecentOffset() {
+			return this.recentOffset;
+		}
+
+		public ConsumerRebalanceListener getConsumerRebalanceListener() {
+			return this.consumerRebalanceListener;
+		}
+
+		public OffsetCommitCallback getCommitCallback() {
+			return this.commitCallback;
+		}
+
+		public boolean isSyncCommits() {
+			return this.syncCommits;
 		}
 
 	}

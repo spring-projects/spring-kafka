@@ -19,9 +19,7 @@ package org.springframework.kafka.listener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.common.TopicPartition;
 
@@ -31,8 +29,8 @@ import org.springframework.util.Assert;
 /**
  * Creates 1 or more {@link KafkaMessageListenerContainer}s based on
  * {@link #setConcurrency(int) concurrency}. If the
- * {@link #ConcurrentMessageListenerContainer(ConsumerFactory, TopicPartition...)}
- * constructor is used, the {@link TopicPartition}s are distributed evenly across the
+ * {@link ContainerProperties} is configured with {@link TopicPartition}s,
+ * the {@link TopicPartition}s are distributed evenly across the
  * instances.
  *
  * @param <K> the key type.
@@ -47,13 +45,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final ConsumerFactory<K, V> consumerFactory;
 
-	private final String[] topics;
-
-	private final Pattern topicPattern;
-
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
-
-	private final TopicPartition[] partitions;
 
 	private int concurrency = 1;
 
@@ -64,51 +56,12 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * The topic partitions are distributed evenly across the delegate
 	 * {@link KafkaMessageListenerContainer}s.
 	 * @param consumerFactory the consumer factory.
-	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
+	 * @param containerProperties the container properties.
 	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-			TopicPartition... topicPartitions) {
+	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, ContainerProperties containerProperties) {
+		super(containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		Assert.notEmpty(topicPartitions, "A list of partitions must be provided");
-		Assert.noNullElements(topicPartitions, "The list of partitions cannot contain null elements");
 		this.consumerFactory = consumerFactory;
-		this.partitions = new LinkedHashSet<>(Arrays.asList(topicPartitions))
-				.toArray(new TopicPartition[topicPartitions.length]);
-		this.topics = null;
-		this.topicPattern = null;
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and topics.
-	 * When using this constructor, {@link ContainerProperties#setRecentOffset(long) recentOffset} is
-	 * ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param topics the topics.
-	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, String... topics) {
-		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		Assert.notNull(topics, "A list of topics must be provided");
-		Assert.noNullElements(topics, "The list of topics cannot contain null elements");
-		this.consumerFactory = consumerFactory;
-		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
-		this.topicPattern = null;
-		this.partitions = null;
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and topic
-	 * pattern. When using this constructor, {@link ContainerProperties#setRecentOffset(long) recentOffset} is
-	 * ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param topicPattern the topic pattern.
-	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, Pattern topicPattern) {
-		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		Assert.notNull(topicPattern, "A topic pattern must be provided");
-		this.consumerFactory = consumerFactory;
-		this.topics = null;
-		this.topicPattern = topicPattern;
-		this.partitions = null;
 	}
 
 	public int getConcurrency() {
@@ -141,27 +94,25 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	protected void doStart() {
 		if (!isRunning()) {
-			if (this.partitions != null && this.concurrency > this.partitions.length) {
+			ContainerProperties containerProperties = getContainerProperties();
+			if (containerProperties.topicPartitions != null
+					&& this.concurrency > containerProperties.topicPartitions.length) {
 				this.logger.warn("When specific partitions are provided, the concurrency must be less than or "
-						+ "equal to the number of partitions; reduced from " + this.concurrency
-						+ " to " + this.partitions.length);
-				this.concurrency = this.partitions.length;
+						+ "equal to the number of partitions; reduced from " + this.concurrency + " to "
+						+ containerProperties.topicPartitions.length);
+				this.concurrency = containerProperties.topicPartitions.length;
 			}
 			setRunning(true);
 
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container;
-				if (this.partitions == null) {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory,
-							getContainerProperties().consumerRebalanceListener, this.topics, this.topicPattern,
-							this.partitions);
+				if (containerProperties.topicPartitions == null) {
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory, containerProperties);
 				}
 				else {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory,
-							getContainerProperties().consumerRebalanceListener, this.topics, this.topicPattern,
-							partitionSubset(i));
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory, containerProperties,
+							partitionSubset(containerProperties, i));
 				}
-				container.setContainerProperties(getContainerProperties());
 				if (getBeanName() != null) {
 					container.setBeanName(getBeanName() + "-" + i);
 				}
@@ -171,23 +122,25 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
-	private TopicPartition[] partitionSubset(int i) {
+	private TopicPartition[] partitionSubset(ContainerProperties containerProperties, int i) {
 		if (this.concurrency == 1) {
-			return this.partitions;
+			return containerProperties.topicPartitions;
 		}
 		else {
-			int numPartitions = this.partitions.length;
+			int numPartitions = containerProperties.topicPartitions.length;
 			if (numPartitions == this.concurrency) {
-				return new TopicPartition[] { this.partitions[i] };
+				return new TopicPartition[] { containerProperties.topicPartitions[i] };
 			}
 			else {
 				int perContainer = numPartitions / this.concurrency;
 				TopicPartition[] subset;
 				if (i == this.concurrency - 1) {
-					subset = Arrays.copyOfRange(this.partitions, i * perContainer, this.partitions.length);
+					subset = Arrays.copyOfRange(containerProperties.topicPartitions, i * perContainer,
+							containerProperties.topicPartitions.length);
 				}
 				else {
-					subset = Arrays.copyOfRange(this.partitions, i * perContainer, (i + 1) * perContainer);
+					subset = Arrays.copyOfRange(containerProperties.topicPartitions, i * perContainer,
+							(i + 1) * perContainer);
 				}
 				return subset;
 			}

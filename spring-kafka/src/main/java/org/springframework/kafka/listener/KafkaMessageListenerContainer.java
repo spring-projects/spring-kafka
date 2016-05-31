@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,7 +32,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -75,13 +73,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private final ConsumerFactory<K, V> consumerFactory;
 
-	private final String[] topics;
-
-	private final Pattern topicPattern;
-
-	private final TopicPartition[] partitions;
-
-	private final ConsumerRebalanceListener consumerRebalanceListener;
+	private final TopicPartition[] topicPartitions;
 
 	private ListenerConsumer listenerConsumer;
 
@@ -91,125 +83,35 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
 
-	private OffsetCommitCallback commitCallback;
+	/**
+	 * Construct an instance with the supplied configuration properties.
+	 * @param consumerFactory the consumer factory.
+	 * @param containerProperties the container properties.
+	 */
+	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+			ContainerProperties containerProperties) {
+		this(consumerFactory, containerProperties, (TopicPartition[]) null);
+	}
 
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
 	 * topics/partitions - when using this constructor,
 	 * {@link ContainerProperties#setRecentOffset(long) recentOffset} can be specified.
 	 * @param consumerFactory the consumer factory.
-	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
-	 */
-	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, TopicPartition... topicPartitions) {
-		this(consumerFactory, null, null, null, topicPartitions);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties,
-	 * {@link ConsumerRebalanceListener} implementation and specific topics/partitions -
-	 * when using this constructor, {@link ContainerProperties#setRecentOffset(long)
-	 * recentOffset} can be specified.
-	 * @param consumerFactory the consumer factory.
-	 * @param consumerRebalanceListener {@link ConsumerRebalanceListener} implementation.
+	 * @param containerProperties the container properties.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 */
 	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-			ConsumerRebalanceListener consumerRebalanceListener, TopicPartition... topicPartitions) {
-		this(consumerFactory, consumerRebalanceListener, null, null, topicPartitions);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and topics. When
-	 * using this constructor, {@link ContainerProperties#setRecentOffset(long)
-	 * recentOffset} is ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param topics the topics.
-	 */
-	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, String... topics) {
-		this(consumerFactory, null, topics, null, null);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties,
-	 * {@link ConsumerRebalanceListener} implementation and topics. When using this
-	 * constructor, {@link ContainerProperties#setRecentOffset(long) recentOffset} is
-	 * ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param consumerRebalanceListener {@link ConsumerRebalanceListener} implementation.
-	 * @param topics the topics.
-	 */
-	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-			ConsumerRebalanceListener consumerRebalanceListener, String... topics) {
-		this(consumerFactory, consumerRebalanceListener, topics, null, null);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and topic pattern.
-	 * When using this constructor, {@link ContainerProperties#setRecentOffset(long)
-	 * recentOffset} is ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param topicPattern the topic pattern.
-	 */
-	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, Pattern topicPattern) {
-		this(consumerFactory, null, null, topicPattern, null);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties,
-	 * {@link ConsumerRebalanceListener} implementation and topic pattern. When using this
-	 * constructor, {@link ContainerProperties#setRecentOffset(long) recentOffset} is
-	 * ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param consumerRebalanceListener {@link ConsumerRebalanceListener} implementation.
-	 * @param topicPattern the topic pattern.
-	 */
-	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-			ConsumerRebalanceListener consumerRebalanceListener, Pattern topicPattern) {
-		this(consumerFactory, consumerRebalanceListener, null, topicPattern, null);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and topic
-	 * pattern. Note: package protected - used by the ConcurrentMessageListenerContainer.
-	 * @param consumerFactory the consumer factory.
-	 * @param topics the topics.
-	 * @param topicPattern the topic pattern.
-	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
-	 */
-	KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, String[] topics, Pattern topicPattern,
-			TopicPartition[] topicPartitions) {
-		this(consumerFactory, null, null, topicPattern, null);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties,
-	 * {@link ConsumerRebalanceListener} implementation
-	 * and topic pattern. Note: package protected - used by the ConcurrentMessageListenerContainer.
-	 * @param consumerFactory the consumer factory.
-	 * @param topics the topics.
-	 * @param topicPattern the topic pattern.
-	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
-	 * @param consumerRebalanceListener the {@link ConsumerRebalanceListener} instance
-	 */
-	KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-			ConsumerRebalanceListener consumerRebalanceListener,
-			String[] topics, Pattern topicPattern, TopicPartition[] topicPartitions) {
+			ContainerProperties containerProperties, TopicPartition... topicPartitions) {
+		super(containerProperties);
+		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 		this.consumerFactory = consumerFactory;
-		this.consumerRebalanceListener = (consumerRebalanceListener == null
-				? createConsumerRebalanceListener() : consumerRebalanceListener);
-		this.topics = topics == null ? null : Arrays.asList(topics).toArray(new String[topics.length]);
-		this.topicPattern = topicPattern;
-		this.partitions = topicPartitions == null ? null : new LinkedHashSet<>(Arrays.asList(topicPartitions))
-				.toArray(new TopicPartition[topicPartitions.length]);
-	}
-
-	/**
-	 * Set the commit callback; by default a simple logging callback is used to
-	 * log success at DEBUG level and failures at ERROR level.
-	 * @param commitCallback the callback.
-	 */
-	public void setCommitCallback(OffsetCommitCallback commitCallback) {
-		this.commitCallback = commitCallback;
+		if (topicPartitions != null) {
+			this.topicPartitions = Arrays.asList(topicPartitions).toArray(new TopicPartition[topicPartitions.length]);
+		}
+		else {
+			this.topicPartitions = containerProperties.topicPartitions;
+		}
 	}
 
 	/**
@@ -230,26 +132,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 	}
 
-	/**
-	 * Return default implementation of {@link ConsumerRebalanceListener} instance.
-	 * @return the {@link ConsumerRebalanceListener} currently assigned to this container.
-	 */
-	protected final ConsumerRebalanceListener createConsumerRebalanceListener() {
-		return new ConsumerRebalanceListener() {
-
-			@Override
-			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				KafkaMessageListenerContainer.this.logger.info("partitions revoked:" + partitions);
-			}
-
-			@Override
-			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				KafkaMessageListenerContainer.this.logger.info("partitions assigned:" + partitions);
-			}
-
-		};
-	}
-
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doStart() {
@@ -257,9 +139,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			return;
 		}
 		setRunning(true);
-		if (getContainerProperties().consumerRebalanceListener == null) {
-			getContainerProperties().consumerRebalanceListener = this.consumerRebalanceListener;
-		}
 		Object messageListener = getContainerProperties().messageListener;
 		Assert.state(messageListener != null, "A MessageListener is required");
 		if (messageListener instanceof AcknowledgingMessageListener) {
@@ -312,12 +191,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 	}
 
-	private class ListenerConsumer implements SchedulingAwareRunnable {
+	private final class ListenerConsumer implements SchedulingAwareRunnable {
 
 		private final Log logger = LogFactory.getLog(ListenerConsumer.class);
 
-		private final OffsetCommitCallback commitCallback = KafkaMessageListenerContainer.this.commitCallback != null
-				? KafkaMessageListenerContainer.this.commitCallback
+		private final ContainerProperties containerProperties = getContainerProperties();
+
+		private final OffsetCommitCallback commitCallback = this.containerProperties.commitCallback != null
+				? this.containerProperties.commitCallback
 				: new LoggingCommitCallback();
 
 		private final Consumer<K, V> consumer;
@@ -333,8 +214,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private final long recentOffset;
 
 		private final boolean autoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
-
-		private final ContainerProperties containerProperties = getContainerProperties();
 
 		private final boolean isManualAck = this.containerProperties.ackMode.equals(AckMode.MANUAL);
 
@@ -369,7 +248,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 */
 		private boolean paused;
 
-		ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
+		private ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
 				long recentOffset) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 					"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.ackMode);
@@ -424,16 +303,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			};
 
-			if (KafkaMessageListenerContainer.this.partitions == null) {
-				if (KafkaMessageListenerContainer.this.topicPattern != null) {
-					consumer.subscribe(KafkaMessageListenerContainer.this.topicPattern, rebalanceListener);
+			if (KafkaMessageListenerContainer.this.topicPartitions == null) {
+				if (this.containerProperties.topicPattern != null) {
+					consumer.subscribe(this.containerProperties.topicPattern, rebalanceListener);
 				}
 				else {
-					consumer.subscribe(Arrays.asList(KafkaMessageListenerContainer.this.topics), rebalanceListener);
+					consumer.subscribe(Arrays.asList(this.containerProperties.topics), rebalanceListener);
 				}
 			}
 			else {
-				List<TopicPartition> topicPartitions = Arrays.asList(KafkaMessageListenerContainer.this.partitions);
+				List<TopicPartition> topicPartitions = Arrays
+						.asList(KafkaMessageListenerContainer.this.topicPartitions);
 				this.definedPartitions = topicPartitions;
 				consumer.assign(topicPartitions);
 			}

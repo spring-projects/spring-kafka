@@ -46,6 +46,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer.ContainerProperties;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
@@ -233,7 +234,8 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(manualConsumerFactory());
-			factory.setAckMode(AckMode.MANUAL_IMMEDIATE);
+			ContainerProperties props = factory.getContainerProperties();
+			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			return factory;
 		}
 
@@ -242,11 +244,12 @@ public class EnableKafkaIntegrationTests {
 				kafkaAutoStartFalseListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
+			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setAutoStartup(false);
-			factory.setSyncCommits(false);
-			factory.setCommitCallback(mock(OffsetCommitCallback.class));
-			factory.setConsumerRebalanceListener(mock(ConsumerRebalanceListener.class));
+			props.setSyncCommits(false);
+			props.setCommitCallback(mock(OffsetCommitCallback.class));
+			props.setConsumerRebalanceListener(mock(ConsumerRebalanceListener.class));
 			return factory;
 		}
 
@@ -255,8 +258,9 @@ public class EnableKafkaIntegrationTests {
 				kafkaRebalanceListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
+			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setConsumerRebalanceListener(consumerRebalanceListener());
+			props.setConsumerRebalanceListener(consumerRebalanceListener());
 			return factory;
 		}
 
