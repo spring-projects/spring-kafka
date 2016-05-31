@@ -22,6 +22,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.listener.AbstractMessageListenerContainer.ContainerProperties;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 
 /**
@@ -64,7 +65,7 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 	/**
 	 * Specify the offset lag from the end of commit.
 	 * @param recentOffset the recent offset.
-	 * @see ConcurrentMessageListenerContainer#setRecentOffset(long)
+	 * @see ContainerProperties#setRecentOffset(long)
 	 */
 	public void setRecentOffset(Long recentOffset) {
 		this.recentOffset = recentOffset;
@@ -74,7 +75,7 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 	/**
 	 * Specify the rebalance listener of container.
 	 * @param consumerRebalanceListener the rebalance listener.
-	 * @see ConcurrentMessageListenerContainer#setConsumerRebalanceListener(ConsumerRebalanceListener)
+	 * @see ContainerProperties#setConsumerRebalanceListener(ConsumerRebalanceListener)
 	 */
 	public void setConsumerRebalanceListener(ConsumerRebalanceListener consumerRebalanceListener) {
 		this.consumerRebalanceListener = consumerRebalanceListener;
@@ -83,7 +84,7 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 	/**
 	 * Specify the commit callback.
 	 * @param commitCallback the callback to set.
-	 * @see ConcurrentMessageListenerContainer#setCommitCallback(OffsetCommitCallback)
+	 * @see ContainerProperties#setCommitCallback(OffsetCommitCallback)
 	 */
 	public void setCommitCallback(OffsetCommitCallback commitCallback) {
 		this.commitCallback = commitCallback;
@@ -92,7 +93,7 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 	/**
 	 * Specifiy whether or not to use sync commits.
 	 * @param syncCommits the sync commits to set.
-	 * @see ConcurrentMessageListenerContainer#setSyncCommits(boolean)
+	 * @see ContainerProperties#setSyncCommits(boolean)
 	 */
 	public void setSyncCommits(Boolean syncCommits) {
 		this.syncCommits = syncCommits;
@@ -120,21 +121,22 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 	@Override
 	protected void initializeContainer(ConcurrentMessageListenerContainer<K, V> instance) {
 		super.initializeContainer(instance);
+		ContainerProperties containerProperties = instance.getContainerProperties();
 
 		if (this.concurrency != null) {
 			instance.setConcurrency(this.concurrency);
 		}
 		if (this.recentOffset != null) {
-			instance.setRecentOffset(this.recentOffset);
+			containerProperties.setRecentOffset(this.recentOffset);
 		}
 		if (this.consumerRebalanceListener != null) {
-			instance.setConsumerRebalanceListener(this.consumerRebalanceListener);
+			containerProperties.setConsumerRebalanceListener(this.consumerRebalanceListener);
 		}
 		if (this.commitCallback != null) {
-			instance.setCommitCallback(this.commitCallback);
+			containerProperties.setCommitCallback(this.commitCallback);
 		}
 		if (this.syncCommits != null) {
-			instance.setSyncCommits(this.syncCommits);
+			containerProperties.setSyncCommits(this.syncCommits);
 		}
 	}
 

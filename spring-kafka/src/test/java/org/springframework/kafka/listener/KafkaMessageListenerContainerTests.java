@@ -46,6 +46,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -87,7 +88,9 @@ public class KafkaMessageListenerContainerTests {
 				new KafkaMessageListenerContainer<>(cf, topic1);
 		final CountDownLatch latch = new CountDownLatch(6);
 		final BitSet bitSet = new BitSet(6);
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -104,11 +107,10 @@ public class KafkaMessageListenerContainerTests {
 
 		});
 		container.setBeanName("testSlow1");
-		container.setPauseAfter(100);
+		containerProps.setPauseAfter(100);
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-		@SuppressWarnings("rawtypes")
-		Consumer consumer = spyOnConsumer(container);
+		Consumer<?, ?> consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -145,7 +147,9 @@ public class KafkaMessageListenerContainerTests {
 				new KafkaMessageListenerContainer<>(cf, topic);
 		final CountDownLatch latch = new CountDownLatch(6);
 		final BitSet bitSet = new BitSet(4);
-		container.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message, Acknowledgment ack) {
@@ -163,12 +167,11 @@ public class KafkaMessageListenerContainerTests {
 
 		});
 		container.setBeanName("testSlow2");
-		container.setPauseAfter(100);
-		container.setAckMode(ackMode);
+		containerProps.setPauseAfter(100);
+		containerProps.setAckMode(ackMode);
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-		@SuppressWarnings("rawtypes")
-		Consumer consumer = spyOnConsumer(container);
+		Consumer<?, ?> consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -200,7 +203,9 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch latch = new CountDownLatch(18);
 		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -220,13 +225,12 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		});
-		addRetry(container);
-		container.setPauseAfter(100);
+		addRetry(containerProps);
+		containerProps.setPauseAfter(100);
 		container.setBeanName("testSlow3");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-		@SuppressWarnings("rawtypes")
-		Consumer consumer = spyOnConsumer(container);
+		Consumer<?, ?> consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -258,7 +262,9 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch latch = new CountDownLatch(18);
 		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -286,13 +292,12 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		});
-		addRetry(container);
-		container.setPauseAfter(100);
+		addRetry(containerProps);
+		containerProps.setPauseAfter(100);
 		container.setBeanName("testSlow4");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-		@SuppressWarnings("rawtypes")
-		Consumer consumer = spyOnConsumer(container);
+		Consumer<?, ?> consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -314,19 +319,18 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop " + this.testName.getMethodName());
 	}
 
-	private void addRetry(KafkaMessageListenerContainer<Integer, String> container) {
+	private void addRetry(ContainerProperties containerProps) {
 		SimpleRetryPolicy policy = new SimpleRetryPolicy(3, Collections.singletonMap(FooEx.class, true));
 		RetryTemplate retryTemplate = new RetryTemplate();
 		retryTemplate.setRetryPolicy(policy);
 		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
 		backOffPolicy.setBackOffPeriod(1000);
 		retryTemplate.setBackOffPolicy(backOffPolicy);
-		container.setRetryTemplate(retryTemplate);
+		containerProps.setRetryTemplate(retryTemplate);
 	}
 
-	@SuppressWarnings("rawtypes")
-	private Consumer spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
-		Consumer consumer = spy(
+	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
+		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
 		new DirectFieldAccessor(KafkaTestUtils.getPropertyValue(container, "listenerConsumer"))
 				.setPropertyValue("consumer", consumer);

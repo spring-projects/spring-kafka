@@ -23,8 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
@@ -55,21 +53,13 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
 
-	private long recentOffset;
-
-	private TopicPartition[] partitions;
+	private final TopicPartition[] partitions;
 
 	private int concurrency = 1;
 
-	private ConsumerRebalanceListener consumerRebalanceListener;
-
-	private OffsetCommitCallback commitCallback;
-
-	private boolean syncCommits = true;
-
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions - when using this constructor, {@link #setRecentOffset(long)
+	 * topics/partitions - when using this constructor, {@link ContainerProperties#setRecentOffset(long)
 	 * recentOffset} can be specified.
 	 * The topic partitions are distributed evenly across the delegate
 	 * {@link KafkaMessageListenerContainer}s.
@@ -90,7 +80,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	/**
 	 * Construct an instance with the supplied configuration properties and topics.
-	 * When using this constructor, {@link #setRecentOffset(long) recentOffset} is
+	 * When using this constructor, {@link ContainerProperties#setRecentOffset(long) recentOffset} is
 	 * ignored.
 	 * @param consumerFactory the consumer factory.
 	 * @param topics the topics.
@@ -102,11 +92,12 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		this.consumerFactory = consumerFactory;
 		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
 		this.topicPattern = null;
+		this.partitions = null;
 	}
 
 	/**
 	 * Construct an instance with the supplied configuration properties and topic
-	 * pattern. When using this constructor, {@link #setRecentOffset(long) recentOffset} is
+	 * pattern. When using this constructor, {@link ContainerProperties#setRecentOffset(long) recentOffset} is
 	 * ignored.
 	 * @param consumerFactory the consumer factory.
 	 * @param topicPattern the topic pattern.
@@ -117,16 +108,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		this.consumerFactory = consumerFactory;
 		this.topics = null;
 		this.topicPattern = topicPattern;
-	}
-
-	/**
-	 * Set the offset to this number of records back from the latest when starting.
-	 * Overrides any consumer properties (earliest, latest).
-	 * Only applies when explicit topic/partition assignment is provided.
-	 * @param recentOffset the offset from the latest; default 0.
-	 */
-	public void setRecentOffset(long recentOffset) {
-		this.recentOffset = recentOffset;
+		this.partitions = null;
 	}
 
 	public int getConcurrency() {
@@ -141,35 +123,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void setConcurrency(int concurrency) {
 		Assert.isTrue(concurrency > 0, "concurrency must be greater than 0");
 		this.concurrency = concurrency;
-	}
-
-	/**
-	 * Set the user defined {@link ConsumerRebalanceListener} implementation.
-	 *
-	 * @param consumerRebalanceListener the {@link ConsumerRebalanceListener} instance
-	 */
-	public void setConsumerRebalanceListener(ConsumerRebalanceListener consumerRebalanceListener) {
-		this.consumerRebalanceListener = consumerRebalanceListener;
-	}
-
-	/**
-	 * Set the commit callback; by default a simple logging callback is used to
-	 * log success at DEBUG level and failures at ERROR level.
-	 * @param commitCallback the callback.
-	 */
-	public void setCommitCallback(OffsetCommitCallback commitCallback) {
-		this.commitCallback = commitCallback;
-	}
-
-	/**
-	 * Set whether or not to call consumer.commitSync() or commitAsync() when
-	 * the container is responsible for commits. Default true. See
-	 * https://github.com/spring-projects/spring-kafka/issues/62
-	 * At the time of writing, async commits are not entirely reliable.
-	 * @param syncCommits true to use commitSync().
-	 */
-	public void setSyncCommits(boolean syncCommits) {
-		this.syncCommits = syncCommits;
 	}
 
 	/**
@@ -199,35 +152,16 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container;
 				if (this.partitions == null) {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.consumerRebalanceListener,
-							this.topics, this.topicPattern, this.partitions);
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory,
+							getContainerProperties().consumerRebalanceListener, this.topics, this.topicPattern,
+							this.partitions);
 				}
 				else {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.consumerRebalanceListener,
-							this.topics, this.topicPattern, partitionSubset(i));
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory,
+							getContainerProperties().consumerRebalanceListener, this.topics, this.topicPattern,
+							partitionSubset(i));
 				}
-				container.setCommitCallback(this.commitCallback);
-				container.setSyncCommits(this.syncCommits);
-				container.setAckMode(getAckMode());
-				container.setAckCount(getAckCount());
-				container.setAckTime(getAckTime());
-				container.setRecentOffset(this.recentOffset);
-				container.setAutoStartup(false);
-				container.setQueueDepth(getQueueDepth());
-				container.setMessageListener(getMessageListener());
-				container.setErrorHandler(getErrorHandler());
-				if (getConsumerTaskExecutor() != null) {
-					container.setConsumerTaskExecutor(getConsumerTaskExecutor());
-				}
-				if (getListenerTaskExecutor() != null) {
-					container.setListenerTaskExecutor(getListenerTaskExecutor());
-				}
-				if (getRetryTemplate() != null) {
-					container.setRetryTemplate(getRetryTemplate());
-				}
-				if (getRecoveryCallback() != null) {
-					container.setRecoveryCallback(getRecoveryCallback());
-				}
+				container.setContainerProperties(getContainerProperties());
 				if (getBeanName() != null) {
 					container.setBeanName(getBeanName() + "-" + i);
 				}

@@ -146,9 +146,12 @@ public class EnableKafkaIntegrationTests {
 		this.registry.start();
 		assertThat(listenerContainer.isRunning()).isTrue();
 		listenerContainer.stop();
-		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "syncCommits", Boolean.class)).isFalse();
-		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "commitCallback")).isNotNull();
-		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "consumerRebalanceListener")).isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.syncCommits", Boolean.class))
+				.isFalse();
+		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.commitCallback"))
+				.isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.consumerRebalanceListener"))
+				.isNotNull();
 	}
 
 	@Test

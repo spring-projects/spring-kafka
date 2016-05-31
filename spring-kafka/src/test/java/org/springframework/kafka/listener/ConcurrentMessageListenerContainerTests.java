@@ -56,6 +56,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -99,7 +100,9 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, topic1);
 		final CountDownLatch latch = new CountDownLatch(4);
 		final List<String> listenerThreadNames = new ArrayList<>();
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
 				ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
@@ -135,7 +138,9 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, topic1);
 		final CountDownLatch latch = new CountDownLatch(4);
 		final List<String> listenerThreadNames = new ArrayList<>();
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -146,7 +151,7 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 		final CountDownLatch rebalancePartitionsAssignedLatch = new CountDownLatch(2);
 		final CountDownLatch rebalancePartitionsRevokedLatch = new CountDownLatch(2);
-		container.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
@@ -192,7 +197,9 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, topic2);
 		final CountDownLatch latch = new CountDownLatch(4);
 		final ArrayList<String> listenerThreadNames = new ArrayList<>();
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -258,7 +265,9 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container1 =
 				new ConcurrentMessageListenerContainer<>(cf, topic1Partition0);
 		final CountDownLatch latch1 = new CountDownLatch(2);
-		container1.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties container1Props = new ContainerProperties();
+		container1.setContainerProperties(container1Props);
+		container1Props.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -274,7 +283,9 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container2 =
 				new ConcurrentMessageListenerContainer<>(cf, topic1Partition1);
 		final CountDownLatch latch2 = new CountDownLatch(2);
-		container2.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties container2Props = new ContainerProperties();
+		container2.setContainerProperties(container2Props);
+		container2Props.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -310,7 +321,9 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, topic1Partition0, topic1Partition1);
 		resettingContainer.setBeanName("b3");
 		final CountDownLatch latch3 = new CountDownLatch(4);
-		resettingContainer.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties container3Props = new ContainerProperties();
+		resettingContainer.setContainerProperties(container3Props);
+		container3Props.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -327,11 +340,13 @@ public class ConcurrentMessageListenerContainerTests {
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset minusone
 		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, topic1Partition0, topic1Partition1);
+		ContainerProperties container4Props = new ContainerProperties();
+		resettingContainer.setContainerProperties(container4Props);
 		resettingContainer.setBeanName("b4");
-		resettingContainer.setRecentOffset(1);
+		container4Props.setRecentOffset(1);
 		final CountDownLatch latch4 = new CountDownLatch(2);
 		final AtomicReference<String> receivedMessage = new AtomicReference<>();
-		resettingContainer.setMessageListener(new MessageListener<Integer, String>() {
+		container4Props.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -365,7 +380,8 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic);
 		final CountDownLatch latch = new CountDownLatch(4);
-		container.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		containerProps.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message, Acknowledgment ack) {
@@ -376,7 +392,8 @@ public class ConcurrentMessageListenerContainerTests {
 
 		});
 		container.setConcurrency(2);
-		container.setAckMode(ackMode);
+		containerProps.setAckMode(ackMode);
+		container.setContainerProperties(containerProps);
 		container.setBeanName("test" + ackMode);
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -413,7 +430,9 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic7);
 		final CountDownLatch latch = new CountDownLatch(8);
-		container.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message, Acknowledgment ack) {
@@ -424,11 +443,11 @@ public class ConcurrentMessageListenerContainerTests {
 
 		});
 		container.setConcurrency(1);
-		container.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
 		container.setBeanName("testManualExisting");
 		final CountDownLatch commits = new CountDownLatch(8);
 		final AtomicReference<Exception> exceptionRef = new AtomicReference<Exception>();
-		container.setCommitCallback(new OffsetCommitCallback() {
+		containerProps.setCommitCallback(new OffsetCommitCallback() {
 
 			@Override
 			public void onComplete(Map<TopicPartition, OffsetAndMetadata> offsets, Exception exception) {
@@ -472,7 +491,9 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, topic8);
 		final CountDownLatch latch = new CountDownLatch(8);
 		final BitSet bitSet = new BitSet(8);
-		container.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new AcknowledgingMessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message, Acknowledgment ack) {
@@ -484,7 +505,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 		});
 		container.setConcurrency(1);
-		container.setAckMode(AckMode.MANUAL_IMMEDIATE_SYNC);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE_SYNC);
 		container.setBeanName("testManualExisting");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -526,7 +547,9 @@ public class ConcurrentMessageListenerContainerTests {
 			});
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, topic1PartitionS);
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -556,7 +579,9 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, topic6);
 		final CountDownLatch latch = new CountDownLatch(4);
 		final AtomicBoolean catchError = new AtomicBoolean(false);
-		container.setMessageListener(new MessageListener<Integer, String>() {
+		ContainerProperties containerProps = new ContainerProperties();
+		container.setContainerProperties(containerProps);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -567,7 +592,7 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 		container.setConcurrency(2);
 		container.setBeanName("testException");
-		container.setErrorHandler(new ErrorHandler() {
+		containerProps.setErrorHandler(new ErrorHandler() {
 
 			@Override
 			public void handle(Exception thrownException, ConsumerRecord<?, ?> record) {
