@@ -107,6 +107,7 @@ public class KafkaMessageListenerContainerTests {
 		container.setPauseAfter(100);
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		@SuppressWarnings("rawtypes")
 		Consumer consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
@@ -166,6 +167,7 @@ public class KafkaMessageListenerContainerTests {
 		container.setAckMode(ackMode);
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		@SuppressWarnings("rawtypes")
 		Consumer consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
@@ -223,6 +225,7 @@ public class KafkaMessageListenerContainerTests {
 		container.setBeanName("testSlow3");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		@SuppressWarnings("rawtypes")
 		Consumer consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
@@ -288,6 +291,7 @@ public class KafkaMessageListenerContainerTests {
 		container.setBeanName("testSlow4");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		@SuppressWarnings("rawtypes")
 		Consumer consumer = spyOnConsumer(container);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
@@ -320,6 +324,7 @@ public class KafkaMessageListenerContainerTests {
 		container.setRetryTemplate(retryTemplate);
 	}
 
+	@SuppressWarnings("rawtypes")
 	private Consumer spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
@@ -328,6 +333,7 @@ public class KafkaMessageListenerContainerTests {
 		return consumer;
 	}
 
+	@SuppressWarnings("serial")
 	public static class FooEx extends RuntimeException {
 
 	}

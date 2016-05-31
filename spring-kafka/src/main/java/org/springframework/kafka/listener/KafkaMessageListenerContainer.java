@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -423,9 +422,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							ListenerConsumer.this.recordsToProcess.clear();
 						}
 						else {
-							ListenerConsumer.this.logger
-									.error("Invalid state: the invoker was not active, but the consumer had allocated "
-											+ "partitions");
+							if (!CollectionUtils.isEmpty(partitions)) {
+								ListenerConsumer.this.logger.error(
+										"Invalid state: the invoker was not active, but the consumer had allocated partitions");
+							}
 						}
 					}
 					else {
@@ -442,8 +442,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					ListenerConsumer.this.assignedPartitions = partitions;
 					// We will not start the invoker thread if we are in autocommit mode,
-					// as we will execute
-					// synchronously then
+					// as we will execute synchronously then
 					// We will not start the invoker thread if the container is stopped
 					// We will not start the invoker thread if there are no partitions to
 					// listen to
@@ -564,21 +563,18 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private void stopInvokerAndCommitManualAcks() {
 			this.invoker.stop();
-			this.listenerInvokerFuture.cancel(true);
 			try {
 				this.listenerInvokerFuture.get(getShutdownTimeout(), TimeUnit.MILLISECONDS);
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
-			catch (CancellationException e) {
-				// do nothing, this is the most typical outcome
-			}
 			catch (ExecutionException e) {
 				this.logger.error("Error while shutting down the listener invoker:", e);
 			}
 			catch (TimeoutException e) {
-				this.logger.error("Invoker timed out while waiting for shutdown");
+				this.logger.info("Invoker timed out while waiting for shutdown and will be canceled.");
+				this.listenerInvokerFuture.cancel(true);
 			}
 			finally {
 				this.listenerInvokerFuture = null;
@@ -839,33 +835,44 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			private volatile boolean active = true;
 
+			private volatile Thread executingThread;
+
 			@Override
 			public void run() {
-				while (this.active) {
-					try {
-						ConsumerRecords<K, V> records = ListenerConsumer.this.recordsToProcess.poll(1, TimeUnit.SECONDS);
-						if (this.active) {
-							if (records != null) {
-								invokeListener(records);
-							}
-							else {
-								if (ListenerConsumer.this.logger.isTraceEnabled()) {
-									ListenerConsumer.this.logger.trace("No records to process");
+				Assert.isTrue(this.active, "This instance is not active anymore");
+				try {
+					this.executingThread = Thread.currentThread();
+					while (this.active) {
+						try {
+							ConsumerRecords<K, V> records = ListenerConsumer.this.recordsToProcess.poll(1,
+									TimeUnit.SECONDS);
+							if (this.active) {
+								if (records != null) {
+									invokeListener(records);
+								}
+								else {
+									if (ListenerConsumer.this.logger.isTraceEnabled()) {
+										ListenerConsumer.this.logger.trace("No records to process");
+									}
 								}
 							}
 						}
-					}
-					catch (InterruptedException e) {
-						if (!this.active) {
-							Thread.currentThread().interrupt();
+						catch (InterruptedException e) {
+							if (!this.active) {
+								Thread.currentThread().interrupt();
+							}
+							else {
+								ListenerConsumer.this.logger.debug("Interrupt ignored");
+							}
 						}
-						else {
-							ListenerConsumer.this.logger.debug("Interrupt ignored");
+						if (!ListenerConsumer.this.isManualImmediateAck) {
+							ListenerConsumer.this.consumer.wakeup();
 						}
 					}
-					if (!ListenerConsumer.this.isManualImmediateAck) {
-						ListenerConsumer.this.consumer.wakeup();
-					}
+				}
+				finally {
+					this.active = false;
+					this.executingThread = null;
 				}
 			}
 
@@ -876,6 +883,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			private void stop() {
 				this.active = false;
+				this.executingThread.interrupt();
 			}
 		}
 
