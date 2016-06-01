@@ -28,6 +28,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.retry.RecoveryCallback;
@@ -44,7 +46,7 @@ import org.springframework.util.Assert;
  * @author Marius Bogoevici
  */
 public abstract class AbstractMessageListenerContainer<K, V>
-		implements MessageListenerContainer, BeanNameAware, SmartLifecycle {
+		implements MessageListenerContainer, BeanNameAware, ApplicationEventPublisherAware, SmartLifecycle {
 
 	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
 
@@ -107,6 +109,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private String beanName;
 
+	private ApplicationEventPublisher applicationEventPublisher;
+
 	private boolean autoStartup = true;
 
 	private int phase = 0;
@@ -116,8 +120,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	protected AbstractMessageListenerContainer(ContainerProperties containerProperties) {
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		this.containerProperties = containerProperties;
-		if (containerProperties.consumerRebalanceListener == null) {
-			containerProperties.consumerRebalanceListener = createConsumerRebalanceListener();
+		if (containerProperties.getConsumerRebalanceListener() == null) {
+			containerProperties.setConsumerRebalanceListener(createConsumerRebalanceListener());
 		}
 	}
 
@@ -128,6 +132,15 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	public String getBeanName() {
 		return this.beanName;
+	}
+
+	@Override
+	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+		this.applicationEventPublisher = applicationEventPublisher;
+	}
+
+	public ApplicationEventPublisher getApplicationEventPublisher() {
+		return this.applicationEventPublisher;
 	}
 
 	@Override
@@ -163,28 +176,28 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public void setupMessageListener(Object messageListener) {
-		this.containerProperties.messageListener = messageListener;
+		this.containerProperties.setMessageListener(messageListener);
 	}
 
 	@Override
 	public final void start() {
 		synchronized (this.lifecycleMonitor) {
 			Assert.isTrue(
-					this.containerProperties.messageListener instanceof MessageListener
-							|| this.containerProperties.messageListener instanceof AcknowledgingMessageListener,
+					this.containerProperties.getMessageListener() instanceof MessageListener
+							|| this.containerProperties.getMessageListener() instanceof AcknowledgingMessageListener,
 					"Either a " + MessageListener.class.getName() + " or a "
 							+ AcknowledgingMessageListener.class.getName() + " must be provided");
-			if (this.containerProperties.recoveryCallback == null) {
-				this.containerProperties.recoveryCallback = new RecoveryCallback<Void>() {
+			if (this.containerProperties.getRecoveryCallback() == null) {
+				this.containerProperties.setRecoveryCallback(new RecoveryCallback<Void>() {
 
 					@Override
 					public Void recover(RetryContext context) throws Exception {
 						@SuppressWarnings("unchecked")
 						ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) context.getAttribute("record");
 						Throwable lastThrowable = context.getLastThrowable();
-						if (AbstractMessageListenerContainer.this.containerProperties.errorHandler != null
+						if (AbstractMessageListenerContainer.this.containerProperties.getErrorHandler() != null
 								&& lastThrowable instanceof Exception) {
-							AbstractMessageListenerContainer.this.containerProperties.errorHandler
+							AbstractMessageListenerContainer.this.containerProperties.getErrorHandler()
 									.handle((Exception) lastThrowable, record);
 						}
 						else {
@@ -194,7 +207,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 						return null;
 					}
 
-				};
+				});
 			}
 			doStart();
 		}
@@ -212,7 +225,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			}
 		});
 		try {
-			latch.await(this.containerProperties.shutdownTimeout, TimeUnit.MILLISECONDS);
+			latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS);
 		}
 		catch (InterruptedException e) {
 		}

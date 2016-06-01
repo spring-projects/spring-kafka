@@ -36,6 +36,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.EventListener;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -45,6 +46,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
@@ -124,6 +126,8 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.latch4.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
+		assertThat(this.listener.eventLatch.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.event.getListenerId().startsWith("qux-"));
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -236,6 +240,7 @@ public class EnableKafkaIntegrationTests {
 			factory.setConsumerFactory(manualConsumerFactory());
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
+			props.setIdleEventInterval(100L);
 			return factory;
 		}
 
@@ -354,6 +359,8 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch7 = new CountDownLatch(1);
 
+		private final CountDownLatch eventLatch = new CountDownLatch(1);
+
 		private volatile Integer partition;
 
 		private volatile ConsumerRecord<?, ?> record;
@@ -365,6 +372,8 @@ public class EnableKafkaIntegrationTests {
 		private String topic;
 
 		private Foo foo;
+
+		private volatile ListenerContainerIdleEvent event;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
@@ -399,6 +408,12 @@ public class EnableKafkaIntegrationTests {
 			this.ack = ack;
 			this.ack.acknowledge();
 			this.latch4.countDown();
+		}
+
+		@EventListener(condition = "event.listenerId.startsWith('qux')")
+		public void eventHandler(ListenerContainerIdleEvent event) {
+			this.event = event;
+			eventLatch.countDown();
 		}
 
 		@KafkaListener(id = "fiz", topicPartitions = {
@@ -442,7 +457,7 @@ public class EnableKafkaIntegrationTests {
 			latch1.countDown();
 		}
 
-		@KafkaListener(topics = "annotated9")
+		@KafkaListener(id = "ifctx", topics = "annotated9")
 		@Transactional
 		public void listenTx(String foo) {
 			latch2.countDown();
@@ -457,7 +472,7 @@ public class EnableKafkaIntegrationTests {
 		}
 	}
 
-	@KafkaListener(topics = "annotated8")
+	@KafkaListener(id = "multi", topics = "annotated8")
 	static class MultiListenerBean {
 
 		private final CountDownLatch latch1 = new CountDownLatch(1);

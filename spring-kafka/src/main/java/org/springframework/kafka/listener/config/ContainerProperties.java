@@ -51,17 +51,17 @@ public class ContainerProperties {
 	/**
 	 * Topic names.
 	 */
-	public final String[] topics;
+	private final String[] topics;
 
 	/**
 	 * Topic pattern.
 	 */
-	public final Pattern topicPattern;
+	private final Pattern topicPattern;
 
 	/**
 	 * Topics/partitions.
 	 */
-	public final TopicPartition[] topicPartitions;
+	private final TopicPartition[] topicPartitions;
 
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
@@ -76,102 +76,102 @@ public class ContainerProperties {
 	 * {@link AcknowledgingMessageListener}.
 	 * </ul>
 	 */
-	public AbstractMessageListenerContainer.AckMode ackMode = AckMode.BATCH;
+	private AbstractMessageListenerContainer.AckMode ackMode = AckMode.BATCH;
 
 	/**
 	 * The number of outstanding record count after which offsets should be
 	 * committed when {@link AckMode#COUNT} or {@link AckMode#COUNT_TIME} is being
 	 * used.
 	 */
-	public int ackCount;
+	private int ackCount;
 
 	/**
 	 * The time (ms) after which outstanding offsets should be committed when
 	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be
 	 * larger than
 	 */
-	public long ackTime;
+	private long ackTime;
 
 	/**
 	 * The message listener; must be a {@link MessageListener} or
 	 * {@link AcknowledgingMessageListener}.
 	 */
-	public Object messageListener;
+	private Object messageListener;
 
 	/**
 	 * The max time to block in the consumer waiting for records.
 	 */
-	public volatile long pollTimeout = 1000;
+	private volatile long pollTimeout = 1000;
 
 	/**
 	 * The executor for threads that poll the consumer.
 	 */
-	public AsyncListenableTaskExecutor consumerTaskExecutor;
+	private AsyncListenableTaskExecutor consumerTaskExecutor;
 
 	/**
 	 * The executor for threads that invoke the listener.
 	 */
-	public AsyncListenableTaskExecutor listenerTaskExecutor;
+	private AsyncListenableTaskExecutor listenerTaskExecutor;
 
 	/**
 	 * The error handler to call when the listener throws an exception.
 	 */
-	public ErrorHandler errorHandler = new LoggingErrorHandler();
+	private ErrorHandler errorHandler = new LoggingErrorHandler();
 
 	/**
 	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
 	 * true, the delay after which the consumer should be paused. Default 10000.
 	 */
-	public long pauseAfter = DEFAULT_PAUSE_AFTER;
+	private long pauseAfter = DEFAULT_PAUSE_AFTER;
 
 	/**
 	 * When true, avoids rebalancing when this consumer is slow or throws a
 	 * qualifying exception - pauses the consumer. Default: true.
 	 * @see #pauseAfter
 	 */
-	public boolean pauseEnabled = true;
+	private boolean pauseEnabled = true;
 
 	/**
 	 * A retry template to retry deliveries.
 	 */
-	public RetryTemplate retryTemplate;
+	private RetryTemplate retryTemplate;
 
 	/**
 	 * A recovery callback to be invoked when retries are exhausted. By default
 	 * the error handler is invoked.
 	 */
-	public RecoveryCallback<Void> recoveryCallback;
+	private RecoveryCallback<Void> recoveryCallback;
 
 	/**
 	 * Set the queue depth for handoffs from the consumer thread to the listener
 	 * thread. Default 1 (up to 2 in process).
 	 */
-	public int queueDepth = DEFAULT_QUEUE_DEPTH;
+	private int queueDepth = DEFAULT_QUEUE_DEPTH;
 
 	/**
 	 * The timeout for shutting down the container. This is the maximum amount of
 	 * time that the invocation to {@code #stop(Runnable)} will block for, before
 	 * returning.
 	 */
-	public long shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
+	private long shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
 	/**
 	 * The offset to this number of records back from the latest when starting.
 	 * Overrides any consumer properties (earliest, latest). Only applies when
 	 * explicit topic/partition assignment is provided.
 	 */
-	public long recentOffset;
+	private long recentOffset;
 
 	/**
 	 * A user defined {@link ConsumerRebalanceListener} implementation.
 	 */
-	public ConsumerRebalanceListener consumerRebalanceListener;
+	private ConsumerRebalanceListener consumerRebalanceListener;
 
 	/**
 	 * The commit callback; by default a simple logging callback is used to log
 	 * success at DEBUG level and failures at ERROR level.
 	 */
-	public OffsetCommitCallback commitCallback;
+	private OffsetCommitCallback commitCallback;
 
 	/**
 	 * Whether or not to call consumer.commitSync() or commitAsync() when the
@@ -179,7 +179,9 @@ public class ContainerProperties {
 	 * https://github.com/spring-projects/spring-kafka/issues/62 At the time of
 	 * writing, async commits are not entirely reliable.
 	 */
-	public boolean syncCommits = true;
+	private boolean syncCommits = true;
+
+	private Long idleEventInterval;
 
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
@@ -374,10 +376,14 @@ public class ContainerProperties {
 		this.syncCommits = syncCommits;
 	}
 
-	/*
-	 * Although we generally use field access, we need the getters so we can copy
-	 * the properties from the factory when creating an annotated listener.
+	/**
+	 * Set the idle event interval; when set, an event is emitted if a poll returns
+	 * no records and this interval has elapsed since a record was returned.
+	 * @param idleEventInterval the interval.
 	 */
+	public void setIdleEventInterval(Long idleEventInterval) {
+		this.idleEventInterval = idleEventInterval;
+	}
 
 	public String[] getTopics() {
 		return this.topics;
@@ -461,6 +467,10 @@ public class ContainerProperties {
 
 	public boolean isSyncCommits() {
 		return this.syncCommits;
+	}
+
+	public Long getIdleEventInterval() {
+		return this.idleEventInterval;
 	}
 
 }
