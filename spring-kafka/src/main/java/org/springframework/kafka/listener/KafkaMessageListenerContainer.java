@@ -99,7 +99,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
 	 * topics/partitions - when using this constructor,
-	 * {@link ContainerProperties#setRecentOffset(long) recentOffset} can be specified.
+	 * {@link ContainerProperties#setOffset(long) offset} can be specified.
 	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
@@ -165,7 +165,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			getContainerProperties().setListenerTaskExecutor(listenerExecutor);
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener,
-				getContainerProperties().getRecentOffset());
+				getContainerProperties().getOffset());
 		this.listenerConsumerFuture = getContainerProperties().getConsumerTaskExecutor()
 				.submitListenable(this.listenerConsumer);
 	}
@@ -226,7 +226,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
 
-		private final long recentOffset;
+		private final long offset;
 
 		private final boolean autoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
 
@@ -267,7 +267,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private boolean paused;
 
 		private ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
-				long recentOffset) {
+				long offset) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 				"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
@@ -338,7 +338,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.consumer = consumer;
 			this.listener = listener;
 			this.acknowledgingMessageListener = ackListener;
-			this.recentOffset = recentOffset;
+			this.offset = offset;
 		}
 
 		private void startInvoker() {
@@ -648,11 +648,15 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			 * When using auto assignment (subscribe), the ConsumerRebalanceListener is not
 			 * called until we poll() the consumer.
 			 */
-			if (this.recentOffset > 0) {
-				this.consumer.seekToEnd(
-						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
+			if (this.offset != 0) {
+				if (this.offset < 0) {
+					this.consumer.seekToEnd(
+							this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
+				}
 				for (TopicPartition topicPartition : this.definedPartitions) {
-					long newOffset = this.consumer.position(topicPartition) - this.recentOffset;
+					long newOffset = this.offset < 0
+							? this.consumer.position(topicPartition) + this.offset
+							: this.offset;
 					this.consumer.seek(topicPartition, newOffset);
 					if (this.logger.isDebugEnabled()) {
 						this.logger.debug("Reset " + topicPartition + " to offset " + newOffset);

@@ -39,6 +39,7 @@ import org.springframework.util.Assert;
  * Contains runtime properties for a listener container.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  */
 public class ContainerProperties {
 
@@ -156,11 +157,12 @@ public class ContainerProperties {
 	private long shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
 	/**
-	 * The offset to this number of records back from the latest when starting.
+	 * The offset to this number of records from the beginning of the partition
+	 * or back from the latest committed offset if negative.
 	 * Overrides any consumer properties (earliest, latest). Only applies when
 	 * explicit topic/partition assignment is provided.
 	 */
-	private long recentOffset;
+	private long offset;
 
 	/**
 	 * A user defined {@link ConsumerRebalanceListener} implementation.
@@ -339,13 +341,14 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * Set the offset to this number of records back from the latest when starting.
+	 * Set the offset to this number of records from the beginning of the partition
+	 * or back from the latest committed offset if negative.
 	 * Overrides any consumer properties (earliest, latest). Only applies when
 	 * explicit topic/partition assignment is provided.
-	 * @param recentOffset the offset from the latest; default 0.
+	 * @param offset the offset from the beginning if positive or back from latest if negative; default 0.
 	 */
-	public void setRecentOffset(long recentOffset) {
-		this.recentOffset = recentOffset;
+	public void setOffset(long offset) {
+		this.offset = offset;
 	}
 
 	/**
@@ -453,8 +456,8 @@ public class ContainerProperties {
 		return this.shutdownTimeout;
 	}
 
-	public long getRecentOffset() {
-		return this.recentOffset;
+	public long getOffset() {
+		return this.offset;
 	}
 
 	public ConsumerRebalanceListener getConsumerRebalanceListener() {
