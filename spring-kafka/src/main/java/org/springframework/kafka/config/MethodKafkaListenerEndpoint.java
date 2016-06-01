@@ -94,9 +94,6 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		Assert.state(this.messageHandlerMethodFactory != null,
 				"Could not create message listener - MessageHandlerMethodFactory not set");
 		MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance();
-		if (getRecordFilterStrategy() != null) {
-			messageListener.setRecordFilterStrategy(getRecordFilterStrategy());
-		}
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
 		if (messageConverter != null) {
 			messageListener.setMessageConverter(messageConverter);

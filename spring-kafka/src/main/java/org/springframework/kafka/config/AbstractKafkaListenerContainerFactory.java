@@ -53,6 +53,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
+	private Boolean ackDiscarded;
+
 	private ApplicationEventPublisher applicationEventPublisher;
 
 	/**
@@ -94,11 +96,19 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
-	 * Set the de-duplication strategy.
+	 * Set the record filter strategy.
 	 * @param recordFilterStrategy the strategy.
 	 */
 	public void setRecordFilterStrategy(RecordFilterStrategy<K, V> recordFilterStrategy) {
 		this.recordFilterStrategy = recordFilterStrategy;
+	}
+
+	/**
+	 * Set to true to ack discards when a filter strategy is in use.
+	 * @param ackDiscarded the ackDiscarded.
+	 */
+	public void setAckDiscarded(Boolean ackDiscarded) {
+		this.ackDiscarded = ackDiscarded;
 	}
 
 	@Override
@@ -133,8 +143,13 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			instance.setBeanName(endpoint.getId());
 		}
 
-		if (this.recordFilterStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {
-			((AbstractKafkaListenerEndpoint<K, V>) endpoint).setRecordFilterStrategy(this.recordFilterStrategy);
+		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
+			if (this.recordFilterStrategy != null) {
+				((AbstractKafkaListenerEndpoint<K, V>) endpoint).setRecordFilterStrategy(this.recordFilterStrategy);
+			}
+			if (this.ackDiscarded != null) {
+				((AbstractKafkaListenerEndpoint<K, V>) endpoint).setAckDiscarded(this.ackDiscarded);
+			}
 		}
 
 		endpoint.setupListenerContainer(instance, this.messageConverter);

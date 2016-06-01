@@ -50,6 +50,7 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
@@ -128,6 +129,11 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.ack).isNotNull();
 		assertThat(this.listener.eventLatch.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.event.getListenerId().startsWith("qux-"));
+		MessageListenerContainer manualContainer = this.registry.getListenerContainer("qux");
+		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener"))
+				.isInstanceOf(FilteringAcknowledgingMessageListenerAdapter.class);
+		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.ackDiscarded",
+				Boolean.class)).isTrue();
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -214,12 +220,17 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setRecordFilterStrategy(filter());
+			factory.setRecordFilterStrategy(recordFilter());
 			return factory;
 		}
 
 		@Bean
-		public RecordFilterImpl filter() {
+		public RecordFilterImpl recordFilter() {
+			return new RecordFilterImpl();
+		}
+
+		@Bean
+		public RecordFilterImpl manualFilter() {
 			return new RecordFilterImpl();
 		}
 
@@ -241,6 +252,8 @@ public class EnableKafkaIntegrationTests {
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			props.setIdleEventInterval(100L);
+			factory.setRecordFilterStrategy(manualFilter());
+			factory.setAckDiscarded(true);
 			return factory;
 		}
 

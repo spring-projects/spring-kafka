@@ -336,18 +336,18 @@ The framework cannot know whether such a message has been processed or not, that
 function.
 This is known as the http://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html[Idempotent
 Receiver] pattern and Spring Integration provides an
-http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver
-[implementation thereof].
+http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver[implementation thereof].
 
 The Spring for Apache Kafka project also provides some assistance by means of the `FilteringMessageListenerAdapter`
 classe, which can wrap your `MessageListener`.
 This class takes an implementation of `RecordFilterStrategy` where you implement the `filter` method to signal
 that a message is a duplicate and should be discarded.
 
-Similarly, when using `@KafkaListener`, the `RecordFilterStrategy` can be injected into the container factory.
-
 A `FilteringAcknowledgingMessageListenerAdapter` is also provided for wrapping an `AcknowledgingMessageListener`.
 This has an additional property `ackDiscarded` which indicates whether the adapter should acknowledge the discarded record.
+
+When using `@KafkaListener`, set the `RecordFilterStrategy` (and optionally `ackDiscarded`) on the container factory and the listener will be wrapped in the appropriate filtering adapter.
+
 
 ==== Serialization/Deserialization and Message Conversion
 
