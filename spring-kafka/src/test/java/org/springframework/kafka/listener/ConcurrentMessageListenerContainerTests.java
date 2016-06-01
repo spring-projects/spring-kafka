@@ -332,11 +332,11 @@ public class ConcurrentMessageListenerContainerTests {
 
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		cf = new DefaultKafkaConsumerFactory<>(props);
-		// reset minusone
+		// reset minus one
 		ContainerProperties container4Props = new ContainerProperties(topic1Partition0, topic1Partition1);
 		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, container4Props);
 		resettingContainer.setBeanName("b4");
-		container4Props.setRecentOffset(1);
+		container4Props.setOffset(-1);
 		final CountDownLatch latch4 = new CountDownLatch(2);
 		final AtomicReference<String> receivedMessage = new AtomicReference<>();
 		container4Props.setMessageListener(new MessageListener<Integer, String>() {
@@ -353,6 +353,27 @@ public class ConcurrentMessageListenerContainerTests {
 		resettingContainer.stop();
 		assertThat(receivedMessage.get()).isIn("baz", "qux");
 		assertThat(latch4.getCount()).isEqualTo(0L);
+
+		// reset plus one
+		template.sendDefault(0, 0, "FOO");
+		template.sendDefault(1, 2, "BAZ");
+		template.flush();
+
+		ContainerProperties container5Props = new ContainerProperties(topic1Partition0, topic1Partition1);
+		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, container5Props);
+		resettingContainer.setBeanName("b4");
+		container5Props.setOffset(1);
+		final CountDownLatch latch5 = new CountDownLatch(4);
+		final List<String> messages = new ArrayList<>();
+		container5Props.setMessageListener((MessageListener<Integer, String>) message -> {
+			ConcurrentMessageListenerContainerTests.this.logger.info("auto part 1: " + message);
+			messages.add(message.value());
+			latch5.countDown();
+		});
+		resettingContainer.start();
+		assertThat(latch5.await(60, TimeUnit.SECONDS)).isTrue();
+		resettingContainer.stop();
+		assertThat(messages).contains("baz", "qux", "FOO", "BAZ");
 
 		this.logger.info("Stop auto parts");
 	}

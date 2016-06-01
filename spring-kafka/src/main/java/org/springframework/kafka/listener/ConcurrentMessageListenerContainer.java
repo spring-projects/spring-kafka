@@ -53,8 +53,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions - when using this constructor, {@link ContainerProperties#setRecentOffset(long)
-	 * recentOffset} can be specified.
+	 * topics/partitions - when using this constructor, {@link ContainerProperties#setOffset(long)
+	 * offset} can be specified.
 	 * The topic partitions are distributed evenly across the delegate
 	 * {@link KafkaMessageListenerContainer}s.
 	 * @param consumerFactory the consumer factory.
