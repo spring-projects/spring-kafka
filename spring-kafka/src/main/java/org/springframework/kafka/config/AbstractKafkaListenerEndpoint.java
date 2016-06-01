@@ -33,7 +33,7 @@ import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.util.Assert;
 
@@ -68,7 +68,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private String group;
 
-	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
+	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
 
 	@Override
@@ -196,16 +196,16 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		}
 	}
 
-	protected DeDuplicationStrategy<K, V> getDeDuplicationStrategy() {
-		return this.deDuplicationStrategy;
+	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
+		return this.recordFilterStrategy;
 	}
 
 	/**
-	 * Set a {@link DeDuplicationStrategy} implementation.
-	 * @param deDuplicationStrategy the strategy implementation.
+	 * Set a {@link RecordFilterStrategy} implementation.
+	 * @param recordFilterStrategy the strategy implementation.
 	 */
-	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
-		this.deDuplicationStrategy = deDuplicationStrategy;
+	public void setRecordFilterStrategy(RecordFilterStrategy<K, V> recordFilterStrategy) {
+		this.recordFilterStrategy = recordFilterStrategy;
 	}
 
 	@Override

@@ -50,7 +50,7 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -101,7 +101,7 @@ public class EnableKafkaIntegrationTests {
 	public KafkaListenerEndpointRegistry registry;
 
 	@Autowired
-	private DeDupImpl deDup;
+	private RecordFilterImpl recordFilter;
 
 	@Test
 	public void testSimple() throws Exception {
@@ -140,7 +140,7 @@ public class EnableKafkaIntegrationTests {
 		template.flush();
 		assertThat(this.listener.latch7.await(20, TimeUnit.SECONDS)).isTrue();
 
-		assertThat(this.deDup.called).isTrue();
+		assertThat(this.recordFilter.called).isTrue();
 	}
 
 	@Test
@@ -214,13 +214,13 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setDeDuplicationStrategy(deDup());
+			factory.setRecordFilterStrategy(filter());
 			return factory;
 		}
 
 		@Bean
-		public DeDupImpl deDup() {
-			return new DeDupImpl();
+		public RecordFilterImpl filter() {
+			return new RecordFilterImpl();
 		}
 
 		@Bean
@@ -501,12 +501,12 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public static class DeDupImpl implements DeDuplicationStrategy<Integer, String> {
+	public static class RecordFilterImpl implements RecordFilterStrategy<Integer, String> {
 
 		private boolean called;
 
 		@Override
-		public boolean isDuplicate(ConsumerRecord<Integer, String> consumerRecord) {
+		public boolean filter(ConsumerRecord<Integer, String> consumerRecord) {
 			called = true;
 			return false;
 		}

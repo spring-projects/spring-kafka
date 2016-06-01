@@ -22,7 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.converter.MessageConverter;
 
@@ -51,7 +51,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private MessageConverter messageConverter;
 
-	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
+	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
@@ -95,10 +95,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	/**
 	 * Set the de-duplication strategy.
-	 * @param deDuplicationStrategy the strategy.
+	 * @param recordFilterStrategy the strategy.
 	 */
-	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
-		this.deDuplicationStrategy = deDuplicationStrategy;
+	public void setRecordFilterStrategy(RecordFilterStrategy<K, V> recordFilterStrategy) {
+		this.recordFilterStrategy = recordFilterStrategy;
 	}
 
 	@Override
@@ -133,8 +133,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			instance.setBeanName(endpoint.getId());
 		}
 
-		if (this.deDuplicationStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {
-			((AbstractKafkaListenerEndpoint<K, V>) endpoint).setDeDuplicationStrategy(this.deDuplicationStrategy);
+		if (this.recordFilterStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {
+			((AbstractKafkaListenerEndpoint<K, V>) endpoint).setRecordFilterStrategy(this.recordFilterStrategy);
 		}
 
 		endpoint.setupListenerContainer(instance, this.messageConverter);

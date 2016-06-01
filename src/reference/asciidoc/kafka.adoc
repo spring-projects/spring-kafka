@@ -329,7 +329,7 @@ public void listen(@Payload String foo,
 }
 ----
 
-===== Handling Duplicates
+===== Filtering Messages
 
 In certain scenarios, such as rebalancing, a message may be redelivered that has already been processed.
 The framework cannot know whether such a message has been processed or not, that is an application-level
@@ -339,15 +339,15 @@ Receiver] pattern and Spring Integration provides an
 http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver
 [implementation thereof].
 
-The Spring for Apache Kafka project also provides some assistance by means of the `DeDuplicatingMessageListenerAdapter`
+The Spring for Apache Kafka project also provides some assistance by means of the `FilteringMessageListenerAdapter`
 classe, which can wrap your `MessageListener`.
-This class takes an implementation of `DeDuplicationStrategy` where you implement the `isDuplicate` method to signal
+This class takes an implementation of `RecordFilterStrategy` where you implement the `filter` method to signal
 that a message is a duplicate and should be discarded.
 
-Similarly, when using `@KafkaListener`, the `DeDuplicationStrategy` can be injected into the container factory.
+Similarly, when using `@KafkaListener`, the `RecordFilterStrategy` can be injected into the container factory.
 
-A wrapper is not provided for the `AcknowledgingMessageListener` because you might need to acknowledge the duplicated
-message.
+A `FilteringAcknowledgingMessageListenerAdapter` is also provided for wrapping an `AcknowledgingMessageListener`.
+This has an additional property `ackDiscarded` which indicates whether the adapter should acknowledge the discarded record.
 
 ==== Serialization/Deserialization and Message Conversion
 
