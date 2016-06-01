@@ -47,6 +47,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;

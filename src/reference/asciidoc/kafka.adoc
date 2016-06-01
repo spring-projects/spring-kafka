@@ -173,7 +173,7 @@ The second takes an array of topics and Kafka allocates the partitions based on 
 partitions across the group.
 The third uses a regex `Pattern` to select the topics.
 
-Refer to the javadocs for `AbstractMessageListenerContainer.ContainerProperties` for more information about the various properties that can be set.
+Refer to the javadocs for `ContainerProperties` for more information about the various properties that can be set.
 
 ====== ConcurrentMessageListenerContainer
 

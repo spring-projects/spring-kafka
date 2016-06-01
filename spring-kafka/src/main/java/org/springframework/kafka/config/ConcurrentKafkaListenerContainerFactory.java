@@ -20,8 +20,8 @@ import java.util.Collection;
 
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.kafka.listener.AbstractMessageListenerContainer.ContainerProperties;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.config.ContainerProperties;
 
 /**
  * A {@link KafkaListenerContainerFactory} implementation to build a

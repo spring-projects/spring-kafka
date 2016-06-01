@@ -20,8 +20,8 @@ package org.springframework.kafka.config;
 import org.springframework.beans.BeanUtils;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-import org.springframework.kafka.listener.AbstractMessageListenerContainer.ContainerProperties;
 import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
+import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.converter.MessageConverter;
 
 /**
@@ -65,7 +65,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	/**
 	 * Specify an {@code autoStartup boolean} flag.
 	 * @param autoStartup true for auto startup.
-	 * @see ContainerProperties#setAutoStartup(boolean)
+	 * @see AbstractMessageListenerContainer#setAutoStartup(boolean)
 	 */
 	public void setAutoStartup(Boolean autoStartup) {
 		this.autoStartup = autoStartup;
@@ -74,7 +74,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	/**
 	 * Specify a {@code phase} to use.
 	 * @param phase The phase.
-	 * @see ContainerProperties#setPhase(int)
+	 * @see AbstractMessageListenerContainer#setPhase(int)
 	 */
 	public void setPhase(int phase) {
 		this.phase = phase;

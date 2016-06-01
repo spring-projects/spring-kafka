@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.util.Assert;
 
 /**
