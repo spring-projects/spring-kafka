@@ -18,6 +18,8 @@ package org.springframework.kafka.config;
 
 
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
@@ -32,11 +34,12 @@ import org.springframework.kafka.support.converter.MessageConverter;
  * @param <V> the value type.
  *
  * @author Stephane Nicoll
+ * @author Gary Russell
  *
  * @see AbstractMessageListenerContainer
  */
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
-		implements KafkaListenerContainerFactory<C> {
+		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware {
 
 	private final ContainerProperties containerProperties = new ContainerProperties("propertiesFactory");
 
@@ -49,6 +52,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private MessageConverter messageConverter;
 
 	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
+
+	private ApplicationEventPublisher applicationEventPublisher;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -96,6 +101,11 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.deDuplicationStrategy = deDuplicationStrategy;
 	}
 
+	@Override
+	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+		this.applicationEventPublisher = applicationEventPublisher;
+	}
+
 	/**
 	 * Obtain the properties template for this factory - set properties as needed
 	 * and they will be copied to a final properties instance for the endpoint.
@@ -115,6 +125,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		}
 		if (this.phase != null) {
 			instance.setPhase(this.phase);
+		}
+		if (this.applicationEventPublisher != null) {
+			instance.setApplicationEventPublisher(this.applicationEventPublisher);
 		}
 		if (endpoint.getId() != null) {
 			instance.setBeanName(endpoint.getId());

@@ -149,7 +149,7 @@ public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
                                                         ContainerProperties containerProperties)
 
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-                        ContainerProperties containerProperties, TopicPartition... topicPartitions) {
+                        ContainerProperties containerProperties, TopicPartition... topicPartitions)
 
 ----
 
@@ -409,3 +409,89 @@ public void jsonListener(Foo foo) {
 ...
 }
 ----
+
+[[idle-containers]]
+===== Detecting Idle Asynchronous Consumers
+
+While efficient, one problem with asynchronous consumers is detecting when they are idle - users might want to take
+some action if no messages arrive for some period of time.
+
+You can configure the listener container to publish a `ListenerContainerIdleEvent` when some time passes with no message delivery.
+While the container is idle, an event will be published every `idleEventInterval` milliseconds.
+
+To configure this feature, set the `idleEventInterval` on the container:
+
+[source, java]
+----
+@Bean
+public KafKaMessageListenerContainer(ConnectionFactory connectionFactory) {
+    ContainerProperties containerProps = new ContainerProperties("topic1", "topic2");
+    ...
+    containerProps.setIdleEventInterval(60000L);
+    ...
+    KafKaMessageListenerContainer<String, String> container = new KafKaMessageListenerContainer<>(...);
+    return container;
+}
+----
+
+Or, for a `@KafkaListener`...
+
+[source, java]
+----
+@Bean
+public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<String, String> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+    ...
+    factory.getContainerProperties().setIdleEventInterval(60000L);
+    ...
+    return factory;
+}
+----
+
+In each of these cases, an event will be published once per minute while the container is idle.
+
+====== Event Consumption
+
+You can capture these events by implementing `ApplicationListener` - either a general listener, or one narrowed to only receive this specific event.
+You can also use `@EventListener`, introduced in Spring Framework 4.2.
+
+The following example combines the `@KafkaListener` and `@EventListener` into a single class.
+It's important to understand that the application listener will get events for all containers so you may need to
+check the listener id if you want to take specific action based on which container is idle.
+You can also use the `@EventListener` `condition` for this purpose.
+
+The events have 4 properties:
+
+- `source` - the listener container instance
+- `id` - the listener id (or container bean name)
+- `idleTime` - the time the container had been idle when the event was published
+- `topcicPartitions` - the topics/partitions that the container was assigned at the time the event was generated
+
+[source, xml]
+----
+public class Listener {
+
+    @KafkaListener(id = "qux", topics = "annotated")
+    public void listen4(@Payload String foo, Acknowledgment ack) {
+        ...
+    }
+
+    @EventListener(condition = "event.listenerId.startsWith('qux-')")
+    public void eventHandler(ListenerContainerIdleEvent event) {
+        this.event = event;
+        eventLatch.countDown();
+    }
+
+}
+----
+
+IMPORTANT: Event listeners will see events for all containers; so, in the example above, we narrow the events received
+based on the listener ID.
+Since containers created for the `@KafkaListener` support concurrency, the actual containers are named `id-n` where the n is a unique value for each instance to support the concurrency.
+Hence we use `startsWith` in the condition.
+
+CAUTION: If you wish to use the idle event to stop the lister container, you should not call `container.stop()` on the
+thread that calls the listener - it will cause delays and unnecessary log messages.
+Instead, you should hand off the event to a different thread that can then stop the container.
+Also, you should not `stop()` the container instance in the event if it is a child container, you should stop the concurrent container instead.
