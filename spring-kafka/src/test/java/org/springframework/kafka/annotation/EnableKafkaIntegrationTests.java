@@ -49,6 +49,7 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
+import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
@@ -104,23 +105,23 @@ public class EnableKafkaIntegrationTests {
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch1.await(20, TimeUnit.SECONDS)).isTrue();
 
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
-		assertThat(this.listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch2.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.key).isEqualTo(123);
 		assertThat(this.listener.partition).isNotNull();
 		assertThat(this.listener.topic).isEqualTo("annotated2");
 
 		template.send("annotated3", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch3.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 
 		template.send("annotated4", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch4.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
 
@@ -133,7 +134,7 @@ public class EnableKafkaIntegrationTests {
 
 		template.send("annotated11", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch7.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch7.await(20, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(this.deDup.called).isTrue();
 	}
@@ -146,9 +147,12 @@ public class EnableKafkaIntegrationTests {
 		this.registry.start();
 		assertThat(listenerContainer.isRunning()).isTrue();
 		listenerContainer.stop();
-		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "syncCommits", Boolean.class)).isFalse();
-		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "commitCallback")).isNotNull();
-		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "consumerRebalanceListener")).isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.syncCommits", Boolean.class))
+				.isFalse();
+		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.commitCallback"))
+				.isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.consumerRebalanceListener"))
+				.isNotNull();
 	}
 
 	@Test
@@ -181,7 +185,7 @@ public class EnableKafkaIntegrationTests {
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
-		assertThat(this.listener.latch6.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch6.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
 	}
 
@@ -230,7 +234,8 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(manualConsumerFactory());
-			factory.setAckMode(AckMode.MANUAL_IMMEDIATE);
+			ContainerProperties props = factory.getContainerProperties();
+			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			return factory;
 		}
 
@@ -239,11 +244,12 @@ public class EnableKafkaIntegrationTests {
 				kafkaAutoStartFalseListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
+			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setAutoStartup(false);
-			factory.setSyncCommits(false);
-			factory.setCommitCallback(mock(OffsetCommitCallback.class));
-			factory.setConsumerRebalanceListener(mock(ConsumerRebalanceListener.class));
+			props.setSyncCommits(false);
+			props.setCommitCallback(mock(OffsetCommitCallback.class));
+			props.setConsumerRebalanceListener(mock(ConsumerRebalanceListener.class));
 			return factory;
 		}
 
@@ -252,8 +258,9 @@ public class EnableKafkaIntegrationTests {
 				kafkaRebalanceListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
+			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setConsumerRebalanceListener(consumerRebalanceListener());
+			props.setConsumerRebalanceListener(consumerRebalanceListener());
 			return factory;
 		}
 

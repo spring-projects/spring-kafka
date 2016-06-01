@@ -43,9 +43,10 @@ Using plain Java to send and receive a message:
 @Test
 public void testAutoCommit() throws Exception {
     logger.info("Start auto");
-    KafkaMessageListenerContainer<Integer, String> container = createContainer();
+    ContainerProperties containerProps = new ContainerProperties("topic1", "topic2");
+    KafkaMessageListenerContainer<Integer, String> container = createContainer(containerProps);
     final CountDownLatch latch = new CountDownLatch(4);
-    container.setMessageListener(new MessageListener<Integer, String>() {
+    containerProps.setMessageListener(new MessageListener<Integer, String>() {
 
         @Override
         public void onMessage(ConsumerRecord<Integer, String> message) {
@@ -70,12 +71,12 @@ public void testAutoCommit() throws Exception {
 
 }
 
-private KafkaMessageListenerContainer<Integer, String> createContainer() {
+private KafkaMessageListenerContainer<Integer, String> createContainer(ContainerProperties containerProps) {
     Map<String, Object> props = consumerProps();
     DefaultKafkaConsumerFactory<Integer, String> cf =
                              new DefaultKafkaConsumerFactory<Integer, String>(props);
     KafkaMessageListenerContainer<Integer, String> container =
-                                      new KafkaMessageListenerContainer<>(cf, topic1);
+                                      new KafkaMessageListenerContainer<>(cf, containerProps);
     return container;
 }
 

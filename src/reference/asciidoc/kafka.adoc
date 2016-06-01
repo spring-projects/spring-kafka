@@ -146,56 +146,50 @@ The following constructors are available.
 [source, java]
 ----
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-                                                        TopicPartition... topicPartitions)
+                                                        ContainerProperties containerProperties)
 
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-														ConsumerRebalanceListener consumerRebalanceListener,
-                                                        TopicPartition... topicPartitions)
+                        ContainerProperties containerProperties, TopicPartition... topicPartitions) {
 
-public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, String... topics)
-
-public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-														ConsumerRebalanceListener consumerRebalanceListener,
-														String... topics)
-
-public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-                                                        Pattern topicPattern)
-
-public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-														ConsumerRebalanceListener consumerRebalanceListener,
-                                                        Pattern topicPattern)
 ----
 
-Each takes a `ConsumerFactory` and information about topics and partitions.
-
-The first takes a list of `TopicPartition` arguments to explicitly instruct the container which partitions to use
-(using the consumer `assign()` method).
-The third takes a list of topics and Kafka allocates the partitions based on the `group.id` property - distributing
-partitions across the group.
-The fifth is similar to the third, but uses a regex `Pattern` to select the topics.
-The second, forth and sixth constructors are similar to first, third and fifth respectively with additional
-user-provided `consumerRebalanceListener` implementation.
-
-====== ConcurrentMessageListenerContainer
-
-The constructors are similar to the `KafkaListenerContainer`:
+Each takes a `ConsumerFactory` and information about topics and partitions, as well as other configuration in a `ContainerProperties`
+object.
+The second constructor is used by the `ConcurrentMessageListenerContainer` (see below) to distribute `TopicPartitions` across the consumer instances.
+`ContainerProperties` has the following constructors:
 
 [source, java]
 ----
-public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, TopicPartition... topicPartitions)
+public ContainerProperties(TopicPartition... topicPartitions)
 
-public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, String... topics)
+public ContainerProperties(String... topics)
 
-public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, Pattern topicPattern)
+public ContainerProperties(Pattern topicPattern)
 ----
 
-It also has a property `concurrency`, e.g. `container.setConcurrency(3)` will create 3
-`KafkaMessageListenerContainer` s.
+The first takes an array of `TopicPartition` arguments to explicitly instruct the container which partitions to use
+(using the consumer `assign()` method).
+The second takes an array of topics and Kafka allocates the partitions based on the `group.id` property - distributing
+partitions across the group.
+The third uses a regex `Pattern` to select the topics.
 
-You can also configure rebalance listener by using `consumerRebalanceListener` property.
+Refer to the javadocs for `ContainerProperties` for more information about the various properties that can be set.
 
-For the second and third container, kafka will distribute the partitions across the consumers.
-For the first constructor, the `ConcurrentMessageListenerContainer` distributes the `TopicPartition` s across the
+====== ConcurrentMessageListenerContainer
+
+The single constructor is similar to the first `KafkaListenerContainer` constructor:
+
+[source, java]
+----
+public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+                                                ContainerProperties containerProperties)
+
+----
+
+It also has a property `concurrency`, e.g. `container.setConcurrency(3)` will create 3 `KafkaMessageListenerContainer` s.
+
+For the first constructor, kafka will distribute the partitions across the consumers.
+For the second constructor, the `ConcurrentMessageListenerContainer` distributes the `TopicPartition` s across the
 delegate `KafkaMessageListenerContainer` s.
 
 If, say, 6 `TopicPartition` s are provided and the `concurrency` is 3; each container will get 2 partitions.
@@ -275,6 +269,7 @@ KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String
                             new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
     factory.setConcurrency(3);
+    factory.getContainerProperties().setPollTimeout(3000);
     return factory;
 }
 
@@ -291,6 +286,9 @@ public Map<String, Object> consumerConfigs() {
     return props;
 }
 ----
+
+Notice that to set container properties, you must use the `getContainerProperties()` method on the factory.
+It is used as a template for the actual properties injected into the container.
 
 You can also configure POJO listeners with explicit topics and partitions:
 

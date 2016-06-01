@@ -16,14 +16,22 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.concurrent.Executor;
+import java.util.Collection;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.RetryContext;
 import org.springframework.util.Assert;
 
 /**
@@ -33,44 +41,45 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Marius Bogoevici
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements MessageListenerContainer, BeanNameAware, SmartLifecycle {
 
-	protected final Log logger = LogFactory.getLog(this.getClass()); //NOSONAR
+	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
 
 	/**
 	 * The offset commit behavior enumeration.
 	 */
 	public enum AckMode {
+
 		/**
-		 * Call {@link Consumer#commitAsync()} after each record is passed to the listener.
+		 * Commit after each record is processed by the listener.
 		 */
 		RECORD,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} after the results of each poll have been
-		 * passed to the listener.
+		 * Commit whatever has already been processed before the next poll.
 		 */
 		BATCH,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} for pending updates after
-		 * {@link AbstractMessageListenerContainer#setAckTime(long) ackTime} has elapsed.
+		 * Commit pending updates after
+		 * {@link ContainerProperties#setAckTime(long) ackTime} has elapsed.
 		 */
 		TIME,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} for pending updates after
-		 * {@link AbstractMessageListenerContainer#setAckCount(int) ackCount} has been
+		 * Commit pending updates after
+		 * {@link ContainerProperties#setAckCount(int) ackCount} has been
 		 * exceeded.
 		 */
 		COUNT,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} for pending updates after
-		 * {@link AbstractMessageListenerContainer#setAckCount(int) ackCount} has been
-		 * exceeded or after {@link AbstractMessageListenerContainer#setAckTime(long)
+		 * Commit pending updates after
+		 * {@link ContainerProperties#setAckCount(int) ackCount} has been
+		 * exceeded or after {@link ContainerProperties#setAckTime(long)
 		 * ackTime} has elapsed.
 		 */
 		COUNT_TIME,
@@ -92,19 +101,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	}
 
+	private final ContainerProperties containerProperties;
+
 	private final Object lifecycleMonitor = new Object();
 
 	private String beanName;
-
-	private AckMode ackMode = AckMode.BATCH;
-
-	private int ackCount;
-
-	private long ackTime;
-
-	private Object messageListener;
-
-	private volatile long pollTimeout = 1000;
 
 	private boolean autoStartup = true;
 
@@ -112,10 +113,13 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean running = false;
 
-	private Executor taskExecutor;
-
-	private ErrorHandler errorHandler = new LoggingErrorHandler();
-
+	protected AbstractMessageListenerContainer(ContainerProperties containerProperties) {
+		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
+		this.containerProperties = containerProperties;
+		if (containerProperties.consumerRebalanceListener == null) {
+			containerProperties.consumerRebalanceListener = createConsumerRebalanceListener();
+		}
+	}
 
 	@Override
 	public void setBeanName(String name) {
@@ -126,110 +130,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.beanName;
 	}
 
-	/**
-	 * Set the message listener; must be a {@link MessageListener} or
-	 * {@link AcknowledgingMessageListener}.
-	 * @param messageListener the listener.
-	 */
-	public void setMessageListener(Object messageListener) {
-		Assert.isTrue(
-				messageListener instanceof MessageListener || messageListener instanceof AcknowledgingMessageListener,
-				"Either a " + MessageListener.class.getName() + " or a " + AcknowledgingMessageListener.class.getName()
-						+ " must be provided");
-		this.messageListener = messageListener;
-	}
-
-	public Object getMessageListener() {
-		return this.messageListener;
-	}
-
-	@Override
-	public void setupMessageListener(Object messageListener) {
-		setMessageListener(messageListener);
-	}
-
-	/**
-	 * The ack mode to use when auto ack (in the configuration properties) is
-	 * false.
-	 * <ul>
-	 * <li>RECORD: Ack after each record has been passed to the listener.</li>
-	 * <li>BATCH: Ack after each batch of records received from the consumer has
-	 * been passed to the listener</li>
-	 * <li>TIME: Ack after this number of milliseconds;
-	 * (should be greater than {@code #setPollTimeout(long) pollTimeout}.</li>
-	 * <li>COUNT: Ack after at least this number of records have been received</li>
-	 * <li>MANUAL: Listener is responsible for acking - use a
-	 * {@link AcknowledgingMessageListener}.
-	 * </ul>
-	 * @param ackMode the {@link AckMode}; default BATCH.
-	 */
-	public void setAckMode(AckMode ackMode) {
-		this.ackMode = ackMode;
-	}
-
-	/**
-	 * Return the {@link AckMode}.
-	 * @return the {@link AckMode}
-	 * @see #setAckMode(AckMode)
-	 */
-	public AckMode getAckMode() {
-		return this.ackMode;
-	}
-
-	/**
-	 * The max time to block in the consumer waiting for records.
-	 * @param pollTimeout the timeout in ms; default 1000.
-	 */
-	public void setPollTimeout(long pollTimeout) {
-		this.pollTimeout = pollTimeout;
-	}
-
-	/**
-	 * Return the poll timeout.
-	 * @return the poll timeout.
-	 * @see #setPollTimeout(long)
-	 */
-	public long getPollTimeout() {
-		return this.pollTimeout;
-	}
-
-	/**
-	 * Set the number of outstanding record count after which offsets should be committed
-	 * when {@link AckMode#COUNT} or {@link AckMode#COUNT_TIME} is being used.
-	 * @param count the count
-	 */
-	public void setAckCount(int count) {
-		this.ackCount = count;
-	}
-
-	/**
-	 * Return the count.
-	 * @return the count.
-	 * @see #setAckCount(int)
-	 */
-	public int getAckCount() {
-		return this.ackCount;
-	}
-
-	/**
-	 * Set the time (ms) after which outstanding offsets should be committed
-	 * when {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should
-	 * be larger than
-	 * @param millis the time
-	 */
-	public void setAckTime(long millis) {
-		this.ackTime = millis;
-	}
-
-	/**
-	 * Return the ack time.
-	 * @return the ack time.
-	 * @see AbstractMessageListenerContainer#setAckTime(long)
-	 */
-	public long getAckTime() {
-		return this.ackTime;
-	}
-
 	@Override
 	public boolean isAutoStartup() {
 		return this.autoStartup;
@@ -238,32 +138,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
 	}
-
-	@Override
-	public final void start() {
-		synchronized (this.lifecycleMonitor) {
-			doStart();
-		}
-	}
-
-	protected abstract void doStart();
-
-	@Override
-	public final void stop() {
-		stop(null);
-	}
-
-	@Override
-	public void stop(Runnable callback) {
-		synchronized (this.lifecycleMonitor) {
-			doStop();
-		}
-		if (callback != null) {
-			callback.run();
-		}
-	}
-
-	protected abstract void doStop();
 
 	protected void setRunning(boolean running) {
 		this.running = running;
@@ -283,20 +157,94 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.phase;
 	}
 
-	public ErrorHandler getErrorHandler() {
-		return this.errorHandler;
+	public ContainerProperties getContainerProperties() {
+		return this.containerProperties;
 	}
 
-	public void setErrorHandler(ErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
+	@Override
+	public void setupMessageListener(Object messageListener) {
+		this.containerProperties.messageListener = messageListener;
 	}
 
-	public Executor getTaskExecutor() {
-		return this.taskExecutor;
+	@Override
+	public final void start() {
+		synchronized (this.lifecycleMonitor) {
+			Assert.isTrue(
+					this.containerProperties.messageListener instanceof MessageListener
+							|| this.containerProperties.messageListener instanceof AcknowledgingMessageListener,
+					"Either a " + MessageListener.class.getName() + " or a "
+							+ AcknowledgingMessageListener.class.getName() + " must be provided");
+			if (this.containerProperties.recoveryCallback == null) {
+				this.containerProperties.recoveryCallback = new RecoveryCallback<Void>() {
+
+					@Override
+					public Void recover(RetryContext context) throws Exception {
+						@SuppressWarnings("unchecked")
+						ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) context.getAttribute("record");
+						Throwable lastThrowable = context.getLastThrowable();
+						if (AbstractMessageListenerContainer.this.containerProperties.errorHandler != null
+								&& lastThrowable instanceof Exception) {
+							AbstractMessageListenerContainer.this.containerProperties.errorHandler
+									.handle((Exception) lastThrowable, record);
+						}
+						else {
+							AbstractMessageListenerContainer.this.logger.error(
+									"Listener threw an exception and no error handler for " + record, lastThrowable);
+						}
+						return null;
+					}
+
+				};
+			}
+			doStart();
+		}
 	}
 
-	public void setTaskExecutor(Executor fetchTaskExecutor) {
-		this.taskExecutor = fetchTaskExecutor;
+	protected abstract void doStart();
+
+	@Override
+	public final void stop() {
+		final CountDownLatch latch = new CountDownLatch(1);
+		stop(new Runnable() {
+			@Override
+			public void run() {
+				latch.countDown();
+			}
+		});
+		try {
+			latch.await(this.containerProperties.shutdownTimeout, TimeUnit.MILLISECONDS);
+		}
+		catch (InterruptedException e) {
+		}
+	}
+
+	@Override
+	public void stop(Runnable callback) {
+		synchronized (this.lifecycleMonitor) {
+			doStop(callback);
+		}
+	}
+
+	protected abstract void doStop(Runnable callback);
+
+	/**
+	 * Return default implementation of {@link ConsumerRebalanceListener} instance.
+	 * @return the {@link ConsumerRebalanceListener} currently assigned to this container.
+	 */
+	protected final ConsumerRebalanceListener createConsumerRebalanceListener() {
+		return new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				AbstractMessageListenerContainer.this.logger.info("partitions revoked:" + partitions);
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				AbstractMessageListenerContainer.this.logger.info("partitions assigned:" + partitions);
+			}
+
+		};
 	}
 
 }

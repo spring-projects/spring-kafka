@@ -18,11 +18,10 @@ package org.springframework.kafka.config;
 
 import java.util.Collection;
 
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.config.ContainerProperties;
 
 /**
  * A {@link KafkaListenerContainerFactory} implementation to build a
@@ -44,14 +43,6 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 
 	private Integer concurrency;
 
-	private Long recentOffset;
-
-	private ConsumerRebalanceListener consumerRebalanceListener;
-
-	private OffsetCommitCallback commitCallback;
-
-	private Boolean syncCommits;
-
 	/**
 	 * Specify the container concurrency.
 	 * @param concurrency the number of consumers to create.
@@ -61,58 +52,23 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 		this.concurrency = concurrency;
 	}
 
-	/**
-	 * Specify the offset lag from the end of commit.
-	 * @param recentOffset the recent offset.
-	 * @see ConcurrentMessageListenerContainer#setRecentOffset(long)
-	 */
-	public void setRecentOffset(Long recentOffset) {
-		this.recentOffset = recentOffset;
-	}
-
-
-	/**
-	 * Specify the rebalance listener of container.
-	 * @param consumerRebalanceListener the rebalance listener.
-	 * @see ConcurrentMessageListenerContainer#setConsumerRebalanceListener(ConsumerRebalanceListener)
-	 */
-	public void setConsumerRebalanceListener(ConsumerRebalanceListener consumerRebalanceListener) {
-		this.consumerRebalanceListener = consumerRebalanceListener;
-	}
-
-	/**
-	 * Specify the commit callback.
-	 * @param commitCallback the callback to set.
-	 * @see ConcurrentMessageListenerContainer#setCommitCallback(OffsetCommitCallback)
-	 */
-	public void setCommitCallback(OffsetCommitCallback commitCallback) {
-		this.commitCallback = commitCallback;
-	}
-
-	/**
-	 * Specifiy whether or not to use sync commits.
-	 * @param syncCommits the sync commits to set.
-	 * @see ConcurrentMessageListenerContainer#setSyncCommits(boolean)
-	 */
-	public void setSyncCommits(Boolean syncCommits) {
-		this.syncCommits = syncCommits;
-	}
-
 	@Override
 	protected ConcurrentMessageListenerContainer<K, V> createContainerInstance(KafkaListenerEndpoint endpoint) {
 		Collection<TopicPartition> topicPartitions = endpoint.getTopicPartitions();
 		if (!topicPartitions.isEmpty()) {
-			return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(),
+			ContainerProperties properties = new ContainerProperties(
 					topicPartitions.toArray(new TopicPartition[topicPartitions.size()]));
+			return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(), properties);
 		}
 		else {
 			Collection<String> topics = endpoint.getTopics();
 			if (!topics.isEmpty()) {
-				return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(),
-						topics.toArray(new String[topics.size()]));
+				ContainerProperties properties = new ContainerProperties(topics.toArray(new String[topics.size()]));
+				return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(), properties);
 			}
 			else {
-				return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(), endpoint.getTopicPattern());
+				ContainerProperties properties = new ContainerProperties(endpoint.getTopicPattern());
+				return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(), properties);
 			}
 		}
 	}
@@ -120,21 +76,8 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 	@Override
 	protected void initializeContainer(ConcurrentMessageListenerContainer<K, V> instance) {
 		super.initializeContainer(instance);
-
 		if (this.concurrency != null) {
 			instance.setConcurrency(this.concurrency);
-		}
-		if (this.recentOffset != null) {
-			instance.setRecentOffset(this.recentOffset);
-		}
-		if (this.consumerRebalanceListener != null) {
-			instance.setConsumerRebalanceListener(this.consumerRebalanceListener);
-		}
-		if (this.commitCallback != null) {
-			instance.setCommitCallback(this.commitCallback);
-		}
-		if (this.syncCommits != null) {
-			instance.setSyncCommits(this.syncCommits);
 		}
 	}
 

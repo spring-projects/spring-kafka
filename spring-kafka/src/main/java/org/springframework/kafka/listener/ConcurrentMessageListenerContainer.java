@@ -19,22 +19,19 @@ package org.springframework.kafka.listener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.regex.Pattern;
 
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.util.Assert;
 
 /**
  * Creates 1 or more {@link KafkaMessageListenerContainer}s based on
  * {@link #setConcurrency(int) concurrency}. If the
- * {@link #ConcurrentMessageListenerContainer(ConsumerFactory, TopicPartition...)}
- * constructor is used, the {@link TopicPartition}s are distributed evenly across the
+ * {@link ContainerProperties} is configured with {@link TopicPartition}s,
+ * the {@link TopicPartition}s are distributed evenly across the
  * instances.
  *
  * @param <K> the key type.
@@ -49,84 +46,23 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final ConsumerFactory<K, V> consumerFactory;
 
-	private final String[] topics;
-
-	private final Pattern topicPattern;
-
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
-
-	private long recentOffset;
-
-	private TopicPartition[] partitions;
 
 	private int concurrency = 1;
 
-	private ConsumerRebalanceListener consumerRebalanceListener;
-
-	private OffsetCommitCallback commitCallback;
-
-	private boolean syncCommits = true;
-
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions - when using this constructor, {@link #setRecentOffset(long)
+	 * topics/partitions - when using this constructor, {@link ContainerProperties#setRecentOffset(long)
 	 * recentOffset} can be specified.
 	 * The topic partitions are distributed evenly across the delegate
 	 * {@link KafkaMessageListenerContainer}s.
 	 * @param consumerFactory the consumer factory.
-	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
+	 * @param containerProperties the container properties.
 	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-			TopicPartition... topicPartitions) {
+	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, ContainerProperties containerProperties) {
+		super(containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		Assert.notEmpty(topicPartitions, "A list of partitions must be provided");
-		Assert.noNullElements(topicPartitions, "The list of partitions cannot contain null elements");
 		this.consumerFactory = consumerFactory;
-		this.partitions = new LinkedHashSet<>(Arrays.asList(topicPartitions))
-				.toArray(new TopicPartition[topicPartitions.length]);
-		this.topics = null;
-		this.topicPattern = null;
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and topics.
-	 * When using this constructor, {@link #setRecentOffset(long) recentOffset} is
-	 * ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param topics the topics.
-	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, String... topics) {
-		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		Assert.notNull(topics, "A list of topics must be provided");
-		Assert.noNullElements(topics, "The list of topics cannot contain null elements");
-		this.consumerFactory = consumerFactory;
-		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
-		this.topicPattern = null;
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and topic
-	 * pattern. When using this constructor, {@link #setRecentOffset(long) recentOffset} is
-	 * ignored.
-	 * @param consumerFactory the consumer factory.
-	 * @param topicPattern the topic pattern.
-	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, Pattern topicPattern) {
-		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		Assert.notNull(topicPattern, "A topic pattern must be provided");
-		this.consumerFactory = consumerFactory;
-		this.topics = null;
-		this.topicPattern = topicPattern;
-	}
-
-	/**
-	 * Set the offset to this number of records back from the latest when starting.
-	 * Overrides any consumer properties (earliest, latest).
-	 * Only applies when explicit topic/partition assignment is provided.
-	 * @param recentOffset the offset from the latest; default 0.
-	 */
-	public void setRecentOffset(long recentOffset) {
-		this.recentOffset = recentOffset;
 	}
 
 	public int getConcurrency() {
@@ -141,35 +77,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void setConcurrency(int concurrency) {
 		Assert.isTrue(concurrency > 0, "concurrency must be greater than 0");
 		this.concurrency = concurrency;
-	}
-
-	/**
-	 * Set the user defined {@link ConsumerRebalanceListener} implementation.
-	 *
-	 * @param consumerRebalanceListener the {@link ConsumerRebalanceListener} instance
-	 */
-	public void setConsumerRebalanceListener(ConsumerRebalanceListener consumerRebalanceListener) {
-		this.consumerRebalanceListener = consumerRebalanceListener;
-	}
-
-	/**
-	 * Set the commit callback; by default a simple logging callback is used to
-	 * log success at DEBUG level and failures at ERROR level.
-	 * @param commitCallback the callback.
-	 */
-	public void setCommitCallback(OffsetCommitCallback commitCallback) {
-		this.commitCallback = commitCallback;
-	}
-
-	/**
-	 * Set whether or not to call consumer.commitSync() or commitAsync() when
-	 * the container is responsible for commits. Default true. See
-	 * https://github.com/spring-projects/spring-kafka/issues/62
-	 * At the time of writing, async commits are not entirely reliable.
-	 * @param syncCommits true to use commitSync().
-	 */
-	public void setSyncCommits(boolean syncCommits) {
-		this.syncCommits = syncCommits;
 	}
 
 	/**
@@ -188,35 +95,24 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	protected void doStart() {
 		if (!isRunning()) {
-			if (this.partitions != null && this.concurrency > this.partitions.length) {
-				logger.warn("When specific partitions are provided, the concurrency must be less than or "
-						+ "equal to the number of partitions; reduced from " + this.concurrency
-						+ " to " + this.partitions.length);
-				this.concurrency = this.partitions.length;
+			ContainerProperties containerProperties = getContainerProperties();
+			if (containerProperties.topicPartitions != null
+					&& this.concurrency > containerProperties.topicPartitions.length) {
+				this.logger.warn("When specific partitions are provided, the concurrency must be less than or "
+						+ "equal to the number of partitions; reduced from " + this.concurrency + " to "
+						+ containerProperties.topicPartitions.length);
+				this.concurrency = containerProperties.topicPartitions.length;
 			}
 			setRunning(true);
 
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container;
-				if (this.partitions == null) {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.consumerRebalanceListener,
-							this.topics, this.topicPattern, this.partitions);
+				if (containerProperties.topicPartitions == null) {
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory, containerProperties);
 				}
 				else {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, this.consumerRebalanceListener,
-							this.topics, this.topicPattern, partitionSubset(i));
-				}
-				container.setCommitCallback(this.commitCallback);
-				container.setSyncCommits(this.syncCommits);
-				container.setAckMode(getAckMode());
-				container.setAckCount(getAckCount());
-				container.setAckTime(getAckTime());
-				container.setRecentOffset(this.recentOffset);
-				container.setAutoStartup(false);
-				container.setMessageListener(getMessageListener());
-				container.setErrorHandler(getErrorHandler());
-				if (getTaskExecutor() != null) {
-					container.setTaskExecutor(getTaskExecutor());
+					container = new KafkaMessageListenerContainer<>(this.consumerFactory, containerProperties,
+							partitionSubset(containerProperties, i));
 				}
 				if (getBeanName() != null) {
 					container.setBeanName(getBeanName() + "-" + i);
@@ -227,23 +123,25 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
-	private TopicPartition[] partitionSubset(int i) {
+	private TopicPartition[] partitionSubset(ContainerProperties containerProperties, int i) {
 		if (this.concurrency == 1) {
-			return this.partitions;
+			return containerProperties.topicPartitions;
 		}
 		else {
-			int numPartitions = this.partitions.length;
+			int numPartitions = containerProperties.topicPartitions.length;
 			if (numPartitions == this.concurrency) {
-				return new TopicPartition[] { this.partitions[i] };
+				return new TopicPartition[] { containerProperties.topicPartitions[i] };
 			}
 			else {
 				int perContainer = numPartitions / this.concurrency;
 				TopicPartition[] subset;
 				if (i == this.concurrency - 1) {
-					subset = Arrays.copyOfRange(this.partitions, i * perContainer, this.partitions.length);
+					subset = Arrays.copyOfRange(containerProperties.topicPartitions, i * perContainer,
+							containerProperties.topicPartitions.length);
 				}
 				else {
-					subset = Arrays.copyOfRange(this.partitions, i * perContainer, (i + 1) * perContainer);
+					subset = Arrays.copyOfRange(containerProperties.topicPartitions, i * perContainer,
+							(i + 1) * perContainer);
 				}
 				return subset;
 			}
@@ -254,11 +152,11 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * Under lifecycle lock.
 	 */
 	@Override
-	protected void doStop() {
+	protected void doStop(Runnable callback) {
 		if (isRunning()) {
 			setRunning(false);
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
-				container.stop();
+				container.stop(callback);
 			}
 			this.containers.clear();
 		}
