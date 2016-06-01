@@ -31,9 +31,12 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
+import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.util.Assert;
 
@@ -68,7 +71,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private String group;
 
-	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
+	private RecordFilterStrategy<K, V> recordFilterStrategy;
+
+	private boolean ackDiscarded;
 
 
 	@Override
@@ -196,16 +201,29 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		}
 	}
 
-	protected DeDuplicationStrategy<K, V> getDeDuplicationStrategy() {
-		return this.deDuplicationStrategy;
+	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
+		return this.recordFilterStrategy;
 	}
 
 	/**
-	 * Set a {@link DeDuplicationStrategy} implementation.
-	 * @param deDuplicationStrategy the strategy implementation.
+	 * Set a {@link RecordFilterStrategy} implementation.
+	 * @param recordFilterStrategy the strategy implementation.
 	 */
-	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
-		this.deDuplicationStrategy = deDuplicationStrategy;
+	public void setRecordFilterStrategy(RecordFilterStrategy<K, V> recordFilterStrategy) {
+		this.recordFilterStrategy = recordFilterStrategy;
+	}
+
+	protected boolean isAckDiscarded() {
+		return this.ackDiscarded;
+	}
+
+	/**
+	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy) recordFilterStrategy}
+	 * is in use.
+	 * @param ackDiscarded the ackDiscarded.
+	 */
+	public void setAckDiscarded(boolean ackDiscarded) {
+		this.ackDiscarded = ackDiscarded;
 	}
 
 	@Override
@@ -226,7 +244,21 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private void setupMessageListener(MessageListenerContainer container, MessageConverter messageConverter) {
 		MessageListener<K, V> messageListener = createMessageListener(container, messageConverter);
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
-		container.setupMessageListener(messageListener);
+		if (this.recordFilterStrategy != null) {
+			if (messageListener instanceof AcknowledgingMessageListener) {
+				@SuppressWarnings("unchecked")
+				AcknowledgingMessageListener<K, V> aml = (AcknowledgingMessageListener<K, V>) messageListener;
+				aml = new FilteringAcknowledgingMessageListenerAdapter<>(this.recordFilterStrategy, aml, this.ackDiscarded);
+				container.setupMessageListener(aml);
+			}
+			else {
+				messageListener = new FilteringMessageListenerAdapter<>(this.recordFilterStrategy, messageListener);
+				container.setupMessageListener(messageListener);
+			}
+		}
+		else {
+			container.setupMessageListener(messageListener);
+		}
 	}
 
 	/**

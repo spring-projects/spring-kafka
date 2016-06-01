@@ -18,11 +18,11 @@ package org.springframework.kafka.listener.adapter;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.MessageListener;
+import org.springframework.util.Assert;
 
 /**
- * A {@link MessageListener} adapter that implements de-duplication logic
- * via a DeDuplicationStrategy.
+ * An abstract message listener adapter that implements record filter logic
+ * via a {@link RecordFilterStrategy}.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -30,22 +30,17 @@ import org.springframework.kafka.listener.MessageListener;
  * @author Gary Russell
  *
  */
-public class DeDuplicatingMessageListenerAdapter<K, V> extends AbstractDeDuplicatingMessageListener<K, V>
-		implements MessageListener<K, V> {
+public abstract class AbstractFilteringMessageListener<K, V> {
 
-	private final MessageListener<K, V> delegate;
+	private final RecordFilterStrategy<K, V> recordFilterStrategy;
 
-	public DeDuplicatingMessageListenerAdapter(DeDuplicationStrategy<K, V> deDupStrategy,
-			MessageListener<K, V> delegate) {
-		super(deDupStrategy);
-		this.delegate = delegate;
+	protected AbstractFilteringMessageListener(RecordFilterStrategy<K, V> recordFilterStrategy) {
+		Assert.notNull(recordFilterStrategy, "'recordFilterStrategy' cannot be null");
+		this.recordFilterStrategy = recordFilterStrategy;
 	}
 
-	@Override
-	public void onMessage(ConsumerRecord<K, V> consumerRecord) {
-		if (!isDuplicate(consumerRecord)) {
-			this.delegate.onMessage(consumerRecord);
-		}
+	protected boolean filter(ConsumerRecord<K, V> consumerRecord) {
+		return this.recordFilterStrategy.filter(consumerRecord);
 	}
 
 }

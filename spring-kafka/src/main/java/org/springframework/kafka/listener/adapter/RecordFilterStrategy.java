@@ -18,11 +18,10 @@ package org.springframework.kafka.listener.adapter;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.util.Assert;
-
 /**
- * An abstract message listener adapter that implements de-duplication logic
- * via a {@link DeDuplicationStrategy}.
+ * Implementations of this interface can signal that a record about
+ * to be delivered to a message listener should be discarded instead
+ * of being delivered.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -30,17 +29,13 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  *
  */
-public abstract class AbstractDeDuplicatingMessageListener<K, V> {
+public interface RecordFilterStrategy<K, V> {
 
-	private final DeDuplicationStrategy<K, V> deDupStrategy;
-
-	protected AbstractDeDuplicatingMessageListener(DeDuplicationStrategy<K, V> deDupStrategy) {
-		Assert.notNull(deDupStrategy, "'deDupStrategy' cannot be null");
-		this.deDupStrategy = deDupStrategy;
-	}
-
-	protected boolean isDuplicate(ConsumerRecord<K, V> consumerRecord) {
-		return this.deDupStrategy.isDuplicate(consumerRecord);
-	}
+	/**
+	 * Return true if the record should be discarded.
+	 * @param consumerRecord the record.
+	 * @return true to discard.
+	 */
+	boolean filter(ConsumerRecord<K, V> consumerRecord);
 
 }

@@ -22,7 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-import org.springframework.kafka.listener.adapter.DeDuplicationStrategy;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.converter.MessageConverter;
 
@@ -51,7 +51,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private MessageConverter messageConverter;
 
-	private DeDuplicationStrategy<K, V> deDuplicationStrategy;
+	private RecordFilterStrategy<K, V> recordFilterStrategy;
+
+	private Boolean ackDiscarded;
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
@@ -94,11 +96,19 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
-	 * Set the de-duplication strategy.
-	 * @param deDuplicationStrategy the strategy.
+	 * Set the record filter strategy.
+	 * @param recordFilterStrategy the strategy.
 	 */
-	public void setDeDuplicationStrategy(DeDuplicationStrategy<K, V> deDuplicationStrategy) {
-		this.deDuplicationStrategy = deDuplicationStrategy;
+	public void setRecordFilterStrategy(RecordFilterStrategy<K, V> recordFilterStrategy) {
+		this.recordFilterStrategy = recordFilterStrategy;
+	}
+
+	/**
+	 * Set to true to ack discards when a filter strategy is in use.
+	 * @param ackDiscarded the ackDiscarded.
+	 */
+	public void setAckDiscarded(Boolean ackDiscarded) {
+		this.ackDiscarded = ackDiscarded;
 	}
 
 	@Override
@@ -133,8 +143,13 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			instance.setBeanName(endpoint.getId());
 		}
 
-		if (this.deDuplicationStrategy != null && endpoint instanceof AbstractKafkaListenerEndpoint) {
-			((AbstractKafkaListenerEndpoint<K, V>) endpoint).setDeDuplicationStrategy(this.deDuplicationStrategy);
+		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
+			if (this.recordFilterStrategy != null) {
+				((AbstractKafkaListenerEndpoint<K, V>) endpoint).setRecordFilterStrategy(this.recordFilterStrategy);
+			}
+			if (this.ackDiscarded != null) {
+				((AbstractKafkaListenerEndpoint<K, V>) endpoint).setAckDiscarded(this.ackDiscarded);
+			}
 		}
 
 		endpoint.setupListenerContainer(instance, this.messageConverter);
