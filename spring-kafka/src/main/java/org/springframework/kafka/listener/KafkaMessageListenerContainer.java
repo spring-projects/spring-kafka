@@ -470,6 +470,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			// handle the last manual acks, after the listeners have closed
 			handleManualAcks();
+			processCommits();
 			if (this.offsets.size() > 0) {
 				// we always commit after stopping the invoker
 				commitIfNecessary();
@@ -602,6 +603,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 				catch (Exception e) {
+					if (this.containerProperties.isAckOnError()) {
+						this.acks.add(record);
+					}
 					if (this.containerProperties.getErrorHandler() != null) {
 						this.containerProperties.getErrorHandler().handle(e, record);
 					}

@@ -22,6 +22,7 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.List;
@@ -87,9 +88,11 @@ public class ConcurrentMessageListenerContainerTests {
 
 	private static String topic8 = "testTopic8";
 
+	private static String topic9 = "testTopic9";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8);
+			topic6, topic7, topic8, topic9);
 
 	@Test
 	public void testAutoCommit() throws Exception {
@@ -608,4 +611,55 @@ public class ConcurrentMessageListenerContainerTests {
 
 	}
 
+
+	@Test
+	public void testAckOnErrorRecord() throws Exception {
+		logger.info("Start ack on error");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test9", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		final CountDownLatch latch = new CountDownLatch(4);
+		ContainerProperties containerProps = new ContainerProperties(topic9);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				logger.info("auto ack on error: " + message);
+				latch.countDown();
+				if (message.value().startsWith("b")) {
+					throw new RuntimeException();
+				}
+			}
+		});
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setAckOnError(false);
+		ConcurrentMessageListenerContainer<Integer, String> container = new ConcurrentMessageListenerContainer<>(cf,
+				containerProps);
+		container.setConcurrency(2);
+		container.setBeanName("testAckOnError");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic9);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 0, "qux");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		consumer.assign(Arrays.asList(new TopicPartition(topic9, 0), new TopicPartition(topic9, 1)));
+		// this consumer is positioned at 1, the next offset after the successfully
+		// processed 'foo'
+		// it has not been updated because 'bar' failed
+		assertThat(consumer.position(new TopicPartition(topic9, 0))).isEqualTo(1);
+		// this consumer is positioned at 1, the next offset after the successfully
+		// processed 'qux'
+		// it has been updated even 'baz' failed
+		assertThat(consumer.position(new TopicPartition(topic9, 1))).isEqualTo(2);
+		logger.info("Stop ack on error");
+	}
 }
