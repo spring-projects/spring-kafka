@@ -344,10 +344,22 @@ This class takes an implementation of `RecordFilterStrategy` where you implement
 that a message is a duplicate and should be discarded.
 
 A `FilteringAcknowledgingMessageListenerAdapter` is also provided for wrapping an `AcknowledgingMessageListener`.
-This has an additional property `ackDiscarded` which indicates whether the adapter should acknowledge the discarded record.
+This has an additional property `ackDiscarded` which indicates whether the adapter should acknowledge the discarded record; it is `true` by default.
 
 When using `@KafkaListener`, set the `RecordFilterStrategy` (and optionally `ackDiscarded`) on the container factory and the listener will be wrapped in the appropriate filtering adapter.
 
+
+===== Retrying Deliveries
+
+If your listener throws an exception, the default behavior is to invoke the `ErrorHandler`, if configured.
+
+To retry deliveries, convenient listener adapters - `RetryingMessageListenerAdapter` and `RetryingAcknowledgingMessageListenerAdapter` are provided, depending on whether you are using a `MessageListener` or an `AcknowledgingMessageListener`.
+
+These can be configured with a `RetryTemplate` and `RecoveryCallback<Void>` - see the https://github.com/spring-projects/spring-retry[spring-retry]
+project for information about these components.
+If a recovery callback is not provided, the exception is logged after retries are exhausted.
+
+When using `@KafkaListener`, set the `RetryTemplate` (and optionally `recoveryCallback`) on the container factory and the listener will be wrapped in the appropriate retrying adapter.
 
 ==== Serialization/Deserialization and Message Conversion
 

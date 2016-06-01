@@ -25,6 +25,8 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.support.RetryTemplate;
 
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
@@ -54,6 +56,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
 	private Boolean ackDiscarded;
+
+	private RetryTemplate retryTemplate;
+
+	private RecoveryCallback<Void> recoveryCallback;
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
@@ -111,6 +117,23 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.ackDiscarded = ackDiscarded;
 	}
 
+	/**
+	 * Set a retryTemplate.
+	 * @param retryTemplate the template.
+	 */
+	public void setRetryTemplate(RetryTemplate retryTemplate) {
+		this.retryTemplate = retryTemplate;
+	}
+
+	/**
+	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)
+	 * retryTemplate}.
+	 * @param recoveryCallback the callback.
+	 */
+	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+		this.recoveryCallback = recoveryCallback;
+	}
+
 	@Override
 	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
 		this.applicationEventPublisher = applicationEventPublisher;
@@ -144,11 +167,18 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		}
 
 		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
+			AbstractKafkaListenerEndpoint<K, V> aklEndpoint = (AbstractKafkaListenerEndpoint<K, V>) endpoint;
 			if (this.recordFilterStrategy != null) {
-				((AbstractKafkaListenerEndpoint<K, V>) endpoint).setRecordFilterStrategy(this.recordFilterStrategy);
+				aklEndpoint.setRecordFilterStrategy(this.recordFilterStrategy);
 			}
 			if (this.ackDiscarded != null) {
-				((AbstractKafkaListenerEndpoint<K, V>) endpoint).setAckDiscarded(this.ackDiscarded);
+				aklEndpoint.setAckDiscarded(this.ackDiscarded);
+			}
+			if (this.retryTemplate != null) {
+				aklEndpoint.setRetryTemplate(this.retryTemplate);
+			}
+			if (this.recoveryCallback != null) {
+				aklEndpoint.setRecoveryCallback(this.recoveryCallback);
 			}
 		}
 

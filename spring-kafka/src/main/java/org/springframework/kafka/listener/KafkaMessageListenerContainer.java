@@ -51,8 +51,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.retry.RetryCallback;
-import org.springframework.retry.RetryContext;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -561,41 +559,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				try {
 					if (this.acknowledgingMessageListener != null) {
-						if (this.containerProperties.getRetryTemplate() != null) {
-							this.containerProperties.getRetryTemplate().execute(
-									new RetryCallback<Void, KafkaException>() {
-
-								@Override
-								public Void doWithRetry(RetryContext context) throws KafkaException {
-									context.setAttribute("record", record);
-									ListenerConsumer.this.acknowledgingMessageListener.onMessage(record,
-											new ConsumerAcknowledgment(record));
-									return null;
-								}
-
-							}, this.containerProperties.getRecoveryCallback());
-						}
-						else {
-							this.acknowledgingMessageListener.onMessage(record, new ConsumerAcknowledgment(record));
-						}
+						this.acknowledgingMessageListener.onMessage(record, new ConsumerAcknowledgment(record));
 					}
 					else {
-						if (this.containerProperties.getRetryTemplate() != null) {
-							this.containerProperties.getRetryTemplate().execute(
-									new RetryCallback<Void, KafkaException>() {
-
-								@Override
-								public Void doWithRetry(RetryContext context) throws KafkaException {
-									context.setAttribute("record", record);
-									ListenerConsumer.this.listener.onMessage(record);
-									return null;
-								}
-
-							}, this.containerProperties.getRecoveryCallback());
-						}
-						else {
-							this.listener.onMessage(record);
-						}
+						this.listener.onMessage(record);
 					}
 					this.acks.add(record);
 					if (this.isManualImmediateAck || this.isRecordAck) {

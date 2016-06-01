@@ -46,6 +46,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
+import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -202,27 +203,28 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch latch = new CountDownLatch(18);
 		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
-		containerProps.setMessageListener(new MessageListener<Integer, String>() {
+		RetryingMessageListenerAdapter<Integer, String> adapter = new RetryingMessageListenerAdapter<>(
+					new MessageListener<Integer, String>() {
 
-			@Override
-			public void onMessage(ConsumerRecord<Integer, String> message) {
-				logger.info("slow3: " + message);
-				bitSet.set((int) (message.partition() * 3 + message.offset()));
-				String key = message.topic() + message.partition() + message.offset();
-				if (faults.get(key) == null) {
-					faults.put(key, new AtomicInteger(1));
+				@Override
+				public void onMessage(ConsumerRecord<Integer, String> message) {
+					logger.info("slow3: " + message);
+					bitSet.set((int) (message.partition() * 3 + message.offset()));
+					String key = message.topic() + message.partition() + message.offset();
+					if (faults.get(key) == null) {
+						faults.put(key, new AtomicInteger(1));
+					}
+					else {
+						faults.get(key).incrementAndGet();
+					}
+					latch.countDown(); // 3 per = 18
+					if (faults.get(key).get() < 3) { // succeed on the third attempt
+						throw new FooEx();
+					}
 				}
-				else {
-					faults.get(key).incrementAndGet();
-				}
-				latch.countDown(); // 3 per = 18
-				if (faults.get(key).get() < 3) { // succeed on the third attempt
-					throw new FooEx();
-				}
-			}
 
-		});
-		addRetry(containerProps);
+			}, buildRetry(), null);
+		containerProps.setMessageListener(adapter);
 		containerProps.setPauseAfter(100);
 		container.setBeanName("testSlow3");
 		container.start();
@@ -260,35 +262,36 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch latch = new CountDownLatch(18);
 		final BitSet bitSet = new BitSet(6);
 		final Map<String, AtomicInteger> faults = new HashMap<>();
-		containerProps.setMessageListener(new MessageListener<Integer, String>() {
+		RetryingMessageListenerAdapter<Integer, String> adapter = new RetryingMessageListenerAdapter<>(
+			new MessageListener<Integer, String>() {
 
-			@Override
-			public void onMessage(ConsumerRecord<Integer, String> message) {
-				logger.info("slow4: " + message);
-				bitSet.set((int) (message.partition() * 4 + message.offset()));
-				String key = message.topic() + message.partition() + message.offset();
-				if (faults.get(key) == null) {
-					faults.put(key, new AtomicInteger(1));
-				}
-				else {
-					faults.get(key).incrementAndGet();
-				}
-				latch.countDown(); // 3 per = 18
-				if (faults.get(key).get() == 1) {
-					try {
-						Thread.sleep(1000);
+				@Override
+				public void onMessage(ConsumerRecord<Integer, String> message) {
+					logger.info("slow4: " + message);
+					bitSet.set((int) (message.partition() * 4 + message.offset()));
+					String key = message.topic() + message.partition() + message.offset();
+					if (faults.get(key) == null) {
+						faults.put(key, new AtomicInteger(1));
 					}
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
+					else {
+						faults.get(key).incrementAndGet();
+					}
+					latch.countDown(); // 3 per = 18
+					if (faults.get(key).get() == 1) {
+						try {
+							Thread.sleep(1000);
+						}
+						catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+					}
+					if (faults.get(key).get() < 3) { // succeed on the third attempt
+						throw new FooEx();
 					}
 				}
-				if (faults.get(key).get() < 3) { // succeed on the third attempt
-					throw new FooEx();
-				}
-			}
 
-		});
-		addRetry(containerProps);
+			}, buildRetry(), null);
+		containerProps.setMessageListener(adapter);
 		containerProps.setPauseAfter(100);
 		container.setBeanName("testSlow4");
 		container.start();
@@ -315,14 +318,14 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop " + this.testName.getMethodName());
 	}
 
-	private void addRetry(ContainerProperties containerProps) {
+	private RetryTemplate buildRetry() {
 		SimpleRetryPolicy policy = new SimpleRetryPolicy(3, Collections.singletonMap(FooEx.class, true));
 		RetryTemplate retryTemplate = new RetryTemplate();
 		retryTemplate.setRetryPolicy(policy);
 		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
 		backOffPolicy.setBackOffPeriod(1000);
 		retryTemplate.setBackOffPolicy(backOffPolicy);
-		containerProps.setRetryTemplate(retryTemplate);
+		return retryTemplate;
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {

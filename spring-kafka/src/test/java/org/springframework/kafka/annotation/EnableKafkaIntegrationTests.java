@@ -51,7 +51,9 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -61,6 +63,9 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -134,6 +139,14 @@ public class EnableKafkaIntegrationTests {
 				.isInstanceOf(FilteringAcknowledgingMessageListenerAdapter.class);
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.ackDiscarded",
 				Boolean.class)).isTrue();
+		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate"))
+				.isInstanceOf(RetryingAcknowledgingMessageListenerAdapter.class);
+		assertThat(KafkaTestUtils
+				.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate.recoveryCallback")
+				.getClass().getName()).contains("EnableKafkaIntegrationTests");
+		assertThat(KafkaTestUtils.getPropertyValue(manualContainer,
+				"containerProperties.messageListener.delegate.delegate"))
+						.isInstanceOf(MessagingMessageListenerAdapter.class);
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -254,6 +267,15 @@ public class EnableKafkaIntegrationTests {
 			props.setIdleEventInterval(100L);
 			factory.setRecordFilterStrategy(manualFilter());
 			factory.setAckDiscarded(true);
+			factory.setRetryTemplate(new RetryTemplate());
+			factory.setRecoveryCallback(new RecoveryCallback<Void>() {
+
+				@Override
+				public Void recover(RetryContext context) throws Exception {
+					return null;
+				}
+
+			});
 			return factory;
 		}
 

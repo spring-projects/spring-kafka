@@ -24,7 +24,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.BeanNameAware;
@@ -32,8 +31,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.listener.config.ContainerProperties;
-import org.springframework.retry.RecoveryCallback;
-import org.springframework.retry.RetryContext;
 import org.springframework.util.Assert;
 
 /**
@@ -187,28 +184,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 							|| this.containerProperties.getMessageListener() instanceof AcknowledgingMessageListener,
 					"Either a " + MessageListener.class.getName() + " or a "
 							+ AcknowledgingMessageListener.class.getName() + " must be provided");
-			if (this.containerProperties.getRecoveryCallback() == null) {
-				this.containerProperties.setRecoveryCallback(new RecoveryCallback<Void>() {
-
-					@Override
-					public Void recover(RetryContext context) throws Exception {
-						@SuppressWarnings("unchecked")
-						ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) context.getAttribute("record");
-						Throwable lastThrowable = context.getLastThrowable();
-						if (AbstractMessageListenerContainer.this.containerProperties.getErrorHandler() != null
-								&& lastThrowable instanceof Exception) {
-							AbstractMessageListenerContainer.this.containerProperties.getErrorHandler()
-									.handle((Exception) lastThrowable, record);
-						}
-						else {
-							AbstractMessageListenerContainer.this.logger.error(
-									"Listener threw an exception and no error handler for " + record, lastThrowable);
-						}
-						return null;
-					}
-
-				});
-			}
 			doStart();
 		}
 	}

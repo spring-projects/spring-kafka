@@ -37,7 +37,10 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
 /**
@@ -75,6 +78,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private boolean ackDiscarded;
 
+	private RetryTemplate retryTemplate;
+
+	private RecoveryCallback<Void> recoveryCallback;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -218,12 +224,37 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy) recordFilterStrategy}
-	 * is in use.
+	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy)
+	 * recordFilterStrategy} is in use.
 	 * @param ackDiscarded the ackDiscarded.
 	 */
 	public void setAckDiscarded(boolean ackDiscarded) {
 		this.ackDiscarded = ackDiscarded;
+	}
+
+	protected RetryTemplate getRetryTemplate() {
+		return this.retryTemplate;
+	}
+
+	/**
+	 * Set a retryTemplate.
+	 * @param retryTemplate the template.
+	 */
+	public void setRetryTemplate(RetryTemplate retryTemplate) {
+		this.retryTemplate = retryTemplate;
+	}
+
+	protected RecoveryCallback<?> getRecoveryCallback() {
+		return this.recoveryCallback;
+	}
+
+	/**
+	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)
+	 * retryTemplate}.
+	 * @param recoveryCallback the callback.
+	 */
+	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+		this.recoveryCallback = recoveryCallback;
 	}
 
 	@Override
@@ -241,24 +272,32 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	protected abstract MessageListener<K, V> createMessageListener(MessageListenerContainer container,
 			MessageConverter messageConverter);
 
+	@SuppressWarnings("unchecked")
 	private void setupMessageListener(MessageListenerContainer container, MessageConverter messageConverter) {
-		MessageListener<K, V> messageListener = createMessageListener(container, messageConverter);
+		Object messageListener = createMessageListener(container, messageConverter);
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
-		if (this.recordFilterStrategy != null) {
+		if (this.retryTemplate != null) {
 			if (messageListener instanceof AcknowledgingMessageListener) {
-				@SuppressWarnings("unchecked")
-				AcknowledgingMessageListener<K, V> aml = (AcknowledgingMessageListener<K, V>) messageListener;
-				aml = new FilteringAcknowledgingMessageListenerAdapter<>(this.recordFilterStrategy, aml, this.ackDiscarded);
-				container.setupMessageListener(aml);
+				messageListener = new RetryingAcknowledgingMessageListenerAdapter<>(
+						(AcknowledgingMessageListener<K, V>) messageListener, this.retryTemplate,
+						this.recoveryCallback);
 			}
 			else {
-				messageListener = new FilteringMessageListenerAdapter<>(this.recordFilterStrategy, messageListener);
-				container.setupMessageListener(messageListener);
+				messageListener = new FilteringMessageListenerAdapter<>(this.recordFilterStrategy,
+						(MessageListener<K, V>) messageListener);
 			}
 		}
-		else {
-			container.setupMessageListener(messageListener);
+		if (this.recordFilterStrategy != null) {
+			if (messageListener instanceof AcknowledgingMessageListener) {
+				messageListener = new FilteringAcknowledgingMessageListenerAdapter<>(this.recordFilterStrategy,
+						(AcknowledgingMessageListener<K, V>) messageListener, this.ackDiscarded);
+			}
+			else {
+				messageListener = new FilteringMessageListenerAdapter<>(this.recordFilterStrategy,
+						(MessageListener<K, V>) messageListener);
+			}
 		}
+		container.setupMessageListener(messageListener);
 	}
 
 	/**

@@ -31,8 +31,6 @@ import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.LoggingErrorHandler;
 import org.springframework.kafka.listener.MessageListener;
-import org.springframework.retry.RecoveryCallback;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
 /**
@@ -130,17 +128,6 @@ public class ContainerProperties {
 	 * @see #pauseAfter
 	 */
 	private boolean pauseEnabled = true;
-
-	/**
-	 * A retry template to retry deliveries.
-	 */
-	private RetryTemplate retryTemplate;
-
-	/**
-	 * A recovery callback to be invoked when retries are exhausted. By default
-	 * the error handler is invoked.
-	 */
-	private RecoveryCallback<Void> recoveryCallback;
 
 	/**
 	 * Set the queue depth for handoffs from the consumer thread to the listener
@@ -305,23 +292,6 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * Set a retry template to retry deliveries.
-	 * @param retryTemplate the retry template.
-	 */
-	public void setRetryTemplate(RetryTemplate retryTemplate) {
-		this.retryTemplate = retryTemplate;
-	}
-
-	/**
-	 * Set a recovery callback to be invoked when retries are exhausted. By default
-	 * the error handler is invoked.
-	 * @param recoveryCallback the recovery callback.
-	 */
-	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
-		this.recoveryCallback = recoveryCallback;
-	}
-
-	/**
 	 * Set the queue depth for handoffs from the consumer thread to the listener
 	 * thread. Default 1 (up to 2 in process).
 	 * @param queueDepth the queue depth.
@@ -452,14 +422,6 @@ public class ContainerProperties {
 
 	public boolean isPauseEnabled() {
 		return this.pauseEnabled;
-	}
-
-	public RetryTemplate getRetryTemplate() {
-		return this.retryTemplate;
-	}
-
-	public RecoveryCallback<Void> getRecoveryCallback() {
-		return this.recoveryCallback;
 	}
 
 	public int getQueueDepth() {
