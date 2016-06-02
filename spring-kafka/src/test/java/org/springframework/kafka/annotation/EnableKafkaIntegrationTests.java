@@ -143,7 +143,7 @@ public class EnableKafkaIntegrationTests {
 				.isInstanceOf(RetryingAcknowledgingMessageListenerAdapter.class);
 		assertThat(KafkaTestUtils
 				.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate.recoveryCallback")
-				.getClass().getName()).contains("EnableKafkaIntegrationTests");
+				.getClass().getName()).contains("EnableKafkaIntegrationTests$Config$");
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer,
 				"containerProperties.messageListener.delegate.delegate"))
 						.isInstanceOf(MessagingMessageListenerAdapter.class);

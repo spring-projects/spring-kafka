@@ -38,6 +38,7 @@ import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageL
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
@@ -283,18 +284,19 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 						this.recoveryCallback);
 			}
 			else {
-				messageListener = new FilteringMessageListenerAdapter<>(this.recordFilterStrategy,
-						(MessageListener<K, V>) messageListener);
+				messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+						this.retryTemplate, this.recoveryCallback);
 			}
 		}
 		if (this.recordFilterStrategy != null) {
 			if (messageListener instanceof AcknowledgingMessageListener) {
-				messageListener = new FilteringAcknowledgingMessageListenerAdapter<>(this.recordFilterStrategy,
-						(AcknowledgingMessageListener<K, V>) messageListener, this.ackDiscarded);
+				messageListener = new FilteringAcknowledgingMessageListenerAdapter<>(
+						(AcknowledgingMessageListener<K, V>) messageListener, this.recordFilterStrategy,
+						this.ackDiscarded);
 			}
 			else {
-				messageListener = new FilteringMessageListenerAdapter<>(this.recordFilterStrategy,
-						(MessageListener<K, V>) messageListener);
+				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+						this.recordFilterStrategy);
 			}
 		}
 		container.setupMessageListener(messageListener);

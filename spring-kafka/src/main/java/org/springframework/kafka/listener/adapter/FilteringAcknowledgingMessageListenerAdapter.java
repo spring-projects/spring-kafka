@@ -40,12 +40,12 @@ public class FilteringAcknowledgingMessageListenerAdapter<K, V> extends Abstract
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
-	 * @param recordFilterStrategy the filter.
 	 * @param delegate the delegate.
+	 * @param recordFilterStrategy the filter.
 	 * @param ackDiscarded true to ack (commit offset for) discarded messages.
 	 */
-	public FilteringAcknowledgingMessageListenerAdapter(RecordFilterStrategy<K, V> recordFilterStrategy,
-			AcknowledgingMessageListener<K, V> delegate, boolean ackDiscarded) {
+	public FilteringAcknowledgingMessageListenerAdapter(AcknowledgingMessageListener<K, V> delegate,
+			RecordFilterStrategy<K, V> recordFilterStrategy, boolean ackDiscarded) {
 		super(recordFilterStrategy);
 		this.delegate = delegate;
 		this.ackDiscarded = ackDiscarded;

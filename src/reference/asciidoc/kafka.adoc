@@ -351,13 +351,14 @@ When using `@KafkaListener`, set the `RecordFilterStrategy` (and optionally `ack
 
 ===== Retrying Deliveries
 
-If your listener throws an exception, the default behavior is to invoke the `ErrorHandler`, if configured.
+If your listener throws an exception, the default behavior is to invoke the `ErrorHandler`, if configured, or logged otherwise.
 
 To retry deliveries, convenient listener adapters - `RetryingMessageListenerAdapter` and `RetryingAcknowledgingMessageListenerAdapter` are provided, depending on whether you are using a `MessageListener` or an `AcknowledgingMessageListener`.
 
 These can be configured with a `RetryTemplate` and `RecoveryCallback<Void>` - see the https://github.com/spring-projects/spring-retry[spring-retry]
 project for information about these components.
-If a recovery callback is not provided, the exception is logged after retries are exhausted.
+If a recovery callback is not provided, the exception is thrown to the container after retries are exhausted.
+In that case, the `ErrorHandler` will be invoked, if configured, or logged otherwise.
 
 When using `@KafkaListener`, set the `RetryTemplate` (and optionally `recoveryCallback`) on the container factory and the listener will be wrapped in the appropriate retrying adapter.
 

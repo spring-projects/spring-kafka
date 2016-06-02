@@ -37,11 +37,11 @@ public class FilteringMessageListenerAdapter<K, V> extends AbstractFilteringMess
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
-	 * @param recordFilterStrategy the filter.
 	 * @param delegate the delegate.
+	 * @param recordFilterStrategy the filter.
 	 */
-	public FilteringMessageListenerAdapter(RecordFilterStrategy<K, V> recordFilterStrategy,
-			MessageListener<K, V> delegate) {
+	public FilteringMessageListenerAdapter(MessageListener<K, V> delegate,
+			RecordFilterStrategy<K, V> recordFilterStrategy) {
 		super(recordFilterStrategy);
 		this.delegate = delegate;
 	}

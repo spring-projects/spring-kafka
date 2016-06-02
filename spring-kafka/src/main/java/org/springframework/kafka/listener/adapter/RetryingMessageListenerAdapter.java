@@ -41,10 +41,21 @@ public class RetryingMessageListenerAdapter<K, V> extends AbstractRetryingMessag
 	private final MessageListener<K, V> delegate;
 
 	/**
+	 * Construct an instance with the provided template and delegate. The exception will
+	 * be thrown to the container after retries are exhausted.
+	 * @param messageListener the delegate listener.
+	 * @param retryTemplate the template.
+	 */
+	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate) {
+		this(messageListener, retryTemplate, null);
+	}
+
+	/**
 	 * Construct an instance with the provided template, callback and delegate.
 	 * @param messageListener the delegate listener.
 	 * @param retryTemplate the template.
-	 * @param recoveryCallback the recovery callback.
+	 * @param recoveryCallback the recovery callback; if null, the exception will be
+	 * thrown to the container after retries are exhausted.
 	 */
 	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
 			RecoveryCallback<Void> recoveryCallback) {
