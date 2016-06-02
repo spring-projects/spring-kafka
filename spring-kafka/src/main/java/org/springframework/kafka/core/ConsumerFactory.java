@@ -32,4 +32,5 @@ public interface ConsumerFactory<K, V> {
 
 	boolean isAutoCommit();
 
+
 }

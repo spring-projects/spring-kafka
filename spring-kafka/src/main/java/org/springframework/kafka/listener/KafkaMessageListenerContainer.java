@@ -270,7 +270,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				long recentOffset) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 				"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
-			Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
+			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
 
 			ConsumerRebalanceListener rebalanceListener = new ConsumerRebalanceListener() {
 
@@ -307,6 +307,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				@Override
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					ListenerConsumer.this.assignedPartitions = partitions;
+					if (!ListenerConsumer.this.autoCommit) {
+						// Commit initial positions - while this is generally redundant
+						// it protects us from the case when another consumer starts
+						Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+						for (TopicPartition partition : partitions) {
+							offsets.put(partition, new OffsetAndMetadata(consumer.position(partition)));
+						}
+						if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
+							ListenerConsumer.this.consumer.commitSync(offsets);
+						}
+						else {
+							ListenerConsumer.this.consumer.commitAsync(offsets,
+									KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
+						}
+					}
 					// We will not start the invoker thread if we are in autocommit mode,
 					// as we will execute synchronously then
 					// We will not start the invoker thread if the container is stopped
