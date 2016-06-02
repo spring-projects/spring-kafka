@@ -554,7 +554,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private void invokeListener(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-			while (iterator.hasNext()) {
+			while (iterator.hasNext() && (this.autoCommit || (this.invoker != null && this.invoker.active))) {
 				final ConsumerRecord<K, V> record = iterator.next();
 				if (this.logger.isTraceEnabled()) {
 					this.logger.trace("Processing " + record);
