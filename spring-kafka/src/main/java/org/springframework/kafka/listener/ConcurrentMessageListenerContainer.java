@@ -26,6 +26,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.util.Assert;
 
 /**
@@ -42,6 +43,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Murali Reddy
  * @author Jerome Mirc
+ * @author Artem Bilan
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -52,15 +54,14 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	private int concurrency = 1;
 
 	/**
-	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions - when using this constructor, {@link ContainerProperties#setRecentOffset(long)
-	 * recentOffset} can be specified.
+	 * Construct an instance with the supplied configuration properties.
 	 * The topic partitions are distributed evenly across the delegate
 	 * {@link KafkaMessageListenerContainer}s.
 	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
 	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory, ContainerProperties containerProperties) {
+	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+			ContainerProperties containerProperties) {
 		super(containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 		this.consumerFactory = consumerFactory;
@@ -97,7 +98,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	protected void doStart() {
 		if (!isRunning()) {
 			ContainerProperties containerProperties = getContainerProperties();
-			TopicPartition[] topicPartitions = containerProperties.getTopicPartitions();
+			TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
 			if (topicPartitions != null
 					&& this.concurrency > topicPartitions.length) {
 				this.logger.warn("When specific partitions are provided, the concurrency must be less than or "
@@ -128,19 +129,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
-	private TopicPartition[] partitionSubset(ContainerProperties containerProperties, int i) {
-		TopicPartition[] topicPartitions = containerProperties.getTopicPartitions();
+	private TopicPartitionInitialOffset[] partitionSubset(ContainerProperties containerProperties, int i) {
+		TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
 		if (this.concurrency == 1) {
 			return topicPartitions;
 		}
 		else {
 			int numPartitions = topicPartitions.length;
 			if (numPartitions == this.concurrency) {
-				return new TopicPartition[] { topicPartitions[i] };
+				return new TopicPartitionInitialOffset[] { topicPartitions[i] };
 			}
 			else {
 				int perContainer = numPartitions / this.concurrency;
-				TopicPartition[] subset;
+				TopicPartitionInitialOffset[] subset;
 				if (i == this.concurrency - 1) {
 					subset = Arrays.copyOfRange(topicPartitions, i * perContainer, topicPartitions.length);
 				}

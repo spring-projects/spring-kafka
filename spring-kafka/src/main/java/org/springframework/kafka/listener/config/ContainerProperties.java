@@ -22,7 +22,6 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
-import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
@@ -31,12 +30,14 @@ import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.LoggingErrorHandler;
 import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.util.Assert;
 
 /**
  * Contains runtime properties for a listener container.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  */
 public class ContainerProperties {
 
@@ -57,9 +58,9 @@ public class ContainerProperties {
 	private final Pattern topicPattern;
 
 	/**
-	 * Topics/partitions.
+	 * Topics/partitions/initial offsets.
 	 */
-	private final TopicPartition[] topicPartitions;
+	private final TopicPartitionInitialOffset[] topicPartitions;
 
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
@@ -143,13 +144,6 @@ public class ContainerProperties {
 	private long shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
 	/**
-	 * The offset to this number of records back from the latest when starting.
-	 * Overrides any consumer properties (earliest, latest). Only applies when
-	 * explicit topic/partition assignment is provided.
-	 */
-	private long recentOffset;
-
-	/**
 	 * A user defined {@link ConsumerRebalanceListener} implementation.
 	 */
 	private ConsumerRebalanceListener consumerRebalanceListener;
@@ -185,12 +179,12 @@ public class ContainerProperties {
 		this.topicPartitions = null;
 	}
 
-	public ContainerProperties(TopicPartition... topicPartitions) {
+	public ContainerProperties(TopicPartitionInitialOffset... topicPartitions) {
 		this.topics = null;
 		this.topicPattern = null;
 		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
 		this.topicPartitions = new LinkedHashSet<>(Arrays.asList(topicPartitions))
-				.toArray(new TopicPartition[topicPartitions.length]);
+				.toArray(new TopicPartitionInitialOffset[topicPartitions.length]);
 	}
 
 	/**
@@ -311,16 +305,6 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * Set the offset to this number of records back from the latest when starting.
-	 * Overrides any consumer properties (earliest, latest). Only applies when
-	 * explicit topic/partition assignment is provided.
-	 * @param recentOffset the offset from the latest; default 0.
-	 */
-	public void setRecentOffset(long recentOffset) {
-		this.recentOffset = recentOffset;
-	}
-
-	/**
 	 * Set the user defined {@link ConsumerRebalanceListener} implementation.
 	 * @param consumerRebalanceListener the {@link ConsumerRebalanceListener} instance
 	 */
@@ -380,7 +364,7 @@ public class ContainerProperties {
 		return this.topicPattern;
 	}
 
-	public TopicPartition[] getTopicPartitions() {
+	public TopicPartitionInitialOffset[] getTopicPartitions() {
 		return this.topicPartitions;
 	}
 
@@ -432,10 +416,6 @@ public class ContainerProperties {
 		return this.shutdownTimeout;
 	}
 
-	public long getRecentOffset() {
-		return this.recentOffset;
-	}
-
 	public ConsumerRebalanceListener getConsumerRebalanceListener() {
 		return this.consumerRebalanceListener;
 	}
@@ -455,4 +435,5 @@ public class ContainerProperties {
 	public boolean isAckOnError() {
 		return this.ackOnError;
 	}
+
 }

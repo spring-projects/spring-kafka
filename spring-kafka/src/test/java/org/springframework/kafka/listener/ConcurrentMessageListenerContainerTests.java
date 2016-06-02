@@ -58,6 +58,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -220,7 +221,7 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testDefinedPartitions() throws Exception {
 		this.logger.info("Start auto parts");
 		final Map<String, Object> props = KafkaTestUtils.consumerProps("test3", "true", embeddedKafka);
-		TopicPartition topic1Partition0 = new TopicPartition(topic3, 0);
+		TopicPartitionInitialOffset topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0);
 
 		final CountDownLatch initialConsumersLatch = new CountDownLatch(2);
 
@@ -256,7 +257,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container1.setBeanName("b1");
 		container1.start();
 
-		TopicPartition topic1Partition1 = new TopicPartition(topic3, 1);
+		TopicPartitionInitialOffset topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1);
 		ContainerProperties container2Props = new ContainerProperties(topic1Partition1);
 		ConcurrentMessageListenerContainer<Integer, String> container2 =
 				new ConcurrentMessageListenerContainer<>(cf, container2Props);
@@ -305,10 +306,11 @@ public class ConcurrentMessageListenerContainerTests {
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset minus one
+		topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, -1L);
+		topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1, -1L);
 		ContainerProperties container4Props = new ContainerProperties(topic1Partition0, topic1Partition1);
 		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, container4Props);
 		resettingContainer.setBeanName("b4");
-		container4Props.setRecentOffset(1);
 		final CountDownLatch latch4 = new CountDownLatch(2);
 		final AtomicReference<String> receivedMessage = new AtomicReference<>();
 		container4Props.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -321,6 +323,28 @@ public class ConcurrentMessageListenerContainerTests {
 		resettingContainer.stop();
 		assertThat(receivedMessage.get()).isIn("baz", "qux");
 		assertThat(latch4.getCount()).isEqualTo(0L);
+
+		// reset plus one
+		template.sendDefault(0, 0, "FOO");
+		template.sendDefault(1, 2, "BAZ");
+		template.flush();
+
+		topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, 1L);
+		topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1, 1L);
+		ContainerProperties container5Props = new ContainerProperties(topic1Partition0, topic1Partition1);
+		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, container5Props);
+		resettingContainer.setBeanName("b4");
+		final CountDownLatch latch5 = new CountDownLatch(4);
+		final List<String> messages = new ArrayList<>();
+		container5Props.setMessageListener((MessageListener<Integer, String>) message -> {
+			ConcurrentMessageListenerContainerTests.this.logger.info("auto part 1: " + message);
+			messages.add(message.value());
+			latch5.countDown();
+		});
+		resettingContainer.start();
+		assertThat(latch5.await(60, TimeUnit.SECONDS)).isTrue();
+		resettingContainer.stop();
+		assertThat(messages).contains("baz", "qux", "FOO", "BAZ");
 
 		this.logger.info("Stop auto parts");
 	}
@@ -461,14 +485,14 @@ public class ConcurrentMessageListenerContainerTests {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testConcurrencyWithPartitions() {
-		TopicPartition[] topic1PartitionS = new TopicPartition[]{
-				new TopicPartition(topic1, 0),
-				new TopicPartition(topic1, 1),
-				new TopicPartition(topic1, 2),
-				new TopicPartition(topic1, 3),
-				new TopicPartition(topic1, 4),
-				new TopicPartition(topic1, 5),
-				new TopicPartition(topic1, 6)
+		TopicPartitionInitialOffset[] topic1PartitionS = new TopicPartitionInitialOffset[]{
+				new TopicPartitionInitialOffset(topic1, 0),
+				new TopicPartitionInitialOffset(topic1, 1),
+				new TopicPartitionInitialOffset(topic1, 2),
+				new TopicPartitionInitialOffset(topic1, 3),
+				new TopicPartitionInitialOffset(topic1, 4),
+				new TopicPartitionInitialOffset(topic1, 5),
+				new TopicPartitionInitialOffset(topic1, 6)
 		};
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
@@ -495,7 +519,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(containers.size()).isEqualTo(3);
 		for (int i = 0; i < 3; i++) {
 			assertThat(KafkaTestUtils.getPropertyValue(containers.get(i), "topicPartitions",
-					TopicPartition[].class).length).isEqualTo(i < 2 ? 2 : 3);
+					TopicPartitionInitialOffset[].class).length).isEqualTo(i < 2 ? 2 : 3);
 		}
 		container.stop();
 	}

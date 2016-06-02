@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -52,6 +53,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -75,7 +77,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private final ConsumerFactory<K, V> consumerFactory;
 
-	private final TopicPartition[] topicPartitions;
+	private final TopicPartitionInitialOffset[] topicPartitions;
 
 	private ListenerConsumer listenerConsumer;
 
@@ -92,24 +94,23 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 */
 	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
 			ContainerProperties containerProperties) {
-		this(consumerFactory, containerProperties, (TopicPartition[]) null);
+		this(consumerFactory, containerProperties, (TopicPartitionInitialOffset[]) null);
 	}
 
 	/**
 	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions - when using this constructor,
-	 * {@link ContainerProperties#setRecentOffset(long) recentOffset} can be specified.
+	 * topics/partitions/initialOffsets.
 	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 */
 	public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-			ContainerProperties containerProperties, TopicPartition... topicPartitions) {
+			ContainerProperties containerProperties, TopicPartitionInitialOffset... topicPartitions) {
 		super(containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 		this.consumerFactory = consumerFactory;
 		if (topicPartitions != null) {
-			this.topicPartitions = Arrays.asList(topicPartitions).toArray(new TopicPartition[topicPartitions.length]);
+			this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);
 		}
 		else {
 			this.topicPartitions = containerProperties.getTopicPartitions();
@@ -124,7 +125,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 */
 	public Collection<TopicPartition> getAssignedPartitions() {
 		if (this.listenerConsumer.definedPartitions != null) {
-			return Collections.unmodifiableCollection(this.listenerConsumer.definedPartitions);
+			return Collections.unmodifiableCollection(this.listenerConsumer.definedPartitions.keySet());
 		}
 		else if (this.listenerConsumer.assignedPartitions != null) {
 			return Collections.unmodifiableCollection(this.listenerConsumer.assignedPartitions);
@@ -163,9 +164,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					(getBeanName() == null ? "" : getBeanName()) + "-kafka-listener-");
 			getContainerProperties().setListenerTaskExecutor(listenerExecutor);
 		}
-		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener,
-				getContainerProperties().getRecentOffset());
-		this.listenerConsumerFuture = getContainerProperties().getConsumerTaskExecutor()
+		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener);
+		this.listenerConsumerFuture = getContainerProperties()
+				.getConsumerTaskExecutor()
 				.submitListenable(this.listenerConsumer);
 	}
 
@@ -225,8 +226,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
 
-		private final long recentOffset;
-
 		private final boolean autoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
 
 		private final boolean isManualAck = this.containerProperties.getAckMode().equals(AckMode.MANUAL);
@@ -246,7 +245,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final ApplicationEventPublisher applicationEventPublisher = getApplicationEventPublisher();
 
-		private volatile Collection<TopicPartition> definedPartitions;
+		private volatile Map<TopicPartition, Long> definedPartitions;
 
 		private ConsumerRecords<K, V> unsent;
 
@@ -267,8 +266,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 */
 		private boolean paused;
 
-		private ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener,
-				long recentOffset) {
+		private ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 				"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
@@ -347,15 +345,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			else {
-				List<TopicPartition> topicPartitions = Arrays
-						.asList(KafkaMessageListenerContainer.this.topicPartitions);
-				this.definedPartitions = topicPartitions;
-				consumer.assign(topicPartitions);
+				List<TopicPartitionInitialOffset> topicPartitions =
+						Arrays.asList(KafkaMessageListenerContainer.this.topicPartitions);
+				this.definedPartitions = new HashMap<>(topicPartitions.size());
+				for (TopicPartitionInitialOffset topicPartition : topicPartitions) {
+					this.definedPartitions.put(topicPartition.topicPartition(), topicPartition.initialOffset());
+				}
+				consumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
 			}
 			this.consumer = consumer;
 			this.listener = listener;
 			this.acknowledgingMessageListener = ackListener;
-			this.recentOffset = recentOffset;
 		}
 
 		private void startInvoker() {
@@ -639,11 +639,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			 * When using auto assignment (subscribe), the ConsumerRebalanceListener is not
 			 * called until we poll() the consumer.
 			 */
-			if (this.recentOffset > 0) {
-				this.consumer.seekToEnd(
-						this.definedPartitions.toArray(new TopicPartition[this.definedPartitions.size()]));
-				for (TopicPartition topicPartition : this.definedPartitions) {
-					long newOffset = this.consumer.position(topicPartition) - this.recentOffset;
+			for (Entry<TopicPartition, Long> entry : this.definedPartitions.entrySet()) {
+				TopicPartition topicPartition = entry.getKey();
+				Long offset = entry.getValue();
+				if (offset != null) {
+					long newOffset = offset;
+
+					if (offset < 0) {
+						this.consumer.seekToEnd(topicPartition);
+						newOffset = this.consumer.position(topicPartition) + offset;
+					}
+
 					this.consumer.seek(topicPartition, newOffset);
 					if (this.logger.isDebugEnabled()) {
 						this.logger.debug("Reset " + topicPartition + " to offset " + newOffset);

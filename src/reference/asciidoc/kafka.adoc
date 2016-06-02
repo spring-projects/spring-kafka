@@ -149,31 +149,31 @@ public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
                                                         ContainerProperties containerProperties)
 
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-                        ContainerProperties containerProperties, TopicPartition... topicPartitions)
+                    ContainerProperties containerProperties, TopicPartitionInitialOffset... topicPartitions)
 
 ----
 
 Each takes a `ConsumerFactory` and information about topics and partitions, as well as other configuration in a `ContainerProperties`
 object.
-The second constructor is used by the `ConcurrentMessageListenerContainer` (see below) to distribute `TopicPartitions` across the consumer instances.
+The second constructor is used by the `ConcurrentMessageListenerContainer` (see below) to distribute `TopicPartitionInitialOffset` across the consumer instances.
 `ContainerProperties` has the following constructors:
 
 [source, java]
 ----
-public ContainerProperties(TopicPartition... topicPartitions)
+public ContainerProperties(TopicPartitionInitialOffset... topicPartitions)
 
 public ContainerProperties(String... topics)
 
 public ContainerProperties(Pattern topicPattern)
 ----
 
-The first takes an array of `TopicPartition` arguments to explicitly instruct the container which partitions to use
-(using the consumer `assign()` method).
+The first takes an array of `TopicPartitionInitialOffset` arguments to explicitly instruct the container which partitions to use
+(using the consumer `assign()` method) and with which initial offset: positive value is absolute from the beginning; negative is from the end of partition.
 The second takes an array of topics and Kafka allocates the partitions based on the `group.id` property - distributing
 partitions across the group.
 The third uses a regex `Pattern` to select the topics.
 
-Refer to the javadocs for `ContainerProperties` for more information about the various properties that can be set.
+Refer to the JavaDocs for `ContainerProperties` for more information about the various properties that can be set.
 
 ====== ConcurrentMessageListenerContainer
 

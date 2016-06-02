@@ -19,9 +19,8 @@ package org.springframework.kafka.config;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.common.TopicPartition;
-
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 
 /**
@@ -59,7 +58,7 @@ public interface KafkaListenerEndpoint {
 	 * Return the topicPartitions for this endpoint.
 	 * @return the topicPartitions for this endpoint.
 	 */
-	Collection<TopicPartition> getTopicPartitions();
+	Collection<TopicPartitionInitialOffset> getTopicPartitions();
 
 	/**
 	 * Return the topicPattern for this endpoint.
