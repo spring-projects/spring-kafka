@@ -181,6 +181,8 @@ public class ContainerProperties {
 	 */
 	private boolean syncCommits = true;
 
+	private boolean ackOnError = true;
+
 	private Long idleEventInterval;
 
 	public ContainerProperties(String... topics) {
@@ -385,6 +387,21 @@ public class ContainerProperties {
 		this.idleEventInterval = idleEventInterval;
 	}
 
+	/**
+	 * Set whether the container should ack messages that throw exceptions or not. This
+	 * works in conjunction with {@link #ackMode} and is effective only when auto ack is
+	 * false; it is not applicable to manual acks. When this property is set to
+	 * {@code true}, all messages handled will be acked. When set to {@code false}, acks
+	 * will be produced only for successful messages. This allows a component that starts
+	 * throwing exceptions consistently to resume from the last successfully processed
+	 * message. Manual acks will be always be applied.
+	 * @param ackOnError whether the container should acknowledge messages that throw
+	 * exceptions.
+	 */
+	public void setAckOnError(boolean ackOnError) {
+		this.ackOnError = ackOnError;
+	}
+
 	public String[] getTopics() {
 		return this.topics;
 	}
@@ -473,4 +490,7 @@ public class ContainerProperties {
 		return this.idleEventInterval;
 	}
 
+	public boolean isAckOnError() {
+		return this.ackOnError;
+	}
 }

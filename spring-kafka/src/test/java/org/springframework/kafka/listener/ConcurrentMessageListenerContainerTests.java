@@ -22,10 +22,14 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -87,9 +91,11 @@ public class ConcurrentMessageListenerContainerTests {
 
 	private static String topic8 = "testTopic8";
 
+	private static String topic9 = "testTopic9";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8);
+			topic6, topic7, topic8, topic9);
 
 	@Test
 	public void testAutoCommit() throws Exception {
@@ -608,4 +614,116 @@ public class ConcurrentMessageListenerContainerTests {
 
 	}
 
+
+	@Test
+	public void testAckOnErrorRecord() throws Exception {
+		logger.info("Start ack on error");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test9", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		final CountDownLatch latch = new CountDownLatch(4);
+		ContainerProperties containerProps = new ContainerProperties(topic9);
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				logger.info("auto ack on error: " + message);
+				latch.countDown();
+				if (message.value().startsWith("b")) {
+					throw new RuntimeException();
+				}
+			}
+		});
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setAckOnError(false);
+		ConcurrentMessageListenerContainer<Integer, String> container = new ConcurrentMessageListenerContainer<>(cf,
+				containerProps);
+		container.setConcurrency(2);
+		container.setBeanName("testAckOnError");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic9);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 0, "qux");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		consumer.assign(Arrays.asList(new TopicPartition(topic9, 0), new TopicPartition(topic9, 1)));
+		// this consumer is positioned at 1, the next offset after the successfully
+		// processed 'foo'
+		// it has not been updated because 'bar' failed
+		assertThat(consumer.position(new TopicPartition(topic9, 0))).isEqualTo(1);
+		// this consumer is positioned at 1, the next offset after the successfully
+		// processed 'qux'
+		// it has been updated even 'baz' failed
+		assertThat(consumer.position(new TopicPartition(topic9, 1))).isEqualTo(2);
+		logger.info("Stop ack on error");
+	}
+
+	@Test
+	public void testRebalanceWithSlowConsumer() throws Exception {
+		this.logger.info("Start auto");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test101", "false", embeddedKafka);
+		props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "20000");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		ConcurrentMessageListenerContainer<Integer, String> container2 =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		final CountDownLatch latch = new CountDownLatch(8);
+		final Set<String> listenerThreadNames = Collections.synchronizedSet(new HashSet<String>());
+		List<String> receivedMessages = Collections.synchronizedList(new ArrayList<>());
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				System.out.println("auto: " + message + " on " + Thread.currentThread().getName());
+				listenerThreadNames.add(Thread.currentThread().getName());
+				try {
+					Thread.sleep(2000);
+				}
+				catch (InterruptedException e) {
+					// ignore
+				}
+				receivedMessages.add(message.value());
+				listenerThreadNames.add(Thread.currentThread().getName());
+				latch.countDown();
+			}
+		});
+		container.setConcurrency(1);
+		container2.setConcurrency(1);
+		container.setBeanName("testAuto");
+		container2.setBeanName("testAuto2");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(0, 2, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(0, 2, "qux");
+		template.sendDefault(1, 2, "corge");
+		template.sendDefault(1, 2, "grault");
+		template.sendDefault(1, 2, "garply");
+		template.sendDefault(1, 2, "waldo");
+		template.flush();
+		container2.start();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(receivedMessages).containsOnlyOnce("foo", "bar", "baz", "qux", "corge", "grault", "garply", "waldo");
+		// all messages are received
+		assertThat(receivedMessages).hasSize(8);
+		// messages are received on separate threads
+		assertThat(listenerThreadNames.size()).isGreaterThanOrEqualTo(2);
+		container.stop();
+		this.logger.info("Stop auto");
+	}
 }
