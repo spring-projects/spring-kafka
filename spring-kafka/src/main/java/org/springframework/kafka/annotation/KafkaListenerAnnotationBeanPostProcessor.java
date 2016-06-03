@@ -56,6 +56,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -85,6 +86,7 @@ import org.springframework.util.StringUtils;
  * @author Stephane Nicoll
  * @author Juergen Hoeller
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @see KafkaListener
  * @see EnableKafka
@@ -100,7 +102,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	/**
 	 * The bean name of the default {@link org.springframework.kafka.config.KafkaListenerContainerFactory}.
 	 */
-	static final String DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "kafkaListenerContainerFactory";
+	public static final String DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "kafkaListenerContainerFactory";
 
 	private final Set<Class<?>> nonAnnotatedClasses =
 			Collections.newSetFromMap(new ConcurrentHashMap<Class<?>, Boolean>(64));
@@ -402,15 +404,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private org.apache.kafka.common.TopicPartition[] resolveTopicPartitions(KafkaListener kafkaListener) {
+	private TopicPartitionInitialOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {
 		TopicPartition[] topicPartitions = kafkaListener.topicPartitions();
-		List<org.apache.kafka.common.TopicPartition> result = new ArrayList<>();
+		List<TopicPartitionInitialOffset> result = new ArrayList<>();
 		if (topicPartitions.length > 0) {
 			for (TopicPartition topicPartition : topicPartitions) {
 				result.addAll(resolveTopicPartitionsList(topicPartition));
 			}
 		}
-		return result.toArray(new org.apache.kafka.common.TopicPartition[result.size()]);
+		return result.toArray(new TopicPartitionInitialOffset[result.size()]);
 	}
 
 	private String[] resolveTopics(KafkaListener kafkaListener) {
@@ -444,18 +446,60 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return pattern;
 	}
 
-	private List<org.apache.kafka.common.TopicPartition> resolveTopicPartitionsList(TopicPartition topicPartition) {
+	private List<TopicPartitionInitialOffset> resolveTopicPartitionsList(TopicPartition topicPartition) {
 		Object topic = resolveExpression(topicPartition.topic());
 		Assert.state(topic instanceof String,
 				"topic in @TopicPartition must resolve to a String, not " + topic.getClass());
 		Assert.state(StringUtils.hasText((String) topic), "topic in @TopicPartition must not be empty");
 		String[] partitions = topicPartition.partitions();
-		Assert.state(partitions.length > 0,
-				"At least one partition required in @TopicPartition for topic '" + topic + "'");
-		List<org.apache.kafka.common.TopicPartition> result = new ArrayList<>();
-		if (partitions.length > 0) {
-			for (int i = 0; i < partitions.length; i++) {
-				resolvePartitionAsInteger((String) topic, resolveExpression(partitions[i]), result);
+		PartitionOffset[] partitionOffsets = topicPartition.partitionOffsets();
+		Assert.state(partitions.length > 0 || partitionOffsets.length > 0,
+				"At least one 'partition' or 'partitionOffset' required in @TopicPartition for topic '" + topic + "'");
+		List<TopicPartitionInitialOffset> result = new ArrayList<>();
+		for (int i = 0; i < partitions.length; i++) {
+			resolvePartitionAsInteger((String) topic, resolveExpression(partitions[i]), result);
+		}
+
+		for (PartitionOffset partitionOffset : partitionOffsets) {
+			Object partitionValue = resolveExpression(partitionOffset.partition());
+			Integer partition;
+			if (partitionValue instanceof String) {
+				Assert.state(StringUtils.hasText((String) partitionValue),
+						"partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
+				partition = Integer.valueOf((String) partitionValue);
+			}
+			else if (partitionValue instanceof Integer) {
+				partition = (Integer) partitionValue;
+			}
+			else {
+				throw new IllegalArgumentException(String.format(
+						"@KafKaListener can't resolve '%s' as an Integer or String", partitionValue));
+			}
+
+			Object initialOffsetValue = resolveExpression(partitionOffset.initialOffset());
+			Long initialOffset;
+			if (initialOffsetValue instanceof String) {
+				Assert.state(StringUtils.hasText((String) initialOffsetValue),
+						"partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
+				initialOffset = Long.valueOf((String) initialOffsetValue);
+			}
+			else if (initialOffsetValue instanceof Long) {
+				initialOffset = (Long) initialOffsetValue;
+			}
+			else {
+				throw new IllegalArgumentException(String.format(
+						"@KafKaListener can't resolve '%s' as an Long or String", initialOffsetValue));
+			}
+
+			TopicPartitionInitialOffset topicPartitionOffset =
+					new TopicPartitionInitialOffset((String) topic, partition, initialOffset);
+			if (!result.contains(topicPartitionOffset)) {
+				result.add(topicPartitionOffset);
+			}
+			else {
+				throw new IllegalArgumentException(
+						String.format("@TopicPartition can't have the same partition configuration twice: [%s]",
+								topicPartitionOffset));
 			}
 		}
 		return result;
@@ -484,7 +528,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	@SuppressWarnings("unchecked")
 	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
-			List<org.apache.kafka.common.TopicPartition> result) {
+			List<TopicPartitionInitialOffset> result) {
 		if (resolvedValue instanceof String[]) {
 			for (Object object : (String[]) resolvedValue) {
 				resolvePartitionAsInteger(topic, object, result);
@@ -493,15 +537,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
 					"partition in @TopicPartition for topic '" + topic + "' cannot be empty");
-			result.add(new org.apache.kafka.common.TopicPartition(topic, Integer.valueOf((String) resolvedValue)));
+			result.add(new TopicPartitionInitialOffset(topic, Integer.valueOf((String) resolvedValue)));
 		}
 		else if (resolvedValue instanceof Integer[]) {
 			for (Integer partition : (Integer[]) resolvedValue) {
-				result.add(new org.apache.kafka.common.TopicPartition(topic, partition));
+				result.add(new TopicPartitionInitialOffset(topic, partition));
 			}
 		}
 		else if (resolvedValue instanceof Integer) {
-			result.add(new org.apache.kafka.common.TopicPartition(topic, (Integer) resolvedValue));
+			result.add(new TopicPartitionInitialOffset(topic, (Integer) resolvedValue));
 		}
 		else if (resolvedValue instanceof Iterable) {
 			for (Object object : (Iterable<Object>) resolvedValue) {

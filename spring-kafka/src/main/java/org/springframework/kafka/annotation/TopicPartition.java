@@ -24,6 +24,7 @@ import java.lang.annotation.Target;
  * Used to add topic/partition information to a {@code KafkaListener}.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  *
  */
 @Target({})
@@ -40,11 +41,19 @@ public @interface TopicPartition {
 
 	/**
 	 * The partitions within the topic.
+	 * The partitions in this set can't be duplicated in the {@link #partitionOffsets()}.
 	 * @return the partitions within the topic. Property place
 	 * holders and SpEL expressions are supported, which must
 	 * resolve to Integers (or Strings that can be parsed as
 	 * Integers).
 	 */
 	String[] partitions() default {};
+
+	/**
+	 * The partitions with initial offsets within the topic.
+	 * The partitions in this set can't be duplicated in the {@link #partitions()}.
+	 * @return the {@link PartitionOffset} array.
+	 */
+	PartitionOffset[] partitionOffsets() default {};
 
 }

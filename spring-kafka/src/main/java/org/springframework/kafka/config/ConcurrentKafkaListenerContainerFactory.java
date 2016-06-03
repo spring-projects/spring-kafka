@@ -18,10 +18,9 @@ package org.springframework.kafka.config;
 
 import java.util.Collection;
 
-import org.apache.kafka.common.TopicPartition;
-
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 
 /**
  * A {@link KafkaListenerContainerFactory} implementation to build a
@@ -54,10 +53,10 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 
 	@Override
 	protected ConcurrentMessageListenerContainer<K, V> createContainerInstance(KafkaListenerEndpoint endpoint) {
-		Collection<TopicPartition> topicPartitions = endpoint.getTopicPartitions();
+		Collection<TopicPartitionInitialOffset> topicPartitions = endpoint.getTopicPartitions();
 		if (!topicPartitions.isEmpty()) {
 			ContainerProperties properties = new ContainerProperties(
-					topicPartitions.toArray(new TopicPartition[topicPartitions.size()]));
+					topicPartitions.toArray(new TopicPartitionInitialOffset[topicPartitions.size()]));
 			return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(), properties);
 		}
 		else {
