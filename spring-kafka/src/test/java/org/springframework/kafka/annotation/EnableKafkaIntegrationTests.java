@@ -113,7 +113,7 @@ public class EnableKafkaIntegrationTests {
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch1.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
@@ -182,21 +182,21 @@ public class EnableKafkaIntegrationTests {
 	public void testInterface() throws Exception {
 		template.send("annotated7", 0, "foo");
 		template.flush();
-		assertThat(this.ifaceListener.getLatch1().await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.ifaceListener.getLatch1().await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
 	public void testMulti() throws Exception {
 		template.send("annotated8", 0, "foo");
 		template.flush();
-		assertThat(this.multiListener.latch1.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiListener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
 	public void testTx() throws Exception {
 		template.send("annotated9", 0, "foo");
 		template.flush();
-		assertThat(this.ifaceListener.getLatch2().await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.ifaceListener.getLatch2().await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test

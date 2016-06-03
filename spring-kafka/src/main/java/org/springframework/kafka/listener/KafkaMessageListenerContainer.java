@@ -72,6 +72,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Gary Russell
  * @author Murali Reddy
  * @author Marius Bogoevici
+ * @author Martin Dam
  */
 public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -428,7 +429,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 					}
 					this.unsent = checkPause(this.unsent);
-					if (!this.paused && !this.autoCommit) {
+					if (!this.autoCommit) {
 						processCommits();
 					}
 				}
