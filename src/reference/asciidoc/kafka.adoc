@@ -290,13 +290,14 @@ public Map<String, Object> consumerConfigs() {
 Notice that to set container properties, you must use the `getContainerProperties()` method on the factory.
 It is used as a template for the actual properties injected into the container.
 
-You can also configure POJO listeners with explicit topics and partitions:
+You can also configure POJO listeners with explicit topics and partitions (and even their initial offsets):
 
 [source, java]
 ----
 @KafkaListener(id = "bar", topicPartitions =
         { @TopicPartition(topic = "topic1", partitions = { "0", "1" }),
-          @TopicPartition(topic = "topic2", partitions = { "0", "1" })
+          @TopicPartition(topic = "topic2", partitions = "0",
+             partitionOffsets = @PartitionOffset(partition = "1", initialOffset = "100"))
         })
 public void listen(ConsumerRecord<?, ?> record) {
     ...

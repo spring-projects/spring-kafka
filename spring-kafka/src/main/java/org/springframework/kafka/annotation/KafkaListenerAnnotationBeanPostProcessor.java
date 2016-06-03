@@ -452,12 +452,54 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				"topic in @TopicPartition must resolve to a String, not " + topic.getClass());
 		Assert.state(StringUtils.hasText((String) topic), "topic in @TopicPartition must not be empty");
 		String[] partitions = topicPartition.partitions();
-		Assert.state(partitions.length > 0,
-				"At least one partition required in @TopicPartition for topic '" + topic + "'");
+		PartitionOffset[] partitionOffsets = topicPartition.partitionOffsets();
+		Assert.state(partitions.length > 0 || partitionOffsets.length > 0,
+				"At least one 'partition' or 'partitionOffset' required in @TopicPartition for topic '" + topic + "'");
 		List<TopicPartitionInitialOffset> result = new ArrayList<>();
-		if (partitions.length > 0) {
-			for (int i = 0; i < partitions.length; i++) {
-				resolvePartitionAsInteger((String) topic, resolveExpression(partitions[i]), result);
+		for (int i = 0; i < partitions.length; i++) {
+			resolvePartitionAsInteger((String) topic, resolveExpression(partitions[i]), result);
+		}
+
+		for (PartitionOffset partitionOffset : partitionOffsets) {
+			Object partitionValue = resolveExpression(partitionOffset.partition());
+			Integer partition;
+			if (partitionValue instanceof String) {
+				Assert.state(StringUtils.hasText((String) partitionValue),
+						"partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
+				partition = Integer.valueOf((String) partitionValue);
+			}
+			else if (partitionValue instanceof Integer) {
+				partition = (Integer) partitionValue;
+			}
+			else {
+				throw new IllegalArgumentException(String.format(
+						"@KafKaListener can't resolve '%s' as an Integer or String", partitionValue));
+			}
+
+			Object initialOffsetValue = resolveExpression(partitionOffset.initialOffset());
+			Long initialOffset;
+			if (initialOffsetValue instanceof String) {
+				Assert.state(StringUtils.hasText((String) initialOffsetValue),
+						"partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
+				initialOffset = Long.valueOf((String) initialOffsetValue);
+			}
+			else if (initialOffsetValue instanceof Long) {
+				initialOffset = (Long) initialOffsetValue;
+			}
+			else {
+				throw new IllegalArgumentException(String.format(
+						"@KafKaListener can't resolve '%s' as an Long or String", initialOffsetValue));
+			}
+
+			TopicPartitionInitialOffset topicPartitionOffset =
+					new TopicPartitionInitialOffset((String) topic, partition, initialOffset);
+			if (!result.contains(topicPartitionOffset)) {
+				result.add(topicPartitionOffset);
+			}
+			else {
+				throw new IllegalArgumentException(
+						String.format("@TopicPartition can't have the same partition configuration twice: [%s]",
+								topicPartitionOffset));
 			}
 		}
 		return result;

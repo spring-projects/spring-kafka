@@ -69,13 +69,12 @@ public class TopicPartitionInitialOffset {
 			return false;
 		}
 		TopicPartitionInitialOffset that = (TopicPartitionInitialOffset) o;
-		return Objects.equals(this.topicPartition, that.topicPartition) &&
-				Objects.equals(this.initialOffset, that.initialOffset);
+		return Objects.equals(this.topicPartition, that.topicPartition);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.topicPartition, this.initialOffset);
+		return this.topicPartition.hashCode();
 	}
 
 	@Override
