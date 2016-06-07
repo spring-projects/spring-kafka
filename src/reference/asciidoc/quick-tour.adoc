@@ -70,13 +70,17 @@ public void testAutoCommit() throws Exception {
     logger.info("Stop auto");
 
 }
+----
 
-private KafkaMessageListenerContainer<Integer, String> createContainer(ContainerProperties containerProps) {
+[source, java]
+----
+private KafkaMessageListenerContainer<Integer, String> createContainer(
+                        ContainerProperties containerProps) {
     Map<String, Object> props = consumerProps();
     DefaultKafkaConsumerFactory<Integer, String> cf =
-                             new DefaultKafkaConsumerFactory<Integer, String>(props);
+                            new DefaultKafkaConsumerFactory<Integer, String>(props);
     KafkaMessageListenerContainer<Integer, String> container =
-                                      new KafkaMessageListenerContainer<>(cf, containerProps);
+                            new KafkaMessageListenerContainer<>(cf, containerProps);
     return container;
 }
 
@@ -182,7 +186,10 @@ public class Config {
     }
 
 }
+----
 
+[source, java]
+----
 public class Listener {
 
     private final CountDownLatch latch1 = new CountDownLatch(1);

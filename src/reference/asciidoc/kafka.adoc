@@ -146,10 +146,11 @@ The following constructors are available.
 [source, java]
 ----
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-                                                        ContainerProperties containerProperties)
+                    ContainerProperties containerProperties)
 
 public KafkaMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-                    ContainerProperties containerProperties, TopicPartitionInitialOffset... topicPartitions)
+                    ContainerProperties containerProperties,
+                    TopicPartitionInitialOffset... topicPartitions)
 
 ----
 
@@ -183,7 +184,7 @@ The single constructor is similar to the first `KafkaListenerContainer` construc
 [source, java]
 ----
 public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
-                                                ContainerProperties containerProperties)
+                            ContainerProperties containerProperties)
 
 ----
 
