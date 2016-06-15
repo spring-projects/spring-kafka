@@ -410,8 +410,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 								if (this.assignedPartitions != null) {
 									// avoid group management rebalance due to a slow
 									// consumer
-									this.consumer.pause(this.assignedPartitions
-											.toArray(new TopicPartition[this.assignedPartitions.size()]));
+									this.consumer.pause(this.assignedPartitions);
 									this.paused = true;
 									this.unsent = records;
 								}
@@ -500,8 +499,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private ConsumerRecords<K, V> checkPause(ConsumerRecords<K, V> unsent) {
 			if (this.paused && this.recordsToProcess.size() < this.containerProperties.getQueueDepth()) {
 				// Listener has caught up.
-				this.consumer.resume(
-						this.assignedPartitions.toArray(new TopicPartition[this.assignedPartitions.size()]));
+				this.consumer.resume(this.assignedPartitions);
 				this.paused = false;
 				if (unsent != null) {
 					try {
@@ -647,7 +645,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					long newOffset = offset;
 
 					if (offset < 0) {
-						this.consumer.seekToEnd(topicPartition);
+						this.consumer.seekToEnd(Arrays.asList(topicPartition));
 						newOffset = this.consumer.position(topicPartition) + offset;
 					}
 
