@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -219,8 +217,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final Consumer<K, V> consumer;
 
-		private final ConcurrentMap<String, ConcurrentMap<Integer, Long>> manualOffsets = new ConcurrentHashMap<>();
-
 		private final Map<String, Map<Integer, Long>> offsets = new HashMap<>();
 
 		private final MessageListener<K, V> listener;
@@ -309,11 +305,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 					ListenerConsumer.this.assignedPartitions = partitions;
 					if (!ListenerConsumer.this.autoCommit) {
-						// Commit initial positions - while this is generally redundant
+						// Commit initial positions - this is generally redundant but
 						// it protects us from the case when another consumer starts
+						// and rebalance would cause it to reset at the end
+						// see https://github.com/spring-projects/spring-kafka/issues/110
 						Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
 						for (TopicPartition partition : partitions) {
 							offsets.put(partition, new OffsetAndMetadata(consumer.position(partition)));
+						}
+						if (ListenerConsumer.this.logger.isDebugEnabled()) {
+							ListenerConsumer.this.logger.debug("Committing: " + offsets);
 						}
 						if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
 							ListenerConsumer.this.consumer.commitSync(offsets);
@@ -398,7 +399,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						if (this.containerProperties.getIdleEventInterval() != null) {
 							lastReceive = System.currentTimeMillis();
 						}
-						handleManualAcks();
 						// if the container is set to auto-commit, then execute in the
 						// same thread
 						// otherwise send to the buffering queue
@@ -487,8 +487,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			finally {
 				this.listenerInvokerFuture = null;
 			}
-			// handle the last manual acks, after the listeners have closed
-			handleManualAcks();
 			processCommits();
 			if (this.offsets.size() > 0) {
 				// we always commit after stopping the invoker
@@ -551,7 +549,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			else {
-				updateManualOffset(record);
+				addOffset(record);
 			}
 		}
 
@@ -605,6 +603,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void processCommits() {
+			handleManualAcks();
 			this.count += this.acks.size();
 			long now;
 			AckMode ackMode = this.containerProperties.getAckMode();
@@ -614,6 +613,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				boolean countExceeded = this.count >= this.containerProperties.getAckCount();
 				if (ackMode.equals(AckMode.BATCH) || ackMode.equals(AckMode.COUNT) && countExceeded) {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("Committing in AckMode.COUNT because count " + this.count
+								+ " exceeds configured limit of" + this.containerProperties.getAckCount());
+					}
 					commitIfNecessary();
 					this.count = 0;
 				}
@@ -621,11 +624,28 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					now = System.currentTimeMillis();
 					boolean elapsed = now - this.last > this.containerProperties.getAckTime();
 					if (ackMode.equals(AckMode.TIME) && elapsed) {
+						if (this.logger.isDebugEnabled()) {
+							this.logger
+									.debug("Committing in AckMode.TIME because time elapsed exceeds configured limit of "
+											+ this.containerProperties.getAckTime());
+						}
 						commitIfNecessary();
 						this.last = now;
 					}
-					else if ((ackMode.equals(AckMode.COUNT_TIME) || this.isManualAck)
-							&& (elapsed || countExceeded)) {
+					else if ((ackMode.equals(AckMode.COUNT_TIME) || this.isManualAck) && (elapsed || countExceeded)) {
+						if (elapsed) {
+							if (this.logger.isDebugEnabled()) {
+								this.logger.debug("Committing in AckMode." + ackMode.name() + " because time elapsed "
+										+ "exceeds configured limit of " + this.containerProperties.getAckTime());
+							}
+							else {
+								if (this.logger.isDebugEnabled()) {
+									this.logger.debug("Committing in AckMode." + ackMode.name() + " because count "
+											+ this.count + " exceeds configured limit of"
+											+ this.containerProperties.getAckCount());
+								}
+							}
+						}
 						commitIfNecessary();
 						this.last = now;
 						this.count = 0;
@@ -674,39 +694,22 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.offsets.get(record.topic()).put(record.partition(), record.offset());
 		}
 
-		private void updateManualOffset(ConsumerRecord<K, V> record) {
-			if (!this.manualOffsets.containsKey(record.topic())) {
-				this.manualOffsets.putIfAbsent(record.topic(), new ConcurrentHashMap<Integer, Long>());
-			}
-			this.manualOffsets.get(record.topic()).put(record.partition(), record.offset());
-		}
-
 		private void commitIfNecessary() {
 			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
-			if (this.isManualAck) {
-				for (Entry<String, ConcurrentMap<Integer, Long>> entry : this.manualOffsets.entrySet()) {
-					Iterator<Entry<Integer, Long>> iterator = entry.getValue().entrySet().iterator();
-					while (iterator.hasNext()) {
-						Entry<Integer, Long> offset = iterator.next();
-						commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
-								new OffsetAndMetadata(offset.getValue() + 1));
-						iterator.remove();
-					}
-				}
-			}
-			else {
-				for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
-					for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
-						commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
-								new OffsetAndMetadata(offset.getValue() + 1));
-					}
+			for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
+				for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
+					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
+							new OffsetAndMetadata(offset.getValue() + 1));
 				}
 			}
 			this.offsets.clear();
 			if (this.logger.isDebugEnabled()) {
-				this.logger.debug("Committing: " + commits);
+				this.logger.debug("Commit list: " + commits);
 			}
 			if (!commits.isEmpty()) {
+				if (this.logger.isDebugEnabled()) {
+					this.logger.debug("Committing: " + commits);
+				}
 				try {
 					if (this.containerProperties.isSyncCommits()) {
 						this.consumer.commitSync(commits);
@@ -717,6 +720,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				catch (WakeupException e) {
 					// ignore - not polling
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("Woken up during commit");
+					}
 				}
 			}
 		}
@@ -792,6 +798,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						this.executingThread.interrupt();
 					}
 					Thread.currentThread().interrupt();
+				}
+				if (ListenerConsumer.this.logger.isDebugEnabled()) {
+					ListenerConsumer.this.logger.debug("Invoker stopped");
 				}
 			}
 		}

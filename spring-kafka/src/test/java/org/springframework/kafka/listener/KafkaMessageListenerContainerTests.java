@@ -18,9 +18,10 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.BitSet;
@@ -207,7 +208,7 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic5);
 		containerProps.setAckCount(1);
 		containerProps.setPauseAfter(100);
-		containerProps.setAckMode(AckMode.MANUAL);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE_SYNC);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(3);
@@ -232,20 +233,66 @@ public class KafkaMessageListenerContainerTests {
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic5);
-		template.sendDefault(0, "foo");
-		template.sendDefault(2, "bar");
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 2, "bar");
 		template.flush();
 		Thread.sleep(300);
-		template.sendDefault(0, "fiz");
-		template.sendDefault(2, "buz");
+		template.sendDefault(0, 0, "fiz");
+		template.sendDefault(1, 2, "buz");
 		template.flush();
 
 		// Verify that commitSync is called when paused
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		verify(consumer, atLeastOnce()).pause(any(TopicPartition.class), any(TopicPartition.class));
-		verify(consumer, atMost(2)).commitSync(any());
+		verify(consumer, atLeast(2)).commitSync(any());
 		verify(consumer, atLeastOnce()).resume(any(TopicPartition.class), any(TopicPartition.class));
 		container.stop();
+	}
+
+	@Test
+	public void testCommitsAreFlushedOnStop() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("flushedOnStop", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic5);
+		containerProps.setAckCount(1);
+		containerProps.setPauseAfter(100);
+		// set large values, ensuring that commits don't happen before `stop()`
+		containerProps.setAckTime(20000);
+		containerProps.setAckCount(20000);
+		containerProps.setAckMode(AckMode.COUNT_TIME);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		final CountDownLatch latch = new CountDownLatch(4);
+		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
+			logger.info("slow: " + message);
+			ack.acknowledge();
+			latch.countDown();
+		});
+		container.setBeanName("testManualFlushed");
+
+		container.start();
+		Consumer<?, ?> consumer = spyOnConsumer(container);
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic5);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 2, "bar");
+		template.flush();
+		Thread.sleep(300);
+		template.sendDefault(0, 0, "fiz");
+		template.sendDefault(1, 2, "buz");
+		template.flush();
+
+		// Verify that commitSync is called when paused
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		// Verify that just the initial commit is processed before stop
+		verify(consumer, times(1)).commitSync(any());
+		container.stop();
+		// Verify that a commit has been made on stop
+		verify(consumer, times(2)).commitSync(any());
 	}
 
 	@Test
