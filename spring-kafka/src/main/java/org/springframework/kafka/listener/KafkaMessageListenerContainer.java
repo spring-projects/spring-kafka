@@ -140,8 +140,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		if (isRunning()) {
 			return;
 		}
-		setRunning(true);
-		Object messageListener = getContainerProperties().getMessageListener();
+		ContainerProperties containerProperties = getContainerProperties();
+
+		if (!this.consumerFactory.isAutoCommit()) {
+			AckMode ackMode = containerProperties.getAckMode();
+			if (ackMode.equals(AckMode.BATCH) || ackMode.equals(AckMode.COUNT) || ackMode.equals(AckMode.COUNT_TIME)) {
+				Assert.state(containerProperties.getAckCount() > 0, "'ackCount' must be > 0");
+			}
+			if (ackMode.equals(AckMode.TIME) || ackMode.equals(AckMode.COUNT_TIME)) {
+				Assert.state(containerProperties.getAckTime() > 0, "'ackTime' must be > 0");
+			}
+		}
+
+		Object messageListener = containerProperties.getMessageListener();
 		Assert.state(messageListener != null, "A MessageListener is required");
 		if (messageListener instanceof AcknowledgingMessageListener) {
 			this.acknowledgingMessageListener = (AcknowledgingMessageListener<K, V>) messageListener;
@@ -153,20 +164,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			throw new IllegalStateException("messageListener must be 'MessageListener' "
 					+ "or 'AcknowledgingMessageListener', not " + messageListener.getClass().getName());
 		}
-		if (getContainerProperties().getConsumerTaskExecutor() == null) {
+		if (containerProperties.getConsumerTaskExecutor() == null) {
 			SimpleAsyncTaskExecutor consumerExecutor = new SimpleAsyncTaskExecutor(
 					(getBeanName() == null ? "" : getBeanName()) + "-kafka-consumer-");
-			getContainerProperties().setConsumerTaskExecutor(consumerExecutor);
+			containerProperties.setConsumerTaskExecutor(consumerExecutor);
 		}
-		if (getContainerProperties().getListenerTaskExecutor() == null) {
+		if (containerProperties.getListenerTaskExecutor() == null) {
 			SimpleAsyncTaskExecutor listenerExecutor = new SimpleAsyncTaskExecutor(
 					(getBeanName() == null ? "" : getBeanName()) + "-kafka-listener-");
-			getContainerProperties().setListenerTaskExecutor(listenerExecutor);
+			containerProperties.setListenerTaskExecutor(listenerExecutor);
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener);
-		this.listenerConsumerFuture = getContainerProperties()
+		this.listenerConsumerFuture = containerProperties
 				.getConsumerTaskExecutor()
 				.submitListenable(this.listenerConsumer);
+		setRunning(true);
 	}
 
 	@Override
@@ -615,7 +627,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				if (ackMode.equals(AckMode.BATCH) || ackMode.equals(AckMode.COUNT) && countExceeded) {
 					if (this.logger.isDebugEnabled()) {
 						this.logger.debug("Committing in AckMode.COUNT because count " + this.count
-								+ " exceeds configured limit of" + this.containerProperties.getAckCount());
+								+ " exceeds configured limit of " + this.containerProperties.getAckCount());
 					}
 					commitIfNecessary();
 					this.count = 0;
@@ -626,8 +638,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					if (ackMode.equals(AckMode.TIME) && elapsed) {
 						if (this.logger.isDebugEnabled()) {
 							this.logger
-									.debug("Committing in AckMode.TIME because time elapsed exceeds configured limit of "
-											+ this.containerProperties.getAckTime());
+									.debug("Committing in AckMode.TIME " +
+											"because time elapsed exceeds configured limit of " +
+											this.containerProperties.getAckTime());
 						}
 						commitIfNecessary();
 						this.last = now;
@@ -635,8 +648,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					else if ((ackMode.equals(AckMode.COUNT_TIME) || this.isManualAck) && (elapsed || countExceeded)) {
 						if (this.logger.isDebugEnabled()) {
 							if (elapsed) {
-								this.logger.debug("Committing in AckMode." + ackMode.name() + " because time elapsed "
-										+ "exceeds configured limit of " + this.containerProperties.getAckTime());
+								this.logger.debug("Committing in AckMode." + ackMode.name() +
+										" because time elapsed exceeds configured limit of " +
+										this.containerProperties.getAckTime());
 							}
 							else {
 								this.logger.debug("Committing in AckMode." + ackMode.name() + " because count "

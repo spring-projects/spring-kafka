@@ -89,7 +89,7 @@ public class ContainerProperties {
 	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be
 	 * larger than
 	 */
-	private long ackTime;
+	private long ackTime = 5000;
 
 	/**
 	 * The message listener; must be a {@link MessageListener} or
