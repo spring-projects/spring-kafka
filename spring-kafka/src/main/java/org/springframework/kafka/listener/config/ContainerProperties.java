@@ -89,7 +89,7 @@ public class ContainerProperties {
 	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be
 	 * larger than
 	 */
-	private long ackTime = 5000;
+	private long ackTime;
 
 	/**
 	 * The message listener; must be a {@link MessageListener} or
@@ -224,11 +224,11 @@ public class ContainerProperties {
 
 	/**
 	 * Set the number of outstanding record count after which offsets should be
-	 * committed when {@link AckMode#COUNT} or {@link AckMode#COUNT_TIME} is being
-	 * used.
+	 * committed when {@link AckMode#COUNT} or {@link AckMode#COUNT_TIME} is being used.
 	 * @param count the count
 	 */
 	public void setAckCount(int count) {
+		Assert.state(count > 0, "'ackCount' must be > 0");
 		this.ackCount = count;
 	}
 
@@ -236,10 +236,11 @@ public class ContainerProperties {
 	 * Set the time (ms) after which outstanding offsets should be committed when
 	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be
 	 * larger than
-	 * @param millis the time
+	 * @param ackTime the time
 	 */
-	public void setAckTime(long millis) {
-		this.ackTime = millis;
+	public void setAckTime(long ackTime) {
+		Assert.state(ackTime > 0, "'ackTime' must be > 0");
+		this.ackTime = ackTime;
 	}
 
 	/**

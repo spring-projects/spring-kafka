@@ -85,6 +85,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 		/**
 		 * Same as {@link #COUNT_TIME} except for pending manual acks.
+		 * If no count or time are set, works as {@link #MANUAL_IMMEDIATE_SYNC}.
 		 */
 		MANUAL,
 

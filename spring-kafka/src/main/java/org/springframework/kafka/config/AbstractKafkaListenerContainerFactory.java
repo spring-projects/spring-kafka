@@ -37,6 +37,7 @@ import org.springframework.retry.support.RetryTemplate;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @see AbstractMessageListenerContainer
  */
@@ -204,7 +205,13 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	protected void initializeContainer(C instance) {
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
-				"messageListener");
+				"messageListener", "ackCount", "ackTime");
+		if (this.containerProperties.getAckCount() > 0) {
+			properties.setAckCount(this.containerProperties.getAckCount());
+		}
+		if (this.containerProperties.getAckTime() > 0) {
+			properties.setAckTime(this.containerProperties.getAckTime());
+		}
 	}
 
 }

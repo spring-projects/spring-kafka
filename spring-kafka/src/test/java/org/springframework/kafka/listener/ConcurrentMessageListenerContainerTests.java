@@ -198,7 +198,6 @@ public class ConcurrentMessageListenerContainerTests {
 			listenerThreadNames.add(Thread.currentThread().getName());
 			latch.countDown();
 		});
-		containerProps.setAckCount(1);
 		container.setConcurrency(2);
 		container.setBeanName("testBatch");
 		container.start();
@@ -255,7 +254,6 @@ public class ConcurrentMessageListenerContainerTests {
 			ConcurrentMessageListenerContainerTests.this.logger.info("auto part: " + message);
 			latch1.countDown();
 		});
-		container1Props.setAckCount(10);
 		container1.setBeanName("b1");
 		container1.start();
 
@@ -513,7 +511,6 @@ public class ConcurrentMessageListenerContainerTests {
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
-		containerProps.setAckCount(20);
 		container.setConcurrency(3);
 		container.start();
 		@SuppressWarnings("unchecked")
@@ -535,7 +532,8 @@ public class ConcurrentMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic6);
 		containerProps.setAckCount(23);
 		ContainerProperties containerProps2 = new ContainerProperties(topic2);
-		BeanUtils.copyProperties(containerProps, containerProps2, "topics", "topicPartitions", "topicPattern");
+		BeanUtils.copyProperties(containerProps, containerProps2,
+				"topics", "topicPartitions", "topicPattern", "ackCount", "ackTime");
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -640,7 +638,6 @@ public class ConcurrentMessageListenerContainerTests {
 			listenerThreadNames.add(Thread.currentThread().getName());
 			latch.countDown();
 		});
-		containerProps.setAckCount(100);
 		container.setConcurrency(1);
 		container2.setConcurrency(1);
 		container.setBeanName("testAuto");

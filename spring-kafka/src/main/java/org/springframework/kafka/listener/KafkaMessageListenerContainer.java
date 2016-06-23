@@ -144,11 +144,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		if (!this.consumerFactory.isAutoCommit()) {
 			AckMode ackMode = containerProperties.getAckMode();
-			if (ackMode.equals(AckMode.BATCH) || ackMode.equals(AckMode.COUNT) || ackMode.equals(AckMode.COUNT_TIME)) {
+			if (ackMode.equals(AckMode.COUNT) || ackMode.equals(AckMode.COUNT_TIME)) {
 				Assert.state(containerProperties.getAckCount() > 0, "'ackCount' must be > 0");
 			}
-			if (ackMode.equals(AckMode.TIME) || ackMode.equals(AckMode.COUNT_TIME)) {
-				Assert.state(containerProperties.getAckTime() > 0, "'ackTime' must be > 0");
+			if ((ackMode.equals(AckMode.TIME) || ackMode.equals(AckMode.COUNT_TIME))
+					&& containerProperties.getAckTime() == 0) {
+				containerProperties.setAckTime(5000);
 			}
 		}
 
@@ -175,10 +176,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			containerProperties.setListenerTaskExecutor(listenerExecutor);
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener);
+		setRunning(true);
 		this.listenerConsumerFuture = containerProperties
 				.getConsumerTaskExecutor()
 				.submitListenable(this.listenerConsumer);
-		setRunning(true);
 	}
 
 	@Override
@@ -624,7 +625,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					updatePendingOffsets();
 				}
 				boolean countExceeded = this.count >= this.containerProperties.getAckCount();
-				if (ackMode.equals(AckMode.BATCH) || ackMode.equals(AckMode.COUNT) && countExceeded) {
+				if (ackMode.equals(AckMode.BATCH) || (ackMode.equals(AckMode.COUNT) && countExceeded)) {
 					if (this.logger.isDebugEnabled()) {
 						this.logger.debug("Committing in AckMode.COUNT because count " + this.count
 								+ " exceeds configured limit of " + this.containerProperties.getAckCount());

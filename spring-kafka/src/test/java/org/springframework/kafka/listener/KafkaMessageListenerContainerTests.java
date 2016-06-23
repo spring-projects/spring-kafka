@@ -113,7 +113,6 @@ public class KafkaMessageListenerContainerTests {
 		});
 		container.setBeanName("testSlow1");
 		containerProps.setPauseAfter(100);
-		containerProps.setAckCount(10);
 
 		container.start();
 		Consumer<?, ?> consumer = spyOnConsumer(container);
@@ -330,7 +329,6 @@ public class KafkaMessageListenerContainerTests {
 			}, buildRetry(), null);
 		containerProps.setMessageListener(adapter);
 		containerProps.setPauseAfter(100);
-		containerProps.setAckCount(10);
 		container.setBeanName("testSlow3");
 
 		container.start();
@@ -400,7 +398,6 @@ public class KafkaMessageListenerContainerTests {
 			}, buildRetry(), null);
 		containerProps.setMessageListener(adapter);
 		containerProps.setPauseAfter(100);
-		containerProps.setAckCount(10);
 		container.setBeanName("testSlow4");
 
 		container.start();
