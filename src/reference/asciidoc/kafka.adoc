@@ -209,22 +209,21 @@ If it is false, the containers support the following `AckMode` s.
 The consumer `poll()` method will return one or more `ConsumerRecords`; the `MessageListener` is called for each record;
 the following describes the action taken by the container for each `AckMode` :
 
-- RECORD - call `commitAsync()` when the listener returns after processing the record.
-- BATCH - call `commitAsync()` when all the records returned by the `poll()` have been processed.
-- TIME - call `commitAsync()` when all the records returned by the `poll()` have been processed as long as the `ackTime`
+- RECORD - commit the offset when the listener returns after processing the record.
+- BATCH - commit the offset when all the records returned by the `poll()` have been processed.
+- TIME - commit the offset when all the records returned by the `poll()` have been processed as long as the `ackTime`
 since the last commit has been exceeded.
-- COUNT - call `commitAsync()` when all the records returned by the `poll()` have been processed as long as `ackCount`
+- COUNT - commit the offset when all the records returned by the `poll()` have been processed as long as `ackCount`
 records have been received since the last commit.
 - COUNT_TIME - similar to TIME and COUNT but the commit is performed if either condition is true.
 - MANUAL - the message listener (`AcknowledgingMessageListener`) is responsible to `acknowledge()` the `Acknowledgment`;
-after which, the same semantics as `COUNT_TIME` are applied.
-- MANUAL_IMMEDIATE - call `commitAsync()` immediately when the `Acknowledgment.acknowledge()` method is called by the
-listener - must be executed on the container's thread.
-- MANUAL_IMMEDIATE_SYNC - call `commitSync()` immediately when the `Acknowledgment.acknowledge()` method is called by
-the listener - must be executed on the container's thread.
+after which, the same semantics as `BATCH` are applied.
+- MANUAL_IMMEDIATE - commit the offset immediately when the `Acknowledgment.acknowledge()` method is called by the
+listener.
 
-NOTE: `MANUAL`, `MANUAL_IMMEDIATE`, and `MANUAL_IMMEDIATE_SYNC` require the listener to be an
-`AcknowledgingMessageListener`.
+NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener`.
+
+The `commitSync()` or `commitAsync()` method on the consumer is used, depending on the `syncCommits` container property.
 
 [source, java]
 ----

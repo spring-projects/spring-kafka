@@ -352,10 +352,10 @@ public class ConcurrentMessageListenerContainerTests {
 	@Test
 	public void testManualCommit() throws Exception {
 		testManualCommitGuts(AckMode.MANUAL, topic4);
-		testManualCommitGuts(AckMode.MANUAL_IMMEDIATE_SYNC, topic5);
+		testManualCommitGuts(AckMode.MANUAL_IMMEDIATE, topic5);
 		// to be sure the commits worked ok so run the tests again and the second tests start at the committed offset.
 		testManualCommitGuts(AckMode.MANUAL, topic4);
-		testManualCommitGuts(AckMode.MANUAL_IMMEDIATE_SYNC, topic5);
+		testManualCommitGuts(AckMode.MANUAL_IMMEDIATE, topic5);
 	}
 
 	private void testManualCommitGuts(AckMode ackMode, String topic) throws Exception {
@@ -442,7 +442,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 	@Test
 	public void testManualCommitSyncExisting() throws Exception {
-		this.logger.info("Start MANUAL_IMMEDIATE_SYNC with Existing");
+		this.logger.info("Start MANUAL_IMMEDIATE with Existing");
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -456,6 +456,7 @@ public class ConcurrentMessageListenerContainerTests {
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic8);
+		containerProps.setSyncCommits(true);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(8);
@@ -467,7 +468,7 @@ public class ConcurrentMessageListenerContainerTests {
 			latch.countDown();
 		});
 		container.setConcurrency(1);
-		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE_SYNC);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
 		container.setBeanName("testManualExisting");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -479,7 +480,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(bitSet.cardinality()).isEqualTo(8);
 		container.stop();
-		this.logger.info("Stop MANUAL_IMMEDIATE_SYNC with Existing");
+		this.logger.info("Stop MANUAL_IMMEDIATE with Existing");
 	}
 
 	@Test
@@ -513,7 +514,6 @@ public class ConcurrentMessageListenerContainerTests {
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
 		container.setConcurrency(3);
 		container.start();
-		@SuppressWarnings("unchecked")
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
 		assertThat(containers.size()).isEqualTo(3);

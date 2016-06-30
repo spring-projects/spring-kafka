@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 
@@ -84,20 +83,17 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		COUNT_TIME,
 
 		/**
-		 * Same as {@link #COUNT_TIME} except for pending manual acks.
-		 * If no count or time are set, works as {@link #MANUAL_IMMEDIATE_SYNC}.
+		 * User takes responsibility for acks using an
+		 * {@link AcknowledgingMessageListener}.
 		 */
 		MANUAL,
 
 		/**
-		 * Call {@link Consumer#commitAsync()} immediately for pending acks.
+		 * User takes responsibility for acks using an
+		 * {@link AcknowledgingMessageListener}. The consumer is woken to
+		 * immediately process the commit.
 		 */
 		MANUAL_IMMEDIATE,
-
-		/**
-		 * Call {@link Consumer#commitSync()} immediately for pending acks.
-		 */
-		MANUAL_IMMEDIATE_SYNC
 
 	}
 

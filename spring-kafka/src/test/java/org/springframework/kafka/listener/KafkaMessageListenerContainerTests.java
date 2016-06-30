@@ -141,9 +141,9 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	public void testSlowListenerManualCommit() throws Exception {
-		testSlowListenerManualGuts(AckMode.MANUAL_IMMEDIATE_SYNC, topic2);
+		testSlowListenerManualGuts(AckMode.MANUAL_IMMEDIATE, topic2);
 		// to be sure the commits worked ok so run the tests again and the second tests start at the committed offset.
-		testSlowListenerManualGuts(AckMode.MANUAL_IMMEDIATE_SYNC, topic2);
+		testSlowListenerManualGuts(AckMode.MANUAL_IMMEDIATE, topic2);
 	}
 
 	private void testSlowListenerManualGuts(AckMode ackMode, String topic) throws Exception {
@@ -151,6 +151,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("slow2", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setSyncCommits(true);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(6);
@@ -208,7 +209,8 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic5);
 		containerProps.setAckCount(1);
 		containerProps.setPauseAfter(100);
-		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE_SYNC);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		containerProps.setSyncCommits(true);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(3);
