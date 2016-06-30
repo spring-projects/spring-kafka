@@ -17,8 +17,8 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -213,7 +213,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		final CountDownLatch latch = new CountDownLatch(3);
+
 		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
 			logger.info("slow: " + message);
 			try {
@@ -223,12 +223,22 @@ public class KafkaMessageListenerContainerTests {
 				Thread.currentThread().interrupt();
 			}
 			ack.acknowledge();
-			latch.countDown();
 		});
 		container.setBeanName("testSlow");
 
 		container.start();
 		Consumer<?, ?> consumer = spyOnConsumer(container);
+
+		final CountDownLatch latch = new CountDownLatch(3);
+
+		willAnswer(invocation -> {
+
+			latch.countDown();
+			return invocation.callRealMethod();
+
+		}).given(consumer)
+				.commitSync(any());
+
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -246,7 +256,6 @@ public class KafkaMessageListenerContainerTests {
 		// Verify that commitSync is called when paused
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		verify(consumer, atLeastOnce()).pause(any(TopicPartition.class), any(TopicPartition.class));
-		verify(consumer, atLeast(2)).commitSync(any());
 		verify(consumer, atLeastOnce()).resume(any(TopicPartition.class), any(TopicPartition.class));
 		container.stop();
 	}
