@@ -52,7 +52,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private MessageConverter messageConverter = new MessagingMessageConverter();
 
-private final boolean autoFlush;
+	private final boolean autoFlush;
 	private volatile Producer<K, V> producer;
 
 	private volatile String defaultTopic;
@@ -172,7 +172,9 @@ private final boolean autoFlush;
 
 	@Override
 	public void flush() {
-		this.producer.flush();
+		if (this.producer != null) {
+			this.producer.flush();
+		}
 	}
 
 	/**
