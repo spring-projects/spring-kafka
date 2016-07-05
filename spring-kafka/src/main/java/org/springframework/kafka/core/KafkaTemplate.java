@@ -31,6 +31,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -52,7 +53,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private MessageConverter messageConverter = new MessagingMessageConverter();
 
-private final boolean autoFlush;
+	private final boolean autoFlush;
 	private volatile Producer<K, V> producer;
 
 	private volatile String defaultTopic;
@@ -172,6 +173,7 @@ private final boolean autoFlush;
 
 	@Override
 	public void flush() {
+		Assert.state(this.producer != null, "'producer' must not be null for flushing.");
 		this.producer.flush();
 	}
 

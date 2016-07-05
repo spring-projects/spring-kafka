@@ -195,4 +195,14 @@ public class KafkaTemplateTests {
 		pf.createProducer().close();
 	}
 
+	@Test(expected = IllegalStateException.class)
+	public void flushWithoutSend() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<String, String>(senderProps);
+		pf.setKeySerializer(new StringSerializer());
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+		template.flush();
+		throw new AssertionError("IllegalStateException must be thrown upon flushing");
+	}
 }
