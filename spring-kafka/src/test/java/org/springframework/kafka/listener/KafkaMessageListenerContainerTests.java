@@ -24,10 +24,12 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,6 +38,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -78,8 +82,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic5 = "testTopic5";
 
+	private static String topic6 = "testTopic6";
+
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
+			topic6);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -434,6 +441,61 @@ public class KafkaMessageListenerContainerTests {
 		verify(consumer, atLeastOnce()).resume(any(TopicPartition.class), any(TopicPartition.class));
 		container.stop();
 		logger.info("Stop " + this.testName.getMethodName());
+	}
+
+	@Test
+	public void testRecordAck() throws Exception {
+		logger.info("Start record ack");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test6", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic6);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			logger.info("record ack: " + message);
+		});
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setAckOnError(false);
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
+				containerProps);
+		container.setBeanName("testAckOnError");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		KafkaConsumer<?, ?> containerConsumer = spy(
+				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", KafkaConsumer.class));
+		final CountDownLatch latch = new CountDownLatch(2);
+		willAnswer(invocation -> {
+
+			@SuppressWarnings({ "unchecked" })
+			Map<TopicPartition, OffsetAndMetadata> map = (Map<TopicPartition, OffsetAndMetadata>) invocation
+					.getArguments()[0];
+			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+				if (entry.getValue().offset() == 2) {
+					latch.countDown();
+				}
+			}
+			return invocation.callRealMethod();
+
+		}).given(containerConsumer)
+				.commitSync(any());
+		new DirectFieldAccessor(KafkaTestUtils.getPropertyValue(container, "listenerConsumer"))
+				.setPropertyValue("consumer", containerConsumer);
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic6);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 0, "qux");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		consumer.assign(Arrays.asList(new TopicPartition(topic6, 0), new TopicPartition(topic6, 1)));
+		assertThat(consumer.position(new TopicPartition(topic6, 0))).isEqualTo(2);
+		assertThat(consumer.position(new TopicPartition(topic6, 1))).isEqualTo(2);
+		container.stop();
+		consumer.close();
+		logger.info("Stop record ack");
 	}
 
 	private RetryTemplate buildRetry() {

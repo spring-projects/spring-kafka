@@ -541,19 +541,20 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		/**
-		 * Process any manual acks that have been queued by the listener thread.
+		 * Process any acks that have been queued by the listener thread.
 		 */
-		private void handleManualAcks() {
-			if (ListenerConsumer.this.isAnyManualAck) {
-				ConsumerRecord<K, V> record = this.acks.poll();
-				while (record != null) {
-					manualAck(record);
-					record = this.acks.poll();
+		private void handleAcks() {
+			ConsumerRecord<K, V> record = this.acks.poll();
+			while (record != null) {
+				if (this.logger.isTraceEnabled()) {
+					this.logger.trace("Ack: " + record);
 				}
+				processAck(record);
+				record = this.acks.poll();
 			}
 		}
 
-		private void manualAck(ConsumerRecord<K, V> record) {
+		private void processAck(ConsumerRecord<K, V> record) {
 			if (ListenerConsumer.this.isManualImmediateAck) {
 				try {
 					ackImmediate(record);
@@ -621,7 +622,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void processCommits() {
-			handleManualAcks();
+			handleAcks();
 			this.count += this.acks.size();
 			long now;
 			AckMode ackMode = this.containerProperties.getAckMode();
@@ -630,7 +631,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					updatePendingOffsets();
 				}
 				boolean countExceeded = this.count >= this.containerProperties.getAckCount();
-				if (this.isManualAck || this.isBatchAck
+				if (this.isManualAck || this.isBatchAck || this.isRecordAck
 						|| (ackMode.equals(AckMode.COUNT) && countExceeded)) {
 					if (this.logger.isDebugEnabled() && ackMode.equals(AckMode.COUNT)) {
 						this.logger.debug("Committing in AckMode.COUNT because count " + this.count

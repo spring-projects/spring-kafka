@@ -609,6 +609,7 @@ public class ConcurrentMessageListenerContainerTests {
 		// processed 'qux'
 		// it has been updated even 'baz' failed
 		assertThat(consumer.position(new TopicPartition(topic9, 1))).isEqualTo(2);
+		consumer.close();
 		logger.info("Stop ack on error");
 	}
 
