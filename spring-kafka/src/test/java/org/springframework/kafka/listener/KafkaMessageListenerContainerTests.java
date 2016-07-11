@@ -527,6 +527,7 @@ public class KafkaMessageListenerContainerTests {
 		container.setBeanName("testBatchAcks");
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
+		final CountDownLatch firstBatchLatch = new CountDownLatch(1);
 		final CountDownLatch latch = new CountDownLatch(2);
 		willAnswer(invocation -> {
 
@@ -535,6 +536,7 @@ public class KafkaMessageListenerContainerTests {
 					.getArguments()[0];
 			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
 				if (entry.getValue().offset() == 2) {
+					firstBatchLatch.countDown();
 					latch.countDown();
 				}
 			}
@@ -542,6 +544,8 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(containerConsumer)
 				.commitSync(any());
+
+		assertThat(firstBatchLatch.await(9, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		Consumer<Integer, String> consumer = cf.createConsumer();
