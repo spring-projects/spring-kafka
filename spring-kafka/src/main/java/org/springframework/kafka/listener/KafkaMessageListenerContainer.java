@@ -449,6 +449,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 				catch (WakeupException e) {
+					if (!this.autoCommit) {
+						processCommits();
+					}
 					this.unsent = checkPause(this.unsent);
 				}
 				catch (Exception e) {
