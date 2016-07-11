@@ -403,6 +403,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			long lastAlertAt = lastReceive;
 			while (isRunning()) {
 				try {
+					if (!this.autoCommit) {
+						processCommits();
+					}
 					if (this.logger.isTraceEnabled()) {
 						this.logger.trace("Polling (paused=" + this.paused + ")...");
 					}
@@ -444,9 +447,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 					}
 					this.unsent = checkPause(this.unsent);
-					if (!this.autoCommit) {
-						processCommits();
-					}
 				}
 				catch (WakeupException e) {
 					this.unsent = checkPause(this.unsent);

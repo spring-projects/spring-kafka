@@ -117,22 +117,22 @@ public class EnableKafkaIntegrationTests {
 
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
-		assertThat(this.listener.latch2.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.key).isEqualTo(123);
 		assertThat(this.listener.partition).isNotNull();
 		assertThat(this.listener.topic).isEqualTo("annotated2");
 
 		template.send("annotated3", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch3.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch3.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 
 		template.send("annotated4", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch4.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch4.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
-		assertThat(this.listener.eventLatch.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.eventLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.event.getListenerId().startsWith("qux-"));
 		MessageListenerContainer manualContainer = this.registry.getListenerContainer("qux");
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener"))
@@ -153,11 +153,11 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated6", 0, 0, "baz");
 		template.send("annotated6", 1, 0, "qux");
 		template.flush();
-		assertThat(this.listener.latch5.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch5.await(60, TimeUnit.SECONDS)).isTrue();
 
 		template.send("annotated11", 0, "foo");
 		template.flush();
-		assertThat(this.listener.latch7.await(20, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch7.await(60, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(this.recordFilter.called).isTrue();
 	}
@@ -208,7 +208,7 @@ public class EnableKafkaIntegrationTests {
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
-		assertThat(this.listener.latch6.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch6.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
 	}
 
