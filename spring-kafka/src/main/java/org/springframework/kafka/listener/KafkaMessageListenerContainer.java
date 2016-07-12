@@ -257,7 +257,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final ApplicationEventPublisher applicationEventPublisher = getApplicationEventPublisher();
 
-		private volatile Map<TopicPartition, Long> definedPartitions;
+		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private ConsumerRecords<K, V> unsent;
 
@@ -366,7 +366,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						Arrays.asList(KafkaMessageListenerContainer.this.topicPartitions);
 				this.definedPartitions = new HashMap<>(topicPartitions.size());
 				for (TopicPartitionInitialOffset topicPartition : topicPartitions) {
-					this.definedPartitions.put(topicPartition.topicPartition(), topicPartition.initialOffset());
+					this.definedPartitions.put(topicPartition.topicPartition(),
+							new OffsetMetadata(topicPartition.initialOffset(), topicPartition.isRelativeToCurrent()));
 				}
 				consumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
 			}
@@ -683,15 +684,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			 * When using auto assignment (subscribe), the ConsumerRebalanceListener is not
 			 * called until we poll() the consumer.
 			 */
-			for (Entry<TopicPartition, Long> entry : this.definedPartitions.entrySet()) {
+			for (Entry<TopicPartition, OffsetMetadata> entry : this.definedPartitions.entrySet()) {
 				TopicPartition topicPartition = entry.getKey();
-				Long offset = entry.getValue();
+				OffsetMetadata metadata = entry.getValue();
+				Long offset = metadata.offset;
 				if (offset != null) {
 					long newOffset = offset;
 
 					if (offset < 0) {
-						this.consumer.seekToEnd(topicPartition);
+						if (!metadata.relativeToCurrent) {
+							this.consumer.seekToEnd(topicPartition);
+						}
 						newOffset = Math.max(0, this.consumer.position(topicPartition) + offset);
+					}
+					else if (metadata.relativeToCurrent) {
+						newOffset = this.consumer.position(topicPartition) + offset;
 					}
 
 					try {
@@ -702,7 +709,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 					catch (Exception e) {
 						logger.error("Failed to set initial offset for " + topicPartition
-								+ " at " + newOffset + ". Positioned to " + this.consumer.position(topicPartition), e);
+								+ " at " + newOffset + ". Position is " + this.consumer.position(topicPartition), e);
 					}
 				}
 			}
@@ -880,6 +887,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			else if (logger.isDebugEnabled()) {
 				logger.debug("Commits for " + offsets + " completed");
 			}
+		}
+
+	}
+
+	private static final class OffsetMetadata {
+
+		private final Long offset;
+
+		private final boolean relativeToCurrent;
+
+		private OffsetMetadata(Long offset, boolean relativeToCurrent) {
+			this.offset = offset;
+			this.relativeToCurrent = relativeToCurrent;
 		}
 
 	}
