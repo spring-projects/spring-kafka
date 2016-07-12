@@ -691,12 +691,18 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 					if (offset < 0) {
 						this.consumer.seekToEnd(topicPartition);
-						newOffset = this.consumer.position(topicPartition) + offset;
+						newOffset = Math.max(0, this.consumer.position(topicPartition) + offset);
 					}
 
-					this.consumer.seek(topicPartition, newOffset);
-					if (this.logger.isDebugEnabled()) {
-						this.logger.debug("Reset " + topicPartition + " to offset " + newOffset);
+					try {
+						this.consumer.seek(topicPartition, newOffset);
+						if (this.logger.isDebugEnabled()) {
+							this.logger.debug("Reset " + topicPartition + " to offset " + newOffset);
+						}
+					}
+					catch (Exception e) {
+						logger.error("Failed to set initial offset for " + topicPartition
+								+ " at " + newOffset, e);
 					}
 				}
 			}

@@ -305,13 +305,13 @@ public class ConcurrentMessageListenerContainerTests {
 
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		cf = new DefaultKafkaConsumerFactory<>(props);
-		// reset minus one
-		topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, -1L);
+		// reset beginning for part 0, minus one for part 1
+		topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, -1000L);
 		topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1, -1L);
 		ContainerProperties container4Props = new ContainerProperties(topic1Partition0, topic1Partition1);
 		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, container4Props);
 		resettingContainer.setBeanName("b4");
-		final CountDownLatch latch4 = new CountDownLatch(2);
+		final CountDownLatch latch4 = new CountDownLatch(3);
 		final AtomicReference<String> receivedMessage = new AtomicReference<>();
 		container4Props.setMessageListener((MessageListener<Integer, String>) message -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("auto part -1: " + message);
