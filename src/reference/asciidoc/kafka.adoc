@@ -169,7 +169,9 @@ public ContainerProperties(Pattern topicPattern)
 ----
 
 The first takes an array of `TopicPartitionInitialOffset` arguments to explicitly instruct the container which partitions to use
-(using the consumer `assign()` method), and with an optional initial offset: a positive value is an absolute offset; a negative value is relative to the current last offset within a partition.
+(using the consumer `assign()` method), and with an optional initial offset: a positive value is an absolute offset by default; a negative value is relative to the current last offset within a partition by default.
+A constructor for `TopicPartitionInitialOffset` is provided that takes an additional `boolean` argument.
+If this is `true`, the initial offsets (positive or negative) are relative to the current position for this consumer.
 The offsets are applied when the container is started.
 The second takes an array of topics and Kafka allocates the partitions based on the `group.id` property - distributing
 partitions across the group.

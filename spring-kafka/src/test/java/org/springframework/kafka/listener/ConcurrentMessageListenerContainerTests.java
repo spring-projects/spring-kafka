@@ -219,9 +219,9 @@ public class ConcurrentMessageListenerContainerTests {
 
 	@Test
 	public void testDefinedPartitions() throws Exception {
-		this.logger.info("Start auto parts");
-		final Map<String, Object> props = KafkaTestUtils.consumerProps("test3", "true", embeddedKafka);
-		TopicPartitionInitialOffset topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0);
+		this.logger.info("Start defined parts");
+		final Map<String, Object> props = KafkaTestUtils.consumerProps("test3", "false", embeddedKafka);
+		TopicPartitionInitialOffset topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, 0L);
 
 		final CountDownLatch initialConsumersLatch = new CountDownLatch(2);
 
@@ -251,19 +251,19 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, container1Props);
 		final CountDownLatch latch1 = new CountDownLatch(2);
 		container1Props.setMessageListener((MessageListener<Integer, String>) message -> {
-			ConcurrentMessageListenerContainerTests.this.logger.info("auto part: " + message);
+			ConcurrentMessageListenerContainerTests.this.logger.info("defined part: " + message);
 			latch1.countDown();
 		});
 		container1.setBeanName("b1");
 		container1.start();
 
-		TopicPartitionInitialOffset topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1);
+		TopicPartitionInitialOffset topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1, 0L);
 		ContainerProperties container2Props = new ContainerProperties(topic1Partition1);
 		ConcurrentMessageListenerContainer<Integer, String> container2 =
 				new ConcurrentMessageListenerContainer<>(cf, container2Props);
 		final CountDownLatch latch2 = new CountDownLatch(2);
 		container2Props.setMessageListener((MessageListener<Integer, String>) message -> {
-			ConcurrentMessageListenerContainerTests.this.logger.info("auto part: " + message);
+			ConcurrentMessageListenerContainerTests.this.logger.info("defined part: " + message);
 			latch2.countDown();
 		});
 		container2.setBeanName("b2");
@@ -286,7 +286,6 @@ public class ConcurrentMessageListenerContainerTests {
 		container1.stop();
 		container2.stop();
 
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset earliest
 		ContainerProperties container3Props = new ContainerProperties(topic1Partition0, topic1Partition1);
@@ -295,7 +294,7 @@ public class ConcurrentMessageListenerContainerTests {
 		resettingContainer.setBeanName("b3");
 		final CountDownLatch latch3 = new CountDownLatch(4);
 		container3Props.setMessageListener((MessageListener<Integer, String>) message -> {
-			ConcurrentMessageListenerContainerTests.this.logger.info("auto part e: " + message);
+			ConcurrentMessageListenerContainerTests.this.logger.info("defined part e: " + message);
 			latch3.countDown();
 		});
 		resettingContainer.start();
@@ -303,7 +302,6 @@ public class ConcurrentMessageListenerContainerTests {
 		resettingContainer.stop();
 		assertThat(latch3.getCount()).isEqualTo(0L);
 
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset beginning for part 0, minus one for part 1
 		topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, -1000L);
@@ -314,7 +312,7 @@ public class ConcurrentMessageListenerContainerTests {
 		final CountDownLatch latch4 = new CountDownLatch(3);
 		final AtomicReference<String> receivedMessage = new AtomicReference<>();
 		container4Props.setMessageListener((MessageListener<Integer, String>) message -> {
-			ConcurrentMessageListenerContainerTests.this.logger.info("auto part -1: " + message);
+			ConcurrentMessageListenerContainerTests.this.logger.info("defined part 0, -1: " + message);
 			receivedMessage.set(message.value());
 			latch4.countDown();
 		});
@@ -326,25 +324,49 @@ public class ConcurrentMessageListenerContainerTests {
 
 		// reset plus one
 		template.sendDefault(0, 0, "FOO");
-		template.sendDefault(1, 2, "BAZ");
+		template.sendDefault(1, 2, "BAR");
 		template.flush();
 
 		topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, 1L);
 		topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1, 1L);
 		ContainerProperties container5Props = new ContainerProperties(topic1Partition0, topic1Partition1);
 		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, container5Props);
-		resettingContainer.setBeanName("b4");
+		resettingContainer.setBeanName("b5");
 		final CountDownLatch latch5 = new CountDownLatch(4);
 		final List<String> messages = new ArrayList<>();
 		container5Props.setMessageListener((MessageListener<Integer, String>) message -> {
-			ConcurrentMessageListenerContainerTests.this.logger.info("auto part 1: " + message);
+			ConcurrentMessageListenerContainerTests.this.logger.info("defined part 1: " + message);
 			messages.add(message.value());
 			latch5.countDown();
 		});
 		resettingContainer.start();
 		assertThat(latch5.await(60, TimeUnit.SECONDS)).isTrue();
 		resettingContainer.stop();
-		assertThat(messages).contains("baz", "qux", "FOO", "BAZ");
+		assertThat(messages).contains("baz", "qux", "FOO", "BAR");
+
+		template.sendDefault(0, 0, "BAZ");
+		template.sendDefault(1, 2, "QUX");
+		template.sendDefault(0, 0, "FIZ");
+		template.sendDefault(1, 2, "BUZ");
+		template.flush();
+
+		topic1Partition0 = new TopicPartitionInitialOffset(topic3, 0, 1L, true);
+		topic1Partition1 = new TopicPartitionInitialOffset(topic3, 1, -1L, true);
+		ContainerProperties container6Props = new ContainerProperties(topic1Partition0, topic1Partition1);
+		resettingContainer = new ConcurrentMessageListenerContainer<>(cf, container6Props);
+		resettingContainer.setBeanName("b6");
+		final CountDownLatch latch6 = new CountDownLatch(4);
+		final List<String> messages6 = new ArrayList<>();
+		container6Props.setMessageListener((MessageListener<Integer, String>) message -> {
+			ConcurrentMessageListenerContainerTests.this.logger.info("defined part relative: " + message);
+			messages6.add(message.value());
+			latch6.countDown();
+		});
+		resettingContainer.start();
+		assertThat(latch6.await(60, TimeUnit.SECONDS)).isTrue();
+		resettingContainer.stop();
+		assertThat(messages6).hasSize(4);
+		assertThat(messages6).contains("FIZ", "BAR", "QUX", "BUZ");
 
 		this.logger.info("Stop auto parts");
 	}
