@@ -45,4 +45,13 @@ public @interface PartitionOffset {
 	 */
 	String initialOffset();
 
+	/**
+	 * By default, positive {@link #initialOffset()} is absolute, negative
+	 * is relative to the current topic end. When this is 'true', the
+	 * initial offset (positive or negative) is relative to the current
+	 * consumer position.
+	 * @return whether or not the offset is relative to the current position.
+	 */
+	String relativeToCurrent() default "false";
+
 }

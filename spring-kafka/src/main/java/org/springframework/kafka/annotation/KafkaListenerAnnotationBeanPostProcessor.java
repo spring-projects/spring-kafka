@@ -489,12 +489,26 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 			else {
 				throw new IllegalArgumentException(String.format(
-						"@PartitionOffset for topic '%s' can't resolve '%s' as an Long or String, resolved to '%s'",
+						"@PartitionOffset for topic '%s' can't resolve '%s' as a Long or String, resolved to '%s'",
 							topic, partitionOffset.initialOffset(), initialOffsetValue.getClass()));
 			}
 
+			Object relativeToCurrentValue = resolveExpression(partitionOffset.relativeToCurrent());
+			Boolean relativeToCurrent;
+			if (relativeToCurrentValue instanceof String) {
+				relativeToCurrent = Boolean.valueOf((String) relativeToCurrentValue);
+			}
+			else if (relativeToCurrentValue instanceof Boolean) {
+				relativeToCurrent = (Boolean) relativeToCurrentValue;
+			}
+			else {
+				throw new IllegalArgumentException(String.format(
+						"@PartitionOffset for topic '%s' can't resolve '%s' as a Boolean or String, resolved to '%s'",
+							topic, partitionOffset.relativeToCurrent(), relativeToCurrentValue.getClass()));
+			}
+
 			TopicPartitionInitialOffset topicPartitionOffset =
-					new TopicPartitionInitialOffset((String) topic, partition, initialOffset);
+					new TopicPartitionInitialOffset((String) topic, partition, initialOffset, relativeToCurrent);
 			if (!result.contains(topicPartitionOffset)) {
 				result.add(topicPartitionOffset);
 			}

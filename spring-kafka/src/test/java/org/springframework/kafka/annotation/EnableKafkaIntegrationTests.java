@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +58,7 @@ import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageLi
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -154,6 +156,16 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated6", 1, 0, "qux");
 		template.flush();
 		assertThat(this.listener.latch5.await(60, TimeUnit.SECONDS)).isTrue();
+		MessageListenerContainer fizConcurrentContainer = registry.getListenerContainer("fiz");
+		assertThat(fizConcurrentContainer).isNotNull();
+		MessageListenerContainer fizContainer = (MessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(fizConcurrentContainer, "containers", List.class).get(0);
+		TopicPartitionInitialOffset offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
+				TopicPartitionInitialOffset[].class)[2];
+		assertThat(offset.isRelativeToCurrent()).isFalse();
+		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
+				TopicPartitionInitialOffset[].class)[3];
+		assertThat(offset.isRelativeToCurrent()).isTrue();
 
 		template.send("annotated11", 0, "foo");
 		template.flush();
@@ -454,7 +466,8 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "fiz", topicPartitions = {
 				@TopicPartition(topic = "annotated5", partitions = { "#{'${foo:0,1}'.split(',')}" }),
 				@TopicPartition(topic = "annotated6", partitions = "0",
-						partitionOffsets = @PartitionOffset(partition = "${xxx:1}", initialOffset = "${yyy:0}"))
+						partitionOffsets = @PartitionOffset(partition = "${xxx:1}", initialOffset = "${yyy:0}",
+										relativeToCurrent = "${zzz:true}"))
 		})
 		public void listen5(ConsumerRecord<?, ?> record) {
 			this.record = record;
