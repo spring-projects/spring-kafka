@@ -17,6 +17,8 @@
 package org.springframework.kafka.config;
 
 
+import java.util.regex.Pattern;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -44,7 +46,7 @@ import org.springframework.retry.support.RetryTemplate;
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
 		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware {
 
-	private final ContainerProperties containerProperties = new ContainerProperties("propertiesFactory");
+	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null);
 
 	private ConsumerFactory<K, V> consumerFactory;
 

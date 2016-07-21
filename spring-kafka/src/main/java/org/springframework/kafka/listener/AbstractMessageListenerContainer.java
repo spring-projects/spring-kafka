@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -113,9 +114,28 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected AbstractMessageListenerContainer(ContainerProperties containerProperties) {
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
-		this.containerProperties = containerProperties;
-		if (containerProperties.getConsumerRebalanceListener() == null) {
-			containerProperties.setConsumerRebalanceListener(createConsumerRebalanceListener());
+
+		if (containerProperties.getTopics() != null) {
+			this.containerProperties = new ContainerProperties(containerProperties.getTopics());
+		}
+		else if (containerProperties.getTopicPattern() != null) {
+			this.containerProperties = new ContainerProperties(containerProperties.getTopicPattern());
+		}
+		else {
+			this.containerProperties = new ContainerProperties(containerProperties.getTopicPartitions());
+		}
+
+		BeanUtils.copyProperties(containerProperties, this.containerProperties,
+				"topics", "topicPartitions", "topicPattern", "ackCount", "ackTime");
+
+		if (containerProperties.getAckCount() > 0) {
+			this.containerProperties.setAckCount(containerProperties.getAckCount());
+		}
+		if (containerProperties.getAckTime() > 0) {
+			this.containerProperties.setAckTime(containerProperties.getAckTime());
+		}
+		if (this.containerProperties.getConsumerRebalanceListener() == null) {
+			this.containerProperties.setConsumerRebalanceListener(createConsumerRebalanceListener());
 		}
 	}
 
