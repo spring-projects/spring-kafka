@@ -60,6 +60,7 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
