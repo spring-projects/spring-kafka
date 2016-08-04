@@ -853,6 +853,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			@Override
 			public void acknowledge() {
 				try {
+					if (ListenerConsumer.this.autoCommit) {
+						throw new IllegalStateException("Manual acks are not allowed when auto commit is used");
+					}
 					ListenerConsumer.this.acks.put(this.record);
 				}
 				catch (InterruptedException e) {
