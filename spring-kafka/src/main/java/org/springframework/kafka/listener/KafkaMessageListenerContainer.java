@@ -599,7 +599,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					else {
 						this.listener.onMessage(record);
 					}
-					if (!this.isAnyManualAck) {
+					if (!this.isAnyManualAck && !this.autoCommit) {
 						this.acks.add(record);
 					}
 					if (this.isRecordAck) {
@@ -607,7 +607,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 				catch (Exception e) {
-					if (this.containerProperties.isAckOnError()) {
+					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
 						this.acks.add(record);
 					}
 					if (this.containerProperties.getErrorHandler() != null) {

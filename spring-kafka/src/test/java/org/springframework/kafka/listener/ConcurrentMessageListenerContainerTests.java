@@ -130,6 +130,14 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(listenerThreadNames).allMatch(threadName -> threadName.contains("-consumer-"));
+		@SuppressWarnings("unchecked")
+		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
+				"containers", List.class);
+		assertThat(containers.size()).isEqualTo(2);
+		for (int i = 0; i < 2; i++) {
+			assertThat(KafkaTestUtils.getPropertyValue(containers.get(i), "listenerConsumer.acks", Collection.class)
+					.size()).isEqualTo(0);
+		}
 		container.stop();
 		this.logger.info("Stop auto");
 	}
