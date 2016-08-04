@@ -16,25 +16,27 @@
 
 package org.springframework.kafka.support;
 
+import java.io.Serializable;
+import java.util.Map;
+
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
-import java.io.Serializable;
-import java.util.Map;
-
 /**
  * An implementation of {@link Message} with a generic payload.
  * Almost identical as {@link GenericMessage} but allows null payload.
+ *
+ * @param <T> the payload type.
  *
  * @author Dariusz Szablinski
  * @see GenericMessage
  */
 public class KafkaMessage<T> implements Message<T>, Serializable {
 
-    private static final long serialVersionUID = 2863735057358339399L;
+	private static final long serialVersionUID = 2863735057358339399L;
 
 	private final T payload;
 
@@ -67,8 +69,8 @@ public class KafkaMessage<T> implements Message<T>, Serializable {
 	 */
 	public KafkaMessage(T payload, MessageHeaders headers) {
 		Assert.notNull(headers, "MessageHeaders must not be null");
-        this.headers = headers;
-        this.payload = payload;
+		this.headers = headers;
+		this.payload = payload;
 	}
 
 	@Override
