@@ -66,8 +66,11 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 
 	@Override
 	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
-		JavaType javaType = TypeFactory.defaultInstance().constructType(type);
 		Object value = record.value();
+		if(value == null) {
+			return null;
+		}
+		JavaType javaType = TypeFactory.defaultInstance().constructType(type);
 		if (value instanceof String) {
 			try {
 				return this.objectMapper.readValue((String) value, javaType);

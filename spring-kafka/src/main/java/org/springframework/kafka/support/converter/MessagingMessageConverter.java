@@ -24,9 +24,9 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaMessage;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.support.MessageBuilder;
 
 /**
  * The Messaging specific {@link MessageConverter} implementation.
@@ -75,7 +75,7 @@ public class MessagingMessageConverter implements MessageConverter {
 			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
 		}
 
-		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);
+		return new KafkaMessage<>(extractAndConvertValue(record, type), kafkaMessageHeaders);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
