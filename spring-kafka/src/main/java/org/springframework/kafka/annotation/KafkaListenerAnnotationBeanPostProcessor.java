@@ -50,12 +50,15 @@ import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
@@ -612,6 +615,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		private MessageHandlerMethodFactory createDefaultMessageHandlerMethodFactory() {
 			DefaultMessageHandlerMethodFactory defaultFactory = new DefaultMessageHandlerMethodFactory();
 			defaultFactory.setBeanFactory(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory);
+			DefaultFormattingConversionService conversionService = new DefaultFormattingConversionService();
+			conversionService.addConverter(new Converter<KafkaNull, Object>() {
+				@Override
+				public Object convert(KafkaNull source) {
+					return null;
+				}
+			});
+			defaultFactory.setConversionService(conversionService);
 			defaultFactory.afterPropertiesSet();
 			return defaultFactory;
 		}
