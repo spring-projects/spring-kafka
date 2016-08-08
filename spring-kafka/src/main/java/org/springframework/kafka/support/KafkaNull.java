@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.kafka.support;
 
 /**
@@ -21,5 +22,8 @@ package org.springframework.kafka.support;
  * @author Dariusz Szablinski
  */
 public enum KafkaNull {
-    INSTANCE;
+    /**
+     * Instance of KafkaNull
+     */
+	INSTANCE
 }
