@@ -21,6 +21,7 @@ import java.lang.reflect.Type;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -66,8 +67,12 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 
 	@Override
 	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
-		JavaType javaType = TypeFactory.defaultInstance().constructType(type);
 		Object value = record.value();
+		if (record.value() == null) {
+			return KafkaNull.INSTANCE;
+		}
+
+		JavaType javaType = TypeFactory.defaultInstance().constructType(type);
 		if (value instanceof String) {
 			try {
 				return this.objectMapper.readValue((String) value, javaType);
