@@ -22,8 +22,8 @@ package org.springframework.kafka.support;
  * @author Dariusz Szablinski
  */
 public enum KafkaNull {
-    /**
-     * Instance of KafkaNull
-     */
+	/**
+	 * Instance of KafkaNull.
+	 */
 	INSTANCE
 }
