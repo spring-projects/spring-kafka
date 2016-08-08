@@ -1,0 +1,116 @@
+/*
+ * Copyright 2016 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.kafka.support;
+
+import java.io.Serializable;
+import java.util.Map;
+
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.support.GenericMessage;
+import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
+
+/**
+ * An implementation of {@link Message} with a generic payload.
+ * Almost identical as {@link GenericMessage} but allows null payload.
+ *
+ * @param <T> the payload type.
+ *
+ * @author Dariusz Szablinski
+ * @see GenericMessage
+ */
+public class KafkaMessage<T> implements Message<T>, Serializable {
+
+	private static final long serialVersionUID = 2863735057358339399L;
+
+	private final T payload;
+
+	private final MessageHeaders headers;
+
+	/**
+	 * Create a new message with the given payload.
+	 * @param payload the message payload (can be {@code null})
+	 */
+	public KafkaMessage(T payload) {
+		this(payload, new MessageHeaders(null));
+	}
+
+	/**
+	 * Create a new message with the given payload and headers.
+	 * The content of the given header map is copied.
+	 * @param payload the message payload (can be {@code null})
+	 * @param headers message headers to use for initialization
+	 */
+	public KafkaMessage(T payload, Map<String, Object> headers) {
+		this(payload, new MessageHeaders(headers));
+	}
+
+	/**
+	 * A constructor with the {@link MessageHeaders} instance to use.
+	 * <p><strong>Note:</strong> the given {@code MessageHeaders} instance is used
+	 * directly in the new message, i.e. it is not copied.
+	 * @param payload the message payload (can be {@code null})
+	 * @param headers message headers (never {@code null})
+	 */
+	public KafkaMessage(T payload, MessageHeaders headers) {
+		Assert.notNull(headers, "MessageHeaders must not be null");
+		this.headers = headers;
+		this.payload = payload;
+	}
+
+	@Override
+	public T getPayload() {
+		return payload;
+	}
+
+	@Override
+	public MessageHeaders getHeaders() {
+		return headers;
+	}
+
+	@Override
+	public boolean equals(Object other) {
+		if (this == other) {
+			return true;
+		}
+		if (!(other instanceof KafkaMessage)) {
+			return false;
+		}
+		KafkaMessage<?> otherMsg = (KafkaMessage<?>) other;
+		return (ObjectUtils.nullSafeEquals(this.payload, otherMsg.payload) && this.headers.equals(otherMsg.headers));
+	}
+
+	@Override
+	public int hashCode() {
+		return (ObjectUtils.nullSafeHashCode(this.payload) * 23 + this.headers.hashCode());
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(getClass().getSimpleName());
+		sb.append(" [payload=");
+		if (this.payload != null && this.payload instanceof byte[]) {
+			sb.append("byte[").append(((byte[]) this.payload).length).append("]");
+		}
+		else {
+			sb.append(this.payload);
+		}
+		sb.append(", headers=").append(this.headers).append("]");
+		return sb.toString();
+	}
+}
