@@ -89,7 +89,7 @@ public class EnableKafkaIntegrationTests {
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
 			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10",
-			"annotated11");
+			"annotated11", "annotated12", "annotated13");
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -210,6 +210,18 @@ public class EnableKafkaIntegrationTests {
 				.build());
 		assertThat(this.listener.latch6.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
+	}
+
+	@Test
+	public void testNulls() throws Exception {
+		template.send("annotated12", null, null);
+		assertThat(this.listener.latch8.await(60, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	public void testEmpty() throws Exception {
+		template.send("annotated13", null, "");
+		assertThat(this.listener.latch9.await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Configuration
@@ -394,6 +406,10 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch7 = new CountDownLatch(1);
 
+		private final CountDownLatch latch8 = new CountDownLatch(1);
+
+		private final CountDownLatch latch9 = new CountDownLatch(1);
+
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
 		private volatile Integer partition;
@@ -471,6 +487,18 @@ public class EnableKafkaIntegrationTests {
 				containerFactory = "kafkaRebalanceListenerContainerFactory")
 		public void listen7(String foo) {
 			this.latch7.countDown();
+		}
+
+		@KafkaListener(id = "quux", topics = "annotated12")
+		public void listen8(@Payload(required = false) String none) {
+			assertThat(none).isNull();
+			this.latch8.countDown();
+		}
+
+		@KafkaListener(id = "corge", topics = "annotated13")
+		public void listen9(Object payload) {
+			assertThat(payload).isNotNull();
+			this.latch9.countDown();
 		}
 
 	}

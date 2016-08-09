@@ -50,15 +50,23 @@ import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
+import org.springframework.messaging.handler.annotation.support.HeaderMethodArgumentResolver;
+import org.springframework.messaging.handler.annotation.support.HeadersMethodArgumentResolver;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
+import org.springframework.messaging.handler.annotation.support.MessageMethodArgumentResolver;
+import org.springframework.messaging.handler.annotation.support.PayloadArgumentResolver;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
@@ -612,10 +620,29 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		private MessageHandlerMethodFactory createDefaultMessageHandlerMethodFactory() {
 			DefaultMessageHandlerMethodFactory defaultFactory = new DefaultMessageHandlerMethodFactory();
 			defaultFactory.setBeanFactory(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory);
+			ConfigurableBeanFactory cbf =
+					(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ConfigurableBeanFactory ?
+							(ConfigurableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory : null);
+			DefaultFormattingConversionService conversionService = new DefaultFormattingConversionService();
+			defaultFactory.setConversionService(conversionService);
+
+			List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
+			// Annotation-based argument resolution
+			argumentResolvers.add(new HeaderMethodArgumentResolver(conversionService, cbf));
+			argumentResolvers.add(new HeadersMethodArgumentResolver());
+
+			// Type-based argument resolution
+			argumentResolvers.add(new MessageMethodArgumentResolver());
+			argumentResolvers.add(new PayloadArgumentResolver(new GenericMessageConverter(conversionService)) {
+				@Override
+				protected boolean isEmptyPayload(Object payload) {
+					return payload == null || payload instanceof KafkaNull;
+				}
+			});
+			defaultFactory.setArgumentResolvers(argumentResolvers);
+
 			defaultFactory.afterPropertiesSet();
 			return defaultFactory;
 		}
-
 	}
-
 }
