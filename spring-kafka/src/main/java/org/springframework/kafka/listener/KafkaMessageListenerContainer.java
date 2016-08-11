@@ -969,7 +969,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			private final boolean immediate;
 
 			private ConsumerBatchAcknowledgment(List<ConsumerRecord<K, V>> records, boolean immediate) {
-				this.records = records;
+				// make a copy in case the listener alters the list
+				this.records = new LinkedList<ConsumerRecord<K, V>>(records);
 				this.immediate = immediate;
 			}
 
