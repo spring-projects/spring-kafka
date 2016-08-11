@@ -197,8 +197,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public final void start() {
 		synchronized (this.lifecycleMonitor) {
 			Assert.isTrue(
-					this.containerProperties.getMessageListener() instanceof MessageListener
-							|| this.containerProperties.getMessageListener() instanceof AcknowledgingMessageListener,
+					this.containerProperties.getMessageListener() instanceof IMessageListener
+							|| this.containerProperties.getMessageListener() instanceof IAcknowledgingMessageListener,
 					"Either a " + MessageListener.class.getName() + " or a "
 							+ AcknowledgingMessageListener.class.getName() + " must be provided");
 			doStart();

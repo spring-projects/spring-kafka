@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -83,9 +84,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private ListenableFuture<?> listenerConsumerFuture;
 
-	private MessageListener<K, V> listener;
+	private IMessageListener<?> listener;
 
-	private AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
+	private IAcknowledgingMessageListener<?> acknowledgingMessageListener;
 
 	/**
 	 * Construct an instance with the supplied configuration properties.
@@ -136,7 +137,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	protected void doStart() {
 		if (isRunning()) {
 			return;
@@ -156,11 +156,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		Object messageListener = containerProperties.getMessageListener();
 		Assert.state(messageListener != null, "A MessageListener is required");
-		if (messageListener instanceof AcknowledgingMessageListener) {
-			this.acknowledgingMessageListener = (AcknowledgingMessageListener<K, V>) messageListener;
+		if (messageListener instanceof IAcknowledgingMessageListener) {
+			this.acknowledgingMessageListener = (IAcknowledgingMessageListener<?>) messageListener;
 		}
-		else if (messageListener instanceof MessageListener) {
-			this.listener = (MessageListener<K, V>) messageListener;
+		else if (messageListener instanceof IMessageListener) {
+			this.listener = (IMessageListener<?>) messageListener;
 		}
 		else {
 			throw new IllegalStateException("messageListener must be 'MessageListener' "
@@ -237,6 +237,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
 
+		private final BatchMessageListener<K, V> batchListener;
+
+		private final BatchAcknowledgingMessageListener<K, V> batchAcknowledgingMessageListener;
+
+		private final boolean isBatchListener;
+
 		private final boolean autoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
 
 		private final boolean isManualAck = this.containerProperties.getAckMode().equals(AckMode.MANUAL);
@@ -278,7 +284,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 */
 		private boolean paused;
 
-		private ListenerConsumer(MessageListener<K, V> listener, AcknowledgingMessageListener<K, V> ackListener) {
+		@SuppressWarnings("unchecked")
+		private ListenerConsumer(IMessageListener<?> listener, IAcknowledgingMessageListener<?> ackListener) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 				"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
@@ -372,8 +379,41 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				consumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
 			}
 			this.consumer = consumer;
-			this.listener = listener;
-			this.acknowledgingMessageListener = ackListener;
+			Object theListener = listener == null ? ackListener : listener;
+			if (theListener instanceof MessageListener) {
+				this.listener = (MessageListener<K, V>) theListener;
+				this.batchListener = null;
+				this.acknowledgingMessageListener = null;
+				this.batchAcknowledgingMessageListener = null;
+				this.isBatchListener = false;
+			}
+			else if (theListener instanceof BatchMessageListener) {
+				this.listener = null;
+				this.batchListener = (BatchMessageListener<K, V>) theListener;
+				this.acknowledgingMessageListener = null;
+				this.batchAcknowledgingMessageListener = null;
+				this.isBatchListener = true;
+			}
+			else if (theListener instanceof AcknowledgingMessageListener) {
+				this.listener = null;
+				this.acknowledgingMessageListener = (AcknowledgingMessageListener<K, V>) theListener;
+				this.batchListener = null;
+				this.batchAcknowledgingMessageListener = null;
+				this.isBatchListener = false;
+			}
+			else if (theListener instanceof BatchAcknowledgingMessageListener) {
+				this.listener = null;
+				this.batchListener = null;
+				this.acknowledgingMessageListener = null;
+				this.batchAcknowledgingMessageListener = (BatchAcknowledgingMessageListener<K, V>) theListener;
+				this.isBatchListener = true;
+			}
+			else {
+				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
+						+ "'BatchMessageListener', 'AcknowledgingMessageListener', "
+						+ "'BatchAcknowledgingMessageListener', not " + theListener.getClass().getName());
+			}
+			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
 		}
 
 		private void startInvoker() {
@@ -585,6 +625,54 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void invokeListener(final ConsumerRecords<K, V> records) {
+			if (this.isBatchListener) {
+				invokeBatchListener(records);
+			}
+			else {
+				invokeRecordListener(records);
+			}
+		}
+
+		private void invokeBatchListener(final ConsumerRecords<K, V> records) {
+			List<ConsumerRecord<K, V>> recordList = new LinkedList<ConsumerRecord<K, V>>();
+			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+			while (iterator.hasNext()) {
+				recordList.add(iterator.next());
+			}
+			if (recordList.size() > 0) {
+				try {
+					if (this.batchAcknowledgingMessageListener != null) {
+						this.batchAcknowledgingMessageListener.onMessage(recordList,
+								new ConsumerBatchAcknowledgment(recordList, this.isManualImmediateAck));
+					}
+					else {
+						this.batchListener.onMessage(recordList);
+						if (!this.isAnyManualAck && !this.autoCommit) {
+							for (ConsumerRecord<K, V> record : recordList) {
+								this.acks.put(record);
+							}
+						}
+					}
+				}
+				catch (Exception e) {
+					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
+						for (ConsumerRecord<K, V> record : recordList) {
+							this.acks.add(record);
+						}
+					}
+					for (ConsumerRecord<K, V> record : recordList) {
+						if (this.containerProperties.getErrorHandler() != null) {
+							this.containerProperties.getErrorHandler().handle(e, record);
+						}
+						else {
+							this.logger.error("Listener threw an exception and no error handler for " + record, e);
+						}
+					}
+				}
+			}
+		}
+
+		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext() && (this.autoCommit || (this.invoker != null && this.invoker.active))) {
 				final ConsumerRecord<K, V> record = iterator.next();
@@ -870,6 +958,43 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			@Override
 			public String toString() {
 				return "Acknowledgment for " + this.record;
+			}
+
+		}
+
+		private final class ConsumerBatchAcknowledgment implements Acknowledgment {
+
+			private final List<ConsumerRecord<K, V>> records;
+
+			private final boolean immediate;
+
+			private ConsumerBatchAcknowledgment(List<ConsumerRecord<K, V>> records, boolean immediate) {
+				this.records = records;
+				this.immediate = immediate;
+			}
+
+			@Override
+			public void acknowledge() {
+				try {
+					if (ListenerConsumer.this.autoCommit) {
+						throw new IllegalStateException("Manual acks are not allowed when auto commit is used");
+					}
+					for (ConsumerRecord<K, V> record : this.records) {
+						ListenerConsumer.this.acks.put(record);
+					}
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					throw new KafkaException("Interrupted while queuing ack for " + this.records, e);
+				}
+				if (this.immediate) {
+					ListenerConsumer.this.consumer.wakeup();
+				}
+			}
+
+			@Override
+			public String toString() {
+				return "Acknowledgment for " + this.records;
 			}
 
 		}
