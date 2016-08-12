@@ -97,7 +97,13 @@ public class MessagingMessageConverter implements MessageConverter {
 	 * @return the payload.
 	 */
 	protected Object convertPayload(Message<?> message) {
-		return message.getPayload();
+		Object payload = message.getPayload();
+		if (payload instanceof KafkaNull) {
+			return null;
+		}
+		else {
+			return payload;
+		}
 	}
 
 	/**
