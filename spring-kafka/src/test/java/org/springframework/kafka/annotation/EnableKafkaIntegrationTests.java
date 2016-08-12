@@ -58,6 +58,7 @@ import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageLi
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -199,7 +200,8 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testMulti() throws Exception {
-		template.send("annotated8", 0, "foo");
+		template.send("annotated8", 0, 1, "foo");
+		template.send("annotated8", 0, 1, null);
 		template.flush();
 		assertThat(this.multiListener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 	}
@@ -552,10 +554,15 @@ public class EnableKafkaIntegrationTests {
 	@KafkaListener(id = "multi", topics = "annotated8")
 	static class MultiListenerBean {
 
-		private final CountDownLatch latch1 = new CountDownLatch(1);
+		private final CountDownLatch latch1 = new CountDownLatch(2);
 
 		@KafkaHandler
 		public void bar(String bar) {
+			latch1.countDown();
+		}
+
+		@KafkaHandler
+		public void bar(@Payload(required = false) KafkaNull nul, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
 			latch1.countDown();
 		}
 
