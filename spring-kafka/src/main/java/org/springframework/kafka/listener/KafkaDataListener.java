@@ -17,20 +17,16 @@
 package org.springframework.kafka.listener;
 
 /**
- * Top level interface for listener types.
+ * Marker interface for all listeners. While the abstract container will verify the
+ * listener implements this interface, concrete container implementations will further
+ * validate that the listener is one supported by that container.
  *
- * @param <T> the type.
+ * @param <T> the type handled by the listener.
  *
  * @author Gary Russell
  * @since 1.1
  *
  */
-public interface IMessageListener<T> {
-
-	/**
-	 * Invoked with data from kafka.
-	 * @param data the data to be processed.
-	 */
-	void onMessage(T data);
+public interface KafkaDataListener<T> {
 
 }

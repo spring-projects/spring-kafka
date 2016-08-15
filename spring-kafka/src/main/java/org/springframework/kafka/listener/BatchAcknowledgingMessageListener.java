@@ -34,6 +34,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @since 1.1
  */
 public interface BatchAcknowledgingMessageListener<K, V>
-		extends IAcknowledgingMessageListener<List<ConsumerRecord<K, V>>> {
+		extends GenericAcknowledgingMessageListener<List<ConsumerRecord<K, V>>> {
 
 }

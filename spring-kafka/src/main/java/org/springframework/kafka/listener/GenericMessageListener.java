@@ -16,10 +16,8 @@
 
 package org.springframework.kafka.listener;
 
-import org.springframework.kafka.support.Acknowledgment;
-
 /**
- * Top level interface for acknowledging listener types.
+ * Top level interface for listener types using container or auto commits.
  *
  * @param <T> the type.
  *
@@ -27,13 +25,12 @@ import org.springframework.kafka.support.Acknowledgment;
  * @since 1.1
  *
  */
-public interface IAcknowledgingMessageListener<T> {
+public interface GenericMessageListener<T> extends KafkaDataListener<T> {
 
 	/**
 	 * Invoked with data from kafka.
 	 * @param data the data to be processed.
-	 * @param acknowledgment the acknowledgment.
 	 */
-	void onMessage(T data, Acknowledgment acknowledgment);
+	void onMessage(T data);
 
 }

@@ -32,6 +32,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  *
  * @since 1.1
  */
-public interface BatchMessageListener<K, V> extends IMessageListener<List<ConsumerRecord<K, V>>> {
+public interface BatchMessageListener<K, V> extends GenericMessageListener<List<ConsumerRecord<K, V>>> {
 
 }

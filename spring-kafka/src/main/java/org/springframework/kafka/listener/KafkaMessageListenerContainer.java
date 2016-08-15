@@ -84,9 +84,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private ListenableFuture<?> listenerConsumerFuture;
 
-	private IMessageListener<?> listener;
+	private GenericMessageListener<?> listener;
 
-	private IAcknowledgingMessageListener<?> acknowledgingMessageListener;
+	private GenericAcknowledgingMessageListener<?> acknowledgingMessageListener;
 
 	/**
 	 * Construct an instance with the supplied configuration properties.
@@ -156,11 +156,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		Object messageListener = containerProperties.getMessageListener();
 		Assert.state(messageListener != null, "A MessageListener is required");
-		if (messageListener instanceof IAcknowledgingMessageListener) {
-			this.acknowledgingMessageListener = (IAcknowledgingMessageListener<?>) messageListener;
+		if (messageListener instanceof GenericAcknowledgingMessageListener) {
+			this.acknowledgingMessageListener = (GenericAcknowledgingMessageListener<?>) messageListener;
 		}
-		else if (messageListener instanceof IMessageListener) {
-			this.listener = (IMessageListener<?>) messageListener;
+		else if (messageListener instanceof GenericMessageListener) {
+			this.listener = (GenericMessageListener<?>) messageListener;
 		}
 		else {
 			throw new IllegalStateException("messageListener must be 'MessageListener' "
@@ -285,7 +285,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private boolean paused;
 
 		@SuppressWarnings("unchecked")
-		private ListenerConsumer(IMessageListener<?> listener, IAcknowledgingMessageListener<?> ackListener) {
+		private ListenerConsumer(GenericMessageListener<?> listener, GenericAcknowledgingMessageListener<?> ackListener) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 				"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();

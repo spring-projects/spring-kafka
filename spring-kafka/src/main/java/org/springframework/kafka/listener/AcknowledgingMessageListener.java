@@ -28,6 +28,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @author Marius Bogoevici
  * @author Gary Russell
  */
-public interface AcknowledgingMessageListener<K, V> extends IAcknowledgingMessageListener<ConsumerRecord<K, V>> {
+public interface AcknowledgingMessageListener<K, V> extends GenericAcknowledgingMessageListener<ConsumerRecord<K, V>> {
 
 }
