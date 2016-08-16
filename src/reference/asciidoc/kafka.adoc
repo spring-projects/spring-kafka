@@ -126,7 +126,7 @@ Note, however that flushing will likely significantly reduce performance.
 
 ==== Receiving Messages
 
-Messages can be received by configuring a `MessageListenerContainer` and providing a <<message-listener, Message Listener>>, or by
+Messages can be received by configuring a `MessageListenerContainer` and providing a Message Listener, or by
 using the `@KafkaListener` annotation.
 
 [[message-listeners]]
@@ -162,19 +162,18 @@ public interface BatchAcknowledgingMessageListener<K, V> {} <4>
 }
 ----
 
-<1> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operations when
+<1> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operation when
 using auto-commit, or one of the container-managed <<committing-offsets, commit methods>>.
 
-<2> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operations when
+<2> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operation when
 using one of the manual <<committing-offsets, commit methods>>.
 
-<3> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operations when
+<3> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
 using auto-commit, or one of the container-managed <<committing-offsets, commit methods>>.
-`AckMode.RECORD` is not supported when using this interface.
+`AckMode.RECORD` is not supported when using this interface since the listener is given the complete batch.
 
-<3> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operations when
+<3> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
 using one of the manual <<committing-offsets, commit methods>>.
-
 
 [[message-listener-container]]
 ===== Message Listener Containers
@@ -405,6 +404,8 @@ Finally, `FilteringBatchMessageListenerAdapter` and `FilteringBatchAcknowledging
 ===== Retrying Deliveries
 
 If your listener throws an exception, the default behavior is to invoke the `ErrorHandler`, if configured, or logged otherwise.
+
+NOTE: Two error handler interfaces are provided `ErrorHandler` and `BatchErrorHandler`; the appropriate type must be configured to match the <<message-listerners, Message Listener>>.
 
 To retry deliveries, convenient listener adapters - `RetryingMessageListenerAdapter` and `RetryingAcknowledgingMessageListenerAdapter` are provided, depending on whether you are using a `MessageListener` or an `AcknowledgingMessageListener`.
 

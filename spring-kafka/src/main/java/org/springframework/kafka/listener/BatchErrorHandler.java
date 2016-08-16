@@ -16,14 +16,17 @@
 
 package org.springframework.kafka.listener;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 /**
- * Handles errors thrown during the execution of a {@link MessageListener}.
+ * Handles errors thrown during the execution of a {@link BatchMessageListener}.
+ * The listener should communicate which position(s) in the list failed in the
+ * exception.
  *
- * @author Marius Bogoevici
  * @author Gary Russell
+ *
+ * @since 1.1
  */
-public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> {
+public interface BatchErrorHandler extends GenericErrorHandler<ConsumerRecords<?, ?>> {
 
 }

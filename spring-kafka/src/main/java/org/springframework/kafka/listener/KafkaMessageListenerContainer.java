@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -263,6 +264,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final ApplicationEventPublisher applicationEventPublisher = getApplicationEventPublisher();
 
+		private final ErrorHandler errorHandler;
+
+		private final BatchErrorHandler batchErrorHandler;
+
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private ConsumerRecords<K, V> unsent;
@@ -380,12 +385,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.consumer = consumer;
 			Object theListener = listener == null ? ackListener : listener;
+			GenericErrorHandler<?> errHandler = this.containerProperties.getErrorHandler();
 			if (theListener instanceof MessageListener) {
 				this.listener = (MessageListener<K, V>) theListener;
 				this.batchListener = null;
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = false;
+				validateErrorHandler(false);
+				this.errorHandler = errHandler == null ? new LoggingErrorHandler() : (ErrorHandler) errHandler;
+				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			else if (theListener instanceof BatchMessageListener) {
 				this.listener = null;
@@ -393,6 +402,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = true;
+				validateErrorHandler(true);
+				this.errorHandler = new LoggingErrorHandler();
+				this.batchErrorHandler = errHandler == null ? new BatchLoggingErrorHandler()
+						: (BatchErrorHandler) errHandler;
 			}
 			else if (theListener instanceof AcknowledgingMessageListener) {
 				this.listener = null;
@@ -400,6 +413,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.batchListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = false;
+				validateErrorHandler(false);
+				this.errorHandler = errHandler == null ? new LoggingErrorHandler() : (ErrorHandler) errHandler;
+				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			else if (theListener instanceof BatchAcknowledgingMessageListener) {
 				this.listener = null;
@@ -407,6 +423,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = (BatchAcknowledgingMessageListener<K, V>) theListener;
 				this.isBatchListener = true;
+				validateErrorHandler(true);
+				this.errorHandler = new LoggingErrorHandler();
+				this.batchErrorHandler = errHandler == null ? new BatchLoggingErrorHandler()
+						: (BatchErrorHandler) errHandler;
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
@@ -414,6 +434,27 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						+ "'BatchAcknowledgingMessageListener', not " + theListener.getClass().getName());
 			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
+		}
+
+		private void validateErrorHandler(boolean batch) {
+			GenericErrorHandler<?> errHandler = this.containerProperties.getErrorHandler();
+			if (errorHandler == null) {
+				return;
+			}
+			Type[] genericInterfaces = errHandler.getClass().getGenericInterfaces();
+			boolean ok = false;
+			for (Type t : genericInterfaces) {
+				if (t.equals(ErrorHandler.class)) {
+					ok = !batch;
+					break;
+				}
+				else if (t.equals(BatchErrorHandler.class)) {
+					ok = batch;
+					break;
+				}
+			}
+			Assert.state(ok, "Error handler is not compatible with the message listener, expecting an instance of "
+					+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass().getName());
 		}
 
 		private void startInvoker() {
@@ -660,14 +701,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							this.acks.add(record);
 						}
 					}
-					for (ConsumerRecord<K, V> record : recordList) {
-						if (this.containerProperties.getErrorHandler() != null) {
-							this.containerProperties.getErrorHandler().handle(e, record);
-						}
-						else {
-							this.logger.error("Listener threw an exception and no error handler for " + record, e);
-						}
-					}
+					this.batchErrorHandler.handle(e, records);
 				}
 			}
 		}
@@ -698,12 +732,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
 						this.acks.add(record);
 					}
-					if (this.containerProperties.getErrorHandler() != null) {
-						this.containerProperties.getErrorHandler().handle(e, record);
-					}
-					else {
-						this.logger.error("Listener threw an exception and no error handler for " + record, e);
-					}
+					this.errorHandler.handle(e, record);
 				}
 			}
 			if (this.isManualAck || this.isBatchAck) {
@@ -941,9 +970,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			@Override
 			public void acknowledge() {
 				try {
-					if (ListenerConsumer.this.autoCommit) {
-						throw new IllegalStateException("Manual acks are not allowed when auto commit is used");
-					}
+					Assert.state(ListenerConsumer.this.isAnyManualAck,
+							"A manual ackmode is required for an acknowledging listener");
 					ListenerConsumer.this.acks.put(this.record);
 				}
 				catch (InterruptedException e) {
@@ -977,9 +1005,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			@Override
 			public void acknowledge() {
 				try {
-					if (ListenerConsumer.this.autoCommit) {
-						throw new IllegalStateException("Manual acks are not allowed when auto commit is used");
-					}
+					Assert.state(ListenerConsumer.this.isAnyManualAck,
+							"A manual ackmode is required for an acknowledging listener");
 					for (ConsumerRecord<K, V> record : this.records) {
 						ListenerConsumer.this.acks.put(record);
 					}
