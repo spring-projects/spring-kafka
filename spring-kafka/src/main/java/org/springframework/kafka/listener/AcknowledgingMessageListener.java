@@ -18,8 +18,6 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.support.Acknowledgment;
-
 /**
  * Listener for handling incoming Kafka messages, propagating an acknowledgment handle that recipients
  * can invoke when the message has been processed.
@@ -30,13 +28,6 @@ import org.springframework.kafka.support.Acknowledgment;
  * @author Marius Bogoevici
  * @author Gary Russell
  */
-public interface AcknowledgingMessageListener<K, V> {
-
-	/**
-	 * Executes when a Kafka message is received.
-	 * @param record the Kafka message to be processed
-	 * @param acknowledgment a handle for acknowledging the message processing
-	 */
-	void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment);
+public interface AcknowledgingMessageListener<K, V> extends GenericAcknowledgingMessageListener<ConsumerRecord<K, V>> {
 
 }

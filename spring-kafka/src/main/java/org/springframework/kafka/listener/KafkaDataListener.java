@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,17 @@
 
 package org.springframework.kafka.listener;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-
 /**
- * Listener for handling individual incoming Kafka messages.
+ * Marker interface for all listeners. While the abstract container will verify the
+ * listener implements this interface, concrete container implementations will further
+ * validate that the listener is one supported by that container.
  *
- * @param <K> the key type.
- * @param <V> the value type.
+ * @param <T> the type handled by the listener.
  *
- * @author Marius Bogoevici
  * @author Gary Russell
+ * @since 1.1
+ *
  */
-public interface MessageListener<K, V> extends GenericMessageListener<ConsumerRecord<K, V>> {
+public interface KafkaDataListener<T> {
 
 }

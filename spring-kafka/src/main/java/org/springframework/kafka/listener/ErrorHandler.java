@@ -24,8 +24,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @author Marius Bogoevici
  * @author Gary Russell
  */
-public interface ErrorHandler {
-
-	void handle(Exception thrownException, ConsumerRecord<?, ?> record);
+public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> {
 
 }

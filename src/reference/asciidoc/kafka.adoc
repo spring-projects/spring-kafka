@@ -126,9 +126,56 @@ Note, however that flushing will likely significantly reduce performance.
 
 ==== Receiving Messages
 
-Messages can be received by configuring a `MessageListenerContainer` and providing a `MessageListener`, or by
+Messages can be received by configuring a `MessageListenerContainer` and providing a Message Listener, or by
 using the `@KafkaListener` annotation.
 
+[[message-listeners]]
+===== Message Listeners
+
+When using a <<message-listener-container, Message Listener Container>> you must provide a listener to receive data.
+There are currently four supported interfaces for message listeners:
+
+[source, java]
+----
+public interface MessageListener<K, V> {} <1>
+
+    void onMessage(ConsumerRecord<K, V> data);
+
+}
+
+public interface AcknowledgingMessageListener<K, V> {} <2>
+
+    void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment);
+
+}
+
+public interface BatchMessageListener<K, V> {} <3>
+
+    void onMessage(List<ConsumerRecord<K, V>> data);
+
+}
+
+public interface BatchAcknowledgingMessageListener<K, V> {} <4>
+
+    void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment);
+
+}
+----
+
+<1> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using auto-commit, or one of the container-managed <<committing-offsets, commit methods>>.
+
+<2> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using one of the manual <<committing-offsets, commit methods>>.
+
+<3> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using auto-commit, or one of the container-managed <<committing-offsets, commit methods>>.
+`AckMode.RECORD` is not supported when using this interface since the listener is given the complete batch.
+
+<3> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using one of the manual <<committing-offsets, commit methods>>.
+
+[[message-listener-container]]
 ===== Message Listener Containers
 
 Two `MessageListenerContainer` implementations are provided:
@@ -202,6 +249,7 @@ For 5 `TopicPartition` s, 2 containers will get 2 partitions and the third will 
 If the `concurrency` is greater than the number of `TopicPartitions`, the `concurrency` will be adjusted down such that
 each container will get one partition.
 
+[[committing-offsets]]
 ====== Committing Offsets
 
 Several options are provided for committing offsets.
@@ -219,23 +267,19 @@ since the last commit has been exceeded.
 - COUNT - commit the offset when all the records returned by the `poll()` have been processed as long as `ackCount`
 records have been received since the last commit.
 - COUNT_TIME - similar to TIME and COUNT but the commit is performed if either condition is true.
-- MANUAL - the message listener (`AcknowledgingMessageListener`) is responsible to `acknowledge()` the `Acknowledgment`;
+- MANUAL - the message listener is responsible to `acknowledge()` the `Acknowledgment`;
 after which, the same semantics as `BATCH` are applied.
 - MANUAL_IMMEDIATE - commit the offset immediately when the `Acknowledgment.acknowledge()` method is called by the
 listener.
 
-NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener`.
+NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener` or a `BatchAcknowledgingMessageListener`; see <<message-listeners, Message Listeners>>.
 
 The `commitSync()` or `commitAsync()` method on the consumer is used, depending on the `syncCommits` container property.
 
+The `Acknowdledgment` has this method:
+
 [source, java]
 ----
-public interface AcknowledgingMessageListener<K, V> {
-
-    void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment);
-
-}
-
 public interface Acknowledgment {
 
     void acknowledge();
@@ -355,10 +399,13 @@ This has an additional property `ackDiscarded` which indicates whether the adapt
 
 When using `@KafkaListener`, set the `RecordFilterStrategy` (and optionally `ackDiscarded`) on the container factory and the listener will be wrapped in the appropriate filtering adapter.
 
+Finally, `FilteringBatchMessageListenerAdapter` and `FilteringBatchAcknowledgingMessageListenerAdapter` are provided, for when using a batch <<message-listeners, message listener>>.
 
 ===== Retrying Deliveries
 
 If your listener throws an exception, the default behavior is to invoke the `ErrorHandler`, if configured, or logged otherwise.
+
+NOTE: Two error handler interfaces are provided `ErrorHandler` and `BatchErrorHandler`; the appropriate type must be configured to match the <<message-listeners, Message Listener>>.
 
 To retry deliveries, convenient listener adapters - `RetryingMessageListenerAdapter` and `RetryingAcknowledgingMessageListenerAdapter` are provided, depending on whether you are using a `MessageListener` or an `AcknowledgingMessageListener`.
 
@@ -368,6 +415,8 @@ If a recovery callback is not provided, the exception is thrown to the container
 In that case, the `ErrorHandler` will be invoked, if configured, or logged otherwise.
 
 When using `@KafkaListener`, set the `RetryTemplate` (and optionally `recoveryCallback`) on the container factory and the listener will be wrapped in the appropriate retrying adapter.
+
+A retry adapter is not provided for any of the batch <<message-listeners, message listeners>>.
 
 ==== Serialization/Deserialization and Message Conversion
 

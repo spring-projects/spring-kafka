@@ -418,10 +418,10 @@ public class ConcurrentMessageListenerContainerTests {
 			latch.countDown();
 		});
 
+		containerProps.setAckMode(ackMode);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setConcurrency(2);
-		containerProps.setAckMode(ackMode);
 		container.setBeanName("test" + ackMode);
 		container.start();
 
@@ -597,7 +597,7 @@ public class ConcurrentMessageListenerContainerTests {
 			latch.countDown();
 			throw new RuntimeException("intended");
 		});
-		containerProps.setErrorHandler((thrownException, record) -> catchError.set(true));
+		containerProps.setErrorHandler((ErrorHandler) (thrownException, record) -> catchError.set(true));
 
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
