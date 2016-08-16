@@ -475,12 +475,18 @@ public class KafkaMessageListenerContainerTests {
 			@SuppressWarnings({ "unchecked" })
 			Map<TopicPartition, OffsetAndMetadata> map = (Map<TopicPartition, OffsetAndMetadata>) invocation
 					.getArguments()[0];
-			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
-				if (entry.getValue().offset() == 2) {
-					latch.countDown();
+			Object result = null;
+			try {
+				invocation.callRealMethod();
+			}
+			finally {
+				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+					if (entry.getValue().offset() == 2) {
+						latch.countDown();
+					}
 				}
 			}
-			return invocation.callRealMethod();
+			return result;
 
 		}).given(containerConsumer)
 				.commitSync(any());
@@ -545,10 +551,20 @@ public class KafkaMessageListenerContainerTests {
 			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
 				if (entry.getValue().offset() == 2) {
 					firstBatchLatch.countDown();
-					latch.countDown();
 				}
 			}
-			return invocation.callRealMethod();
+			Object result = null;
+			try {
+				result = invocation.callRealMethod();
+			}
+			finally {
+				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+					if (entry.getValue().offset() == 2) {
+						latch.countDown();
+					}
+				}
+			}
+			return result;
 
 		}).given(containerConsumer)
 				.commitSync(any());
@@ -606,10 +622,23 @@ public class KafkaMessageListenerContainerTests {
 			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
 				if (entry.getValue().offset() == 2) {
 					firstBatchLatch.countDown();
-					latch.countDown();
 				}
 			}
-			return invocation.callRealMethod();
+			Object result = null;
+			try {
+				result = invocation.callRealMethod();
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
+			finally {
+				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+					if (entry.getValue().offset() == 2) {
+						latch.countDown();
+					}
+				}
+			}
+			return result;
 
 		}).given(containerConsumer)
 				.commitSync(any());
@@ -668,12 +697,18 @@ public class KafkaMessageListenerContainerTests {
 			@SuppressWarnings({ "unchecked" })
 			Map<TopicPartition, OffsetAndMetadata> map = (Map<TopicPartition, OffsetAndMetadata>) invocation
 					.getArguments()[0];
-			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
-				if (entry.getValue().offset() == 2) {
-					commitLatch.countDown();
+			Object result = null;
+			try {
+				invocation.callRealMethod();
+			}
+			finally {
+				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+					if (entry.getValue().offset() == 2) {
+						commitLatch.countDown();
+					}
 				}
 			}
-			return invocation.callRealMethod();
+			return result;
 
 		}).given(containerConsumer)
 				.commitSync(any());
@@ -734,12 +769,18 @@ public class KafkaMessageListenerContainerTests {
 			@SuppressWarnings({ "unchecked" })
 			Map<TopicPartition, OffsetAndMetadata> map = (Map<TopicPartition, OffsetAndMetadata>) invocation
 					.getArguments()[0];
-			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
-				if (entry.getValue().offset() == 2) {
-					commitLatch.countDown();
+			Object result = null;
+			try {
+				invocation.callRealMethod();
+			}
+			finally {
+				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+					if (entry.getValue().offset() == 2) {
+						commitLatch.countDown();
+					}
 				}
 			}
-			return invocation.callRealMethod();
+			return result;
 
 		}).given(containerConsumer)
 				.commitSync(any());
