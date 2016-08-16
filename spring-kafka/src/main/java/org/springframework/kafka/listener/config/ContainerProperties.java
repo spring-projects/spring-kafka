@@ -27,8 +27,7 @@ import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
-import org.springframework.kafka.listener.ErrorHandler;
-import org.springframework.kafka.listener.LoggingErrorHandler;
+import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.util.Assert;
@@ -115,7 +114,7 @@ public class ContainerProperties {
 	/**
 	 * The error handler to call when the listener throws an exception.
 	 */
-	private ErrorHandler errorHandler = new LoggingErrorHandler();
+	private GenericErrorHandler<?> errorHandler;
 
 	/**
 	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
@@ -247,7 +246,7 @@ public class ContainerProperties {
 	 * Set the error handler to call when the listener throws an exception.
 	 * @param errorHandler the error handler.
 	 */
-	public void setErrorHandler(ErrorHandler errorHandler) {
+	public void setErrorHandler(GenericErrorHandler<?> errorHandler) {
 		this.errorHandler = errorHandler;
 	}
 
@@ -397,7 +396,7 @@ public class ContainerProperties {
 		return this.listenerTaskExecutor;
 	}
 
-	public ErrorHandler getErrorHandler() {
+	public GenericErrorHandler<?> getErrorHandler() {
 		return this.errorHandler;
 	}
 

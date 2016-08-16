@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,28 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Iterator;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 /**
- * Handles errors thrown during the execution of a {@link MessageListener}.
+ * Simple handler that invokes a {@link LoggingErrorHandler} for each record.
  *
- * @author Marius Bogoevici
  * @author Gary Russell
+ * @since 1.1
+ *
  */
-public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> {
+public class BatchLoggingErrorHandler implements BatchErrorHandler {
+
+	private final LoggingErrorHandler recordHandler = new LoggingErrorHandler();
+
+	@Override
+	public void handle(Exception thrownException, ConsumerRecords<?, ?> data) {
+		Iterator<?> iterator = data.iterator();
+		while (iterator.hasNext()) {
+			this.recordHandler.handle(thrownException, (ConsumerRecord<?, ?>) iterator.next());
+		}
+	}
 
 }
