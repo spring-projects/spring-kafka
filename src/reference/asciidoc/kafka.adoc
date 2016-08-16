@@ -405,7 +405,7 @@ Finally, `FilteringBatchMessageListenerAdapter` and `FilteringBatchAcknowledging
 
 If your listener throws an exception, the default behavior is to invoke the `ErrorHandler`, if configured, or logged otherwise.
 
-NOTE: Two error handler interfaces are provided `ErrorHandler` and `BatchErrorHandler`; the appropriate type must be configured to match the <<message-listerners, Message Listener>>.
+NOTE: Two error handler interfaces are provided `ErrorHandler` and `BatchErrorHandler`; the appropriate type must be configured to match the <<message-listeners, Message Listener>>.
 
 To retry deliveries, convenient listener adapters - `RetryingMessageListenerAdapter` and `RetryingAcknowledgingMessageListenerAdapter` are provided, depending on whether you are using a `MessageListener` or an `AcknowledgingMessageListener`.
 

@@ -40,15 +40,34 @@ public class FilteringBatchAcknowledgingMessageListenerAdapter<K, V> extends Abs
 
 	private final BatchAcknowledgingMessageListener<K, V> delegate;
 
+	private final boolean ackDiscarded;
+
 	/**
-	 * Create an instance with the supplied strategy and delegate listener.
+	 * Create an instance with the supplied strategy and delegate listener; when all
+	 * messages in a batch are discarded, an empty list is passed to the delegate so it
+	 * can decide whether or not to acknowledge.
 	 * @param delegate the delegate.
 	 * @param recordFilterStrategy the filter.
 	 */
 	public FilteringBatchAcknowledgingMessageListenerAdapter(BatchAcknowledgingMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
+		this(delegate, recordFilterStrategy, false);
+	}
+
+	/**
+	 * Create an instance with the supplied strategy, delegate listener and discard
+	 * action. When 'ackDiscarded' is false, and all messages are filtered, an empty list
+	 * is passed to the delegate (so it can decided whether or not to ack); when true, a
+	 * completely filtered batch is ack'd by this class, and no call is made to the delegate.
+	 * @param delegate the delegate.
+	 * @param recordFilterStrategy the filter.
+	 * @param ackDiscarded true to ack automatically if all records are filtered.
+	 */
+	public FilteringBatchAcknowledgingMessageListenerAdapter(BatchAcknowledgingMessageListener<K, V> delegate,
+			RecordFilterStrategy<K, V> recordFilterStrategy, boolean ackDiscarded) {
 		super(recordFilterStrategy);
 		this.delegate = delegate;
+		this.ackDiscarded = ackDiscarded;
 	}
 
 	@Override
@@ -59,8 +78,11 @@ public class FilteringBatchAcknowledgingMessageListenerAdapter<K, V> extends Abs
 				iterator.remove();
 			}
 		}
-		if (consumerRecords.size() > 0) {
+		if (consumerRecords.size() > 0 || !this.ackDiscarded) {
 			this.delegate.onMessage(consumerRecords, acknowledgment);
+		}
+		else {
+			acknowledgment.acknowledge();
 		}
 	}
 

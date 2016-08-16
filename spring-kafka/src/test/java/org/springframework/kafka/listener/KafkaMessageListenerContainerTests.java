@@ -661,8 +661,25 @@ public class KafkaMessageListenerContainerTests {
 				containerProps);
 		container.setBeanName("testBatchListenerManual");
 		container.start();
+		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
+		final CountDownLatch commitLatch = new CountDownLatch(2);
+		willAnswer(invocation -> {
+
+			@SuppressWarnings({ "unchecked" })
+			Map<TopicPartition, OffsetAndMetadata> map = (Map<TopicPartition, OffsetAndMetadata>) invocation
+					.getArguments()[0];
+			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+				if (entry.getValue().offset() == 2) {
+					commitLatch.countDown();
+				}
+			}
+			return invocation.callRealMethod();
+
+		}).given(containerConsumer)
+				.commitSync(any());
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(commitLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		Consumer<Integer, String> consumer = cf.createConsumer();
 		consumer.assign(Arrays.asList(new TopicPartition(topic9, 0), new TopicPartition(topic9, 1)));
 		assertThat(consumer.position(new TopicPartition(topic9, 0))).isEqualTo(2);
@@ -700,6 +717,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAckOnError(true);
 		final CountDownLatch latch = new CountDownLatch(4);
 		containerProps.setErrorHandler((BatchErrorHandler) (t, messages) -> {
+			new BatchLoggingErrorHandler().handle(t, messages);
 			for (int i = 0; i < messages.count(); i++) {
 				latch.countDown();
 			}
@@ -709,8 +727,25 @@ public class KafkaMessageListenerContainerTests {
 				containerProps);
 		container.setBeanName("testBatchListenerErrors");
 		container.start();
+		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
+		final CountDownLatch commitLatch = new CountDownLatch(2);
+		willAnswer(invocation -> {
+
+			@SuppressWarnings({ "unchecked" })
+			Map<TopicPartition, OffsetAndMetadata> map = (Map<TopicPartition, OffsetAndMetadata>) invocation
+					.getArguments()[0];
+			for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+				if (entry.getValue().offset() == 2) {
+					commitLatch.countDown();
+				}
+			}
+			return invocation.callRealMethod();
+
+		}).given(containerConsumer)
+				.commitSync(any());
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(commitLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		Consumer<Integer, String> consumer = cf.createConsumer();
 		consumer.assign(Arrays.asList(new TopicPartition(topic10, 0), new TopicPartition(topic10, 1)));
 		assertThat(consumer.position(new TopicPartition(topic10, 0))).isEqualTo(2);
