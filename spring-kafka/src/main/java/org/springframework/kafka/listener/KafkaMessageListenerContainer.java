@@ -51,6 +51,7 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
+import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
@@ -220,9 +221,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 
-	private final class ListenerConsumer implements SchedulingAwareRunnable {
+	private final class ListenerConsumer implements SchedulingAwareRunnable, ConsumerSeekCallback {
 
 		private final Log logger = LogFactory.getLog(ListenerConsumer.class);
+
+		private final Object theListener;
 
 		private final ContainerProperties containerProperties = getContainerProperties();
 
@@ -262,6 +265,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
+		private final BlockingQueue<TopicPartitionInitialOffset> seeks = new LinkedBlockingQueue<>();
+
 		private final ApplicationEventPublisher applicationEventPublisher = getApplicationEventPublisher();
 
 		private final ErrorHandler errorHandler;
@@ -295,6 +300,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
 
+			this.theListener = listener == null ? ackListener : listener;
 			ConsumerRebalanceListener rebalanceListener = createRebalanceListener(consumer);
 
 			if (KafkaMessageListenerContainer.this.topicPartitions == null) {
@@ -363,6 +369,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
+			if (this.autoCommit && this.theListener instanceof ConsumerSeekAware) {
+				((ConsumerSeekAware) this.theListener).registerSeekCallback(this);
+			}
 		}
 
 		public ConsumerRebalanceListener createRebalanceListener(final Consumer<K, V> consumer) {
@@ -429,7 +438,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					// listen to
 					if (!ListenerConsumer.this.autoCommit && KafkaMessageListenerContainer.this.isRunning()
 							&& !CollectionUtils.isEmpty(partitions)) {
-						startInvoker();
+						startInvoker(theListener);
 					}
 					getContainerProperties().getConsumerRebalanceListener().onPartitionsAssigned(partitions);
 				}
@@ -458,8 +467,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass().getName());
 		}
 
-		private void startInvoker() {
-			ListenerConsumer.this.invoker = new ListenerInvoker();
+		private void startInvoker(Object theListener) {
+			ListenerConsumer.this.invoker = new ListenerInvoker(theListener);
 			ListenerConsumer.this.listenerInvokerFuture = this.containerProperties.getListenerTaskExecutor()
 					.submit(ListenerConsumer.this.invoker);
 		}
@@ -479,7 +488,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				// trigger it, but only if the container is not set to autocommit
 				// otherwise we will process records on a separate thread
 				if (!this.autoCommit) {
-					startInvoker();
+					startInvoker(this.theListener);
 				}
 			}
 			long lastReceive = System.currentTimeMillis();
@@ -489,6 +498,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					if (!this.autoCommit) {
 						processCommits();
 					}
+					processSeeks();
 					if (this.logger.isTraceEnabled()) {
 						this.logger.trace("Polling (paused=" + this.paused + ")...");
 					}
@@ -812,6 +822,22 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		private void processSeeks() {
+			TopicPartitionInitialOffset offset = this.seeks.poll();
+			while (offset != null) {
+				if (this.logger.isTraceEnabled()) {
+					this.logger.trace("Seek: " + offset);
+				}
+				try {
+					this.consumer.seek(offset.topicPartition(), offset.initialOffset());
+				}
+				catch (Exception e) {
+					logger.error("Exception while seeking " + offset, e);
+				}
+				offset = this.seeks.poll();
+			}
+		}
+
 		private void initPartitionsIfNeeded() {
 			/*
 			 * Note: initial position setting is only supported with explicit topic assignment.
@@ -897,6 +923,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		@Override
+		public void seek(String topic, int partition, long offset) {
+			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, offset));
+		}
+
 		private final class ListenerInvoker implements SchedulingAwareRunnable {
 
 			private final CountDownLatch exitLatch = new CountDownLatch(1);
@@ -904,6 +935,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			private volatile boolean active = true;
 
 			private volatile Thread executingThread;
+
+			private ListenerInvoker(Object theListener) {
+				if (theListener instanceof ConsumerSeekAware) {
+					((ConsumerSeekAware) theListener).registerSeekCallback(ListenerConsumer.this);
+				}
+			}
 
 			@Override
 			public void run() {

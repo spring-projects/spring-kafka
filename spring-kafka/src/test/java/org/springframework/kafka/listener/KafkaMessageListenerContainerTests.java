@@ -93,9 +93,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic10 = "testTopic10";
 
+	private static String topic11 = "testTopic11";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10);
+			topic6, topic7, topic8, topic9, topic10, topic11);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -802,6 +804,56 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		consumer.close();
 		logger.info("Stop batch listener errors");
+	}
+
+	@Test
+	public void testSeek() throws Exception {
+		logger.info("Start seek");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic11);
+		final CountDownLatch latch = new CountDownLatch(6);
+		class Listener implements MessageListener<Integer, String>, ConsumerSeekAware {
+
+			private ConsumerSeekCallback callback;
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> data) {
+				latch.countDown();
+				if (latch.getCount() == 2) {
+					callback.seek(topic11, 0, 1);
+					callback.seek(topic11, 1, 1);
+				}
+			}
+
+			@Override
+			public void registerSeekCallback(ConsumerSeekCallback callback) {
+				this.callback = callback;
+			}
+
+		}
+		containerProps.setMessageListener(new Listener());
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setAckOnError(false);
+
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
+				containerProps);
+		container.setBeanName("testRecordAcks");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic11);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 0, "qux");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		logger.info("Stop seek");
 	}
 
 	private RetryTemplate buildRetry() {
