@@ -61,7 +61,7 @@ public class RetryingAcknowledgingMessageListenerAdapter<K, V> extends AbstractR
 	 */
 	public RetryingAcknowledgingMessageListenerAdapter(AcknowledgingMessageListener<K, V> messageListener,
 			RetryTemplate retryTemplate, RecoveryCallback<Void> recoveryCallback) {
-		super(retryTemplate, recoveryCallback);
+		super(messageListener, retryTemplate, recoveryCallback);
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
 		this.delegate = messageListener;
 	}

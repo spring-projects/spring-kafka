@@ -42,7 +42,7 @@ public class FilteringMessageListenerAdapter<K, V> extends AbstractFilteringMess
 	 */
 	public FilteringMessageListenerAdapter(MessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
-		super(recordFilterStrategy);
+		super(delegate, recordFilterStrategy);
 		this.delegate = delegate;
 	}
 

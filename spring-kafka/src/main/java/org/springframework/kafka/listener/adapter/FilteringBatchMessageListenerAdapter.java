@@ -45,7 +45,7 @@ public class FilteringBatchMessageListenerAdapter<K, V> extends AbstractFilterin
 	 */
 	public FilteringBatchMessageListenerAdapter(BatchMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
-		super(recordFilterStrategy);
+		super(delegate, recordFilterStrategy);
 		this.delegate = delegate;
 	}
 

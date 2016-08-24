@@ -65,7 +65,7 @@ public class FilteringBatchAcknowledgingMessageListenerAdapter<K, V> extends Abs
 	 */
 	public FilteringBatchAcknowledgingMessageListenerAdapter(BatchAcknowledgingMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy, boolean ackDiscarded) {
-		super(recordFilterStrategy);
+		super(delegate, recordFilterStrategy);
 		this.delegate = delegate;
 		this.ackDiscarded = ackDiscarded;
 	}

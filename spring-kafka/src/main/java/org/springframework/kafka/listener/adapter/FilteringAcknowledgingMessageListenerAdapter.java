@@ -46,7 +46,7 @@ public class FilteringAcknowledgingMessageListenerAdapter<K, V> extends Abstract
 	 */
 	public FilteringAcknowledgingMessageListenerAdapter(AcknowledgingMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy, boolean ackDiscarded) {
-		super(recordFilterStrategy);
+		super(delegate, recordFilterStrategy);
 		this.delegate = delegate;
 		this.ackDiscarded = ackDiscarded;
 	}

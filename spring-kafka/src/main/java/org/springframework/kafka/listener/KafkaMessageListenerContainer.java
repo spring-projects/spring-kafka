@@ -438,7 +438,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					// listen to
 					if (!ListenerConsumer.this.autoCommit && KafkaMessageListenerContainer.this.isRunning()
 							&& !CollectionUtils.isEmpty(partitions)) {
-						startInvoker(theListener);
+						startInvoker();
 					}
 					getContainerProperties().getConsumerRebalanceListener().onPartitionsAssigned(partitions);
 				}
@@ -467,8 +467,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass().getName());
 		}
 
-		private void startInvoker(Object theListener) {
-			ListenerConsumer.this.invoker = new ListenerInvoker(theListener);
+		private void startInvoker() {
+			ListenerConsumer.this.invoker = new ListenerInvoker();
 			ListenerConsumer.this.listenerInvokerFuture = this.containerProperties.getListenerTaskExecutor()
 					.submit(ListenerConsumer.this.invoker);
 		}
@@ -488,7 +488,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				// trigger it, but only if the container is not set to autocommit
 				// otherwise we will process records on a separate thread
 				if (!this.autoCommit) {
-					startInvoker(this.theListener);
+					startInvoker();
 				}
 			}
 			long lastReceive = System.currentTimeMillis();
@@ -936,15 +936,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			private volatile Thread executingThread;
 
-			private ListenerInvoker(Object theListener) {
-				if (theListener instanceof ConsumerSeekAware) {
-					((ConsumerSeekAware) theListener).registerSeekCallback(ListenerConsumer.this);
-				}
-			}
-
 			@Override
 			public void run() {
 				Assert.isTrue(this.active, "This instance is not active anymore");
+				if (ListenerConsumer.this.theListener instanceof ConsumerSeekAware) {
+					((ConsumerSeekAware) ListenerConsumer.this.theListener).registerSeekCallback(ListenerConsumer.this);
+				}
 				try {
 					this.executingThread = Thread.currentThread();
 					while (this.active) {
