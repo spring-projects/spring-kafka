@@ -30,6 +30,7 @@ import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -54,7 +55,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private final boolean autoFlush;
 
-	private MessageConverter messageConverter = new MessagingMessageConverter();
+	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
 
 	private volatile Producer<K, V> producer;
 
@@ -123,7 +124,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * Set the message converter to use.
 	 * @param messageConverter the message converter.
 	 */
-	public void setMessageConverter(MessageConverter messageConverter) {
+	public void setMessageConverter(RecordMessageConverter messageConverter) {
 		this.messageConverter = messageConverter;
 	}
 

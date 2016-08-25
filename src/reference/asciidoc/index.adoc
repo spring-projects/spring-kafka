@@ -8,6 +8,13 @@
 
 include::preface.adoc[]
 
+[[whats-new-part]]
+== What's new?
+
+[[spring-kafka-intro-new]]
+
+include::./whats-new.adoc[]
+
 == Introduction
 
 This first part of the reference documentation is a high-level overview of Spring for Apache Kafka and the underlying

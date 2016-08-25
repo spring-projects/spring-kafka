@@ -1,0 +1,17 @@
+=== What's new in 1.1 Since 1.0
+
+==== Kafka Client
+
+This version uses the Apache Kafka 0.10.x.x client.
+
+==== Batch Listeners
+
+Listeners can be configured to receive the entire batch of messages returned by the `consumer.poll()` operation, rather than one at a time.
+
+==== Null Payloads
+
+Null payloads are used to "delete" keys when using log compaction.
+
+==== Initial Offset
+
+You can now configure the initial offset relative to the current position for the consumer group, rather than absolute or relative to the current end.

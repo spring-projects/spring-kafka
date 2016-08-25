@@ -92,7 +92,7 @@ public class EnableKafkaIntegrationTests {
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
 			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10",
-			"annotated11", "annotated12", "annotated13");
+			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17");
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -239,6 +239,63 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.latch9.await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
+	@Test
+	public void testBatch() throws Exception {
+		template.send("annotated14", null, "foo");
+		template.send("annotated14", null, "bar");
+		assertThat(this.listener.latch10.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.payload).isInstanceOf(List.class);
+		List<?> list = (List<?>) this.listener.payload;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(String.class);
+	}
+
+	@Test
+	public void testBatchWitHeaders() throws Exception {
+		template.send("annotated15", 0, 1, "foo");
+		template.send("annotated15", 0, 1, "bar");
+		assertThat(this.listener.latch11.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.payload).isInstanceOf(List.class);
+		List<?> list = (List<?>) this.listener.payload;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(String.class);
+		list = this.listener.keys;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(Integer.class);
+		list = this.listener.partitions;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(Integer.class);
+		list = this.listener.topics;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(String.class);
+		list = this.listener.offsets;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(Long.class);
+	}
+
+	@Test
+	public void testBatchRecords() throws Exception {
+		template.send("annotated16", null, "foo");
+		template.send("annotated16", null, "bar");
+		assertThat(this.listener.latch12.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.payload).isInstanceOf(List.class);
+		List<?> list = (List<?>) this.listener.payload;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(ConsumerRecord.class);
+	}
+
+	@Test
+	public void testBatchRecordsAck() throws Exception {
+		template.send("annotated17", null, "foo");
+		template.send("annotated17", null, "bar");
+		assertThat(this.listener.latch13.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.payload).isInstanceOf(List.class);
+		List<?> list = (List<?>) this.listener.payload;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(ConsumerRecord.class);
+		assertThat(this.listener.ack).isNotNull();
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -280,6 +337,15 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setMessageConverter(new StringJsonMessageConverter());
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> batchFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			factory.setBatchListener(true);
 			return factory;
 		}
 
@@ -425,6 +491,14 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch9 = new CountDownLatch(1);
 
+		private final CountDownLatch latch10 = new CountDownLatch(1);
+
+		private final CountDownLatch latch11 = new CountDownLatch(1);
+
+		private final CountDownLatch latch12 = new CountDownLatch(1);
+
+		private final CountDownLatch latch13 = new CountDownLatch(1);
+
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
 		private volatile Integer partition;
@@ -433,6 +507,8 @@ public class EnableKafkaIntegrationTests {
 
 		private volatile Acknowledgment ack;
 
+		private volatile Object payload;
+
 		private Integer key;
 
 		private String topic;
@@ -440,6 +516,14 @@ public class EnableKafkaIntegrationTests {
 		private Foo foo;
 
 		private volatile ListenerContainerIdleEvent event;
+
+		private volatile List<Integer> keys;
+
+		private volatile List<Integer> partitions;
+
+		private volatile List<String> topics;
+
+		private volatile List<Long> offsets;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
@@ -516,6 +600,39 @@ public class EnableKafkaIntegrationTests {
 		public void listen9(Object payload) {
 			assertThat(payload).isNotNull();
 			this.latch9.countDown();
+		}
+
+		@KafkaListener(id = "list1", topics = "annotated14", containerFactory = "batchFactory")
+		public void listen10(List<String> list) {
+			this.payload = list;
+			this.latch10.countDown();
+		}
+
+		@KafkaListener(id = "list2", topics = "annotated15", containerFactory = "batchFactory")
+		public void listen11(List<String> list,
+				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) List<Integer> keys,
+				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
+				@Header(KafkaHeaders.OFFSET) List<Long> offsets) {
+			this.payload = list;
+			this.keys = keys;
+			this.partitions = partitions;
+			this.topics = topics;
+			this.offsets = offsets;
+			this.latch11.countDown();
+		}
+
+		@KafkaListener(id = "list3", topics = "annotated16", containerFactory = "batchFactory")
+		public void listen12(List<ConsumerRecord<Integer, String>> list) {
+			this.payload = list;
+			this.latch12.countDown();
+		}
+
+		@KafkaListener(id = "list4", topics = "annotated17", containerFactory = "batchFactory")
+		public void listen13(List<ConsumerRecord<Integer, String>> list, Acknowledgment ack) {
+			this.payload = list;
+			this.ack = ack;
+			this.latch13.countDown();
 		}
 
 	}

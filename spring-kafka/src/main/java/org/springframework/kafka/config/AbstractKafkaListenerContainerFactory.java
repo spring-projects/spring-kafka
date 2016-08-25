@@ -64,6 +64,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private RecoveryCallback<Void> recoveryCallback;
 
+	private Boolean batchListener;
+
 	private ApplicationEventPublisher applicationEventPublisher;
 
 	/**
@@ -137,6 +139,24 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.recoveryCallback = recoveryCallback;
 	}
 
+	/**
+	 * Return true if this endpoint creates a batch listener.
+	 * @return true for a batch listener.
+	 * @since 1.1
+	 */
+	public Boolean isBatchListener() {
+		return this.batchListener;
+	}
+
+	/**
+	 * Set to true if this endpoint should create a batch listener.
+	 * @param batchListener true for a batch listener.
+	 * @since 1.1
+	 */
+	public void setBatchListener(Boolean batchListener) {
+		this.batchListener = batchListener;
+	}
+
 	@Override
 	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
 		this.applicationEventPublisher = applicationEventPublisher;
@@ -182,6 +202,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			}
 			if (this.recoveryCallback != null) {
 				aklEndpoint.setRecoveryCallback(this.recoveryCallback);
+			}
+			if (this.batchListener != null) {
+				aklEndpoint.setBatchListener(this.batchListener);
 			}
 		}
 
