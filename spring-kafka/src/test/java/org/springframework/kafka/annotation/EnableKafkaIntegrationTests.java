@@ -496,8 +496,8 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory")
 		public void listen6(Foo foo, Acknowledgment ack) {
 			this.foo = foo;
-			this.latch6.countDown();
 			this.ack = ack;
+			this.latch6.countDown();
 		}
 
 		@KafkaListener(id = "rebalancerListener", topics = "annotated11",
