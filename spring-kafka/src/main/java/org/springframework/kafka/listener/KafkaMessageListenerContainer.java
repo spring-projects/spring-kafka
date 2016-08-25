@@ -324,9 +324,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.batchListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = false;
-				validateErrorHandler(false);
-				this.errorHandler = errHandler == null ? new LoggingErrorHandler() : (ErrorHandler) errHandler;
-				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			else if (theListener instanceof BatchAcknowledgingMessageListener) {
 				this.listener = null;
@@ -334,10 +331,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = (BatchAcknowledgingMessageListener<K, V>) theListener;
 				this.isBatchListener = true;
-				validateErrorHandler(true);
-				this.errorHandler = new LoggingErrorHandler();
-				this.batchErrorHandler = errHandler == null ? new BatchLoggingErrorHandler()
-						: (BatchErrorHandler) errHandler;
 			}
 			else if (theListener instanceof MessageListener) {
 				this.listener = (MessageListener<K, V>) theListener;
@@ -345,9 +338,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = false;
-				validateErrorHandler(false);
-				this.errorHandler = errHandler == null ? new LoggingErrorHandler() : (ErrorHandler) errHandler;
-				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			else if (theListener instanceof BatchMessageListener) {
 				this.listener = null;
@@ -355,15 +345,22 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = true;
+			}
+			else {
+				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
+						+ "'BatchMessageListener', 'AcknowledgingMessageListener', "
+						+ "'BatchAcknowledgingMessageListener', not " + theListener.getClass().getName());
+			}
+			if (isBatchListener) {
 				validateErrorHandler(true);
 				this.errorHandler = new LoggingErrorHandler();
 				this.batchErrorHandler = errHandler == null ? new BatchLoggingErrorHandler()
 						: (BatchErrorHandler) errHandler;
 			}
 			else {
-				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
-						+ "'BatchMessageListener', 'AcknowledgingMessageListener', "
-						+ "'BatchAcknowledgingMessageListener', not " + theListener.getClass().getName());
+				validateErrorHandler(false);
+				this.errorHandler = errHandler == null ? new LoggingErrorHandler() : (ErrorHandler) errHandler;
+				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
 		}
