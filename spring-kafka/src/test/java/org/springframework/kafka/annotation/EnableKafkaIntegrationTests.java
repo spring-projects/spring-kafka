@@ -224,6 +224,7 @@ public class EnableKafkaIntegrationTests {
 				.build());
 		assertThat(this.listener.latch6.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
+		assertThat(this.listener.ack).isNotNull();
 	}
 
 	@Test
@@ -493,9 +494,10 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory")
-		public void listen6(Foo foo) {
+		public void listen6(Foo foo, Acknowledgment ack) {
 			this.foo = foo;
 			this.latch6.countDown();
+			this.ack = ack;
 		}
 
 		@KafkaListener(id = "rebalancerListener", topics = "annotated11",
