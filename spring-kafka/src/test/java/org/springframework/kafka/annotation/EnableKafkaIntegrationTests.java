@@ -63,6 +63,7 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
@@ -92,7 +93,8 @@ public class EnableKafkaIntegrationTests {
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "annotated1", "annotated2", "annotated3",
 			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10",
-			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17");
+			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
+			"annotated18", "annotated19");
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -293,6 +295,33 @@ public class EnableKafkaIntegrationTests {
 		List<?> list = (List<?>) this.listener.payload;
 		assertThat(list.size()).isGreaterThan(0);
 		assertThat(list.get(0)).isInstanceOf(ConsumerRecord.class);
+		assertThat(this.listener.ack).isNotNull();
+	}
+
+	@Test
+	public void testBatchMessages() throws Exception {
+		template.send("annotated18", null, "foo");
+		template.send("annotated18", null, "bar");
+		assertThat(this.listener.latch14.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.payload).isInstanceOf(List.class);
+		List<?> list = (List<?>) this.listener.payload;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(Message.class);
+		Message<?> m = (Message<?>) list.get(0);
+		assertThat(m.getPayload()).isInstanceOf(String.class);
+	}
+
+	@Test
+	public void testBatchMessagesAck() throws Exception {
+		template.send("annotated19", null, "foo");
+		template.send("annotated19", null, "bar");
+		assertThat(this.listener.latch15.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.payload).isInstanceOf(List.class);
+		List<?> list = (List<?>) this.listener.payload;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(Message.class);
+		Message<?> m = (Message<?>) list.get(0);
+		assertThat(m.getPayload()).isInstanceOf(String.class);
 		assertThat(this.listener.ack).isNotNull();
 	}
 
@@ -499,6 +528,10 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch13 = new CountDownLatch(1);
 
+		private final CountDownLatch latch14 = new CountDownLatch(1);
+
+		private final CountDownLatch latch15 = new CountDownLatch(1);
+
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
 		private volatile Integer partition;
@@ -580,8 +613,8 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory")
 		public void listen6(Foo foo, Acknowledgment ack) {
 			this.foo = foo;
-			this.latch6.countDown();
 			this.ack = ack;
+			this.latch6.countDown();
 		}
 
 		@KafkaListener(id = "rebalancerListener", topics = "annotated11",
@@ -633,6 +666,19 @@ public class EnableKafkaIntegrationTests {
 			this.payload = list;
 			this.ack = ack;
 			this.latch13.countDown();
+		}
+
+		@KafkaListener(id = "list5", topics = "annotated18", containerFactory = "batchFactory")
+		public void listen14(List<Message<?>> list) {
+			this.payload = list;
+			this.latch14.countDown();
+		}
+
+		@KafkaListener(id = "list6", topics = "annotated19", containerFactory = "batchFactory")
+		public void listen15(List<Message<?>> list, Acknowledgment ack) {
+			this.payload = list;
+			this.ack = ack;
+			this.latch15.countDown();
 		}
 
 	}

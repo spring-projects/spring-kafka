@@ -395,6 +395,16 @@ public KafkaListenerContainerFactory<?> batchFactory() {
 }
 ----
 
+To receive a simple list of payloads:
+
+[source, java]
+----
+@KafkaListener(id = "list", topics = "myTopic", containerFactory = "batchFactory")
+public void listen(List<String> list) {
+    ...
+}
+----
+
 The topic, partition, offset etc are available in headers which parallel the payloads:
 
 [source, java]
@@ -405,6 +415,21 @@ public void listen(List<String> list,
         @Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
         @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
         @Header(KafkaHeaders.OFFSET) List<Long> offsets) {
+    ...
+}
+----
+
+Alternatively you can receive a List of `Message<?>` objects with each offset, etc in each message, but it must be the only parameter (aside from an optional `Acknowledgment` when using manual commits) defined on the method:
+
+[source, java]
+----
+@KafkaListener(id = "listMsg", topics = "myTopic", containerFactory = "batchFactory")
+public void listen14(List<Message<?>> list) {
+    ...
+}
+
+@KafkaListener(id = "listMsgAck", topics = "myTopic", containerFactory = "batchFactory")
+public void listen15(List<Message<?>> list, Acknowledgment ack) {
     ...
 }
 ----

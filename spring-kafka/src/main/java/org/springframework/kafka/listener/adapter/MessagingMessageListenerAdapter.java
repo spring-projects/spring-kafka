@@ -30,6 +30,8 @@ import org.springframework.core.MethodParameter;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
@@ -58,9 +60,31 @@ public abstract class MessagingMessageListenerAdapter<K, V> {
 
 	private boolean isConsumerRecordList;
 
+	private boolean isMessageList;
+
+	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
+
 
 	public MessagingMessageListenerAdapter(Method method) {
 		this.inferredType = determineInferredType(method);
+	}
+
+	/**
+	 * Set the MessageConverter.
+	 * @param messageConverter the converter.
+	 */
+	public void setMessageConverter(RecordMessageConverter messageConverter) {
+		this.messageConverter = messageConverter;
+	}
+
+	/**
+	 * Return the {@link MessagingMessageConverter} for this listener,
+	 * being able to convert {@link org.springframework.messaging.Message}.
+	 * @return the {@link MessagingMessageConverter} for this listener,
+	 * being able to convert {@link org.springframework.messaging.Message}.
+	 */
+	protected final RecordMessageConverter getMessageConverter() {
+		return this.messageConverter;
 	}
 
 	/**
@@ -74,6 +98,14 @@ public abstract class MessagingMessageListenerAdapter<K, V> {
 
 	protected boolean isConsumerRecordList() {
 		return this.isConsumerRecordList;
+	}
+
+	protected boolean isMessageList() {
+		return this.isMessageList;
+	}
+
+	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
+		return getMessageConverter().toMessage(record, acknowledgment, this.inferredType);
 	}
 
 	/**
@@ -146,6 +178,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> {
 							this.isConsumerRecordList =	paramType.equals(ConsumerRecord.class)
 									|| (paramType instanceof ParameterizedType
 										&& ((ParameterizedType) paramType).getRawType().equals(ConsumerRecord.class));
+							this.isMessageList = paramType.equals(Message.class)
+									|| (paramType instanceof ParameterizedType
+											&& ((ParameterizedType) paramType).getRawType().equals(Message.class));
 						}
 					}
 				}
@@ -165,6 +200,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> {
 					|| (method.getGenericParameterTypes().length == 2 && hasAck),
 				"A parameter of type 'List<ConsumerRecord>' must be the only parameter "
 				+ "(except for an optional 'Acknowledgment')");
+		Assert.state(!this.isMessageList || method.getParameterTypes().length == 1
+				|| (method.getGenericParameterTypes().length == 2 && hasAck),
+			"A parameter of type 'List<Message<?>>' must be the only parameter "
+			+ "(except for an optional 'Acknowledgment')");
 
 		return genericParameterType;
 	}

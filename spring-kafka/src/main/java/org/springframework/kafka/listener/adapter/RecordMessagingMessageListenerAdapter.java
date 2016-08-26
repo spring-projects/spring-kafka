@@ -23,8 +23,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 
 
@@ -48,29 +46,9 @@ import org.springframework.messaging.Message;
 public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements MessageListener<K, V>, AcknowledgingMessageListener<K, V> {
 
-	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
-
 
 	public RecordMessagingMessageListenerAdapter(Method method) {
 		super(method);
-	}
-
-	/**
-	 * Set the MessageConverter.
-	 * @param messageConverter the converter.
-	 */
-	public void setMessageConverter(RecordMessageConverter messageConverter) {
-		this.messageConverter = messageConverter;
-	}
-
-	/**
-	 * Return the {@link MessagingMessageConverter} for this listener,
-	 * being able to convert {@link org.springframework.messaging.Message}.
-	 * @return the {@link MessagingMessageConverter} for this listener,
-	 * being able to convert {@link org.springframework.messaging.Message}.
-	 */
-	protected final RecordMessageConverter getMessageConverter() {
-		return this.messageConverter;
 	}
 
 	/**
@@ -78,7 +56,6 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	 * <p> Delegate the message to the target listener method,
 	 * with appropriate conversion of the message argument.
 	 * @param record the incoming Kafka {@link ConsumerRecord}.
-	 * @see #handleListenerException
 	 */
 	@Override
 	public void onMessage(ConsumerRecord<K, V> record) {
@@ -92,10 +69,6 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 			logger.debug("Processing [" + message + "]");
 		}
 		invokeHandler(record, acknowledgment, message);
-	}
-
-	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
-		return getMessageConverter().toMessage(record, acknowledgment, this.inferredType);
 	}
 
 }

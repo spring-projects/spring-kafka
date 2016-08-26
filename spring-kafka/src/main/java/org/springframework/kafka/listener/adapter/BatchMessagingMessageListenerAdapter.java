@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -30,6 +31,7 @@ import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
+import org.springframework.messaging.support.MessageBuilder;
 
 
 /**
@@ -67,7 +69,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param messageConverter the converter.
 	 */
 	@SuppressWarnings("rawtypes")
-	public void setMessageConverter(BatchMessageConverter messageConverter) {
+	public void setBatchMessageConverter(BatchMessageConverter messageConverter) {
 		this.messageConverter = messageConverter;
 	}
 
@@ -78,7 +80,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * being able to convert {@link org.springframework.messaging.Message}.
 	 */
 	@SuppressWarnings("rawtypes")
-	protected final BatchMessageConverter getMessageConverter() {
+	protected final BatchMessageConverter getBatchMessageConverter() {
 		return this.messageConverter;
 	}
 
@@ -87,7 +89,6 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * <p> Delegate the message to the target listener method,
 	 * with appropriate conversion of the message argument.
 	 * @param records the incoming Kafka {@link ConsumerRecord}s.
-	 * @see #handleListenerException
 	 */
 	@Override
 	public void onMessage(List<ConsumerRecord<K, V>> records) {
@@ -98,7 +99,16 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	public void onMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment) {
 		Message<?> message;
 		if (!isConsumerRecordList()) {
-			message = toMessagingMessage(records, acknowledgment);
+			if (isMessageList()) {
+				List<Message<?>> messages = new ArrayList<>(records.size());
+				for (ConsumerRecord<K, V> record : records) {
+					messages.add(toMessagingMessage(record, acknowledgment));
+				}
+				message = MessageBuilder.withPayload(messages).build();
+			}
+			else {
+				message = toMessagingMessage(records, acknowledgment);
+			}
 		}
 		else {
 			message = NULL_MESSAGE;
@@ -111,7 +121,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	@SuppressWarnings("unchecked")
 	protected Message<?> toMessagingMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment) {
-		return getMessageConverter().toMessage(records, acknowledgment, this.inferredType);
+		return getBatchMessageConverter().toMessage(records, acknowledgment, this.inferredType);
 	}
 
 }

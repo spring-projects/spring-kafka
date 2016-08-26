@@ -124,7 +124,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<K, V>(
 					this.method);
 			if (messageConverter instanceof BatchMessageConverter) {
-				messageListener.setMessageConverter((BatchMessageConverter<K, V>) messageConverter);
+				messageListener.setBatchMessageConverter((BatchMessageConverter<K, V>) messageConverter);
 			}
 			return messageListener;
 		}
