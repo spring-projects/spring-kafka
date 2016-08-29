@@ -39,6 +39,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Dariusz Szablinski
+ * @since 1.1
  */
 public class BatchMessagingMessageConverter implements BatchMessageConverter<Object, Object> {
 

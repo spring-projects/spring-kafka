@@ -32,6 +32,7 @@ import org.springframework.messaging.Message;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @since 1.1
  */
 public interface BatchMessageConverter<K, V> extends MessageConverter {
 

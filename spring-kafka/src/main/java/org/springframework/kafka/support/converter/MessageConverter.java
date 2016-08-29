@@ -20,7 +20,7 @@ package org.springframework.kafka.support.converter;
  * A top level interface for message converters.
  *
  * @author Gary Russell
- * @since 5.0
+ * @since 1.1
  *
  */
 public interface MessageConverter {

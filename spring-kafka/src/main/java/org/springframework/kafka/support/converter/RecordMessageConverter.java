@@ -28,6 +28,7 @@ import org.springframework.messaging.Message;
  * A Kafka-specific {@link Message} converter strategy.
  *
  * @author Gary Russell
+ * @since 1.1
  */
 public interface RecordMessageConverter extends MessageConverter {
 
