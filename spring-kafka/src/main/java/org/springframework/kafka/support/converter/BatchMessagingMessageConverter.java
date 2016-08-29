@@ -32,9 +32,13 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
- * The Messaging specific {@link MessageConverter} implementation.
+ * The Messaging specific {@link MessageConverter} implementation used with a batch
+ * message listener; the consumer record values are extracted into a collection in
+ * the message payload.
  * <p>
  * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned message.
+ * Each header is a collection where the position in the collection matches the payload
+ * position.
  *
  * @author Marius Bogoevici
  * @author Gary Russell
