@@ -28,7 +28,8 @@ import org.springframework.messaging.Message;
 
 /**
  * A {@link org.springframework.kafka.listener.MessageListener MessageListener}
- * adapter that invokes a configurable {@link HandlerAdapter}.
+ * adapter that invokes a configurable {@link HandlerAdapter}; used when the factory is
+ * configured for the listener to receive individual messages.
  *
  * <p>Wraps the incoming Kafka Message to Spring's {@link Message} abstraction.
  *

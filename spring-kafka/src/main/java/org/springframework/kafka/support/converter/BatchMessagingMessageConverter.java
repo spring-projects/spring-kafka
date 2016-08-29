@@ -28,11 +28,10 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
- * The Messaging specific {@link MessageConverter} implementation used with a batch
+ * A Messaging {@link MessageConverter} implementation used with a batch
  * message listener; the consumer record values are extracted into a collection in
  * the message payload.
  * <p>
@@ -106,21 +105,6 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	/**
-	 * Subclasses can convert the payload; by default, it's sent unchanged to Kafka.
-	 * @param message the message.
-	 * @return the payload.
-	 */
-	protected Object convertPayload(Message<?> message) {
-		Object payload = message.getPayload();
-		if (payload instanceof KafkaNull) {
-			return null;
-		}
-		else {
-			return payload;
-		}
-	}
-
-	/**
 	 * Subclasses can convert the value; by default, it's returned as provided by Kafka.
 	 * @param record the record.
 	 * @param type the required type.
@@ -128,20 +112,6 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 */
 	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
 		return record.value() == null ? KafkaNull.INSTANCE : record.value();
-	}
-
-	@SuppressWarnings("serial")
-	private static class KafkaMessageHeaders extends MessageHeaders {
-
-		KafkaMessageHeaders(boolean generateId, boolean generateTimestamp) {
-			super(null, generateId ? null : ID_VALUE_NONE, generateTimestamp ? null : -1L);
-		}
-
-		@Override
-		public Map<String, Object> getRawHeaders() { //NOSONAR - not useless, widening to public
-			return super.getRawHeaders();
-		}
-
 	}
 
 }

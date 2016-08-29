@@ -36,11 +36,12 @@ import org.springframework.messaging.support.MessageBuilder;
 
 /**
  * A {@link org.springframework.kafka.listener.MessageListener MessageListener}
- * adapter that invokes a configurable {@link HandlerAdapter}.
+ * adapter that invokes a configurable {@link HandlerAdapter}; used when the factory is
+ * configured for the listener to receive batches of messages.
  *
  * <p>Wraps the incoming Kafka Message to Spring's {@link Message} abstraction.
  *
- * <p>The original {@link ConsumerRecord} and
+ * <p>The original {@code List<ConsumerRecord>} and
  * the {@link Acknowledgment} are provided as additional arguments so that these can
  * be injected as method arguments if necessary.
  *
@@ -50,6 +51,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
+ * @since 1.1
  */
 public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements BatchMessageListener<K, V>, BatchAcknowledgingMessageListener<K, V> {

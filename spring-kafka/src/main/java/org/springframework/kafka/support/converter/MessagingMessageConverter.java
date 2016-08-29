@@ -30,9 +30,11 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
- * The Messaging specific {@link MessageConverter} implementation.
+ * A Messaging {@link MessageConverter} implementation for a message listener that
+ * receives individual messages.
  * <p>
- * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned message.
+ * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned
+ * message.
  *
  * @author Marius Bogoevici
  * @author Gary Russell
@@ -114,20 +116,6 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 */
 	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
 		return record.value() == null ? KafkaNull.INSTANCE : record.value();
-	}
-
-	@SuppressWarnings("serial")
-	private static class KafkaMessageHeaders extends MessageHeaders {
-
-		KafkaMessageHeaders(boolean generateId, boolean generateTimestamp) {
-			super(null, generateId ? null : ID_VALUE_NONE, generateTimestamp ? null : -1L);
-		}
-
-		@Override
-		public Map<String, Object> getRawHeaders() { //NOSONAR - not useless, widening to public
-			return super.getRawHeaders();
-		}
-
 	}
 
 }
