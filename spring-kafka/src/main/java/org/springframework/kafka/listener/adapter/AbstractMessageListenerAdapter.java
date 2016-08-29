@@ -26,7 +26,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
  * @param <T> the delegate type.
  *
  * @author Gary Russell
- * @since 5.0
+ * @since 1.1
  *
  */
 public abstract class AbstractMessageListenerAdapter<K, V, T> implements ConsumerSeekAware {
