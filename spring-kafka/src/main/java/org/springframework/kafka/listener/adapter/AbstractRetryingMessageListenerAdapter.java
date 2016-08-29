@@ -37,7 +37,7 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V> implements Co
 
 	protected final Log logger = LogFactory.getLog(this.getClass());
 
-	private final ConsumerSeekAware delegate;
+	private final ConsumerSeekAware seekAware;
 
 	private final RetryTemplate retryTemplate;
 
@@ -66,17 +66,17 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V> implements Co
 		this.retryTemplate = retryTemplate;
 		this.recoveryCallback = recoveryCallback;
 		if (delegate instanceof ConsumerSeekAware) {
-			this.delegate = (ConsumerSeekAware) delegate;
+			this.seekAware = (ConsumerSeekAware) delegate;
 		}
 		else {
-			this.delegate = null;
+			this.seekAware = null;
 		}
 	}
 
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
-		if (this.delegate != null) {
-			this.delegate.registerSeekCallback(callback);
+		if (this.seekAware != null) {
+			this.seekAware.registerSeekCallback(callback);
 		}
 	}
 

@@ -322,13 +322,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				consumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
 			}
 			this.consumer = consumer;
-			Object theListener = listener == null ? ackListener : listener;
 			GenericErrorHandler<?> errHandler = this.containerProperties.getGenericErrorHandler();
 			if (theListener instanceof BatchAcknowledgingMessageListener) {
 				this.listener = null;
 				this.batchListener = null;
 				this.acknowledgingMessageListener = null;
-				this.batchAcknowledgingMessageListener = (BatchAcknowledgingMessageListener<K, V>) theListener;
+				this.batchAcknowledgingMessageListener = (BatchAcknowledgingMessageListener<K, V>) this.theListener;
 				this.isBatchListener = true;
 			}
 			else if (theListener instanceof AcknowledgingMessageListener) {
@@ -338,9 +337,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = false;
 			}
-			else if (theListener instanceof BatchMessageListener) {
+			else if (this.theListener instanceof BatchMessageListener) {
 				this.listener = null;
-				this.batchListener = (BatchMessageListener<K, V>) theListener;
+				this.batchListener = (BatchMessageListener<K, V>) this.theListener;
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = true;
@@ -355,7 +354,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
 						+ "'BatchMessageListener', 'AcknowledgingMessageListener', "
-						+ "'BatchAcknowledgingMessageListener', not " + theListener.getClass().getName());
+						+ "'BatchAcknowledgingMessageListener', not " + this.theListener.getClass().getName());
 			}
 			if (isBatchListener) {
 				validateErrorHandler(true);

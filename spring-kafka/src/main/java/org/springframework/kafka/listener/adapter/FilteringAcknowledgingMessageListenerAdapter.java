@@ -31,10 +31,9 @@ import org.springframework.kafka.support.Acknowledgment;
  * @author Gary Russell
  *
  */
-public class FilteringAcknowledgingMessageListenerAdapter<K, V> extends AbstractFilteringMessageListener<K, V>
+public class FilteringAcknowledgingMessageListenerAdapter<K, V>
+		extends AbstractFilteringMessageListener<K, V, AcknowledgingMessageListener<K, V>>
 		implements AcknowledgingMessageListener<K, V> {
-
-	private final AcknowledgingMessageListener<K, V> delegate;
 
 	private final boolean ackDiscarded;
 
@@ -47,7 +46,6 @@ public class FilteringAcknowledgingMessageListenerAdapter<K, V> extends Abstract
 	public FilteringAcknowledgingMessageListenerAdapter(AcknowledgingMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy, boolean ackDiscarded) {
 		super(delegate, recordFilterStrategy);
-		this.delegate = delegate;
 		this.ackDiscarded = ackDiscarded;
 	}
 

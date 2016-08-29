@@ -16,33 +16,40 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-
-import org.springframework.util.Assert;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 
 /**
- * An abstract message listener adapter that implements record filter logic
- * via a {@link RecordFilterStrategy}.
+ * Top level class for all listener adapters.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  * @param <T> the delegate type.
  *
  * @author Gary Russell
+ * @since 5.0
  *
  */
-public abstract class AbstractFilteringMessageListener<K, V, T> extends AbstractMessageListenerAdapter<K, V, T> {
+public abstract class AbstractMessageListenerAdapter<K, V, T> implements ConsumerSeekAware {
 
-	private final RecordFilterStrategy<K, V> recordFilterStrategy;
+	protected final T delegate; //NOSONAR
 
-	protected AbstractFilteringMessageListener(T delegate, RecordFilterStrategy<K, V> recordFilterStrategy) {
-		super(delegate);
-		Assert.notNull(recordFilterStrategy, "'recordFilterStrategy' cannot be null");
-		this.recordFilterStrategy = recordFilterStrategy;
+	private final ConsumerSeekAware seekAware;
+
+	public AbstractMessageListenerAdapter(T delegate) {
+		this.delegate = delegate;
+		if (delegate instanceof ConsumerSeekAware) {
+			this.seekAware = (ConsumerSeekAware) delegate;
+		}
+		else {
+			this.seekAware = null;
+		}
 	}
 
-	protected boolean filter(ConsumerRecord<K, V> consumerRecord) {
-		return this.recordFilterStrategy.filter(consumerRecord);
+	@Override
+	public void registerSeekCallback(ConsumerSeekCallback callback) {
+		if (this.seekAware != null) {
+			this.seekAware.registerSeekCallback(callback);
+		}
 	}
 
 }

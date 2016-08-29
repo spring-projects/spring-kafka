@@ -35,10 +35,9 @@ import org.springframework.kafka.support.Acknowledgment;
  * @author Gary Russell
  *
  */
-public class FilteringBatchAcknowledgingMessageListenerAdapter<K, V> extends AbstractFilteringMessageListener<K, V>
+public class FilteringBatchAcknowledgingMessageListenerAdapter<K, V>
+		extends AbstractFilteringMessageListener<K, V, BatchAcknowledgingMessageListener<K, V>>
 		implements BatchAcknowledgingMessageListener<K, V> {
-
-	private final BatchAcknowledgingMessageListener<K, V> delegate;
 
 	private final boolean ackDiscarded;
 
@@ -66,7 +65,6 @@ public class FilteringBatchAcknowledgingMessageListenerAdapter<K, V> extends Abs
 	public FilteringBatchAcknowledgingMessageListenerAdapter(BatchAcknowledgingMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy, boolean ackDiscarded) {
 		super(delegate, recordFilterStrategy);
-		this.delegate = delegate;
 		this.ackDiscarded = ackDiscarded;
 	}
 
