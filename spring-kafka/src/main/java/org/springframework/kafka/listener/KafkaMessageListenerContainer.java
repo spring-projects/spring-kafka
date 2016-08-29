@@ -318,24 +318,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.consumer = consumer;
 			Object theListener = listener == null ? ackListener : listener;
 			GenericErrorHandler<?> errHandler = this.containerProperties.getGenericErrorHandler();
-			if (theListener instanceof AcknowledgingMessageListener) {
-				this.listener = null;
-				this.acknowledgingMessageListener = (AcknowledgingMessageListener<K, V>) theListener;
-				this.batchListener = null;
-				this.batchAcknowledgingMessageListener = null;
-				this.isBatchListener = false;
-			}
-			else if (theListener instanceof BatchAcknowledgingMessageListener) {
+			if (theListener instanceof BatchAcknowledgingMessageListener) {
 				this.listener = null;
 				this.batchListener = null;
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = (BatchAcknowledgingMessageListener<K, V>) theListener;
 				this.isBatchListener = true;
 			}
-			else if (theListener instanceof MessageListener) {
-				this.listener = (MessageListener<K, V>) theListener;
+			else if (theListener instanceof AcknowledgingMessageListener) {
+				this.listener = null;
+				this.acknowledgingMessageListener = (AcknowledgingMessageListener<K, V>) theListener;
 				this.batchListener = null;
-				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = false;
 			}
@@ -345,6 +338,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.acknowledgingMessageListener = null;
 				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = true;
+			}
+			else if (theListener instanceof MessageListener) {
+				this.listener = (MessageListener<K, V>) theListener;
+				this.batchListener = null;
+				this.acknowledgingMessageListener = null;
+				this.batchAcknowledgingMessageListener = null;
+				this.isBatchListener = false;
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "

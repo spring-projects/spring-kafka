@@ -57,7 +57,7 @@ public class FilteringAcknowledgingMessageListenerAdapter<K, V> extends Abstract
 			this.delegate.onMessage(consumerRecord, acknowledgment);
 		}
 		else {
-			if (this.ackDiscarded) {
+			if (this.ackDiscarded && acknowledgment != null) {
 				acknowledgment.acknowledge();
 			}
 		}

@@ -380,6 +380,75 @@ public void listen(@Payload String foo,
 }
 ----
 
+Starting with _version 1.1_, `@KafkaListener` methods can be configured to receive the entire batch of consumer records received from the consumer poll.
+To configure the listener container factory to create batch listeners, set the `batchListener` property:
+
+[source, java]
+----
+@Bean
+public KafkaListenerContainerFactory<?> batchFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+            new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(consumerFactory());
+    factory.setBatchListener(true);  // <<<<<<<<<<<<<<<<<<<<<<<<<
+    return factory;
+}
+----
+
+To receive a simple list of payloads:
+
+[source, java]
+----
+@KafkaListener(id = "list", topics = "myTopic", containerFactory = "batchFactory")
+public void listen(List<String> list) {
+    ...
+}
+----
+
+The topic, partition, offset etc are available in headers which parallel the payloads:
+
+[source, java]
+----
+@KafkaListener(id = "list", topics = "myTopic", containerFactory = "batchFactory")
+public void listen(List<String> list,
+        @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) List<Integer> keys,
+        @Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
+        @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
+        @Header(KafkaHeaders.OFFSET) List<Long> offsets) {
+    ...
+}
+----
+
+Alternatively you can receive a List of `Message<?>` objects with each offset, etc in each message, but it must be the only parameter (aside from an optional `Acknowledgment` when using manual commits) defined on the method:
+
+[source, java]
+----
+@KafkaListener(id = "listMsg", topics = "myTopic", containerFactory = "batchFactory")
+public void listen14(List<Message<?>> list) {
+    ...
+}
+
+@KafkaListener(id = "listMsgAck", topics = "myTopic", containerFactory = "batchFactory")
+public void listen15(List<Message<?>> list, Acknowledgment ack) {
+    ...
+}
+----
+
+You can also receive a list of `ConsumerRecord<?, ?>` objects but it must be the only parameter (aside from an optional `Acknowledgment` when using manual commits) defined on the method:
+
+[source, java]
+----
+@KafkaListener(id = "listCRs", topics = "myTopic", containerFactory = "batchFactory")
+public void listen(List<ConsumerRecord<Integer, String>> list) {
+    ...
+}
+
+@KafkaListener(id = "listCRsAck", topics = "myTopic", containerFactory = "batchFactory")
+public void listen(List<ConsumerRecord<Integer, String>> list, Acknowledgment ack) {
+    ...
+}
+----
+
 ===== Filtering Messages
 
 In certain scenarios, such as rebalancing, a message may be redelivered that has already been processed.

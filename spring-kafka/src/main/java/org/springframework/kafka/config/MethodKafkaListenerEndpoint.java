@@ -19,9 +19,13 @@ package org.springframework.kafka.config;
 import java.lang.reflect.Method;
 
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
+import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
@@ -93,11 +97,8 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 			MessageConverter messageConverter) {
 		Assert.state(this.messageHandlerMethodFactory != null,
 				"Could not create message listener - MessageHandlerMethodFactory not set");
-		MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance();
+		MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance(messageConverter);
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
-		if (messageConverter != null) {
-			messageListener.setMessageConverter(messageConverter);
-		}
 		return messageListener;
 	}
 
@@ -114,10 +115,26 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 
 	/**
 	 * Create an empty {@link MessagingMessageListenerAdapter} instance.
+	 * @param messageConverter the converter (may be null).
 	 * @return the {@link MessagingMessageListenerAdapter} instance.
 	 */
-	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance() {
-		return new MessagingMessageListenerAdapter<K, V>(this.method);
+	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance(MessageConverter messageConverter) {
+		if (isBatchListener()) {
+			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<K, V>(
+					this.method);
+			if (messageConverter instanceof BatchMessageConverter) {
+				messageListener.setBatchMessageConverter((BatchMessageConverter) messageConverter);
+			}
+			return messageListener;
+		}
+		else {
+			RecordMessagingMessageListenerAdapter<K, V> messageListener =
+					new RecordMessagingMessageListenerAdapter<K, V>(this.method);
+			if (messageConverter instanceof RecordMessageConverter) {
+				messageListener.setMessageConverter((RecordMessageConverter) messageConverter);
+			}
+			return messageListener;
+		}
 	}
 
 	@Override

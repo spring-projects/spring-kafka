@@ -17,6 +17,8 @@
 package org.springframework.kafka.support.converter;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -26,21 +28,23 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
- * A Messaging {@link MessageConverter} implementation for a message listener that
- * receives individual messages.
+ * A Messaging {@link MessageConverter} implementation used with a batch
+ * message listener; the consumer record values are extracted into a collection in
+ * the message payload.
  * <p>
- * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned
- * message.
+ * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned message.
+ * Each header is a collection where the position in the collection matches the payload
+ * position.
  *
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Dariusz Szablinski
+ * @since 1.1
  */
-public class MessagingMessageConverter implements RecordMessageConverter {
+public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	private boolean generateMessageId = false;
 
@@ -65,47 +69,39 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	}
 
 	@Override
-	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Type type) {
+	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
+			Type type) {
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
-		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, record.key());
-		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, record.topic());
-		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, record.partition());
-		rawHeaders.put(KafkaHeaders.OFFSET, record.offset());
+		List<Object> payloads = new ArrayList<>();
+		List<Object> keys = new ArrayList<>();
+		List<String> topics = new ArrayList<>();
+		List<Integer> partitions = new ArrayList<>();
+		List<Long> offsets = new ArrayList<>();
+		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, keys);
+		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topics);
+		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, partitions);
+		rawHeaders.put(KafkaHeaders.OFFSET, offsets);
 
 		if (acknowledgment != null) {
 			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
 		}
 
-		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);
+		for (ConsumerRecord<?, ?> record : records) {
+			payloads.add(extractAndConvertValue(record, type));
+			keys.add(record.key());
+			topics.add(record.topic());
+			partitions.add(record.partition());
+			offsets.add(record.offset());
+		}
+		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
-	public ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic) {
-		MessageHeaders headers = message.getHeaders();
-		String topic = headers.get(KafkaHeaders.TOPIC, String.class);
-		Integer partition = headers.get(KafkaHeaders.PARTITION_ID, Integer.class);
-		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
-		Object payload = convertPayload(message);
-		return new ProducerRecord(topic == null ? defaultTopic : topic, partition, key, payload);
-	}
-
-	/**
-	 * Subclasses can convert the payload; by default, it's sent unchanged to Kafka.
-	 * @param message the message.
-	 * @return the payload.
-	 */
-	protected Object convertPayload(Message<?> message) {
-		Object payload = message.getPayload();
-		if (payload instanceof KafkaNull) {
-			return null;
-		}
-		else {
-			return payload;
-		}
+	public List<ProducerRecord<?, ?>> fromMessage(Message<?> message, String defaultTopic) {
+		throw new UnsupportedOperationException();
 	}
 
 	/**

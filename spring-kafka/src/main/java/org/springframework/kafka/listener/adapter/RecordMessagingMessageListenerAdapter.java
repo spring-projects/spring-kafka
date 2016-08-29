@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,26 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.lang.reflect.Method;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.messaging.Message;
+
 
 /**
- * An abstract {@link MessageListener} adapter providing the necessary infrastructure
- * to extract the payload of a {@link org.springframework.messaging.Message}.
+ * A {@link org.springframework.kafka.listener.MessageListener MessageListener}
+ * adapter that invokes a configurable {@link HandlerAdapter}; used when the factory is
+ * configured for the listener to receive individual messages.
+ *
+ * <p>Wraps the incoming Kafka Message to Spring's {@link Message} abstraction.
+ *
+ * <p>The original {@link ConsumerRecord} and
+ * the {@link Acknowledgment} are provided as additional arguments so that these can
+ * be injected as method arguments if necessary.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -33,43 +43,33 @@ import org.springframework.kafka.listener.MessageListener;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
- *
- * @see MessageListener
- * @see AcknowledgingMessageListener
  */
-public abstract class AbstractAdaptableMessageListener<K, V> implements MessageListener<K, V>,
-			AcknowledgingMessageListener<K, V> {
+public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
+		implements MessageListener<K, V>, AcknowledgingMessageListener<K, V> {
 
-	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
+
+	public RecordMessagingMessageListenerAdapter(Method method) {
+		super(method);
+	}
 
 	/**
 	 * Kafka {@link MessageListener} entry point.
 	 * <p> Delegate the message to the target listener method,
 	 * with appropriate conversion of the message argument.
 	 * @param record the incoming Kafka {@link ConsumerRecord}.
-	 * @see #handleListenerException
 	 */
 	@Override
 	public void onMessage(ConsumerRecord<K, V> record) {
 		onMessage(record, null);
 	}
 
-	/**
-	 * Handle the given exception that arose during listener execution.
-	 * The default implementation logs the exception at error level.
-	 * @param ex the exception to handle
-	 */
-	protected void handleListenerException(Throwable ex) {
-		this.logger.error("Listener execution failed", ex);
-	}
-
-	/**
-	 * Extract the message body from the given Kafka message.
-	 * @param record the Kafka <code>Message</code>
-	 * @return the content of the message, to be passed into the listener method as argument
-	 */
-	protected Object extractMessage(ConsumerRecord<K, V> record) {
-		return record.value();
+	@Override
+	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
+		Message<?> message = toMessagingMessage(record, acknowledgment);
+		if (logger.isDebugEnabled()) {
+			logger.debug("Processing [" + message + "]");
+		}
+		invokeHandler(record, acknowledgment, message);
 	}
 
 }

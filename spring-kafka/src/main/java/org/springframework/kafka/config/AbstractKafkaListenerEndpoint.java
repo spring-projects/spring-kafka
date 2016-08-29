@@ -34,6 +34,7 @@ import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
@@ -53,7 +54,6 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  *
  * @see MethodKafkaListenerEndpoint
- * @see org.springframework.kafka.config.SimpleKafkaListenerEndpoint
  */
 public abstract class AbstractKafkaListenerEndpoint<K, V>
 		implements KafkaListenerEndpoint, BeanFactoryAware, InitializingBean {
@@ -81,6 +81,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private RetryTemplate retryTemplate;
 
 	private RecoveryCallback<Void> recoveryCallback;
+
+	private boolean batchListener;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -190,6 +192,24 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.group = group;
 	}
 
+	/**
+	 * Return true if this endpoint creates a batch listener.
+	 * @return true for a batch listener.
+	 * @since 1.1
+	 */
+	public boolean isBatchListener() {
+		return this.batchListener;
+	}
+
+	/**
+	 * Set to true if this endpoint should create a batch listener.
+	 * @param batchListener true for a batch listener.
+	 * @since 1.1
+	 */
+	public void setBatchListener(boolean batchListener) {
+		this.batchListener = batchListener;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		boolean topicsEmpty = getTopics().isEmpty();
@@ -269,7 +289,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @param messageConverter the message converter - may be null.
 	 * @return a a {@link MessageListener} instance.
 	 */
-	protected abstract MessageListener<K, V> createMessageListener(MessageListenerContainer container,
+	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			MessageConverter messageConverter);
 
 	@SuppressWarnings("unchecked")
