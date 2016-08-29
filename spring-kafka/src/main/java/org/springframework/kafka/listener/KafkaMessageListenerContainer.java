@@ -368,9 +368,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
-			if (this.autoCommit && this.theListener instanceof ConsumerSeekAware) {
-				((ConsumerSeekAware) this.theListener).registerSeekCallback(this);
-			}
 		}
 
 		public ConsumerRebalanceListener createRebalanceListener(final Consumer<K, V> consumer) {
@@ -479,6 +476,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		@Override
 		public void run() {
+			if (this.autoCommit && this.theListener instanceof ConsumerSeekAware) {
+				((ConsumerSeekAware) this.theListener).registerSeekCallback(this);
+			}
 			this.count = 0;
 			this.last = System.currentTimeMillis();
 			if (isRunning() && this.definedPartitions != null) {

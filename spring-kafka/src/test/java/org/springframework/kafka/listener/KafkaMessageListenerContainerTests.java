@@ -95,9 +95,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic11 = "testTopic11";
 
+	private static String topic12 = "testTopic12";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -808,8 +810,18 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	public void testSeek() throws Exception {
-		logger.info("Start seek");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
+		testSeekGuts(props, topic11);
+	}
+
+	@Test
+	public void testSeekAutoCommit() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
+		testSeekGuts(props, topic12);
+	}
+
+	private void testSeekGuts(Map<String, Object> props, String topic) throws Exception {
+		logger.info("Start seek " + topic);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic11);
 		final CountDownLatch latch = new CountDownLatch(6);
@@ -817,8 +829,13 @@ public class KafkaMessageListenerContainerTests {
 
 			private ConsumerSeekCallback callback;
 
+			private Thread registerThread;
+
+			private Thread messageThread;
+
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> data) {
+				messageThread = Thread.currentThread();
 				latch.countDown();
 				if (latch.getCount() == 2) {
 					callback.seek(topic11, 0, 1);
@@ -829,10 +846,12 @@ public class KafkaMessageListenerContainerTests {
 			@Override
 			public void registerSeekCallback(ConsumerSeekCallback callback) {
 				this.callback = callback;
+				this.registerThread = Thread.currentThread();
 			}
 
 		}
-		containerProps.setMessageListener(new Listener());
+		Listener messageListener = new Listener();
+		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setAckOnError(false);
@@ -853,6 +872,7 @@ public class KafkaMessageListenerContainerTests {
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+		assertThat(messageListener.registerThread).isSameAs(messageListener.messageThread);
 		logger.info("Stop seek");
 	}
 
