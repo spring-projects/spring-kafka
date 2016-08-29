@@ -45,7 +45,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Dariusz Szablinski
  * @since 1.1
  */
-public class BatchMessagingMessageConverter implements BatchMessageConverter<Object, Object> {
+public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	private boolean generateMessageId = false;
 
@@ -70,7 +70,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter<Obj
 	}
 
 	@Override
-	public Message<?> toMessage(List<ConsumerRecord<Object, Object>> records, Acknowledgment acknowledgment,
+	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
 			Type type) {
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
@@ -101,7 +101,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter<Obj
 	}
 
 	@Override
-	public List<ProducerRecord<Object, Object>> fromMessage(Message<?> message, String defaultTopic) {
+	public List<ProducerRecord<?, ?>> fromMessage(Message<?> message, String defaultTopic) {
 		throw new UnsupportedOperationException();
 	}
 

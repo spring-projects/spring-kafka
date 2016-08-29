@@ -118,13 +118,12 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 * @param messageConverter the converter (may be null).
 	 * @return the {@link MessagingMessageListenerAdapter} instance.
 	 */
-	@SuppressWarnings("unchecked")
 	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance(MessageConverter messageConverter) {
 		if (isBatchListener()) {
 			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<K, V>(
 					this.method);
 			if (messageConverter instanceof BatchMessageConverter) {
-				messageListener.setBatchMessageConverter((BatchMessageConverter<K, V>) messageConverter);
+				messageListener.setBatchMessageConverter((BatchMessageConverter) messageConverter);
 			}
 			return messageListener;
 		}

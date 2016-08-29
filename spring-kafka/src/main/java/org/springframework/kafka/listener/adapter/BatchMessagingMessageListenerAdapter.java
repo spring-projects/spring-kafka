@@ -56,7 +56,6 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	private static final Message<KafkaNull> NULL_MESSAGE = new GenericMessage<>(KafkaNull.INSTANCE);
 
-	@SuppressWarnings("rawtypes")
 	private BatchMessageConverter messageConverter = new BatchMessagingMessageConverter();
 
 
@@ -68,7 +67,6 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * Set the BatchMessageConverter.
 	 * @param messageConverter the converter.
 	 */
-	@SuppressWarnings("rawtypes")
 	public void setBatchMessageConverter(BatchMessageConverter messageConverter) {
 		this.messageConverter = messageConverter;
 	}
@@ -79,7 +77,6 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @return the {@link BatchMessagingMessageConverter} for this listener,
 	 * being able to convert {@link org.springframework.messaging.Message}.
 	 */
-	@SuppressWarnings("rawtypes")
 	protected final BatchMessageConverter getBatchMessageConverter() {
 		return this.messageConverter;
 	}
@@ -119,8 +116,8 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		invokeHandler(records, acknowledgment, message);
 	}
 
-	@SuppressWarnings("unchecked")
-	protected Message<?> toMessagingMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment) {
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	protected Message<?> toMessagingMessage(List records, Acknowledgment acknowledgment) {
 		return getBatchMessageConverter().toMessage(records, acknowledgment, this.inferredType);
 	}
 

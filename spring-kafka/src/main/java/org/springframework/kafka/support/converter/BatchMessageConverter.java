@@ -28,13 +28,10 @@ import org.springframework.messaging.Message;
 /**
  * A Kafka-specific {@link Message} converter strategy.
  *
- * @param <K> the key type.
- * @param <V> the value type.
- *
  * @author Gary Russell
  * @since 1.1
  */
-public interface BatchMessageConverter<K, V> extends MessageConverter {
+public interface BatchMessageConverter extends MessageConverter {
 
 	/**
 	 * Convert a list of {@link ConsumerRecord} to a {@link Message}.
@@ -43,7 +40,7 @@ public interface BatchMessageConverter<K, V> extends MessageConverter {
 	 * @param payloadType the required payload type.
 	 * @return the message.
 	 */
-	Message<?> toMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment, Type payloadType);
+	Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment, Type payloadType);
 
 	/**
 	 * Convert a message to a producer record.
@@ -51,6 +48,6 @@ public interface BatchMessageConverter<K, V> extends MessageConverter {
 	 * @param defaultTopic the default topic to use if no header found.
 	 * @return the producer records.
 	 */
-	List<ProducerRecord<K, V>> fromMessage(Message<?> message, String defaultTopic);
+	List<ProducerRecord<?, ?>> fromMessage(Message<?> message, String defaultTopic);
 
 }
