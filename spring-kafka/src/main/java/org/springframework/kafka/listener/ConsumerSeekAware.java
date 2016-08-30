@@ -16,6 +16,10 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
+
+import org.springframework.kafka.support.TopicPartitionCurrentOffset;
+
 /**
  * Listeners that implement this interface are provided with a
  * {@link ConsumerSeekCallback} which can be used to perform a
@@ -29,10 +33,17 @@ package org.springframework.kafka.listener;
 public interface ConsumerSeekAware {
 
 	/**
-	 * Register the callback.
+	 * Register the callback to use when seeking at some arbitrary time.
 	 * @param callback the callback.
 	 */
 	void registerSeekCallback(ConsumerSeekCallback callback);
+
+	/**
+	 * When using group management, called when partition assignments change.
+	 * @param assignments the new assignments.
+	 * @param callback the callback to perform an initial seek after assignment.
+	 */
+	void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments, ConsumerSeekCallback callback);
 
 	/**
 	 * A callback that a listener can invoke to seek to a specific offset.

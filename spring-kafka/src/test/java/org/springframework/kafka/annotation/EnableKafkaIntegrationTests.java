@@ -60,6 +60,7 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -507,7 +508,7 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch1 = new CountDownLatch(1);
 
-		private final CountDownLatch latch2 = new CountDownLatch(2);
+		private final CountDownLatch latch2 = new CountDownLatch(2); // seek
 
 		private final CountDownLatch latch3 = new CountDownLatch(1);
 
@@ -690,6 +691,12 @@ public class EnableKafkaIntegrationTests {
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
 			this.seekCallBack.set(callback);
+		}
+
+		@Override
+		public void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments,
+				ConsumerSeekCallback callback) {
+			// NOSONAR
 		}
 
 	}

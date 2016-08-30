@@ -16,7 +16,13 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import java.util.Collection;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.kafka.listener.ConsumerSeekAware;
+import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 
 /**
  * Top level class for all listener adapters.
@@ -30,6 +36,8 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
  *
  */
 public abstract class AbstractMessageListenerAdapter<K, V, T> implements ConsumerSeekAware {
+
+	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
 
 	protected final T delegate; //NOSONAR
 
@@ -49,6 +57,13 @@ public abstract class AbstractMessageListenerAdapter<K, V, T> implements Consume
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
 		if (this.seekAware != null) {
 			this.seekAware.registerSeekCallback(callback);
+		}
+	}
+
+	@Override
+	public void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments, ConsumerSeekCallback callback) {
+		if (this.seekAware != null) {
+			this.seekAware.onPartionsAssigned(assignments, callback);
 		}
 	}
 

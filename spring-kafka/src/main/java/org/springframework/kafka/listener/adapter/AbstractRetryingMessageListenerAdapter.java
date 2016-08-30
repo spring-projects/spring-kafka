@@ -16,10 +16,6 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
@@ -29,15 +25,12 @@ import org.springframework.util.Assert;
  *
  * @param <K> the key type.
  * @param <V> the value type.
+ * @param <T> the delegate type.
  *
  * @author Gary Russell
  *
  */
-public abstract class AbstractRetryingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
-
-	protected final Log logger = LogFactory.getLog(this.getClass());
-
-	private final ConsumerSeekAware seekAware;
+public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends AbstractMessageListenerAdapter<K, V, T> {
 
 	private final RetryTemplate retryTemplate;
 
@@ -49,7 +42,7 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V> implements Co
 	 * @param delegate the delegate listener.
 	 * @param retryTemplate the template.
 	 */
-	public AbstractRetryingMessageListenerAdapter(Object delegate, RetryTemplate retryTemplate) {
+	public AbstractRetryingMessageListenerAdapter(T delegate, RetryTemplate retryTemplate) {
 		this(delegate, retryTemplate, null);
 	}
 
@@ -60,24 +53,12 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V> implements Co
 	 * @param recoveryCallback the recovery callback; if null, the exception will be
 	 * thrown to the container after retries are exhausted.
 	 */
-	public AbstractRetryingMessageListenerAdapter(Object delegate, RetryTemplate retryTemplate,
+	public AbstractRetryingMessageListenerAdapter(T delegate, RetryTemplate retryTemplate,
 			RecoveryCallback<Void> recoveryCallback) {
+		super(delegate);
 		Assert.notNull(retryTemplate, "'retryTemplate' cannot be null");
 		this.retryTemplate = retryTemplate;
 		this.recoveryCallback = recoveryCallback;
-		if (delegate instanceof ConsumerSeekAware) {
-			this.seekAware = (ConsumerSeekAware) delegate;
-		}
-		else {
-			this.seekAware = null;
-		}
-	}
-
-	@Override
-	public void registerSeekCallback(ConsumerSeekCallback callback) {
-		if (this.seekAware != null) {
-			this.seekAware.registerSeekCallback(callback);
-		}
 	}
 
 	public RetryTemplate getRetryTemplate() {

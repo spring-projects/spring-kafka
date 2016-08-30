@@ -27,13 +27,16 @@ import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -55,6 +58,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -824,7 +828,8 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Start seek " + topic);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic11);
-		final CountDownLatch latch = new CountDownLatch(6);
+		final AtomicReference<CountDownLatch> latch = new AtomicReference<>(new CountDownLatch(6));
+		final AtomicBoolean seekInitial = new AtomicBoolean();
 		class Listener implements MessageListener<Integer, String>, ConsumerSeekAware {
 
 			private ConsumerSeekCallback callback;
@@ -836,8 +841,8 @@ public class KafkaMessageListenerContainerTests {
 			@Override
 			public void onMessage(ConsumerRecord<Integer, String> data) {
 				messageThread = Thread.currentThread();
-				latch.countDown();
-				if (latch.getCount() == 2) {
+				latch.get().countDown();
+				if (latch.get().getCount() == 2 && !seekInitial.get()) {
 					callback.seek(topic11, 0, 1);
 					callback.seek(topic11, 1, 1);
 				}
@@ -847,6 +852,16 @@ public class KafkaMessageListenerContainerTests {
 			public void registerSeekCallback(ConsumerSeekCallback callback) {
 				this.callback = callback;
 				this.registerThread = Thread.currentThread();
+			}
+
+			@Override
+			public void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments,
+					ConsumerSeekCallback callback) {
+				if (seekInitial.get()) {
+					for (TopicPartitionCurrentOffset assignment : assignments) {
+						callback.seek(assignment.topic(), assignment.partition(), assignment.currentOffset() - 1);
+					}
+				}
 			}
 
 		}
@@ -870,9 +885,17 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(0, 0, "baz");
 		template.sendDefault(1, 0, "qux");
 		template.flush();
-		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		assertThat(messageListener.registerThread).isSameAs(messageListener.messageThread);
+
+		// Now test initial seek of assigned partitions.
+		latch.set(new CountDownLatch(2));
+		seekInitial.set(true);
+		container.start();
+		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
 		logger.info("Stop seek");
 	}
 

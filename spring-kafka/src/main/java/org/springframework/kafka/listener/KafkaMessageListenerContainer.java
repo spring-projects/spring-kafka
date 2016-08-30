@@ -54,6 +54,7 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
@@ -427,6 +428,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 									KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
 						}
 					}
+					if (ListenerConsumer.this.theListener instanceof ConsumerSeekAware) {
+						seeksAfterAssignments(partitions);
+					}
 					// We will not start the invoker thread if we are in autocommit mode,
 					// as we will execute synchronously then
 					// We will not start the invoker thread if the container is stopped
@@ -440,6 +444,23 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 
 			};
+		}
+
+		private void seeksAfterAssignments(Collection<TopicPartition> partitions) {
+			List<TopicPartitionCurrentOffset> current = new ArrayList<>();
+			for (TopicPartition topicPartition : partitions) {
+				current.add(new TopicPartitionCurrentOffset(topicPartition,
+						ListenerConsumer.this.consumer.position(topicPartition)));
+			}
+			((ConsumerSeekAware) ListenerConsumer.this.theListener).onPartionsAssigned(current,
+					new ConsumerSeekCallback() {
+
+				@Override
+				public void seek(String topic, int partition, long offset) {
+					ListenerConsumer.this.consumer.seek(new TopicPartition(topic, partition), offset);
+				}
+
+			});
 		}
 
 		private void validateErrorHandler(boolean batch) {

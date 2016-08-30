@@ -36,7 +36,8 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  */
-public class RetryingAcknowledgingMessageListenerAdapter<K, V> extends AbstractRetryingMessageListenerAdapter<K, V>
+public class RetryingAcknowledgingMessageListenerAdapter<K, V>
+		extends AbstractRetryingMessageListenerAdapter<K, V, AcknowledgingMessageListener<K, V>>
 		implements AcknowledgingMessageListener<K, V> {
 
 	private final AcknowledgingMessageListener<K, V> delegate;

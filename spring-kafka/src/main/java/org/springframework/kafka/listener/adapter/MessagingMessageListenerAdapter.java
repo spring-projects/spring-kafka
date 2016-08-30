@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -31,6 +32,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
@@ -112,6 +114,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
 		if (this.bean instanceof ConsumerSeekAware) {
 			((ConsumerSeekAware) bean).registerSeekCallback(callback);
+		}
+	}
+
+	@Override
+	public void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments, ConsumerSeekCallback callback) {
+		if (this.bean instanceof ConsumerSeekAware) {
+			((ConsumerSeekAware) bean).onPartionsAssigned(assignments, callback);
 		}
 	}
 
