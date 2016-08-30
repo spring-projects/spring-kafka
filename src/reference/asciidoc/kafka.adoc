@@ -571,6 +571,10 @@ CAUTION: If you wish to use the idle event to stop the lister container, you sho
 Instead, you should hand off the event to a different thread that can then stop the container.
 Also, you should not `stop()` the container instance in the event if it is a child container, you should stop the concurrent container instead.
 
+====== Current Positions when Idle
+
+Note that you can obtain the current positions when idle is detected by implementing `ConsumerSeekAware` in your listener; see `onIdleContainer()` in `<<seek>>.
+
 ===== Topic/Partition Initial Offset
 
 There are several ways to set the initial offset for a partition.
@@ -584,6 +588,7 @@ When using group management where the broker assigns partitions:
 - For an existing group id, the initial offset is the current offset for that group id.
 You can, however, seek to a specific offset during initialization (or at any time thereafter).
 
+[[seek]]
 ===== Seeking to a Specific Offset
 
 In order to seek, your listener must implement `ConsumerSeekAware` which has the following methods:
@@ -597,7 +602,7 @@ void onPartionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallb
 void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
 ----
 
-The first is called during initialization; this callback should be used when seeking at some arbitrary time after initialization.
+The first is called when the container is started; this callback should be used when seeking at some arbitrary time after initialization.
 You should save a reference to the callback; if you are using the same listener in multiple containers (or in a `ConcurrentMessageListenerContainer`) you should store the callback in a `ThreadLocal` or some other structure keyed by the listener `Thread`.
 
 When using group management, the second method is called when assignments change.
