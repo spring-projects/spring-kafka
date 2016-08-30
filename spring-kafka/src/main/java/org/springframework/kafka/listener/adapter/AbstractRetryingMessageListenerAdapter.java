@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
@@ -28,13 +25,12 @@ import org.springframework.util.Assert;
  *
  * @param <K> the key type.
  * @param <V> the value type.
+ * @param <T> the delegate type.
  *
  * @author Gary Russell
  *
  */
-public class AbstractRetryingMessageListenerAdapter<K, V> {
-
-	protected final Log logger = LogFactory.getLog(this.getClass());
+public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends AbstractMessageListenerAdapter<K, V, T> {
 
 	private final RetryTemplate retryTemplate;
 
@@ -43,20 +39,23 @@ public class AbstractRetryingMessageListenerAdapter<K, V> {
 	/**
 	 * Construct an instance with the supplied retry template. The exception will be
 	 * thrown to the container after retries are exhausted.
+	 * @param delegate the delegate listener.
 	 * @param retryTemplate the template.
 	 */
-	public AbstractRetryingMessageListenerAdapter(RetryTemplate retryTemplate) {
-		this(retryTemplate, null);
+	public AbstractRetryingMessageListenerAdapter(T delegate, RetryTemplate retryTemplate) {
+		this(delegate, retryTemplate, null);
 	}
 
 	/**
 	 * Construct an instance with the supplied template and callback.
+	 * @param delegate the delegate listener.
 	 * @param retryTemplate the template.
 	 * @param recoveryCallback the recovery callback; if null, the exception will be
 	 * thrown to the container after retries are exhausted.
 	 */
-	public AbstractRetryingMessageListenerAdapter(RetryTemplate retryTemplate,
+	public AbstractRetryingMessageListenerAdapter(T delegate, RetryTemplate retryTemplate,
 			RecoveryCallback<Void> recoveryCallback) {
+		super(delegate);
 		Assert.notNull(retryTemplate, "'retryTemplate' cannot be null");
 		this.retryTemplate = retryTemplate;
 		this.recoveryCallback = recoveryCallback;

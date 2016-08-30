@@ -33,7 +33,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -48,6 +50,8 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 
 import org.springframework.beans.DirectFieldAccessor;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -93,9 +97,13 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic10 = "testTopic10";
 
+	private static String topic11 = "testTopic11";
+
+	private static String topic12 = "testTopic12";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -802,6 +810,126 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		consumer.close();
 		logger.info("Stop batch listener errors");
+	}
+
+	@Test
+	public void testSeek() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
+		testSeekGuts(props, topic11);
+	}
+
+	@Test
+	public void testSeekAutoCommit() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
+		testSeekGuts(props, topic12);
+	}
+
+	private void testSeekGuts(Map<String, Object> props, String topic) throws Exception {
+		logger.info("Start seek " + topic);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic11);
+		final AtomicReference<CountDownLatch> latch = new AtomicReference<>(new CountDownLatch(6));
+		final AtomicBoolean seekInitial = new AtomicBoolean();
+		final CountDownLatch idleLatch = new CountDownLatch(1);
+		class Listener implements MessageListener<Integer, String>, ConsumerSeekAware {
+
+			private ConsumerSeekCallback callback;
+
+			private Thread registerThread;
+
+			private Thread messageThread;
+
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> data) {
+				messageThread = Thread.currentThread();
+				latch.get().countDown();
+				if (latch.get().getCount() == 2 && !seekInitial.get()) {
+					callback.seek(topic11, 0, 1);
+					callback.seek(topic11, 1, 1);
+				}
+			}
+
+			@Override
+			public void registerSeekCallback(ConsumerSeekCallback callback) {
+				this.callback = callback;
+				this.registerThread = Thread.currentThread();
+			}
+
+			@Override
+			public void onPartionsAssigned(Map<TopicPartition, Long> assignments,
+					ConsumerSeekCallback callback) {
+				if (seekInitial.get()) {
+					for (Entry<TopicPartition, Long> assignment : assignments.entrySet()) {
+						callback.seek(assignment.getKey().topic(), assignment.getKey().partition(),
+								assignment.getValue() - 1);
+					}
+				}
+			}
+
+			@Override
+			public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+				for (Entry<TopicPartition, Long> assignment : assignments.entrySet()) {
+					callback.seek(assignment.getKey().topic(), assignment.getKey().partition(),
+							assignment.getValue() - 1);
+				}
+				idleLatch.countDown();
+			}
+
+		}
+		Listener messageListener = new Listener();
+		containerProps.setMessageListener(messageListener);
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setAckOnError(false);
+		containerProps.setIdleEventInterval(60000L);
+
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
+				containerProps);
+		container.setBeanName("testRecordAcks");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic11);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 0, "qux");
+		template.flush();
+		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		assertThat(messageListener.registerThread).isSameAs(messageListener.messageThread);
+
+		// Now test initial seek of assigned partitions.
+		latch.set(new CountDownLatch(2));
+		seekInitial.set(true);
+		container.start();
+		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
+
+		// Now seek on idle
+		latch.set(new CountDownLatch(2));
+		seekInitial.set(true);
+		container.getContainerProperties().setIdleEventInterval(100L);
+		final AtomicBoolean idleEventPublished = new AtomicBoolean();
+		container.setApplicationEventPublisher(new ApplicationEventPublisher() {
+
+			@Override
+			public void publishEvent(Object event) {
+				// NOSONAR
+			}
+
+			@Override
+			public void publishEvent(ApplicationEvent event) {
+				idleEventPublished.set(true);
+			}
+
+		});
+		assertThat(idleLatch.await(60, TimeUnit.SECONDS));
+		assertThat(idleEventPublished.get()).isTrue();
+		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		logger.info("Stop seek");
 	}
 
 	private RetryTemplate buildRetry() {

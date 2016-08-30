@@ -36,7 +36,8 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  */
-public class RetryingAcknowledgingMessageListenerAdapter<K, V> extends AbstractRetryingMessageListenerAdapter<K, V>
+public class RetryingAcknowledgingMessageListenerAdapter<K, V>
+		extends AbstractRetryingMessageListenerAdapter<K, V, AcknowledgingMessageListener<K, V>>
 		implements AcknowledgingMessageListener<K, V> {
 
 	private final AcknowledgingMessageListener<K, V> delegate;
@@ -61,7 +62,7 @@ public class RetryingAcknowledgingMessageListenerAdapter<K, V> extends AbstractR
 	 */
 	public RetryingAcknowledgingMessageListenerAdapter(AcknowledgingMessageListener<K, V> messageListener,
 			RetryTemplate retryTemplate, RecoveryCallback<Void> recoveryCallback) {
-		super(retryTemplate, recoveryCallback);
+		super(messageListener, retryTemplate, recoveryCallback);
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
 		this.delegate = messageListener;
 	}

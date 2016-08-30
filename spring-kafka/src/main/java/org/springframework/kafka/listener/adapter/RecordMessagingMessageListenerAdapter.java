@@ -48,8 +48,8 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		implements MessageListener<K, V>, AcknowledgingMessageListener<K, V> {
 
 
-	public RecordMessagingMessageListenerAdapter(Method method) {
-		super(method);
+	public RecordMessagingMessageListenerAdapter(Object bean, Method method) {
+		super(bean, method);
 	}
 
 	/**

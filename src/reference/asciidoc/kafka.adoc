@@ -487,67 +487,6 @@ When using `@KafkaListener`, set the `RetryTemplate` (and optionally `recoveryCa
 
 A retry adapter is not provided for any of the batch <<message-listeners, message listeners>>.
 
-==== Serialization/Deserialization and Message Conversion
-
-Apache Kafka provides a high-level API for serializing/deserializing record values as well as their keys.
-It is present with the `org.apache.kafka.common.serialization.Serializer<T>` and
-`org.apache.kafka.common.serialization.Deserializer<T>` abstractions with some built-in implementations.
-Meanwhile we can specify simple (de)serializer classes using Producer and/or Consumer configuration properties, e.g.:
-[source, java]
-----
-props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
-props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-...
-props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
-props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-----
-for more complex or particular cases, the `KafkaConsumer`, and therefore `KafkaProducer`, provides overloaded
-constructors to accept `(De)Serializer` instances for `keys` and/or `values`, respectively.
-
-To meet this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties to allow
-to inject a custom `(De)Serializer` to target `Producer`/`Consumer`.
-
-For this purpose Spring for Apache Kafka also provides `JsonSerializer`/`JsonDeserializer` implementations based on the
-Jackson JSON processor.
-When `JsonSerializer` is pretty simple and just lets to write any Java object as a JSON `byte[]`, the `JsonDeserializer`
-requires an additional `Class<?> targetType` argument to allow to deserializer consumed `byte[]` to the proper target
-object.
-The `JsonDeserializer` can be extended to the particular generic type, when the last one is resolved at runtime,
-instead of compile-time additional `type` argument:
-[source, java]
-----
-JsonDeserializer<Bar> barDeserializer = new JsonDeserializer<>(Bar.class);
-...
-JsonDeserializer<Foo> fooDeserializer = new JsonDeserializer<Foo>() { };
-----
-Both `JsonSerializer` and `JsonDeserializer` can be customized with provided `ObjectMapper`.
-Plus you can extend them to implement some particular configuration logic in the
-`configure(Map<String, ?> configs, boolean isKey)` method.
-
-Although `Serializer`/`Deserializer` API is pretty simple and flexible from the low-level Kafka `Consumer` and
-`Producer` perspective, it is not enough on the Messaging level, where `KafkaTemplate` and `@KafkaListener` are present.
-To easy convert to/from `org.springframework.messaging.Message`, Spring for Apache Kafka provides `MessageConverter`
- abstraction with the `MessagingMessageConverter` implementation and its `StringJsonMessageConverter` customization.
-The `MessageConverter` can be injected into `KafkaTemplate` instance directly and via
-`AbstractKafkaListenerContainerFactory` bean definition for the `@KafkaListener.containerFactory()` property:
-[source, java]
-----
-@Bean
-public KafkaListenerContainerFactory<?> kafkaJsonListenerContainerFactory() {
-    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
-        new ConcurrentKafkaListenerContainerFactory<>();
-    factory.setConsumerFactory(consumerFactory());
-    factory.setMessageConverter(new StringJsonMessageConverter());
-    return factory;
-}
-...
-@KafkaListener(topics = "jsonData",
-                containerFactory = "kafkaJsonListenerContainerFactory")
-public void jsonListener(Foo foo) {
-...
-}
-----
-
 [[idle-containers]]
 ===== Detecting Idle Asynchronous Consumers
 
@@ -631,6 +570,119 @@ Hence we use `startsWith` in the condition.
 CAUTION: If you wish to use the idle event to stop the lister container, you should not call `container.stop()` on the thread that calls the listener - it will cause delays and unnecessary log messages.
 Instead, you should hand off the event to a different thread that can then stop the container.
 Also, you should not `stop()` the container instance in the event if it is a child container, you should stop the concurrent container instead.
+
+====== Current Positions when Idle
+
+Note that you can obtain the current positions when idle is detected by implementing `ConsumerSeekAware` in your listener; see `onIdleContainer()` in `<<seek>>.
+
+===== Topic/Partition Initial Offset
+
+There are several ways to set the initial offset for a partition.
+
+When manually assigning partitions, simply set the initial offset (if desired) in the configured `TopicPartitionInitialOffset` arguments (see <<message-listener-container>>).
+You can also seek to a specific offset at any time.
+
+When using group management where the broker assigns partitions:
+
+- For a new `group.id`, the initial offset is determined by the `auto.offset.reset` consumer property (`earliest` or `latest`).
+- For an existing group id, the initial offset is the current offset for that group id.
+You can, however, seek to a specific offset during initialization (or at any time thereafter).
+
+[[seek]]
+===== Seeking to a Specific Offset
+
+In order to seek, your listener must implement `ConsumerSeekAware` which has the following methods:
+
+[source, java]
+----
+void registerSeekCallback(ConsumerSeekCallback callback);
+
+void onPartionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
+
+void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
+----
+
+The first is called when the container is started; this callback should be used when seeking at some arbitrary time after initialization.
+You should save a reference to the callback; if you are using the same listener in multiple containers (or in a `ConcurrentMessageListenerContainer`) you should store the callback in a `ThreadLocal` or some other structure keyed by the listener `Thread`.
+
+When using group management, the second method is called when assignments change.
+You can use this method, for example, for setting initial offsets for the partitions, by calling the callback; you must use the callback argument, not the one passed into `registerSeekCallback`.
+This method will never be called if you explicitly assign partitions yourself; use the `TopicPartitionInitialOffset` in that case.
+
+The callback has one method:
+
+[source, java]
+----
+void seek(String topic, int partition, long offset);
+----
+
+You can also perform seek operations from `onIdleContainer()` when an idle container is detected; see <<idle-containers>> for how to enable idle container detection.
+
+To arbitrarily seek at runtime, use the callback reference from the `registerSeekCallback` for the appropriate thread.
+
+
+==== Serialization/Deserialization and Message Conversion
+
+Apache Kafka provides a high-level API for serializing/deserializing record values as well as their keys.
+It is present with the `org.apache.kafka.common.serialization.Serializer<T>` and
+`org.apache.kafka.common.serialization.Deserializer<T>` abstractions with some built-in implementations.
+Meanwhile we can specify simple (de)serializer classes using Producer and/or Consumer configuration properties, e.g.:
+
+[source, java]
+----
+props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
+props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+...
+props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+----
+
+for more complex or particular cases, the `KafkaConsumer`, and therefore `KafkaProducer`, provides overloaded
+constructors to accept `(De)Serializer` instances for `keys` and/or `values`, respectively.
+
+To meet this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties to allow
+to inject a custom `(De)Serializer` to target `Producer`/`Consumer`.
+
+For this purpose Spring for Apache Kafka also provides `JsonSerializer`/`JsonDeserializer` implementations based on the
+Jackson JSON processor.
+When `JsonSerializer` is pretty simple and just lets to write any Java object as a JSON `byte[]`, the `JsonDeserializer`
+requires an additional `Class<?> targetType` argument to allow to deserializer consumed `byte[]` to the proper target
+object.
+The `JsonDeserializer` can be extended to the particular generic type, when the last one is resolved at runtime,
+instead of compile-time additional `type` argument:
+
+[source, java]
+----
+JsonDeserializer<Bar> barDeserializer = new JsonDeserializer<>(Bar.class);
+----
+
+Both `JsonSerializer` and `JsonDeserializer` can be customized with provided `ObjectMapper`.
+Plus you can extend them to implement some particular configuration logic in the
+`configure(Map<String, ?> configs, boolean isKey)` method.
+
+Although `Serializer`/`Deserializer` API is pretty simple and flexible from the low-level Kafka `Consumer` and
+`Producer` perspective, it is not enough on the Messaging level, where `KafkaTemplate` and `@KafkaListener` are present.
+To easy convert to/from `org.springframework.messaging.Message`, Spring for Apache Kafka provides `MessageConverter`
+ abstraction with the `MessagingMessageConverter` implementation and its `StringJsonMessageConverter` customization.
+The `MessageConverter` can be injected into `KafkaTemplate` instance directly and via
+`AbstractKafkaListenerContainerFactory` bean definition for the `@KafkaListener.containerFactory()` property:
+[source, java]
+----
+@Bean
+public KafkaListenerContainerFactory<?> kafkaJsonListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(consumerFactory());
+    factory.setMessageConverter(new StringJsonMessageConverter());
+    return factory;
+}
+...
+@KafkaListener(topics = "jsonData",
+                containerFactory = "kafkaJsonListenerContainerFactory")
+public void jsonListener(Foo foo) {
+...
+}
+----
 
 ==== Log Compaction
 

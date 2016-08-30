@@ -61,8 +61,8 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	private BatchMessageConverter messageConverter = new BatchMessagingMessageConverter();
 
 
-	public BatchMessagingMessageListenerAdapter(Method method) {
-		super(method);
+	public BatchMessagingMessageListenerAdapter(Object bean, Method method) {
+		super(bean, method);
 	}
 
 	/**

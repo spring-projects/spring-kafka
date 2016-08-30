@@ -26,15 +26,17 @@ import org.springframework.util.Assert;
  *
  * @param <K> the key type.
  * @param <V> the value type.
+ * @param <T> the delegate type.
  *
  * @author Gary Russell
  *
  */
-public abstract class AbstractFilteringMessageListener<K, V> {
+public abstract class AbstractFilteringMessageListener<K, V, T> extends AbstractMessageListenerAdapter<K, V, T> {
 
 	private final RecordFilterStrategy<K, V> recordFilterStrategy;
 
-	protected AbstractFilteringMessageListener(RecordFilterStrategy<K, V> recordFilterStrategy) {
+	protected AbstractFilteringMessageListener(T delegate, RecordFilterStrategy<K, V> recordFilterStrategy) {
+		super(delegate);
 		Assert.notNull(recordFilterStrategy, "'recordFilterStrategy' cannot be null");
 		this.recordFilterStrategy = recordFilterStrategy;
 	}

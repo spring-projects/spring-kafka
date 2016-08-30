@@ -35,10 +35,9 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  *
  */
-public class RetryingMessageListenerAdapter<K, V> extends AbstractRetryingMessageListenerAdapter<K, V>
+public class RetryingMessageListenerAdapter<K, V>
+		extends AbstractRetryingMessageListenerAdapter<K, V, MessageListener<K, V>>
 		implements MessageListener<K, V> {
-
-	private final MessageListener<K, V> delegate;
 
 	/**
 	 * Construct an instance with the provided template and delegate. The exception will
@@ -59,9 +58,8 @@ public class RetryingMessageListenerAdapter<K, V> extends AbstractRetryingMessag
 	 */
 	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
 			RecoveryCallback<Void> recoveryCallback) {
-		super(retryTemplate, recoveryCallback);
+		super(messageListener, retryTemplate, recoveryCallback);
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
-		this.delegate = messageListener;
 	}
 
 	@Override

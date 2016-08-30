@@ -21,12 +21,15 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.MethodParameter;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
@@ -50,7 +53,9 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  *
  */
-public abstract class MessagingMessageListenerAdapter<K, V> {
+public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
+
+	private final Object bean;
 
 	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
 
@@ -65,7 +70,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> {
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
 
 
-	public MessagingMessageListenerAdapter(Method method) {
+	public MessagingMessageListenerAdapter(Object bean, Method method) {
+		this.bean = bean;
 		this.inferredType = determineInferredType(method);
 	}
 
@@ -102,6 +108,27 @@ public abstract class MessagingMessageListenerAdapter<K, V> {
 
 	protected boolean isMessageList() {
 		return this.isMessageList;
+	}
+
+	@Override
+	public void registerSeekCallback(ConsumerSeekCallback callback) {
+		if (this.bean instanceof ConsumerSeekAware) {
+			((ConsumerSeekAware) bean).registerSeekCallback(callback);
+		}
+	}
+
+	@Override
+	public void onPartionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		if (this.bean instanceof ConsumerSeekAware) {
+			((ConsumerSeekAware) bean).onPartionsAssigned(assignments, callback);
+		}
+	}
+
+	@Override
+	public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		if (this.bean instanceof ConsumerSeekAware) {
+			((ConsumerSeekAware) bean).onIdleContainer(assignments, callback);
+		}
 	}
 
 	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {

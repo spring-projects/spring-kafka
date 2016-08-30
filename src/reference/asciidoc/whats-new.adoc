@@ -14,4 +14,11 @@ Null payloads are used to "delete" keys when using log compaction.
 
 ==== Initial Offset
 
-You can now configure the initial offset relative to the current position for the consumer group, rather than absolute or relative to the current end.
+When explicitly assigning partitions, you can now configure the initial offset relative to the current position for the consumer group, rather than absolute or relative to the current end.
+
+==== Seek
+
+You can now seek the position of each topic/partition.
+This can be used to set the initial position during initialization when group management is in use and Kafka assigns the partitions.
+You can also seek when an idle container is detected, or at any arbitrary point in your application's execution.
+See <<seek>> for more information.

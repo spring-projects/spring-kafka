@@ -33,10 +33,9 @@ import org.springframework.kafka.listener.BatchMessageListener;
  * @author Gary Russell
  *
  */
-public class FilteringBatchMessageListenerAdapter<K, V> extends AbstractFilteringMessageListener<K, V>
+public class FilteringBatchMessageListenerAdapter<K, V>
+		extends AbstractFilteringMessageListener<K, V, BatchMessageListener<K, V>>
 		implements BatchMessageListener<K, V> {
-
-	private final BatchMessageListener<K, V> delegate;
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
@@ -45,8 +44,7 @@ public class FilteringBatchMessageListenerAdapter<K, V> extends AbstractFilterin
 	 */
 	public FilteringBatchMessageListenerAdapter(BatchMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
-		super(recordFilterStrategy);
-		this.delegate = delegate;
+		super(delegate, recordFilterStrategy);
 	}
 
 	@Override

@@ -50,6 +50,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
@@ -500,11 +501,13 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	static class Listener {
+	static class Listener implements ConsumerSeekAware {
+
+		private final ThreadLocal<ConsumerSeekCallback> seekCallBack = new ThreadLocal<>();
 
 		private final CountDownLatch latch1 = new CountDownLatch(1);
 
-		private final CountDownLatch latch2 = new CountDownLatch(1);
+		private final CountDownLatch latch2 = new CountDownLatch(2); // seek
 
 		private final CountDownLatch latch3 = new CountDownLatch(1);
 
@@ -577,6 +580,9 @@ public class EnableKafkaIntegrationTests {
 			this.partition = partition;
 			this.topic = topic;
 			this.latch2.countDown();
+			if (this.latch2.getCount() > 0) {
+				this.seekCallBack.get().seek(topic, partition, 0);
+			}
 		}
 
 		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "${topicThree:annotated3}",
@@ -679,6 +685,23 @@ public class EnableKafkaIntegrationTests {
 			this.payload = list;
 			this.ack = ack;
 			this.latch15.countDown();
+		}
+
+		@Override
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			this.seekCallBack.set(callback);
+		}
+
+		@Override
+		public void onPartionsAssigned(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
+				ConsumerSeekCallback callback) {
+			// NOSONAR
+		}
+
+		@Override
+		public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
+				ConsumerSeekCallback callback) {
+			// NOSONAR
 		}
 
 	}

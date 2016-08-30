@@ -30,10 +30,8 @@ import org.springframework.kafka.listener.MessageListener;
  * @author Gary Russell
  *
  */
-public class FilteringMessageListenerAdapter<K, V> extends AbstractFilteringMessageListener<K, V>
+public class FilteringMessageListenerAdapter<K, V> extends AbstractFilteringMessageListener<K, V, MessageListener<K, V>>
 		implements MessageListener<K, V> {
-
-	private final MessageListener<K, V> delegate;
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
@@ -42,8 +40,7 @@ public class FilteringMessageListenerAdapter<K, V> extends AbstractFilteringMess
 	 */
 	public FilteringMessageListenerAdapter(MessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
-		super(recordFilterStrategy);
-		this.delegate = delegate;
+		super(delegate, recordFilterStrategy);
 	}
 
 	@Override
