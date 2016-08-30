@@ -60,7 +60,6 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
-import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -694,7 +693,13 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Override
-		public void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments,
+		public void onPartionsAssigned(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
+				ConsumerSeekCallback callback) {
+			// NOSONAR
+		}
+
+		@Override
+		public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
 				ConsumerSeekCallback callback) {
 			// NOSONAR
 		}

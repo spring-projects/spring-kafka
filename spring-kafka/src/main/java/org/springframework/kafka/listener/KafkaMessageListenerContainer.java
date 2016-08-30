@@ -46,7 +46,6 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -54,7 +53,6 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
@@ -214,6 +212,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 	}
 
+	private void publishIdleContainerEvent(long idleTime) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(
+					KafkaMessageListenerContainer.this, idleTime, getBeanName(), getAssignedPartitions()));
+		}
+	}
 
 	@Override
 	public String toString() {
@@ -267,8 +271,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
 		private final BlockingQueue<TopicPartitionInitialOffset> seeks = new LinkedBlockingQueue<>();
-
-		private final ApplicationEventPublisher applicationEventPublisher = getApplicationEventPublisher();
 
 		private final ErrorHandler errorHandler;
 
@@ -429,7 +431,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 					}
 					if (ListenerConsumer.this.theListener instanceof ConsumerSeekAware) {
-						seeksAfterAssignments(partitions);
+						seekPartitions(partitions, false);
 					}
 					// We will not start the invoker thread if we are in autocommit mode,
 					// as we will execute synchronously then
@@ -446,21 +448,25 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			};
 		}
 
-		private void seeksAfterAssignments(Collection<TopicPartition> partitions) {
-			List<TopicPartitionCurrentOffset> current = new ArrayList<>();
+		private void seekPartitions(Collection<TopicPartition> partitions, boolean idle) {
+			Map<TopicPartition, Long> current = new HashMap<>();
 			for (TopicPartition topicPartition : partitions) {
-				current.add(new TopicPartitionCurrentOffset(topicPartition,
-						ListenerConsumer.this.consumer.position(topicPartition)));
+				current.put(topicPartition,	ListenerConsumer.this.consumer.position(topicPartition));
 			}
-			((ConsumerSeekAware) ListenerConsumer.this.theListener).onPartionsAssigned(current,
-					new ConsumerSeekCallback() {
+			ConsumerSeekCallback callback = new ConsumerSeekCallback() {
 
 				@Override
 				public void seek(String topic, int partition, long offset) {
 					ListenerConsumer.this.consumer.seek(new TopicPartition(topic, partition), offset);
 				}
 
-			});
+			};
+			if (idle) {
+				((ConsumerSeekAware) ListenerConsumer.this.theListener).onIdleContainer(current, callback);
+			}
+			else {
+				((ConsumerSeekAware) ListenerConsumer.this.theListener).onPartionsAssigned(current, callback);
+			}
 		}
 
 		private void validateErrorHandler(boolean batch) {
@@ -555,6 +561,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 									&& now > lastAlertAt + this.containerProperties.getIdleEventInterval()) {
 								publishIdleContainerEvent(now - lastReceive);
 								lastAlertAt = now;
+								if (this.theListener instanceof ConsumerSeekAware) {
+									seekPartitions(getAssignedPartitions(), true);
+								}
 							}
 						}
 					}
@@ -587,12 +596,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void publishIdleContainerEvent(long idleTime) {
-			if (this.applicationEventPublisher != null) {
-				this.applicationEventPublisher.publishEvent(new ListenerContainerIdleEvent(
-						KafkaMessageListenerContainer.this, idleTime, getBeanName(), getAssignedPartitions()));
-			}
-		}
 
 		private void stopInvokerAndCommitManualAcks() {
 			long now = System.currentTimeMillis();

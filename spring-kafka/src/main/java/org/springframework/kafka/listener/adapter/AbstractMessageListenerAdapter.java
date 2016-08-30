@@ -16,13 +16,13 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import java.util.Collection;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConsumerSeekAware;
-import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 
 /**
  * Top level class for all listener adapters.
@@ -61,9 +61,16 @@ public abstract class AbstractMessageListenerAdapter<K, V, T> implements Consume
 	}
 
 	@Override
-	public void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments, ConsumerSeekCallback callback) {
+	public void onPartionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 		if (this.seekAware != null) {
 			this.seekAware.onPartionsAssigned(assignments, callback);
+		}
+	}
+
+	@Override
+	public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		if (this.seekAware != null) {
+			this.seekAware.onIdleContainer(assignments, callback);
 		}
 	}
 

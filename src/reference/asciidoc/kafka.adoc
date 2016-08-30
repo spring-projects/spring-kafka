@@ -528,7 +528,7 @@ public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 
 In each of these cases, an event will be published once per minute while the container is idle.
 
-===== Event Consumption
+====== Event Consumption
 
 You can capture these events by implementing `ApplicationListener` - either a general listener, or one narrowed to only receive this specific event.
 You can also use `@EventListener`, introduced in Spring Framework 4.2.
@@ -592,7 +592,9 @@ In order to seek, your listener must implement `ConsumerSeekAware` which has the
 ----
 void registerSeekCallback(ConsumerSeekCallback callback);
 
-void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments, ConsumerSeekCallback callback);
+void onPartionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
+
+void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
 ----
 
 The first is called during initialization; this callback should be used when seeking at some arbitrary time after initialization.
@@ -608,6 +610,8 @@ The callback has one method:
 ----
 void seek(String topic, int partition, long offset);
 ----
+
+You can also perform seek operations from `onIdleContainer()` when an idle container is detected; see <<idle-containers>> for how to enable idle container detection.
 
 To arbitrarily seek at runtime, use the callback reference from the `registerSeekCallback` for the appropriate thread.
 

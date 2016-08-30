@@ -27,7 +27,6 @@ import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,6 +50,8 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 
 import org.springframework.beans.DirectFieldAccessor;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -58,7 +59,6 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
-import org.springframework.kafka.support.TopicPartitionCurrentOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -830,6 +830,7 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic11);
 		final AtomicReference<CountDownLatch> latch = new AtomicReference<>(new CountDownLatch(6));
 		final AtomicBoolean seekInitial = new AtomicBoolean();
+		final CountDownLatch idleLatch = new CountDownLatch(1);
 		class Listener implements MessageListener<Integer, String>, ConsumerSeekAware {
 
 			private ConsumerSeekCallback callback;
@@ -855,13 +856,23 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 			@Override
-			public void onPartionsAssigned(Collection<TopicPartitionCurrentOffset> assignments,
+			public void onPartionsAssigned(Map<TopicPartition, Long> assignments,
 					ConsumerSeekCallback callback) {
 				if (seekInitial.get()) {
-					for (TopicPartitionCurrentOffset assignment : assignments) {
-						callback.seek(assignment.topic(), assignment.partition(), assignment.currentOffset() - 1);
+					for (Entry<TopicPartition, Long> assignment : assignments.entrySet()) {
+						callback.seek(assignment.getKey().topic(), assignment.getKey().partition(),
+								assignment.getValue() - 1);
 					}
 				}
+			}
+
+			@Override
+			public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+				for (Entry<TopicPartition, Long> assignment : assignments.entrySet()) {
+					callback.seek(assignment.getKey().topic(), assignment.getKey().partition(),
+							assignment.getValue() - 1);
+				}
+				idleLatch.countDown();
 			}
 
 		}
@@ -870,6 +881,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setAckOnError(false);
+		containerProps.setIdleEventInterval(60000L);
 
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProps);
@@ -894,8 +906,29 @@ public class KafkaMessageListenerContainerTests {
 		seekInitial.set(true);
 		container.start();
 		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
-		container.stop();
 
+		// Now seek on idle
+		latch.set(new CountDownLatch(2));
+		seekInitial.set(true);
+		container.getContainerProperties().setIdleEventInterval(100L);
+		final AtomicBoolean idleEventPublished = new AtomicBoolean();
+		container.setApplicationEventPublisher(new ApplicationEventPublisher() {
+
+			@Override
+			public void publishEvent(Object event) {
+				// NOSONAR
+			}
+
+			@Override
+			public void publishEvent(ApplicationEvent event) {
+				idleEventPublished.set(true);
+			}
+
+		});
+		assertThat(idleLatch.await(60, TimeUnit.SECONDS));
+		assertThat(idleEventPublished.get()).isTrue();
+		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
 		logger.info("Stop seek");
 	}
 
