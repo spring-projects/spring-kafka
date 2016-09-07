@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 import org.apache.commons.logging.Log;
@@ -24,6 +26,9 @@ import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.PartitionInfo;
 
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
@@ -32,7 +37,6 @@ import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -174,10 +178,25 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return doSend((ProducerRecord<K, V>) producerRecord);
 	}
 
+
+	@Override
+	public List<PartitionInfo> partitionsFor(String topic) {
+		return getTheProducer().partitionsFor(topic);
+	}
+
+	@Override
+	public Map<MetricName, ? extends Metric> metrics() {
+		return getTheProducer().metrics();
+	}
+
+	@Override
+	public <T> T execute(ProducerCallback<K, V, T> callback) {
+		return callback.doInKafka(getTheProducer());
+	}
+
 	@Override
 	public void flush() {
-		Assert.state(this.producer != null, "'producer' must not be null for flushing.");
-		this.producer.flush();
+		getTheProducer().flush();
 	}
 
 	/**
@@ -186,18 +205,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
 	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
-		if (this.producer == null) {
-			synchronized (this) {
-				if (this.producer == null) {
-					this.producer = this.producerFactory.createProducer();
-				}
-			}
-		}
+		getTheProducer();
 		if (this.logger.isTraceEnabled()) {
 			this.logger.trace("Sending: " + producerRecord);
 		}
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
-		this.producer.send(producerRecord, new Callback() {
+		getTheProducer().send(producerRecord, new Callback() {
 
 			@Override
 			public void onCompletion(RecordMetadata metadata, Exception exception) {
@@ -226,6 +239,17 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			this.logger.trace("Sent: " + producerRecord);
 		}
 		return future;
+	}
+
+	private Producer<K, V> getTheProducer() {
+		if (this.producer == null) {
+			synchronized (this) {
+				if (this.producer == null) {
+					this.producer = this.producerFactory.createProducer();
+				}
+			}
+		}
+		return this.producer;
 	}
 
 }

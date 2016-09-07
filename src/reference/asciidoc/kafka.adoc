@@ -27,12 +27,28 @@ ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V da
 
 ListenableFuture<SendResult<K, V>> send(Message<?> message);
 
+Map<MetricName, ? extends Metric> metrics();
+
+List<PartitionInfo> partitionsFor(String topic);
+
+<T> T execute(ProducerCallback<K, V, T> callback);
+
 // Flush the producer.
 
 void flush();
+
+public interface ProducerCallback<K, V, T> {
+
+    T doInKafka(Producer<K, V> producer);
+
+}
+
 ----
 
 The first 3 methods require that a default topic has been provided to the template.
+
+The `metrics` and `partitionsFor` methods simply delegate to the same methods on the underlying `Producer`.
+The `execute` method provides direct access to the underlying `Producer`.
 
 To use the template, configure a producer factory and provide it in the template's constructor:
 

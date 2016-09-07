@@ -16,6 +16,14 @@
 
 package org.springframework.kafka.core;
 
+import java.util.List;
+import java.util.Map;
+
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.PartitionInfo;
+
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -103,8 +111,45 @@ public interface KafkaOperations<K, V> {
 	ListenableFuture<SendResult<K, V>> send(Message<?> message);
 
 	/**
+	 * See {@link Producer#partitionsFor(String)}.
+	 * @param topic the topic.
+	 * @return the partition info.
+	 * @since 1.1
+	 */
+	List<PartitionInfo> partitionsFor(String topic);
+
+	/**
+	 * See {@link Producer#metrics()}.
+	 * @return the metrics.
+	 * @since 1.1
+	 */
+	Map<MetricName, ? extends Metric> metrics();
+
+	/**
+	 * Execute some arbitrary operation(s) on the producer and return the result.
+	 * @param callback the callback.
+	 * @param <T> the result type.
+	 * @return the result.
+	 * @since 1.1
+	 */
+	<T> T execute(ProducerCallback<K, V, T> callback);
+
+	/**
 	 * Flush the producer.
 	 */
 	void flush();
+
+	/**
+	 * A callback for executing arbitrary operations on the {@link Producer}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param <T> the return type.
+	 * @since 1.1
+	 */
+	public interface ProducerCallback<K, V, T> {
+
+		T doInKafka(Producer<K, V> producer);
+
+	}
 
 }
