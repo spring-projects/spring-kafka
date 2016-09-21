@@ -717,8 +717,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (recordList.size() > 0) {
 				try {
 					if (this.batchAcknowledgingMessageListener != null) {
-						this.batchAcknowledgingMessageListener.onMessage(recordList,
-								new ConsumerBatchAcknowledgment(recordList, this.isManualImmediateAck));
+						this.batchAcknowledgingMessageListener.onMessage(recordList, this.isAnyManualAck
+								? new ConsumerBatchAcknowledgment(recordList, this.isManualImmediateAck) : null);
 					}
 					else {
 						this.batchListener.onMessage(recordList);
@@ -758,8 +758,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				try {
 					if (this.acknowledgingMessageListener != null) {
-						this.acknowledgingMessageListener.onMessage(record,
-								new ConsumerAcknowledgment(record, this.isManualImmediateAck));
+						this.acknowledgingMessageListener.onMessage(record, this.isAnyManualAck
+								? new ConsumerAcknowledgment(record, this.isManualImmediateAck) : null);
 					}
 					else {
 						this.listener.onMessage(record);
