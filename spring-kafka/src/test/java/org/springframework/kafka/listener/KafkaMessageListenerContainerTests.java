@@ -63,6 +63,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
@@ -125,7 +126,8 @@ public class KafkaMessageListenerContainerTests {
 
 		final CountDownLatch latch = new CountDownLatch(6);
 		final BitSet bitSet = new BitSet(6);
-		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+		final AtomicReference<Acknowledgment> ackNull = new AtomicReference<>();
+		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
 			logger.info("slow1: " + message);
 			bitSet.set((int) (message.partition() * 3 + message.offset()));
 			try {
@@ -134,6 +136,7 @@ public class KafkaMessageListenerContainerTests {
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
+			ackNull.set(ack);
 			latch.countDown();
 		});
 		containerProps.setPauseAfter(100);
@@ -160,6 +163,7 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(2, "buz");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(ackNull.get()).isNull();
 		assertThat(bitSet.cardinality()).isEqualTo(6);
 		verify(consumer, atLeastOnce()).pause(anyObject());
 		verify(consumer, atLeastOnce()).resume(anyObject());

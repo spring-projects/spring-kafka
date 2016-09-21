@@ -227,7 +227,6 @@ public class EnableKafkaIntegrationTests {
 				.build());
 		assertThat(this.listener.latch6.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
-		assertThat(this.listener.ack).isNotNull();
 	}
 
 	@Test
@@ -375,6 +374,17 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
+			factory.setBatchListener(true);
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> batchManualFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(manualConsumerFactory());
+			ContainerProperties props = factory.getContainerProperties();
+			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			factory.setBatchListener(true);
 			return factory;
 		}
@@ -617,9 +627,8 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory")
-		public void listen6(Foo foo, Acknowledgment ack) {
+		public void listen6(Foo foo) {
 			this.foo = foo;
-			this.ack = ack;
 			this.latch6.countDown();
 		}
 
@@ -667,10 +676,11 @@ public class EnableKafkaIntegrationTests {
 			this.latch12.countDown();
 		}
 
-		@KafkaListener(id = "list4", topics = "annotated17", containerFactory = "batchFactory")
+		@KafkaListener(id = "list4", topics = "annotated17", containerFactory = "batchManualFactory")
 		public void listen13(List<ConsumerRecord<Integer, String>> list, Acknowledgment ack) {
 			this.payload = list;
 			this.ack = ack;
+			ack.acknowledge();
 			this.latch13.countDown();
 		}
 
@@ -680,10 +690,11 @@ public class EnableKafkaIntegrationTests {
 			this.latch14.countDown();
 		}
 
-		@KafkaListener(id = "list6", topics = "annotated19", containerFactory = "batchFactory")
+		@KafkaListener(id = "list6", topics = "annotated19", containerFactory = "batchManualFactory")
 		public void listen15(List<Message<?>> list, Acknowledgment ack) {
 			this.payload = list;
 			this.ack = ack;
+			ack.acknowledge();
 			this.latch15.countDown();
 		}
 
