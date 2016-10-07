@@ -292,7 +292,7 @@ NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `Acknowledg
 
 The `commitSync()` or `commitAsync()` method on the consumer is used, depending on the `syncCommits` container property.
 
-The `Acknowdledgment` has this method:
+The `Acknowledgment` has this method:
 
 [source, java]
 ----
@@ -321,33 +321,38 @@ public class Listener {
 }
 ----
 
-This mechanism requires a listener container factory, which is used to configure the underlying
+This mechanism requires an `@EnableKafka` on one of your `@Configuration` classes and a listener container factory, which is used to configure the underlying
 `ConcurrentMessageListenerContainer`: by default, a bean with name `kafkaListenerContainerFactory` is expected.
 
 [source, java]
 ----
-@Bean
-KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-                    kafkaListenerContainerFactory() {
-    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
-                            new ConcurrentKafkaListenerContainerFactory<>();
-    factory.setConsumerFactory(consumerFactory());
-    factory.setConcurrency(3);
-    factory.getContainerProperties().setPollTimeout(3000);
-    return factory;
-}
+@Configuration
+@EnableKafka
+public class KafkaConfig {
 
-@Bean
-public ConsumerFactory<Integer, String> consumerFactory() {
-    return new DefaultKafkaConsumerFactory<>(consumerConfigs());
-}
+    @Bean
+    KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+                        kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+                                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        factory.setConcurrency(3);
+        factory.getContainerProperties().setPollTimeout(3000);
+        return factory;
+    }
 
-@Bean
-public Map<String, Object> consumerConfigs() {
-    Map<String, Object> props = new HashMap<>();
-    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
-    ...
-    return props;
+    @Bean
+    public ConsumerFactory<Integer, String> consumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+    }
+
+    @Bean
+    public Map<String, Object> consumerConfigs() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
+        ...
+        return props;
+    }
 }
 ----
 
