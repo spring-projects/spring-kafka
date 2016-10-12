@@ -129,7 +129,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 	}
 
 	@Override
-	protected void before() throws Exception { //NOSONAR
+	public void before() throws Exception { //NOSONAR
 		startZookeeper();
 		int zkConnectionTimeout = 6000;
 		int zkSessionTimeout = 6000;
@@ -163,7 +163,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 	}
 
 	@Override
-	protected void after() {
+	public void after() {
 		System.getProperties().remove(SPRING_EMBEDDED_KAFKA_BROKERS);
 		for (KafkaServer kafkaServer : this.kafkaServers) {
 			try {
