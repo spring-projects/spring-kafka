@@ -17,7 +17,7 @@
 package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -92,10 +92,17 @@ public class JsonSerializationTests {
 	 */
 	@Test
 	public void testDeserializeSerializedDummyException() {
-		assertThatExceptionOfType(SerializationException.class)
-				.isThrownBy(() -> jsonReader.deserialize(topic, stringWriter.serialize(topic, "dummy")))
-				.withMessageStartingWith("Can't deserialize data [")
-				.withCauseExactlyInstanceOf(JsonParseException.class);
+		try {
+			jsonReader.deserialize(topic, stringWriter.serialize(topic, "dummy"));
+			fail("Expected SerializationException");
+		}
+		catch (SerializationException e) {
+			assertThat(e.getMessage()).startsWith("Can't deserialize data [");
+			assertThat(e.getCause()).isInstanceOf(JsonParseException.class);
+		}
+		catch (Exception e) {
+			fail("Expected SerializationException, not " + e.getClass());
+		}
 	}
 
 	@Test

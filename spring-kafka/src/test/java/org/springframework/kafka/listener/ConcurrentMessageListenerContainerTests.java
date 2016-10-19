@@ -128,7 +128,9 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "qux");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(listenerThreadNames).allMatch(threadName -> threadName.contains("-consumer-"));
+		for (String threadName : listenerThreadNames) {
+			assertThat(threadName).contains("-consumer-");
+		}
 		@SuppressWarnings("unchecked")
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
@@ -193,7 +195,9 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(rebalancePartitionsAssignedLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(rebalancePartitionsRevokedLatch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(listenerThreadNames).allMatch(threadName -> threadName.contains("-consumer-"));
+		for (String threadName : listenerThreadNames) {
+			assertThat(threadName).contains("-consumer-");
+		}
 		container.stop();
 		this.logger.info("Stop auto");
 	}
@@ -231,7 +235,9 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "qux");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(listenerThreadNames).allMatch(threadName -> threadName.contains("-listener-"));
+		for (String threadName : listenerThreadNames) {
+			assertThat(threadName).contains("-listener-");
+		}
 		container.stop();
 		this.logger.info("Stop manual");
 	}
