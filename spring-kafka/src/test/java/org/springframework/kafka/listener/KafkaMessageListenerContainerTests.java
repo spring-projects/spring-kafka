@@ -571,7 +571,7 @@ public class KafkaMessageListenerContainerTests {
 		});
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.BATCH);
-		containerProps.setPollTimeout(10000);
+		containerProps.setPollTimeout(1000);
 		containerProps.setAckOnError(false);
 
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
@@ -640,7 +640,7 @@ public class KafkaMessageListenerContainerTests {
 		});
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.BATCH);
-		containerProps.setPollTimeout(10000);
+		containerProps.setPollTimeout(1000);
 		containerProps.setAckOnError(false);
 
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
