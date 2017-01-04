@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package adapter;
+package org.springframework.kafka.adapter;
 
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;

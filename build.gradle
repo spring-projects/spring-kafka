@@ -4,7 +4,7 @@ buildscript {
 	}
 	dependencies {
 		classpath 'io.spring.gradle:dependency-management-plugin:0.6.1.RELEASE'
-		classpath 'io.spring.gradle:spring-io-plugin:0.0.5.RELEASE'
+		classpath 'io.spring.gradle:spring-io-plugin:0.0.6.RELEASE'
 		classpath 'io.spring.gradle:docbook-reference-plugin:0.3.1'
 		classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.0'
 	}
@@ -76,17 +76,17 @@ subprojects { subproject ->
 	}
 
 	ext {
-		assertjVersion = '2.5.0'
+		assertjVersion = '2.6.0'
 		hamcrestVersion = '1.3'
 		jacksonVersion = '2.6.7'
 		junitVersion = '4.12'
-		kafkaVersion = '0.10.1.0'
+		kafkaVersion = '0.10.1.1'
 		log4jVersion = '1.2.17'
 		mockitoVersion = '1.10.19'
 		scalaVersion = '2.11'
 		slf4jVersion = '1.7.21'
 		springRetryVersion = '1.1.3.RELEASE'
-		springVersion = '4.3.4.RELEASE'
+		springVersion = '4.3.5.RELEASE'
 
 		idPrefix = 'kafka'
 
@@ -95,7 +95,7 @@ subprojects { subproject ->
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 	jacoco {
-		toolVersion = '0.7.7.201606060606'
+		toolVersion = '0.7.8'
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -158,8 +158,6 @@ project ('spring-kafka') {
 		testCompile project (":spring-kafka-test")
 		testCompile "org.assertj:assertj-core:$assertjVersion"
 		testCompile "org.springframework:spring-tx:$springVersion"
-
-		testCompile "org.springframework.integration:spring-integration-test:4.3.1.RELEASE"
 
 		testRuntime "org.slf4j:slf4j-log4j12:$slf4jVersion"
 	}
