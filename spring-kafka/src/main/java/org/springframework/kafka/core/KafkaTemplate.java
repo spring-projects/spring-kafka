@@ -179,22 +179,46 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	@Override
 	public List<PartitionInfo> partitionsFor(String topic) {
-		return getTheProducer().partitionsFor(topic);
+		Producer<K, V> producer = getTheProducer();
+		try {
+			return producer.partitionsFor(topic);
+		}
+		finally {
+			producer.close();
+		}
 	}
 
 	@Override
 	public Map<MetricName, ? extends Metric> metrics() {
-		return getTheProducer().metrics();
+		Producer<K, V> producer = getTheProducer();
+		try {
+			return producer.metrics();
+		}
+		finally {
+			producer.close();
+		}
 	}
 
 	@Override
 	public <T> T execute(ProducerCallback<K, V, T> callback) {
-		return callback.doInKafka(getTheProducer());
+		Producer<K, V> producer = getTheProducer();
+		try {
+			return callback.doInKafka(producer);
+		}
+		finally {
+			producer.close();
+		}
 	}
 
 	@Override
 	public void flush() {
-		getTheProducer().flush();
+		Producer<K, V> producer = getTheProducer();
+		try {
+			producer.flush();
+		}
+		finally {
+			producer.close();
+		}
 	}
 
 	/**
@@ -203,29 +227,37 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
 	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
-		getTheProducer();
+		final Producer<K, V> producer = getTheProducer();
 		if (this.logger.isTraceEnabled()) {
 			this.logger.trace("Sending: " + producerRecord);
 		}
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
-		getTheProducer().send(producerRecord, new Callback() {
+		producer.send(producerRecord, new Callback() {
 
 			@Override
 			public void onCompletion(RecordMetadata metadata, Exception exception) {
-				if (exception == null) {
-					future.set(new SendResult<>(producerRecord, metadata));
-					if (KafkaTemplate.this.producerListener != null
-							&& KafkaTemplate.this.producerListener.isInterestedInSuccess()) {
-						KafkaTemplate.this.producerListener.onSuccess(producerRecord.topic(),
-								producerRecord.partition(), producerRecord.key(), producerRecord.value(), metadata);
+				try {
+					if (exception == null) {
+						future.set(new SendResult<>(producerRecord, metadata));
+						if (KafkaTemplate.this.producerListener != null
+								&& KafkaTemplate.this.producerListener.isInterestedInSuccess()) {
+							KafkaTemplate.this.producerListener.onSuccess(producerRecord.topic(),
+									producerRecord.partition(), producerRecord.key(), producerRecord.value(), metadata);
+						}
+					}
+					else {
+						future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
+						if (KafkaTemplate.this.producerListener != null) {
+							KafkaTemplate.this.producerListener.onError(producerRecord.topic(),
+									producerRecord.partition(),
+									producerRecord.key(),
+									producerRecord.value(),
+									exception);
+						}
 					}
 				}
-				else {
-					future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
-					if (KafkaTemplate.this.producerListener != null) {
-						KafkaTemplate.this.producerListener.onError(producerRecord.topic(),
-								producerRecord.partition(), producerRecord.key(), producerRecord.value(), exception);
-					}
+				finally {
+					producer.close();
 				}
 			}
 
