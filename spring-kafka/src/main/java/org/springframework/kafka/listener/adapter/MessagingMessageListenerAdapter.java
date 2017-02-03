@@ -210,7 +210,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		Type genericParameterType = null;
 		boolean hasAck = false;
 
-		for (int i = 0; i < method.getParameterTypes().length; i++) {
+		for (int i = 0; i < method.getParameterCount(); i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
 			/*
 			 * We're looking for a single non-annotated parameter, or one annotated with @Payload.
@@ -251,11 +251,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				hasAck = true;
 			}
 		}
-		Assert.state(!this.isConsumerRecordList || method.getParameterTypes().length == 1
+		Assert.state(!this.isConsumerRecordList || method.getParameterCount() == 1
 					|| (method.getGenericParameterTypes().length == 2 && hasAck),
 				"A parameter of type 'List<ConsumerRecord>' must be the only parameter "
 				+ "(except for an optional 'Acknowledgment')");
-		Assert.state(!this.isMessageList || method.getParameterTypes().length == 1
+		Assert.state(!this.isMessageList || method.getParameterCount() == 1
 				|| (method.getGenericParameterTypes().length == 2 && hasAck),
 			"A parameter of type 'List<Message<?>>' must be the only parameter "
 			+ "(except for an optional 'Acknowledgment')");
