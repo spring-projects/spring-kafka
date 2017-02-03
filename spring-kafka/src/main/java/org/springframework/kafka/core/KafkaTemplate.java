@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Igor Stepanov
+ * @author Artem Bilan
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
@@ -59,8 +60,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	private final boolean autoFlush;
 
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
-
-	private volatile Producer<K, V> producer;
 
 	private volatile String defaultTopic;
 
@@ -241,14 +240,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	private Producer<K, V> getTheProducer() {
-		if (this.producer == null) {
-			synchronized (this) {
-				if (this.producer == null) {
-					this.producer = this.producerFactory.createProducer();
-				}
-			}
-		}
-		return this.producer;
+		return this.producerFactory.createProducer();
 	}
 
 }
