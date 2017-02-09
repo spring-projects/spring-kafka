@@ -30,6 +30,9 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.util.Assert;
 
 /**
+ * An {@link AbstractFactoryBean} for the {@link KStreamBuilder} instance
+ * and lifecycle control for the internal {@link KafkaStreams} instance.
+ *
  * @author Artem Bilan
  *
  * @since 2.0
