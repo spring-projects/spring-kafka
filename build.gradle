@@ -146,6 +146,12 @@ project ('spring-kafka') {
 		compile ("org.apache.kafka:kafka-clients:$kafkaVersion") {
 			exclude group: 'org.slf4j', module: 'slf4j-api'
 		}
+		compile ("org.apache.kafka:kafka-streams:$kafkaVersion") {
+			optional it
+			exclude group: 'org.slf4j', module: 'slf4j-api'
+			exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+		}
+
 		compile ("com.fasterxml.jackson.core:jackson-core:$jacksonVersion", optional)
 		compile ("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion", optional)
 
