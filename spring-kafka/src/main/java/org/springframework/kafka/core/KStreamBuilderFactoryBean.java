@@ -99,7 +99,6 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 			try {
 				this.kafkaStreams = new KafkaStreams(getObject(), this.streamsConfig, this.clientSupplier);
 				this.kafkaStreams.start();
-				this.kafkaStreams = null;
 				this.running = true;
 			}
 			catch (Exception e) {
@@ -114,6 +113,8 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 			try {
 				if (this.kafkaStreams != null) {
 					this.kafkaStreams.close();
+					this.kafkaStreams.cleanUp();
+					this.kafkaStreams = null;
 				}
 			}
 			catch (Exception e) {
