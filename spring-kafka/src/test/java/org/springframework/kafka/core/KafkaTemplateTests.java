@@ -47,8 +47,10 @@ import org.junit.Test;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.ProducerListenerAdapter;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
@@ -166,6 +168,46 @@ public class KafkaTemplateTests {
 		List<PartitionInfo> partitions = template.partitionsFor(INT_KEY_TOPIC);
 		assertThat(partitions).isNotNull();
 		assertThat(partitions.size()).isEqualTo(2);
+		pf.destroy();
+	}
+
+	@Test
+	public void testWithMessage() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+
+		Message<String> message1 = MessageBuilder.withPayload("foo-message")
+				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
+				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.build();
+
+		template.send(message1);
+
+		ConsumerRecord<Integer, String> r1 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
+		assertThat(r1).has(value("foo-message"));
+
+		Message<String> message2 = MessageBuilder.withPayload("foo-message-2")
+				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
+				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.TIMESTAMP, 1487694048615L)
+				.build();
+
+		template.send(message2);
+
+		ConsumerRecord<Integer, String> r2 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
+		assertThat(r2).has(value("foo-message-2"));
+		assertThat(r2).has(timestamp(TimestampType.CREATE_TIME, 1487694048615L));
+
+		MessagingMessageConverter messageConverter = new MessagingMessageConverter();
+
+		Message<?> recordToMessage = messageConverter.toMessage(r2, null, String.class);
+
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CreateTime");
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP)).isEqualTo(1487694048615L);
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(INT_KEY_TOPIC);
+		assertThat(recordToMessage.getPayload()).isEqualTo("foo-message-2");
+
 		pf.destroy();
 	}
 

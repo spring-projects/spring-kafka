@@ -22,6 +22,7 @@ package org.springframework.kafka.support;
  * @author Artem Bilan
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @author Biju Kunjummen
  */
 public abstract class KafkaHeaders {
 
@@ -66,5 +67,15 @@ public abstract class KafkaHeaders {
 	 * The header containing the topic partition for the received message.
 	 */
 	public static final String RECEIVED_PARTITION_ID = PREFIX + "receivedPartitionId";
+
+	/**
+	 * The header for holding the {@link org.apache.kafka.common.record.TimestampType type} of timestamp.
+	 */
+	public static final String TIMESTAMP_TYPE = PREFIX + "timestampType";
+
+	/**
+	 * The header for holding the timestamp of the record.
+	 */
+	public static final String TIMESTAMP = PREFIX + "timestamp";
 
 }
