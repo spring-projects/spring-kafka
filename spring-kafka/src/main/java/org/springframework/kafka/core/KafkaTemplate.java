@@ -50,6 +50,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Gary Russell
  * @author Igor Stepanov
  * @author Artem Bilan
+ * @author Biju Kunjummen
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
@@ -146,6 +147,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	@Override
+	public ListenableFuture<SendResult<K, V>> sendDefault(int partition, Long timestamp, K key, V data) {
+		return send(this.defaultTopic, partition, timestamp, key, data);
+	}
+
+	@Override
 	public ListenableFuture<SendResult<K, V>> send(String topic, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, data);
 		return doSend(producerRecord);
@@ -159,13 +165,19 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	@Override
 	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, V data) {
-		ProducerRecord<K, V> producerRecord = new ProducerRecord<K, V>(topic, partition, null, data);
+		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, null, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
 	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
+		return doSend(producerRecord);
+	}
+
+	@Override
+	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, Long timestamp, K key, V data) {
+		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, timestamp, key, data);
 		return doSend(producerRecord);
 	}
 

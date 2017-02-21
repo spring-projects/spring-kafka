@@ -64,6 +64,16 @@ public interface KafkaOperations<K, V> {
 	ListenableFuture<SendResult<K, V>> sendDefault(int partition, K key, V data);
 
 	/**
+	 * Send the data to the default topic with the provided key and partition.
+	 * @param partition the partition.
+	 * @param timestamp the timestamp of the record.
+	 * @param key the key.
+	 * @param data the data.
+	 * @return a Future for the {@link SendResult}.
+	 */
+	ListenableFuture<SendResult<K, V>> sendDefault(int partition, Long timestamp, K key, V data);
+
+	/**
 	 * Send the data to the provided topic with no key or partition.
 	 * @param topic the topic.
 	 * @param data The data.
@@ -98,6 +108,17 @@ public interface KafkaOperations<K, V> {
 	 * @return a Future for the {@link SendResult}.
 	 */
 	ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data);
+
+	/**
+	 * Send the data to the provided topic with the provided key and partition.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param timestamp the timestamp of the record.
+	 * @param key the key.
+	 * @param data the data.
+	 * @return a Future for the {@link SendResult}.
+	 */
+	ListenableFuture<SendResult<K, V>> send(String topic, int partition, Long timestamp, K key, V data);
 
 	/**
 	 * Send a message with routing information in message headers. The message payload

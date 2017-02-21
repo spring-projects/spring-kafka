@@ -17,6 +17,7 @@
 package org.springframework.kafka.test.assertj;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.record.TimestampType;
 import org.assertj.core.api.Condition;
 
 /**
@@ -47,6 +48,15 @@ public final class KafkaConditions {
 	 */
 	public static <V> Condition<ConsumerRecord<?, V>> value(V value) {
 		return new ConsumerRecordValueCondition<>(value);
+	}
+
+	/**
+	 * @param type the type of timestamp
+	 * @param value the timestamp.
+	 * @return a Condition that matches the timestamp value in a consumer record.
+	 */
+	public static Condition<ConsumerRecord<?, ?>> timestamp(TimestampType type, long value) {
+		return new ConsumerRecordTimestampCondition(type, value);
 	}
 
 	/**
@@ -86,6 +96,25 @@ public final class KafkaConditions {
 		@Override
 		public boolean matches(ConsumerRecord<?, V> value) {
 			return value != null && value.value().equals(this.payload);
+		}
+
+	}
+
+	public static class ConsumerRecordTimestampCondition extends Condition<ConsumerRecord<?, ?>> {
+
+		private TimestampType type;
+		private final long ts;
+
+		public ConsumerRecordTimestampCondition(TimestampType type, long ts) {
+			super("a ConsumerRecord with timestamp of type: " + type + " and timestamp: " + ts);
+			this.type = type;
+			this.ts = ts;
+		}
+
+		@Override
+		public boolean matches(ConsumerRecord<?, ?> value) {
+			return value != null &&
+					(value.timestampType() == this.type && value.timestamp() == this.ts);
 		}
 
 	}
