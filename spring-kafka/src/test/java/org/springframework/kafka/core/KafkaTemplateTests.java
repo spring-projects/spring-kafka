@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.assertj.core.api.Assertions;
@@ -108,7 +107,7 @@ public class KafkaTemplateTests {
 		assertThat(received).has(partition(0));
 		assertThat(received).has(value("baz"));
 
-		template.send(INT_KEY_TOPIC, 0, "qux");
+		template.send(INT_KEY_TOPIC, 0, null, "qux");
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(key((Integer) null));
 		assertThat(received).has(partition(0));
@@ -154,12 +153,12 @@ public class KafkaTemplateTests {
 		template.sendDefault(0, 1487694048607L, null, "foo-ts1");
 		ConsumerRecord<Integer, String> r1 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(r1).has(value("foo-ts1"));
-		assertThat(r1).has(timestamp(TimestampType.CREATE_TIME, 1487694048607L));
+		assertThat(r1).has(timestamp(1487694048607L));
 
 		template.send(INT_KEY_TOPIC, 0, 1487694048610L, null, "foo-ts2");
 		ConsumerRecord<Integer, String> r2 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(r2).has(value("foo-ts2"));
-		assertThat(r2).has(timestamp(TimestampType.CREATE_TIME, 1487694048610L));
+		assertThat(r2).has(timestamp(1487694048610L));
 
 		Map<MetricName, ? extends Metric> metrics = template.execute(Producer::metrics);
 		assertThat(metrics).isNotNull();
@@ -197,14 +196,14 @@ public class KafkaTemplateTests {
 
 		ConsumerRecord<Integer, String> r2 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(r2).has(value("foo-message-2"));
-		assertThat(r2).has(timestamp(TimestampType.CREATE_TIME, 1487694048615L));
+		assertThat(r2).has(timestamp(1487694048615L));
 
 		MessagingMessageConverter messageConverter = new MessagingMessageConverter();
 
 		Message<?> recordToMessage = messageConverter.toMessage(r2, null, String.class);
 
-		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CreateTime");
-		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP)).isEqualTo(1487694048615L);
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048615L);
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(INT_KEY_TOPIC);
 		assertThat(recordToMessage.getPayload()).isEqualTo("foo-message-2");
 

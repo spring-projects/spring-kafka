@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,8 +34,17 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @param <K> the key type.
  * @param <V> the value type.
  *
+ * If the Kafka topic is set with {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}
+ * all send operations will use the user provided time if provided, else
+ * {@link org.apache.kafka.clients.producer.KafkaProducer} will generate one
+ *
+ * If the topic is set with {@link org.apache.kafka.common.record.TimestampType#LOG_APPEND_TIME LogAppendTime}
+ * then the user provided timestamp will be ignored and instead will be the
+ * Kafka broker local time when the message is appended
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @author Biju Kunjummen
  */
 public interface KafkaOperations<K, V> {
 
@@ -61,7 +70,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	ListenableFuture<SendResult<K, V>> sendDefault(int partition, K key, V data);
+	ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data);
 
 	/**
 	 * Send the data to the default topic with the provided key and partition.
@@ -71,7 +80,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	ListenableFuture<SendResult<K, V>> sendDefault(int partition, Long timestamp, K key, V data);
+	ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
 	/**
 	 * Send the data to the provided topic with no key or partition.
@@ -91,15 +100,6 @@ public interface KafkaOperations<K, V> {
 	ListenableFuture<SendResult<K, V>> send(String topic, K key, V data);
 
 	/**
-	 * Send the data to the provided topic with the provided partition and no key.
-	 * @param topic the topic.
-	 * @param partition the partition.
-	 * @param data The data.
-	 * @return a Future for the {@link SendResult}.
-	 */
-	ListenableFuture<SendResult<K, V>> send(String topic, int partition, V data);
-
-	/**
 	 * Send the data to the provided topic with the provided key and partition.
 	 * @param topic the topic.
 	 * @param partition the partition.
@@ -107,7 +107,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data);
+	ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data);
 
 	/**
 	 * Send the data to the provided topic with the provided key and partition.
@@ -118,7 +118,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	ListenableFuture<SendResult<K, V>> send(String topic, int partition, Long timestamp, K key, V data);
+	ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
 
 	/**
 	 * Send a message with routing information in message headers. The message payload

@@ -78,4 +78,9 @@ public abstract class KafkaHeaders {
 	 */
 	public static final String TIMESTAMP = PREFIX + "timestamp";
 
+	/**
+	 * The header for holding the timestamp of the record.
+	 */
+	public static final String RECEIVED_TIMESTAMP = PREFIX + "receivedTimestamp";
+
 }

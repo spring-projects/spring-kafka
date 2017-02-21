@@ -1,3 +1,11 @@
+=== What's new in 2.0
+
+==== Support for Kafka timestamps
+
+`KafkaTemplate` now supports API's to add records with timestamps. The behavior of the recorded timestamp is dependent on the
+timestamp type configured on the Kafka topic. If the topic is configured to use CREATE_TIME and then the user specified timestamp will be recorded.
+If the topic is configured to use LOG_APPEND_TIME then the user specified timestamp will be ignored and broker will add in the local time.
+
 === What's new in 1.1 Since 1.0
 
 ==== Kafka Client

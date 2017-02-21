@@ -15,15 +15,17 @@ ListenableFuture<SendResult<K, V>> sendDefault(V data);
 
 ListenableFuture<SendResult<K, V>> sendDefault(K key, V data);
 
-ListenableFuture<SendResult<K, V>> sendDefault(int partition, K key, V data);
+ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data);
+
+ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
 ListenableFuture<SendResult<K, V>> send(String topic, V data);
 
 ListenableFuture<SendResult<K, V>> send(String topic, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, int partition, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
 
 ListenableFuture<SendResult<K, V>> send(Message<?> message);
 
@@ -45,7 +47,7 @@ interface ProducerCallback<K, V, T> {
 
 ----
 
-The first 3 methods require that a default topic has been provided to the template.
+The sendDefault api's require that a default topic has been provided to the template.
 
 The `metrics` and `partitionsFor` methods simply delegate to the same methods on the underlying `Producer`.
 The `execute` method provides direct access to the underlying `Producer`.

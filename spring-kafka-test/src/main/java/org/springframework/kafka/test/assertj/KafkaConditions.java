@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.assertj.core.api.Condition;
  *
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Biju Kunjummen
  */
 public final class KafkaConditions {
 
@@ -48,6 +49,14 @@ public final class KafkaConditions {
 	 */
 	public static <V> Condition<ConsumerRecord<?, V>> value(V value) {
 		return new ConsumerRecordValueCondition<>(value);
+	}
+
+	/**
+	 * @param value the timestamp.
+	 * @return a Condition that matches the timestamp value in a consumer record.
+	 */
+	public static Condition<ConsumerRecord<?, ?>> timestamp(long value) {
+		return new ConsumerRecordTimestampCondition(TimestampType.CREATE_TIME, value);
 	}
 
 	/**
@@ -102,7 +111,7 @@ public final class KafkaConditions {
 
 	public static class ConsumerRecordTimestampCondition extends Condition<ConsumerRecord<?, ?>> {
 
-		private TimestampType type;
+		private final TimestampType type;
 		private final long ts;
 
 		public ConsumerRecordTimestampCondition(TimestampType type, long ts) {

@@ -142,12 +142,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(int partition, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data) {
 		return send(this.defaultTopic, partition, key, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(int partition, Long timestamp, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data) {
 		return send(this.defaultTopic, partition, timestamp, key, data);
 	}
 
@@ -164,19 +164,13 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, V data) {
-		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, null, data);
-		return doSend(producerRecord);
-	}
-
-	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, int partition, Long timestamp, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, timestamp, key, data);
 		return doSend(producerRecord);
 	}
