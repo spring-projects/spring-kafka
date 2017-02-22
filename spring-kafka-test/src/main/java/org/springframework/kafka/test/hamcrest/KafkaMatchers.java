@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,10 +61,23 @@ public final class KafkaMatchers {
 		return new ConsumerRecordPartitionMatcher(partition);
 	}
 
+	/**
+	 * Matcher testing the timestamp of a {@link ConsumerRecord} asssuming the topic has been set with
+	 * {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}.
+	 *
+	 * @param ts timestamp of the consumer record.
+	 * @return a Matcher that matches the timestamp in a consumer record.
+	 */
 	public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(long ts) {
 		return hasTimestamp(TimestampType.CREATE_TIME, ts);
 	}
 
+	/**
+	 * Matcher testing the timestamp of a {@link ConsumerRecord}
+	 * @param type timestamp type of the record
+	 * @param ts timestamp of the consumer record.
+	 * @return a Matcher that matches the timestamp in a consumer record.
+	 */
 	public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(TimestampType type, long ts) {
 		return new ConsumerRecordTimestampMatcher(type, ts);
 	}

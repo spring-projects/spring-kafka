@@ -123,6 +123,27 @@ public static <V> Matcher<ConsumerRecord<?, V>> hasValue(V value) { ... }
  * @return a Matcher that matches the partition in a consumer record.
  */
 public static Matcher<ConsumerRecord<?, ?>> hasPartition(int partition) { ... }
+
+/**
+ * Matcher testing the timestamp of a {@link ConsumerRecord} asssuming the topic has been set with
+ * {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}.
+ *
+ * @param ts timestamp of the consumer record.
+ * @return a Matcher that matches the timestamp in a consumer record.
+ */
+public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(long ts) {
+  return hasTimestamp(TimestampType.CREATE_TIME, ts);
+}
+
+/**
+ * Matcher testing the timestamp of a {@link ConsumerRecord}
+ * @param type timestamp type of the record
+ * @param ts timestamp of the consumer record.
+ * @return a Matcher that matches the timestamp in a consumer record.
+ */
+public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(TimestampType type, long ts) {
+  return new ConsumerRecordTimestampMatcher(type, ts);
+}
 ----
 
 ==== AssertJ Conditions
@@ -148,6 +169,23 @@ public static <V> Condition<ConsumerRecord<?, V>> value(V value) { ... }
  * @return a Condition that matches the partition in a consumer record.
  */
 public static Condition<ConsumerRecord<?, ?>> partition(int partition) { ... }
+
+/**
+ * @param value the timestamp.
+ * @return a Condition that matches the timestamp value in a consumer record.
+ */
+public static Condition<ConsumerRecord<?, ?>> timestamp(long value) {
+  return new ConsumerRecordTimestampCondition(TimestampType.CREATE_TIME, value);
+}
+
+/**
+ * @param type the type of timestamp
+ * @param value the timestamp.
+ * @return a Condition that matches the timestamp value in a consumer record.
+ */
+public static Condition<ConsumerRecord<?, ?>> timestamp(TimestampType type, long value) {
+  return new ConsumerRecordTimestampCondition(type, value);
+}
 ----
 
 ==== Example
