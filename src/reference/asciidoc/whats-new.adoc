@@ -1,3 +1,9 @@
+=== What's new in 2.0
+
+==== Support for Kafka timestamps
+
+`KafkaTemplate` now supports API's to add and retrieve records with timestamps. See <<record-read-timestamps>> for more details.
+
 === What's new in 1.1 Since 1.0
 
 ==== Kafka Client

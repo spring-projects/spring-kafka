@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Dariusz Szablinski
+ * @author Biju Kunjummen
  * @since 1.1
  */
 public class BatchMessagingMessageConverter implements BatchMessageConverter {
@@ -80,10 +81,14 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		List<String> topics = new ArrayList<>();
 		List<Integer> partitions = new ArrayList<>();
 		List<Long> offsets = new ArrayList<>();
+		List<String> timestampTypes = new ArrayList<>();
+		List<Long> timestamps = new ArrayList<>();
 		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, keys);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topics);
 		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, partitions);
 		rawHeaders.put(KafkaHeaders.OFFSET, offsets);
+		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampTypes);
+		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamps);
 
 		if (acknowledgment != null) {
 			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
@@ -95,6 +100,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 			topics.add(record.topic());
 			partitions.add(record.partition());
 			offsets.add(record.offset());
+			timestampTypes.add(record.timestampType().name());
+			timestamps.add(record.timestamp());
 		}
 		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);
 	}

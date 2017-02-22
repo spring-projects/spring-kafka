@@ -15,15 +15,17 @@ ListenableFuture<SendResult<K, V>> sendDefault(V data);
 
 ListenableFuture<SendResult<K, V>> sendDefault(K key, V data);
 
-ListenableFuture<SendResult<K, V>> sendDefault(int partition, K key, V data);
+ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data);
+
+ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
 ListenableFuture<SendResult<K, V>> send(String topic, V data);
 
 ListenableFuture<SendResult<K, V>> send(String topic, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, int partition, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, int partition, K key, V data);
+ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
 
 ListenableFuture<SendResult<K, V>> send(Message<?> message);
 
@@ -45,10 +47,15 @@ interface ProducerCallback<K, V, T> {
 
 ----
 
-The first 3 methods require that a default topic has been provided to the template.
+The sendDefault api's require that a default topic has been provided to the template.
 
-The `metrics` and `partitionsFor` methods simply delegate to the same methods on the underlying `Producer`.
-The `execute` method provides direct access to the underlying `Producer`.
+[[record-read-timestamps]]
+The API's which take in timestamp as a parameter will store this timestamp in the record. The behavior of the user provided timestamp is stored is dependent on the timestamp type configured on the Kafka topic.
+If the topic is configured to use CREATE_TIME then the user specified timestamp will be recorded or generated if not specified.
+If the topic is configured to use LOG_APPEND_TIME then the user specified timestamp will be ignored and broker will add in the local broker time.
+
+The `metrics` and `partitionsFor` methods simply delegate to the same methods on the underlying https://kafka.apache.org/0101/javadoc/org/apache/kafka/clients/producer/Producer.html[`Producer`].
+The `execute` method provides direct access to the underlying https://kafka.apache.org/0101/javadoc/org/apache/kafka/clients/producer/Producer.html[`Producer`].
 
 To use the template, configure a producer factory and provide it in the template's constructor:
 
@@ -83,6 +90,7 @@ header:
 - `KafkaHeaders.TOPIC`
 - `KafkaHeaders.PARTITION_ID`
 - `KafkaHeaders.MESSAGE_KEY`
+- `KafkaHeaders.TIMESTAMP`
 
 with the message payload being the data.
 
@@ -388,7 +396,15 @@ public void listen(String data, Acknowledgment ack) {
 }
 ----
 
-Finally, metadata about the message is available from message headers:
+Finally, metadata about the message is available from message headers, the following header names can be used for retrieving the headers of the message:
+
+- `KafkaHeaders.RECEIVED_MESSAGE_KEY`
+- `KafkaHeaders.RECEIVED_TOPIC`
+- `KafkaHeaders.RECEIVED_PARTITION_ID`
+- `KafkaHeaders.RECEIVED_MESSAGE_KEY`
+- `KafkaHeaders.RECEIVED_TIMESTAMP`
+- `KafkaHeaders.TIMESTAMP_TYPE`
+
 
 [source, java]
 ----
@@ -396,7 +412,9 @@ Finally, metadata about the message is available from message headers:
 public void listen(@Payload String foo,
         @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
         @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
-        @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
+        @Header(KafkaHeaders.RECEIVED_TIMESTAMP) long ts
+        ) {
     ...
 }
 ----

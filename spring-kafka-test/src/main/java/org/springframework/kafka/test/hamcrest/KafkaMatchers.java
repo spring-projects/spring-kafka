@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.test.hamcrest;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.record.TimestampType;
 import org.hamcrest.Description;
 import org.hamcrest.DiagnosingMatcher;
 import org.hamcrest.Matcher;
@@ -25,6 +26,7 @@ import org.hamcrest.Matcher;
  * Hamcrest {@link Matcher}s utilities.
  *
  * @author Gary Russell
+ * @author Biju Kunjummen
  *
  */
 public final class KafkaMatchers {
@@ -59,8 +61,29 @@ public final class KafkaMatchers {
 		return new ConsumerRecordPartitionMatcher(partition);
 	}
 
+	/**
+	 * Matcher testing the timestamp of a {@link ConsumerRecord} asssuming the topic has been set with
+	 * {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}.
+	 *
+	 * @param ts timestamp of the consumer record.
+	 * @return a Matcher that matches the timestamp in a consumer record.
+	 */
+	public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(long ts) {
+		return hasTimestamp(TimestampType.CREATE_TIME, ts);
+	}
 
-	public static class ConsumerRecordKeyMatcher<K> extends DiagnosingMatcher<ConsumerRecord<K, ?>> {
+	/**
+	 * Matcher testing the timestamp of a {@link ConsumerRecord}
+	 * @param type timestamp type of the record
+	 * @param ts timestamp of the consumer record.
+	 * @return a Matcher that matches the timestamp in a consumer record.
+	 */
+	public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(TimestampType type, long ts) {
+		return new ConsumerRecordTimestampMatcher(type, ts);
+	}
+
+	public static class ConsumerRecordKeyMatcher<K>
+			extends DiagnosingMatcher<ConsumerRecord<K, ?>> {
 
 		private final K key;
 
@@ -70,7 +93,8 @@ public final class KafkaMatchers {
 
 		@Override
 		public void describeTo(Description description) {
-			description.appendText("a ConsumerRecord with key ").appendText(this.key.toString());
+			description.appendText("a ConsumerRecord with key ")
+					.appendText(this.key.toString());
 		}
 
 		@Override
@@ -78,7 +102,8 @@ public final class KafkaMatchers {
 			@SuppressWarnings("unchecked")
 			ConsumerRecord<K, Object> record = (ConsumerRecord<K, Object>) item;
 			boolean matches = record != null
-					&& ((record.key() == null && this.key == null) || record.key().equals(this.key));
+					&& ((record.key() == null && this.key == null)
+							|| record.key().equals(this.key));
 			if (!matches) {
 				mismatchDescription.appendText("is ").appendValue(record);
 			}
@@ -87,7 +112,8 @@ public final class KafkaMatchers {
 
 	}
 
-	public static class ConsumerRecordValueMatcher<V> extends DiagnosingMatcher<ConsumerRecord<?, V>> {
+	public static class ConsumerRecordValueMatcher<V>
+			extends DiagnosingMatcher<ConsumerRecord<?, V>> {
 
 		private final V payload;
 
@@ -97,7 +123,8 @@ public final class KafkaMatchers {
 
 		@Override
 		public void describeTo(Description description) {
-			description.appendText("a ConsumerRecord with value ").appendText(this.payload.toString());
+			description.appendText("a ConsumerRecord with value ")
+					.appendText(this.payload.toString());
 		}
 
 		@Override
@@ -113,7 +140,8 @@ public final class KafkaMatchers {
 
 	}
 
-	public static class ConsumerRecordPartitionMatcher extends DiagnosingMatcher<ConsumerRecord<?, ?>> {
+	public static class ConsumerRecordPartitionMatcher
+			extends DiagnosingMatcher<ConsumerRecord<?, ?>> {
 
 		private final int partition;
 
@@ -123,7 +151,8 @@ public final class KafkaMatchers {
 
 		@Override
 		public void describeTo(Description description) {
-			description.appendText("a ConsumerRecord with partition ").appendValue(this.partition);
+			description.appendText("a ConsumerRecord with partition ")
+					.appendValue(this.partition);
 		}
 
 		@Override
@@ -137,6 +166,37 @@ public final class KafkaMatchers {
 			return matches;
 		}
 
+	}
+
+	public static class ConsumerRecordTimestampMatcher
+			extends DiagnosingMatcher<ConsumerRecord<?, ?>> {
+		private final TimestampType type;
+		private final long ts;
+
+		public ConsumerRecordTimestampMatcher(TimestampType type, long ts) {
+			this.type = type;
+			this.ts = ts;
+		}
+
+		@Override
+		protected boolean matches(Object item, Description mismatchDescription) {
+			@SuppressWarnings("unchecked")
+			ConsumerRecord<Object, Object> record = (ConsumerRecord<Object, Object>) item;
+
+			boolean matches = record != null &&
+					(record.timestampType() == this.type && record.timestamp() == this.ts);
+
+			if (!matches) {
+				mismatchDescription.appendText("is ").appendValue(record);
+			}
+			return matches;
+		}
+
+		@Override
+		public void describeTo(Description description) {
+			description.appendText("a ConsumerRecord with timestamp of type: ")
+					.appendValue(this.type).appendText(" and value: ").appendValue(this.ts);
+		}
 	}
 
 }
