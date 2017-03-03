@@ -51,6 +51,11 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 
 	private volatile boolean running;
 
+	public KStreamBuilderFactoryBean(StreamsConfig streamsConfig) {
+		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
+		this.streamsConfig = streamsConfig;
+	}
+
 	public KStreamBuilderFactoryBean(Map<String, Object> streamsConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		this.streamsConfig = new StreamsConfig(streamsConfig);

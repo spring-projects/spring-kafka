@@ -39,13 +39,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.KafkaBootstrapConfiguration;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -114,20 +114,15 @@ public class KStreamsTests {
 			return kafkaTemplate;
 		}
 
-		@Bean
-		public Map<String, Object> kStreamsConfigs() {
+		@Bean(name = KafkaBootstrapConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+		public StreamsConfig kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
 			props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
 			props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
 			props.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG, WallclockTimestampExtractor.class.getName());
-			return props;
-		}
-
-		@Bean
-		public KStreamBuilderFactoryBean kStreamBuilder() {
-			return new KStreamBuilderFactoryBean(kStreamsConfigs());
+			return new StreamsConfig(props);
 		}
 
 		@Bean
