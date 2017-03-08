@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,12 @@
 
 package org.springframework.kafka.annotation;
 
-import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionBuilder;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.context.annotation.Role;
-import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
-import org.springframework.kafka.core.KStreamBuilderFactoryBean;
-import org.springframework.util.ClassUtils;
 
 /**
  * {@code @Configuration} class that registers a {@link KafkaListenerAnnotationBeanPostProcessor}
@@ -40,7 +33,6 @@ import org.springframework.util.ClassUtils;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
- * @author Artem Bilan
  *
  * @see KafkaListenerAnnotationBeanPostProcessor
  * @see KafkaListenerEndpointRegistry
@@ -48,10 +40,6 @@ import org.springframework.util.ClassUtils;
  */
 @Configuration
 public class KafkaBootstrapConfiguration {
-
-	public static final String DEFAULT_STREAMS_CONFIG_BEAN_NAME = "defaultKafkaStreamsConfig";
-
-	public static final String DEFAULT_KSTREAM_BUILDER_BEAN_NAME = "defaultKStreamBuilder";
 
 	@SuppressWarnings("rawtypes")
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
@@ -63,29 +51,6 @@ public class KafkaBootstrapConfiguration {
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
 	public KafkaListenerEndpointRegistry defaultKafkaListenerEndpointRegistry() {
 		return new KafkaListenerEndpointRegistry();
-	}
-
-	static class KStreamsRegistrar implements ImportBeanDefinitionRegistrar, BeanClassLoaderAware {
-
-		private ClassLoader classLoader;
-
-		@Override
-		public void setBeanClassLoader(ClassLoader classLoader) {
-			this.classLoader = classLoader;
-		}
-
-		@Override
-		public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
-				BeanDefinitionRegistry registry) {
-			if (ClassUtils.isPresent(org.apache.kafka.streams.kstream.KStreamBuilder.class.getName(),
-					this.classLoader) && registry.containsBeanDefinition(DEFAULT_STREAMS_CONFIG_BEAN_NAME)) {
-				registry.registerBeanDefinition(DEFAULT_KSTREAM_BUILDER_BEAN_NAME,
-						BeanDefinitionBuilder.genericBeanDefinition(KStreamBuilderFactoryBean.class)
-								.addConstructorArgReference(DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-								.getBeanDefinition());
-			}
-		}
-
 	}
 
 }

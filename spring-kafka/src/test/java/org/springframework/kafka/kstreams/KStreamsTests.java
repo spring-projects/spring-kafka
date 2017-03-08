@@ -38,8 +38,9 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKStreams;
 import org.springframework.kafka.annotation.EnableKafka;
-import org.springframework.kafka.annotation.KafkaBootstrapConfiguration;
+import org.springframework.kafka.annotation.KStreamDefaultConfiguration;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -95,6 +96,7 @@ public class KStreamsTests {
 
 	@Configuration
 	@EnableKafka
+	@EnableKStreams
 	public static class KafkaStreamsConfiguration {
 
 		@Bean
@@ -114,7 +116,7 @@ public class KStreamsTests {
 			return kafkaTemplate;
 		}
 
-		@Bean(name = KafkaBootstrapConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+		@Bean(name = KStreamDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 		public StreamsConfig kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
