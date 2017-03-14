@@ -32,7 +32,7 @@ import org.springframework.kafka.core.KStreamBuilderFactoryBean;
  *
  * <pre class="code">
  * &#064;Configuration
- * &#064;EnableKStreams
+ * &#064;EnableKafkaStreams
  * public class AppConfig {
  *
  * 	&#064;Bean(name = KStreamDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
@@ -43,11 +43,11 @@ import org.springframework.kafka.core.KStreamBuilderFactoryBean;
  * }
  * </pre>
  *
- * That {@link KStreamDefaultConfiguration#DEFAULT_STREAMS_CONFIG_BEAN_NAME} is required
+ * That {@link KafkaStreamsDefaultConfiguration#DEFAULT_STREAMS_CONFIG_BEAN_NAME} is required
  * to declare {@link KStreamBuilderFactoryBean} with the
- * {@link KStreamDefaultConfiguration#DEFAULT_KSTREAM_BUILDER_BEAN_NAME}.
+ * {@link KafkaStreamsDefaultConfiguration#DEFAULT_KSTREAM_BUILDER_BEAN_NAME}.
  * <p>
- * Also to enable KStreams feature you should be sure that {@code kafka-streams} jar is
+ * Also to enable Kafka Streams feature you should be sure that {@code kafka-streams} jar is
  * on classpath.
  *
  * @author Artem Bilan
@@ -57,6 +57,6 @@ import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import(KStreamDefaultConfiguration.class)
-public @interface EnableKStreams {
+@Import(KafkaStreamsDefaultConfiguration.class)
+public @interface EnableKafkaStreams {
 }

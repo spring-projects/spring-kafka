@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.kstreams;
+package org.springframework.kafka.kstream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,10 +38,10 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.EnableKStreams;
 import org.springframework.kafka.annotation.EnableKafka;
-import org.springframework.kafka.annotation.KStreamDefaultConfiguration;
+import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -63,7 +63,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  */
 @RunWith(SpringRunner.class)
 @DirtiesContext
-public class KStreamsTests {
+public class KafkaStreamsTests {
 
 	private static final String STREAMING_TOPIC1 = "streamingTopic1";
 
@@ -96,7 +96,7 @@ public class KStreamsTests {
 
 	@Configuration
 	@EnableKafka
-	@EnableKStreams
+	@EnableKafkaStreams
 	public static class KafkaStreamsConfiguration {
 
 		@Bean
@@ -116,7 +116,7 @@ public class KStreamsTests {
 			return kafkaTemplate;
 		}
 
-		@Bean(name = KStreamDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 		public StreamsConfig kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
