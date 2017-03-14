@@ -31,6 +31,8 @@ The <<kafka,main chapter>> covers the core classes to develop a Kafka applicatio
 
 include::kafka.adoc[]
 
+include::streams.adoc[]
+
 include::testing.adoc[]
 
 == Spring Integration
