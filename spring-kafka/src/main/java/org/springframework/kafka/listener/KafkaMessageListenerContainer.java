@@ -1084,7 +1084,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					Map<Integer, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
 
 					for (ConsumerRecord<K, V> record : this.records) {
-						if(record != null) {
+						if (record != null) {
 							ConsumerRecord<K, V> consumerRecord = highestOffsetMap.get(record.partition());
 
 							if (consumerRecord == null || record.offset() > consumerRecord.offset()) {
@@ -1093,7 +1093,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 					}
 
-					for(ConsumerRecord<K, V> record: highestOffsetMap.values()){
+					for (ConsumerRecord<K, V> record: highestOffsetMap.values()) {
 						ListenerConsumer.this.acks.put(record);
 					}
 				}
