@@ -74,6 +74,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Marius Bogoevici
  * @author Martin Dam
  * @author Artem Bilan
+ * @author Loic Talhouarne
  */
 public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -1079,7 +1080,20 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				try {
 					Assert.state(ListenerConsumer.this.isAnyManualAck,
 							"A manual ackmode is required for an acknowledging listener");
+
+					Map<Integer, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
+
 					for (ConsumerRecord<K, V> record : this.records) {
+						if (record != null) {
+							ConsumerRecord<K, V> consumerRecord = highestOffsetMap.get(record.partition());
+
+							if (consumerRecord == null || record.offset() > consumerRecord.offset()) {
+								highestOffsetMap.put(record.partition(), record);
+							}
+						}
+					}
+
+					for (ConsumerRecord<K, V> record: highestOffsetMap.values()) {
 						ListenerConsumer.this.acks.put(record);
 					}
 				}
