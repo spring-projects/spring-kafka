@@ -728,14 +728,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						this.batchListener.onMessage(recordList);
 					}
 					if (!this.isAnyManualAck && !this.autoCommit) {
-						for (ConsumerRecord<K, V> record : recordList) {
+						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
 							this.acks.put(record);
 						}
 					}
 				}
 				catch (Exception e) {
 					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
-						for (ConsumerRecord<K, V> record : recordList) {
+						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
 							this.acks.add(record);
 						}
 					}
@@ -910,7 +910,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (!this.offsets.containsKey(record.topic())) {
 				this.offsets.put(record.topic(), new HashMap<Integer, Long>());
 			}
-			this.offsets.get(record.topic()).put(record.partition(), record.offset());
+
+			Map<Integer, Long> highestOffsetMap = this.offsets.get(record.topic());
+			Long offset = highestOffsetMap.get(record.partition());
+
+			if (offset == null || record.offset() > offset) {
+				highestOffsetMap.put(record.partition(), record.offset());
+			}
 		}
 
 		private void commitIfNecessary() {
@@ -944,6 +950,22 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 			}
+		}
+
+		private Collection<ConsumerRecord<K, V>> getHighestOffsetRecords(List<ConsumerRecord<K, V>> records) {
+			Map<Integer, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
+
+			for (ConsumerRecord<K, V> record : records) {
+				if (record != null) {
+					ConsumerRecord<K, V> consumerRecord = highestOffsetMap.get(record.partition());
+
+					if (consumerRecord == null || record.offset() > consumerRecord.offset()) {
+						highestOffsetMap.put(record.partition(), record);
+					}
+				}
+			}
+
+			return highestOffsetMap.values();
 		}
 
 		@Override
@@ -1081,19 +1103,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					Assert.state(ListenerConsumer.this.isAnyManualAck,
 							"A manual ackmode is required for an acknowledging listener");
 
-					Map<Integer, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
-
-					for (ConsumerRecord<K, V> record : this.records) {
-						if (record != null) {
-							ConsumerRecord<K, V> consumerRecord = highestOffsetMap.get(record.partition());
-
-							if (consumerRecord == null || record.offset() > consumerRecord.offset()) {
-								highestOffsetMap.put(record.partition(), record);
-							}
-						}
-					}
-
-					for (ConsumerRecord<K, V> record: highestOffsetMap.values()) {
+					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(this.records)) {
 						ListenerConsumer.this.acks.put(record);
 					}
 				}

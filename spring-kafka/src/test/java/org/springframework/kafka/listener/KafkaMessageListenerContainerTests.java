@@ -722,6 +722,7 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
 		final CountDownLatch commitLatch = new CountDownLatch(2);
+		AtomicBoolean smallOffsetCommitted = new AtomicBoolean(false);
 		willAnswer(invocation -> {
 
 			@SuppressWarnings({ "unchecked" })
@@ -732,7 +733,7 @@ public class KafkaMessageListenerContainerTests {
 			finally {
 				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
 					if (entry.getValue().offset() == 1) {
-						throw new IllegalStateException("The highest offset should be the only one committed.");
+						smallOffsetCommitted.set(true);
 					}
 					else if (entry.getValue().offset() == 2) {
 						commitLatch.countDown();
@@ -745,6 +746,7 @@ public class KafkaMessageListenerContainerTests {
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(commitLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(smallOffsetCommitted.get()).isFalse();
 		Consumer<Integer, String> consumer = cf.createConsumer();
 		consumer.assign(Arrays.asList(new TopicPartition(topic9, 0), new TopicPartition(topic9, 1)));
 		assertThat(consumer.position(new TopicPartition(topic9, 0))).isEqualTo(2);
