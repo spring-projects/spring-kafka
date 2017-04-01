@@ -170,12 +170,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 		if (containerProperties.getConsumerTaskExecutor() == null) {
 			SimpleAsyncTaskExecutor consumerExecutor = new SimpleAsyncTaskExecutor(
-					"kafka-consumer-" + (getBeanName() == null ? "" : getBeanName()) + "-C-");
+					(getBeanName() == null ? "" : getBeanName()) + "-C-");
 			containerProperties.setConsumerTaskExecutor(consumerExecutor);
 		}
 		if (containerProperties.getListenerTaskExecutor() == null) {
 			SimpleAsyncTaskExecutor listenerExecutor = new SimpleAsyncTaskExecutor(
-					"kafka-listener-" + (getBeanName() == null ? "" : getBeanName()) + "-L-");
+					(getBeanName() == null ? "" : getBeanName()) + "-L-");
 			containerProperties.setListenerTaskExecutor(listenerExecutor);
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener);
