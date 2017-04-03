@@ -490,6 +490,18 @@ public void listen(List<ConsumerRecord<Integer, String>> list, Acknowledgment ac
 }
 ----
 
+===== Container Thread Naming
+
+Listener containers currently use two task executors, one to invoke the consumer and another which will be used to invoke the listener, when the kafka consumer property `enable.auto.commit` is `false`.
+You can provide custom executors by setting the `consumerExecutor` and `listenerExecutor` properties of the container's `ContainerProperties`.
+When using pooled executors, be sure that enough threads are available to handle the concurrency across all the containers in which they are used.
+When using the `ConcurrentMessageListenerContainer`, a thread from each is used for each consumer (`concurrency`).
+
+If you don't provide executors, `SimpleAsyncTaskExecutor` s are used; these executors create threads with names `<beanName>-C-1` (consumer thread) and `<beanName>-L-1` (listener thread).
+For the `ConcurrentMessageListenerContainer`, the `<beanName>` part of the thread name becomes `<beanName>-m`, where `m` represents the consumer instance.
+So, with a bean name of `container`, threads in this container will be named `container-0-C-1` and `container-0-L-1`, `container-1-C-1` etc.
+The trailing number is always 1 because a new executor is created each time the container is stopped/started.
+
 ===== Filtering Messages
 
 In certain scenarios, such as rebalancing, a message may be redelivered that has already been processed.
