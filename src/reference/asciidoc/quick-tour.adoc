@@ -1,5 +1,5 @@
 [[quick-tour]]
-=== Quick Tour for the impatient
+=== Quick Tour for the Impatient
 
 ==== Introduction
 
@@ -28,11 +28,9 @@ compile 'org.springframework.kafka:spring-kafka:{spring-kafka-version}'
 [[compatibility]]
 ===== Compatibility
 
-- Apache Kafka 0.9.0.1
-- Tested with Spring Framework version dependency is 4.2.5 but it is expected that the framework will work with earlier
-versions of Spring.
-- Annotation-based listeners require Spring Framework 4.1 or higher, however.
-- Minimum Java version: 7.
+- Apache Kafka 0.10.2.0
+- Spring Franework 5.0.x
+- Minimum Java version: 8
 
 ===== Very, Very Quick
 
@@ -201,3 +199,53 @@ public class Listener {
 
 }
 ----
+
+===== Even Quicker, with Spring Boot
+
+The following Spring Boot application sends 3 messages to a topic, receives them, and stops.
+
+.Application
+[source, java]
+----
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+
+    public static Logger logger = LoggerFactory.getLogger(Application.class);
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args).close();
+    }
+
+    @Autowired
+    private KafkaTemplate<String, String> template;
+
+    private final CountDownLatch latch = new CountDownLatch(3);
+
+    @Override
+    public void run(String... args) throws Exception {
+        this.template.send("myTopic", "foo1");
+        this.template.send("myTopic", "foo2");
+        this.template.send("myTopic", "foo3");
+        latch.await(60, TimeUnit.SECONDS);
+        logger.info("All received");
+    }
+
+    @KafkaListener(topics = "myTopic")
+    public void listen(ConsumerRecord<?, ?> cr) throws Exception {
+        logger.info(cr.toString());
+        latch.countDown();
+    }
+
+}
+----
+
+Boot takes care of most of the configuration; when using a local broker, the only properties we need are:
+
+.application.properties
+[source]
+----
+spring.kafka.consumer.group-id=foo
+spring.kafka.consumer.auto-offset-reset=earliest
+----
+
+The first because we are using group management to assign topic partitions to consumers so we need a group, the second to ensure the new consumer group will get the messages we just sent, because the container might start after the sends have completed.
