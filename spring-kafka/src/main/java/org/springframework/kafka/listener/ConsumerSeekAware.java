@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ public interface ConsumerSeekAware {
 	/**
 	 * A callback that a listener can invoke to seek to a specific offset.
 	 */
+	@FunctionalInterface
 	interface ConsumerSeekCallback {
 
 		/**
@@ -67,6 +68,27 @@ public interface ConsumerSeekAware {
 		 * @param offset the offset (absolute).
 		 */
 		void seek(String topic, int partition, long offset);
+
+		/**
+		 * Queue a seekToBeginning operation to the consumer. The seek will occur after
+		 * any pending offset commits. The consumer must be currently assigned the
+		 * specified partition.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 */
+		default void seekToBeginning(String topic, int partition) {
+			seek(topic, partition, 0);
+		}
+
+		/**
+		 * Queue a seekToEnd operation to the consumer. The seek will occur after any pending
+		 * offset commits. The consumer must be currently assigned the specified partition.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 */
+		default void seekToEnd(String topic, int partition) {
+			seek(topic, partition, Long.MAX_VALUE);
+		}
 
 	}
 

@@ -662,11 +662,15 @@ When using group management, the second method is called when assignments change
 You can use this method, for example, for setting initial offsets for the partitions, by calling the callback; you must use the callback argument, not the one passed into `registerSeekCallback`.
 This method will never be called if you explicitly assign partitions yourself; use the `TopicPartitionInitialOffset` in that case.
 
-The callback has one method:
+The callback has these methods:
 
 [source, java]
 ----
 void seek(String topic, int partition, long offset);
+
+void seekToBeginning(String topic, int partition);
+
+void seekToEnd(String topic, int partition);
 ----
 
 You can also perform seek operations from `onIdleContainer()` when an idle container is detected; see <<idle-containers>> for how to enable idle container detection.
