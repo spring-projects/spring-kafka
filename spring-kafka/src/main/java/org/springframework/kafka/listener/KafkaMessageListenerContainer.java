@@ -388,7 +388,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 									"and will stop the invoker.");
 						}
 						if (ListenerConsumer.this.listenerInvokerFuture != null) {
-							stopInvokerAndCommitManualAcks();
+							stopInvoker();
 							ListenerConsumer.this.recordsToProcess.clear();
 							ListenerConsumer.this.unsent = null;
 						}
@@ -407,6 +407,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 					}
 					getContainerProperties().getConsumerRebalanceListener().onPartitionsRevoked(partitions);
+					// Wait until now to commit, in case the user listener added acks
+					commitManualAcks();
 				}
 
 				@Override
@@ -584,7 +586,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			if (this.listenerInvokerFuture != null) {
-				stopInvokerAndCommitManualAcks();
+				stopInvoker();
+				commitManualAcks();
 			}
 			try {
 				this.consumer.unsubscribe();
@@ -599,7 +602,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 
-		private void stopInvokerAndCommitManualAcks() {
+		private void stopInvoker() {
 			long now = System.currentTimeMillis();
 			this.invoker.stop();
 			long remaining = this.containerProperties.getShutdownTimeout() + now - System.currentTimeMillis();
@@ -619,12 +622,15 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			finally {
 				this.listenerInvokerFuture = null;
 			}
+			this.invoker = null;
+		}
+
+		private void commitManualAcks() {
 			processCommits();
 			if (this.offsets.size() > 0) {
 				// we always commit after stopping the invoker
 				commitIfNecessary();
 			}
-			this.invoker = null;
 		}
 
 		private ConsumerRecords<K, V> checkPause(ConsumerRecords<K, V> unsent) {

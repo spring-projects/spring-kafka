@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -110,9 +112,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic13 = "testTopic13";
 
+	private static String topic14 = "testTopic14";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -1223,6 +1227,96 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(messages6).contains("FIZ", "BAR", "QUX", "BUZ");
 
 		this.logger.info("Stop auto parts");
+	}
+
+	@Test
+	public void testManualAckRebalance() throws Exception {
+		logger.info("Start manual ack rebalance");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test14", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic14);
+		final List<AtomicInteger> counts = new ArrayList<>();
+		counts.add(new AtomicInteger());
+		counts.add(new AtomicInteger());
+		final Acknowledgment[] pendingAcks = new Acknowledgment[2];
+		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
+			logger.info("manual ack: " + message);
+			if (counts.get(message.partition()).incrementAndGet() < 2) {
+				ack.acknowledge();
+			}
+			else {
+				pendingAcks[message.partition()] = ack;
+			}
+		});
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		final CountDownLatch rebalanceLatch = new CountDownLatch(2);
+		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				logger.info("manual ack: revoked " + partitions);
+				partitions.forEach(p -> {
+					if (pendingAcks[p.partition()] != null) {
+						pendingAcks[p.partition()].acknowledge();
+						pendingAcks[p.partition()] = null;
+					}
+				});
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				logger.info("manual ack: assigned " + partitions);
+				rebalanceLatch.countDown();
+			}
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container1 = new KafkaMessageListenerContainer<>(cf,
+				containerProps);
+		container1.setBeanName("testAckRebalance");
+		container1.start();
+		Consumer<?, ?> containerConsumer = spyOnConsumer(container1);
+		final CountDownLatch commitLatch = new CountDownLatch(2);
+		willAnswer(invocation -> {
+
+			Map<TopicPartition, OffsetAndMetadata> map = invocation.getArgument(0);
+			try {
+				return invocation.callRealMethod();
+			}
+			finally {
+				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+					if (entry.getValue().offset() == 1) {
+						commitLatch.countDown();
+					}
+				}
+			}
+
+		}).given(containerConsumer)
+				.commitSync(any());
+		ContainerTestUtils.waitForAssignment(container1, embeddedKafka.getPartitionsPerTopic());
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic14);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "baz");
+		template.sendDefault(0, 0, "bar");
+		template.sendDefault(1, 0, "qux");
+		template.flush();
+		assertThat(commitLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		KafkaMessageListenerContainer<Integer, String> container2 = new KafkaMessageListenerContainer<>(cf,
+				containerProps);
+		container2.setBeanName("testAckRebalance2");
+		container2.start();
+		assertThat(rebalanceLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		container1.stop();
+		container2.stop();
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		consumer.assign(Arrays.asList(new TopicPartition(topic14, 0), new TopicPartition(topic14, 1)));
+		assertThat(consumer.position(new TopicPartition(topic14, 0))).isEqualTo(2);
+		assertThat(consumer.position(new TopicPartition(topic14, 1))).isEqualTo(2);
+		consumer.close();
+		logger.info("Stop manual ack rebalance");
 	}
 
 	private RetryTemplate buildRetry() {
