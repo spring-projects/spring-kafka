@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,23 @@ public interface ConsumerSeekAware {
 		 * @param offset the offset (absolute).
 		 */
 		void seek(String topic, int partition, long offset);
+
+		/**
+		 * Queue a seekToBeginning operation to the consumer. The seek will occur after
+		 * any pending offset commits. The consumer must be currently assigned the
+		 * specified partition.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 */
+		void seekToBeginning(String topic, int partition);
+
+		/**
+		 * Queue a seekToEnd operation to the consumer. The seek will occur after any pending
+		 * offset commits. The consumer must be currently assigned the specified partition.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 */
+		void seekToEnd(String topic, int partition);
 
 	}
 

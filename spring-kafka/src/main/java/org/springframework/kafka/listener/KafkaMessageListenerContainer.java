@@ -54,6 +54,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -464,6 +465,18 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					ListenerConsumer.this.consumer.seek(new TopicPartition(topic, partition), offset);
 				}
 
+				@Override
+				public void seekToBeginning(String topic, int partition) {
+					ListenerConsumer.this.consumer.seekToBeginning(
+							Collections.singletonList(new TopicPartition(topic, partition)));
+				}
+
+				@Override
+				public void seekToEnd(String topic, int partition) {
+					ListenerConsumer.this.consumer.seekToEnd(
+							Collections.singletonList(new TopicPartition(topic, partition)));
+				}
+
 			};
 			if (idle) {
 				((ConsumerSeekAware) ListenerConsumer.this.theListener).onIdleContainer(current, callback);
@@ -858,7 +871,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.logger.trace("Seek: " + offset);
 				}
 				try {
-					this.consumer.seek(offset.topicPartition(), offset.initialOffset());
+					SeekPosition position = offset.getPosition();
+					if (position == null) {
+						this.consumer.seek(offset.topicPartition(), offset.initialOffset());
+					}
+					else if (position.equals(SeekPosition.BEGINNING)) {
+						this.consumer.seekToBeginning(Collections.singletonList(offset.topicPartition()));
+					}
+					else {
+						this.consumer.seekToEnd(Collections.singletonList(offset.topicPartition()));
+					}
 				}
 				catch (Exception e) {
 					this.logger.error("Exception while seeking " + offset, e);
@@ -955,6 +977,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		@Override
 		public void seek(String topic, int partition, long offset) {
 			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, offset));
+		}
+
+		@Override
+		public void seekToBeginning(String topic, int partition) {
+			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.BEGINNING));
+		}
+
+		@Override
+		public void seekToEnd(String topic, int partition) {
+			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.END));
 		}
 
 		private final class ListenerInvoker implements SchedulingAwareRunnable {

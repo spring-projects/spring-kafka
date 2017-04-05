@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,11 +41,29 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class TopicPartitionInitialOffset {
 
+	/**
+	 * Enumeration for "special" seeks.
+	 */
+	public enum SeekPosition {
+
+		/**
+		 * Seek to the beginning.
+		 */
+		BEGINNING,
+
+		/**
+		 * Seek to the end.
+		 */
+		END
+	}
+
 	private final TopicPartition topicPartition;
 
 	private final Long initialOffset;
 
 	private final boolean relativeToCurrent;
+
+	private final SeekPosition position;
 
 	/**
 	 * Construct an instance with no initial offset management.
@@ -53,7 +71,7 @@ public class TopicPartitionInitialOffset {
 	 * @param partition the partition.
 	 */
 	public TopicPartitionInitialOffset(String topic, int partition) {
-		this(topic, partition, null);
+		this(topic, partition, null, false);
 	}
 
 	/**
@@ -83,6 +101,26 @@ public class TopicPartitionInitialOffset {
 		this.topicPartition = new TopicPartition(topic, partition);
 		this.initialOffset = initialOffset;
 		this.relativeToCurrent = relativeToCurrent;
+		this.position = null;
+	}
+
+	/**
+	 * Construct an instance with the provided initial offset.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param initialOffset the initial offset.
+	 * @param relativeToCurrent true for the initial offset to be relative to
+	 * the current consumer position, false for a positive initial offset to
+	 * be absolute and a negative offset relative to the current end of the
+	 * partition.
+	 * @param position {@link SeekPosition}.
+	 * @since 2.0
+	 */
+	public TopicPartitionInitialOffset(String topic, int partition, SeekPosition position) {
+		this.topicPartition = new TopicPartition(topic, partition);
+		this.initialOffset = null;
+		this.relativeToCurrent = false;
+		this.position = position;
 	}
 
 	public TopicPartition topicPartition() {
@@ -103,6 +141,10 @@ public class TopicPartitionInitialOffset {
 
 	public boolean isRelativeToCurrent() {
 		return this.relativeToCurrent;
+	}
+
+	public SeekPosition getPosition() {
+		return this.position;
 	}
 
 	@Override
@@ -128,6 +170,7 @@ public class TopicPartitionInitialOffset {
 				"topicPartition=" + this.topicPartition +
 				", initialOffset=" + this.initialOffset +
 				", relativeToCurrent=" + this.relativeToCurrent +
+				(this.position == null ? "" : (", position=" + this.position.name())) +
 				'}';
 	}
 
