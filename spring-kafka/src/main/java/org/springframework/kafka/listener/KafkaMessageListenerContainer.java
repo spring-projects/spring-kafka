@@ -981,12 +981,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		@Override
 		public void seekToBeginning(String topic, int partition) {
-			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, null, false, SeekPosition.BEGINNING));
+			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.BEGINNING));
 		}
 
 		@Override
 		public void seekToEnd(String topic, int partition) {
-			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, null, false, SeekPosition.END));
+			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.END));
 		}
 
 		private final class ListenerInvoker implements SchedulingAwareRunnable {

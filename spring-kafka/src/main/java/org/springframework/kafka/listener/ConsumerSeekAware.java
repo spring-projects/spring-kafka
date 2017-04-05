@@ -57,7 +57,6 @@ public interface ConsumerSeekAware {
 	/**
 	 * A callback that a listener can invoke to seek to a specific offset.
 	 */
-	@FunctionalInterface
 	interface ConsumerSeekCallback {
 
 		/**
@@ -76,9 +75,7 @@ public interface ConsumerSeekAware {
 		 * @param topic the topic.
 		 * @param partition the partition.
 		 */
-		default void seekToBeginning(String topic, int partition) {
-			seek(topic, partition, 0);
-		}
+		void seekToBeginning(String topic, int partition);
 
 		/**
 		 * Queue a seekToEnd operation to the consumer. The seek will occur after any pending
@@ -86,9 +83,7 @@ public interface ConsumerSeekAware {
 		 * @param topic the topic.
 		 * @param partition the partition.
 		 */
-		default void seekToEnd(String topic, int partition) {
-			seek(topic, partition, Long.MAX_VALUE);
-		}
+		void seekToEnd(String topic, int partition);
 
 	}
 

@@ -71,7 +71,7 @@ public class TopicPartitionInitialOffset {
 	 * @param partition the partition.
 	 */
 	public TopicPartitionInitialOffset(String topic, int partition) {
-		this(topic, partition, null, false, null);
+		this(topic, partition, null, false);
 	}
 
 	/**
@@ -83,7 +83,7 @@ public class TopicPartitionInitialOffset {
 	 * @see #TopicPartitionInitialOffset(String, int, Long, boolean)
 	 */
 	public TopicPartitionInitialOffset(String topic, int partition, Long initialOffset) {
-		this(topic, partition, initialOffset, false, null);
+		this(topic, partition, initialOffset, false);
 	}
 
 	/**
@@ -98,7 +98,10 @@ public class TopicPartitionInitialOffset {
 	 * @since 1.1
 	 */
 	public TopicPartitionInitialOffset(String topic, int partition, Long initialOffset, boolean relativeToCurrent) {
-		this(topic, partition, initialOffset, relativeToCurrent, null);
+		this.topicPartition = new TopicPartition(topic, partition);
+		this.initialOffset = initialOffset;
+		this.relativeToCurrent = relativeToCurrent;
+		this.position = null;
 	}
 
 	/**
@@ -110,15 +113,13 @@ public class TopicPartitionInitialOffset {
 	 * the current consumer position, false for a positive initial offset to
 	 * be absolute and a negative offset relative to the current end of the
 	 * partition.
-	 * @param position {@link SeekPosition#BEGINNING} or {@link SeekPosition#END}
-	 * overrides initialOffset and relativeToCurrent.
+	 * @param position {@link SeekPosition}.
 	 * @since 2.0
 	 */
-	public TopicPartitionInitialOffset(String topic, int partition, Long initialOffset, boolean relativeToCurrent,
-			SeekPosition position) {
+	public TopicPartitionInitialOffset(String topic, int partition, SeekPosition position) {
 		this.topicPartition = new TopicPartition(topic, partition);
-		this.initialOffset = initialOffset;
-		this.relativeToCurrent = relativeToCurrent;
+		this.initialOffset = null;
+		this.relativeToCurrent = false;
 		this.position = position;
 	}
 
