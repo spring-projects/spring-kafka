@@ -386,7 +386,7 @@ public class ConcurrentMessageListenerContainerTests {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testConcurrencyWithPartitions() {
-		TopicPartitionInitialOffset[] topic1PartitionS = new TopicPartitionInitialOffset[]{
+		TopicPartitionInitialOffset[] topic1PartitionS = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset(topic1, 0),
 				new TopicPartitionInitialOffset(topic1, 1),
 				new TopicPartitionInitialOffset(topic1, 2),

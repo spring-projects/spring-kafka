@@ -48,7 +48,7 @@ public final class ContainerTestUtils {
 	 */
 	public static void waitForAssignment(Object container, int partitions)
 			throws Exception {
-		if (container.getClass().getSimpleName().equals("KafkaMessageListenerContainer")) {
+		if (container.getClass().getSimpleName().contains("KafkaMessageListenerContainer")) {
 			waitForSingleContainerAssignment(container, partitions);
 			return;
 		}

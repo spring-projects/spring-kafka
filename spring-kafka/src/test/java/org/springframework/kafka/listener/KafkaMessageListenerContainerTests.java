@@ -208,8 +208,9 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setPauseAfter(100);
 		containerProps.setAckMode(ackMode);
 
-		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
+		CountDownLatch stubbingComplete = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testSlow2");
 		container.start();
 
@@ -228,7 +229,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(consumer)
 				.commitSync(any());
-
+		stubbingComplete.countDown();
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
@@ -275,8 +276,9 @@ public class KafkaMessageListenerContainerTests {
 			ack.acknowledge();
 		});
 
-		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
+		CountDownLatch stubbingComplete = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 
 		container.setBeanName("testSlow");
 
@@ -296,6 +298,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(consumer)
 				.commitSync(any());
+		stubbingComplete.countDown();
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
@@ -510,8 +513,9 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setAckOnError(false);
 
-		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
-				containerProps);
+		CountDownLatch stubbingComplete = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testRecordAcks");
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
@@ -533,6 +537,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(containerConsumer)
 				.commitSync(any());
+		stubbingComplete.countDown();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -569,8 +574,9 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setPollTimeout(100);
 		containerProps.setAckOnError(false);
 
-		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
-				containerProps);
+		CountDownLatch stubbingComplete = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testBatchAcks");
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
@@ -598,6 +604,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(containerConsumer)
 				.commitSync(any());
+		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -637,8 +644,9 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setPollTimeout(100);
 		containerProps.setAckOnError(false);
 
-		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
-				containerProps);
+		CountDownLatch stubbingComplete = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testBatchListener");
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
@@ -666,6 +674,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(containerConsumer)
 				.commitSync(any());
+		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -720,8 +729,9 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setPollTimeout(100);
 		containerProps.setAckOnError(false);
 
-		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
-				containerProps);
+		CountDownLatch stubbingComplete = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testBatchListenerManual");
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
@@ -747,6 +757,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(containerConsumer)
 				.commitSync(any());
+		stubbingComplete.countDown();
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(commitLatch.await(60, TimeUnit.SECONDS)).isTrue();
@@ -784,8 +795,9 @@ public class KafkaMessageListenerContainerTests {
 			}
 		});
 
-		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
-				containerProps);
+		CountDownLatch stubbingComplete = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testBatchListenerErrors");
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
@@ -807,6 +819,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(containerConsumer)
 				.commitSync(any());
+		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -984,8 +997,9 @@ public class KafkaMessageListenerContainerTests {
 			logger.info("defined part: " + message);
 			latch1.countDown();
 		});
-		KafkaMessageListenerContainer<Integer, String> container1 =
-				new KafkaMessageListenerContainer<>(cf, container1Props);
+		CountDownLatch stubbingComplete1 = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container1 = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, container1Props), stubbingComplete1);
 		container1.setBeanName("b1");
 		container1.start();
 
@@ -1002,6 +1016,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(spyOnConsumer(container1))
 				.commitSync(any());
+		stubbingComplete1.countDown();
 
 		TopicPartitionInitialOffset topic1Partition1 = new TopicPartitionInitialOffset(topic13, 1, 0L);
 		ContainerProperties container2Props = new ContainerProperties(topic1Partition1);
@@ -1010,8 +1025,9 @@ public class KafkaMessageListenerContainerTests {
 			logger.info("defined part: " + message);
 			latch2.countDown();
 		});
-		KafkaMessageListenerContainer<Integer, String> container2 =
-				new KafkaMessageListenerContainer<>(cf, container2Props);
+		CountDownLatch stubbingComplete2 = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container2 = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, container2Props), stubbingComplete2);
 		container2.setBeanName("b2");
 		container2.start();
 
@@ -1028,7 +1044,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(spyOnConsumer(container2))
 				.commitSync(any());
-
+		stubbingComplete2.countDown();
 
 		assertThat(initialConsumersLatch.await(20, TimeUnit.SECONDS)).isTrue();
 
@@ -1064,23 +1080,10 @@ public class KafkaMessageListenerContainerTests {
 
 		final CountDownLatch listenerConsumerStartLatch = new CountDownLatch(1);
 
-		KafkaMessageListenerContainer<Integer, String> resettingContainer =
-				new KafkaMessageListenerContainer<Integer, String>(cf, container3Props) {
-
-					@Override
-					protected void setRunning(boolean running) {
-						listenerConsumerAvailableLatch.countDown();
-						try {
-							assertThat(listenerConsumerStartLatch.await(10, TimeUnit.SECONDS)).isTrue();
-						}
-						catch (InterruptedException e) {
-							Thread.currentThread().interrupt();
-							throw new IllegalStateException(e);
-						}
-						super.setRunning(running);
-					}
-
-				};
+		CountDownLatch stubbingComplete3 = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> resettingContainer = spyOnContainer(
+				new KafkaMessageListenerContainer<Integer, String>(cf, container3Props), stubbingComplete3);
+		stubSetRunning(listenerConsumerAvailableLatch, listenerConsumerStartLatch, resettingContainer);
 		resettingContainer.setBeanName("b3");
 
 		Executors.newSingleThreadExecutor().submit(resettingContainer::start);
@@ -1100,6 +1103,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(spyOnConsumer(resettingContainer))
 				.commitSync(any());
+		stubbingComplete3.countDown();
 
 		listenerConsumerStartLatch.countDown();
 
@@ -1122,7 +1126,10 @@ public class KafkaMessageListenerContainerTests {
 			receivedMessage.set(message.value());
 			latch4.countDown();
 		});
-		resettingContainer = new KafkaMessageListenerContainer<>(cf, container4Props);
+
+		CountDownLatch stubbingComplete4 = new CountDownLatch(1);
+		resettingContainer = spyOnContainer(new KafkaMessageListenerContainer<>(cf, container4Props),
+				stubbingComplete4);
 		resettingContainer.setBeanName("b4");
 
 		resettingContainer.start();
@@ -1140,6 +1147,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(spyOnConsumer(resettingContainer))
 				.commitSync(any());
+		stubbingComplete4.countDown();
 
 		assertThat(latch4.await(60, TimeUnit.SECONDS)).isTrue();
 
@@ -1165,7 +1173,9 @@ public class KafkaMessageListenerContainerTests {
 			latch5.countDown();
 		});
 
-		resettingContainer = new KafkaMessageListenerContainer<>(cf, container5Props);
+		CountDownLatch stubbingComplete5 = new CountDownLatch(1);
+		resettingContainer = spyOnContainer(new KafkaMessageListenerContainer<>(cf, container5Props),
+				stubbingComplete5);
 		resettingContainer.setBeanName("b5");
 		resettingContainer.start();
 
@@ -1182,6 +1192,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(spyOnConsumer(resettingContainer))
 				.commitSync(any());
+		stubbingComplete5.countDown();
 
 		assertThat(latch5.await(60, TimeUnit.SECONDS)).isTrue();
 
@@ -1209,7 +1220,9 @@ public class KafkaMessageListenerContainerTests {
 			latch6.countDown();
 		});
 
-		resettingContainer = new KafkaMessageListenerContainer<>(cf, container6Props);
+		CountDownLatch stubbingComplete6 = new CountDownLatch(1);
+		resettingContainer = spyOnContainer(new KafkaMessageListenerContainer<>(cf, container6Props),
+				stubbingComplete6);
 		resettingContainer.setBeanName("b6");
 		resettingContainer.start();
 
@@ -1226,6 +1239,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(spyOnConsumer(resettingContainer))
 				.commitSync(any());
+		stubbingComplete6.countDown();
 
 		assertThat(latch6.await(60, TimeUnit.SECONDS)).isTrue();
 
@@ -1235,6 +1249,22 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(messages6).contains("FIZ", "BAR", "QUX", "BUZ");
 
 		this.logger.info("Stop auto parts");
+	}
+
+	private void stubSetRunning(final CountDownLatch listenerConsumerAvailableLatch,
+			final CountDownLatch listenerConsumerStartLatch,
+			KafkaMessageListenerContainer<Integer, String> resettingContainer) {
+		willAnswer(invocation -> {
+			listenerConsumerAvailableLatch.countDown();
+				try {
+					assertThat(listenerConsumerStartLatch.await(10, TimeUnit.SECONDS)).isTrue();
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					throw new IllegalStateException(e);
+				}
+				return invocation.callRealMethod();
+		}).given(resettingContainer).setRunning(true);
 	}
 
 	@Test
@@ -1279,8 +1309,9 @@ public class KafkaMessageListenerContainerTests {
 			}
 		});
 
-		KafkaMessageListenerContainer<Integer, String> container1 = new KafkaMessageListenerContainer<>(cf,
-				containerProps);
+		CountDownLatch stubbingComplete1 = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container1 = spyOnContainer(
+				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete1);
 		container1.setBeanName("testAckRebalance");
 		container1.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container1);
@@ -1302,6 +1333,7 @@ public class KafkaMessageListenerContainerTests {
 
 		}).given(containerConsumer)
 				.commitSync(any());
+		stubbingComplete1.countDown();
 		ContainerTestUtils.waitForAssignment(container1, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -1344,6 +1376,23 @@ public class KafkaMessageListenerContainerTests {
 		new DirectFieldAccessor(KafkaTestUtils.getPropertyValue(container, "listenerConsumer"))
 				.setPropertyValue("consumer", consumer);
 		return consumer;
+	}
+
+	private KafkaMessageListenerContainer<Integer, String> spyOnContainer(KafkaMessageListenerContainer<Integer, String> container,
+			final CountDownLatch stubbingComplete) {
+		KafkaMessageListenerContainer<Integer, String> spy = spy(container);
+		willAnswer(i -> {
+			if (stubbingComplete.getCount() > 0 && Thread.currentThread().getName().endsWith("-C-1")) {
+				try {
+					stubbingComplete.await(10, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+			}
+			return i.callRealMethod();
+		}).given(spy).isRunning();
+		return spy;
 	}
 
 	@SuppressWarnings("serial")
