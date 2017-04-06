@@ -935,16 +935,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void addOffset(ConsumerRecord<K, V> record) {
-			if (!this.offsets.containsKey(record.topic())) {
-				this.offsets.put(record.topic(), new HashMap<Integer, Long>());
-			}
-
-			Map<Integer, Long> highestOffsetMap = this.offsets.get(record.topic());
-			Long offset = highestOffsetMap.get(record.partition());
-
-			if (offset == null || record.offset() > offset) {
-				highestOffsetMap.put(record.partition(), record.offset());
-			}
+			this.offsets.computeIfAbsent(record.topic(), v -> new HashMap<>())
+				.compute(record.partition(), (k, v) -> v == null ? record.offset() : Math.max(v, record.offset()));
 		}
 
 		private void commitIfNecessary() {
@@ -981,18 +973,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private Collection<ConsumerRecord<K, V>> getHighestOffsetRecords(List<ConsumerRecord<K, V>> records) {
-			Map<Integer, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
-
-			for (ConsumerRecord<K, V> record : records) {
-				if (record != null) {
-					ConsumerRecord<K, V> consumerRecord = highestOffsetMap.get(record.partition());
-
-					if (consumerRecord == null || record.offset() > consumerRecord.offset()) {
-						highestOffsetMap.put(record.partition(), record);
-					}
-				}
-			}
-
+			final Map<Integer, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
+			records.forEach(r -> {
+				highestOffsetMap.compute(r.partition(), (k, v) -> v == null ? r : r.offset() > v.offset() ? r : v);
+			});
 			return highestOffsetMap.values();
 		}
 
