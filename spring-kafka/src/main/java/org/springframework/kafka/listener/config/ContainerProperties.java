@@ -41,10 +41,6 @@ public class ContainerProperties {
 
 	private static final int DEFAULT_SHUTDOWN_TIMEOUT = 10000;
 
-	private static final int DEFAULT_QUEUE_DEPTH = 1;
-
-	private static final int DEFAULT_PAUSE_AFTER = 10000;
-
 	/**
 	 * Topic names.
 	 */
@@ -106,33 +102,9 @@ public class ContainerProperties {
 	private AsyncListenableTaskExecutor consumerTaskExecutor;
 
 	/**
-	 * The executor for threads that invoke the listener.
-	 */
-	private AsyncListenableTaskExecutor listenerTaskExecutor;
-
-	/**
 	 * The error handler to call when the listener throws an exception.
 	 */
 	private GenericErrorHandler<?> errorHandler;
-
-	/**
-	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
-	 * true, the delay after which the consumer should be paused. Default 10000.
-	 */
-	private long pauseAfter = DEFAULT_PAUSE_AFTER;
-
-	/**
-	 * When true, avoids rebalancing when this consumer is slow or throws a
-	 * qualifying exception - pauses the consumer. Default: true.
-	 * @see #pauseAfter
-	 */
-	private boolean pauseEnabled = true;
-
-	/**
-	 * Set the queue depth for handoffs from the consumer thread to the listener
-	 * thread. Default 1 (up to 2 in process).
-	 */
-	private int queueDepth = DEFAULT_QUEUE_DEPTH;
 
 	/**
 	 * The timeout for shutting down the container. This is the maximum amount of
@@ -267,42 +239,6 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * Set the executor for threads that invoke the listener.
-	 * @param listenerTaskExecutor the executor.
-	 */
-	public void setListenerTaskExecutor(AsyncListenableTaskExecutor listenerTaskExecutor) {
-		this.listenerTaskExecutor = listenerTaskExecutor;
-	}
-
-	/**
-	 * When using Kafka group management and {@link #setPauseEnabled(boolean)} is
-	 * true, set the delay after which the consumer should be paused. Default 10000.
-	 * @param pauseAfter the delay.
-	 */
-	public void setPauseAfter(long pauseAfter) {
-		this.pauseAfter = pauseAfter;
-	}
-
-	/**
-	 * Set to true to avoid rebalancing when this consumer is slow or throws a
-	 * qualifying exception - pause the consumer. Default: true.
-	 * @param pauseEnabled true to pause.
-	 * @see #setPauseAfter(long)
-	 */
-	public void setPauseEnabled(boolean pauseEnabled) {
-		this.pauseEnabled = pauseEnabled;
-	}
-
-	/**
-	 * Set the queue depth for handoffs from the consumer thread to the listener
-	 * thread. Default 1 (up to 2 in process).
-	 * @param queueDepth the queue depth.
-	 */
-	public void setQueueDepth(int queueDepth) {
-		this.queueDepth = queueDepth;
-	}
-
-	/**
 	 * Set the timeout for shutting down the container. This is the maximum amount of
 	 * time that the invocation to {@code #stop(Runnable)} will block for, before
 	 * returning.
@@ -404,24 +340,8 @@ public class ContainerProperties {
 		return this.consumerTaskExecutor;
 	}
 
-	public AsyncListenableTaskExecutor getListenerTaskExecutor() {
-		return this.listenerTaskExecutor;
-	}
-
 	public GenericErrorHandler<?> getGenericErrorHandler() {
 		return this.errorHandler;
-	}
-
-	public long getPauseAfter() {
-		return this.pauseAfter;
-	}
-
-	public boolean isPauseEnabled() {
-		return this.pauseEnabled;
-	}
-
-	public int getQueueDepth() {
-		return this.queueDepth;
 	}
 
 	public long getShutdownTimeout() {

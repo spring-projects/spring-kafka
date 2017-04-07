@@ -19,17 +19,14 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -64,7 +61,6 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
-import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
@@ -87,14 +83,6 @@ public class KafkaMessageListenerContainerTests {
 
 	private final Log logger = LogFactory.getLog(this.getClass());
 
-	private static String topic1 = "testTopic1";
-
-	private static String topic2 = "testTopic2";
-
-	private static String topic3 = "testTopic3";
-
-	private static String topic4 = "testTopic4";
-
 	private static String topic5 = "testTopic5";
 
 	private static String topic6 = "testTopic6";
@@ -116,210 +104,11 @@ public class KafkaMessageListenerContainerTests {
 	private static String topic14 = "testTopic14";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic5,
 			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14);
 
 	@Rule
 	public TestName testName = new TestName();
-
-	@Test
-	public void testSlowListener() throws Exception {
-		logger.info("Start " + this.testName.getMethodName());
-		Map<String, Object> props = KafkaTestUtils.consumerProps("slow1", "false", embeddedKafka);
-//		props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, 6); // 2 per poll
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties(topic1);
-
-		final CountDownLatch latch = new CountDownLatch(6);
-		final BitSet bitSet = new BitSet(6);
-		final AtomicReference<Acknowledgment> ackNull = new AtomicReference<>();
-		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
-			logger.info("slow1: " + message);
-			bitSet.set((int) (message.partition() * 3 + message.offset()));
-			try {
-				Thread.sleep(1000);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			ackNull.set(ack);
-			latch.countDown();
-		});
-		containerProps.setPauseAfter(100);
-		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
-		container.setBeanName("testSlow1");
-
-
-		container.start();
-		Consumer<?, ?> consumer = spyOnConsumer(container);
-		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-
-		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(topic1);
-		template.sendDefault(0, "foo");
-		template.sendDefault(2, "bar");
-		template.sendDefault(0, "baz");
-		template.sendDefault(2, "qux");
-		template.flush();
-		Thread.sleep(300);
-		template.sendDefault(0, "fiz");
-		template.sendDefault(2, "buz");
-		template.flush();
-		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(ackNull.get()).isNull();
-		assertThat(bitSet.cardinality()).isEqualTo(6);
-		verify(consumer, atLeastOnce()).pause(any());
-		verify(consumer, atLeastOnce()).resume(any());
-		container.stop();
-		logger.info("Stop " + this.testName.getMethodName());
-	}
-
-	@Test
-	public void testSlowListenerManualCommit() throws Exception {
-		testSlowListenerManualGuts(AckMode.MANUAL_IMMEDIATE, topic2);
-		// to be sure the commits worked ok so run the tests again and the second tests start at the committed offset.
-		testSlowListenerManualGuts(AckMode.MANUAL_IMMEDIATE, topic2);
-	}
-
-	private void testSlowListenerManualGuts(AckMode ackMode, String topic) throws Exception {
-		logger.info("Start " + this.testName.getMethodName() + ackMode);
-		Map<String, Object> props = KafkaTestUtils.consumerProps("slow2", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setSyncCommits(true);
-
-		final CountDownLatch latch = new CountDownLatch(6);
-		final BitSet bitSet = new BitSet(4);
-		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
-			logger.info("slow2: " + message);
-			bitSet.set((int) (message.partition() * 3 + message.offset()));
-			try {
-				Thread.sleep(1000);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			ack.acknowledge();
-			latch.countDown();
-		});
-		containerProps.setPauseAfter(100);
-		containerProps.setAckMode(ackMode);
-
-		CountDownLatch stubbingComplete = new CountDownLatch(1);
-		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
-				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
-		container.setBeanName("testSlow2");
-		container.start();
-
-		Consumer<?, ?> consumer = spyOnConsumer(container);
-
-		final CountDownLatch commitLatch = new CountDownLatch(7);
-
-		willAnswer(invocation -> {
-
-			try {
-				return invocation.callRealMethod();
-			}
-			finally {
-				commitLatch.countDown();
-			}
-
-		}).given(consumer)
-				.commitSync(any());
-		stubbingComplete.countDown();
-
-		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-
-		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<Integer, String>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(topic);
-		template.sendDefault(0, "foo");
-		template.sendDefault(2, "bar");
-		template.sendDefault(0, "baz");
-		template.sendDefault(2, "qux");
-		template.flush();
-		Thread.sleep(300);
-		template.sendDefault(0, "fiz");
-		template.sendDefault(2, "buz");
-		template.flush();
-		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(commitLatch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(bitSet.cardinality()).isEqualTo(6);
-		verify(consumer, atLeastOnce()).pause(any());
-		verify(consumer, atLeastOnce()).resume(any());
-		container.stop();
-		logger.info("Stop " + this.testName.getMethodName() + ackMode);
-	}
-
-	@Test
-	public void testSlowConsumerCommitsAreProcessed() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("slow", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties(topic5);
-		containerProps.setAckCount(1);
-		containerProps.setPauseAfter(100);
-		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
-		containerProps.setSyncCommits(true);
-
-		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
-			logger.info("slow: " + message);
-			try {
-				Thread.sleep(1000);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			ack.acknowledge();
-		});
-
-		CountDownLatch stubbingComplete = new CountDownLatch(1);
-		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
-				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
-
-		container.setBeanName("testSlow");
-
-		container.start();
-		Consumer<?, ?> consumer = spyOnConsumer(container);
-
-		final CountDownLatch latch = new CountDownLatch(3);
-
-		willAnswer(invocation -> {
-
-			try {
-				return invocation.callRealMethod();
-			}
-			finally {
-				latch.countDown();
-			}
-
-		}).given(consumer)
-				.commitSync(any());
-		stubbingComplete.countDown();
-
-		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-
-		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(topic5);
-		template.sendDefault(0, 0, "foo");
-		template.sendDefault(1, 2, "bar");
-		template.flush();
-		Thread.sleep(300);
-		template.sendDefault(0, 0, "fiz");
-		template.sendDefault(1, 2, "buz");
-		template.flush();
-
-		// Verify that commitSync is called when paused
-		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		verify(consumer, atLeastOnce()).pause(any());
-		verify(consumer, atLeastOnce()).resume(any());
-		container.stop();
-	}
 
 	@Test
 	public void testCommitsAreFlushedOnStop() throws Exception {
@@ -327,7 +116,6 @@ public class KafkaMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic5);
 		containerProps.setAckCount(1);
-		containerProps.setPauseAfter(100);
 		// set large values, ensuring that commits don't happen before `stop()`
 		containerProps.setAckTime(20000);
 		containerProps.setAckCount(20000);
@@ -365,139 +153,6 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		// Verify that a commit has been made on stop
 		verify(consumer, times(2)).commitSync(any());
-	}
-
-	@Test
-	public void testSlowConsumerWithException() throws Exception {
-		logger.info("Start " + this.testName.getMethodName());
-		Map<String, Object> props = KafkaTestUtils.consumerProps("slow3", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
-		ContainerProperties containerProps = new ContainerProperties(topic3);
-
-		final CountDownLatch latch = new CountDownLatch(18);
-		final BitSet bitSet = new BitSet(6);
-		final Map<String, AtomicInteger> faults = new HashMap<>();
-		RetryingMessageListenerAdapter<Integer, String> adapter = new RetryingMessageListenerAdapter<>(
-					new MessageListener<Integer, String>() {
-
-				@Override
-				public void onMessage(ConsumerRecord<Integer, String> message) {
-					logger.info("slow3: " + message);
-					bitSet.set((int) (message.partition() * 3 + message.offset()));
-					String key = message.topic() + message.partition() + message.offset();
-					if (faults.get(key) == null) {
-						faults.put(key, new AtomicInteger(1));
-					}
-					else {
-						faults.get(key).incrementAndGet();
-					}
-					latch.countDown(); // 3 per = 18
-					if (faults.get(key).get() < 3) { // succeed on the third attempt
-						throw new FooEx();
-					}
-				}
-
-			}, buildRetry(), null);
-		containerProps.setMessageListener(adapter);
-		containerProps.setPauseAfter(100);
-
-		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
-		container.setBeanName("testSlow3");
-
-		container.start();
-		Consumer<?, ?> consumer = spyOnConsumer(container);
-		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-
-		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(topic3);
-		template.sendDefault(0, "foo");
-		template.sendDefault(2, "bar");
-		template.sendDefault(0, "baz");
-		template.sendDefault(2, "qux");
-		template.flush();
-		Thread.sleep(300);
-		template.sendDefault(0, "fiz");
-		template.sendDefault(2, "buz");
-		template.flush();
-		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(bitSet.cardinality()).isEqualTo(6);
-		verify(consumer, atLeastOnce()).pause(any());
-		verify(consumer, atLeastOnce()).resume(any());
-		container.stop();
-		logger.info("Stop " + this.testName.getMethodName());
-	}
-
-	@Test
-	public void testSlowConsumerWithSlowThenExceptionThenGood() throws Exception {
-		logger.info("Start " + this.testName.getMethodName());
-		Map<String, Object> props = KafkaTestUtils.consumerProps("slow4", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
-		ContainerProperties containerProps = new ContainerProperties(topic4);
-		final CountDownLatch latch = new CountDownLatch(18);
-		final BitSet bitSet = new BitSet(6);
-		final Map<String, AtomicInteger> faults = new HashMap<>();
-		RetryingMessageListenerAdapter<Integer, String> adapter = new RetryingMessageListenerAdapter<>(
-			new MessageListener<Integer, String>() {
-
-				@Override
-				public void onMessage(ConsumerRecord<Integer, String> message) {
-					logger.info("slow4: " + message);
-					bitSet.set((int) (message.partition() * 4 + message.offset()));
-					String key = message.topic() + message.partition() + message.offset();
-					if (faults.get(key) == null) {
-						faults.put(key, new AtomicInteger(1));
-					}
-					else {
-						faults.get(key).incrementAndGet();
-					}
-					latch.countDown(); // 3 per = 18
-					if (faults.get(key).get() == 1) {
-						try {
-							Thread.sleep(1000);
-						}
-						catch (InterruptedException e) {
-							Thread.currentThread().interrupt();
-						}
-					}
-					if (faults.get(key).get() < 3) { // succeed on the third attempt
-						throw new FooEx();
-					}
-				}
-
-			}, buildRetry(), null);
-		containerProps.setMessageListener(adapter);
-		containerProps.setPauseAfter(100);
-
-		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
-		container.setBeanName("testSlow4");
-
-		container.start();
-		Consumer<?, ?> consumer = spyOnConsumer(container);
-		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-
-		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(topic4);
-		template.sendDefault(0, "foo");
-		template.sendDefault(2, "bar");
-		template.sendDefault(0, "baz");
-		template.sendDefault(2, "qux");
-		template.flush();
-		Thread.sleep(300);
-		template.sendDefault(0, "fiz");
-		template.sendDefault(2, "buz");
-		template.flush();
-		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(bitSet.cardinality()).isEqualTo(6);
-		verify(consumer, atLeastOnce()).pause(any());
-		verify(consumer, atLeastOnce()).resume(any());
-		container.stop();
-		logger.info("Stop " + this.testName.getMethodName());
 	}
 
 	@Test

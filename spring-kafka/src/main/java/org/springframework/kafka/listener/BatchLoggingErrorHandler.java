@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,10 +35,15 @@ public class BatchLoggingErrorHandler implements BatchErrorHandler {
 
 	@Override
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> data) {
-		Iterator<?> iterator = data.iterator();
 		StringBuilder message = new StringBuilder("Error while processing:\n");
-		while (iterator.hasNext()) {
-			message.append(iterator.next()).append('\n');
+		if (data == null) {
+			message.append("null ");
+		}
+		else {
+			Iterator<?> iterator = data.iterator();
+			while (iterator.hasNext()) {
+				message.append(iterator.next()).append('\n');
+			}
 		}
 		log.error(message.substring(0, message.length() - 1), thrownException);
 	}

@@ -28,12 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -47,7 +42,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
@@ -57,7 +51,6 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
@@ -174,11 +167,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					(getBeanName() == null ? "" : getBeanName()) + "-C-");
 			containerProperties.setConsumerTaskExecutor(consumerExecutor);
 		}
-		if (containerProperties.getListenerTaskExecutor() == null) {
-			SimpleAsyncTaskExecutor listenerExecutor = new SimpleAsyncTaskExecutor(
-					(getBeanName() == null ? "" : getBeanName()) + "-L-");
-			containerProperties.setListenerTaskExecutor(listenerExecutor);
-		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener);
 		setRunning(true);
 		this.listenerConsumerFuture = containerProperties
@@ -268,9 +256,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final boolean isBatchAck = this.containerProperties.getAckMode().equals(AckMode.BATCH);
 
-		private final BlockingQueue<ConsumerRecords<K, V>> recordsToProcess =
-				new LinkedBlockingQueue<>(this.containerProperties.getQueueDepth());
-
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
 		private final BlockingQueue<TopicPartitionInitialOffset> seeks = new LinkedBlockingQueue<>();
@@ -281,24 +266,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
-		private ConsumerRecords<K, V> unsent;
-
 		private volatile Collection<TopicPartition> assignedPartitions;
 
 		private int count;
 
-		private volatile ListenerInvoker invoker;
-
 		private long last;
-
-		private volatile Future<?> listenerInvokerFuture;
-
-		/**
-		 * The consumer is currently paused due to a slow listener. The consumer will be
-		 * resumed when the current batch of records has been processed but will continue
-		 * to be polled.
-		 */
-		private boolean paused;
 
 		@SuppressWarnings("unchecked")
 		private ListenerConsumer(GenericMessageListener<?> listener, GenericAcknowledgingMessageListener<?> ackListener) {
@@ -381,32 +353,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 				@Override
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-					// do not stop the invoker if it is not started yet
-					// this will occur on the initial start on a subscription
-					if (!ListenerConsumer.this.autoCommit) {
-						if (ListenerConsumer.this.logger.isTraceEnabled()) {
-							ListenerConsumer.this.logger.trace("Received partition revocation notification, " +
-									"and will stop the invoker.");
-						}
-						if (ListenerConsumer.this.listenerInvokerFuture != null) {
-							stopInvoker();
-							ListenerConsumer.this.recordsToProcess.clear();
-							ListenerConsumer.this.unsent = null;
-						}
-						else {
-							if (!CollectionUtils.isEmpty(partitions)) {
-								ListenerConsumer.this.logger.error("Invalid state: the invoker was not active, " +
-										"but the consumer had allocated partitions");
-							}
-						}
-					}
-					else {
-						if (ListenerConsumer.this.logger.isTraceEnabled()) {
-							ListenerConsumer.this.logger.trace("Received partition revocation notification, " +
-									"but the container is in autocommit mode, " +
-									"so transition will be handled by the consumer");
-						}
-					}
 					getContainerProperties().getConsumerRebalanceListener().onPartitionsRevoked(partitions);
 					// Wait until now to commit, in case the user listener added acks
 					commitManualAcks();
@@ -437,15 +383,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 					if (ListenerConsumer.this.theListener instanceof ConsumerSeekAware) {
 						seekPartitions(partitions, false);
-					}
-					// We will not start the invoker thread if we are in autocommit mode,
-					// as we will execute synchronously then
-					// We will not start the invoker thread if the container is stopped
-					// We will not start the invoker thread if there are no partitions to
-					// listen to
-					if (!ListenerConsumer.this.autoCommit && KafkaMessageListenerContainer.this.isRunning()
-							&& !CollectionUtils.isEmpty(partitions)) {
-						startInvoker();
 					}
 					getContainerProperties().getConsumerRebalanceListener().onPartitionsAssigned(partitions);
 				}
@@ -507,12 +444,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass().getName());
 		}
 
-		private void startInvoker() {
-			ListenerConsumer.this.invoker = new ListenerInvoker();
-			ListenerConsumer.this.listenerInvokerFuture = this.containerProperties.getListenerTaskExecutor()
-					.submit(ListenerConsumer.this.invoker);
-		}
-
 		@Override
 		public boolean isLongLived() {
 			return true;
@@ -520,19 +451,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		@Override
 		public void run() {
-			if (this.autoCommit && this.theListener instanceof ConsumerSeekAware) {
+			if (this.theListener instanceof ConsumerSeekAware) {
 				((ConsumerSeekAware) this.theListener).registerSeekCallback(this);
 			}
 			this.count = 0;
 			this.last = System.currentTimeMillis();
 			if (isRunning() && this.definedPartitions != null) {
 				initPartitionsIfNeeded();
-				// we start the invoker here as there will be no rebalance calls to
-				// trigger it, but only if the container is not set to autocommit
-				// otherwise we will process records on a separate thread
-				if (!this.autoCommit) {
-					startInvoker();
-				}
 			}
 			long lastReceive = System.currentTimeMillis();
 			long lastAlertAt = lastReceive;
@@ -542,9 +467,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						processCommits();
 					}
 					processSeeks();
-					if (this.logger.isTraceEnabled()) {
-						this.logger.trace("Polling (paused=" + this.paused + ")...");
-					}
 					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
 					if (records != null && this.logger.isDebugEnabled()) {
 						this.logger.debug("Received: " + records.count() + " records");
@@ -553,23 +475,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						if (this.containerProperties.getIdleEventInterval() != null) {
 							lastReceive = System.currentTimeMillis();
 						}
-						// if the container is set to auto-commit, then execute in the
-						// same thread
-						// otherwise send to the buffering queue
-						if (this.autoCommit) {
-							invokeListener(records);
-						}
-						else {
-							if (sendToListener(records)) {
-								if (this.assignedPartitions != null) {
-									// avoid group management rebalance due to a slow
-									// consumer
-									this.consumer.pause(this.assignedPartitions);
-									this.paused = true;
-									this.unsent = records;
-								}
-							}
-						}
+						invokeListener(records);
 					}
 					else {
 						if (this.containerProperties.getIdleEventInterval() != null) {
@@ -584,10 +490,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							}
 						}
 					}
-					this.unsent = checkPause(this.unsent);
 				}
 				catch (WakeupException e) {
-					this.unsent = checkPause(this.unsent);
+					// Ignore, we're stopping
 				}
 				catch (Exception e) {
 					if (this.containerProperties.getGenericErrorHandler() != null) {
@@ -598,10 +503,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 			}
-			if (this.listenerInvokerFuture != null) {
-				stopInvoker();
-				commitManualAcks();
-			}
+			commitManualAcks();
 			try {
 				this.consumer.unsubscribe();
 			}
@@ -614,30 +516,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-
-		private void stopInvoker() {
-			long now = System.currentTimeMillis();
-			this.invoker.stop();
-			long remaining = this.containerProperties.getShutdownTimeout() + now - System.currentTimeMillis();
-			try {
-				this.listenerInvokerFuture.get(remaining, TimeUnit.MILLISECONDS);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			catch (ExecutionException e) {
-				this.logger.error("Error while shutting down the listener invoker:", e);
-			}
-			catch (TimeoutException e) {
-				this.logger.info("Invoker timed out while waiting for shutdown and will be canceled.");
-				this.listenerInvokerFuture.cancel(true);
-			}
-			finally {
-				this.listenerInvokerFuture = null;
-			}
-			this.invoker = null;
-		}
-
 		private void commitManualAcks() {
 			processCommits();
 			if (this.offsets.size() > 0) {
@@ -646,38 +524,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private ConsumerRecords<K, V> checkPause(ConsumerRecords<K, V> unsent) {
-			if (this.paused && this.recordsToProcess.size() < this.containerProperties.getQueueDepth()) {
-				// Listener has caught up.
-				this.consumer.resume(this.assignedPartitions);
-				this.paused = false;
-				if (unsent != null) {
-					try {
-						sendToListener(unsent);
-					}
-					catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						throw new KafkaException("Interrupted while sending to listener", e);
-					}
-				}
-				return null;
-			}
-			return unsent;
-		}
-
-		private boolean sendToListener(final ConsumerRecords<K, V> records) throws InterruptedException {
-			if (this.containerProperties.isPauseEnabled() && CollectionUtils.isEmpty(this.definedPartitions)) {
-				return !this.recordsToProcess.offer(records, this.containerProperties.getPauseAfter(),
-						TimeUnit.MILLISECONDS);
-			}
-			else {
-				this.recordsToProcess.put(records);
-				return false;
-			}
-		}
-
 		/**
-		 * Process any acks that have been queued by the listener thread.
+		 * Process any acks that have been queued.
 		 */
 		private void handleAcks() {
 			ConsumerRecord<K, V> record = this.acks.poll();
@@ -691,7 +539,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void processAck(ConsumerRecord<K, V> record) {
-			if (ListenerConsumer.this.isManualImmediateAck) {
+			if (this.isManualImmediateAck) {
 				try {
 					ackImmediate(record);
 				}
@@ -740,7 +588,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					if (this.batchAcknowledgingMessageListener != null) {
 						this.batchAcknowledgingMessageListener.onMessage(recordList,
 								this.isAnyManualAck
-										? new ConsumerBatchAcknowledgment(recordList, this.isManualImmediateAck)
+										? new ConsumerBatchAcknowledgment(recordList)
 										: null);
 					}
 					else {
@@ -774,7 +622,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-			while (iterator.hasNext() && (this.autoCommit || (this.invoker != null && this.invoker.active))) {
+			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
 				if (this.logger.isTraceEnabled()) {
 					this.logger.trace("Processing " + record);
@@ -783,7 +631,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					if (this.acknowledgingMessageListener != null) {
 						this.acknowledgingMessageListener.onMessage(record,
 								this.isAnyManualAck
-										? new ConsumerAcknowledgment(record, this.isManualImmediateAck)
+										? new ConsumerAcknowledgment(record)
 										: null);
 					}
 					else {
@@ -995,109 +843,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.END));
 		}
 
-		private final class ListenerInvoker implements SchedulingAwareRunnable {
-
-			private final CountDownLatch exitLatch = new CountDownLatch(1);
-
-			private volatile boolean active = true;
-
-			private volatile Thread executingThread;
-
-			@Override
-			public void run() {
-				Assert.isTrue(this.active, "This instance is not active anymore");
-				if (ListenerConsumer.this.theListener instanceof ConsumerSeekAware) {
-					((ConsumerSeekAware) ListenerConsumer.this.theListener).registerSeekCallback(ListenerConsumer.this);
-				}
-				try {
-					this.executingThread = Thread.currentThread();
-					while (this.active) {
-						try {
-							ConsumerRecords<K, V> records = ListenerConsumer.this.recordsToProcess.poll(1,
-									TimeUnit.SECONDS);
-							if (this.active) {
-								if (records != null) {
-									invokeListener(records);
-								}
-								else {
-									if (ListenerConsumer.this.logger.isTraceEnabled()) {
-										ListenerConsumer.this.logger.trace("No records to process");
-									}
-								}
-							}
-						}
-						catch (InterruptedException e) {
-							if (!this.active) {
-								Thread.currentThread().interrupt();
-							}
-							else {
-								ListenerConsumer.this.logger.debug("Interrupt ignored");
-							}
-						}
-					}
-				}
-				finally {
-					this.active = false;
-					this.exitLatch.countDown();
-				}
-			}
-
-			@Override
-			public boolean isLongLived() {
-				return true;
-			}
-
-			private void stop() {
-				if (ListenerConsumer.this.logger.isDebugEnabled()) {
-					ListenerConsumer.this.logger.debug("Stopping invoker");
-				}
-				this.active = false;
-				try {
-					if (!this.exitLatch.await(getContainerProperties().getShutdownTimeout(), TimeUnit.MILLISECONDS)
-							&& this.executingThread != null) {
-						if (ListenerConsumer.this.logger.isDebugEnabled()) {
-							ListenerConsumer.this.logger.debug("Interrupting invoker");
-						}
-						this.executingThread.interrupt();
-					}
-				}
-				catch (InterruptedException e) {
-					if (this.executingThread != null) {
-						this.executingThread.interrupt();
-					}
-					Thread.currentThread().interrupt();
-				}
-				if (ListenerConsumer.this.logger.isDebugEnabled()) {
-					ListenerConsumer.this.logger.debug("Invoker stopped");
-				}
-			}
-		}
-
 		private final class ConsumerAcknowledgment implements Acknowledgment {
 
 			private final ConsumerRecord<K, V> record;
 
-			private final boolean immediate;
-
-			private ConsumerAcknowledgment(ConsumerRecord<K, V> record, boolean immediate) {
+			private ConsumerAcknowledgment(ConsumerRecord<K, V> record) {
 				this.record = record;
-				this.immediate = immediate;
 			}
 
 			@Override
 			public void acknowledge() {
-				try {
-					Assert.state(ListenerConsumer.this.isAnyManualAck,
-							"A manual ackmode is required for an acknowledging listener");
-					ListenerConsumer.this.acks.put(this.record);
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw new KafkaException("Interrupted while queuing ack for " + this.record, e);
-				}
-				if (this.immediate) {
-					ListenerConsumer.this.consumer.wakeup();
-				}
+				Assert.state(ListenerConsumer.this.isAnyManualAck,
+						"A manual ackmode is required for an acknowledging listener");
+				processAck(this.record);
 			}
 
 			@Override
@@ -1111,30 +869,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			private final List<ConsumerRecord<K, V>> records;
 
-			private final boolean immediate;
-
-			private ConsumerBatchAcknowledgment(List<ConsumerRecord<K, V>> records, boolean immediate) {
+			private ConsumerBatchAcknowledgment(List<ConsumerRecord<K, V>> records) {
 				// make a copy in case the listener alters the list
 				this.records = new LinkedList<ConsumerRecord<K, V>>(records);
-				this.immediate = immediate;
 			}
 
 			@Override
 			public void acknowledge() {
-				try {
-					Assert.state(ListenerConsumer.this.isAnyManualAck,
-							"A manual ackmode is required for an acknowledging listener");
-
-					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(this.records)) {
-						ListenerConsumer.this.acks.put(record);
-					}
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw new KafkaException("Interrupted while queuing ack for " + this.records, e);
-				}
-				if (this.immediate) {
-					ListenerConsumer.this.consumer.wakeup();
+				Assert.state(ListenerConsumer.this.isAnyManualAck,
+						"A manual ackmode is required for an acknowledging listener");
+				for (ConsumerRecord<K, V> record : getHighestOffsetRecords(this.records)) {
+					processAck(record);
 				}
 			}
 

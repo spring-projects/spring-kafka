@@ -21,12 +21,9 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,8 +73,6 @@ public class ConcurrentMessageListenerContainerTests {
 	private static String topic1 = "testTopic1";
 
 	private static String topic2 = "testTopic2";
-
-//	private static String topic3 = "testTopic3";
 
 	private static String topic4 = "testTopic4";
 
@@ -210,10 +205,8 @@ public class ConcurrentMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 
 		final CountDownLatch latch = new CountDownLatch(4);
-		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("manual: " + message);
-			listenerThreadNames.add(Thread.currentThread().getName());
 			latch.countDown();
 		});
 
@@ -235,9 +228,6 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "qux");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		for (String threadName : listenerThreadNames) {
-			assertThat(threadName).contains("-L-");
-		}
 		container.stop();
 		this.logger.info("Stop manual");
 	}
@@ -532,64 +522,6 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(consumer.position(new TopicPartition(topic9, 1))).isEqualTo(2);
 		consumer.close();
 		logger.info("Stop ack on error");
-	}
-
-	@Test
-	public void testRebalanceWithSlowConsumer() throws Exception {
-		this.logger.info("Start auto");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test101", "false", embeddedKafka);
-		props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, "20000");
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties(topic1);
-		final CountDownLatch latch = new CountDownLatch(8);
-		final Set<String> listenerThreadNames = Collections.synchronizedSet(new HashSet<String>());
-		List<String> receivedMessages = Collections.synchronizedList(new ArrayList<>());
-		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
-			listenerThreadNames.add(Thread.currentThread().getName());
-			try {
-				Thread.sleep(2000);
-			}
-			catch (InterruptedException e) {
-				// ignore
-			}
-			receivedMessages.add(message.value());
-			listenerThreadNames.add(Thread.currentThread().getName());
-			latch.countDown();
-		});
-
-		ConcurrentMessageListenerContainer<Integer, String> container =
-				new ConcurrentMessageListenerContainer<>(cf, containerProps);
-		ConcurrentMessageListenerContainer<Integer, String> container2 =
-				new ConcurrentMessageListenerContainer<>(cf, containerProps);
-		container.setConcurrency(1);
-		container2.setConcurrency(1);
-		container.setBeanName("testAuto");
-		container2.setBeanName("testAuto2");
-		container.start();
-		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(topic1);
-		template.sendDefault(0, 0, "foo");
-		template.sendDefault(0, 2, "bar");
-		template.sendDefault(0, 0, "baz");
-		template.sendDefault(0, 2, "qux");
-		template.sendDefault(1, 2, "corge");
-		template.sendDefault(1, 2, "grault");
-		template.sendDefault(1, 2, "garply");
-		template.sendDefault(1, 2, "waldo");
-		template.flush();
-		container2.start();
-		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(receivedMessages).containsOnlyOnce("foo", "bar", "baz", "qux", "corge", "grault", "garply", "waldo");
-		// all messages are received
-		assertThat(receivedMessages).hasSize(8);
-		// messages are received on separate threads
-		assertThat(listenerThreadNames.size()).isGreaterThanOrEqualTo(2);
-		container.stop();
-		container2.stop();
-		this.logger.info("Stop auto");
 	}
 
 }

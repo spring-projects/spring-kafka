@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,8 +91,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 		/**
 		 * User takes responsibility for acks using an
-		 * {@link AcknowledgingMessageListener}. The consumer is woken to
-		 * immediately process the commit.
+		 * {@link AcknowledgingMessageListener}. The consumer
+		 * immediately processes the commit.
 		 */
 		MANUAL_IMMEDIATE,
 
