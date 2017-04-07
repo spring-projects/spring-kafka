@@ -26,7 +26,6 @@ import static org.mockito.Mockito.verify;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -67,9 +66,6 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
 
 /**
  * Tests for the listener container.
@@ -1020,16 +1016,6 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(consumer.position(new TopicPartition(topic14, 1))).isEqualTo(2);
 		consumer.close();
 		logger.info("Stop manual ack rebalance");
-	}
-
-	private RetryTemplate buildRetry() {
-		SimpleRetryPolicy policy = new SimpleRetryPolicy(3, Collections.singletonMap(FooEx.class, true));
-		RetryTemplate retryTemplate = new RetryTemplate();
-		retryTemplate.setRetryPolicy(policy);
-		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-		backOffPolicy.setBackOffPeriod(1000);
-		retryTemplate.setBackOffPolicy(backOffPolicy);
-		return retryTemplate;
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
