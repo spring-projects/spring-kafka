@@ -250,6 +250,21 @@ The second takes an array of topics and Kafka allocates the partitions based on 
 partitions across the group.
 The third uses a regex `Pattern` to select the topics.
 
+To assign a `MessageListener` to a container, use the `ContainerProps.setMessageListener` method when creating the Container:
+
+[source, java]
+----
+ContainerProperties containerProps = new ContainerProperties("topic1", "topic2");
+containerProps.setMessageListener(new MessageListener<Integer, String>() {
+    ...
+});
+DefaultKafkaConsumerFactory<Integer, String> cf =
+                        new DefaultKafkaConsumerFactory<Integer, String>(consumerProps());
+KafkaMessageListenerContainer<Integer, String> container =
+                        new KafkaMessageListenerContainer<>(cf, containerProps);
+return container;
+----
+
 Refer to the JavaDocs for `ContainerProperties` for more information about the various properties that can be set.
 
 ====== ConcurrentMessageListenerContainer
