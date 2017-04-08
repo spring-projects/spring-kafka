@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,21 @@
 package org.springframework.kafka.listener;
 
 /**
- * Top level interface for listener types using container commits or auto commits.
+ * Classes implementing this interface allow containers to determine the type of the
+ * ultimate listener.
  *
- * @param <T> the type.
+ * @param <T> the type received by the listener.
  *
  * @author Gary Russell
- * @since 1.1
+ * @since 2.0
  *
  */
-@FunctionalInterface
-public interface GenericMessageListener<T> extends KafkaDataListener<T> {
+public interface DelegatingMessageListener<T> {
+
+	/**
+	 * Return the delegate.
+	 * @return the delegate.
+	 */
+	T getDelegate();
 
 }

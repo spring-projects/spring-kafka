@@ -16,6 +16,10 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.Consumer;
+
+import org.springframework.kafka.support.Acknowledgment;
+
 /**
  * Marker interface for all listeners. While the abstract container will verify the
  * listener implements this interface, concrete container implementations will further
@@ -27,6 +31,48 @@ package org.springframework.kafka.listener;
  * @since 1.1
  *
  */
+@FunctionalInterface
 public interface KafkaDataListener<T> {
+
+	/**
+	 * Invoked with data from kafka.
+	 * @param data the data to be processed.
+	 */
+	void onMessage(T data);
+
+	/**
+	 * Invoked with data from kafka.
+	 * @param data the data to be processed.
+	 * @param acknowledgment the acknowledgment.
+	 */
+	default void onMessage(T data, Acknowledgment acknowledgment) {
+		throw new UnsupportedOperationException("Container should never call this");
+	}
+
+	/**
+	 * Invoked with data from kafka and provides access to the {@link Consumer}
+	 * for operations such as pause/resume. Invoked with null data when a poll
+	 * returns no data (enabling resume). The default implementation calls
+	 * {@link #onMessage(Object)}.
+	 * @param data the data to be processed.
+	 * @param consumer the consumer.
+	 * @since 2.0
+	 */
+	default void onMessage(T data, Consumer<?, ?> consumer) {
+		throw new UnsupportedOperationException("Container should never call this");
+	}
+
+	/**
+	 * Invoked with data from kafka and provides access to the {@link Consumer}
+	 * for operations such as pause/resume. Invoked with null data when a poll
+	 * returns no data (enabling resume). The default implementation calls
+	 * {@link #onMessage(Object)}.
+	 * @param data the data to be processed.
+	 * @param acknowledgment the acknowledgment.
+	 * @param consumer the consumer.
+	 */
+	default void onMessage(T data, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+		throw new UnsupportedOperationException("Container should never call this");
+	}
 
 }

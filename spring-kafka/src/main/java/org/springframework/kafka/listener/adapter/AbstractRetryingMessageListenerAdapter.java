@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  *
  */
-public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends AbstractMessageListenerAdapter<K, V, T> {
+public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends AbstractDelegatingMessageListenerAdapter<K, V, T> {
 
 	private final RetryTemplate retryTemplate;
 

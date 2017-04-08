@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,9 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConsumerSeekAware;
+import org.springframework.kafka.listener.DelegatingMessageListener;
+import org.springframework.kafka.listener.ListenerType;
+import org.springframework.kafka.listener.ListenerUtils;
 
 /**
  * Top level class for all listener adapters.
@@ -35,22 +38,31 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
  * @since 1.1
  *
  */
-public abstract class AbstractMessageListenerAdapter<K, V, T> implements ConsumerSeekAware {
+public abstract class AbstractDelegatingMessageListenerAdapter<K, V, T>
+		implements ConsumerSeekAware, DelegatingMessageListener<T> {
 
 	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
 
 	protected final T delegate; //NOSONAR
 
+	protected final ListenerType delegateType;
+
 	private final ConsumerSeekAware seekAware;
 
-	public AbstractMessageListenerAdapter(T delegate) {
+	public AbstractDelegatingMessageListenerAdapter(T delegate) {
 		this.delegate = delegate;
+		this.delegateType = ListenerUtils.determineListenerType(delegate);
 		if (delegate instanceof ConsumerSeekAware) {
 			this.seekAware = (ConsumerSeekAware) delegate;
 		}
 		else {
 			this.seekAware = null;
 		}
+	}
+
+	@Override
+	public T getDelegate() {
+		return this.delegate;
 	}
 
 	@Override

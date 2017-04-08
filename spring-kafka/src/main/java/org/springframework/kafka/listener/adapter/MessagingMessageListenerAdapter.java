@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
@@ -163,15 +164,16 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param data the data to process during invocation.
 	 * @param acknowledgment the acknowledgment to use if any.
 	 * @param message the message to process.
+	 * @param consumer the consumer.
 	 * @return the result of invocation.
 	 */
-	protected final Object invokeHandler(Object data, Acknowledgment acknowledgment, Message<?> message) {
+	protected final Object invokeHandler(Object data, Acknowledgment acknowledgment, Message<?> message, Consumer<?,?> consumer) {
 		try {
 			if (data instanceof List && !this.isConsumerRecordList) {
-				return this.handlerMethod.invoke(message, acknowledgment);
+				return this.handlerMethod.invoke(message, acknowledgment, consumer);
 			}
 			else {
-				return this.handlerMethod.invoke(message, data, acknowledgment);
+				return this.handlerMethod.invoke(message, data, acknowledgment, consumer);
 			}
 		}
 		catch (org.springframework.messaging.converter.MessageConversionException ex) {
