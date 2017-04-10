@@ -40,7 +40,6 @@ public interface ConsumerAwareMessageListener<K, V> extends AcknowledgingMessage
 	 */
 	@Override
 	default void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment) {
-		System.out.println(getClass().getName());
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 

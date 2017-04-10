@@ -46,8 +46,8 @@ public class FilteringMessageListenerAdapter<K, V>
 	 */
 	public FilteringMessageListenerAdapter(MessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
- 		super(delegate, recordFilterStrategy);
- 		this.ackDiscarded = false;
+		super(delegate, recordFilterStrategy);
+		this.ackDiscarded = false;
 	}
 
 	/**

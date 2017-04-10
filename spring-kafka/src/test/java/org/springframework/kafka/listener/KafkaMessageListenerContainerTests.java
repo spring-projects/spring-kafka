@@ -197,7 +197,7 @@ public class KafkaMessageListenerContainerTests {
 		final BitSet bits = new BitSet(8);
 		containerProps.setMessageListener((MessageListener<Integer, String>) m -> {
 			this.logger.info("lt1");
-			synchronized(bits) {
+			synchronized (bits) {
 				bits.set(0);
 			}
 			latch.countDown();
@@ -211,7 +211,7 @@ public class KafkaMessageListenerContainerTests {
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (m, a) -> {
 			this.logger.info("lt2");
-			synchronized(bits) {
+			synchronized (bits) {
 				bits.set(1);
 			}
 			latch.countDown();
@@ -225,7 +225,7 @@ public class KafkaMessageListenerContainerTests {
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		containerProps.setMessageListener((ConsumerAwareMessageListener<Integer, String>) (m, c) -> {
 			this.logger.info("lt3");
-			synchronized(bits) {
+			synchronized (bits) {
 				bits.set(2);
 			}
 			latch.countDown();
@@ -239,7 +239,7 @@ public class KafkaMessageListenerContainerTests {
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		containerProps.setMessageListener((AcknowledgingConsumerAwareMessageListener<Integer, String>) (m, a, c) -> {
 			this.logger.info("lt4");
-			synchronized(bits) {
+			synchronized (bits) {
 				bits.set(3);
 			}
 			latch.countDown();
@@ -253,7 +253,7 @@ public class KafkaMessageListenerContainerTests {
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) m -> {
 			this.logger.info("lt5");
-			synchronized(bits) {
+			synchronized (bits) {
 				bits.set(4);
 			}
 			latch.countDown();
@@ -267,7 +267,7 @@ public class KafkaMessageListenerContainerTests {
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		containerProps.setMessageListener((BatchAcknowledgingMessageListener<Integer, String>) (m, a) -> {
 			this.logger.info("lt6");
-			synchronized(bits) {
+			synchronized (bits) {
 				bits.set(5);
 			}
 			latch.countDown();
@@ -281,7 +281,7 @@ public class KafkaMessageListenerContainerTests {
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		containerProps.setMessageListener((BatchConsumerAwareMessageListener<Integer, String>) (m, c) -> {
 			this.logger.info("lt7");
-			synchronized(bits) {
+			synchronized (bits) {
 				bits.set(6);
 			}
 			latch.countDown();
@@ -296,7 +296,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps
 				.setMessageListener((BatchAcknowledgingConsumerAwareMessageListener<Integer, String>) (m, a, c) -> {
 					this.logger.info("lt8");
-					synchronized(bits) {
+					synchronized (bits) {
 						bits.set(7);
 					}
 					latch.countDown();
@@ -315,9 +315,6 @@ public class KafkaMessageListenerContainerTests {
 		pf.destroy();
 
 		assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
-		if (bits.cardinality() != 8) {
-			System.out.println();
-		}
 		assertThat(bits.cardinality()).isEqualTo(8);
 
 		container1.stop();

@@ -87,7 +87,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * Kafka {@link MessageListener} entry point.
 	 * <p> Delegate the message to the target listener method,
 	 * with appropriate conversion of the message argument.
-	 * @param record the incoming list of Kafka {@link ConsumerRecord}.
+	 * @param records the incoming list of Kafka {@link ConsumerRecord}.
 	 * @param acknowledgment the acknowledgment.
 	 * @param consumer the consumer.
 	 */
