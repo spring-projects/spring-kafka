@@ -268,11 +268,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	/*
 	 * Don't consider parameter types that are available after conversion.
-	 * Acknowledgment, ConsumerRecord and Message<?>.
+	 * Acknowledgment, ConsumerRecord, Consumer, and Message<?>.
 	 */
 	private boolean eligibleParameter(MethodParameter methodParameter) {
 		Type parameterType = methodParameter.getGenericParameterType();
-		if (parameterType.equals(Acknowledgment.class) || parameterType.equals(ConsumerRecord.class)) {
+		if (parameterType.equals(Acknowledgment.class) || parameterType.equals(ConsumerRecord.class)
+				|| parameterType.equals(Consumer.class)) {
 			return false;
 		}
 		if (parameterType instanceof ParameterizedType) {

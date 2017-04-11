@@ -207,10 +207,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 	}
 
-	private void publishIdleContainerEvent(long idleTime) {
+	private void publishIdleContainerEvent(long idleTime, Consumer<?, ?> consumer) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(
-					KafkaMessageListenerContainer.this, idleTime, getBeanName(), getAssignedPartitions()));
+					KafkaMessageListenerContainer.this, idleTime, getBeanName(), getAssignedPartitions(), consumer));
 		}
 	}
 
@@ -240,6 +240,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private final BatchMessageListener<K, V> batchListener;
 
 		private final ListenerType listenerType;
+
+		private final boolean isConsumerAwareListener;
 
 		private final boolean isBatchListener;
 
@@ -317,6 +319,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						+ " not " + listener.getClass().getName());
 			}
 			this.listenerType = listenerType;
+			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
+					|| listenerType.equals(ListenerType.CONSUMER_AWARE);
 			if (this.isBatchListener) {
 				validateErrorHandler(true);
 				this.errorHandler = new LoggingErrorHandler();
@@ -465,7 +469,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							long now = System.currentTimeMillis();
 							if (now > lastReceive + this.containerProperties.getIdleEventInterval()
 									&& now > lastAlertAt + this.containerProperties.getIdleEventInterval()) {
-								publishIdleContainerEvent(now - lastReceive);
+								publishIdleContainerEvent(now - lastReceive, this.isConsumerAwareListener
+										? this.consumer : null);
 								lastAlertAt = now;
 								if (this.listener instanceof ConsumerSeekAware) {
 									seekPartitions(getAssignedPartitions(), true);
