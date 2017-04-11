@@ -553,7 +553,8 @@ In that case, the `ErrorHandler` will be invoked, if configured, or logged other
 
 When using `@KafkaListener`, set the `RetryTemplate` (and optionally `recoveryCallback`) on the container factory and the listener will be wrapped in the appropriate retrying adapter.
 
-A retry adapter is not provided for any of the batch <<message-listeners, message listeners>>.
+A retry adapter is not provided for any of the batch <<message-listeners, message listeners>> because the framework has no knowledge of where, in a batch, the failure occurred.
+Users wishing retry capabilities, when using a batch listener, are advised to use a `RetryTemplate` within the listener itself.
 
 [[idle-containers]]
 ===== Detecting Idle Asynchronous Consumers

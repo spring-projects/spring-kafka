@@ -79,6 +79,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	 * Retrieve the consumer. Only populated if the listener is consumer-aware.
 	 * Allows the listener to resume a paused consumer.
 	 * @return the consumer.
+	 * @since 2.0
 	 */
 	public Consumer<?, ?> getConsumer() {
 		return this.consumer;

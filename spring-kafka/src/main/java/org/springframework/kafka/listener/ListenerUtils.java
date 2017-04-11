@@ -22,7 +22,7 @@ import org.springframework.util.Assert;
  * Listener utilities.
  *
  * @author Gary Russell
- * @since 5.0
+ * @since 2.0
  *
  */
 public final class ListenerUtils {
