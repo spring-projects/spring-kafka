@@ -161,14 +161,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		if (this.listener instanceof DelegatingMessageListener) {
 			Object delegating = this.listener;
 			while (delegating instanceof DelegatingMessageListener) {
-				Object delegate = ((DelegatingMessageListener<?>) delegating).getDelegate();
-				listenerType = ListenerUtils.determineListenerType(delegate);
-				if (delegate instanceof DelegatingMessageListener) {
-					delegating = delegate;
-				}
-				else {
-					break;
-				}
+				delegating = ((DelegatingMessageListener<?>) delegating).getDelegate();
+				listenerType = ListenerUtils.determineListenerType(delegating);
 			}
 		}
 		this.listenerConsumer = new ListenerConsumer(this.listener, listenerType);
