@@ -79,6 +79,8 @@ public class FilteringMessageListenerAdapter<K, V>
 				case SIMPLE:
 					this.delegate.onMessage(consumerRecord);
 			}
+		}
+		else {
 			switch (this.delegateType) {
 				case ACKNOWLEDGING_CONSUMER_AWARE:
 				case ACKNOWLEDGING:

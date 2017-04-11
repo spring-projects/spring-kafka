@@ -19,8 +19,6 @@ package org.springframework.kafka.listener;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.support.Acknowledgment;
-
 /**
  * Listener for handling individual incoming Kafka messages.
  *
@@ -30,16 +28,15 @@ import org.springframework.kafka.support.Acknowledgment;
  * @author Gary Russell
  */
 @FunctionalInterface
-public interface ConsumerAwareMessageListener<K, V> extends AcknowledgingMessageListener<K, V> {
+public interface ConsumerAwareMessageListener<K, V> extends MessageListener<K, V> {
 
 	/**
 	 * Invoked with data from kafka. Containers should never call this since it they
 	 * will detect we are a consumer aware acknowledging listener.
 	 * @param data the data to be processed.
-	 * @param acknowledgment the acknowledgment.
 	 */
 	@Override
-	default void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment) {
+	default void onMessage(ConsumerRecord<K, V> data) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 

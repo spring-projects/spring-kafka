@@ -20,7 +20,7 @@ package org.springframework.kafka.listener;
  * Defines the listener type.
  *
  * @author Gary Russell
- * @since 5.0
+ * @since 2.0
  *
  */
 public enum ListenerType {

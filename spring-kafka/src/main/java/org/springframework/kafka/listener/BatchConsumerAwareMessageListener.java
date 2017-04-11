@@ -21,8 +21,6 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.support.Acknowledgment;
-
 /**
  * Listener for handling a batch of incoming Kafka messages; the list
  * is created from the consumer records object returned by a poll.
@@ -36,16 +34,15 @@ import org.springframework.kafka.support.Acknowledgment;
  * @since 2.0
  */
 @FunctionalInterface
-public interface BatchConsumerAwareMessageListener<K, V> extends BatchAcknowledgingMessageListener<K, V> {
+public interface BatchConsumerAwareMessageListener<K, V> extends BatchMessageListener<K, V> {
 
 	/**
 	 * Invoked with data from kafka. Containers should never call this since it they
 	 * will detect that we are a consumer aware acknowledging listener.
 	 * @param data the data to be processed.
-	 * @param acknowledgment the acknowledgment.
 	 */
 	@Override
-	default void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment) {
+	default void onMessage(List<ConsumerRecord<K, V>> data) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 

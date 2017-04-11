@@ -32,7 +32,7 @@ import org.springframework.util.Assert;
  *
  */
 public abstract class AbstractFilteringMessageListener<K, V, T>
-		extends AbstractDelegatingMessageListenerAdapter<K, V, T> {
+		extends AbstractDelegatingMessageListenerAdapter<T> {
 
 	private final RecordFilterStrategy<K, V> recordFilterStrategy;
 

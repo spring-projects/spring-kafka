@@ -41,7 +41,8 @@ public interface KafkaDataListener<T> {
 	void onMessage(T data);
 
 	/**
-	 * Invoked with data from kafka.
+	 * Invoked with data from kafka. The default implementation throws
+	 * {@link UnsupportedOperationException}.
 	 * @param data the data to be processed.
 	 * @param acknowledgment the acknowledgment.
 	 */
@@ -52,8 +53,8 @@ public interface KafkaDataListener<T> {
 	/**
 	 * Invoked with data from kafka and provides access to the {@link Consumer}
 	 * for operations such as pause/resume. Invoked with null data when a poll
-	 * returns no data (enabling resume). The default implementation calls
-	 * {@link #onMessage(Object)}.
+	 * returns no data (enabling resume). The default implementation throws
+	 * {@link UnsupportedOperationException}.
 	 * @param data the data to be processed.
 	 * @param consumer the consumer.
 	 * @since 2.0
@@ -65,8 +66,8 @@ public interface KafkaDataListener<T> {
 	/**
 	 * Invoked with data from kafka and provides access to the {@link Consumer}
 	 * for operations such as pause/resume. Invoked with null data when a poll
-	 * returns no data (enabling resume). The default implementation calls
-	 * {@link #onMessage(Object)}.
+	 * returns no data (enabling resume). The default implementation throws
+	 * {@link UnsupportedOperationException}.
 	 * @param data the data to be processed.
 	 * @param acknowledgment the acknowledgment.
 	 * @param consumer the consumer.

@@ -30,15 +30,13 @@ import org.springframework.kafka.listener.ListenerUtils;
 /**
  * Top level class for all listener adapters.
  *
- * @param <K> the key type.
- * @param <V> the value type.
  * @param <T> the delegate type.
  *
  * @author Gary Russell
  * @since 1.1
  *
  */
-public abstract class AbstractDelegatingMessageListenerAdapter<K, V, T>
+public abstract class AbstractDelegatingMessageListenerAdapter<T>
 		implements ConsumerSeekAware, DelegatingMessageListener<T> {
 
 	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR

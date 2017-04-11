@@ -25,7 +25,6 @@ import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryCallback;
-import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
@@ -67,27 +66,22 @@ public class RetryingMessageListenerAdapter<K, V>
 
 	@Override
 	public void onMessage(final ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
-		getRetryTemplate().execute(new RetryCallback<Void, KafkaException>() {
-
-			@Override
-			public Void doWithRetry(RetryContext context) throws KafkaException {
-				context.setAttribute("record", record);
-				switch (RetryingMessageListenerAdapter.this.delegateType) {
-					case ACKNOWLEDGING_CONSUMER_AWARE:
-						RetryingMessageListenerAdapter.this.delegate.onMessage(record, acknowledgment, consumer);
-						break;
-					case ACKNOWLEDGING:
-						RetryingMessageListenerAdapter.this.delegate.onMessage(record, acknowledgment);
-						break;
-					case CONSUMER_AWARE:
-						RetryingMessageListenerAdapter.this.delegate.onMessage(record, consumer);
-						break;
-					case SIMPLE:
-						RetryingMessageListenerAdapter.this.delegate.onMessage(record);
-				}
-				return null;
+		getRetryTemplate().execute((RetryCallback<Void, KafkaException>) context -> {
+			context.setAttribute("record", record);
+			switch (RetryingMessageListenerAdapter.this.delegateType) {
+				case ACKNOWLEDGING_CONSUMER_AWARE:
+					RetryingMessageListenerAdapter.this.delegate.onMessage(record, acknowledgment, consumer);
+					break;
+				case ACKNOWLEDGING:
+					RetryingMessageListenerAdapter.this.delegate.onMessage(record, acknowledgment);
+					break;
+				case CONSUMER_AWARE:
+					RetryingMessageListenerAdapter.this.delegate.onMessage(record, consumer);
+					break;
+				case SIMPLE:
+					RetryingMessageListenerAdapter.this.delegate.onMessage(record);
 			}
-
+			return null;
 		}, getRecoveryCallback());
 	}
 
