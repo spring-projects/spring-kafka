@@ -88,6 +88,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Dariusz Szablinski
+ * @author Venil Noronha
  */
 @ContextConfiguration
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -102,7 +103,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated1", "annotated2", "annotated3",
 			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10",
 			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
-			"annotated18", "annotated19");
+			"annotated18", "annotated19", "annotated20");
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -206,6 +207,13 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated7", 0, "foo");
 		template.flush();
 		assertThat(this.ifaceListener.getLatch1().await(60, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	public void testListenerErrorHandler() throws Exception {
+		template.send("annotated20", 0, "foo");
+		template.flush();
+		assertThat(this.listener.latch16.await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -546,6 +554,13 @@ public class EnableKafkaIntegrationTests {
 			};
 		}
 
+		@Bean
+		public KafkaListenerErrorHandler consumeException(Listener listener) {
+			return (m, e) -> {
+				listener.latch16.countDown();
+			};
+		}
+
 	}
 
 	static class Listener implements ConsumerSeekAware {
@@ -581,6 +596,8 @@ public class EnableKafkaIntegrationTests {
 		private final CountDownLatch latch14 = new CountDownLatch(1);
 
 		private final CountDownLatch latch15 = new CountDownLatch(1);
+
+		private final CountDownLatch latch16 = new CountDownLatch(1);
 
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
@@ -735,6 +752,11 @@ public class EnableKafkaIntegrationTests {
 			this.latch15.countDown();
 		}
 
+		@KafkaListener(id = "errorHandler", topics = "annotated20", errorHandler = "consumeException")
+		public String errorHandler(String data) throws Exception {
+			throw new Exception("return this");
+		}
+
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
 			this.seekCallBack.set(callback);
@@ -785,6 +807,7 @@ public class EnableKafkaIntegrationTests {
 		public CountDownLatch getLatch2() {
 			return latch2;
 		}
+
 	}
 
 	@KafkaListener(id = "multi", topics = "annotated8")

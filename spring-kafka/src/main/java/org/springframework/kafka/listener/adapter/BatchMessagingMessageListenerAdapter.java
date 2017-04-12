@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.annotation.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
 import org.springframework.kafka.listener.BatchMessageListener;
+import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaNull;
@@ -51,6 +53,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Venil Noronha
  * @since 1.1
  */
 public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
@@ -60,9 +63,15 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	private BatchMessageConverter messageConverter = new BatchMessagingMessageConverter();
 
+	private KafkaListenerErrorHandler errorHandler;
 
 	public BatchMessagingMessageListenerAdapter(Object bean, Method method) {
+		this(bean, method, null);
+	}
+
+	public BatchMessagingMessageListenerAdapter(Object bean, Method method, KafkaListenerErrorHandler errorHandler) {
 		super(bean, method);
+		this.errorHandler = errorHandler;
 	}
 
 	/**
@@ -115,7 +124,24 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing [" + message + "]");
 		}
-		invokeHandler(records, acknowledgment, message);
+		try {
+			invokeHandler(records, acknowledgment, message);
+		}
+		catch (ListenerExecutionFailedException e) {
+			if (this.errorHandler != null) {
+				try {
+					this.errorHandler.handleError(message, e);
+				}
+				catch (Exception ex) {
+					throw new ListenerExecutionFailedException(createMessagingErrorMessage(
+							"Listener error handler threw an exception for the incoming message",
+							message.getPayload()), ex);
+				}
+			}
+			else {
+				throw e;
+			}
+		}
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

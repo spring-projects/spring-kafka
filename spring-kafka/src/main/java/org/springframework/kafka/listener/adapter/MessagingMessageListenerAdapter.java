@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ import org.springframework.util.Assert;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
- *
+ * @author Venil Noronha
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
 
@@ -189,7 +189,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
-	private String createMessagingErrorMessage(String description, Object payload) {
+	protected final String createMessagingErrorMessage(String description, Object payload) {
 		return description + "\n"
 				+ "Endpoint handler details:\n"
 				+ "Method [" + this.handlerMethod.getMethodAsString(payload) + "]\n"

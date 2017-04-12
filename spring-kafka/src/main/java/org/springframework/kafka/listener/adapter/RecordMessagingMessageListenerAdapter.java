@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import java.lang.reflect.Method;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.annotation.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
@@ -43,13 +45,20 @@ import org.springframework.messaging.Message;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Venil Noronha
  */
 public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements MessageListener<K, V>, AcknowledgingMessageListener<K, V> {
 
+	private KafkaListenerErrorHandler errorHandler;
 
 	public RecordMessagingMessageListenerAdapter(Object bean, Method method) {
+		this(bean, method, null);
+	}
+
+	public RecordMessagingMessageListenerAdapter(Object bean, Method method, KafkaListenerErrorHandler errorHandler) {
 		super(bean, method);
+		this.errorHandler = errorHandler;
 	}
 
 	/**
@@ -69,7 +78,24 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing [" + message + "]");
 		}
-		invokeHandler(record, acknowledgment, message);
+		try {
+			invokeHandler(record, acknowledgment, message);
+		}
+		catch (ListenerExecutionFailedException e) {
+			if (this.errorHandler != null) {
+				try {
+					this.errorHandler.handleError(message, e);
+				}
+				catch (Exception ex) {
+					throw new ListenerExecutionFailedException(createMessagingErrorMessage(
+							"Listener error handler threw an exception for the incoming message",
+							message.getPayload()), ex);
+				}
+			}
+			else {
+				throw e;
+			}
+		}
 	}
 
 }

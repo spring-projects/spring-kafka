@@ -96,8 +96,10 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Dariusz Szablinski
+ * @author Venil Noronha
  *
  * @see KafkaListener
+ * @see KafkaListenerErrorHandler
  * @see EnableKafka
  * @see KafkaListenerConfigurer
  * @see KafkaListenerEndpointRegistrar
@@ -336,6 +338,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<K, V>();
 		endpoint.setMethod(methodToUse);
 		endpoint.setBeanFactory(this.beanFactory);
+		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
+		if (StringUtils.hasText(errorHandlerBeanName)) {
+			endpoint.setErrorHandler(this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
+		}
 		processListener(endpoint, kafkaListener, bean, methodToUse, beanName);
 	}
 
@@ -580,6 +586,17 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else {
 			throw new IllegalArgumentException(String.format(
 					"@KafKaListener for topic '%s' can't resolve '%s' as an Integer or String", topic, resolvedValue));
+		}
+	}
+
+	private String resolveExpressionAsString(String value, String attribute) {
+		Object resolved = resolveExpression(value);
+		if (resolved instanceof String) {
+			return (String) resolved;
+		}
+		else {
+			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
+					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
 		}
 	}
 
