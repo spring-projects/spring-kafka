@@ -105,7 +105,7 @@ public class TopicPartitionInitialOffset {
 	}
 
 	/**
-	 * Construct an instance with the provided initial offset.
+	 * Construct an instance with the provided {@link SeekPosition}.
 	 * @param topic the topic.
 	 * @param partition the partition.
 	 * @param position {@link SeekPosition}.
