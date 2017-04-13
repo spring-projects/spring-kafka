@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,10 @@ package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
@@ -45,7 +46,7 @@ import org.springframework.messaging.Message;
  * @author Artem Bilan
  */
 public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
-		implements MessageListener<K, V>, AcknowledgingMessageListener<K, V> {
+		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
 
 	public RecordMessagingMessageListenerAdapter(Object bean, Method method) {
@@ -57,19 +58,16 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	 * <p> Delegate the message to the target listener method,
 	 * with appropriate conversion of the message argument.
 	 * @param record the incoming Kafka {@link ConsumerRecord}.
+	 * @param acknowledgment the acknowledgment.
+	 * @param consumer the consumer.
 	 */
 	@Override
-	public void onMessage(ConsumerRecord<K, V> record) {
-		onMessage(record, null);
-	}
-
-	@Override
-	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
+	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		Message<?> message = toMessagingMessage(record, acknowledgment);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing [" + message + "]");
 		}
-		invokeHandler(record, acknowledgment, message);
+		invokeHandler(record, acknowledgment, message, consumer);
 	}
 
 }

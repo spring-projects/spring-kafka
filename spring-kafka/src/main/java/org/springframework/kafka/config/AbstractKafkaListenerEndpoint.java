@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,14 +29,11 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
-import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -297,26 +294,12 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		Object messageListener = createMessageListener(container, messageConverter);
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
-			if (messageListener instanceof AcknowledgingMessageListener) {
-				messageListener = new RetryingAcknowledgingMessageListenerAdapter<>(
-						(AcknowledgingMessageListener<K, V>) messageListener, this.retryTemplate,
-						this.recoveryCallback);
-			}
-			else {
-				messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
 						this.retryTemplate, this.recoveryCallback);
-			}
 		}
 		if (this.recordFilterStrategy != null) {
-			if (messageListener instanceof AcknowledgingMessageListener) {
-				messageListener = new FilteringAcknowledgingMessageListenerAdapter<>(
-						(AcknowledgingMessageListener<K, V>) messageListener, this.recordFilterStrategy,
-						this.ackDiscarded);
-			}
-			else {
-				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-						this.recordFilterStrategy);
-			}
+			messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+						this.recordFilterStrategy, this.ackDiscarded);
 		}
 		container.setupMessageListener(messageListener);
 	}

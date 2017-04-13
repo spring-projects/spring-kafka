@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,33 @@
 
 package org.springframework.kafka.listener;
 
-import org.springframework.kafka.support.Acknowledgment;
-
 /**
- * Top level interface for acknowledging listener types.
- *
- * @param <T> the type handled by the listener.
+ * Defines the listener type.
  *
  * @author Gary Russell
- * @since 1.1
+ * @since 2.0
  *
  */
-public interface GenericAcknowledgingMessageListener<T> extends KafkaDataListener<T> {
+public enum ListenerType {
 
 	/**
-	 * Invoked with data from kafka.
-	 * @param data the data to be processed.
-	 * @param acknowledgment the acknowledgment.
+	 * Acknowledging and consumer aware.
 	 */
-	void onMessage(T data, Acknowledgment acknowledgment);
+	ACKNOWLEDGING_CONSUMER_AWARE,
+
+	/**
+	 * Consumer aware.
+	 */
+	CONSUMER_AWARE,
+
+	/**
+	 * Acknowledging.
+	 */
+	ACKNOWLEDGING,
+
+	/**
+	 * Simple.
+	 */
+	SIMPLE
 
 }

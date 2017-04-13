@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,21 @@
 package org.springframework.kafka.listener;
 
 /**
- * Marker interface for all listeners. While the abstract container will verify the
- * listener implements this interface, concrete container implementations will further
- * validate that the listener is one supported by that container.
+ * Classes implementing this interface allow containers to determine the type of the
+ * ultimate listener.
  *
- * @param <T> the type handled by the listener.
+ * @param <T> the type received by the listener.
  *
  * @author Gary Russell
- * @since 1.1
+ * @since 2.0
  *
  */
-public interface KafkaDataListener<T> {
+public interface DelegatingMessageListener<T> {
+
+	/**
+	 * Return the delegate.
+	 * @return the delegate.
+	 */
+	T getDelegate();
 
 }

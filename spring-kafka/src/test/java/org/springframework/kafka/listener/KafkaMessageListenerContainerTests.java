@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
+import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
@@ -78,6 +80,10 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 public class KafkaMessageListenerContainerTests {
 
 	private final Log logger = LogFactory.getLog(this.getClass());
+
+	private static String topic3 = "testTopic3";
+
+	private static String topic4 = "testTopic4";
 
 	private static String topic5 = "testTopic5";
 
@@ -100,11 +106,227 @@ public class KafkaMessageListenerContainerTests {
 	private static String topic14 = "testTopic14";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic5,
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic3, topic4, topic5,
 			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14);
 
 	@Rule
 	public TestName testName = new TestName();
+
+	@Test
+	public void testDelegateType() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("delegate", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic3);
+		final AtomicReference<StackTraceElement[]> trace = new AtomicReference<>();
+		final CountDownLatch latch1 = new CountDownLatch(1);
+		containerProps.setMessageListener((MessageListener<Integer, String>) record -> {
+			trace.set(new RuntimeException().getStackTrace());
+			latch1.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("delegate");
+		container.start();
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic3);
+		template.sendDefault(0, 0, "foo");
+		template.flush();
+
+		assertThat(latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		// Stack traces are environment dependent - verified in eclipse
+//		assertThat(trace.get()[1].getMethodName()).contains("invokeRecordListener");
+		container.stop();
+		final CountDownLatch latch2 = new CountDownLatch(1);
+		FilteringMessageListenerAdapter<Integer, String> filtering = new FilteringMessageListenerAdapter<>(m -> {
+			trace.set(new RuntimeException().getStackTrace());
+			latch2.countDown();
+		}, d -> false);
+		filtering = new FilteringMessageListenerAdapter<>(filtering, d -> false); // two levels of nesting
+		container.getContainerProperties().setMessageListener(filtering);
+		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.listenerType"))
+				.isEqualTo(ListenerType.SIMPLE);
+		template.sendDefault(0, 0, "foo");
+		assertThat(latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		// verify that the container called the right method - avoiding the creation of an Acknowledgment
+//		assertThat(trace.get()[1].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (inner)
+//		assertThat(trace.get()[2].getMethodName()).contains("onMessage"); // bridge
+//		assertThat(trace.get()[3].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (outer)
+//		assertThat(trace.get()[4].getMethodName()).contains("onMessage"); // onMessage(d)
+//		assertThat(trace.get()[5].getMethodName()).contains("onMessage"); // bridge
+//		assertThat(trace.get()[6].getMethodName()).contains("invokeRecordListener");
+		container.stop();
+
+		final CountDownLatch latch3 = new CountDownLatch(1);
+		filtering = new FilteringMessageListenerAdapter<>(
+				(AcknowledgingConsumerAwareMessageListener<Integer, String>) (d, a, c) -> {
+					trace.set(new RuntimeException().getStackTrace());
+					latch3.countDown();
+				}, d -> false);
+		container.getContainerProperties().setMessageListener(filtering);
+		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.listenerType"))
+				.isEqualTo(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE);
+		template.sendDefault(0, 0, "foo");
+		assertThat(latch3.await(10, TimeUnit.SECONDS)).isTrue();
+		// verify that the container called the 3 arg method directly
+//		int i = 0;
+//		if (trace.get()[1].getClassName().endsWith("AcknowledgingConsumerAwareMessageListener")) {
+//			// this frame does not appear in eclise, but does in gradle.\
+//			i++;
+//		}
+//		assertThat(trace.get()[i + 1].getMethodName()).contains("onMessage"); // onMessage(d, a, c)
+//		assertThat(trace.get()[i + 2].getMethodName()).contains("onMessage"); // bridge
+//		assertThat(trace.get()[i + 3].getMethodName()).contains("invokeRecordListener");
+		container.stop();
+
+		pf.destroy();
+	}
+
+	@Test
+	public void testListenerTypes() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("lt1", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic4);
+
+		final CountDownLatch latch = new CountDownLatch(8);
+		final BitSet bits = new BitSet(8);
+		containerProps.setMessageListener((MessageListener<Integer, String>) m -> {
+			this.logger.info("lt1");
+			synchronized (bits) {
+				bits.set(0);
+			}
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container1 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container1.setBeanName("lt1");
+		container1.start();
+
+		props.put("group.id", "lt2");
+		cf = new DefaultKafkaConsumerFactory<>(props);
+		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (m, a) -> {
+			this.logger.info("lt2");
+			synchronized (bits) {
+				bits.set(1);
+			}
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container2 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container2.setBeanName("lt2");
+		container2.start();
+
+		props.put("group.id", "lt3");
+		cf = new DefaultKafkaConsumerFactory<>(props);
+		containerProps.setMessageListener((ConsumerAwareMessageListener<Integer, String>) (m, c) -> {
+			this.logger.info("lt3");
+			synchronized (bits) {
+				bits.set(2);
+			}
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container3 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container3.setBeanName("lt3");
+		container3.start();
+
+		props.put("group.id", "lt4");
+		cf = new DefaultKafkaConsumerFactory<>(props);
+		containerProps.setMessageListener((AcknowledgingConsumerAwareMessageListener<Integer, String>) (m, a, c) -> {
+			this.logger.info("lt4");
+			synchronized (bits) {
+				bits.set(3);
+			}
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container4 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container4.setBeanName("lt4");
+		container4.start();
+
+		props.put("group.id", "lt5");
+		cf = new DefaultKafkaConsumerFactory<>(props);
+		containerProps.setMessageListener((BatchMessageListener<Integer, String>) m -> {
+			this.logger.info("lt5");
+			synchronized (bits) {
+				bits.set(4);
+			}
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container5 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container5.setBeanName("lt5");
+		container5.start();
+
+		props.put("group.id", "lt6");
+		cf = new DefaultKafkaConsumerFactory<>(props);
+		containerProps.setMessageListener((BatchAcknowledgingMessageListener<Integer, String>) (m, a) -> {
+			this.logger.info("lt6");
+			synchronized (bits) {
+				bits.set(5);
+			}
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container6 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container6.setBeanName("lt6");
+		container6.start();
+
+		props.put("group.id", "lt7");
+		cf = new DefaultKafkaConsumerFactory<>(props);
+		containerProps.setMessageListener((BatchConsumerAwareMessageListener<Integer, String>) (m, c) -> {
+			this.logger.info("lt7");
+			synchronized (bits) {
+				bits.set(6);
+			}
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container7 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container7.setBeanName("lt7");
+		container7.start();
+
+		props.put("group.id", "lt8");
+		cf = new DefaultKafkaConsumerFactory<>(props);
+		containerProps
+				.setMessageListener((BatchAcknowledgingConsumerAwareMessageListener<Integer, String>) (m, a, c) -> {
+					this.logger.info("lt8");
+					synchronized (bits) {
+						bits.set(7);
+					}
+					latch.countDown();
+				});
+		KafkaMessageListenerContainer<Integer, String> container8 =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container8.setBeanName("lt8");
+		container8.start();
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic4);
+		template.sendDefault(0, 0, "foo");
+		template.flush();
+		pf.destroy();
+
+		assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(bits.cardinality()).isEqualTo(8);
+
+		container1.stop();
+		container2.stop();
+		container3.stop();
+		container4.stop();
+		container5.stop();
+		container6.stop();
+		container7.stop();
+		container8.stop();
+	}
 
 	@Test
 	public void testCommitsAreFlushedOnStop() throws Exception {

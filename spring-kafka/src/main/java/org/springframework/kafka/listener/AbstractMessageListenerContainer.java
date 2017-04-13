@@ -197,8 +197,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public final void start() {
 		synchronized (this.lifecycleMonitor) {
 			Assert.isTrue(
-					this.containerProperties.getMessageListener() instanceof KafkaDataListener,
-					"A " + KafkaDataListener.class.getName() + " implementation must be provided");
+					this.containerProperties.getMessageListener() instanceof GenericMessageListener,
+					"A " + GenericMessageListener.class.getName() + " implementation must be provided");
 			doStart();
 		}
 	}
