@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -68,6 +69,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
+	private KafkaTemplate<K, V> replyTemplate;
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
 	 * @param consumerFactory The consumer factory.
@@ -163,6 +165,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Set the {@link KafkaTemplate} to use to send replies.
+	 * @param replyTemplate the template.
+	 * @since 2.0
+	 */
+	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+		this.replyTemplate = replyTemplate;
+	}
+
+	/**
 	 * Obtain the properties template for this factory - set properties as needed
 	 * and they will be copied to a final properties instance for the endpoint.
 	 * @return the properties.
@@ -205,6 +216,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			}
 			if (this.batchListener != null) {
 				aklEndpoint.setBatchListener(this.batchListener);
+			}
+			if (this.replyTemplate != null) {
+				aklEndpoint.setReplyTemplate(this.replyTemplate);
 			}
 		}
 

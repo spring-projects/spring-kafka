@@ -125,12 +125,18 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 			logger.debug("Processing [" + message + "]");
 		}
 		try {
-			invokeHandler(records, acknowledgment, message);
+			Object result = invokeHandler(records, acknowledgment, message);
+			if (result != null) {
+				handleResult(result, records, message);
+			}
 		}
 		catch (ListenerExecutionFailedException e) {
 			if (this.errorHandler != null) {
 				try {
-					this.errorHandler.handleError(message, e);
+					Object result = this.errorHandler.handleError(message, e);
+					if (result != null) {
+						handleResult(result, records, message);
+					}
 				}
 				catch (Exception ex) {
 					throw new ListenerExecutionFailedException(createMessagingErrorMessage(

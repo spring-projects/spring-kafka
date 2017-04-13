@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,6 +63,16 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 
 	public void setValueDeserializer(Deserializer<V> valueDeserializer) {
 		this.valueDeserializer = valueDeserializer;
+	}
+
+	/**
+	 * Return an unmodifiable reference to the configuration map for this factory.
+	 * Useful for cloning to make a similar factory.
+	 * @return the configs.
+	 * @since 2.0
+	 */
+	public Map<String, Object> getConfigurationProperties() {
+		return Collections.unmodifiableMap(this.configs);
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,9 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.context.expression.BeanFactoryResolver;
+import org.springframework.expression.BeanResolver;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
@@ -72,6 +75,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private BeanExpressionContext expressionContext;
 
+	private BeanResolver beanResolver;
+
 	private String group;
 
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
@@ -84,6 +89,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private boolean batchListener;
 
+	private KafkaTemplate<K, V> replyTemplate;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -91,6 +98,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
 			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory, null);
 		}
+		this.beanResolver = new BeanFactoryResolver(beanFactory);
 	}
 
 	protected BeanFactory getBeanFactory() {
@@ -103,6 +111,10 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	protected BeanExpressionContext getBeanExpressionContext() {
 		return this.expressionContext;
+	}
+
+	protected BeanResolver getBeanResolver() {
+		return this.beanResolver;
 	}
 
 	public void setId(String id) {
@@ -210,21 +222,17 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.batchListener = batchListener;
 	}
 
-	@Override
-	public void afterPropertiesSet() {
-		boolean topicsEmpty = getTopics().isEmpty();
-		boolean topicPartitionsEmpty = getTopicPartitions().isEmpty();
-		if (!topicsEmpty && !topicPartitionsEmpty) {
-			throw new IllegalStateException("Topics or topicPartitions must be provided but not both for " + this);
-		}
-		if (this.topicPattern != null && (!topicsEmpty || !topicPartitionsEmpty)) {
-			throw new IllegalStateException("Only one of topics, topicPartitions or topicPattern must are allowed for "
-						+ this);
-		}
-		if (this.topicPattern == null && topicsEmpty && topicPartitionsEmpty) {
-			throw new IllegalStateException("At least one of topics, topicPartitions or topicPattern must be provided "
-					+ "for " + this);
-		}
+	/**
+	 * Set the {@link KafkaTemplate} to use to send replies.
+	 * @param replyTemplate the template.
+	 * @since 2.0
+	 */
+	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+		this.replyTemplate = replyTemplate;
+	}
+
+	protected KafkaTemplate<K, V> getReplyTemplate() {
+		return this.replyTemplate;
 	}
 
 	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
@@ -275,6 +283,23 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
+	}
+
+	@Override
+	public void afterPropertiesSet() {
+		boolean topicsEmpty = getTopics().isEmpty();
+		boolean topicPartitionsEmpty = getTopicPartitions().isEmpty();
+		if (!topicsEmpty && !topicPartitionsEmpty) {
+			throw new IllegalStateException("Topics or topicPartitions must be provided but not both for " + this);
+		}
+		if (this.topicPattern != null && (!topicsEmpty || !topicPartitionsEmpty)) {
+			throw new IllegalStateException("Only one of topics, topicPartitions or topicPattern must are allowed for "
+						+ this);
+		}
+		if (this.topicPattern == null && topicsEmpty && topicPartitionsEmpty) {
+			throw new IllegalStateException("At least one of topics, topicPartitions or topicPattern must be provided "
+					+ "for " + this);
+		}
 	}
 
 	@Override
