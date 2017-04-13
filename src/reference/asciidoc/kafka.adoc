@@ -808,3 +808,29 @@ static class MultiListenerBean {
 
 }
 ----
+
+[[annotation-error-handling]]
+====== Handling Exceptions
+
+By default, if an annotated listener method throws an exception, it is thrown to the container, and the message will handled according to the container configuration.
+Nothing is returned to the sender.
+
+Starting with _version 2.0_, the `@KafkaListener` annotation has a new attribute: `errorHandler`.
+
+This attribute is not configured by default.
+
+Use the `errorHandler` to provide the bean name of a `KafkaListenerErrorHandler` implementation.
+This functional interface has one method:
+
+[source, java]
+----
+@FunctionalInterface
+public interface KafkaListenerErrorHandler {
+
+    Object handleError(Message<?> message, ListenerExecutionFailedException exception) throws Exception;
+
+}
+----
+
+As you can see, you have access to the spring-messaging `Message<?>` object produced by the message converter and the exception that was thrown by the listener, wrapped in a `ListenerExecutionFailedException`.
+The error handler can throw the original or a new exception which will be thrown to the container. Anything returned by the error handler is ignored.
