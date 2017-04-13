@@ -558,6 +558,7 @@ public class EnableKafkaIntegrationTests {
 		public KafkaListenerErrorHandler consumeException(Listener listener) {
 			return (m, e) -> {
 				listener.latch16.countDown();
+				return null;
 			};
 		}
 

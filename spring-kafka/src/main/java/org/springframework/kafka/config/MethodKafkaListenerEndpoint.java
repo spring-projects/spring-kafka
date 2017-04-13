@@ -91,6 +91,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 * Set the {@link KafkaListenerErrorHandler} to invoke if the listener method
 	 * throws an exception.
 	 * @param errorHandler the error handler.
+	 * @since 2.0
 	 */
 	public void setErrorHandler(KafkaListenerErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
