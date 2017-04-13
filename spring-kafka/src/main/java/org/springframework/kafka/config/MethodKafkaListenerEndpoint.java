@@ -18,7 +18,7 @@ package org.springframework.kafka.config;
 
 import java.lang.reflect.Method;
 
-import org.springframework.kafka.annotation.KafkaListenerErrorHandler;
+import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;

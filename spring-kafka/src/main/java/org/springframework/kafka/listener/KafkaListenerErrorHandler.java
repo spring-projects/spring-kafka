@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.annotation;
+package org.springframework.kafka.listener;
 
-import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.messaging.Message;
 
 /**
