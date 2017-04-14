@@ -491,16 +491,23 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testSeek() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
-		testSeekGuts(props, topic11);
+		testSeekGuts(props, topic11, false);
 	}
 
 	@Test
 	public void testSeekAutoCommit() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
-		testSeekGuts(props, topic12);
+		testSeekGuts(props, topic12, true);
 	}
 
-	private void testSeekGuts(Map<String, Object> props, String topic) throws Exception {
+	@Test
+	public void testSeekAutoCommitDefault() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
+		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test true by default
+		testSeekGuts(props, topic12, true);
+	}
+
+	private void testSeekGuts(Map<String, Object> props, String topic, boolean autoCommit) throws Exception {
 		logger.info("Start seek " + topic);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic11);
@@ -565,6 +572,8 @@ public class KafkaMessageListenerContainerTests {
 				containerProps);
 		container.setBeanName("testRecordAcks");
 		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.autoCommit", Boolean.class))
+			.isEqualTo(autoCommit);
 		Consumer<?, ?> consumer = spyOnConsumer(container);
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
