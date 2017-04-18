@@ -57,14 +57,15 @@ public class RetryingMessageListenerAdapter<K, V>
 	 * thrown to the container after retries are exhausted.
 	 */
 	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
-			RecoveryCallback<Void> recoveryCallback) {
+			RecoveryCallback<Object> recoveryCallback) {
 		super(messageListener, retryTemplate, recoveryCallback);
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void onMessage(final ConsumerRecord<K, V> record) {
-		getRetryTemplate().execute(new RetryCallback<Void, KafkaException>() {
+		getRetryTemplate().execute(new RetryCallback<Object, KafkaException>() {
 
 			@Override
 			public Void doWithRetry(RetryContext context) throws KafkaException {
@@ -73,7 +74,7 @@ public class RetryingMessageListenerAdapter<K, V>
 				return null;
 			}
 
-		}, getRecoveryCallback());
+		}, (RecoveryCallback<Object>) getRecoveryCallback());
 	}
 
 }

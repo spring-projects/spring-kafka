@@ -80,7 +80,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private RetryTemplate retryTemplate;
 
-	private RecoveryCallback<Void> recoveryCallback;
+	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private boolean batchListener;
 
@@ -273,7 +273,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * retryTemplate}.
 	 * @param recoveryCallback the callback.
 	 */
-	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
 	}
 
@@ -304,7 +304,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 			}
 			else {
 				messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-						this.retryTemplate, this.recoveryCallback);
+						this.retryTemplate, (RecoveryCallback<Object>) this.recoveryCallback);
 			}
 		}
 		if (this.recordFilterStrategy != null) {

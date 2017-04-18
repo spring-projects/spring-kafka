@@ -61,15 +61,16 @@ public class RetryingAcknowledgingMessageListenerAdapter<K, V>
 	 * thrown to the container after retries are exhausted.
 	 */
 	public RetryingAcknowledgingMessageListenerAdapter(AcknowledgingMessageListener<K, V> messageListener,
-			RetryTemplate retryTemplate, RecoveryCallback<Void> recoveryCallback) {
+			RetryTemplate retryTemplate, RecoveryCallback<? extends Object> recoveryCallback) {
 		super(messageListener, retryTemplate, recoveryCallback);
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
 		this.delegate = messageListener;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void onMessage(final ConsumerRecord<K, V> record, final Acknowledgment acknowledgment) {
-		getRetryTemplate().execute(new RetryCallback<Void, KafkaException>() {
+		getRetryTemplate().execute(new RetryCallback<Object, KafkaException>() {
 
 			@Override
 			public Void doWithRetry(RetryContext context) throws KafkaException {
@@ -78,7 +79,7 @@ public class RetryingAcknowledgingMessageListenerAdapter<K, V>
 				return null;
 			}
 
-		}, getRecoveryCallback());
+		}, (RecoveryCallback<Object>) getRecoveryCallback());
 	}
 
 }

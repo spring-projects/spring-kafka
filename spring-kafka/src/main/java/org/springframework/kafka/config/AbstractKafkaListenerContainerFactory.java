@@ -62,7 +62,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private RetryTemplate retryTemplate;
 
-	private RecoveryCallback<Void> recoveryCallback;
+	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private Boolean batchListener;
 
@@ -135,7 +135,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * retryTemplate}.
 	 * @param recoveryCallback the callback.
 	 */
-	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
 	}
 
