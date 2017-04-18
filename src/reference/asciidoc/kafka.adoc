@@ -517,6 +517,66 @@ For the `ConcurrentMessageListenerContainer`, the `<beanName>` part of the threa
 `n` increments each time the container is started.
 So, with a bean name of `container`, threads in this container will be named `container-0-C-1`, `container-1-C-1` etc., after the container is started the first time; `container-0-C-2`, `container-1-C-2` etc., after a stop/start.
 
+[[class-level-kafkalistener]]
+===== @KafkaListener on a class
+
+When using `@KafkaListener` at the class-level, you specify `@KafkaHandler` at the method level.
+When messages are delivered, the converted message payload type is used to determine which method to call.
+
+[source, java]
+----
+@KafkaListener(id = "multi", topics = "myTopic")
+static class MultiListenerBean {
+
+    @KafkaHandler
+    public void listen(String foo) {
+        ...
+    }
+
+    @KafkaHandler
+    public void listen(Integer bar) {
+        ...
+    }
+
+}
+----
+
+[[annotation-send-to]]
+===== Forwarding Listener Results using @SendTo
+
+Starting with _version 2.0_, if you also annotate a `@KafkaListener` with a `@SendTo` annotation and the method invocation returns a result, the result will be forwared to the topic specified by the `@SendTo`.
+
+The `@SendTo` value can have several forms:
+
+- `@SendTo("someTopic")` routes to the literal topic
+- `@SendTo("#{someExpression}")` routes to the topic determined by evaluating the expression once during application context initialization.
+- `@SendTo("!{someExpression}")` routes to the topic determined by evaluating the expression at runtime.
+The `#root` object for the evaluation has 4 properties:
+  - request - the inbound `ConsumerRecord` (or `ConsumerRecords` object for a batch listener))
+  - source - the `org.springframework.messaging.Message<?>` converted from the `request`.
+  - result - the method return result.
+The expression must return a `String` representing the topic name.
+
+When using `@SendTo`, the `ConcurrentKafkaListenerContainerFactory` must be configured with a `KafkaTemplate` in its `replyTemplate` property, to perform the send.
+Note: only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition and/or key...
+
+[source, java]
+----
+@Bean
+public KafkaTemplate<String, String> myReplyingTemplate() {
+    return new KafkaTemplate<Integer, String>(producerFactory()) {
+
+        @Override
+        public ListenableFuture<SendResult<String, String>> send(String topic, String data) {
+            return super.send(topic, partitionForData(data), keyForData(data), data);
+        }
+
+        ...
+
+    };
+}
+----
+
 ===== Filtering Messages
 
 In certain scenarios, such as rebalancing, a message may be redelivered that has already been processed.
@@ -624,8 +684,7 @@ public class Listener {
 
     @EventListener(condition = "event.listenerId.startsWith('qux-')")
     public void eventHandler(ListenerContainerIdleEvent event) {
-        this.event = event;
-        eventLatch.countDown();
+        ...
     }
 
 }
@@ -788,8 +847,6 @@ When using a class-level `@KafkaListener`, some additional configuration is need
 ----
 @KafkaListener(id = "multi", topics = "myTopic")
 static class MultiListenerBean {
-
-    private final CountDownLatch latch1 = new CountDownLatch(2);
 
     @KafkaHandler
     public void listen(String foo) {
