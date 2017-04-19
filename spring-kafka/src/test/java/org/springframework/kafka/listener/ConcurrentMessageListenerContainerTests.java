@@ -86,9 +86,13 @@ public class ConcurrentMessageListenerContainerTests {
 
 	private static String topic9 = "testTopic9";
 
+	private static String topic10 = "testTopic10";
+
+	private static String topic11 = "testTopic11";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic4, topic5,
-			topic6, topic7, topic8, topic9);
+			topic6, topic7, topic8, topic9, topic10, topic11);
 
 	@Test
 	public void testAutoCommit() throws Exception {
@@ -522,6 +526,68 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(consumer.position(new TopicPartition(topic9, 1))).isEqualTo(2);
 		consumer.close();
 		logger.info("Stop ack on error");
+	}
+
+	@Test
+	public void testAckOnErrorManualImmediate() throws  Exception {
+		//ackOnError should not affect manual commits
+		testAckOnErrorWithManualImmediateGuts(topic10, true);
+		testAckOnErrorWithManualImmediateGuts(topic11, false);
+	}
+
+	private void testAckOnErrorWithManualImmediateGuts(String topic, boolean ackOnError) throws Exception {
+		logger.info("Start ack on error with ManualImmediate ack mode");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testMan" + ackOnError, "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
+		final CountDownLatch latch = new CountDownLatch(2);
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		containerProps.setAckOnError(ackOnError);
+		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
+			ConcurrentMessageListenerContainerTests.this.logger.info("manualExisting: " + message);
+			latch.countDown();
+			if (message.value().startsWith("b")) {
+				throw new RuntimeException();
+			}
+			else{
+				ack.acknowledge();
+			}
+
+		});
+		ConcurrentMessageListenerContainer<Integer, String> container = new ConcurrentMessageListenerContainer<>(cf,
+				containerProps);
+		container.setConcurrency(1);
+		container.setBeanName("testAckOnErrorWithManualImmediate");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(0, 1, "bar");
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		consumer.assign(Arrays.asList(new TopicPartition(topic, 0), new TopicPartition(topic, 0)));
+
+		// only one message should be acknowledged, because second, starting with "b"
+		// will throw RunTimeException and acknowledge() method will not invoke on it
+		for (int i = 0; i < 100; i++) {
+			if (consumer.position(new TopicPartition(topic, 0)) == 1) {
+				break;
+			}
+			else {
+				Thread.sleep(100);
+			}
+		}
+		assertThat(consumer.position(new TopicPartition(topic, 0))).isEqualTo(1);
+		consumer.close();
+		logger.info("Stop ack on error with ManualImmediate ack mode");
 	}
 
 }
