@@ -601,7 +601,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 				catch (Exception e) {
-					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
+					if (this.containerProperties.isAckOnError() && !this.autoCommit && !this.isAnyManualAck) {
 						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
 							this.acks.add(record);
 						}
@@ -642,7 +642,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 				catch (Exception e) {
-					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
+					if (this.containerProperties.isAckOnError() && !this.autoCommit && !this.isAnyManualAck) {
 						this.acks.add(record);
 					}
 					try {
