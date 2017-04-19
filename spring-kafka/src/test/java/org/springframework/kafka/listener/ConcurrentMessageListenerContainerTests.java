@@ -550,7 +550,7 @@ public class ConcurrentMessageListenerContainerTests {
 			if (message.value().startsWith("b")) {
 				throw new RuntimeException();
 			}
-			else{
+			else {
 				ack.acknowledge();
 			}
 
