@@ -36,6 +36,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Artem Yakshin
  */
 public class ContainerProperties {
 
@@ -365,7 +366,8 @@ public class ContainerProperties {
 	}
 
 	public boolean isAckOnError() {
-		return this.ackOnError;
+		return this.ackOnError &&
+				!(AckMode.MANUAL_IMMEDIATE.equals(this.ackMode) || AckMode.MANUAL.equals(this.ackMode));
 	}
 
 }
