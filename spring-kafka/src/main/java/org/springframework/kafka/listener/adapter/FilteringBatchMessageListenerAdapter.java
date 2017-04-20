@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,13 @@ package org.springframework.kafka.listener.adapter;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.listener.BatchAcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.BatchMessageListener;
+import org.springframework.kafka.listener.ListenerType;
+import org.springframework.kafka.support.Acknowledgment;
 
 /**
  * A {@link BatchMessageListener} adapter that implements filter logic
@@ -35,7 +39,7 @@ import org.springframework.kafka.listener.BatchMessageListener;
  */
 public class FilteringBatchMessageListenerAdapter<K, V>
 		extends AbstractFilteringMessageListener<K, V, BatchMessageListener<K, V>>
-		implements BatchMessageListener<K, V> {
+		implements BatchAcknowledgingConsumerAwareMessageListener<K, V> {
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
@@ -48,16 +52,50 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(List<ConsumerRecord<K, V>> consumerRecords) {
+	public void onMessage(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
 		Iterator<ConsumerRecord<K, V>> iterator = consumerRecords.iterator();
 		while (iterator.hasNext()) {
 			if (filter(iterator.next())) {
 				iterator.remove();
 			}
 		}
-		if (consumerRecords.size() > 0) {
-			this.delegate.onMessage(consumerRecords);
+		if (consumerRecords.size() > 0 || this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
+				|| this.delegateType.equals(ListenerType.CONSUMER_AWARE)) {
+			switch (this.delegateType) {
+				case ACKNOWLEDGING_CONSUMER_AWARE:
+					this.delegate.onMessage(consumerRecords, acknowledgment, consumer);
+					break;
+				case ACKNOWLEDGING:
+					this.delegate.onMessage(consumerRecords, acknowledgment);
+					break;
+				case CONSUMER_AWARE:
+					this.delegate.onMessage(consumerRecords, consumer);
+					break;
+				case SIMPLE:
+					this.delegate.onMessage(consumerRecords);
+			}
 		}
+	}
+
+	/*
+	 * Since the container uses the delegate's type to determine which method to call, we
+	 * must implement them all.
+	 */
+
+	@Override
+	public void onMessage(List<ConsumerRecord<K, V>> data) {
+		onMessage(data, null, null);
+	}
+
+	@Override
+	public void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment) {
+		onMessage(data, acknowledgment, null);
+	}
+
+	@Override
+	public void onMessage(List<ConsumerRecord<K, V>> data, Consumer<?, ?> consumer) {
+		onMessage(data, null, consumer);
 	}
 
 }

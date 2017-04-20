@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,14 +29,14 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.context.expression.BeanFactoryResolver;
+import org.springframework.expression.BeanResolver;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
-import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -72,6 +72,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private BeanExpressionContext expressionContext;
 
+	private BeanResolver beanResolver;
+
 	private String group;
 
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
@@ -80,9 +82,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private RetryTemplate retryTemplate;
 
-	private RecoveryCallback<Void> recoveryCallback;
+	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private boolean batchListener;
+
+	private KafkaTemplate<K, V> replyTemplate;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -91,6 +95,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
 			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory, null);
 		}
+		this.beanResolver = new BeanFactoryResolver(beanFactory);
 	}
 
 	protected BeanFactory getBeanFactory() {
@@ -103,6 +108,10 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	protected BeanExpressionContext getBeanExpressionContext() {
 		return this.expressionContext;
+	}
+
+	protected BeanResolver getBeanResolver() {
+		return this.beanResolver;
 	}
 
 	public void setId(String id) {
@@ -210,21 +219,17 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.batchListener = batchListener;
 	}
 
-	@Override
-	public void afterPropertiesSet() {
-		boolean topicsEmpty = getTopics().isEmpty();
-		boolean topicPartitionsEmpty = getTopicPartitions().isEmpty();
-		if (!topicsEmpty && !topicPartitionsEmpty) {
-			throw new IllegalStateException("Topics or topicPartitions must be provided but not both for " + this);
-		}
-		if (this.topicPattern != null && (!topicsEmpty || !topicPartitionsEmpty)) {
-			throw new IllegalStateException("Only one of topics, topicPartitions or topicPattern must are allowed for "
-						+ this);
-		}
-		if (this.topicPattern == null && topicsEmpty && topicPartitionsEmpty) {
-			throw new IllegalStateException("At least one of topics, topicPartitions or topicPattern must be provided "
-					+ "for " + this);
-		}
+	/**
+	 * Set the {@link KafkaTemplate} to use to send replies.
+	 * @param replyTemplate the template.
+	 * @since 2.0
+	 */
+	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+		this.replyTemplate = replyTemplate;
+	}
+
+	protected KafkaTemplate<K, V> getReplyTemplate() {
+		return this.replyTemplate;
 	}
 
 	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
@@ -273,8 +278,25 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * retryTemplate}.
 	 * @param recoveryCallback the callback.
 	 */
-	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
+	}
+
+	@Override
+	public void afterPropertiesSet() {
+		boolean topicsEmpty = getTopics().isEmpty();
+		boolean topicPartitionsEmpty = getTopicPartitions().isEmpty();
+		if (!topicsEmpty && !topicPartitionsEmpty) {
+			throw new IllegalStateException("Topics or topicPartitions must be provided but not both for " + this);
+		}
+		if (this.topicPattern != null && (!topicsEmpty || !topicPartitionsEmpty)) {
+			throw new IllegalStateException("Only one of topics, topicPartitions or topicPattern must are allowed for "
+					+ this);
+		}
+		if (this.topicPattern == null && topicsEmpty && topicPartitionsEmpty) {
+			throw new IllegalStateException("At least one of topics, topicPartitions or topicPattern must be provided "
+					+ "for " + this);
+		}
 	}
 
 	@Override
@@ -297,26 +319,12 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		Object messageListener = createMessageListener(container, messageConverter);
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
-			if (messageListener instanceof AcknowledgingMessageListener) {
-				messageListener = new RetryingAcknowledgingMessageListenerAdapter<>(
-						(AcknowledgingMessageListener<K, V>) messageListener, this.retryTemplate,
-						this.recoveryCallback);
-			}
-			else {
-				messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-						this.retryTemplate, this.recoveryCallback);
-			}
+			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+					this.retryTemplate, (RecoveryCallback<Object>) this.recoveryCallback);
 		}
 		if (this.recordFilterStrategy != null) {
-			if (messageListener instanceof AcknowledgingMessageListener) {
-				messageListener = new FilteringAcknowledgingMessageListenerAdapter<>(
-						(AcknowledgingMessageListener<K, V>) messageListener, this.recordFilterStrategy,
-						this.ackDiscarded);
-			}
-			else {
-				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-						this.recordFilterStrategy);
-			}
+			messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+					this.recordFilterStrategy, this.ackDiscarded);
 		}
 		container.setupMessageListener(messageListener);
 	}

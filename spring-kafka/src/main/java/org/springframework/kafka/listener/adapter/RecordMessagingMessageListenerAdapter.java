@@ -18,9 +18,10 @@ package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
@@ -48,7 +49,7 @@ import org.springframework.messaging.Message;
  * @author Venil Noronha
  */
 public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
-		implements MessageListener<K, V>, AcknowledgingMessageListener<K, V> {
+		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
 	private KafkaListenerErrorHandler errorHandler;
 
@@ -66,25 +67,28 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	 * <p> Delegate the message to the target listener method,
 	 * with appropriate conversion of the message argument.
 	 * @param record the incoming Kafka {@link ConsumerRecord}.
+	 * @param acknowledgment the acknowledgment.
+	 * @param consumer the consumer.
 	 */
 	@Override
-	public void onMessage(ConsumerRecord<K, V> record) {
-		onMessage(record, null);
-	}
-
-	@Override
-	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
+	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		Message<?> message = toMessagingMessage(record, acknowledgment);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing [" + message + "]");
 		}
 		try {
-			invokeHandler(record, acknowledgment, message);
+			Object result = invokeHandler(record, acknowledgment, message, consumer);
+			if (result != null) {
+				handleResult(result, record, message);
+			}
 		}
 		catch (ListenerExecutionFailedException e) {
 			if (this.errorHandler != null) {
 				try {
-					this.errorHandler.handleError(message, e);
+					Object result = this.errorHandler.handleError(message, e);
+					if (result != null) {
+						handleResult(result, record, message);
+					}
 				}
 				catch (Exception ex) {
 					throw new ListenerExecutionFailedException(createMessagingErrorMessage(

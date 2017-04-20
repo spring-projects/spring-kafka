@@ -23,15 +23,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -59,14 +63,15 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
-import org.springframework.kafka.listener.adapter.RetryingAcknowledgingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -74,9 +79,8 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.retry.RecoveryCallback;
-import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
@@ -84,6 +88,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * @author Gary Russell
@@ -104,7 +109,9 @@ public class EnableKafkaIntegrationTests {
 			"annotated1", "annotated2", "annotated3",
 			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10",
 			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
-			"annotated18", "annotated19", "annotated20");
+			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
+			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
+			"annotated25", "annotated25reply1", "annotated25reply2");
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -123,6 +130,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	private RecordFilterImpl recordFilter;
+
+	@Autowired
+	private DefaultKafkaConsumerFactory<Integer, String> consumerFactory;
 
 	@Test
 	public void testSimple() throws Exception {
@@ -151,17 +161,21 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.event.getListenerId().startsWith("qux-"));
 		MessageListenerContainer manualContainer = this.registry.getListenerContainer("qux");
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener"))
-				.isInstanceOf(FilteringAcknowledgingMessageListenerAdapter.class);
+				.isInstanceOf(FilteringMessageListenerAdapter.class);
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.ackDiscarded",
 				Boolean.class)).isTrue();
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate"))
-				.isInstanceOf(RetryingAcknowledgingMessageListenerAdapter.class);
+				.isInstanceOf(RetryingMessageListenerAdapter.class);
 		assertThat(KafkaTestUtils
 				.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate.recoveryCallback")
 				.getClass().getName()).contains("EnableKafkaIntegrationTests$Config$");
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer,
 				"containerProperties.messageListener.delegate.delegate"))
 						.isInstanceOf(MessagingMessageListenerAdapter.class);
+		assertThat(this.listener.consumer).isNotNull();
+		assertThat(this.listener.consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
+				.getPropertyValue(this.registry.getListenerContainer("qux"), "containers", List.class).get(0),
+				"listenerConsumer.consumer"));
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -208,13 +222,6 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated7", 0, "foo");
 		template.flush();
 		assertThat(this.ifaceListener.getLatch1().await(60, TimeUnit.SECONDS)).isTrue();
-	}
-
-	@Test
-	public void testListenerErrorHandler() throws Exception {
-		template.send("annotated20", 0, "foo");
-		template.flush();
-		assertThat(this.listener.latch16.await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -363,6 +370,110 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.ack).isNotNull();
 	}
 
+	@Test
+	public void testListenerErrorHandler() throws Exception {
+		template.send("annotated20", 0, "foo");
+		template.flush();
+		assertThat(this.listener.latch16.await(60, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	public void testReplyingListener() throws Exception {
+		template.send("annotated21", 0, "annotated21reply");
+		template.flush();
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated21reply");
+		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated21reply");
+		assertThat(reply.value()).isEqualTo("ANNOTATED21REPLY");
+		consumer.close();
+	}
+
+	@Test
+	public void testReplyingBatchListener() throws Exception {
+		template.send("annotated22", 0, 0, "foo");
+		template.send("annotated22", 0, 0, "bar");
+		template.flush();
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testBatchReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated22reply");
+		ConsumerRecords<Integer, String> replies = KafkaTestUtils.getRecords(consumer);
+		assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+		Iterator<ConsumerRecord<Integer, String>> iterator = replies.iterator();
+		assertThat(iterator.next().value()).isEqualTo("FOO");
+		if (iterator.hasNext()) {
+			assertThat(iterator.next().value()).isEqualTo("BAR");
+		}
+		else {
+			replies = KafkaTestUtils.getRecords(consumer);
+			assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+			iterator = replies.iterator();
+			assertThat(iterator.next().value()).isEqualTo("BAR");
+		}
+		consumer.close();
+	}
+
+	@Test
+	public void testReplyingListenerWithErrorHandler() throws Exception {
+		template.send("annotated23", 0, "FoO");
+		template.flush();
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated23reply");
+		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated23reply");
+		assertThat(reply.value()).isEqualTo("foo");
+		consumer.close();
+	}
+
+	@Test
+	public void testReplyingBatchListenerWithErrorHandler() throws Exception {
+		template.send("annotated24", 0, 0, "FoO");
+		template.send("annotated24", 0, 0, "BaR");
+		template.flush();
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testBatchReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated24reply");
+		ConsumerRecords<Integer, String> replies = KafkaTestUtils.getRecords(consumer);
+		assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+		Iterator<ConsumerRecord<Integer, String>> iterator = replies.iterator();
+		assertThat(iterator.next().value()).isEqualTo("foo");
+		if (iterator.hasNext()) {
+			assertThat(iterator.next().value()).isEqualTo("bar");
+		}
+		else {
+			replies = KafkaTestUtils.getRecords(consumer);
+			assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+			iterator = replies.iterator();
+			assertThat(iterator.next().value()).isEqualTo("bar");
+		}
+		consumer.close();
+	}
+
+	@Test
+	public void testMultiReplyTo() throws Exception {
+		template.send("annotated25", 0, 1, "foo");
+		template.flush();
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testMultiReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromEmbeddedTopics(consumer, "annotated25reply1", "annotated25reply2");
+		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated25reply1");
+		assertThat(reply.value()).isEqualTo("FOO");
+		template.send("annotated25", 0, 1, null);
+		reply = KafkaTestUtils.getSingleRecord(consumer, "annotated25reply2");
+		assertThat(reply.value()).isEqualTo("BAR");
+		consumer.close();
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
@@ -393,6 +504,7 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setRecordFilterStrategy(recordFilter());
+			factory.setReplyTemplate(partitionZeroReplyingTemplate());
 			return factory;
 		}
 
@@ -421,6 +533,8 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setBatchListener(true);
+			// always send to the same partition so the replies are in order for the test
+			factory.setReplyTemplate(partitionZeroReplyingTemplate());
 			return factory;
 		}
 
@@ -447,14 +561,7 @@ public class EnableKafkaIntegrationTests {
 			factory.setRecordFilterStrategy(manualFilter());
 			factory.setAckDiscarded(true);
 			factory.setRetryTemplate(new RetryTemplate());
-			factory.setRecoveryCallback(new RecoveryCallback<Void>() {
-
-				@Override
-				public Void recover(RetryContext context) throws Exception {
-					return null;
-				}
-
-			});
+			factory.setRecoveryCallback(c -> null);
 			return factory;
 		}
 
@@ -484,7 +591,7 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
-		public ConsumerFactory<Integer, String> consumerFactory() {
+		public DefaultKafkaConsumerFactory<Integer, String> consumerFactory() {
 			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
 		}
 
@@ -518,6 +625,11 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		public MultiListenerSendTo multiListenerSendTo() {
+			return new MultiListenerSendTo();
+		}
+
+		@Bean
 		public ProducerFactory<Integer, String> producerFactory() {
 			return new DefaultKafkaProducerFactory<>(producerConfigs());
 		}
@@ -530,6 +642,19 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public KafkaTemplate<Integer, String> template() {
 			return new KafkaTemplate<Integer, String>(producerFactory());
+		}
+
+		@Bean
+		public KafkaTemplate<Integer, String> partitionZeroReplyingTemplate() {
+			// reply always uses the no-partition, no-key method; subclasses can be used
+			return new KafkaTemplate<Integer, String>(producerFactory()) {
+
+				@Override
+				public ListenableFuture<SendResult<Integer, String>> send(String topic, String data) {
+					return super.send(topic, 0, null, data);
+				}
+
+			};
 		}
 
 		@Bean
@@ -560,6 +685,22 @@ public class EnableKafkaIntegrationTests {
 			return (m, e) -> {
 				listener.latch16.countDown();
 				return null;
+			};
+		}
+
+		@Bean
+		public KafkaListenerErrorHandler replyErrorHandler() {
+			return (m, e) -> {
+				return ((String) m.getPayload()).toLowerCase();
+			};
+		}
+
+		@SuppressWarnings("unchecked")
+		@Bean
+		public KafkaListenerErrorHandler replyBatchErrorHandler() {
+			return (m, e) -> {
+				return ((Collection<String>) m.getPayload()).stream().map(v -> v.toLowerCase())
+						.collect(Collectors.toList());
 			};
 		}
 
@@ -627,6 +768,8 @@ public class EnableKafkaIntegrationTests {
 
 		private volatile List<Long> offsets;
 
+		private volatile Consumer<?, ?> consumer;
+
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
 		public void manualStart(String foo) {
@@ -659,9 +802,10 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory")
-		public void listen4(@Payload String foo, Acknowledgment ack) {
+		public void listen4(@Payload String foo, Acknowledgment ack, Consumer<?, ?> consumer) {
 			this.ack = ack;
 			this.ack.acknowledge();
+			this.consumer = consumer;
 			this.latch4.countDown();
 		}
 
@@ -759,6 +903,32 @@ public class EnableKafkaIntegrationTests {
 			throw new Exception("return this");
 		}
 
+		@KafkaListener(id = "replyingListener", topics = "annotated21")
+		@SendTo("!{request.value()}") // runtime SpEL - test payload is the reply queue
+		public String replyingListener(String in) {
+			return in.toUpperCase();
+		}
+
+		@KafkaListener(id = "replyingBatchListener", topics = "annotated22", containerFactory = "batchFactory")
+		@SendTo("#{'annotated22reply'}") // config time SpEL
+		public Collection<String> replyingBatchListener(List<String> in) {
+			return in.stream().map(v -> v.toUpperCase()).collect(Collectors.toList());
+		}
+
+		@KafkaListener(id = "replyingListenerWithErrorHandler", topics = "annotated23",
+				errorHandler = "replyErrorHandler")
+		@SendTo("annotated23reply")
+		public String replyingListenerWithErrorHandler(String in) {
+			throw new RuntimeException("return this");
+		}
+
+		@KafkaListener(id = "replyingBatchListenerWithErrorHandler", topics = "annotated24",
+				containerFactory = "batchFactory", errorHandler = "replyBatchErrorHandler")
+		@SendTo("annotated24reply")
+		public Collection<String> replyingBatchListenerWithErrorHandler(List<String> in) {
+			throw new RuntimeException("return this");
+		}
+
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
 			this.seekCallBack.set(callback);
@@ -828,6 +998,24 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		public void foo(String bar) {
+		}
+
+	}
+
+	@KafkaListener(id = "multiSendTo", topics = "annotated25")
+	@SendTo("annotated25reply1")
+	static class MultiListenerSendTo {
+
+		@KafkaHandler
+		public String foo(String in) {
+			return in.toUpperCase();
+		}
+
+		@KafkaHandler
+		@SendTo("!{'annotated25reply2'}")
+		public String bar(@Payload(required = false) KafkaNull nul,
+				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
+			return "BAR";
 		}
 
 	}

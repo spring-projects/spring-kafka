@@ -20,15 +20,27 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.context.expression.MapAccessor;
 import org.springframework.core.MethodParameter;
+import org.springframework.expression.BeanResolver;
+import org.springframework.expression.Expression;
+import org.springframework.expression.ParserContext;
+import org.springframework.expression.common.LiteralExpression;
+import org.springframework.expression.common.TemplateParserContext;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.expression.spel.support.StandardTypeConverter;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
@@ -55,11 +67,17 @@ import org.springframework.util.Assert;
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
 
+	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
+
+	private static final ParserContext PARSER_CONTEXT = new TemplateParserContext("!{", "}");
+
 	private final Object bean;
 
 	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
 
 	private final Type inferredType;
+
+	private final StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
 
 	private HandlerAdapter handlerMethod;
 
@@ -71,6 +89,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private Type fallbackType = Object.class;
 
+	private Expression replyTopicExpression;
+
+	private KafkaTemplate<K, V> replyTemplate;
 
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
@@ -128,6 +149,42 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return this.isConsumerRecordList;
 	}
 
+	/**
+	 * Set the topic to which to send any result from the method invocation.
+	 * May be a SpEL expression {@code !{...}} evaluated at runtime.
+	 * @param replyTopic the topic or expression.
+	 * @since 2.0
+	 */
+	public void setReplyTopic(String replyTopic) {
+		if (replyTopic.startsWith(PARSER_CONTEXT.getExpressionPrefix())) {
+			this.replyTopicExpression = PARSER.parseExpression(replyTopic, PARSER_CONTEXT);
+		}
+		else {
+			this.replyTopicExpression = new LiteralExpression(replyTopic);
+		}
+	}
+
+	/**
+	 * Set the template to use to send any result from the method invocation.
+	 * @param replyTemplate the template.
+	 * @since 2.0
+	 */
+	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+		this.replyTemplate = replyTemplate;
+	}
+
+	/**
+	 * Set a bean resolver for runtime SpEL expressions. Also configures the evaluation
+	 * context with a standard type converter and map accessor.
+	 * @param beanResolver the resolver.
+	 * @since 2.0
+	 */
+	public void setBeanResolver(BeanResolver beanResolver) {
+		this.evaluationContext.setBeanResolver(beanResolver);
+		this.evaluationContext.setTypeConverter(new StandardTypeConverter());
+		this.evaluationContext.addPropertyAccessor(new MapAccessor());
+	}
+
 	protected boolean isMessageList() {
 		return this.isMessageList;
 	}
@@ -163,15 +220,17 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param data the data to process during invocation.
 	 * @param acknowledgment the acknowledgment to use if any.
 	 * @param message the message to process.
+	 * @param consumer the consumer.
 	 * @return the result of invocation.
 	 */
-	protected final Object invokeHandler(Object data, Acknowledgment acknowledgment, Message<?> message) {
+	protected final Object invokeHandler(Object data, Acknowledgment acknowledgment, Message<?> message,
+			Consumer<?, ?> consumer) {
 		try {
 			if (data instanceof List && !this.isConsumerRecordList) {
-				return this.handlerMethod.invoke(message, acknowledgment);
+				return this.handlerMethod.invoke(message, acknowledgment, consumer);
 			}
 			else {
-				return this.handlerMethod.invoke(message, data, acknowledgment);
+				return this.handlerMethod.invoke(message, data, acknowledgment, consumer);
 			}
 		}
 		catch (org.springframework.messaging.converter.MessageConversionException ex) {
@@ -186,6 +245,66 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		catch (Exception ex) {
 			throw new ListenerExecutionFailedException("Listener method '" +
 					this.handlerMethod.getMethodAsString(message.getPayload()) + "' threw exception", ex);
+		}
+	}
+
+	/**
+	 * Handle the given result object returned from the listener method, sending a
+	 * response message to the SendTo topic.
+	 * @param resultArg the result object to handle (never <code>null</code>)
+	 * @param request the original request message
+	 * @param source the source data for the method invocation - e.g.
+	 * {@code o.s.messaging.Message<?>}; may be null
+	 */
+	protected void handleResult(Object resultArg, Object request, Object source) {
+		if (this.logger.isDebugEnabled()) {
+			this.logger.debug("Listener method returned result [" + resultArg
+					+ "] - generating response message for it");
+		}
+		Object result = resultArg instanceof ResultHolder ? ((ResultHolder) resultArg).result : resultArg;
+		if (this.replyTemplate == null) {
+			this.logger.debug("No replyTemplate to handle the reply: " + result);
+		}
+		String replyTopic = evaluateReplyTopic(request, source, resultArg);
+		sendResponse(result, replyTopic);
+	}
+
+	private String evaluateReplyTopic(Object request, Object source, Object result) {
+		String replyTo = null;
+		if (result instanceof ResultHolder) {
+			replyTo = evaluateTopic(request, source, result, ((ResultHolder) result).sendTo);
+		}
+		else if (this.replyTopicExpression != null) {
+			replyTo = evaluateTopic(request, source, result, this.replyTopicExpression);
+		}
+		return replyTo;
+	}
+
+	private String evaluateTopic(Object request, Object source, Object result, Expression sendTo) {
+		if (sendTo instanceof LiteralExpression) {
+			return sendTo.getValue(String.class);
+		}
+		else {
+			Object value = sendTo.getValue(this.evaluationContext, new ReplyExpressionRoot(request, source, result));
+			Assert.state(value instanceof String, "replyTopic expression must evaluate to a String or Address");
+			return (String) value;
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	protected void sendResponse(Object result, String topic) {
+		if (topic == null && this.logger.isDebugEnabled()) {
+			this.logger.debug("No replyTopic to handle the reply: " + result);
+		}
+		else {
+			if (result instanceof Collection) {
+				((Collection<V>) result).forEach(v -> {
+					this.replyTemplate.send(topic, v);
+				});
+			}
+			else {
+				this.replyTemplate.send(topic, (V) result);
+			}
 		}
 	}
 
@@ -265,11 +384,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	/*
 	 * Don't consider parameter types that are available after conversion.
-	 * Acknowledgment, ConsumerRecord and Message<?>.
+	 * Acknowledgment, ConsumerRecord, Consumer, and Message<?>.
 	 */
 	private boolean eligibleParameter(MethodParameter methodParameter) {
 		Type parameterType = methodParameter.getGenericParameterType();
-		if (parameterType.equals(Acknowledgment.class) || parameterType.equals(ConsumerRecord.class)) {
+		if (parameterType.equals(Acknowledgment.class) || parameterType.equals(ConsumerRecord.class)
+				|| parameterType.equals(Consumer.class)) {
 			return false;
 		}
 		if (parameterType instanceof ParameterizedType) {
@@ -279,6 +399,60 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 		return !parameterType.equals(Message.class); // could be Message without a generic type
+	}
+
+	/**
+	 * Result holder.
+	 * @since 2.0
+	 */
+	public static final class ResultHolder {
+
+		private final Object result;
+
+		private final Expression sendTo;
+
+		public ResultHolder(Object result, Expression sendTo) {
+			this.result = result;
+			this.sendTo = sendTo;
+		}
+
+		@Override
+		public String toString() {
+			return this.result.toString();
+		}
+
+	}
+
+	/**
+	 * Root object for reply expression evaluation.
+	 * @since 2.0
+	 */
+	public static final class ReplyExpressionRoot {
+
+		private final Object request;
+
+		private final Object source;
+
+		private final Object result;
+
+		public ReplyExpressionRoot(Object request, Object source, Object result) {
+			this.request = request;
+			this.source = source;
+			this.result = result;
+		}
+
+		public Object getRequest() {
+			return this.request;
+		}
+
+		public Object getSource() {
+			return this.source;
+		}
+
+		public Object getResult() {
+			return this.result;
+		}
+
 	}
 
 }

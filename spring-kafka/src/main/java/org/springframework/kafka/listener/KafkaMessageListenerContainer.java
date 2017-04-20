@@ -82,8 +82,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private GenericMessageListener<?> listener;
 
-	private GenericAcknowledgingMessageListener<?> acknowledgingMessageListener;
-
 	/**
 	 * Construct an instance with the supplied configuration properties.
 	 * @param consumerFactory the consumer factory.
@@ -152,22 +150,22 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		Object messageListener = containerProperties.getMessageListener();
 		Assert.state(messageListener != null, "A MessageListener is required");
-		if (messageListener instanceof GenericAcknowledgingMessageListener) {
-			this.acknowledgingMessageListener = (GenericAcknowledgingMessageListener<?>) messageListener;
-		}
-		else if (messageListener instanceof GenericMessageListener) {
-			this.listener = (GenericMessageListener<?>) messageListener;
-		}
-		else {
-			throw new IllegalStateException("messageListener must be 'MessageListener' "
-					+ "or 'AcknowledgingMessageListener', not " + messageListener.getClass().getName());
-		}
 		if (containerProperties.getConsumerTaskExecutor() == null) {
 			SimpleAsyncTaskExecutor consumerExecutor = new SimpleAsyncTaskExecutor(
 					(getBeanName() == null ? "" : getBeanName()) + "-C-");
 			containerProperties.setConsumerTaskExecutor(consumerExecutor);
 		}
-		this.listenerConsumer = new ListenerConsumer(this.listener, this.acknowledgingMessageListener);
+		Assert.state(messageListener instanceof GenericMessageListener, "Listener must be a GenericListener");
+		this.listener = (GenericMessageListener<?>) messageListener;
+		ListenerType listenerType = ListenerUtils.determineListenerType(this.listener);
+		if (this.listener instanceof DelegatingMessageListener) {
+			Object delegating = this.listener;
+			while (delegating instanceof DelegatingMessageListener) {
+				delegating = ((DelegatingMessageListener<?>) delegating).getDelegate();
+				listenerType = ListenerUtils.determineListenerType(delegating);
+			}
+		}
+		this.listenerConsumer = new ListenerConsumer(this.listener, listenerType);
 		setRunning(true);
 		this.listenerConsumerFuture = containerProperties
 				.getConsumerTaskExecutor()
@@ -203,10 +201,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 	}
 
-	private void publishIdleContainerEvent(long idleTime) {
+	private void publishIdleContainerEvent(long idleTime, Consumer<?, ?> consumer) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(
-					KafkaMessageListenerContainer.this, idleTime, getBeanName(), getAssignedPartitions()));
+					KafkaMessageListenerContainer.this, idleTime, getBeanName(), getAssignedPartitions(), consumer));
 		}
 	}
 
@@ -221,8 +219,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final Log logger = LogFactory.getLog(ListenerConsumer.class);
 
-		private final Object theListener;
-
 		private final ContainerProperties containerProperties = getContainerProperties();
 
 		private final OffsetCommitCallback commitCallback = this.containerProperties.getCommitCallback() != null
@@ -235,11 +231,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final MessageListener<K, V> listener;
 
-		private final AcknowledgingMessageListener<K, V> acknowledgingMessageListener;
-
 		private final BatchMessageListener<K, V> batchListener;
 
-		private final BatchAcknowledgingMessageListener<K, V> batchAcknowledgingMessageListener;
+		private final ListenerType listenerType;
+
+		private final boolean isConsumerAwareListener;
 
 		private final boolean isBatchListener;
 
@@ -273,12 +269,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private long last;
 
 		@SuppressWarnings("unchecked")
-		private ListenerConsumer(GenericMessageListener<?> listener, GenericAcknowledgingMessageListener<?> ackListener) {
+		private ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 					"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
 
-			this.theListener = listener == null ? ackListener : listener;
 			ConsumerRebalanceListener rebalanceListener = createRebalanceListener(consumer);
 
 			if (KafkaMessageListenerContainer.this.topicPartitions == null) {
@@ -301,39 +296,25 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.consumer = consumer;
 			GenericErrorHandler<?> errHandler = this.containerProperties.getGenericErrorHandler();
-			if (this.theListener instanceof BatchAcknowledgingMessageListener) {
+			if (listener instanceof BatchMessageListener) {
 				this.listener = null;
-				this.batchListener = null;
-				this.acknowledgingMessageListener = null;
-				this.batchAcknowledgingMessageListener = (BatchAcknowledgingMessageListener<K, V>) this.theListener;
+				this.batchListener = (BatchMessageListener<K, V>) listener;
 				this.isBatchListener = true;
 			}
-			else if (this.theListener instanceof AcknowledgingMessageListener) {
-				this.listener = null;
-				this.acknowledgingMessageListener = (AcknowledgingMessageListener<K, V>) this.theListener;
+			else if (listener instanceof MessageListener) {
+				this.listener = (MessageListener<K, V>) listener;
 				this.batchListener = null;
-				this.batchAcknowledgingMessageListener = null;
-				this.isBatchListener = false;
-			}
-			else if (this.theListener instanceof BatchMessageListener) {
-				this.listener = null;
-				this.batchListener = (BatchMessageListener<K, V>) this.theListener;
-				this.acknowledgingMessageListener = null;
-				this.batchAcknowledgingMessageListener = null;
-				this.isBatchListener = true;
-			}
-			else if (this.theListener instanceof MessageListener) {
-				this.listener = (MessageListener<K, V>) this.theListener;
-				this.batchListener = null;
-				this.acknowledgingMessageListener = null;
-				this.batchAcknowledgingMessageListener = null;
 				this.isBatchListener = false;
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
-						+ "'BatchMessageListener', 'AcknowledgingMessageListener', "
-						+ "'BatchAcknowledgingMessageListener', not " + this.theListener.getClass().getName());
+						+ "'BatchMessageListener', or the variants that are consumer aware and/or "
+						+ "Acknowledging"
+						+ " not " + listener.getClass().getName());
 			}
+			this.listenerType = listenerType;
+			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
+					|| listenerType.equals(ListenerType.CONSUMER_AWARE);
 			if (this.isBatchListener) {
 				validateErrorHandler(true);
 				this.errorHandler = new LoggingErrorHandler();
@@ -381,7 +362,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 									KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
 						}
 					}
-					if (ListenerConsumer.this.theListener instanceof ConsumerSeekAware) {
+					if (ListenerConsumer.this.listener instanceof ConsumerSeekAware) {
 						seekPartitions(partitions, false);
 					}
 					getContainerProperties().getConsumerRebalanceListener().onPartitionsAssigned(partitions);
@@ -416,10 +397,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			};
 			if (idle) {
-				((ConsumerSeekAware) ListenerConsumer.this.theListener).onIdleContainer(current, callback);
+				((ConsumerSeekAware) ListenerConsumer.this.listener).onIdleContainer(current, callback);
 			}
 			else {
-				((ConsumerSeekAware) ListenerConsumer.this.theListener).onPartitionsAssigned(current, callback);
+				((ConsumerSeekAware) ListenerConsumer.this.listener).onPartitionsAssigned(current, callback);
 			}
 		}
 
@@ -451,8 +432,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		@Override
 		public void run() {
-			if (this.theListener instanceof ConsumerSeekAware) {
-				((ConsumerSeekAware) this.theListener).registerSeekCallback(this);
+			if (this.listener instanceof ConsumerSeekAware) {
+				((ConsumerSeekAware) this.listener).registerSeekCallback(this);
 			}
 			this.count = 0;
 			this.last = System.currentTimeMillis();
@@ -482,9 +463,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							long now = System.currentTimeMillis();
 							if (now > lastReceive + this.containerProperties.getIdleEventInterval()
 									&& now > lastAlertAt + this.containerProperties.getIdleEventInterval()) {
-								publishIdleContainerEvent(now - lastReceive);
+								publishIdleContainerEvent(now - lastReceive, this.isConsumerAwareListener
+										? this.consumer : null);
 								lastAlertAt = now;
-								if (this.theListener instanceof ConsumerSeekAware) {
+								if (this.listener instanceof ConsumerSeekAware) {
 									seekPartitions(getAssignedPartitions(), true);
 								}
 							}
@@ -585,15 +567,26 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			if (recordList.size() > 0) {
 				try {
-					if (this.batchAcknowledgingMessageListener != null) {
-						this.batchAcknowledgingMessageListener.onMessage(recordList,
-								this.isAnyManualAck
-										? new ConsumerBatchAcknowledgment(recordList)
-										: null);
-					}
-					else {
-						this.batchListener.onMessage(recordList);
-					}
+					switch (this.listenerType) {
+						case ACKNOWLEDGING_CONSUMER_AWARE:
+							this.batchListener.onMessage(recordList,
+									this.isAnyManualAck
+											? new ConsumerBatchAcknowledgment(recordList)
+											: null, this.consumer);
+							break;
+						case ACKNOWLEDGING:
+							this.batchListener.onMessage(recordList,
+									this.isAnyManualAck
+											? new ConsumerBatchAcknowledgment(recordList)
+											: null);
+							break;
+						case CONSUMER_AWARE:
+							this.batchListener.onMessage(recordList, this.consumer);
+							break;
+						case SIMPLE:
+							this.batchListener.onMessage(recordList);
+							break;
+						}
 					if (!this.isAnyManualAck && !this.autoCommit) {
 						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
 							this.acks.put(record);
@@ -628,14 +621,25 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.logger.trace("Processing " + record);
 				}
 				try {
-					if (this.acknowledgingMessageListener != null) {
-						this.acknowledgingMessageListener.onMessage(record,
+					switch (this.listenerType) {
+						case ACKNOWLEDGING_CONSUMER_AWARE:
+							this.listener.onMessage(record,
 								this.isAnyManualAck
 										? new ConsumerAcknowledgment(record)
-										: null);
-					}
-					else {
-						this.listener.onMessage(record);
+										: null, this.consumer);
+							break;
+						case CONSUMER_AWARE:
+							this.listener.onMessage(record, this.consumer);
+							break;
+						case ACKNOWLEDGING:
+							this.listener.onMessage(record,
+									this.isAnyManualAck
+											? new ConsumerAcknowledgment(record)
+											: null);
+							break;
+						case SIMPLE:
+							this.listener.onMessage(record);
+							break;
 					}
 					if (!this.isAnyManualAck && !this.autoCommit) {
 						this.acks.add(record);

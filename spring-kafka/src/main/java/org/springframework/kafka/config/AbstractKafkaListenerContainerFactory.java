@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -62,12 +63,13 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private RetryTemplate retryTemplate;
 
-	private RecoveryCallback<Void> recoveryCallback;
+	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private Boolean batchListener;
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
+	private KafkaTemplate<K, V> replyTemplate;
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
 	 * @param consumerFactory The consumer factory.
@@ -135,7 +137,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * retryTemplate}.
 	 * @param recoveryCallback the callback.
 	 */
-	public void setRecoveryCallback(RecoveryCallback<Void> recoveryCallback) {
+	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
 	}
 
@@ -160,6 +162,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	@Override
 	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
 		this.applicationEventPublisher = applicationEventPublisher;
+	}
+
+	/**
+	 * Set the {@link KafkaTemplate} to use to send replies.
+	 * @param replyTemplate the template.
+	 * @since 2.0
+	 */
+	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+		this.replyTemplate = replyTemplate;
 	}
 
 	/**
@@ -205,6 +216,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			}
 			if (this.batchListener != null) {
 				aklEndpoint.setBatchListener(this.batchListener);
+			}
+			if (this.replyTemplate != null) {
+				aklEndpoint.setReplyTemplate(this.replyTemplate);
 			}
 		}
 

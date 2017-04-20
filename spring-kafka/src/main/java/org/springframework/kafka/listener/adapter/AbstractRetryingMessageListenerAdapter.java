@@ -30,11 +30,12 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  *
  */
-public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends AbstractMessageListenerAdapter<K, V, T> {
+public abstract class AbstractRetryingMessageListenerAdapter<K, V, T>
+		extends AbstractDelegatingMessageListenerAdapter<T> {
 
 	private final RetryTemplate retryTemplate;
 
-	private final RecoveryCallback<Void> recoveryCallback;
+	private final RecoveryCallback<? extends Object> recoveryCallback;
 
 	/**
 	 * Construct an instance with the supplied retry template. The exception will be
@@ -54,7 +55,7 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends Ab
 	 * thrown to the container after retries are exhausted.
 	 */
 	public AbstractRetryingMessageListenerAdapter(T delegate, RetryTemplate retryTemplate,
-			RecoveryCallback<Void> recoveryCallback) {
+			RecoveryCallback<? extends Object> recoveryCallback) {
 		super(delegate);
 		Assert.notNull(retryTemplate, "'retryTemplate' cannot be null");
 		this.retryTemplate = retryTemplate;
@@ -65,7 +66,7 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends Ab
 		return this.retryTemplate;
 	}
 
-	public RecoveryCallback<Void> getRecoveryCallback() {
+	public RecoveryCallback<? extends Object> getRecoveryCallback() {
 		return this.recoveryCallback;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,39 +16,36 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.List;
-
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.support.Acknowledgment;
 
 /**
- * Listener for handling a batch of incoming Kafka messages, propagating an acknowledgment
- * handle that recipients can invoke when the message has been processed. The list is
- * created from the consumer records object returned by a poll.
+ * Listener for handling incoming Kafka messages, propagating an acknowledgment handle that recipients
+ * can invoke when the message has been processed. Access to the {@link Consumer} is provided.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
- * @author Marius Bogoevici
  * @author Gary Russell
  *
- * @since 1.1
+ * @since 2.0
  */
 @FunctionalInterface
-public interface BatchAcknowledgingMessageListener<K, V> extends BatchMessageListener<K, V> {
+public interface AcknowledgingConsumerAwareMessageListener<K, V> extends MessageListener<K, V> {
 
 	/**
 	 * Invoked with data from kafka. Containers should never call this since it they
-	 * will detect that we are an acknowledging listener.
+	 * will detect that we are a consumer aware acknowledging listener.
 	 * @param data the data to be processed.
 	 */
 	@Override
-	default void onMessage(List<ConsumerRecord<K, V>> data) {
+	default void onMessage(ConsumerRecord<K, V> data) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 
 	@Override
-	void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment);
+	void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment, Consumer<?, ?> consumer);
 
 }
