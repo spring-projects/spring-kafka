@@ -31,7 +31,6 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
-import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -69,9 +68,6 @@ public class KafkaStreamsTests {
 
 	private static final String STREAMING_TOPIC2 = "streamingTopic2";
 
-	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 1, STREAMING_TOPIC1, STREAMING_TOPIC2);
-
 	@Autowired
 	private KafkaTemplate<Integer, String> kafkaTemplate;
 
@@ -99,6 +95,14 @@ public class KafkaStreamsTests {
 	@EnableKafkaStreams
 	public static class KafkaStreamsConfiguration {
 
+		@Autowired
+		private KafkaEmbedded embeddedKafka;
+
+		@Bean
+		public static KafkaEmbedded embeddedKafka() {
+			return new KafkaEmbedded(1, true, 1, STREAMING_TOPIC1, STREAMING_TOPIC2);
+		}
+
 		@Bean
 		public ProducerFactory<Integer, String> producerFactory() {
 			return new DefaultKafkaProducerFactory<>(producerConfigs());
@@ -106,7 +110,7 @@ public class KafkaStreamsTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.producerProps(embeddedKafka);
+			return KafkaTestUtils.producerProps(this.embeddedKafka);
 		}
 
 		@Bean
@@ -120,7 +124,7 @@ public class KafkaStreamsTests {
 		public StreamsConfig kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
-			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
+			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.embeddedKafka.getBrokersAsString());
 			props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
 			props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
 			props.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG, WallclockTimestampExtractor.class.getName());
@@ -148,7 +152,7 @@ public class KafkaStreamsTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "false", embeddedKafka);
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "false", this.embeddedKafka);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}

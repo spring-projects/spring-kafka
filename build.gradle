@@ -167,7 +167,7 @@ project ('spring-kafka-test') {
 	description = 'Spring Kafka Test Support'
 
 	dependencies {
-		compile "org.springframework:spring-beans:$springVersion"
+		compile "org.springframework:spring-context:$springVersion"
 		compile "org.springframework:spring-test:$springVersion"
 		compile "org.springframework.retry:spring-retry:$springRetryVersion"
 

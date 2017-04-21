@@ -43,6 +43,8 @@ import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.utils.Time;
 import org.junit.rules.ExternalResource;
 
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.Lifecycle;
 import org.springframework.kafka.test.core.BrokerAddress;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -73,7 +75,7 @@ import scala.collection.Set;
  * @author Gary Russell
  */
 @SuppressWarnings("serial")
-public class KafkaEmbedded extends ExternalResource implements KafkaRule {
+public class KafkaEmbedded extends ExternalResource implements KafkaRule, InitializingBean, Lifecycle {
 
 	public static final String SPRING_EMBEDDED_KAFKA_BROKERS = "spring.embedded.kafka.brokers";
 
@@ -94,6 +96,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 	private ZkClient zookeeperClient;
 
 	private String zkConnect;
+
+	private volatile boolean running;
 
 	public KafkaEmbedded(int count) {
 		this(count, false);
@@ -130,6 +134,29 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 	}
 
 	@Override
+	public void afterPropertiesSet() throws Exception {
+		start();
+	}
+
+	@Override
+	public synchronized void start() {
+		if (!this.running) {
+			try {
+				before();
+			}
+			catch (Exception e) {
+				throw new IllegalStateException("Cannot start: " + this, e);
+			}
+			this.running = true;
+		}
+	}
+
+	@Override
+	public boolean isRunning() {
+		return this.running;
+	}
+
+	@Override
 	public void before() throws Exception { //NOSONAR
 		startZookeeper();
 		int zkConnectionTimeout = 6000;
@@ -162,6 +189,14 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule {
 			AdminUtils.createTopic(zkUtils, topic, this.partitionsPerTopic, this.count, props, null);
 		}
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
+	}
+
+	@Override
+	public void stop() {
+		if (this.running) {
+			after();
+			this.running = false;
+		}
 	}
 
 	@Override
