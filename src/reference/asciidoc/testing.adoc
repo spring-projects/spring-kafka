@@ -94,9 +94,58 @@ ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consum
 ...
 ----
 
-When the embedded server is started by JUnit, it sets a system property `spring.embedded.kafka.brokers` to the address
-of the broker(s).
+When the embedded server is started by JUnit, it sets a system property `spring.embedded.kafka.brokers` to the address of the broker(s).
 A convenient constant `KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS` is provided for this property.
+
+==== @EmbeddedKafka annotation
+It is generally recommended to use the rule as a `@ClassRule` to avoid starting/stopping the broker between tests (and use a different topic for each test).
+Starting with _version 2.0_, if you are using Spring's test application context caching, you can also declare a `KafkaEmbedded` bean, so a single broker can be used across multiple test classes.
+The JUnit `ExternalResource` `before()/after()` lifecycle is wrapped to the `afterPropertiesSet()` and `destroy()` Spring infrastructure hooks.
+For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` bean:
+
+[source, java]
+----
+@RunWith(SpringRunner.class)
+@DirtiesContext
+@EmbeddedKafka(partitions = 1,
+         topics = {
+                 KafkaStreamsTests.STREAMING_TOPIC1,
+                 KafkaStreamsTests.STREAMING_TOPIC2 })
+public class KafkaStreamsTests {
+
+    @Autowired
+    private KafkaEmbedded kafkaEmbedded;
+
+	@Test
+	public void someTest() {
+	    Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "true", this.kafkaEmbedded);
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+        Consumer<Integer, String> consumer = cf.createConsumer();
+        this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, KafkaStreamsTests.STREAMING_TOPIC2);
+        ConsumerRecords<Integer, String> replies = KafkaTestUtils.getRecords(consumer);
+        assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+	}
+
+    @Configuration
+    @EnableKafkaStreams
+    public static class KafkaStreamsConfiguration {
+
+        @Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
+        private String brokerAddresses;
+
+        @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+        public StreamsConfig kStreamsConfigs() {
+            Map<String, Object> props = new HashMap<>();
+            props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
+            props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
+            return new StreamsConfig(props);
+        }
+
+    }
+
+}
+----
 
 ==== Hamcrest Matchers
 
