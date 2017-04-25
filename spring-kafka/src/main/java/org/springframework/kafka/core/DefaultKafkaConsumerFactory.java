@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,7 +37,8 @@ import org.apache.kafka.common.serialization.Deserializer;
  * @author Gary Russell
  * @author Murali Reddy
  */
-public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
+@SuppressWarnings("deprecation")
+public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>, ClientIdSuffixAware<K, V> {
 
 	private final Map<String, Object> configs;
 
@@ -64,13 +66,44 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		this.valueDeserializer = valueDeserializer;
 	}
 
+	/**
+	 * Return an unmodifiable reference to the configuration map for this factory.
+	 * Useful for cloning to make a similar factory.
+	 * @return the configs.
+	 * @since 1.0.6
+	 */
+	public Map<String, Object> getConfigurationProperties() {
+		return Collections.unmodifiableMap(this.configs);
+	}
+
 	@Override
 	public Consumer<K, V> createConsumer() {
 		return createKafkaConsumer();
 	}
 
+	@Override
+	public Consumer<K, V> createConsumer(String clientIdSuffix) {
+		return createKafkaConsumer(clientIdSuffix);
+	}
+
 	protected KafkaConsumer<K, V> createKafkaConsumer() {
-		return new KafkaConsumer<K, V>(this.configs, this.keyDeserializer, this.valueDeserializer);
+		return createKafkaConsumer(this.configs);
+	}
+
+	protected KafkaConsumer<K, V> createKafkaConsumer(String clientIdSuffix) {
+		if (!this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG) || clientIdSuffix == null) {
+			return createKafkaConsumer();
+		}
+		else {
+			Map<String, Object> modifiedClientIdConfigs = new HashMap<>(this.configs);
+			modifiedClientIdConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG,
+					modifiedClientIdConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG) + clientIdSuffix);
+			return createKafkaConsumer(modifiedClientIdConfigs);
+		}
+	}
+
+	protected KafkaConsumer<K, V> createKafkaConsumer(Map<String, Object> configs) {
+		return new KafkaConsumer<K, V>(configs, this.keyDeserializer, this.valueDeserializer);
 	}
 
 	@Override

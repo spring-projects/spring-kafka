@@ -265,6 +265,9 @@ For 5 `TopicPartition` s, 2 containers will get 2 partitions and the third will 
 If the `concurrency` is greater than the number of `TopicPartitions`, the `concurrency` will be adjusted down such that
 each container will get one partition.
 
+NOTE: The `client.id` property (if set) will be appended with `-n` where `n` is the consumer instance according to the concurrency.
+This is required to provide unique names for MBeans when JMX is enabled.
+
 [[committing-offsets]]
 ====== Committing Offsets
 
