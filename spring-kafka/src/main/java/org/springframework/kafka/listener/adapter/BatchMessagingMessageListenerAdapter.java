@@ -107,12 +107,12 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 			if (isMessageList()) {
 				List<Message<?>> messages = new ArrayList<>(records.size());
 				for (ConsumerRecord<K, V> record : records) {
-					messages.add(toMessagingMessage(record, acknowledgment));
+					messages.add(toMessagingMessage(record, acknowledgment, consumer));
 				}
 				message = MessageBuilder.withPayload(messages).build();
 			}
 			else {
-				message = toMessagingMessage(records, acknowledgment);
+				message = toMessagingMessage(records, acknowledgment, consumer);
 			}
 		}
 		else {
@@ -148,8 +148,8 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected Message<?> toMessagingMessage(List records, Acknowledgment acknowledgment) {
-		return getBatchMessageConverter().toMessage(records, acknowledgment, getType());
+	protected Message<?> toMessagingMessage(List records, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+		return getBatchMessageConverter().toMessage(records, acknowledgment, consumer, getType());
 	}
 
 }

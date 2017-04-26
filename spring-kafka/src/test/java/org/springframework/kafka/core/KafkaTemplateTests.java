@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
 import static org.springframework.kafka.test.assertj.KafkaConditions.timestamp;
@@ -43,6 +44,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.ProducerListenerAdapter;
 import org.springframework.kafka.support.SendResult;
@@ -200,11 +202,15 @@ public class KafkaTemplateTests {
 
 		MessagingMessageConverter messageConverter = new MessagingMessageConverter();
 
-		Message<?> recordToMessage = messageConverter.toMessage(r2, null, String.class);
+		Acknowledgment ack = mock(Acknowledgment.class);
+		Consumer<?, ?> mockConsumer = mock(Consumer.class);
+		Message<?> recordToMessage = messageConverter.toMessage(r2, ack, mockConsumer, String.class);
 
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048615L);
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo(INT_KEY_TOPIC);
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.ACKNOWLEDGMENT)).isSameAs(ack);
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.CONSUMER)).isSameAs(mockConsumer);
 		assertThat(recordToMessage.getPayload()).isEqualTo("foo-message-2");
 
 		pf.destroy();

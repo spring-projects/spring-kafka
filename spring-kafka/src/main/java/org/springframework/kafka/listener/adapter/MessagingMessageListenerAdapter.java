@@ -210,8 +210,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
-	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment) {
-		return getMessageConverter().toMessage(record, acknowledgment, getType());
+	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
+		return getMessageConverter().toMessage(record, acknowledgment, consumer, getType());
 	}
 
 	/**

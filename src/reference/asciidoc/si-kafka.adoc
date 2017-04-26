@@ -180,6 +180,12 @@ public ConsumerFactory<String, String> consumerFactory() {
 }
 ----
 
+Received messages will have certain headers populated.
+Refer to the `KafkaHeaders` class for more information.
+
+IMPORTANT: The `Consumer` object (in the `kafka_consumer` header) is not thread-safe; you must only invoke its methods on the thread that calls the listener within the adapter; if you hand off the message to another thread, you must not call its methods.
+
+
 [[message-conversion]]
 ==== Message Conversion
 
@@ -201,7 +207,8 @@ This is achieved by setting the `payload-type` attribute (`payloadType` property
         payload-type="com.example.Foo"
         error-channel="errorChannel" />
 
-<bean id="messageConverter" class="org.springframework.kafka.support.converter.MessagingMessageConverter"/>
+<bean id="messageConverter"
+    class="org.springframework.kafka.support.converter.MessagingMessageConverter"/>
 
 ----
 

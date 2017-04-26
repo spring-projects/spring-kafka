@@ -17,15 +17,18 @@
 package org.springframework.kafka.support.converter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.Test;
 
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -48,7 +51,9 @@ public class BatchMessageConverterTests {
 
 		BatchMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
 
-		Message<?> message = batchMessageConverter.toMessage(consumerRecords, null,
+		Acknowledgment ack = mock(Acknowledgment.class);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		Message<?> message = batchMessageConverter.toMessage(consumerRecords, ack, consumer,
 				String.class);
 
 		assertThat(message.getPayload())
@@ -66,6 +71,8 @@ public class BatchMessageConverterTests {
 				.isEqualTo(Arrays.asList("CREATE_TIME", "CREATE_TIME", "CREATE_TIME"));
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TIMESTAMP))
 				.isEqualTo(Arrays.asList(1487694048607L, 1487694048608L, 1487694048609L));
+		assertThat(headers.get(KafkaHeaders.ACKNOWLEDGMENT)).isSameAs(ack);
+		assertThat(headers.get(KafkaHeaders.CONSUMER)).isSameAs(consumer);
 	}
 
 }

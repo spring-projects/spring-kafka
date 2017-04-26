@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
@@ -71,7 +72,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	@Override
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
-			Type type) {
+			Consumer<?, ?> consumer, Type type) {
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
@@ -92,6 +93,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 		if (acknowledgment != null) {
 			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
+		}
+		if (consumer != null) {
+			rawHeaders.put(KafkaHeaders.CONSUMER, consumer);
 		}
 
 		for (ConsumerRecord<?, ?> record : records) {
