@@ -19,6 +19,7 @@ package org.springframework.kafka.support.converter;
 import java.lang.reflect.Type;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
@@ -66,7 +67,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	}
 
 	@Override
-	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Type type) {
+	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+			Type type) {
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
@@ -80,6 +82,9 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 		if (acknowledgment != null) {
 			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
+		}
+		if (consumer != null) {
+			rawHeaders.put(KafkaHeaders.CONSUMER, consumer);
 		}
 
 		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);

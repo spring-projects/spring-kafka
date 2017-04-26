@@ -62,7 +62,6 @@ public class RetryingMessageListenerAdapter<K, V>
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void onMessage(final ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		getRetryTemplate().execute(context -> {

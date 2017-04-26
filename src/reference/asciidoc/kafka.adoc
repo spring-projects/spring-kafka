@@ -158,31 +158,55 @@ using the `@KafkaListener` annotation.
 ===== Message Listeners
 
 When using a <<message-listener-container, Message Listener Container>> you must provide a listener to receive data.
-There are currently four supported interfaces for message listeners:
+There are currently eight supported interfaces for message listeners:
 
 [source, java]
 ----
-public interface MessageListener<K, V> {} <1>
+public interface MessageListener<K, V> { <1>
 
     void onMessage(ConsumerRecord<K, V> data);
 
 }
 
-public interface AcknowledgingMessageListener<K, V> {} <2>
+public interface AcknowledgingMessageListener<K, V> { <2>
 
     void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment);
 
 }
 
-public interface BatchMessageListener<K, V> {} <3>
+public interface ConsumerAwareMessageListener<K, V> extends MessageListener<K, V> { <3>
+
+    void onMessage(ConsumerRecord<K, V> data, Consumer<?, ?> consumer);
+
+}
+
+public interface AcknowledgingConsumerAwareMessageListener<K, V> extends MessageListener<K, V> { <4>
+
+    void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment, Consumer<?, ?> consumer);
+
+}
+
+public interface BatchMessageListener<K, V> { <5>
 
     void onMessage(List<ConsumerRecord<K, V>> data);
 
 }
 
-public interface BatchAcknowledgingMessageListener<K, V> {} <4>
+public interface BatchAcknowledgingMessageListener<K, V> { <6>
 
     void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment);
+
+}
+
+public interface BatchConsumerAwareMessageListener<K, V> extends BatchMessageListener<K, V> { <7>
+
+    void onMessage(List<ConsumerRecord<K, V>> data, Consumer<?, ?> consumer);
+
+}
+
+public interface BatchAcknowledgingConsumerAwareMessageListener<K, V> extends BatchMessageListener<K, V> { <8>
+
+    void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment, Consumer<?, ?> consumer);
 
 }
 ----
@@ -193,12 +217,31 @@ using auto-commit, or one of the container-managed <<committing-offsets, commit 
 <2> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operation when
 using one of the manual <<committing-offsets, commit methods>>.
 
-<3> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+<3> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using auto-commit, or one of the container-managed <<committing-offsets, commit methods>>.
+Access to the `Consumer` object is provided.
+
+<4> Use this for processing individual `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using one of the manual <<committing-offsets, commit methods>>.
+Access to the `Consumer` object is provided.
+
+<5> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
 using auto-commit, or one of the container-managed <<committing-offsets, commit methods>>.
 `AckMode.RECORD` is not supported when using this interface since the listener is given the complete batch.
 
-<4> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+<6> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
 using one of the manual <<committing-offsets, commit methods>>.
+
+<7> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using auto-commit, or one of the container-managed <<committing-offsets, commit methods>>.
+`AckMode.RECORD` is not supported when using this interface since the listener is given the complete batch.
+Access to the `Consumer` object is provided.
+
+<8> Use this for processing all `ConsumerRecord` s received from the kafka consumer `poll()` operation when
+using one of the manual <<committing-offsets, commit methods>>.
+Access to the `Consumer` object is provided.
+
+IMPORTANT: The `Consumer` object is not thread-safe; you must only invoke its methods on the thread that calls the listener.
 
 [[message-listener-container]]
 ===== Message Listener Containers
@@ -908,7 +951,7 @@ static class MultiListenerBean {
 ----
 
 [[annotation-error-handling]]
-====== Handling Exceptions
+==== Handling Exceptions
 
 By default, if an annotated listener method throws an exception, it is thrown to the container, and the message will handled according to the container configuration.
 Nothing is returned to the sender.

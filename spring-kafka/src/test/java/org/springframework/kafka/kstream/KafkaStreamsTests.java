@@ -80,8 +80,8 @@ public class KafkaStreamsTests {
 	@Autowired
 	private SettableListenableFuture<String> resultFuture;
 
-	@Autowired
-	private KafkaEmbedded kafkaEmbedded;
+//	@Autowired
+//	private KafkaEmbedded kafkaEmbedded;
 
 	@Test
 	public void testKStreams() throws Exception {

@@ -15,3 +15,8 @@ See <<annotation-error-handling>> for more information.
 You can now annotate `@KafkaListener` methods (and classes, and `@KafkaHandler` methods) with `@SendTo`.
 If the method returns a result, it is forwarded to the specified topic.
 See <<annotation-send-to>> for more information.
+
+===== Message Listeners
+
+Message listeners can now be aware of the `Consumer` object.
+See <<message-listeners>> for more information.
