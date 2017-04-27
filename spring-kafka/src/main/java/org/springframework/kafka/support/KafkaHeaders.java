@@ -49,6 +49,12 @@ public abstract class KafkaHeaders {
 	public static final String OFFSET = PREFIX + "offset";
 
 	/**
+	 * The header containing the raw data received from Kafka ({@code ConsumerRecord} or
+	 * {@code ConsumerRecords}). Usually used to enhance error messages.
+	 */
+	public static final String RAW_DATA = PREFIX + "data";
+
+	/**
 	 * The header for the {@link Acknowledgment}.
 	 */
 	public static final String ACKNOWLEDGMENT = PREFIX + "acknowledgment";
