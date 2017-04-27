@@ -50,6 +50,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -58,27 +59,30 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
- * @author Artem Bilan
+ * @author Marius Bogoevici
  *
- * @since 1.1.4
+ * @since 2.0
  */
 @RunWith(SpringRunner.class)
 @DirtiesContext
-@EmbeddedKafka(partitions = 1,
-		topics = {
-				KafkaStreamsTests.STREAMING_TOPIC1,
-				KafkaStreamsTests.STREAMING_TOPIC2 })
-public class KafkaStreamsTests {
+@EmbeddedKafka(partitions = 1, topics = { KafkaStreamsWithJsonPojoTests.STREAMING_TOPIC1,
+		KafkaStreamsWithJsonPojoTests.STREAMING_TOPIC2, KafkaStreamsWithJsonPojoTests.FOOS})
+public class KafkaStreamsWithJsonPojoTests {
 
 	static final String STREAMING_TOPIC1 = "streamingTopic1";
 
 	static final String STREAMING_TOPIC2 = "streamingTopic2";
+
+	static final String FOOS = "foos";
 
 	@Autowired
 	private KafkaTemplate<Integer, String> kafkaTemplate;
 
 	@Autowired
 	private SettableListenableFuture<String> resultFuture;
+
+	@Autowired
+	private KafkaEmbedded kafkaEmbedded;
 
 	@Test
 	public void testKStreams() throws Exception {
@@ -88,13 +92,12 @@ public class KafkaStreamsTests {
 		this.kafkaTemplate.sendDefault(0, payload);
 		this.kafkaTemplate.sendDefault(0, payload2);
 
-		String result = resultFuture.get(60, TimeUnit.SECONDS);
+		String result = resultFuture.get(600, TimeUnit.SECONDS);
 
 		assertThat(result).isNotNull();
 
 		assertThat(result).isEqualTo(payload.toUpperCase() + payload2.toUpperCase());
 	}
-
 
 	@Configuration
 	@EnableKafka
@@ -136,16 +139,11 @@ public class KafkaStreamsTests {
 		@Bean
 		public KStream<Integer, String> kStream(KStreamBuilder kStreamBuilder) {
 			KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
-			stream
-					.mapValues(String::toUpperCase)
-					.groupByKey()
-					.reduce((String value1, String value2) -> value1 + value2,
-							TimeWindows.of(1000),
-							"windowStore")
-					.toStream()
+			stream.mapValues(String::toUpperCase).mapValues(Foo::new)
+					.through(Serdes.Integer(), new JsonSerde<>(Foo.class), FOOS).mapValues(Foo::getName).groupByKey()
+					.reduce((value1, value2) -> value1 + value2, TimeWindows.of(1000), "windowStore").toStream()
 					.map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
-					.filter((i, s) -> s.length() > 40)
-					.to(STREAMING_TOPIC2);
+					.filter((i, s) -> s.length() > 40).to(STREAMING_TOPIC2);
 
 			stream.print();
 
@@ -154,7 +152,8 @@ public class KafkaStreamsTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.brokerAddresses, "testGroup", "false");
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.brokerAddresses, "testGroup",
+					"false");
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
@@ -165,10 +164,8 @@ public class KafkaStreamsTests {
 		}
 
 		@Bean
-		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaListenerContainerFactory() {
-			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
-					new ConcurrentKafkaListenerContainerFactory<>();
+		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>> kafkaListenerContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			return factory;
 		}
@@ -183,6 +180,26 @@ public class KafkaStreamsTests {
 			resultFuture().set(payload);
 		}
 
+	}
+
+	static class Foo {
+
+		private String name;
+
+		Foo() {
+		}
+
+		Foo(String name) {
+			this.name = name;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
 	}
 
 }

@@ -74,6 +74,17 @@ If you would like to control lifecycle manually (e.g. stop and start by some con
 Since `KStreamBuilderFactoryBean` utilize its internal `KafkaStreams` instance, it is safe to stop and restart it again - a new `KafkaStreams` is created on each `start()`.
 Also consider using different `KStreamBuilderFactoryBean` s, if you would like to control lifecycles for `KStream` instances separately.
 
+==== JSON Serdes
+
+For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring Kafka provides a `JsonSerde` implementation using JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes, the serialization/deserialization section>>.
+The `JsonSerde` provides the same configuration options via its constructor (target type and/or `ObjectMapper`).
+In the following example we use the `JsonSerde` to serialize and deserialize the `Foo` payload of a Kafka stream - the `JsonSerde` can be used in a similar fashion wherever an instance is required.
+
+[source,java]
+----
+stream.through(Serdes.Integer(), new JsonSerde<>(Foo.class), "foos");
+----
+
 ==== Configuration
 
 To configure the Kafka Streams environment, the `KStreamBuilderFactoryBean` requires a `Map` of particular properties or a `StreamsConfig` instance.
