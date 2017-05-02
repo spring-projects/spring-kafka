@@ -141,4 +141,11 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 		return this.phase;
 	}
 
+	/**
+	 * This getter is required in order to call KafkaStreams#store method.
+	 * @return KafkaStreams singleton.
+	 */
+	public KafkaStreams getKafkaStreams() {
+		return this.kafkaStreams;
+	}
 }
