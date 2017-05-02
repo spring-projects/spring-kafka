@@ -141,4 +141,7 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 		return this.phase;
 	}
 
+	public KafkaStreams getKafkaStreams() {
+		return this.kafkaStreams;
+	}
 }
