@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -59,6 +60,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
@@ -134,6 +136,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	private DefaultKafkaConsumerFactory<Integer, String> consumerFactory;
 
+	@Autowired
+	private AtomicReference<Consumer<?, ?>> consumerRef;
+
 	@Test
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
@@ -197,6 +202,7 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated11", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch7.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.consumerRef.get()).isNotNull();
 
 		assertThat(this.recordFilter.called).isTrue();
 	}
@@ -567,7 +573,7 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaAutoStartFalseListenerContainerFactory() {
+				kafkaAutoStartFalseListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			ContainerProperties props = factory.getContainerProperties();
@@ -581,12 +587,12 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaRebalanceListenerContainerFactory() {
+				kafkaRebalanceListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(consumerFactory());
-			props.setConsumerRebalanceListener(consumerRebalanceListener());
+			props.setConsumerRebalanceListener(consumerRebalanceListener(consumerRef()));
 			return factory;
 		}
 
@@ -664,17 +670,31 @@ public class EnableKafkaIntegrationTests {
 			return kafkaTemplate;
 		}
 
-		private ConsumerRebalanceListener consumerRebalanceListener() {
-			return new ConsumerRebalanceListener() {
+		@Bean
+		public AtomicReference<Consumer<?, ?>> consumerRef() {
+			return new AtomicReference<>();
+		}
+
+		private ConsumerAwareRebalanceListener consumerRebalanceListener(
+				final AtomicReference<Consumer<?, ?>> consumerRef) {
+			return new ConsumerAwareRebalanceListener() {
 
 				@Override
-				public void onPartitionsRevoked(Collection<org.apache.kafka.common.TopicPartition> partitions) {
-
+				public void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer,
+						Collection<org.apache.kafka.common.TopicPartition> partitions) {
+					consumerRef.set(consumer);
 				}
 
 				@Override
-				public void onPartitionsAssigned(Collection<org.apache.kafka.common.TopicPartition> partitions) {
+				public void onPartitionsRevokedAfterCommit(Consumer<?, ?> consumer,
+						Collection<org.apache.kafka.common.TopicPartition> partitions) {
+					consumerRef.set(consumer);
+				}
 
+				@Override
+				public void onPartitionsAssigned(Consumer<?, ?> consumer,
+						Collection<org.apache.kafka.common.TopicPartition> partitions) {
+					consumerRef.set(consumer);
 				}
 
 			};

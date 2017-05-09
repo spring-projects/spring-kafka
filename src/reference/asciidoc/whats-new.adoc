@@ -21,6 +21,11 @@ See <<annotation-send-to>> for more information.
 Message listeners can now be aware of the `Consumer` object.
 See <<message-listeners>> for more information.
 
+===== ConsumerAwareRebalanceListener
+
+Rebalance listeners can now access the `Consumer` object during rebalance notifications.
+See <<rebalance-listeners>> for more information.
+
 ===== @EmbeddedKafka Annotation
 
 For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` as a bean.
