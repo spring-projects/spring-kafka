@@ -332,11 +332,25 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		public ConsumerRebalanceListener createRebalanceListener(final Consumer<K, V> consumer) {
 			return new ConsumerRebalanceListener() {
 
+				final ConsumerRebalanceListener userListener = getContainerProperties().getConsumerRebalanceListener();
+
+				final ConsumerAwareRebalanceListener consumerAwareListener =
+						userListener instanceof ConsumerAwareRebalanceListener
+							? (ConsumerAwareRebalanceListener) userListener : null;
+
 				@Override
 				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-					getContainerProperties().getConsumerRebalanceListener().onPartitionsRevoked(partitions);
+					if (this.consumerAwareListener != null) {
+						this.consumerAwareListener.onPartitionsRevokedBeforeCommit(consumer, partitions);
+					}
+					else {
+						this.userListener.onPartitionsRevoked(partitions);
+					}
 					// Wait until now to commit, in case the user listener added acks
-					commitManualAcks();
+					commitPendingAcks();
+					if (this.consumerAwareListener != null) {
+						this.consumerAwareListener.onPartitionsRevokedAfterCommit(consumer, partitions);
+					}
 				}
 
 				@Override
@@ -365,7 +379,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					if (ListenerConsumer.this.listener instanceof ConsumerSeekAware) {
 						seekPartitions(partitions, false);
 					}
-					getContainerProperties().getConsumerRebalanceListener().onPartitionsAssigned(partitions);
+					if (this.consumerAwareListener != null) {
+						this.consumerAwareListener.onPartitionsAssigned(consumer, partitions);
+					}
+					else {
+						this.userListener.onPartitionsAssigned(partitions);
+					}
 				}
 
 			};
@@ -485,7 +504,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 			}
-			commitManualAcks();
+			commitPendingAcks();
 			try {
 				this.consumer.unsubscribe();
 			}
@@ -498,7 +517,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void commitManualAcks() {
+		private void commitPendingAcks() {
 			processCommits();
 			if (this.offsets.size() > 0) {
 				// we always commit after stopping the invoker
