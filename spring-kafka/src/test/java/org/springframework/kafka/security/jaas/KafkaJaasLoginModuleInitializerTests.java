@@ -43,7 +43,7 @@ import com.sun.security.auth.login.ConfigFile;
  */
 @SuppressWarnings("restriction")
 @RunWith(SpringRunner.class)
-public class JaasInitializerListenerTests {
+public class KafkaJaasLoginModuleInitializerTests {
 
 	@Test
 	public void testConfigurationParsedCorrectlyWithKafkaClient() throws Exception {
@@ -64,8 +64,9 @@ public class JaasInitializerListenerTests {
 	public static class Config {
 
 		@Bean
-		public JaasLoginModuleConfiguration jaasConfig() {
-			JaasLoginModuleConfiguration jaasConfig = new JaasLoginModuleConfiguration();
+		public KafkaJaasLoginModuleInitializer jaasConfig() throws IOException {
+			KafkaJaasLoginModuleInitializer jaasConfig = new KafkaJaasLoginModuleInitializer();
+			jaasConfig.setControlFlag("REQUIRED");
 			Map<String, String> options = new HashMap<>();
 			options.put("useKeyTab", "true");
 			options.put("storeKey", "true");
@@ -73,11 +74,6 @@ public class JaasInitializerListenerTests {
 			options.put("principal", "kafka-client-1@EXAMPLE.COM");
 			jaasConfig.setOptions(options);
 			return jaasConfig;
-		}
-
-		@Bean
-		public JaasInitializerListener jaasListener() throws IOException {
-			return new JaasInitializerListener(jaasConfig());
 		}
 
 	}

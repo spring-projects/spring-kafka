@@ -1027,14 +1027,15 @@ The error handler can throw the original or a new exception which will be thrown
 [[kerberos]]
 ==== Kerberos
 
-Starting with version 2.0 a couple of support classes have been added to assist with Kerberos configuration.
-Simply add these beans, with the desired configuration, to your application context.
+Starting with version 2.0 a `KafkaJaasLoginModuleInitializer` class has been added to assist with Kerberos configuration.
+Simply add this bean, with the desired configuration, to your application context.
 
 [source, java]
 ----
 @Bean
-public JaasLoginModuleConfiguration jaasConfig() {
-    JaasLoginModuleConfiguration jaasConfig = new JaasLoginModuleConfiguration();
+public KafkaJaasLoginModuleInitializer jaasConfig() throws IOException {
+    KafkaJaasLoginModuleInitializer jaasConfig = new KafkaJaasLoginModuleInitializer();
+    jaasConfig.setControlFlag("REQUIRED");
     Map<String, String> options = new HashMap<>();
     options.put("useKeyTab", "true");
     options.put("storeKey", "true");
@@ -1042,10 +1043,5 @@ public JaasLoginModuleConfiguration jaasConfig() {
     options.put("principal", "kafka-client-1@EXAMPLE.COM");
     jaasConfig.setOptions(options);
     return jaasConfig;
-}
-
-@Bean
-public JaasInitializerListener jaasListener() throws IOException {
-    return new JaasInitializerListener(jaasConfig());
 }
 ----
