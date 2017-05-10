@@ -84,12 +84,6 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 		return KStreamBuilder.class;
 	}
 
-	@Override
-	protected KStreamBuilder createInstance() throws Exception {
-		return new KStreamBuilder();
-	}
-
-
 	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
 	}
@@ -101,6 +95,26 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 	@Override
 	public boolean isAutoStartup() {
 		return this.autoStartup;
+	}
+
+	@Override
+	public int getPhase() {
+		return this.phase;
+	}
+
+	/**
+	 * Get a managed by this {@link KStreamBuilderFactoryBean} {@link KafkaStreams} instance.
+	 * @return KafkaStreams managed instance;
+	 * may be null if this {@link KStreamBuilderFactoryBean} hasn't been started.
+	 * @since 1.1.4
+	 */
+	public KafkaStreams getKafkaStreams() {
+		return this.kafkaStreams;
+	}
+
+	@Override
+	protected KStreamBuilder createInstance() throws Exception {
+		return new KStreamBuilder();
 	}
 
 	@Override
@@ -116,8 +130,12 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 		if (!this.running) {
 			try {
 				this.kafkaStreams = new KafkaStreams(getObject(), this.streamsConfig, this.clientSupplier);
-				this.kafkaStreams.setStateListener(this.stateListener);
-				this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
+				if (this.stateListener != null) {
+					this.kafkaStreams.setStateListener(this.stateListener);
+				}
+				if (this.exceptionHandler != null) {
+					this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
+				}
 				this.kafkaStreams.start();
 				this.running = true;
 			}
@@ -149,21 +167,6 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 	@Override
 	public synchronized boolean isRunning() {
 		return this.running;
-	}
-
-	@Override
-	public int getPhase() {
-		return this.phase;
-	}
-
-	/**
-	 * Get a managed by this {@link KStreamBuilderFactoryBean} {@link KafkaStreams} instance.
-	 * @return KafkaStreams managed instance;
-	 * may be null if this {@link KStreamBuilderFactoryBean} hasn't been started.
-	 * @since 1.1.4
-	 */
-	public KafkaStreams getKafkaStreams() {
-		return this.kafkaStreams;
 	}
 
 }
