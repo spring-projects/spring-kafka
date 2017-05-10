@@ -7,7 +7,7 @@ New `KafkaHeaders` have been introduced regarding `timestamp` support.
 Also new `KafkaConditions.timestamp()` and `KafkaMatchers.hasTimestamp()` testing utilities have been added.
 See <<kafka-template>>, <<kafka-listener-annotation>> and <<testing>> for more details.
 
-===== @KafkaListener Changes
+==== @KafkaListener Changes
 
 You can now configure a `KafkaListenerErrorHandler` to handle exceptions.
 See <<annotation-error-handling>> for more information.
@@ -16,17 +16,22 @@ You can now annotate `@KafkaListener` methods (and classes, and `@KafkaHandler` 
 If the method returns a result, it is forwarded to the specified topic.
 See <<annotation-send-to>> for more information.
 
-===== Message Listeners
+==== Message Listeners
 
 Message listeners can now be aware of the `Consumer` object.
 See <<message-listeners>> for more information.
 
-===== ConsumerAwareRebalanceListener
+==== ConsumerAwareRebalanceListener
 
 Rebalance listeners can now access the `Consumer` object during rebalance notifications.
 See <<rebalance-listeners>> for more information.
 
-===== @EmbeddedKafka Annotation
+==== @EmbeddedKafka Annotation
 
 For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` as a bean.
 See <<testing>> for more information.
+
+==== Kerberos Configuration
+
+Support for configuring Kerberos is now provided.
+See <<Kerberos>> for more information.

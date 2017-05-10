@@ -1023,3 +1023,25 @@ public interface KafkaListenerErrorHandler {
 
 As you can see, you have access to the spring-messaging `Message<?>` object produced by the message converter and the exception that was thrown by the listener, wrapped in a `ListenerExecutionFailedException`.
 The error handler can throw the original or a new exception which will be thrown to the container. Anything returned by the error handler is ignored.
+
+[[kerberos]]
+==== Kerberos
+
+Starting with version 2.0 a `KafkaJaasLoginModuleInitializer` class has been added to assist with Kerberos configuration.
+Simply add this bean, with the desired configuration, to your application context.
+
+[source, java]
+----
+@Bean
+public KafkaJaasLoginModuleInitializer jaasConfig() throws IOException {
+    KafkaJaasLoginModuleInitializer jaasConfig = new KafkaJaasLoginModuleInitializer();
+    jaasConfig.setControlFlag("REQUIRED");
+    Map<String, String> options = new HashMap<>();
+    options.put("useKeyTab", "true");
+    options.put("storeKey", "true");
+    options.put("keyTab", "/etc/security/keytabs/kafka_client.keytab");
+    options.put("principal", "kafka-client-1@EXAMPLE.COM");
+    jaasConfig.setOptions(options);
+    return jaasConfig;
+}
+----
