@@ -19,11 +19,13 @@ package org.springframework.kafka.security.jaas;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.security.auth.login.AppConfigurationEntry;
 
+import org.apache.kafka.common.network.LoginType;
 import org.apache.kafka.common.security.JaasUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,6 +60,13 @@ public class KafkaJaasLoginModuleInitializerTests {
 				.getAppConfigurationEntry(JaasUtils.LOGIN_CONTEXT_CLIENT);
 		assertThat(kafkaConfiguration).hasSize(1);
 		assertThat(kafkaConfiguration[0].getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
+
+		javax.security.auth.login.Configuration jaasConfig =
+				JaasUtils.jaasConfig(LoginType.CLIENT, Collections.emptyMap());
+		AppConfigurationEntry[] appConfigurationEntry =
+				jaasConfig.getAppConfigurationEntry(JaasUtils.LOGIN_CONTEXT_CLIENT);
+		assertThat(appConfigurationEntry).hasSize(1);
+		assertThat(appConfigurationEntry[0].getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
 	}
 
 	@Configuration
