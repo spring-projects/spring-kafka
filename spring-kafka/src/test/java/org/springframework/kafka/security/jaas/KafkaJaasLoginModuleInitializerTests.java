@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer.ControlFlag;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.sun.security.auth.login.ConfigFile;
@@ -75,7 +76,7 @@ public class KafkaJaasLoginModuleInitializerTests {
 		@Bean
 		public KafkaJaasLoginModuleInitializer jaasConfig() throws IOException {
 			KafkaJaasLoginModuleInitializer jaasConfig = new KafkaJaasLoginModuleInitializer();
-			jaasConfig.setControlFlag("REQUIRED");
+			jaasConfig.setControlFlag(ControlFlag.REQUIRED);
 			Map<String, String> options = new HashMap<>();
 			options.put("useKeyTab", "true");
 			options.put("storeKey", "true");

@@ -41,6 +41,44 @@ import org.springframework.util.Assert;
  */
 public class KafkaJaasLoginModuleInitializer implements SmartInitializingSingleton, DisposableBean {
 
+	/**
+	 * Control flag values for login configuration.
+	 */
+	public enum ControlFlag {
+
+		/**
+		 * Required - The {@code LoginModule} is required to succeed. If it succeeds or
+		 * fails, authentication still continues to proceed down the {@code LoginModule}
+		 * list.
+		 *
+		 */
+		REQUIRED,
+
+		/**
+		 * Requisite - The {@code LoginModule} is required to succeed. If it succeeds,
+		 * authentication continues down the {@code LoginModule} list. If it fails,
+		 * control immediately returns to the application (authentication does not proceed
+		 * down the {@code LoginModule} list).
+		 */
+		REQUISITE,
+
+		/**
+		 * Sufficient - The {@code LoginModule} is not required to succeed. If it does
+		 * succeed, control immediately returns to the application (authentication does
+		 * not proceed down the {@code LoginModule} list). If it fails, authentication
+		 * continues down the {@code LoginModule} list.
+		 */
+		SUFFICIENT,
+
+		/**
+		 * Optional - The {@code LoginModule} is not required to succeed. If it succeeds
+		 * or fails, authentication still continues to proceed down the
+		 * {@code LoginModule} list.
+		 */
+		OPTIONAL
+
+	}
+
 	private final boolean ignoreJavaLoginConfigParamSystemProperty;
 
 	private final File placeholderJaasConfiguration;
@@ -64,23 +102,19 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 		this.loginModule = loginModule;
 	}
 
-	public String getLoginModule() {
-		return this.loginModule;
-	}
-
-	public void setControlFlag(String controlFlag) {
+	public void setControlFlag(ControlFlag controlFlag) {
 		Assert.notNull(controlFlag, "cannot be null");
-		switch (controlFlag.toUpperCase()) {
-		case "OPTIONAL":
+		switch (controlFlag) {
+		case OPTIONAL:
 			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL;
 			break;
-		case "REQUIRED":
+		case REQUIRED:
 			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.REQUIRED;
 			break;
-		case "REQUISITE":
+		case REQUISITE:
 			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.REQUISITE;
 			break;
-		case "SUFFICIENT":
+		case SUFFICIENT:
 			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.SUFFICIENT;
 			break;
 		default:
@@ -88,21 +122,9 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 		}
 	}
 
-	public String getControlFlag() {
-		return this.controlFlag.toString();
-	}
-
-	public AppConfigurationEntry.LoginModuleControlFlag getControlFlagValue() {
-		return this.controlFlag;
-	}
-
 	public void setOptions(Map<String, String> options) {
 		this.options.clear();
 		this.options.putAll(options);
-	}
-
-	public Map<String, String> getOptions() {
-		return this.options;
 	}
 
 	@Override
