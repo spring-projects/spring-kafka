@@ -202,6 +202,8 @@ public class EnableKafkaIntegrationTests {
 		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
 				TopicPartitionInitialOffset[].class)[3];
 		assertThat(offset.isRelativeToCurrent()).isTrue();
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.coordinator.groupId"))
+				.isEqualTo("fiz");
 
 		template.send("annotated11", 0, "foo");
 		template.flush();
@@ -209,6 +211,13 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.consumerRef.get()).isNotNull();
 
 		assertThat(this.recordFilter.called).isTrue();
+
+		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
+		assertThat(rebalanceConcurrentContainer).isNotNull();
+		MessageListenerContainer rebalanceContainer = (MessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(rebalanceConcurrentContainer, "containers", List.class).get(0);
+		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.coordinator.groupId"))
+				.isNotEqualTo("rebalanceListener");
 	}
 
 	@Test
@@ -260,6 +269,12 @@ public class EnableKafkaIntegrationTests {
 				.build());
 		assertThat(this.listener.latch6.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
+		MessageListenerContainer buzConcurrentContainer = registry.getListenerContainer("buz");
+		assertThat(buzConcurrentContainer).isNotNull();
+		MessageListenerContainer buzContainer = (MessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(buzConcurrentContainer, "containers", List.class).get(0);
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.coordinator.groupId"))
+				.isEqualTo("buz.explicitGroupId");
 	}
 
 	@Test
@@ -848,13 +863,14 @@ public class EnableKafkaIntegrationTests {
 			this.latch5.countDown();
 		}
 
-		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory")
+		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory",
+				groupId = "buz.explicitGroupId")
 		public void listen6(Foo foo) {
 			this.foo = foo;
 			this.latch6.countDown();
 		}
 
-		@KafkaListener(id = "rebalancerListener", topics = "annotated11",
+		@KafkaListener(id = "rebalanceListener", topics = "annotated11", idIsGroup = false,
 				containerFactory = "kafkaRebalanceListenerContainerFactory")
 		public void listen7(String foo) {
 			this.latch7.countDown();

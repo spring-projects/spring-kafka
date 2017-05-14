@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,14 @@ public interface KafkaListenerEndpoint {
 	 * @see KafkaListenerContainerFactory#createListenerContainer
 	 */
 	String getId();
+
+	/**
+	 * Return the groupId of this endpoint - if present, overrides the the
+	 * {@code group.id} property of the consumer factory.
+	 * @return the group id; may be null.
+	 * @since 2.0
+	 */
+	String getGroupId();
 
 	/**
 	 * Return the group of this endpoint or null if not in a group.
