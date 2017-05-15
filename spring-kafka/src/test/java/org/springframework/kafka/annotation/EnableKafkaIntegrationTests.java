@@ -143,6 +143,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	private AtomicReference<Consumer<?, ?>> consumerRef;
 
+	@Autowired
+	private List<?> quxGroup;
+
 	@Test
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
@@ -185,6 +188,8 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
 						.getPropertyValue(this.registry.getListenerContainer("qux"), "containers", List.class).get(0),
 				"listenerConsumer.consumer"));
+		assertThat(this.quxGroup.size()).isEqualTo(1);
+		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -838,7 +843,8 @@ public class EnableKafkaIntegrationTests {
 			this.latch3.countDown();
 		}
 
-		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory")
+		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory",
+				containerGroup = "quxGroup")
 		public void listen4(@Payload String foo, Acknowledgment ack, Consumer<?, ?> consumer) {
 			this.ack = ack;
 			this.ack.acknowledge();

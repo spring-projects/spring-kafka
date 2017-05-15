@@ -138,7 +138,7 @@ public @interface KafkaListener {
 	 * of containers.
 	 * @return the bean name for the group.
 	 */
-	String group() default "";
+	String containerGroup() default "";
 
 	/**
 	 * Set an {@link KafkaListenerErrorHandler} to invoke if the listener method throws
