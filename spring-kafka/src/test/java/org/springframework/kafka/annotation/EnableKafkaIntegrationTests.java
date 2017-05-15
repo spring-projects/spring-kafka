@@ -18,7 +18,7 @@ package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.Mockito.any;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
@@ -122,6 +122,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	private RecordFilterImpl recordFilter;
 
+	@Autowired
+	private List<?> quxGroup;
+
 	@Test
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
@@ -160,6 +163,8 @@ public class EnableKafkaIntegrationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer,
 				"containerProperties.messageListener.delegate.delegate"))
 				.isInstanceOf(MessagingMessageListenerAdapter.class);
+		assertThat(this.quxGroup.size()).isEqualTo(1);
+		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -639,7 +644,8 @@ public class EnableKafkaIntegrationTests {
 			this.latch3.countDown();
 		}
 
-		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory")
+		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory",
+				containerGroup = "quxGroup")
 		public void listen4(@Payload String foo, Acknowledgment ack) {
 			this.ack = ack;
 			this.ack.acknowledge();

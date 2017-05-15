@@ -379,7 +379,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		endpoint.setTopicPartitions(resolveTopicPartitions(kafkaListener));
 		endpoint.setTopics(resolveTopics(kafkaListener));
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
-		String group = kafkaListener.group();
+		String group = kafkaListener.containerGroup();
 		if (StringUtils.hasText(group)) {
 			Object resolvedGroup = resolveExpression(group);
 			if (resolvedGroup instanceof String) {
