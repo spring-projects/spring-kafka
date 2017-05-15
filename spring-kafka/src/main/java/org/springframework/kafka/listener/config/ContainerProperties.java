@@ -137,6 +137,8 @@ public class ContainerProperties {
 
 	private Long idleEventInterval;
 
+	private String groupId;
+
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
 		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
@@ -305,6 +307,16 @@ public class ContainerProperties {
 		this.ackOnError = ackOnError;
 	}
 
+	/**
+	 * Set the group id for this container. Overrides any {@code group.id} property
+	 * provided by the consumer factory configuration.
+	 * @param groupId the group id.
+	 * @since 2.0
+	 */
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
+	}
+
 	public String[] getTopics() {
 		return this.topics;
 	}
@@ -368,6 +380,10 @@ public class ContainerProperties {
 	public boolean isAckOnError() {
 		return this.ackOnError &&
 				!(AckMode.MANUAL_IMMEDIATE.equals(this.ackMode) || AckMode.MANUAL.equals(this.ackMode));
+	}
+
+	public String getGroupId() {
+		return this.groupId;
 	}
 
 }

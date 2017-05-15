@@ -16,6 +16,11 @@ You can now annotate `@KafkaListener` methods (and classes, and `@KafkaHandler` 
 If the method returns a result, it is forwarded to the specified topic.
 See <<annotation-send-to>> for more information.
 
+By default, the `@KafkaListener` `id` property is now used as the `group.id` property, overriding the property configured in the consumer factory (if present).
+Further, you can explicitly configure the `groupId` on the annotation.
+Previously, you would have needed a separate container factory (and consumer factory) to use different `group.id` s for listeners.
+To restore the previous behavior of using the factory configured `group.id`, set the `idIsGroup` property on the annotation to `false`.
+
 ==== Message Listeners
 
 Message listeners can now be aware of the `Consumer` object.

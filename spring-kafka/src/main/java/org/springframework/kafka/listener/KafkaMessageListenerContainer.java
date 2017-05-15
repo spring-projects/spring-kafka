@@ -286,8 +286,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 				"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
-			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory
-					.createConsumer(KafkaMessageListenerContainer.this.clientIdSuffix);
+			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
+					this.containerProperties.getGroupId(), KafkaMessageListenerContainer.this.clientIdSuffix);
 
 			ConsumerRebalanceListener rebalanceListener = createRebalanceListener(consumer);
 

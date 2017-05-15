@@ -146,6 +146,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	private AtomicReference<Consumer<?, ?>> consumerRef;
 
+	@Autowired
+	private List<?> quxGroup;
+
 	@Test
 	public void testSimple() throws Exception {
 		template.send("annotated1", 0, "foo");
@@ -188,6 +191,8 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
 						.getPropertyValue(this.registry.getListenerContainer("qux"), "containers", List.class).get(0),
 				"listenerConsumer.consumer"));
+		assertThat(this.quxGroup.size()).isEqualTo(1);
+		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -205,6 +210,8 @@ public class EnableKafkaIntegrationTests {
 		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
 				TopicPartitionInitialOffset[].class)[3];
 		assertThat(offset.isRelativeToCurrent()).isTrue();
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.coordinator.groupId"))
+				.isEqualTo("fiz");
 
 		template.send("annotated11", 0, "foo");
 		template.flush();
@@ -212,6 +219,13 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.consumerRef.get()).isNotNull();
 
 		assertThat(this.recordFilter.called).isTrue();
+
+		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
+		assertThat(rebalanceConcurrentContainer).isNotNull();
+		MessageListenerContainer rebalanceContainer = (MessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(rebalanceConcurrentContainer, "containers", List.class).get(0);
+		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.coordinator.groupId"))
+				.isNotEqualTo("rebalanceListener");
 	}
 
 	@Test
@@ -263,6 +277,12 @@ public class EnableKafkaIntegrationTests {
 				.build());
 		assertThat(this.listener.latch6.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
+		MessageListenerContainer buzConcurrentContainer = registry.getListenerContainer("buz");
+		assertThat(buzConcurrentContainer).isNotNull();
+		MessageListenerContainer buzContainer = (MessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(buzConcurrentContainer, "containers", List.class).get(0);
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.coordinator.groupId"))
+				.isEqualTo("buz.explicitGroupId");
 	}
 
 	@Test
@@ -826,7 +846,8 @@ public class EnableKafkaIntegrationTests {
 			this.latch3.countDown();
 		}
 
-		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory")
+		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory",
+				containerGroup = "quxGroup")
 		public void listen4(@Payload String foo, Acknowledgment ack, Consumer<?, ?> consumer) {
 			this.ack = ack;
 			this.ack.acknowledge();
@@ -851,13 +872,14 @@ public class EnableKafkaIntegrationTests {
 			this.latch5.countDown();
 		}
 
-		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory")
+		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory",
+				groupId = "buz.explicitGroupId")
 		public void listen6(Foo foo) {
 			this.foo = foo;
 			this.latch6.countDown();
 		}
 
-		@KafkaListener(id = "rebalancerListener", topics = "annotated11",
+		@KafkaListener(id = "rebalanceListener", topics = "annotated11", idIsGroup = false,
 				containerFactory = "kafkaRebalanceListenerContainerFactory")
 		public void listen7(String foo) {
 			this.latch7.countDown();

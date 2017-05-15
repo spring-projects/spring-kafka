@@ -383,10 +383,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		endpoint.setBean(bean);
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
 		endpoint.setId(getEndpointId(kafkaListener));
+		endpoint.setGroupId(getEndpointGroupId(kafkaListener, endpoint.getId()));
 		endpoint.setTopicPartitions(resolveTopicPartitions(kafkaListener));
 		endpoint.setTopics(resolveTopics(kafkaListener));
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
-		String group = kafkaListener.group();
+		String group = kafkaListener.containerGroup();
 		if (StringUtils.hasText(group)) {
 			Object resolvedGroup = resolveExpression(group);
 			if (resolvedGroup instanceof String) {
@@ -418,6 +419,17 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else {
 			return "org.springframework.kafka.KafkaListenerEndpointContainer#" + this.counter.getAndIncrement();
 		}
+	}
+
+	private String getEndpointGroupId(KafkaListener kafkaListener, String id) {
+		String groupId = null;
+		if (StringUtils.hasText(kafkaListener.groupId())) {
+			groupId = resolveExpressionAsString(kafkaListener.groupId(), "groupId");
+		}
+		if (groupId == null && kafkaListener.idIsGroup()) {
+			groupId = id;
+		}
+		return groupId;
 	}
 
 	private TopicPartitionInitialOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {

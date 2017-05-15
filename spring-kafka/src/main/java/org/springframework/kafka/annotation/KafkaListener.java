@@ -138,7 +138,7 @@ public @interface KafkaListener {
 	 * of containers.
 	 * @return the bean name for the group.
 	 */
-	String group() default "";
+	String containerGroup() default "";
 
 	/**
 	 * Set an {@link KafkaListenerErrorHandler} to invoke if the listener method throws
@@ -147,5 +147,22 @@ public @interface KafkaListener {
 	 * @since 2.0
 	 */
 	String errorHandler() default "";
+
+	/**
+	 * Override the {@code group.id} property for the consumer factory with this value
+	 * for this listener only.
+	 * @return the group id.
+	 * @since 2.0
+	 */
+	String groupId() default "";
+
+	/**
+	 * When {@link #groupId() groupId} is not provided, use the {@link #id() id} (if
+	 * provided) as the {@code group.id} property for the consumer. Set to false, to use
+	 * the {@code group.id} from the consumer factory.
+	 * @return false to disable.
+	 * @since 2.0
+	 */
+	boolean idIsGroup() default true;
 
 }

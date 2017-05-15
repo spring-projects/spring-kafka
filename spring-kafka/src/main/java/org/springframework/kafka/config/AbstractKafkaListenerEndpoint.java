@@ -60,6 +60,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private String id;
 
+	private String groupId;
+
 	private final Collection<String> topics = new ArrayList<>();
 
 	private Pattern topicPattern;
@@ -121,6 +123,21 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	@Override
 	public String getId() {
 		return this.id;
+	}
+
+	/**
+	 * Set the group id to override the {@code group.id} property in the
+	 * connectionFactory.
+	 * @param groupId the group id.
+	 * @since 2.0
+	 */
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
+	}
+
+	@Override
+	public String getGroupId() {
+		return this.groupId;
 	}
 
 	/**
