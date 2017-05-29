@@ -521,6 +521,12 @@ In that case, the `ErrorHandler` will be invoked, if configured, or logged other
 
 When using `@KafkaListener`, set the `RetryTemplate` (and optionally `recoveryCallback`) on the container factory and the listener will be wrapped in the appropriate retrying adapter.
 
+The contents of the `RetryContext` passed into the `RecoveryCallback` will depend on the type of listener.
+The context will always have an attribute `record` which is the record for which the failure occurred.
+If your listener is acknowledging the additional `acknowledgment` attribute is provided.
+For convenience, the `AbstractRetryingMessageListenerAdapter` provides static constants for these keys.
+See its javadocs for more information.
+
 A retry adapter is not provided for any of the batch <<message-listeners, message listeners>>.
 
 [[idle-containers]]

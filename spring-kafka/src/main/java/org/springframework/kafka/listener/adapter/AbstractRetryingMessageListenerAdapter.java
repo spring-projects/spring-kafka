@@ -32,6 +32,17 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractRetryingMessageListenerAdapter<K, V, T> extends AbstractMessageListenerAdapter<K, V, T> {
 
+	/**
+	 * {@link org.springframework.retry.RetryContext} attribute key for an acknowledgment
+	 * if the listener is capable of acknowledging.
+	 */
+	public static final String CONTEXT_ACKNOWLEDGMENT = "acknowledgment";
+
+	/**
+	 * {@link org.springframework.retry.RetryContext} attribute key for the record.
+	 */
+	public static final String CONTEXT_RECORD = "record";
+
 	private final RetryTemplate retryTemplate;
 
 	private final RecoveryCallback<? extends Object> recoveryCallback;
