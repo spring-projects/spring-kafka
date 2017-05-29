@@ -40,6 +40,23 @@ public class RetryingMessageListenerAdapter<K, V>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
 	/**
+	 * {@link org.springframework.retry.RetryContext} attribute key for an acknowledgment
+	 * if the listener is capable of acknowledging.
+	 */
+	public static final String CONTEXT_ACKNOWLEDGMENT = "acknowledgment";
+
+	/**
+	 * {@link org.springframework.retry.RetryContext} attribute key for the consumer if
+	 * the listener is consumer-aware.
+	 */
+	public static final String CONTEXT_CONSUMER = "consumer";
+
+	/**
+	 * {@link org.springframework.retry.RetryContext} attribute key for the record.
+	 */
+	public static final String CONTEXT_RECORD = "record";
+
+	/**
 	 * Construct an instance with the provided template and delegate. The exception will
 	 * be thrown to the container after retries are exhausted.
 	 * @param messageListener the delegate listener.
@@ -63,17 +80,22 @@ public class RetryingMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(final ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	public void onMessage(final ConsumerRecord<K, V> record, final Acknowledgment acknowledgment,
+			final Consumer<?, ?> consumer) {
 		getRetryTemplate().execute(context -> {
-					context.setAttribute("record", record);
+					context.setAttribute(CONTEXT_RECORD, record);
 					switch (RetryingMessageListenerAdapter.this.delegateType) {
 						case ACKNOWLEDGING_CONSUMER_AWARE:
+							context.setAttribute(CONTEXT_ACKNOWLEDGMENT, acknowledgment);
+							context.setAttribute(CONTEXT_CONSUMER, consumer);
 							RetryingMessageListenerAdapter.this.delegate.onMessage(record, acknowledgment, consumer);
 							break;
 						case ACKNOWLEDGING:
+							context.setAttribute(CONTEXT_ACKNOWLEDGMENT, acknowledgment);
 							RetryingMessageListenerAdapter.this.delegate.onMessage(record, acknowledgment);
 							break;
 						case CONSUMER_AWARE:
+							context.setAttribute(CONTEXT_CONSUMER, consumer);
 							RetryingMessageListenerAdapter.this.delegate.onMessage(record, consumer);
 							break;
 						case SIMPLE:

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.adapter;
+package org.springframework.kafka.listener.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,7 +32,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Test;
 
 import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
-import org.springframework.kafka.listener.adapter.FilteringBatchMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 
 /**

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.adapter;
+package org.springframework.kafka.listener.adapter;
 
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
@@ -24,7 +24,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Test;
 
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
-import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.support.GenericMessage;
