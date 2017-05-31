@@ -76,6 +76,7 @@ subprojects { subproject ->
 		junitVersion = '4.12'
 		kafkaVersion = '0.10.2.0'
 		mockitoVersion = '2.5.4'
+		reactorKafkaVersion = "1.0.0.M2"
 		scalaVersion = '2.11'
 		slf4jVersion = '1.7.22'
 		springRetryVersion = '1.2.0.RELEASE'
@@ -150,7 +151,7 @@ project ('spring-kafka') {
 			exclude group: 'org.slf4j', module: 'slf4j-api'
 			exclude group: 'org.slf4j', module: 'slf4j-log4j12'
 		}
-
+		compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
 		compile ("com.fasterxml.jackson.core:jackson-core:$jacksonVersion", optional)
 		compile ("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion", optional)
 
