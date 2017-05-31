@@ -162,7 +162,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	@Override
 	public KafkaSender<K, V> createReactiveSender() {
 		if (this.sender == null) {
-			synchronized(this) {
+			synchronized (this) {
 				if (this.sender == null) {
 					this.sender = createSender();
 				}

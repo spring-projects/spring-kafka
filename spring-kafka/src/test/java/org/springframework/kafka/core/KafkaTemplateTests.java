@@ -160,7 +160,7 @@ public class KafkaTemplateTests {
 		final CountDownLatch latch = new CountDownLatch(10);
 		template.send(Flux.range(1, 10)
 				.map(i -> SenderRecord
-						.<Integer, String, Integer> create(new ProducerRecord<>(INT_KEY_TOPIC, i, "Message_" + i), i)),
+						.<Integer, String, Integer>create(new ProducerRecord<>(INT_KEY_TOPIC, i, "Message_" + i), i)),
 				Integer.class)
 			.doOnError(e -> {
 				exception.set(e);

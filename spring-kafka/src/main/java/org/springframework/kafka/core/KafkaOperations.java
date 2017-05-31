@@ -170,7 +170,8 @@ public interface KafkaOperations<K, V> {
 	 * Send a Flux of SenderRecords.
 	 * @param flux the flux.
 	 * @param <T> correlation metadata type.
-	 * @return a flux of sendresults.
+	 * @param t the class for the correlation metadata
+	 * @return a flux of SenderResults.
 	 */
 	<T> Flux<SenderResult<T>> send(Flux<SenderRecord<K, V, T>> flux, Class<T> t);
 
