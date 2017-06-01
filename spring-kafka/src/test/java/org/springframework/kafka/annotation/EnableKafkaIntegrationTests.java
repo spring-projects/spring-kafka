@@ -184,8 +184,8 @@ public class EnableKafkaIntegrationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer,
 				"containerProperties.messageListener.delegate.delegate"))
 				.isInstanceOf(MessagingMessageListenerAdapter.class);
-		assertThat(this.listener.consumer).isNotNull();
-		assertThat(this.listener.consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
+		assertThat(this.listener.listen4Consumer).isNotNull();
+		assertThat(this.listener.listen4Consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
 						.getPropertyValue(this.registry.getListenerContainer("qux"), "containers", List.class).get(0),
 				"listenerConsumer.consumer"));
 		assertThat(this.quxGroup.size()).isEqualTo(1);
@@ -359,6 +359,10 @@ public class EnableKafkaIntegrationTests {
 		List<?> list = (List<?>) this.listener.payload;
 		assertThat(list.size()).isGreaterThan(0);
 		assertThat(list.get(0)).isInstanceOf(ConsumerRecord.class);
+		assertThat(this.listener.listen12Consumer).isNotNull();
+		assertThat(this.listener.listen12Consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
+				.getPropertyValue(this.registry.getListenerContainer("list3"), "containers", List.class).get(0),
+				"listenerConsumer.consumer"));
 	}
 
 	@Test
@@ -371,6 +375,10 @@ public class EnableKafkaIntegrationTests {
 		assertThat(list.size()).isGreaterThan(0);
 		assertThat(list.get(0)).isInstanceOf(ConsumerRecord.class);
 		assertThat(this.listener.ack).isNotNull();
+		assertThat(this.listener.listen13Consumer).isNotNull();
+		assertThat(this.listener.listen13Consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
+				.getPropertyValue(this.registry.getListenerContainer("list4"), "containers", List.class).get(0),
+				"listenerConsumer.consumer"));
 	}
 
 	@Test
@@ -810,7 +818,11 @@ public class EnableKafkaIntegrationTests {
 
 		private volatile List<Long> offsets;
 
-		private volatile Consumer<?, ?> consumer;
+		private volatile Consumer<?, ?> listen4Consumer;
+
+		private volatile Consumer<?, ?> listen12Consumer;
+
+		private volatile Consumer<?, ?> listen13Consumer;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
@@ -848,7 +860,7 @@ public class EnableKafkaIntegrationTests {
 		public void listen4(@Payload String foo, Acknowledgment ack, Consumer<?, ?> consumer) {
 			this.ack = ack;
 			this.ack.acknowledge();
-			this.consumer = consumer;
+			this.listen4Consumer = consumer;
 			this.latch4.countDown();
 		}
 
@@ -915,16 +927,18 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "list3", topics = "annotated16", containerFactory = "batchFactory")
-		public void listen12(List<ConsumerRecord<Integer, String>> list) {
+		public void listen12(List<ConsumerRecord<Integer, String>> list, Consumer<?, ?> consumer) {
 			this.payload = list;
+			this.listen12Consumer = consumer;
 			this.latch12.countDown();
 		}
 
 		@KafkaListener(id = "list4", topics = "annotated17", containerFactory = "batchManualFactory")
-		public void listen13(List<ConsumerRecord<Integer, String>> list, Acknowledgment ack) {
+		public void listen13(List<ConsumerRecord<Integer, String>> list, Acknowledgment ack, Consumer<?, ?> consumer) {
 			this.payload = list;
 			this.ack = ack;
 			ack.acknowledge();
+			this.listen13Consumer = consumer;
 			this.latch13.countDown();
 		}
 

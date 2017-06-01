@@ -327,6 +327,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 		Type genericParameterType = null;
 		boolean hasAck = false;
+		boolean hasConsumer = false;
 
 		for (int i = 0; i < method.getParameterCount(); i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
@@ -368,22 +369,43 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			else if (methodParameter.getGenericParameterType().equals(Acknowledgment.class)) {
 				hasAck = true;
 			}
+			else {
+				if (methodParameter.getGenericParameterType().equals(Consumer.class)) {
+					hasConsumer = true;
+				}
+				else {
+					Type parameterType = methodParameter.getGenericParameterType();
+					hasConsumer = parameterType instanceof ParameterizedType
+							&& ((ParameterizedType) parameterType).getRawType().equals(Consumer.class);
+				}
+			}
 		}
-		Assert.state(!this.isConsumerRecordList || method.getParameterCount() == 1
-					|| (method.getGenericParameterTypes().length == 2 && hasAck),
-				"A parameter of type 'List<ConsumerRecord>' must be the only parameter "
-				+ "(except for an optional 'Acknowledgment')");
-		Assert.state(!this.isMessageList || method.getParameterCount() == 1
-				|| (method.getGenericParameterTypes().length == 2 && hasAck),
-			"A parameter of type 'List<Message<?>>' must be the only parameter "
-			+ "(except for an optional 'Acknowledgment')");
-
+		boolean validParametersForBatch = validParametersForBatch(method.getGenericParameterTypes().length, hasAck,
+				hasConsumer);
+		String stateMessage = "A parameter of type 'List<%s>' must be the only parameter "
+				+ "(except for an optional 'Acknowledgment' and/or 'Consumer')";
+		Assert.state(!this.isConsumerRecordList || validParametersForBatch,
+				() -> String.format(stateMessage, "ConsumerRecord"));
+		Assert.state(!this.isMessageList || validParametersForBatch,
+				() -> String.format(stateMessage, "Message<?>"));
 		return genericParameterType;
+	}
+
+	private boolean validParametersForBatch(int parameterCount, boolean hasAck, boolean hasConsumer) {
+		if (hasAck) {
+			return parameterCount == 2 || (hasConsumer && parameterCount == 3);
+		}
+		else if (hasConsumer) {
+			return parameterCount == 2;
+		}
+		else {
+			return parameterCount == 1;
+		}
 	}
 
 	/*
 	 * Don't consider parameter types that are available after conversion.
-	 * Acknowledgment, ConsumerRecord, Consumer, and Message<?>.
+	 * Acknowledgment, ConsumerRecord, Consumer, ConsumerRecord<...>, Consumer<...>, and Message<?>.
 	 */
 	private boolean eligibleParameter(MethodParameter methodParameter) {
 		Type parameterType = methodParameter.getGenericParameterType();
@@ -393,7 +415,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		if (parameterType instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) parameterType;
-			if (parameterizedType.getRawType().equals(Message.class)) {
+			Type rawType = parameterizedType.getRawType();
+			if (rawType.equals(ConsumerRecord.class) || rawType.equals(Consumer.class)) {
+				return false;
+			}
+			else if (rawType.equals(Message.class)) {
 				return !(parameterizedType.getActualTypeArguments()[0] instanceof WildcardType);
 			}
 		}
