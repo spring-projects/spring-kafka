@@ -85,7 +85,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		catch (ListenerExecutionFailedException e) {
 			if (this.errorHandler != null) {
 				try {
-					Object result = this.errorHandler.handleError(message, e);
+					Object result = this.errorHandler.handleError(message, e, consumer);
 					if (result != null) {
 						handleResult(result, record, message);
 					}

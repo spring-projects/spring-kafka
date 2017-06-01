@@ -26,11 +26,4 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  */
 public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> {
 
-	/*
-	 * Explicitly overridden to avoid AbstractMethodError when calling from code compiled
-	 * against 1.0.x
-	 */
-	@Override
-	void handle(Exception thrownException, ConsumerRecord<?, ?> data);
-
 }

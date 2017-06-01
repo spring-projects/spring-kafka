@@ -1013,6 +1013,22 @@ static class MultiListenerBean {
 [[annotation-error-handling]]
 ==== Handling Exceptions
 
+You can specify a global error handler used for all listeners in the container factory.
+
+[source, java]
+----
+@Bean
+public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+        kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+            new ConcurrentKafkaListenerContainerFactory<>();
+    ...
+    factory.getContainerProperties().setErrorHandler(myErrorHandler);
+    ...
+    return factory;
+}
+----
+
 By default, if an annotated listener method throws an exception, it is thrown to the container, and the message will handled according to the container configuration.
 Nothing is returned to the sender.
 
@@ -1035,6 +1051,73 @@ public interface KafkaListenerErrorHandler {
 
 As you can see, you have access to the spring-messaging `Message<?>` object produced by the message converter and the exception that was thrown by the listener, wrapped in a `ListenerExecutionFailedException`.
 The error handler can throw the original or a new exception which will be thrown to the container. Anything returned by the error handler is ignored.
+
+It has a sub-interface `ConsumerAwareListenerErrorHandler` that has access to the consumer object, via the method:
+
+[source, java]
+----
+Object handleError(Message<?> message, ListenerExecutionFailedException exception, Consumer<?, ?> consumer);
+----
+
+If your error handler implements this interface you can, for example, adjust the offsets accordingly.
+For example, to reset the offset to replay the failed message, you could do something like the following; note however, these are simplistic implementations and you would probably want more checking in the error handler.
+
+[source, java]
+----
+@Bean
+public ConsumerAwareListenerErrorHandler listen3ErrorHandler() {
+    return (m, e, c) -> {
+        this.listen3Exception = e;
+        MessageHeaders headers = m.getHeaders();
+        c.seek(new org.apache.kafka.common.TopicPartition(
+                headers.get(KafkaHeaders.RECEIVED_TOPIC, String.class),
+                headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, Integer.class)),
+                headers.get(KafkaHeaders.OFFSET, Long.class));
+        return null;
+    };
+}
+----
+
+And for a batch listener:
+
+[source, java]
+----
+@Bean
+public ConsumerAwareListenerErrorHandler listen10ErrorHandler() {
+    return (m, e, c) -> {
+        this.listen10Exception = e;
+        MessageHeaders headers = m.getHeaders();
+        List<String> topics = headers.get(KafkaHeaders.RECEIVED_TOPIC, List.class);
+        List<Integer> partitions = headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, List.class);
+        List<Long> offsets = headers.get(KafkaHeaders.OFFSET, List.class);
+        Map<TopicPartition, Long> offsetsToReset = new HashMap<>();
+        for (int i = 0; i < topics.size(); i++) {
+            int index = i;
+            offsetsToReset.compute(new TopicPartition(topics.get(i), partitions.get(i)),
+                    (k, v) -> v == null ? offsets.get(index) : Math.min(v, offsets.get(index)));
+        }
+        offsetsToReset.forEach((k, v) -> c.seek(k, v));
+        return null;
+    };
+}
+----
+
+This resets each topic/partition in the batch to the lowest offset in the batch.
+
+Similarly, the container-level error handler (`ErrorHandler` and `BatchErrorHandler`) have sub-interfaces `ConsumerAwareErrorHandler` and `ConsumerAwareBatchErrorHandler` with method signatures:
+
+[source, java]
+----
+void handle(Exception thrownException, ConsumerRecord<?, ?> data, Consumer<?, ?> consumer);
+
+void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer);
+----
+
+respectively.
+
+Similar to the `@KafkaListener` error handlers, you can reset the offsets as needed based on the data the failed.
+
+NOTE: Unlike the listener-level error handlers, however, you should set the container property `ackOnError` to false when making adjustments; otherwise any pending acks will be applied after your repositioning.
 
 [[kerberos]]
 ==== Kerberos

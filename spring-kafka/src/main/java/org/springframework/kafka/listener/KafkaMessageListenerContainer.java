@@ -637,7 +637,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 					}
 					try {
-						this.batchErrorHandler.handle(e, records);
+						this.batchErrorHandler.handle(e, records, this.consumer);
 					}
 					catch (Exception ee) {
 						this.logger.error("Error handler threw an exception", ee);
@@ -687,7 +687,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						this.acks.add(record);
 					}
 					try {
-						this.errorHandler.handle(e, record);
+						this.errorHandler.handle(e, record, this.consumer);
 					}
 					catch (Exception ee) {
 						this.logger.error("Error handler threw an exception", ee);

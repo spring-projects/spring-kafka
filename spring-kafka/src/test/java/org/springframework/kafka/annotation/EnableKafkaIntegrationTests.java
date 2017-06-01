@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -60,10 +61,13 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ConsumerAwareErrorHandler;
+import org.springframework.kafka.listener.ConsumerAwareListenerErrorHandler;
 import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
+import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
@@ -79,6 +83,7 @@ import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -102,6 +107,9 @@ import org.springframework.util.concurrent.ListenableFuture;
 @RunWith(SpringJUnit4ClassRunner.class)
 @DirtiesContext
 public class EnableKafkaIntegrationTests {
+
+	@Autowired
+	private Config config;
 
 	@Autowired
 	public Listener listener;
@@ -151,6 +159,7 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated1", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.globalErrorThrowable).isNotNull();
 
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
@@ -163,6 +172,7 @@ public class EnableKafkaIntegrationTests {
 		template.flush();
 		assertThat(this.listener.latch3.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.record.value()).isEqualTo("foo");
+		assertThat(this.config.listen3Exception).isNotNull();
 
 		template.send("annotated4", 0, "foo");
 		template.flush();
@@ -323,6 +333,7 @@ public class EnableKafkaIntegrationTests {
 		List<?> list = (List<?>) this.listener.payload;
 		assertThat(list.size()).isGreaterThan(0);
 		assertThat(list.get(0)).isInstanceOf(String.class);
+		assertThat(this.config.listen10Exception).isNotNull();
 
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
@@ -535,14 +546,20 @@ public class EnableKafkaIntegrationTests {
 			return Mockito.mock(PlatformTransactionManager.class);
 		}
 
+		private Throwable globalErrorThrowable;
+
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaListenerContainerFactory() {
+				kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setRecordFilterStrategy(recordFilter());
 			factory.setReplyTemplate(partitionZeroReplyingTemplate());
+			factory.getContainerProperties().setErrorHandler((ConsumerAwareErrorHandler) (t, d, c) -> {
+				this.globalErrorThrowable = t;
+				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
+			});
 			return factory;
 		}
 
@@ -754,6 +771,45 @@ public class EnableKafkaIntegrationTests {
 					.collect(Collectors.toList());
 		}
 
+		private ListenerExecutionFailedException listen3Exception;
+
+		private ListenerExecutionFailedException listen10Exception;
+
+		@Bean
+		public ConsumerAwareListenerErrorHandler listen3ErrorHandler() {
+			return (m, e, c) -> {
+				this.listen3Exception = e;
+				MessageHeaders headers = m.getHeaders();
+				c.seek(new org.apache.kafka.common.TopicPartition(
+						headers.get(KafkaHeaders.RECEIVED_TOPIC, String.class),
+						headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, Integer.class)),
+						headers.get(KafkaHeaders.OFFSET, Long.class));
+				return null;
+			};
+		}
+
+		@Bean
+		public ConsumerAwareListenerErrorHandler listen10ErrorHandler() {
+			return (m, e, c) -> {
+				this.listen10Exception = e;
+				MessageHeaders headers = m.getHeaders();
+				@SuppressWarnings("unchecked")
+				List<String> topics = headers.get(KafkaHeaders.RECEIVED_TOPIC, List.class);
+				@SuppressWarnings("unchecked")
+				List<Integer> partitions = headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, List.class);
+				@SuppressWarnings("unchecked")
+				List<Long> offsets = headers.get(KafkaHeaders.OFFSET, List.class);
+				Map<org.apache.kafka.common.TopicPartition, Long> offsetsToReset = new HashMap<>();
+				for (int i = 0; i < topics.size(); i++) {
+					int index = i;
+					offsetsToReset.compute(new org.apache.kafka.common.TopicPartition(topics.get(i), partitions.get(i)),
+							(k, v) -> v == null ? offsets.get(index) : Math.min(v, offsets.get(index)));
+				}
+				offsetsToReset.forEach((k, v) -> c.seek(k, v));
+				return null;
+			};
+		}
+
 	}
 
 	static class Listener implements ConsumerSeekAware {
@@ -829,8 +885,13 @@ public class EnableKafkaIntegrationTests {
 		public void manualStart(String foo) {
 		}
 
+		private final AtomicBoolean reposition1 = new AtomicBoolean();
+
 		@KafkaListener(id = "foo", topics = "#{'${topicOne:annotated1,foo}'.split(',')}")
 		public void listen1(String foo) {
+			if (this.reposition1.compareAndSet(false, true)) {
+				throw new RuntimeException("reposition");
+			}
 			this.latch1.countDown();
 		}
 
@@ -848,9 +909,14 @@ public class EnableKafkaIntegrationTests {
 			}
 		}
 
+		private final AtomicBoolean reposition3 = new AtomicBoolean();
+
 		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "${topicThree:annotated3}",
-				partitions = "${zero:0}"))
+				partitions = "${zero:0}"), errorHandler = "listen3ErrorHandler")
 		public void listen3(ConsumerRecord<?, ?> record) {
+			if (this.reposition3.compareAndSet(false, true)) {
+				throw new RuntimeException("reposition");
+			}
 			this.record = record;
 			this.latch3.countDown();
 		}
@@ -906,8 +972,14 @@ public class EnableKafkaIntegrationTests {
 			this.latch9.countDown();
 		}
 
-		@KafkaListener(id = "list1", topics = "annotated14", containerFactory = "batchFactory")
+		private final AtomicBoolean reposition10 = new AtomicBoolean();
+
+		@KafkaListener(id = "list1", topics = "annotated14", containerFactory = "batchFactory",
+				errorHandler = "listen10ErrorHandler")
 		public void listen10(List<String> list) {
+			if (this.reposition10.compareAndSet(false, true)) {
+				throw new RuntimeException("reposition");
+			}
 			this.payload = list;
 			this.latch10.countDown();
 		}

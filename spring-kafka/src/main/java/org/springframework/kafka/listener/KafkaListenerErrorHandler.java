@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.Consumer;
+
 import org.springframework.messaging.Message;
 
 /**
@@ -24,6 +26,7 @@ import org.springframework.messaging.Message;
  * listener container's error handler.
  *
  * @author Venil Noronha
+ * @author Gary Russell
  * @since 2.0
  */
 @FunctionalInterface
@@ -38,5 +41,19 @@ public interface KafkaListenerErrorHandler {
 	 * @throws Exception an exception which may be the original or different.
 	 */
 	Object handleError(Message<?> message, ListenerExecutionFailedException exception) throws Exception;
+
+	/**
+	 * Handle the error.
+	 * @param message the spring-messaging message.
+	 * @param exception the exception the listener threw, wrapped in a
+	 * {@link ListenerExecutionFailedException}.
+	 * @param consumer the consumer.
+	 * @return the return value is ignored.
+	 * @throws Exception an exception which may be the original or different.
+	 */
+	default Object handleError(Message<?> message, ListenerExecutionFailedException exception,
+			Consumer<?, ?> consumer) throws Exception {
+		return handleError(message, exception);
+	}
 
 }
