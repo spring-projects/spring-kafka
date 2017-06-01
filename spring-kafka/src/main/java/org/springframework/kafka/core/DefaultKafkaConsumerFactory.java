@@ -100,7 +100,9 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(String groupId, String clientIdSuffix) {
-		if (groupId == null && (!this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG) || clientIdSuffix == null)) {
+		boolean shouldModifyClientId = this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
+				&& clientIdSuffix != null;
+		if (groupId == null && !shouldModifyClientId) {
 			return createKafkaConsumer();
 		}
 		else {
@@ -108,7 +110,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 			if (groupId != null) {
 				modifiedConfigs.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 			}
-			if (clientIdSuffix != null) {
+			if (shouldModifyClientId) {
 				modifiedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG,
 					modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG) + clientIdSuffix);
 			}
