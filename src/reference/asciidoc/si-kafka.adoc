@@ -178,6 +178,11 @@ public ConsumerFactory<String, String> consumerFactory() {
     // set more properties
     return new DefaultKafkaConsumerFactory<>(props);
 }
+
+@Bean
+public PollableChannel received() {
+    return new QueueChannel();
+}
 ----
 
 Received messages will have certain headers populated.
