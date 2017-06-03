@@ -76,7 +76,7 @@ import org.springframework.context.annotation.Import;
  * {@code kafkaListenerContainerFactory} is assumed to be present.
  *
  * <p>
- * the following configuration would ensure that every time a message is receied from
+ * the following configuration would ensure that every time a message is received from
  * topic "myQueue", {@code MyService.process()} is called with the content of the message:
  *
  * <pre class="code">
