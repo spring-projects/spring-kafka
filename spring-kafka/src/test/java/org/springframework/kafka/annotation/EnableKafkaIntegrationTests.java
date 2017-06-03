@@ -374,6 +374,10 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.listen12Consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
 				.getPropertyValue(this.registry.getListenerContainer("list3"), "containers", List.class).get(0),
 				"listenerConsumer.consumer"));
+		assertThat(this.config.listen12Exception).isNotNull();
+		assertThat(this.config.listen12Message.getPayload()).isInstanceOf(List.class);
+		List<?> errorPayload = (List<?>) this.config.listen12Message.getPayload();
+		assertThat(errorPayload.size()).isGreaterThanOrEqualTo(1);
 	}
 
 	@Test
@@ -775,6 +779,8 @@ public class EnableKafkaIntegrationTests {
 
 		private ListenerExecutionFailedException listen10Exception;
 
+		private ListenerExecutionFailedException listen12Exception;
+
 		@Bean
 		public ConsumerAwareListenerErrorHandler listen3ErrorHandler() {
 			return (m, e, c) -> {
@@ -792,22 +798,41 @@ public class EnableKafkaIntegrationTests {
 		public ConsumerAwareListenerErrorHandler listen10ErrorHandler() {
 			return (m, e, c) -> {
 				this.listen10Exception = e;
-				MessageHeaders headers = m.getHeaders();
-				@SuppressWarnings("unchecked")
-				List<String> topics = headers.get(KafkaHeaders.RECEIVED_TOPIC, List.class);
-				@SuppressWarnings("unchecked")
-				List<Integer> partitions = headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, List.class);
-				@SuppressWarnings("unchecked")
-				List<Long> offsets = headers.get(KafkaHeaders.OFFSET, List.class);
-				Map<org.apache.kafka.common.TopicPartition, Long> offsetsToReset = new HashMap<>();
-				for (int i = 0; i < topics.size(); i++) {
-					int index = i;
-					offsetsToReset.compute(new org.apache.kafka.common.TopicPartition(topics.get(i), partitions.get(i)),
-							(k, v) -> v == null ? offsets.get(index) : Math.min(v, offsets.get(index)));
-				}
-				offsetsToReset.forEach((k, v) -> c.seek(k, v));
+				resetAllOffsets(m, c);
 				return null;
 			};
+		}
+
+		private Message<?> listen12Message;
+
+		@Bean
+		public ConsumerAwareListenerErrorHandler listen12ErrorHandler() {
+			return (m, e, c) -> {
+				this.listen12Exception = e;
+				this.listen12Message = m;
+				resetAllOffsets(m, c);
+				return null;
+			};
+		}
+
+		protected void resetAllOffsets(Message<?> message, Consumer<?, ?> consumer) {
+			MessageHeaders headers = message.getHeaders();
+			@SuppressWarnings("unchecked")
+			List<String> topics = headers.get(KafkaHeaders.RECEIVED_TOPIC, List.class);
+			if (topics == null) {
+				return;
+			}
+			@SuppressWarnings("unchecked")
+			List<Integer> partitions = headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, List.class);
+			@SuppressWarnings("unchecked")
+			List<Long> offsets = headers.get(KafkaHeaders.OFFSET, List.class);
+			Map<org.apache.kafka.common.TopicPartition, Long> offsetsToReset = new HashMap<>();
+			for (int i = 0; i < topics.size(); i++) {
+				int index = i;
+				offsetsToReset.compute(new org.apache.kafka.common.TopicPartition(topics.get(i), partitions.get(i)),
+						(k, v) -> v == null ? offsets.get(index) : Math.min(v, offsets.get(index)));
+			}
+			offsetsToReset.forEach((k, v) -> consumer.seek(k, v));
 		}
 
 	}
@@ -998,8 +1023,14 @@ public class EnableKafkaIntegrationTests {
 			this.latch11.countDown();
 		}
 
-		@KafkaListener(id = "list3", topics = "annotated16", containerFactory = "batchFactory")
+		private final AtomicBoolean reposition12 = new AtomicBoolean();
+
+		@KafkaListener(id = "list3", topics = "annotated16", containerFactory = "batchFactory",
+				errorHandler = "listen12ErrorHandler")
 		public void listen12(List<ConsumerRecord<Integer, String>> list, Consumer<?, ?> consumer) {
+			if (this.reposition12.compareAndSet(false, true)) {
+				throw new RuntimeException("reposition");
+			}
 			this.payload = list;
 			this.listen12Consumer = consumer;
 			this.latch12.countDown();
