@@ -464,7 +464,6 @@ Finally, metadata about the message is available from message headers, the follo
 - `KafkaHeaders.RECEIVED_MESSAGE_KEY`
 - `KafkaHeaders.RECEIVED_TOPIC`
 - `KafkaHeaders.RECEIVED_PARTITION_ID`
-- `KafkaHeaders.RECEIVED_MESSAGE_KEY`
 - `KafkaHeaders.RECEIVED_TIMESTAMP`
 - `KafkaHeaders.TIMESTAMP_TYPE`
 
