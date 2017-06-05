@@ -120,13 +120,14 @@ public class EnableKafkaIntegrationTests {
 	public KafkaListenerEndpointRegistry registry;
 
 	@Autowired
-	private RecordFilterImpl recordFilter;
+	private RecordPassAllFilter recordFilter;
 
 	@Autowired
 	private List<?> quxGroup;
 
 	@Test
 	public void testSimple() throws Exception {
+		this.recordFilter.called = false;
 		template.send("annotated1", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
@@ -256,6 +257,7 @@ public class EnableKafkaIntegrationTests {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testBatch() throws Exception {
+		this.recordFilter.called = false;
 		ConcurrentMessageListenerContainer<?, ?> container =
 				(ConcurrentMessageListenerContainer<?, ?>) registry.getListenerContainer("list1");
 		Consumer<?, ?> consumer =
@@ -282,6 +284,7 @@ public class EnableKafkaIntegrationTests {
 		List<?> list = (List<?>) this.listener.payload;
 		assertThat(list.size()).isGreaterThan(0);
 		assertThat(list.get(0)).isInstanceOf(String.class);
+		assertThat(this.recordFilter.called).isTrue();
 
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
@@ -393,13 +396,13 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
-		public RecordFilterImpl recordFilter() {
-			return new RecordFilterImpl();
+		public RecordPassAllFilter recordFilter() {
+			return new RecordPassAllFilter();
 		}
 
 		@Bean
-		public RecordFilterImpl manualFilter() {
-			return new RecordFilterImpl();
+		public RecordPassAllFilter manualFilter() {
+			return new RecordPassAllFilter();
 		}
 
 		@Bean
@@ -417,6 +420,7 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setBatchListener(true);
+			factory.setRecordFilterStrategy(recordFilter());
 			return factory;
 		}
 
@@ -827,7 +831,7 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public static class RecordFilterImpl implements RecordFilterStrategy<Integer, String> {
+	public static class RecordPassAllFilter implements RecordFilterStrategy<Integer, String> {
 
 		private boolean called;
 

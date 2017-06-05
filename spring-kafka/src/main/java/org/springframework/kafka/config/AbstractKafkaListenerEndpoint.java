@@ -30,9 +30,13 @@ import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
+import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringAcknowledgingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.FilteringBatchAcknowledgingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.FilteringBatchMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
@@ -313,9 +317,18 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 						(AcknowledgingMessageListener<K, V>) messageListener, this.recordFilterStrategy,
 						this.ackDiscarded);
 			}
-			else {
+			else if (messageListener instanceof MessageListener) {
 				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
 						this.recordFilterStrategy);
+			}
+			else if (messageListener instanceof BatchAcknowledgingMessageListener) {
+				messageListener = new FilteringBatchAcknowledgingMessageListenerAdapter<>(
+						(BatchAcknowledgingMessageListener<K, V>) messageListener, this.recordFilterStrategy,
+						this.ackDiscarded);
+			}
+			else if (messageListener instanceof BatchMessageListener) {
+				messageListener = new FilteringBatchMessageListenerAdapter<>(
+						(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy);
 			}
 		}
 		container.setupMessageListener(messageListener);
