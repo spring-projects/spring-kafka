@@ -116,7 +116,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 			}
 		}
 		else {
-			message = NULL_MESSAGE;
+			message = NULL_MESSAGE; // optimization since we won't need any conversion to invoke
 		}
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing [" + message + "]");
@@ -130,7 +130,10 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		catch (ListenerExecutionFailedException e) {
 			if (this.errorHandler != null) {
 				try {
-					Object result = this.errorHandler.handleError(message, e);
+					if (message.equals(NULL_MESSAGE)) {
+						message = new GenericMessage<>(records);
+					}
+					Object result = this.errorHandler.handleError(message, e, consumer);
 					if (result != null) {
 						handleResult(result, records, message);
 					}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,33 +18,25 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
+import org.springframework.messaging.Message;
+
 /**
- * A generic error handler.
- *
- * @param <T> the data type.
+ * An error handler that has access to the consumer, for example to adjust
+ * offsets after an error.
  *
  * @author Gary Russell
- * @since 1.1
+ * @since 2.0
  *
  */
 @FunctionalInterface
-public interface GenericErrorHandler<T> {
+public interface ConsumerAwareListenerErrorHandler extends KafkaListenerErrorHandler {
 
-	/**
-	 * Handle the exception.
-	 * @param thrownException The exception.
-	 * @param data the data.
-	 */
-	void handle(Exception thrownException, T data);
-
-	/**
-	 * Handle the exception.
-	 * @param thrownException The exception.
-	 * @param data the data.
-	 * @param consumer the consumer.
-	 */
-	default void handle(Exception thrownException, T data, Consumer<?, ?> consumer) {
-		handle(thrownException, data);
+	@Override
+	default Object handleError(Message<?> message, ListenerExecutionFailedException exception) throws Exception {
+		throw new UnsupportedOperationException("Container should never call this");
 	}
+
+	@Override
+	Object handleError(Message<?> message, ListenerExecutionFailedException exception, Consumer<?, ?> consumer);
 
 }
