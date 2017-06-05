@@ -32,8 +32,10 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.expression.BeanResolver;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.FilteringBatchMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
@@ -340,8 +342,14 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 					this.retryTemplate, (RecoveryCallback<Object>) this.recoveryCallback);
 		}
 		if (this.recordFilterStrategy != null) {
-			messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-					this.recordFilterStrategy, this.ackDiscarded);
+			if (this.batchListener) {
+				messageListener = new FilteringBatchMessageListenerAdapter<>(
+						(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy, this.ackDiscarded);
+			}
+			else {
+				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+						this.recordFilterStrategy, this.ackDiscarded);
+			}
 		}
 		container.setupMessageListener(messageListener);
 	}
