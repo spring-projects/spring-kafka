@@ -592,7 +592,7 @@ static class MultiListenerBean {
 [[rebalance-listeners]]
 ===== Rebalance Listeners
 
-`ContainerProperties` has a property `consumerRebalanceListener` which takes an implementation of the Kafka client's `consumerRebalanceListener` interface.
+`ContainerProperties` has a property `consumerRebalanceListener` which takes an implementation of the Kafka client's `ConsumerRebalanceListener` interface.
 If this property is not provided, the container will configure a simple logging listener that logs rebalance events under the `INFO` level.
 The framework also adds a sub-interface `ConsumerAwareRebalanceListener`:
 
