@@ -114,7 +114,8 @@ For convenience a test class level `@EmbeddedKafka` annotation is provided with 
 public class KafkaStreamsTests {
 
     @Autowired
-    private KafkaEmbedded kafkaEmbedded;
+    @Rule
+    public KafkaEmbedded kafkaEmbedded;
 
 	@Test
 	public void someTest() {
