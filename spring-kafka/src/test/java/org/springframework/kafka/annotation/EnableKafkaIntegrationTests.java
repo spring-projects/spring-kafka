@@ -121,7 +121,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
-			"annotated25", "annotated25reply1", "annotated25reply2");
+			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -530,6 +530,20 @@ public class EnableKafkaIntegrationTests {
 		consumer.close();
 	}
 
+	@Test
+	public void testBatchAck() throws Exception {
+		template.send("annotated26", 0, 1, "foo1");
+		template.send("annotated27", 0, 1, "foo2");
+		template.send("annotated27", 0, 1, "foo3");
+		template.send("annotated27", 0, 1, "foo4");
+		template.flush();
+		assertThat(this.listener.latch17.await(60, TimeUnit.SECONDS)).isTrue();
+		template.send("annotated26", 0, 1, "foo5");
+		template.send("annotated27", 0, 1, "foo6");
+		template.flush();
+		assertThat(this.listener.latch18.await(60, TimeUnit.SECONDS)).isTrue();
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
@@ -877,6 +891,10 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch16 = new CountDownLatch(1);
 
+		private final CountDownLatch latch17 = new CountDownLatch(4);
+
+		private final CountDownLatch latch18 = new CountDownLatch(2);
+
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
 		private volatile Integer partition;
@@ -1092,6 +1110,26 @@ public class EnableKafkaIntegrationTests {
 		@SendTo("annotated24reply")
 		public Collection<String> replyingBatchListenerWithErrorHandler(List<String> in) {
 			throw new RuntimeException("return this");
+		}
+
+		@KafkaListener(id = "batchAckListener", topics = {"annotated26", "annotated27"},
+				containerFactory = "batchFactory")
+		public void batchAckListener(List<String> in,
+									@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
+									@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
+									Consumer<?, ?> consumer) {
+			for (int i = 0; i < topics.size(); i++) {
+				this.latch17.countDown();
+				String topic = topics.get(i);
+				if ("annotated26".equals(topic) && consumer.committed(
+						new org.apache.kafka.common.TopicPartition(topic, partitions.get(i))).offset() == 1) {
+					this.latch18.countDown();
+				}
+				else if ("annotated27".equals(topic) && consumer.committed(
+						new org.apache.kafka.common.TopicPartition(topic, partitions.get(i))).offset() == 3) {
+					this.latch18.countDown();
+				}
+			}
 		}
 
 		@Override
