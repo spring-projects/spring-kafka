@@ -7,7 +7,7 @@ The `spring-kafka-test` jar contains some useful utilities to assist with testin
 
 ==== JUnit
 
-`o.s.kafka.test.utils.KafkaUtils` provides some static methods to set up producer and consumer properties:
+`o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties:
 
 [source, java]
 ----
