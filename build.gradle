@@ -35,6 +35,7 @@ allprojects {
 	group = 'org.springframework.kafka'
 
 	repositories {
+		mavenLocal()
 		maven { url 'https://repo.spring.io/libs-milestone' }
 		if (version.endsWith('BUILD-SNAPSHOT') || project.hasProperty('platformVersion')) {
 			maven { url 'https://repo.spring.io/libs-snapshot' }
