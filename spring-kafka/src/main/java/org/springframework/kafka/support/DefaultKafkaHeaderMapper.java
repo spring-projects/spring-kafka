@@ -17,8 +17,12 @@
 package org.springframework.kafka.support;
 
 import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -29,12 +33,16 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.HeaderMapper;
+import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.PatternMatchUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
+ * Header mapper for kafka.
+ *
  * @author Gary Russell
  * @since 2.0
  *
@@ -47,29 +55,61 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 
 	private final ObjectMapper objectMapper;
 
+	private final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>();
+
+	/**
+	 * Construct an instance with the default object mapper and header patterns for
+	 * outbound headers; all inbound headers are mapped.
+	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
+	 */
 	public DefaultKafkaHeaderMapper() {
 		this(new ObjectMapper());
 	}
 
+	/**
+	 * Construct an instance with the provided object mapper and default header patterns
+	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
+	 * order, stopping on the first match (positive or negative). Patterns are negated by
+	 * preceding them with "!". The default pattern list is
+	 * {@code "!id", "!timestamp" and "*"}.
+	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
+	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper) {
+		this(objectMapper, Arrays.asList("!" + MessageHeaders.ID, "!" + MessageHeaders.TIMESTAMP, "*"));
+	}
+
+	/**
+	 * Construct an instance with the provided object mapper and default header patterns
+	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
+	 * order, stopping on the first match (positive or negative). Patterns are negated by
+	 * preceding them with "!". The patterns will replace the default patterns; you generally
+	 * should not map the {@code "id" and "timestamp"} headers.
+	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
+	 */
+	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, List<String> patterns) {
+		Assert.notNull(objectMapper, "'objectMapper' must not be null");
+		Assert.notNull(patterns, "'patterns' must not be null");
 		this.objectMapper = objectMapper;
+		patterns.forEach(pattern -> this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern)));
 	}
 
 	@Override
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		final Map<String, String> jsonHeaders = new HashMap<>();
 		headers.forEach((k, v) -> {
-			if (v instanceof byte[]) {
-				target.add(new RecordHeader(k, (byte[]) v));
-			}
-			else {
-				try {
-					target.add(new RecordHeader(k, this.objectMapper.writeValueAsBytes(v)));
-					jsonHeaders.put(k, v.getClass().getName());
+			if (matches (k)) {
+				if (v instanceof byte[]) {
+					target.add(new RecordHeader(k, (byte[]) v));
 				}
-				catch (Exception e) {
-					if (logger.isDebugEnabled()) {
-						logger.debug("Could not map " + k + " with type " + v.getClass().getName());
+				else {
+					try {
+						target.add(new RecordHeader(k, this.objectMapper.writeValueAsBytes(v)));
+						jsonHeaders.put(k, v.getClass().getName());
+					}
+					catch (Exception e) {
+						if (logger.isDebugEnabled()) {
+							logger.debug("Could not map " + k + " with type " + v.getClass().getName());
+						}
 					}
 				}
 			}
@@ -82,6 +122,18 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 				logger.error("Could not add json types header", e);
 			}
 		}
+	}
+
+	protected boolean matches(String header) {
+		for (SimplePatternBasedHeaderMatcher matcher : this.matchers) {
+			if (matcher.matchHeader(header)) {
+				return !matcher.isNegated();
+			}
+		}
+		if (logger.isDebugEnabled()) {
+			logger.debug(MessageFormat.format("headerName=[{0}] WILL NOT be mapped {1}; matched no patterns", header));
+		}
+		return false;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -127,6 +179,51 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 			}
 		});
 		return new MessageHeaders(headers);
+	}
+
+	/**
+	 * A pattern-based {@link HeaderMatcher} that matches if the specified
+	 * header matches the specified simple pattern.
+	 * <p> The {@code negate == true} state indicates if the matching should be treated as "not matched".
+	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
+	 */
+	protected static class SimplePatternBasedHeaderMatcher {
+
+		private static final Log logger = LogFactory.getLog(SimplePatternBasedHeaderMatcher.class);
+
+		private final String pattern;
+
+		private final boolean negate;
+
+		public SimplePatternBasedHeaderMatcher(String pattern) {
+			this(pattern.startsWith("!") ? pattern.substring(1) : pattern, pattern.startsWith("!"));
+		}
+
+		SimplePatternBasedHeaderMatcher(String pattern, boolean negate) {
+			Assert.notNull(pattern, "Pattern must no be null");
+			this.pattern = pattern.toLowerCase();
+			this.negate = negate;
+		}
+
+		public boolean matchHeader(String headerName) {
+			String header = headerName.toLowerCase();
+			if (PatternMatchUtils.simpleMatch(this.pattern, header)) {
+				if (logger.isDebugEnabled()) {
+					logger.debug(
+							MessageFormat.format(
+									"headerName=[{0}] WILL " + (this.negate ? "NOT " : "")
+											+ "be mapped, matched pattern=" + (this.negate ? "!" : "") + "{1}",
+									headerName, this.pattern));
+				}
+				return true;
+			}
+			return false;
+		}
+
+		public boolean isNegated() {
+			return this.negate;
+		}
+
 	}
 
 }

@@ -42,11 +42,13 @@ public class DefaultKafkaHeaderMapperTests {
 				.build();
 		RecordHeaders recordHeaders = new RecordHeaders();
 		mapper.fromHeaders(message.getHeaders(), recordHeaders);
+		assertThat(recordHeaders.toArray().length).isEqualTo(4); // 3 + json_types
 		MessageHeaders headers = mapper.toHeaders(recordHeaders);
 		assertThat(headers.get("foo")).isInstanceOf(byte[].class);
 		assertThat(new String((byte[]) headers.get("foo"))).isEqualTo("bar");
 		assertThat(headers.get("baz")).isEqualTo("qux");
 		assertThat(headers.get("fix")).isEqualTo(new Foo());
+		assertThat(headers.size()).isEqualTo(5);
 	}
 
 	public static final class Foo {
