@@ -72,6 +72,7 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
 	 * preceding them with "!". The default pattern list is
 	 * {@code "!id", "!timestamp" and "*"}.
+	 * @param objectMapper the object mapper.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper) {
@@ -84,6 +85,8 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
 	 * preceding them with "!". The patterns will replace the default patterns; you generally
 	 * should not map the {@code "id" and "timestamp"} headers.
+	 * @param objectMapper the object mapper.
+	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, List<String> patterns) {
@@ -97,7 +100,7 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		final Map<String, String> jsonHeaders = new HashMap<>();
 		headers.forEach((k, v) -> {
-			if (matches (k)) {
+			if (matches(k)) {
 				if (v instanceof byte[]) {
 					target.add(new RecordHeader(k, (byte[]) v));
 				}
