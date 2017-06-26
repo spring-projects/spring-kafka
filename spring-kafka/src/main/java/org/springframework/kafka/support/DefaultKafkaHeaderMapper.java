@@ -22,8 +22,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,7 +43,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Header mapper for kafka.
+ * Header mapper for Apache Kafka.
  *
  * @author Gary Russell
  * @since 2.0
@@ -51,11 +53,19 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 
 	private static final Log logger = LogFactory.getLog(DefaultKafkaHeaderMapper.class);
 
+	private static final List<String> DEFAULT_TRUSTED_PACKAGES =
+			Arrays.asList(
+					"java.util",
+					"java.lang"
+			);
+
 	private static final String JSON_TYPES = "spring_json_header_types";
 
 	private final ObjectMapper objectMapper;
 
 	private final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>();
+
+	private final Set<String> trustedPackages = new LinkedHashSet<>(DEFAULT_TRUSTED_PACKAGES);
 
 	/**
 	 * Construct an instance with the default object mapper and header patterns for
@@ -94,6 +104,28 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 		Assert.notNull(patterns, "'patterns' must not be null");
 		this.objectMapper = objectMapper;
 		patterns.forEach(pattern -> this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern)));
+	}
+
+	/**
+	 * Add packages to the trusted packages list (default {@code java.util, java.lang}) used
+	 * when constructing objects from JSON.
+	 * If any of the supplied packages is {@code "*"}, all packages are trusted.
+	 * If a class for a non-trusted package is encountered, the header is returned to the
+	 * application with value of type {@link NonTrustedHeaderType}.
+	 * @param trustedPackages the packages to trust.
+	 */
+	public void addTrustedPackages(String... trustedPackages) {
+		if (trustedPackages != null) {
+			for (String whiteList : trustedPackages) {
+				if ("*".equals(whiteList)) {
+					this.trustedPackages.clear();
+					break;
+				}
+				else {
+					this.trustedPackages.add(whiteList);
+				}
+			}
+		}
 	}
 
 	@Override
@@ -154,6 +186,7 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 				catch (IOException e) {
 					logger.error("Could not decode json types: " + new String(next.value()), e);
 				}
+				break;
 			}
 		}
 		final Map<String, String> jsonTypes = types;
@@ -161,19 +194,29 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 			if (!(h.key().equals(JSON_TYPES))) {
 				if (jsonTypes != null && jsonTypes.containsKey(h.key())) {
 					Class<?> type = Object.class;
+					String requestedType = jsonTypes.get(h.key());
+					boolean trusted = false;
 					try {
-						type = ClassUtils.forName(jsonTypes.get(h.key()), null);
+						trusted = trusted(requestedType);
+						if (trusted) {
+							type = ClassUtils.forName(requestedType, null);
+						}
 					}
 					catch (Exception e) {
 						logger.error("Could not load class for header: " + h.key(), e);
 					}
-					try {
-						headers.put(h.key(), this.objectMapper.readValue(h.value(), type));
+					if (trusted) {
+						try {
+							headers.put(h.key(), this.objectMapper.readValue(h.value(), type));
+						}
+						catch (IOException e) {
+							logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h.key(),
+									e);
+							headers.put(h.key(), h.value());
+						}
 					}
-					catch (IOException e) {
-						logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h.key(),
-								e);
-						headers.put(h.key(), h.value());
+					else {
+						headers.put(h.key(), new NonTrustedHeaderType(h.value(), requestedType));
 					}
 				}
 				else {
@@ -182,6 +225,23 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 			}
 		});
 		return new MessageHeaders(headers);
+	}
+
+	private boolean trusted(String requestedType) {
+		if (!this.trustedPackages.isEmpty()) {
+			int lastDot = requestedType.lastIndexOf(".");
+			if (lastDot < 0) {
+				return false;
+			}
+			String packageName = requestedType.substring(0, lastDot);
+			for (String trustedPackage : this.trustedPackages) {
+				if (packageName.equals(trustedPackage) || packageName.startsWith(trustedPackage + ".")) {
+					return true;
+				}
+			}
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -225,6 +285,36 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 
 		public boolean isNegated() {
 			return this.negate;
+		}
+
+	}
+
+	/**
+	 * Represents a header that could not be decoded due to an untrusted type.
+	 */
+	public static class NonTrustedHeaderType {
+
+		private final byte[] headerValue;
+
+		private final String untrustedType;
+
+		NonTrustedHeaderType(byte[] headerValue, String untrustedType) {
+			this.headerValue = headerValue;
+			this.untrustedType = untrustedType;
+		}
+
+		public byte[] getHeaderValue() {
+			return this.headerValue;
+		}
+
+		public String getUntrustedType() {
+			return this.untrustedType;
+		}
+
+		@Override
+		public String toString() {
+			return "NonTrustedHeaderType [headerValue=" + Arrays.toString(this.headerValue) + ", untrustedType="
+					+ this.untrustedType + "]";
 		}
 
 	}
