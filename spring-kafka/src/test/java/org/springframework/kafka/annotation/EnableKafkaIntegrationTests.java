@@ -121,7 +121,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
-			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27");
+			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -544,6 +544,16 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.latch18.await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
+	@Test
+	public void testBadAckConfig() throws Exception {
+		template.send("annotated28", 0, 1, "foo1");
+		assertThat(this.config.badAckLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.badAckException).isInstanceOf(IllegalStateException.class);
+		assertThat(this.config.badAckException.getMessage())
+				.isEqualTo("No Acknowledgment availailable as an argument, "
+						+ "the listener container must have a MANUAL Ackmode to populate the Acknowledgment.");
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
@@ -853,6 +863,19 @@ public class EnableKafkaIntegrationTests {
 			offsetsToReset.forEach((k, v) -> consumer.seek(k, v));
 		}
 
+		private final CountDownLatch badAckLatch = new CountDownLatch(1);
+
+		private Throwable badAckException;
+
+		@Bean
+		public KafkaListenerErrorHandler badAckConfigErrorHandler() {
+			return (m, e) -> {
+				this.badAckException = e.getCause();
+				this.badAckLatch.countDown();
+				return null;
+			};
+		}
+
 	}
 
 	static class Listener implements ConsumerSeekAware {
@@ -1130,6 +1153,11 @@ public class EnableKafkaIntegrationTests {
 					this.latch18.countDown();
 				}
 			}
+		}
+
+		@KafkaListener(id = "ackWithAutoContainer", topics = "annotated28", errorHandler = "badAckConfigErrorHandler")
+		public void ackWithAutoContainerListener(String payload, Acknowledgment ack) {
+			// empty
 		}
 
 		@Override

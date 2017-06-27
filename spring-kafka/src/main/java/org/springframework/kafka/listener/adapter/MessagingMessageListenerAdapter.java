@@ -93,6 +93,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private KafkaTemplate<K, V> replyTemplate;
 
+	private boolean hasAckParameter;
+
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
 		this.inferredType = determineInferredType(method);
@@ -235,6 +237,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 		catch (org.springframework.messaging.converter.MessageConversionException ex) {
+			if (this.hasAckParameter && acknowledgment == null) {
+				throw new ListenerExecutionFailedException("invokeHandler Failed",
+						new IllegalStateException("No Acknowledgment availailable as an argument, "
+						+ "the listener container must have a MANUAL Ackmode to populate the Acknowledgment.", ex));
+			}
 			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
 					"be invoked with the incoming message", message.getPayload()),
 					new MessageConversionException("Cannot handle message", ex));
@@ -326,8 +333,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 
 		Type genericParameterType = null;
-		boolean hasAck = false;
-		boolean hasConsumer = false;
+		boolean hasConsumerParameter = false;
 
 		for (int i = 0; i < method.getParameterCount(); i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
@@ -367,21 +373,21 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				}
 			}
 			else if (methodParameter.getGenericParameterType().equals(Acknowledgment.class)) {
-				hasAck = true;
+				this.hasAckParameter = true;
 			}
 			else {
 				if (methodParameter.getGenericParameterType().equals(Consumer.class)) {
-					hasConsumer = true;
+					hasConsumerParameter = true;
 				}
 				else {
 					Type parameterType = methodParameter.getGenericParameterType();
-					hasConsumer = parameterType instanceof ParameterizedType
+					hasConsumerParameter = parameterType instanceof ParameterizedType
 							&& ((ParameterizedType) parameterType).getRawType().equals(Consumer.class);
 				}
 			}
 		}
-		boolean validParametersForBatch = validParametersForBatch(method.getGenericParameterTypes().length, hasAck,
-				hasConsumer);
+		boolean validParametersForBatch = validParametersForBatch(method.getGenericParameterTypes().length,
+				this.hasAckParameter, hasConsumerParameter);
 		String stateMessage = "A parameter of type 'List<%s>' must be the only parameter "
 				+ "(except for an optional 'Acknowledgment' and/or 'Consumer')";
 		Assert.state(!this.isConsumerRecordList || validParametersForBatch,
