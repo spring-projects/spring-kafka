@@ -34,7 +34,6 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.support.HeaderMapper;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.PatternMatchUtils;
@@ -43,13 +42,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Header mapper for Apache Kafka.
+ * Default header mapper for Apache Kafka.
+ * Headers in {@link KafkaHeaders} are never mapped on outbound messages.
  *
  * @author Gary Russell
  * @since 2.0
  *
  */
-public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
+public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private static final Log logger = LogFactory.getLog(DefaultKafkaHeaderMapper.class);
 
@@ -59,11 +59,26 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 					"java.lang"
 			);
 
-	private static final String JSON_TYPES = "spring_json_header_types";
+	public static final String JSON_TYPES = "spring_json_header_types";
+
+	private static final List<SimplePatternBasedHeaderMatcher> NEVER_MAPPED = Arrays.asList(
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.ACKNOWLEDGMENT),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.CONSUMER),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.MESSAGE_KEY),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.OFFSET),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.PARTITION_ID),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RAW_DATA),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_MESSAGE_KEY),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_PARTITION_ID),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_TIMESTAMP),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_TOPIC),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TIMESTAMP),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TIMESTAMP_TYPE),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TOPIC));
 
 	private final ObjectMapper objectMapper;
 
-	private final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>();
+	private final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>(NEVER_MAPPED);
 
 	private final Set<String> trustedPackages = new LinkedHashSet<>(DEFAULT_TRUSTED_PACKAGES);
 
@@ -86,7 +101,10 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper) {
-		this(objectMapper, Arrays.asList("!" + MessageHeaders.ID, "!" + MessageHeaders.TIMESTAMP, "*"));
+		this(objectMapper, Arrays.asList(
+				"!" + MessageHeaders.ID,
+				"!" + MessageHeaders.TIMESTAMP,
+				"*"));
 	}
 
 	/**
@@ -173,8 +191,7 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public MessageHeaders toHeaders(Headers source) {
-		final Map<String, Object> headers = new HashMap<String, Object>();
+	public void toHeaders(Headers source,  final Map<String, Object> headers) {
 		Map<String, String> types = null;
 		Iterator<Header> iterator = source.iterator();
 		while (iterator.hasNext()) {
@@ -224,7 +241,6 @@ public class DefaultKafkaHeaderMapper implements HeaderMapper<Headers> {
 				}
 			}
 		});
-		return new MessageHeaders(headers);
 	}
 
 	private boolean trusted(String requestedType) {

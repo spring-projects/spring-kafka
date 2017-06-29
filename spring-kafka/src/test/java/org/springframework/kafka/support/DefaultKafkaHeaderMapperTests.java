@@ -18,12 +18,14 @@ package org.springframework.kafka.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
 
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper.NonTrustedHeaderType;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
@@ -44,7 +46,8 @@ public class DefaultKafkaHeaderMapperTests {
 		RecordHeaders recordHeaders = new RecordHeaders();
 		mapper.fromHeaders(message.getHeaders(), recordHeaders);
 		assertThat(recordHeaders.toArray().length).isEqualTo(4); // 3 + json_types
-		MessageHeaders headers = mapper.toHeaders(recordHeaders);
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
 		assertThat(headers.get("foo")).isInstanceOf(byte[].class);
 		assertThat(new String((byte[]) headers.get("foo"))).isEqualTo("bar");
 		assertThat(headers.get("baz")).isEqualTo("qux");
@@ -52,14 +55,16 @@ public class DefaultKafkaHeaderMapperTests {
 		NonTrustedHeaderType ntht = (NonTrustedHeaderType) headers.get("fix");
 		assertThat(ntht.getHeaderValue()).isNotNull();
 		assertThat(ntht.getUntrustedType()).isEqualTo(Foo.class.getName());
-		assertThat(headers.size()).isEqualTo(5);
+		assertThat(headers.size()).isEqualTo(3);
 		mapper.addTrustedPackages(getClass().getPackage().getName());
-		headers = mapper.toHeaders(recordHeaders);
+		headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
 		assertThat(headers.get("foo")).isInstanceOf(byte[].class);
 		assertThat(new String((byte[]) headers.get("foo"))).isEqualTo("bar");
 		assertThat(headers.get("baz")).isEqualTo("qux");
 		assertThat(headers.get("fix")).isEqualTo(new Foo());
-		assertThat(headers.size()).isEqualTo(5);	}
+		assertThat(headers.size()).isEqualTo(3);
+	}
 
 	public static final class Foo {
 
