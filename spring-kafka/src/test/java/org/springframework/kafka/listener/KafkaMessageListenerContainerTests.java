@@ -109,9 +109,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic16 = "testTopic16";
 
+	private static String topic17 = "testTopic17";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -189,6 +191,30 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 
 		pf.destroy();
+	}
+
+	@Test
+	public void testNoResetPolicy() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("delegate", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic17);
+		final AtomicReference<StackTraceElement[]> trace = new AtomicReference<>();
+		final CountDownLatch latch1 = new CountDownLatch(1);
+		containerProps.setMessageListener((MessageListener<Integer, String>) record -> {
+			trace.set(new RuntimeException().getStackTrace());
+			latch1.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("delegate");
+		container.start();
+
+		int n = 0;
+		while (n++ < 200 && container.isRunning()) {
+			Thread.sleep(100);
+		}
+		assertThat(container.isRunning()).isFalse();
 	}
 
 	@Test
