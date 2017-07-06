@@ -66,6 +66,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 /**
  * @author Artem Bilan
  * @author Marius Bogoevici
+ * @author Gary Russell
  *
  * @since 1.1.4
  */
@@ -155,9 +156,10 @@ public class KafkaStreamsTests {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
-			props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
-			props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-			props.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG, WallclockTimestampExtractor.class.getName());
+			props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
+			props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+			props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
+					WallclockTimestampExtractor.class.getName());
 			props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100");
 			return new StreamsConfig(props);
 		}

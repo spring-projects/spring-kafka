@@ -36,6 +36,8 @@ import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -59,6 +61,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	private final ProducerFactory<K, V> producerFactory;
 
 	private final boolean autoFlush;
+
+	private final boolean transactional;
+
+	private final ThreadLocal<Producer<K, V>> producers = new ThreadLocal<>();
 
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
 
@@ -85,6 +91,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	public KafkaTemplate(ProducerFactory<K, V> producerFactory, boolean autoFlush) {
 		this.producerFactory = producerFactory;
 		this.autoFlush = autoFlush;
+		this.transactional = producerFactory.transactionCapable();
 	}
 
 	/**
@@ -190,7 +197,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			return producer.partitionsFor(topic);
 		}
 		finally {
-			producer.close();
+			closeProducer(producer, inTransaction());
 		}
 	}
 
@@ -201,7 +208,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			return producer.metrics();
 		}
 		finally {
-			producer.close();
+			closeProducer(producer, inTransaction());
 		}
 	}
 
@@ -212,8 +219,38 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			return callback.doInKafka(producer);
 		}
 		finally {
-			producer.close();
+			closeProducer(producer, inTransaction());
 		}
+	}
+
+	@Override
+	public <T> T executeInTransaction(OperationsCallback<K, V, T> callback) {
+		Assert.state(this.transactional, "Producer factory does not support transactions");
+		Producer<K, V> producer = this.producers.get();
+		Assert.state(producer == null, "Nested calls to 'executeInTransaction' are not allowed");
+		producer = this.producerFactory.createProducer();
+		this.producers.set(producer);
+		producer.beginTransaction();
+		T result = null;
+		try {
+			result = callback.doInOperations(this);
+		}
+		catch (Exception e) {
+			producer.abortTransaction();
+			this.producers.remove();
+			closeProducer(producer, false);
+			producer = null;
+		}
+		if (producer != null) {
+			try {
+				producer.commitTransaction();
+			}
+			finally {
+				closeProducer(producer, false);
+				this.producers.remove();
+			}
+		}
+		return result;
 	}
 
 	/**
@@ -229,6 +266,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			producer.flush();
 		}
 		finally {
+			closeProducer(producer, inTransaction());
+		}
+	}
+
+	protected void closeProducer(Producer<K, V> producer, boolean inLocalTx) {
+		if (!inLocalTx) {
 			producer.close();
 		}
 	}
@@ -244,6 +287,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			this.logger.trace("Sending: " + producerRecord);
 		}
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
+		final boolean inLocalTx = inTransaction();
 		producer.send(producerRecord, new Callback() {
 
 			@Override
@@ -269,7 +313,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 					}
 				}
 				finally {
-					producer.close();
+					if (KafkaTemplate.this.producers.get() == null) {
+						closeProducer(producer, inLocalTx);
+					}
 				}
 			}
 
@@ -283,8 +329,23 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return future;
 	}
 
+	protected boolean inTransaction() {
+		return this.producers.get() != null || TransactionSynchronizationManager.isActualTransactionActive();
+	}
+
 	private Producer<K, V> getTheProducer() {
-		return this.producerFactory.createProducer();
+		if (this.transactional) {
+			Producer<K, V> producer = this.producers.get();
+			if (producer != null) {
+				return producer;
+			}
+			KafkaResourceHolder<K, V> holder = ProducerFactoryUtils
+					.getTransactionalResourceHolder(this.producerFactory);
+			return holder.getProducer();
+		}
+		else {
+			return this.producerFactory.createProducer();
+		}
 	}
 
 }

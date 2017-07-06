@@ -158,6 +158,17 @@ public interface KafkaOperations<K, V> {
 	<T> T execute(ProducerCallback<K, V, T> callback);
 
 	/**
+	 * Execute some arbitrary operation(s) on the operations and return the result.
+	 * The operations are invoked within a local transaction and do not participate
+	 * in a global transaction (if present).
+	 * @param callback the callback.
+	 * @param <T> the result type.
+	 * @return the result.
+	 * @since 1.1
+	 */
+	<T> T executeInTransaction(OperationsCallback<K, V, T> callback);
+
+	/**
 	 * Flush the producer.
 	 */
 	void flush();
@@ -172,6 +183,19 @@ public interface KafkaOperations<K, V> {
 	interface ProducerCallback<K, V, T> {
 
 		T doInKafka(Producer<K, V> producer);
+
+	}
+
+	/**
+	 * A callback for executing arbitrary operations on the {@link KafkaOperations}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param <T> the return type.
+	 * @since 2.0
+	 */
+	interface OperationsCallback<K, V, T> {
+
+		T doInOperations(KafkaOperations<K, V> operations);
 
 	}
 

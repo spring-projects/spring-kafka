@@ -136,8 +136,8 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 					this.loginModule,
 					this.controlFlag,
 					this.options);
-			configurationEntries.put(JaasUtils.LOGIN_CONTEXT_CLIENT,
-					new AppConfigurationEntry[] { kafkaClientConfigurationEntry });
+//			configurationEntries.put(JaasUtils.LOGIN_CONTEXT_CLIENT,
+//					new AppConfigurationEntry[] { kafkaClientConfigurationEntry });
 			Configuration.setConfiguration(new InternalConfiguration(configurationEntries));
 			// Workaround for a 0.9 client issue where even if the Configuration is
 			// set

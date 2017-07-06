@@ -30,4 +30,8 @@ public interface ProducerFactory<K, V> {
 
 	Producer<K, V> createProducer();
 
+	default boolean transactionCapable() {
+		return false;
+	}
+
 }

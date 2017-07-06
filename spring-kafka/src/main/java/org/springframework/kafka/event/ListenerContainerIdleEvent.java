@@ -68,7 +68,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	}
 
 	/**
-	 * The id of the listener (if {@code @RabbitListener}) or the container bean name.
+	 * The id of the listener (if {@code @KafkaListener}) or the container bean name.
 	 * @return the id.
 	 */
 	public String getListenerId() {
