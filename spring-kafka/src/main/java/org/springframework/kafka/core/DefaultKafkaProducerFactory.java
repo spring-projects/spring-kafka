@@ -213,8 +213,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 					this.transactionIdPrefix + this.transactionIdSuffix.getAndIncrement());
 			producer = new KafkaProducer<K, V>(configs, this.keySerializer, this.valueSerializer);
 			producer.initTransactions();
+			return new CloseSafeProducer<K, V>(producer, this.cache);
 		}
-		return new CloseSafeProducer<K, V>(producer, this.cache);
+		else {
+			return producer;
+		}
 	}
 
 	private static class CloseSafeProducer<K, V> implements Producer<K, V> {
