@@ -39,18 +39,23 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
+import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.scheduling.SchedulingAwareRunnable;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
@@ -149,7 +154,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			return;
 		}
 		ContainerProperties containerProperties = getContainerProperties();
-
 		if (!this.consumerFactory.isAutoCommit()) {
 			AckMode ackMode = containerProperties.getAckMode();
 			if (ackMode.equals(AckMode.COUNT) || ackMode.equals(AckMode.COUNT_TIME)) {
@@ -277,6 +281,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final BatchErrorHandler batchErrorHandler;
 
+		private final PlatformTransactionManager transactionManager = this.containerProperties.getTransactionManager();
+
+		@SuppressWarnings("rawtypes")
+		private final KafkaTransactionManager kafkaTxManager =
+				this.transactionManager instanceof KafkaTransactionManager
+					? ((KafkaTransactionManager) this.transactionManager) : null;
+
+		private final TransactionTemplate transactionTemplate;
+
+		private final String consumerGroupId = this.containerProperties.getGroupId();
+
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private volatile Collection<TopicPartition> assignedPartitions;
@@ -293,6 +308,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
 					this.containerProperties.getGroupId(), KafkaMessageListenerContainer.this.clientIdSuffix);
+			this.consumer = consumer;
 
 			ConsumerRebalanceListener rebalanceListener = createRebalanceListener(consumer);
 
@@ -314,7 +330,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				consumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
 			}
-			this.consumer = consumer;
 			GenericErrorHandler<?> errHandler = this.containerProperties.getGenericErrorHandler();
 			this.genericListener = listener;
 			if (listener instanceof BatchMessageListener) {
@@ -348,6 +363,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
+			if (this.transactionManager != null) {
+				this.transactionTemplate = new TransactionTemplate(this.transactionManager);
+			}
+			else {
+				this.transactionTemplate = null;
+			}
 		}
 
 		public ConsumerRebalanceListener createRebalanceListener(final Consumer<K, V> consumer) {
@@ -617,6 +638,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		@SuppressWarnings("unchecked")
 		private void invokeBatchListener(final ConsumerRecords<K, V> records) {
 			List<ConsumerRecord<K, V>> recordList = new LinkedList<ConsumerRecord<K, V>>();
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
@@ -624,54 +646,114 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				recordList.add(iterator.next());
 			}
 			if (recordList.size() > 0) {
-				try {
-					switch (this.listenerType) {
-						case ACKNOWLEDGING_CONSUMER_AWARE:
-							this.batchListener.onMessage(recordList,
-									this.isAnyManualAck
-											? new ConsumerBatchAcknowledgment(recordList)
-											: null, this.consumer);
-							break;
-						case ACKNOWLEDGING:
-							this.batchListener.onMessage(recordList,
-									this.isAnyManualAck
-											? new ConsumerBatchAcknowledgment(recordList)
-											: null);
-							break;
-						case CONSUMER_AWARE:
-							this.batchListener.onMessage(recordList, this.consumer);
-							break;
-						case SIMPLE:
-							this.batchListener.onMessage(recordList);
-							break;
-					}
-					if (!this.isAnyManualAck && !this.autoCommit) {
-						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
-							this.acks.put(record);
-						}
-					}
+				@SuppressWarnings("rawtypes")
+				Producer producer = null;
+				if (this.kafkaTxManager != null) {
+					producer = ProducerFactoryUtils
+							.getTransactionalResourceHolder(this.kafkaTxManager.getProducerFactory()).getProducer();
 				}
-				catch (Exception e) {
-					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
-						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
-							this.acks.add(record);
-						}
-					}
-					try {
-						this.batchErrorHandler.handle(e, records, this.consumer);
-					}
-					catch (Exception ee) {
-						this.logger.error("Error handler threw an exception", ee);
-					}
-					catch (Error er) { //NOSONAR
-						this.logger.error("Error handler threw an error", er);
-						throw er;
-					}
+				if (this.transactionTemplate != null) {
+					invokeBatchListenerInTx(records, recordList, producer);
+				}
+				else {
+					doInvokeBatchListener(records, recordList, null);
 				}
 			}
 		}
 
+		private void invokeBatchListenerInTx(final ConsumerRecords<K, V> records,
+				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) {
+			try {
+				this.transactionTemplate.execute(s -> {
+					RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
+					if (aborted != null) {
+						throw aborted;
+					}
+					return null;
+				});
+			}
+			catch (RuntimeException e) {
+				logger.error("Transaction rolled back", e);
+				Map<TopicPartition, Long> seekOffsets = new HashMap<>();
+				records.forEach(r -> seekOffsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()),
+						v -> r.offset()));
+				seekOffsets.entrySet().forEach(entry -> this.consumer.seek(entry.getKey(), entry.getValue()));
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records,
+				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) throws Error {
+			try {
+				switch (this.listenerType) {
+					case ACKNOWLEDGING_CONSUMER_AWARE:
+						this.batchListener.onMessage(recordList,
+								this.isAnyManualAck
+										? new ConsumerBatchAcknowledgment(recordList)
+										: null, this.consumer);
+						break;
+					case ACKNOWLEDGING:
+						this.batchListener.onMessage(recordList,
+								this.isAnyManualAck
+										? new ConsumerBatchAcknowledgment(recordList)
+										: null);
+						break;
+					case CONSUMER_AWARE:
+						this.batchListener.onMessage(recordList, this.consumer);
+						break;
+					case SIMPLE:
+						this.batchListener.onMessage(recordList);
+						break;
+				}
+				if (!this.isAnyManualAck && !this.autoCommit) {
+					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
+						this.acks.put(record);
+					}
+					if (producer != null) {
+						handleAcks();
+						Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
+						producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+					}
+				}
+			}
+			catch (Exception e) {
+				if (this.containerProperties.isAckOnError() && !this.autoCommit) {
+					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
+						this.acks.add(record);
+					}
+				}
+				try {
+					this.batchErrorHandler.handle(e, records, this.consumer);
+				}
+				catch (RuntimeException ee) {
+					this.logger.error("Error handler threw an exception", ee);
+					return ee;
+				}
+				catch (Error er) { //NOSONAR
+					this.logger.error("Error handler threw an error", er);
+					throw er;
+				}
+			}
+			return null;
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
+			Producer producer = null;
+			if (this.kafkaTxManager != null) {
+				producer = ProducerFactoryUtils
+						.getTransactionalResourceHolder(this.kafkaTxManager.getProducerFactory()).getProducer();
+			}
+			if (this.transactionTemplate != null) {
+				innvokeRecordListenerInTx(records, producer);
+			}
+			else {
+				doInvokeWithRecords(records);
+			}
+		}
+
+		private void innvokeRecordListenerInTx(final ConsumerRecords<K, V> records,
+				@SuppressWarnings("rawtypes") Producer producer) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
@@ -679,46 +761,83 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.logger.trace("Processing " + record);
 				}
 				try {
-					switch (this.listenerType) {
-						case ACKNOWLEDGING_CONSUMER_AWARE:
-							this.listener.onMessage(record,
-									this.isAnyManualAck
-											? new ConsumerAcknowledgment(record)
-											: null, this.consumer);
-							break;
-						case CONSUMER_AWARE:
-							this.listener.onMessage(record, this.consumer);
-							break;
-						case ACKNOWLEDGING:
-							this.listener.onMessage(record,
-									this.isAnyManualAck
-											? new ConsumerAcknowledgment(record)
-											: null);
-							break;
-						case SIMPLE:
-							this.listener.onMessage(record);
-							break;
-					}
-					if (!this.isAnyManualAck && !this.autoCommit) {
-						this.acks.add(record);
-					}
+					this.transactionTemplate.execute(s -> {
+						RuntimeException aborted = doInvokeRecordListener(record, producer);
+						if (aborted != null) {
+							throw aborted;
+						}
+						return null;
+					});
 				}
-				catch (Exception e) {
-					if (this.containerProperties.isAckOnError() && !this.autoCommit) {
-						this.acks.add(record);
-					}
-					try {
-						this.errorHandler.handle(e, record, this.consumer);
-					}
-					catch (Exception ee) {
-						this.logger.error("Error handler threw an exception", ee);
-					}
-					catch (Error er) { //NOSONAR
-						this.logger.error("Error handler threw an error", er);
-						throw er;
-					}
+				catch (RuntimeException e) {
+					logger.error("Transaction rolled back", e);
+					this.consumer.seek(new TopicPartition(record.topic(), record.partition()), record.offset());
+					break;
 				}
 			}
+		}
+
+		private void doInvokeWithRecords(final ConsumerRecords<K, V> records) throws Error {
+			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+			while (iterator.hasNext()) {
+				final ConsumerRecord<K, V> record = iterator.next();
+				if (this.logger.isTraceEnabled()) {
+					this.logger.trace("Processing " + record);
+				}
+				doInvokeRecordListener(record, null);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> record,
+				@SuppressWarnings("rawtypes") Producer producer) throws Error {
+			try {
+				switch (this.listenerType) {
+					case ACKNOWLEDGING_CONSUMER_AWARE:
+						this.listener.onMessage(record,
+								this.isAnyManualAck
+										? new ConsumerAcknowledgment(record)
+										: null, this.consumer);
+						break;
+					case CONSUMER_AWARE:
+						this.listener.onMessage(record, this.consumer);
+						break;
+					case ACKNOWLEDGING:
+						this.listener.onMessage(record,
+								this.isAnyManualAck
+										? new ConsumerAcknowledgment(record)
+										: null);
+						break;
+					case SIMPLE:
+						this.listener.onMessage(record);
+						break;
+				}
+				if (!this.isAnyManualAck && !this.autoCommit) {
+					this.acks.add(record);
+				}
+				if (producer != null) {
+					handleAcks();
+					Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
+					producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+				}
+			}
+			catch (Exception e) {
+				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
+					this.acks.add(record);
+				}
+				try {
+					this.errorHandler.handle(e, record, this.consumer);
+				}
+				catch (RuntimeException ee) {
+					this.logger.error("Error handler threw an exception", ee);
+					return ee;
+				}
+				catch (Error er) { //NOSONAR
+					this.logger.error("Error handler threw an error", er);
+					throw er;
+				}
+			}
+			return null;
 		}
 
 		private void processCommits() {
@@ -850,14 +969,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void commitIfNecessary() {
-			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
-			for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
-				for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
-					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
-							new OffsetAndMetadata(offset.getValue() + 1));
-				}
-			}
-			this.offsets.clear();
+			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("Commit list: " + commits);
 			}
@@ -880,6 +992,18 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 			}
+		}
+
+		private Map<TopicPartition, OffsetAndMetadata> buildCommits() {
+			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
+			for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
+				for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
+					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
+							new OffsetAndMetadata(offset.getValue() + 1));
+				}
+			}
+			this.offsets.clear();
+			return commits;
 		}
 
 		private Collection<ConsumerRecord<K, V>> getHighestOffsetRecords(List<ConsumerRecord<K, V>> records) {

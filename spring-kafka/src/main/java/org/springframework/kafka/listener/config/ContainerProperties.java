@@ -29,6 +29,7 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
 
 /**
@@ -138,6 +139,8 @@ public class ContainerProperties {
 	private Long idleEventInterval;
 
 	private String groupId;
+
+	private PlatformTransactionManager transactionManager;
 
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
@@ -384,6 +387,20 @@ public class ContainerProperties {
 
 	public String getGroupId() {
 		return this.groupId;
+	}
+
+	public PlatformTransactionManager getTransactionManager() {
+		return this.transactionManager;
+	}
+
+	/**
+	 * Set the transaction manager to start a transaction; only {@link AckMode#RECORD} and
+	 * {@link AckMode#BATCH} (default) are supported with transactions.
+	 * @param transactionManager the transaction manager.
+	 * @since 2.0
+	 */
+	public void setTransactionManager(PlatformTransactionManager transactionManager) {
+		this.transactionManager = transactionManager;
 	}
 
 }
