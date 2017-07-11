@@ -141,7 +141,7 @@ project ('spring-kafka') {
 
 	dependencies {
 		compile "org.springframework:spring-messaging:$springVersion"
-		compile "org.springframework:spring-tx:$springVersion"
+		compile ("org.springframework:spring-tx:$springVersion", optional)
 		compile "org.springframework.retry:spring-retry:$springRetryVersion"
 		compile ("org.apache.kafka:kafka-clients:$kafkaVersion") {
 			exclude group: 'org.slf4j', module: 'slf4j-api'

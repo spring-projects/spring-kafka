@@ -178,7 +178,7 @@ public interface KafkaOperations<K, V> {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @param <T> the return type.
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	interface ProducerCallback<K, V, T> {
 

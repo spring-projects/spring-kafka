@@ -45,7 +45,7 @@ import org.springframework.util.Assert;
  *
  * <p>
  * Application code is required to retrieve the transactional Kafka resources via
- * {@link TransactionUtils#getTransactionalResourceHolder(ProducerFactory, boolean)}.
+ * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory, boolean)}.
  * Spring's {@link KafkaTemplate} will auto detect a thread-bound Producer and
  * automatically participate in it.
  *
@@ -115,7 +115,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	@Override
 	protected void doBegin(Object transaction, TransactionDefinition definition) {
 		if (definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT) {
-			throw new InvalidIsolationLevelException("AMQP does not support an isolation level concept");
+			throw new InvalidIsolationLevelException("Apache Kafka does not support an isolation level concept");
 		}
 		@SuppressWarnings("unchecked")
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
@@ -153,8 +153,8 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	@Override
 	protected void doResume(Object transaction, Object suspendedResources) {
 		@SuppressWarnings("unchecked")
-		KafkaResourceHolder<K, V> conHolder = (KafkaResourceHolder<K, V>) suspendedResources;
-		TransactionSynchronizationManager.bindResource(getProducerFactory(), conHolder);
+		KafkaResourceHolder<K, V> producerHolder = (KafkaResourceHolder<K, V>) suspendedResources;
+		TransactionSynchronizationManager.bindResource(getProducerFactory(), producerHolder);
 	}
 
 	@Override
