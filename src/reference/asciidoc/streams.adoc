@@ -76,6 +76,31 @@ Also consider using different `KStreamBuilderFactoryBean` s, if you would like t
 
 You can specify `KafkaStreams.StateListener` and `Thread.UncaughtExceptionHandler` options on the `KStreamBuilderFactoryBean` which are delegated to the internal `KafkaStreams` instance.
 That internal `KafkaStreams` instance can be accessed via `KStreamBuilderFactoryBean.getKafkaStreams()` if you need to perform some `KafkaStreams` operations directly.
+You can autowire `KStreamBuilderFactoryBean` bean by type, but you should be sure that you use full type in the bean definition, for example:
+
+[source,java]
+----
+@Bean
+public KStreamBuilderFactoryBean myKStreamBuilder(StreamsConfig streamsConfig) {
+    return new KStreamBuilderFactoryBean(streamsConfig);
+}
+...
+@Autowired
+private KStreamBuilderFactoryBean myKStreamBuilderFactoryBean;
+----
+
+Or add `@Qualifier` for injection by name If you use interface bean definition:
+[source,java]
+----
+@Bean
+public FactoryBean<KStreamBuilder> myKStreamBuilder(StreamsConfig streamsConfig) {
+    return new KStreamBuilderFactoryBean(streamsConfig);
+}
+...
+@Autowired
+@Qualifier("&myKStreamBuilder")
+private KStreamBuilderFactoryBean myKStreamBuilderFactoryBean;
+----
 
 ==== JSON Serdes
 

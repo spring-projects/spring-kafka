@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
@@ -40,6 +41,8 @@ import org.springframework.util.Assert;
  */
 public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilder> implements SmartLifecycle {
 
+	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
+
 	private final StreamsConfig streamsConfig;
 
 	private KafkaStreams kafkaStreams;
@@ -50,11 +53,13 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 
 	private int phase = Integer.MIN_VALUE;
 
-	private volatile boolean running;
-
 	private KafkaStreams.StateListener stateListener;
 
 	private Thread.UncaughtExceptionHandler exceptionHandler;
+
+	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
+
+	private volatile boolean running;
 
 	public KStreamBuilderFactoryBean(StreamsConfig streamsConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
@@ -77,6 +82,16 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 
 	public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
 		this.exceptionHandler = exceptionHandler;
+	}
+
+	/**
+	 * Specify the timeout in seconds for the {@link KafkaStreams#close(long, TimeUnit)} operation.
+	 * Defaults to 10 seconds.
+	 * @param closeTimeout the timeout for close in seconds.
+	 * @see KafkaStreams#close(long, TimeUnit)
+	 */
+	public void setCloseTimeout(int closeTimeout) {
+		this.closeTimeout = closeTimeout;
 	}
 
 	@Override
@@ -132,7 +147,7 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 		if (this.running) {
 			try {
 				if (this.kafkaStreams != null) {
-					this.kafkaStreams.close();
+					this.kafkaStreams.close(this.closeTimeout, TimeUnit.SECONDS);
 					this.kafkaStreams.cleanUp();
 					this.kafkaStreams = null;
 				}
