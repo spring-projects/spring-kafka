@@ -692,6 +692,15 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		/**
+		 * Actually invoke the batch listener.
+		 * @param records the records (needed to invoke the error handler)
+		 * @param recordList the list of records (actually passed to the listener).
+		 * @param producer the producer - only if we're running in a transaction, null
+		 * otherwise.
+		 * @return an exception.
+		 * @throws Error an error.
+		 */
 		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) throws Error {
 			try {
@@ -763,6 +772,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		/**
+		 * Invoke the listener with each record in a separate transaction.
+		 * @param records the records.
+		 */
 		@SuppressWarnings({ "rawtypes" })
 		private void innvokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
@@ -804,6 +817,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		/**
+		 * Actually invoke the listner.
+		 * @param record the record.
+		 * @param producer the producer - only if we're running in a transaction, null
+		 * otherwise.
+		 * @return an exception.
+		 * @throws Error an error.
+		 */
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> record,
 				@SuppressWarnings("rawtypes") Producer producer) throws Error {
 			try {
