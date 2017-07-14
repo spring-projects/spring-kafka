@@ -45,7 +45,7 @@ import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.ProducerFactoryUtils;
+import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -55,6 +55,7 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPositio
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -354,12 +355,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (this.isBatchListener) {
 				validateErrorHandler(true);
 				this.errorHandler = new LoggingErrorHandler();
-				this.batchErrorHandler = errHandler == null ? new BatchLoggingErrorHandler()
-						: (BatchErrorHandler) errHandler;
+				this.batchErrorHandler = determineBatchErrorHandler(errHandler);
 			}
 			else {
 				validateErrorHandler(false);
-				this.errorHandler = errHandler == null ? new LoggingErrorHandler() : (ErrorHandler) errHandler;
+				this.errorHandler = determinErrorHandler(errHandler);
 				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
@@ -369,6 +369,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			else {
 				this.transactionTemplate = null;
 			}
+		}
+
+		protected BatchErrorHandler determineBatchErrorHandler(GenericErrorHandler<?> errHandler) {
+			return errHandler != null ? (BatchErrorHandler) errHandler
+					: this.transactionManager != null ? null : new BatchLoggingErrorHandler();
+		}
+
+		protected ErrorHandler determinErrorHandler(GenericErrorHandler<?> errHandler) {
+			return errHandler != null ? (ErrorHandler) errHandler
+					: this.transactionManager != null ? null : new LoggingErrorHandler();
 		}
 
 		public ConsumerRebalanceListener createRebalanceListener(final Consumer<K, V> consumer) {
@@ -559,12 +569,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			if (!this.fatalError) {
-				commitPendingAcks();
-				try {
-					this.consumer.unsubscribe();
-				}
-				catch (WakeupException e) {
-					// No-op. Continue process
+				if (this.kafkaTxManager == null) {
+					commitPendingAcks();
+					try {
+						this.consumer.unsubscribe();
+					}
+					catch (WakeupException e) {
+						// No-op. Continue process
+					}
 				}
 			}
 			else {
@@ -638,7 +650,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		@SuppressWarnings("unchecked")
 		private void invokeBatchListener(final ConsumerRecords<K, V> records) {
 			List<ConsumerRecord<K, V>> recordList = new LinkedList<ConsumerRecord<K, V>>();
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
@@ -646,14 +657,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				recordList.add(iterator.next());
 			}
 			if (recordList.size() > 0) {
-				@SuppressWarnings("rawtypes")
-				Producer producer = null;
-				if (this.kafkaTxManager != null) {
-					producer = ProducerFactoryUtils
-							.getTransactionalResourceHolder(this.kafkaTxManager.getProducerFactory()).getProducer();
-				}
 				if (this.transactionTemplate != null) {
-					invokeBatchListenerInTx(records, recordList, producer);
+					invokeBatchListenerInTx(records, recordList);
 				}
 				else {
 					doInvokeBatchListener(records, recordList, null);
@@ -661,10 +666,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
+		@SuppressWarnings({ "rawtypes" })
 		private void invokeBatchListenerInTx(final ConsumerRecords<K, V> records,
-				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) {
+				List<ConsumerRecord<K, V>> recordList) {
 			try {
 				this.transactionTemplate.execute(s -> {
+					Producer producer = null;
+					if (this.kafkaTxManager != null) {
+						producer = ((KafkaResourceHolder) TransactionSynchronizationManager
+								.getResource(this.kafkaTxManager.getProducerFactory())).getProducer();
+					}
 					RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
 					if (aborted != null) {
 						throw aborted;
@@ -681,7 +692,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		@SuppressWarnings("unchecked")
 		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) throws Error {
 			try {
@@ -710,20 +720,24 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						this.acks.put(record);
 					}
 					if (producer != null) {
-						handleAcks();
-						Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
-						producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+						sendOffsetsToTransaction(producer);
 					}
 				}
 			}
-			catch (Exception e) {
+			catch (RuntimeException e) {
 				if (this.containerProperties.isAckOnError() && !this.autoCommit) {
 					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
 						this.acks.add(record);
 					}
 				}
+				if (this.batchErrorHandler == null) {
+					throw e;
+				}
 				try {
 					this.batchErrorHandler.handle(e, records, this.consumer);
+					if (producer != null) {
+						sendOffsetsToTransaction(producer);
+					}
 				}
 				catch (RuntimeException ee) {
 					this.logger.error("Error handler threw an exception", ee);
@@ -734,26 +748,23 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					throw er;
 				}
 			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			return null;
 		}
 
-		@SuppressWarnings({ "rawtypes", "unchecked" })
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
-			Producer producer = null;
-			if (this.kafkaTxManager != null) {
-				producer = ProducerFactoryUtils
-						.getTransactionalResourceHolder(this.kafkaTxManager.getProducerFactory()).getProducer();
-			}
 			if (this.transactionTemplate != null) {
-				innvokeRecordListenerInTx(records, producer);
+				innvokeRecordListenerInTx(records);
 			}
 			else {
 				doInvokeWithRecords(records);
 			}
 		}
 
-		private void innvokeRecordListenerInTx(final ConsumerRecords<K, V> records,
-				@SuppressWarnings("rawtypes") Producer producer) {
+		@SuppressWarnings({ "rawtypes" })
+		private void innvokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
@@ -762,6 +773,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				try {
 					this.transactionTemplate.execute(s -> {
+						Producer producer = null;
+						if (this.kafkaTxManager != null) {
+							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
+									.getResource(this.kafkaTxManager.getProducerFactory())).getProducer();
+						}
 						RuntimeException aborted = doInvokeRecordListener(record, producer);
 						if (aborted != null) {
 							throw aborted;
@@ -788,7 +804,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		@SuppressWarnings("unchecked")
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> record,
 				@SuppressWarnings("rawtypes") Producer producer) throws Error {
 			try {
@@ -816,17 +831,26 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.acks.add(record);
 				}
 				if (producer != null) {
-					handleAcks();
-					Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
-					producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+					sendOffsetsToTransaction(producer);
 				}
 			}
-			catch (Exception e) {
+			catch (RuntimeException e) {
 				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
 					this.acks.add(record);
 				}
+				if (this.errorHandler == null) {
+					throw e;
+				}
 				try {
 					this.errorHandler.handle(e, record, this.consumer);
+					if (producer != null) {
+						try {
+							sendOffsetsToTransaction(producer);
+						}
+						catch (Exception e1) {
+							logger.error("Send offsets to transaction failed", e1);
+						}
+					}
 				}
 				catch (RuntimeException ee) {
 					this.logger.error("Error handler threw an exception", ee);
@@ -838,6 +862,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			return null;
+		}
+
+		@SuppressWarnings({ "unchecked", "rawtypes" })
+		protected void sendOffsetsToTransaction(Producer producer) {
+			handleAcks();
+			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
+			producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
 		}
 
 		private void processCommits() {

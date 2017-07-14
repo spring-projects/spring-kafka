@@ -51,12 +51,11 @@ public final class ProducerFactoryUtils {
 		@SuppressWarnings("unchecked")
 		KafkaResourceHolder<K, V> resourceHolder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
 				.getResource(producerFactory);
-		if (resourceHolder != null) {
-			return resourceHolder;
+		if (resourceHolder == null) {
+			resourceHolder = new KafkaResourceHolder<K, V>(producerFactory.createProducer());
+			bindResourceToTransaction(resourceHolder, producerFactory);
 		}
-		KafkaResourceHolder<K, V> holder = new KafkaResourceHolder<K, V>(producerFactory.createProducer());
-		bindResourceToTransaction(holder, producerFactory);
-		return holder;
+		return resourceHolder;
 	}
 
 	public static <K, V> void releaseResources(KafkaResourceHolder<K, V> resourceHolder) {

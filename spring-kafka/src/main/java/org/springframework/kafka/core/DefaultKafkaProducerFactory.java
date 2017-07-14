@@ -298,6 +298,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			close();
 		}
 
+		@Override
+		public String toString() {
+			return "CloseSafeProducer [delegate=" + this.delegate + "]";
+		}
+
 	}
 
 }
