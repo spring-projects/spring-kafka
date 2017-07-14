@@ -17,6 +17,13 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
@@ -28,16 +35,26 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.assertj.core.api.Assertions;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.mockito.InOrder;
 
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -125,6 +142,117 @@ public class KafkaTemplateTransactionTests {
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", BlockingQueue.class).size()).isEqualTo(1);
 		pf.destroy();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", BlockingQueue.class).size()).isEqualTo(0);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	public void testDeclarative() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(DeclarativeConfig.class);
+		Tx1 tx1 = ctx.getBean(Tx1.class);
+		tx1.txMethod();
+		ProducerFactory producerFactory = ctx.getBean(ProducerFactory.class);
+		verify(producerFactory, times(2)).createProducer();
+		Producer producer1 = ctx.getBean("producer1", Producer.class);
+		Producer producer2 = ctx.getBean("producer1", Producer.class);
+		InOrder inOrder = inOrder(producer1, producer2);
+		inOrder.verify(producer1).beginTransaction();
+		inOrder.verify(producer1).send(eq(new ProducerRecord("foo", "bar")), any(Callback.class));
+		inOrder.verify(producer1).send(eq(new ProducerRecord("baz", "qux")), any(Callback.class));
+		inOrder.verify(producer2).beginTransaction();
+		inOrder.verify(producer2).send(eq(new ProducerRecord("fiz", "buz")), any(Callback.class));
+		inOrder.verify(producer2).commitTransaction();
+		inOrder.verify(producer1).commitTransaction();
+		ctx.close();
+	}
+
+	@Configuration
+	@EnableTransactionManagement
+	public static class DeclarativeConfig {
+
+		@SuppressWarnings("rawtypes")
+		@Bean
+		public ProducerFactory pf() {
+			ProducerFactory pf = mock(ProducerFactory.class);
+			given(pf.transactionCapable()).willReturn(true);
+			given(pf.createProducer()).willReturn(producer1(), producer2());
+			return pf;
+		}
+
+		@SuppressWarnings("rawtypes")
+		@Bean
+		public Producer producer1() {
+			return mock(Producer.class);
+		}
+
+		@SuppressWarnings("rawtypes")
+		@Bean
+		public Producer producer2() {
+			return producer1();
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@Bean
+		public KafkaTransactionManager transactionManager() {
+			return new KafkaTransactionManager(pf());
+		}
+
+		@SuppressWarnings({ "unchecked" })
+		@Bean
+		public KafkaTemplate<String, String> template() {
+			return new KafkaTemplate<>(pf());
+		}
+
+		@Bean
+		public Tx1 tx1() {
+			return new Tx1(template(), tx2());
+		}
+
+		@Bean
+		public Tx2 tx2() {
+			return new Tx2(template());
+		}
+
+	}
+
+	public static class Tx1 {
+
+		@SuppressWarnings("rawtypes")
+		private final KafkaTemplate template;
+
+		private final Tx2 tx2;
+
+		@SuppressWarnings("rawtypes")
+		public Tx1(KafkaTemplate template, Tx2 tx2) {
+			this.template = template;
+			this.tx2 = tx2;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Transactional
+		public void txMethod() {
+			template.send("foo", "bar");
+			template.send("baz", "qux");
+			this.tx2.anotherTxMethod();
+		}
+
+	}
+
+	public static class Tx2 {
+
+		@SuppressWarnings("rawtypes")
+		private final KafkaTemplate template;
+
+		@SuppressWarnings("rawtypes")
+		public Tx2(KafkaTemplate template) {
+			this.template = template;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Transactional(propagation = Propagation.REQUIRES_NEW)
+		public void anotherTxMethod() {
+			template.send("fiz", "buz");
+		}
+
 	}
 
 }

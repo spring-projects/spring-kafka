@@ -684,7 +684,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				});
 			}
 			catch (RuntimeException e) {
-				logger.error("Transaction rolled back", e);
+				this.logger.error("Transaction rolled back", e);
 				Map<TopicPartition, Long> seekOffsets = new HashMap<>();
 				records.forEach(r -> seekOffsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()),
 						v -> r.offset()));
@@ -799,7 +799,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					});
 				}
 				catch (RuntimeException e) {
-					logger.error("Transaction rolled back", e);
+					this.logger.error("Transaction rolled back", e);
 					this.consumer.seek(new TopicPartition(record.topic(), record.partition()), record.offset());
 					break;
 				}
@@ -869,7 +869,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							sendOffsetsToTransaction(producer);
 						}
 						catch (Exception e1) {
-							logger.error("Send offsets to transaction failed", e1);
+							this.logger.error("Send offsets to transaction failed", e1);
 						}
 					}
 				}
