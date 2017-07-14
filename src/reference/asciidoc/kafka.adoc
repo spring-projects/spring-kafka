@@ -149,6 +149,55 @@ You may wish to invoke `flush()` before waiting or, for convenience, the templat
 parameter which will cause the template to `flush()` on each send.
 Note, however that flushing will likely significantly reduce performance.
 
+[[transactions]]
+===== Transactions
+
+The 0.11.0.0 client library added support for transactions.
+Spring for Apache Kafka adds support in several ways.
+
+- `KafkaTransactionManager` - used with normal Spring transaction support (`@Transactional`, `TransactionTemplate` etc).
+- Transactional `KafkaMessageListenerContainer`
+- Local transactions with `KafkaTemplate`
+
+Transactions are enabled by providing the `DefaultKafkaProducerFactory` with a `transactionIdPrefix`.
+In that case, instead of managing a single shared `Producer`, the factory maintains a cache of transactional producers.
+When the user `close()` s a producer, it is returned to the cache for reuse instead of actually being closed.
+The `transactional.id` property of each producer is `transactionIdPrefix` + `n`, where `n` starts with `0` and is incremented for each new producer.
+
+====== KafkaTransactionManager
+
+The `KafkaTransactionManager` is an implementation of Spring Framework's `PlatformTransactionManager`; it is provided with a reference to the producer factory in its constructor.
+If you provide a custom producer factory, it must support transactions - see `ProducerFactory.transactionCapable()`.
+
+You can use the `KafkaTransactionManager` with normal Spring transaction support (`@Transactional`, `TransactionTemplate` etc).
+If a transaction is active, any `KafkaTemplate` operations performed within the scope of the transaction will use the transaction's `Producer`.
+The manager will commit or rollback the transaction depending on success or failure.
+The `KafkaTemplate` must be configured to use the same `ProducerFactory` as the transaction manager.
+
+====== Transactional Listener Container
+
+You can provide a listener container with a `KafkaTransactionManager` instance; when so configured, the container will start a transaction before invoking the listener.
+If the listener successfully processes the record (or records when using a `BatchMessageListener`), the container will send the offset(s) to the transaction using `producer.sendOffsetsToTransaction()`), before the transaction manager commits the transaction.
+If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back records will be retrieved on the next poll.
+
+====== KafkaTemplate Local Transactions
+
+You can use the `KafkaTemplate` to execute a series of operations within a local transaction.
+
+[source, java]
+----
+boolean result = template.executeInTransaction(t -> {
+    t.sendDefault("foo", "bar");
+    t.sendDefault("baz", "qux");
+    return true;
+});
+----
+
+The argument in the callback is the template itself (`this`).
+If the callback exits normally, the transaction is committed; if an exception is thrown, the transaction is rolled-back.
+
+NOTE: If there is a `KafkaTransactionManager` transaction in process, it will not be used; a new "nested" transaction is used.
+
 ==== Receiving Messages
 
 Messages can be received by configuring a `MessageListenerContainer` and providing a Message Listener, or by

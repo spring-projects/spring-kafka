@@ -79,6 +79,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	 */
 	public KafkaTransactionManager(ProducerFactory<K, V> producerFactory) {
 		Assert.notNull(producerFactory, "The 'ProducerFactory' cannot be null");
+		Assert.isTrue(producerFactory.transactionCapable(), "The 'ProducerFactory' must support transactions");
 		setTransactionSynchronization(SYNCHRONIZATION_NEVER);
 		this.producerFactory = producerFactory;
 	}
