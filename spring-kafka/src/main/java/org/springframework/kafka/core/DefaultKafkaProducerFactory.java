@@ -44,6 +44,7 @@ import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
+import org.springframework.util.Assert;
 
 /**
  * The {@link ProducerFactory} implementation for the {@code singleton} shared {@link Producer}
@@ -121,11 +122,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
-	 * Set the transasctional.id prefix.
+	 * Set the transactional.id prefix.
 	 * @param transactionIdPrefix the prefix.
 	 * @since 2.0
 	 */
 	public void setTransactionIdPrefix(String transactionIdPrefix) {
+		Assert.notNull(transactionIdPrefix, "'transactionIdPrefix' cannot be null");
 		this.transactionIdPrefix = transactionIdPrefix;
 	}
 

@@ -45,7 +45,7 @@ import org.springframework.util.Assert;
  *
  * <p>
  * Application code is required to retrieve the transactional Kafka resources via
- * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory, boolean)}.
+ * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory)}.
  * Spring's {@link KafkaTemplate} will auto detect a thread-bound Producer and
  * automatically participate in it.
  *

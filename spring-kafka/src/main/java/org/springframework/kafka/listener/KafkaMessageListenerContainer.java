@@ -359,7 +359,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			else {
 				validateErrorHandler(false);
-				this.errorHandler = determinErrorHandler(errHandler);
+				this.errorHandler = determineErrorHandler(errHandler);
 				this.batchErrorHandler = new BatchLoggingErrorHandler();
 			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
@@ -376,7 +376,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					: this.transactionManager != null ? null : new BatchLoggingErrorHandler();
 		}
 
-		protected ErrorHandler determinErrorHandler(GenericErrorHandler<?> errHandler) {
+		protected ErrorHandler determineErrorHandler(GenericErrorHandler<?> errHandler) {
 			return errHandler != null ? (ErrorHandler) errHandler
 					: this.transactionManager != null ? null : new LoggingErrorHandler();
 		}
@@ -818,7 +818,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		/**
-		 * Actually invoke the listner.
+		 * Actually invoke the listener.
 		 * @param record the record.
 		 * @param producer the producer - only if we're running in a transaction, null
 		 * otherwise.
