@@ -39,6 +39,11 @@ import org.springframework.messaging.Message;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
+import reactor.core.publisher.Flux;
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderRecord;
+import reactor.kafka.sender.SenderResult;
+
 
 /**
  * A template for executing high-level operations.
@@ -233,6 +238,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		}
 	}
 
+	@Override
+	public <T> Flux<SenderResult<T>> send(Flux<SenderRecord<K, V, T>> flux, Class<T> t) {
+		KafkaSender<K, V> sender = getTheSender();
+		return sender.send(flux);
+	}
+
 	/**
 	 * Send the producer record.
 	 * @param producerRecord the producer record.
@@ -285,6 +296,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private Producer<K, V> getTheProducer() {
 		return this.producerFactory.createProducer();
+	}
+
+	private KafkaSender<K, V> getTheSender() {
+		return this.producerFactory.createReactiveSender();
 	}
 
 }

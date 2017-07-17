@@ -38,6 +38,10 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
 
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderOptions;
+import reactor.kafka.sender.internals.DefaultKafkaSender;
+
 /**
  * The {@link ProducerFactory} implementation for the {@code singleton} shared {@link Producer}
  * instance.
@@ -66,6 +70,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	private final Map<String, Object> configs;
 
 	private volatile CloseSafeProducer<K, V> producer;
+
+	private volatile CloseSafeKafkaSender<K, V> sender;
 
 	private Serializer<K> keySerializer;
 
@@ -121,6 +127,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		if (producer != null) {
 			producer.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
 		}
+		CloseSafeKafkaSender<K, V> sender = this.sender;
+		this.sender = null;
+		if (sender != null) {
+			sender.destroy();
+		}
 	}
 
 
@@ -160,6 +171,23 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	protected KafkaProducer<K, V> createKafkaProducer() {
 		return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
+	}
+
+	@Override
+	public KafkaSender<K, V> createReactiveSender() {
+		if (this.sender == null) {
+			synchronized (this) {
+				if (this.sender == null) {
+					this.sender = createSender();
+				}
+			}
+		}
+		return this.sender;
+	}
+
+	protected CloseSafeKafkaSender<K, V> createSender() {
+		SenderOptions<K, V> options = SenderOptions.create(this.configs);
+		return new CloseSafeKafkaSender<>(reactor.kafka.sender.internals.ProducerFactory.INSTANCE, options);
 	}
 
 	private static class CloseSafeProducer<K, V> implements Producer<K, V> {
@@ -205,4 +233,20 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	}
 
+	private static class CloseSafeKafkaSender<K, V> extends DefaultKafkaSender<K, V> {
+
+		CloseSafeKafkaSender(reactor.kafka.sender.internals.ProducerFactory producerFactory,
+				SenderOptions<K, V> options) {
+			super(producerFactory, options);
+		}
+
+		@Override
+		public void close() {
+		}
+
+		public void destroy() {
+			super.close();
+		}
+
+	}
 }

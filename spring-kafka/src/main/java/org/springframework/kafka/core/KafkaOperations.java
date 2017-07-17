@@ -28,6 +28,10 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 import org.springframework.util.concurrent.ListenableFuture;
 
+import reactor.core.publisher.Flux;
+import reactor.kafka.sender.SenderRecord;
+import reactor.kafka.sender.SenderResult;
+
 /**
  * The basic Kafka operations contract returning {@link ListenableFuture}s.
  *
@@ -161,6 +165,15 @@ public interface KafkaOperations<K, V> {
 	 * Flush the producer.
 	 */
 	void flush();
+
+	/**
+	 * Send a Flux of SenderRecords.
+	 * @param flux the flux.
+	 * @param <T> correlation metadata type.
+	 * @param t the class for the correlation metadata
+	 * @return a flux of SenderResults.
+	 */
+	<T> Flux<SenderResult<T>> send(Flux<SenderRecord<K, V, T>> flux, Class<T> t);
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.

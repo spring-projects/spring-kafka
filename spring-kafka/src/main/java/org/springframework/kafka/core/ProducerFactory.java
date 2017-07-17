@@ -18,6 +18,8 @@ package org.springframework.kafka.core;
 
 import org.apache.kafka.clients.producer.Producer;
 
+import reactor.kafka.sender.KafkaSender;
+
 /**
  * The strategy to produce a {@link Producer} instance(s).
  *
@@ -29,5 +31,7 @@ import org.apache.kafka.clients.producer.Producer;
 public interface ProducerFactory<K, V> {
 
 	Producer<K, V> createProducer();
+
+	KafkaSender<K, V> createReactiveSender();
 
 }

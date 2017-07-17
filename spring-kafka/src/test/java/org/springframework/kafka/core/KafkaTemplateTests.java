@@ -32,7 +32,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -56,6 +58,9 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
+
+import reactor.core.publisher.Flux;
+import reactor.kafka.sender.SenderRecord;
 
 /**
  * @author Gary Russell
@@ -143,6 +148,36 @@ public class KafkaTemplateTests {
 		List<PartitionInfo> partitions = template.partitionsFor(INT_KEY_TOPIC);
 		assertThat(partitions).isNotNull();
 		assertThat(partitions.size()).isEqualTo(2);
+		pf.destroy();
+	}
+
+	@Test
+	public void testTemplateReactive() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+		final AtomicReference<Throwable> exception = new AtomicReference<>();
+		final CountDownLatch latch = new CountDownLatch(10);
+		template.send(Flux.range(1, 10)
+				.map(i -> SenderRecord
+						.<Integer, String, Integer>create(new ProducerRecord<>(INT_KEY_TOPIC, i, "Message_" + i), i)),
+				Integer.class)
+			.doOnError(e -> {
+				exception.set(e);
+			})
+			.subscribe(r -> {
+				latch.countDown();
+			});
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		ConsumerRecords<Integer, String> records = KafkaTestUtils.getRecords(consumer);
+		int count = records.count();
+		int n = 0;
+		while (count < 10 && n++ < 10) {
+			records = KafkaTestUtils.getRecords(consumer);
+			count += records.count();
+		}
+		assertThat(count).isEqualTo(10);
+		assertThat(exception.get()).isNull();
 		pf.destroy();
 	}
 
