@@ -55,6 +55,8 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPositio
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
@@ -427,7 +429,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						if (ListenerConsumer.this.logger.isDebugEnabled()) {
 							ListenerConsumer.this.logger.debug("Committing on assignment: " + offsets);
 						}
-						if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
+						if (ListenerConsumer.this.transactionTemplate != null) {
+							ListenerConsumer.this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+
+								@SuppressWarnings({ "unchecked", "rawtypes" })
+								@Override
+								protected void doInTransactionWithoutResult(TransactionStatus status) {
+									((KafkaResourceHolder) TransactionSynchronizationManager
+											.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
+													.getProducer().sendOffsetsToTransaction(offsets,
+															ListenerConsumer.this.consumerGroupId);
+								}
+
+							});
+						}
+						else if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
 							ListenerConsumer.this.consumer.commitSync(offsets);
 						}
 						else {
@@ -670,17 +686,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private void invokeBatchListenerInTx(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList) {
 			try {
-				this.transactionTemplate.execute(s -> {
-					Producer producer = null;
-					if (this.kafkaTxManager != null) {
-						producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-								.getResource(this.kafkaTxManager.getProducerFactory())).getProducer();
+				this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+					@Override
+					public void doInTransactionWithoutResult(TransactionStatus s) {
+						Producer producer = null;
+						if (ListenerConsumer.this.kafkaTxManager != null) {
+							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
+								.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())).getProducer();
+						}
+						RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
+						if (aborted != null) {
+							throw aborted;
+						}
 					}
-					RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
-					if (aborted != null) {
-						throw aborted;
-					}
-					return null;
 				});
 			}
 			catch (RuntimeException e) {
@@ -785,17 +803,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.logger.trace("Processing " + record);
 				}
 				try {
-					this.transactionTemplate.execute(s -> {
-						Producer producer = null;
-						if (this.kafkaTxManager != null) {
-							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-									.getResource(this.kafkaTxManager.getProducerFactory())).getProducer();
+					this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+
+						@Override
+						public void doInTransactionWithoutResult(TransactionStatus s) {
+							Producer producer = null;
+							if (ListenerConsumer.this.kafkaTxManager != null) {
+								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
+										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())).getProducer();
+							}
+							RuntimeException aborted = doInvokeRecordListener(record, producer);
+							if (aborted != null) {
+								throw aborted;
+							}
 						}
-						RuntimeException aborted = doInvokeRecordListener(record, producer);
-						if (aborted != null) {
-							throw aborted;
-						}
-						return null;
+
 					});
 				}
 				catch (RuntimeException e) {
