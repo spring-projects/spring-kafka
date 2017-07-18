@@ -59,6 +59,9 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 					"java.lang"
 			);
 
+	/**
+	 * Header name for java types of other headers.
+	 */
 	public static final String JSON_TYPES = "spring_json_header_types";
 
 	private static final List<SimplePatternBasedHeaderMatcher> NEVER_MAPPED = Arrays.asList(
@@ -83,8 +86,11 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	private final Set<String> trustedPackages = new LinkedHashSet<>(DEFAULT_TRUSTED_PACKAGES);
 
 	/**
-	 * Construct an instance with the default object mapper and header patterns for
-	 * outbound headers; all inbound headers are mapped.
+	 * Construct an instance with the default object mapper and default header patterns
+	 * for outbound headers; all inbound headers are mapped. The default pattern list is
+	 * {@code "!id", "!timestamp" and "*"}. In addition, none of the headers in
+	 * {@link KafkaHeaders} are ever mapped as headers since they represent data in
+	 * consumer/producer records.
 	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
 	 */
 	public DefaultKafkaHeaderMapper() {
@@ -96,32 +102,54 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
 	 * preceding them with "!". The default pattern list is
-	 * {@code "!id", "!timestamp" and "*"}.
+	 * {@code "!id", "!timestamp" and "*"}. In addition, none of the headers in
+	 * {@link KafkaHeaders} are ever mapped as headers since they represent data in
+	 * consumer/producer records.
 	 * @param objectMapper the object mapper.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper) {
-		this(objectMapper, Arrays.asList(
+		this(objectMapper,
 				"!" + MessageHeaders.ID,
 				"!" + MessageHeaders.TIMESTAMP,
-				"*"));
+				"*");
 	}
 
 	/**
-	 * Construct an instance with the provided object mapper and default header patterns
+	 * Construct an instance with a default object mapper and the provided header patterns
 	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
-	 * preceding them with "!". The patterns will replace the default patterns; you generally
-	 * should not map the {@code "id" and "timestamp"} headers.
+	 * preceding them with "!". The patterns will replace the default patterns; you
+	 * generally should not map the {@code "id" and "timestamp"} headers. Note:
+	 * none of the headers in {@link KafkaHeaders} are ever mapped as headers since they
+	 * represent data in consumer/producer records.
+	 * @param patterns the patterns.
+	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
+	 */
+	public DefaultKafkaHeaderMapper(String... patterns) {
+		this(new ObjectMapper(), patterns);
+	}
+
+	/**
+	 * Construct an instance with the provided object mapper and the provided header
+	 * patterns for outbound headers; all inbound headers are mapped. The patterns are
+	 * applied in order, stopping on the first match (positive or negative). Patterns are
+	 * negated by preceding them with "!". The patterns will replace the default patterns;
+	 * you generally should not map the {@code "id" and "timestamp"} headers. Note: none
+	 * of the headers in {@link KafkaHeaders} are ever mapped as headers since they
+	 * represent data in consumer/producer records.
 	 * @param objectMapper the object mapper.
 	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
-	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, List<String> patterns) {
+	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.notNull(patterns, "'patterns' must not be null");
+		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
-		patterns.forEach(pattern -> this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern)));
+		for (String pattern : patterns) {
+			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
+		}
 	}
 
 	/**
@@ -184,7 +212,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 			}
 		}
 		if (logger.isDebugEnabled()) {
-			logger.debug(MessageFormat.format("headerName=[{0}] WILL NOT be mapped {1}; matched no patterns", header));
+			logger.debug(MessageFormat.format("headerName=[{0}] WILL NOT be mapped; matched no patterns", header));
 		}
 		return false;
 	}
@@ -261,7 +289,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	}
 
 	/**
-	 * A pattern-based {@link HeaderMatcher} that matches if the specified
+	 * A pattern-based header matcher that matches if the specified
 	 * header matches the specified simple pattern.
 	 * <p> The {@code negate == true} state indicates if the matching should be treated as "not matched".
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)

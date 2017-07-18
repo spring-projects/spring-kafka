@@ -41,6 +41,9 @@ import org.springframework.util.Assert;
  */
 public class KafkaJaasLoginModuleInitializer implements SmartInitializingSingleton, DisposableBean {
 
+	/**
+	 * The key for the kafka client configuration entry.
+	 */
 	public static final String KAFKA_CLIENT_CONTEXT_NAME = "KafkaClient";
 
 	/**

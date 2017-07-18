@@ -42,7 +42,6 @@ public interface KafkaHeaderMapper {
 	 * Map from the given target message to abstracted {@link MessageHeaders}.
 	 * @param source the native target message.
 	 * @param target the target headers.
-	 * @return the abstracted MessageHeaders.
 	 */
 	void toHeaders(Headers source, Map<String, Object> target);
 
