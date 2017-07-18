@@ -205,8 +205,9 @@ public class TransactionalContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("txTest1", "false", embeddedKafka);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
+		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties(topic1);
+		ContainerProperties containerProps = new ContainerProperties(topic1, topic2);
 		containerProps.setGroupId("group");
 		containerProps.setPollTimeout(10_000);
 
@@ -215,14 +216,20 @@ public class TransactionalContainerTests {
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("rr.");
 
-		DefaultKafkaProducerFactory<Integer, String> tpf = new DefaultKafkaProducerFactory<>(senderProps);
-		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(tpf);
+		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		final AtomicBoolean failed = new AtomicBoolean();
-		final CountDownLatch latch = new CountDownLatch(2);
+		final CountDownLatch latch = new CountDownLatch(3);
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			latch.countDown();
 			if (failed.compareAndSet(false, true)) {
 				throw new RuntimeException("fail");
+			}
+			/*
+			 * Send a message to topic2 and wait for it so we don't stop the container too soon.
+			 */
+			if (message.topic().equals(topic1)) {
+				template.send(topic2, "bar");
+				template.flush();
 			}
 		});
 
@@ -235,8 +242,10 @@ public class TransactionalContainerTests {
 		container.start();
 
 		template.setDefaultTopic(topic1);
-		template.sendDefault(0, 0, "foo");
-		template.flush();
+		template.executeInTransaction(t -> {
+			template.sendDefault(0, 0, "foo");
+			return null;
+		});
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		Consumer<Integer, String> consumer = cf.createConsumer();
@@ -254,19 +263,11 @@ public class TransactionalContainerTests {
 			}
 
 		});
-		consumer.poll(0);
-		assertThat(subsLatch.await(10, TimeUnit.SECONDS)).isTrue();
-
-		int n = 0;
-		while (consumer.position(new TopicPartition(topic1, 0)) == 0 && n++ < 100) {
-			Thread.sleep(100);
-			consumer.poll(0);
-		}
-
+		ConsumerRecords<Integer, String> records = consumer.poll(0);
+		assertThat(records.count()).isEqualTo(0);
 		assertThat(consumer.position(new TopicPartition(topic1, 0))).isEqualTo(1);
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
-		tpf.destroy();
 	}
 
 }
