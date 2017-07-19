@@ -5,6 +5,11 @@
 The 0.11.0.0 client library added support for transactions; the `KafkaTransactionManager` and other support for transactions has been added.
 See <<transactions>> for more information.
 
+==== Support for Headers
+
+The 0.11.0.0 client library added support for message headers; these can now be mapped to/from `spring-messaging` `MessageHeaders`.
+See <<headers>> for more information.
+
 ==== Support for Kafka timestamps
 
 `KafkaTemplate` now supports API to add records with timestamps.
