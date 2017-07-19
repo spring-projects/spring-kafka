@@ -42,6 +42,11 @@ import org.springframework.util.Assert;
 public class KafkaJaasLoginModuleInitializer implements SmartInitializingSingleton, DisposableBean {
 
 	/**
+	 * The key for the kafka client configuration entry.
+	 */
+	public static final String KAFKA_CLIENT_CONTEXT_NAME = "KafkaClient";
+
+	/**
 	 * Control flag values for login configuration.
 	 */
 	public enum ControlFlag {
@@ -136,8 +141,8 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 					this.loginModule,
 					this.controlFlag,
 					this.options);
-//			configurationEntries.put(JaasUtils.LOGIN_CONTEXT_CLIENT,
-//					new AppConfigurationEntry[] { kafkaClientConfigurationEntry });
+			configurationEntries.put(KAFKA_CLIENT_CONTEXT_NAME,
+					new AppConfigurationEntry[] { kafkaClientConfigurationEntry });
 			Configuration.setConfiguration(new InternalConfiguration(configurationEntries));
 			// Workaround for a 0.9 client issue where even if the Configuration is
 			// set

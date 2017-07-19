@@ -22,8 +22,11 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
@@ -48,6 +51,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	private boolean generateTimestamp = false;
 
+	private KafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
+
 	/**
 	 * Generate {@link Message} {@code ids} for produced messages. If set to {@code false},
 	 * will try to use a default value. By default set to {@code false}.
@@ -66,6 +71,15 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		this.generateTimestamp = generateTimestamp;
 	}
 
+	/**
+	 * Set the header mapper to map headers.
+	 * @param headerMapper the mapper.
+	 * @since 2.0
+	 */
+	public void setHeaderMapper(KafkaHeaderMapper headerMapper) {
+		this.headerMapper = headerMapper;
+	}
+
 	@Override
 	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Type type) {
@@ -73,6 +87,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 				this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
+		this.headerMapper.toHeaders(record.headers(), rawHeaders);
 		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, record.key());
 		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, record.topic());
 		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, record.partition());
@@ -99,7 +114,10 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
 		Object payload = convertPayload(message);
 		Long timestamp = headers.get(KafkaHeaders.TIMESTAMP, Long.class);
-		return new ProducerRecord(topic == null ? defaultTopic : topic, partition, timestamp, key, payload);
+		RecordHeaders recordHeaders = new RecordHeaders();
+		this.headerMapper.fromHeaders(headers, recordHeaders);
+		return new ProducerRecord(topic == null ? defaultTopic : topic, partition, timestamp, key, payload,
+				recordHeaders);
 	}
 
 	/**

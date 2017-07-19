@@ -735,7 +735,7 @@ public class MultiListenerSendTo {
     @KafkaHandler
     @SendTo("!{'annotated25reply2'}")
     public String bar(@Payload(required = false) KafkaNull nul,
-    		@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
+            @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
         ...
     }
 
@@ -1009,6 +1009,85 @@ public void jsonListener(Foo foo) {
 When using a `@KafkaListener`, the parameter type is provided to the message converter to assist with the conversion.
 
 NOTE: When using the `StringJsonMessageConverter`, you should use a `StringDeserializer` in the kafka consumer configuration and `StringSerializer` in the kafka producer configuration, when using Spring Integration or the `KafkaTemplate.send(Message<?> message)` method.
+
+[[headers]]
+==== Message Headers
+
+The 0.11.0.0 client introduced support for headers in messages.
+Spring for Apache Kafka _version 2.0_ now supports mapping these headers to/from `spring-messaging` `MessageHeaders`.
+
+NOTE: Previous versions mapped `ConsumerRecord` and `ProducerRecord` to spring-messaging `Message<?>` where the value property is mapped to/from the `payload` and other properties (`topic`, `partition`, etc) were mapped to headers.
+This is still the case but additional, arbitrary, headers can now be mapped.
+
+Apache Kafka headers have a simple API:
+
+[source, java]
+----
+public interface Header {
+
+    String key();
+
+    byte[] value();
+
+}
+----
+
+The `KafkaHeaders` interface has two methods:
+
+[source, java]
+----
+public interface KafkaHeaderMapper {
+
+    void fromHeaders(MessageHeaders headers, Headers target);
+
+    void toHeaders(Headers source, Map<String, Object> target);
+
+}
+----
+
+The `DefaultKafkaHeaderMapper` maps the key to the `MessageHeaders` header name and, in order to support rich header types, for outbound messages, JSON conversion is performed.
+A "special" header, with key, `spring_json_header_types` contains a JSON map of `<key>:<type>`.
+This header is used on the inbound side to provide appropriate conversion of each header value to the original type.
+
+On the inbound side, all Kafka `Header` s are mapped to `MessageHeaders`.
+On the outbound side, by default, all `MessageHeaders` are mapped except `id`, `timestamp`, and the headers that map to `ConsumerRecord` properties.
+
+You can specify which headers are to be mapped for outbound messages, by providing patterns to the mapper.
+
+[source, java]
+----
+public DefaultKafkaHeaderMapper() {
+    ...
+}
+
+public DefaultKafkaHeaderMapper(ObjectMapper objectMapper) {
+    ...
+}
+
+public DefaultKafkaHeaderMapper(String... patterns) {
+    ...
+}
+
+public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
+    ...
+}
+----
+
+The first constructor will use a default Jackson `ObjectMapper` and map most headers, as discussed above.
+The second constructor will use the provided Jackson `ObjectMapper` and map most headers, as discussed above.
+The third constructor will use a default Jackson `ObjectMapper` and map headers according to the provided patterns.
+The third constructor will use the provided Jackson `ObjectMapper` and map headers according to the provided patterns.
+
+Patterns are rather simple and can contain either a leading or trailing wildcard `*`, or both, e.g. `*.foo.*`.
+Patterns can be negated with a leading `!`.
+The first pattern that matches a header name wins (positive or negative).
+
+When providing your own patterns, it is recommended to include `!id` and `!timestamp` since these headers are read-only on the inbound side.
+
+IMPORTANT: By default, the mapper will only deserialize classes in `java.lang` and `java.util`.
+You can trust other (or all) packages by adding trusted packages using the `addTrustedPackages` method.
+If you are receiving messages from untrusted sources, you may wish to add just those packages that you trust.
+To trust all packages use `mapper.addTrustedPackages("*")`.
 
 ==== Log Compaction
 
