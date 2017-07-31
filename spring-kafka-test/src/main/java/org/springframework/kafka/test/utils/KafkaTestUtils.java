@@ -108,30 +108,46 @@ public final class KafkaTestUtils {
 	}
 
 	/**
+	 * Same as {@link #getSingleRecord(Consumer, String, long)} with a timeout of 60 seconds.
+	 */
+	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic) {
+		return getSingleRecord(consumer, topic, 60000);
+	}
+
+	/**
 	 * Poll the consumer, expecting a single record for the specified topic.
 	 * @param consumer the consumer.
 	 * @param topic the topic.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the record.
 	 * @throws org.junit.ComparisonFailure if exactly one record is not received.
 	 */
-	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic) {
-		ConsumerRecords<K, V> received = getRecords(consumer);
+	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
+		ConsumerRecords<K, V> received = getRecords(consumer, timeout);
 		assertThat(received.count()).as("Incorrect results returned", received.count()).isEqualTo(1);
 		return received.records(topic).iterator().next();
 	}
 
 	/**
+	 * Same as {@link #getRecords(Consumer, long)} with a timeout of 60 seconds.
+	 */
+	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer) {
+		return getRecords(consumer, 60000);
+	}
+
+	/**
 	 * Poll the consumer for records.
 	 * @param consumer the consumer.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the records.
 	 */
-	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer) {
+	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
 		logger.debug("Polling...");
-		ConsumerRecords<K, V> received = consumer.poll(60000);
+		ConsumerRecords<K, V> received = consumer.poll(timeout);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Received: " + received.count());
 		}
