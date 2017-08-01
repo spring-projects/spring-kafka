@@ -41,7 +41,7 @@ import org.springframework.util.Assert;
  * Kafka testing utilities.
  *
  * @author Gary Russell
- *
+ * @author Hugo Wood
  */
 public final class KafkaTestUtils {
 
