@@ -130,6 +130,7 @@ public final class KafkaTestUtils {
 	 * @param <V> the value type.
 	 * @return the record.
 	 * @throws org.junit.ComparisonFailure if exactly one record is not received.
+	 * @since 2.0
 	 */
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
 		ConsumerRecords<K, V> received = getRecords(consumer, timeout);
@@ -143,7 +144,7 @@ public final class KafkaTestUtils {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the records.
-	 * @see #getRecords(Consumer, long) 
+	 * @see #getRecords(Consumer, long)
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer) {
 		return getRecords(consumer, 60000);
@@ -156,6 +157,7 @@ public final class KafkaTestUtils {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the records.
+	 * @since 2.0
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
 		logger.debug("Polling...");
