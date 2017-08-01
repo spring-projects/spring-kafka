@@ -108,7 +108,14 @@ public final class KafkaTestUtils {
 	}
 
 	/**
-	 * Same as {@link #getSingleRecord(Consumer, String, long)} with a timeout of 60 seconds.
+	 * Poll the consumer, expecting a single record for the specified topic.
+	 * @param consumer the consumer.
+	 * @param topic the topic.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the record.
+	 * @throws org.junit.ComparisonFailure if exactly one record is not received.
+	 * @see #getSingleRecord(Consumer, String, long)
 	 */
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic) {
 		return getSingleRecord(consumer, topic, 60000);
@@ -131,7 +138,12 @@ public final class KafkaTestUtils {
 	}
 
 	/**
-	 * Same as {@link #getRecords(Consumer, long)} with a timeout of 60 seconds.
+	 * Poll the consumer for records.
+	 * @param consumer the consumer.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the records.
+	 * @see #getRecords(Consumer, long) 
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer) {
 		return getRecords(consumer, 60000);
