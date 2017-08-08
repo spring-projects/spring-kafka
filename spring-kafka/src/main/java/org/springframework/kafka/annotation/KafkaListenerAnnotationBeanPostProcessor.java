@@ -111,6 +111,8 @@ import org.springframework.util.StringUtils;
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		implements BeanPostProcessor, Ordered, BeanFactoryAware, SmartInitializingSingleton {
 
+	private static final String GENERATED_ID_PREFIX = "org.springframework.kafka.KafkaListenerEndpointContainer#";
+
 	/**
 	 * The bean name of the default {@link org.springframework.kafka.config.KafkaListenerContainerFactory}.
 	 */
@@ -411,7 +413,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return resolve(kafkaListener.id());
 		}
 		else {
-			return "org.springframework.kafka.KafkaListenerEndpointContainer#" + this.counter.getAndIncrement();
+			return GENERATED_ID_PREFIX + this.counter.getAndIncrement();
 		}
 	}
 
@@ -420,7 +422,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (StringUtils.hasText(kafkaListener.groupId())) {
 			groupId = resolveExpressionAsString(kafkaListener.groupId(), "groupId");
 		}
-		if (groupId == null && kafkaListener.idIsGroup()) {
+		if (groupId == null && kafkaListener.idIsGroup() && StringUtils.hasText(kafkaListener.id())) {
 			groupId = id;
 		}
 		return groupId;

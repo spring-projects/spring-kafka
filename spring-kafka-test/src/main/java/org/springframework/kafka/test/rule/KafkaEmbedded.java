@@ -74,7 +74,6 @@ import scala.collection.Set;
  * @author Artem Bilan
  * @author Gary Russell
  */
-@SuppressWarnings("serial")
 public class KafkaEmbedded extends ExternalResource implements KafkaRule, InitializingBean, DisposableBean {
 
 	private static final Log logger = LogFactory.getLog(KafkaEmbedded.class);

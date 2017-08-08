@@ -108,6 +108,8 @@ import org.springframework.util.concurrent.ListenableFuture;
 @DirtiesContext
 public class EnableKafkaIntegrationTests {
 
+	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
+
 	@Autowired
 	private Config config;
 
@@ -121,7 +123,8 @@ public class EnableKafkaIntegrationTests {
 			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
-			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28");
+			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
+			"annotated29");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -153,6 +156,15 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	private List<?> quxGroup;
+
+	@Test
+	public void testAnonymous() {
+		MessageListenerContainer container = this.registry
+				.getListenerContainer("org.springframework.kafka.KafkaListenerEndpointContainer#0");
+		List<?> containers = KafkaTestUtils.getPropertyValue(container, "containers", List.class);
+		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumerGroupId"))
+				.isEqualTo(DEFAULT_TEST_GROUP_ID);
+	}
 
 	@Test
 	public void testSimple() throws Exception {
@@ -201,6 +213,9 @@ public class EnableKafkaIntegrationTests {
 				"listenerConsumer.consumer"));
 		assertThat(this.quxGroup.size()).isEqualTo(1);
 		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
+		List<?> containers = KafkaTestUtils.getPropertyValue(manualContainer, "containers", List.class);
+		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumerGroupId"))
+			.isEqualTo("qux");
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -691,7 +706,7 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testAnnot", "false", embeddedKafka);
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
@@ -1158,6 +1173,10 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "ackWithAutoContainer", topics = "annotated28", errorHandler = "badAckConfigErrorHandler")
 		public void ackWithAutoContainerListener(String payload, Acknowledgment ack) {
 			// empty
+		}
+
+		@KafkaListener(topics = "annotated29")
+		public void anonymousListener(String in) {
 		}
 
 		@Override

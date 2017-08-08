@@ -33,6 +33,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -293,7 +294,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final TransactionTemplate transactionTemplate;
 
-		private final String consumerGroupId = this.containerProperties.getGroupId();
+		private final String consumerGroupId = this.containerProperties.getGroupId() == null
+				? (String) KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
+						.get(ConsumerConfig.GROUP_ID_CONFIG)
+				: this.containerProperties.getGroupId();
 
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
@@ -310,7 +314,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 					"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
 			final Consumer<K, V> consumer = KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
-					this.containerProperties.getGroupId(), KafkaMessageListenerContainer.this.clientIdSuffix);
+					this.consumerGroupId, KafkaMessageListenerContainer.this.clientIdSuffix);
 			this.consumer = consumer;
 
 			ConsumerRebalanceListener rebalanceListener = createRebalanceListener(consumer);
