@@ -270,8 +270,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					+ "] - generating response message for it");
 		}
 		Object result = resultArg instanceof ResultHolder ? ((ResultHolder) resultArg).result : resultArg;
-		Assert.state(this.replyTemplate != null, "a KafkaTemplate is required to support replies");
 		String replyTopic = evaluateReplyTopic(request, source, resultArg);
+		Assert.state(replyTopic == null || this.replyTemplate != null,
+				"a KafkaTemplate is required to support replies");
 		sendResponse(result, replyTopic);
 	}
 
@@ -299,8 +300,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	@SuppressWarnings("unchecked")
 	protected void sendResponse(Object result, String topic) {
-		if (topic == null && this.logger.isDebugEnabled()) {
-			this.logger.debug("No replyTopic to handle the reply: " + result);
+		if (topic == null) {
+			if (this.logger.isDebugEnabled()) {
+				this.logger.debug("No replyTopic to handle the reply: " + result);
+			}
 		}
 		else {
 			if (result instanceof Collection) {

@@ -716,7 +716,7 @@ public Collection<String> replyingBatchListener(List<String> in) {
     ...
 }
 
-@KafkaListener(topics = "annotated23")
+@KafkaListener(topics = "annotated23", errorHandler = "replyErrorHandler")
 @SendTo("annotated23reply") // static reply topic definition
 public String replyingListenerWithErrorHandler(String in) {
     ...
@@ -760,6 +760,28 @@ public KafkaTemplate<String, String> myReplyingTemplate() {
     };
 }
 ----
+
+NOTE: You can annotate a `@KafkaListener` method with `@SendTo` even if no result is returned.
+This is to allow the configuration of an `errorHandler` that can forward information about a failed message delivery to some topic.
+
+[source, java]
+----
+@KafkaListener(id = "voidListenerWithReplyingErrorHandler", topics = "someTopic",
+        errorHandler = "voidSendToErrorHandler")
+@SendTo("failures")
+public void voidListenerWithReplyingErrorHandler(String in) {
+    throw new RuntimeException("fail");
+}
+
+@Bean
+public KafkaListenerErrorHandler voidSendToErrorHandler() {
+    return (m, e) -> {
+        return ... // some information about the failure and input data
+    };
+}
+----
+
+See <<annotation-error-handling>> for more information.
 
 ===== Filtering Messages
 

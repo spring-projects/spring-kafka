@@ -124,7 +124,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-			"annotated29");
+			"annotated29", "annotated30", "annotated30reply");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -503,6 +503,20 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
+	public void testVoidListenerWithReplyingErrorHandler() throws Exception {
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testVoidWithErrorHandlerReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated30reply");
+		template.send("annotated30", 0, "FoO");
+		template.flush();
+		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated30reply");
+		assertThat(reply.value()).isEqualTo("baz");
+		consumer.close();
+	}
+
+	@Test
 	public void testReplyingBatchListenerWithErrorHandler() throws Exception {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testErrorHandlerBatchReplying");
@@ -606,6 +620,15 @@ public class EnableKafkaIntegrationTests {
 				this.globalErrorThrowable = t;
 				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
 			});
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+				withNoReplyTemplateContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
 			return factory;
 		}
 
@@ -887,7 +910,14 @@ public class EnableKafkaIntegrationTests {
 			return (m, e) -> {
 				this.badAckException = e.getCause();
 				this.badAckLatch.countDown();
-				return null;
+				return "baz";
+			};
+		}
+
+		@Bean
+		public KafkaListenerErrorHandler voidSendToErrorHandler() {
+			return (m, e) -> {
+				return "baz";
 			};
 		}
 
@@ -1143,6 +1173,13 @@ public class EnableKafkaIntegrationTests {
 			throw new RuntimeException("return this");
 		}
 
+		@KafkaListener(id = "voidListenerWithReplyingErrorHandler", topics = "annotated30",
+				errorHandler = "voidSendToErrorHandler")
+		@SendTo("annotated30reply")
+		public void voidListenerWithReplyingErrorHandler(String in) {
+			throw new RuntimeException("fail");
+		}
+
 		@KafkaListener(id = "replyingBatchListenerWithErrorHandler", topics = "annotated24",
 				containerFactory = "batchFactory", errorHandler = "replyBatchErrorHandler")
 		@SendTo("annotated24reply")
@@ -1170,7 +1207,8 @@ public class EnableKafkaIntegrationTests {
 			}
 		}
 
-		@KafkaListener(id = "ackWithAutoContainer", topics = "annotated28", errorHandler = "badAckConfigErrorHandler")
+		@KafkaListener(id = "ackWithAutoContainer", topics = "annotated28", errorHandler = "badAckConfigErrorHandler",
+				containerFactory = "withNoReplyTemplateContainerFactory")
 		public void ackWithAutoContainerListener(String payload, Acknowledgment ack) {
 			// empty
 		}
