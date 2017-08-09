@@ -10,6 +10,12 @@ See <<transactions>> for more information.
 The 0.11.0.0 client library added support for message headers; these can now be mapped to/from `spring-messaging` `MessageHeaders`.
 See <<headers>> for more information.
 
+==== Creating Topics
+
+The 0.11.0.0 client library provides an `AdminClient` which can be used to create topics.
+The `KafkaAdmin` uses this client to automatically add topics defined as `@Bean` s.
+
+
 ==== Support for Kafka timestamps
 
 `KafkaTemplate` now supports API to add records with timestamps.

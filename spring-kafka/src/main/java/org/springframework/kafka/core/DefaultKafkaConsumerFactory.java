@@ -37,8 +37,7 @@ import org.apache.kafka.common.serialization.Deserializer;
  * @author Gary Russell
  * @author Murali Reddy
  */
-@SuppressWarnings("deprecation")
-public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>, ClientIdSuffixAware<K, V> {
+public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
 	private final Map<String, Object> configs;
 
