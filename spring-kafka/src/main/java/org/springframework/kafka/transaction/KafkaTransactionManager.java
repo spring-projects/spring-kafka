@@ -123,7 +123,6 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		KafkaResourceHolder<K, V> resourceHolder = null;
 		try {
 			resourceHolder = ProducerFactoryUtils.getTransactionalResourceHolder(getProducerFactory());
-			resourceHolder.getProducer().beginTransaction();
 			if (logger.isDebugEnabled()) {
 				logger.debug("Created Kafka transaction on producer [" + resourceHolder.getProducer() + "]");
 			}
@@ -133,7 +132,6 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 			if (timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
 				txObject.getResourceHolder().setTimeoutInSeconds(timeout);
 			}
-			TransactionSynchronizationManager.bindResource(getProducerFactory(), txObject.getResourceHolder());
 		}
 		catch (Exception ex) {
 			if (resourceHolder != null) {
