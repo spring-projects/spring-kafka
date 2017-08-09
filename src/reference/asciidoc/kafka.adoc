@@ -179,6 +179,48 @@ You can provide a listener container with a `KafkaTransactionManager` instance; 
 If the listener successfully processes the record (or records when using a `BatchMessageListener`), the container will send the offset(s) to the transaction using `producer.sendOffsetsToTransaction()`), before the transaction manager commits the transaction.
 If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back records will be retrieved on the next poll.
 
+====== Transaction Synchronization
+
+If you need to synchronize a Kafka transaction with some other transaction; simply configure the listener container with the appropriate transaction manager (one that supports synchronization, such as the `DataSourceTransactionManager`).
+Any operations performed on a **transactional** `KafkaTemplate` from the listener will participate in a single transaction.
+The Kafka transaction will be committed (or rolled back) immediately after the constrolling transaction.
+Before exiting the listener, you should invoke one of the template's `sendOffsetsToTransaction` methods.
+For convenience, the listener container binds its consumer group id to the thread so, generally, you can use the first method:
+
+[source, java]
+----
+void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets);
+
+void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId);
+----
+
+For example:
+
+[source, java]
+----
+@Bean
+KafkaMessageListenerContainer container(ConsumerFactory<String, String> cf,
+            final KafkaTemplate template) {
+    ContainerProperties props = new ContainerProperties("foo");
+    props.setGroupId("group");
+    props.setTransactionManager(new SomeOtherTransactionManager());
+    ...
+    props.setMessageListener((MessageListener<String, String>) m -> {
+        template.send("foo", "bar");
+        template.send("baz", "qux");
+        template.sendOffsetsToTransaction(
+            Collections.singletonMap(new TopicPartition(m.topic(), m.partition()),
+                new OffsetAndMetadata(m.offset() + 1)));
+    });
+    return new KafkaMessageListenerContainer<>(cf, props);
+}
+----
+
+NOTE: The offset to be committed is one greater than the offset of the record(s) processed by the listener.
+
+IMPORTANT: This should only be called when using transaction synchronization.
+When a listener container is configured to use a `KafkaTransactionManager`, it will take care of sending the offsets to the transaction.
+
 ====== KafkaTemplate Local Transactions
 
 You can use the `KafkaTemplate` to execute a series of operations within a local transaction.
@@ -195,7 +237,7 @@ boolean result = template.executeInTransaction(t -> {
 The argument in the callback is the template itself (`this`).
 If the callback exits normally, the transaction is committed; if an exception is thrown, the transaction is rolled-back.
 
-NOTE: If there is a `KafkaTransactionManager` transaction in process, it will not be used; a new "nested" transaction is used.
+NOTE: If there is a `KafkaTransactionManager` (or synchronized) transaction in process, it will not be used; a new "nested" transaction is used.
 
 ==== Receiving Messages
 

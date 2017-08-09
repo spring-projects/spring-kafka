@@ -65,6 +65,10 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionException;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 
 /**
  * @author Gary Russell
@@ -199,6 +203,65 @@ public class TransactionalContainerTests {
 		verify(pf, times(1)).createProducer();
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	public void testConsumeAndProduceTransactionExternalTM() throws Exception {
+		Consumer consumer = mock(Consumer.class);
+		final TopicPartition topicPartition = new TopicPartition("foo", 0);
+		willAnswer(i -> {
+			((ConsumerRebalanceListener) i.getArgument(1))
+					.onPartitionsAssigned(Collections.singletonList(topicPartition));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
+		final ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(topicPartition,
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))));
+		final AtomicBoolean done = new AtomicBoolean();
+		willAnswer(i -> {
+			if (done.compareAndSet(false, true)) {
+				return records;
+			}
+			else {
+				Thread.sleep(500);
+				return null;
+			}
+		}).given(consumer).poll(anyLong());
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		willReturn(consumer).given(cf).createConsumer("group", null);
+		Producer producer = mock(Producer.class);
+		final CountDownLatch commitLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			commitLatch.countDown();
+			return null;
+		}).given(producer).commitTransaction();
+		final ProducerFactory pf = mock(ProducerFactory.class);
+		given(pf.transactionCapable()).willReturn(true);
+		given(pf.createProducer()).willReturn(producer);
+		ContainerProperties props = new ContainerProperties("foo");
+		props.setGroupId("group");
+		props.setTransactionManager(new SomeOtherTransactionManager());
+		final KafkaTemplate template = new KafkaTemplate(pf);
+		props.setMessageListener((MessageListener<String, String>) m -> {
+			template.send("bar", "baz");
+			template.sendOffsetsToTransaction(Collections.singletonMap(new TopicPartition(m.topic(), m.partition()),
+					new OffsetAndMetadata(m.offset() + 1)));
+		});
+		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
+		container.setBeanName("commit");
+		container.start();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		InOrder inOrder = inOrder(producer);
+		inOrder.verify(producer).beginTransaction();
+		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+		inOrder.verify(producer).send(captor.capture(), any(Callback.class));
+		assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
+		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+				new OffsetAndMetadata(1)), "group");
+		inOrder.verify(producer).commitTransaction();
+		inOrder.verify(producer).close();
+		container.stop();
+		verify(pf, times(1)).createProducer();
+	}
+
 	@Test
 	public void testRollbackRecord() throws Exception {
 		logger.info("Start testRollbackRecord");
@@ -268,6 +331,31 @@ public class TransactionalContainerTests {
 		assertThat(consumer.position(new TopicPartition(topic1, 0))).isEqualTo(1);
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
+	}
+
+	@SuppressWarnings("serial")
+	public static class SomeOtherTransactionManager extends AbstractPlatformTransactionManager {
+
+		@Override
+		protected Object doGetTransaction() throws TransactionException {
+			return new Object();
+		}
+
+		@Override
+		protected void doBegin(Object transaction, TransactionDefinition definition) throws TransactionException {
+			//noop
+		}
+
+		@Override
+		protected void doCommit(DefaultTransactionStatus status) throws TransactionException {
+			//noop
+		}
+
+		@Override
+		protected void doRollback(DefaultTransactionStatus status) throws TransactionException {
+			//noop
+		}
+
 	}
 
 }

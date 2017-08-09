@@ -19,10 +19,12 @@ package org.springframework.kafka.core;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
@@ -172,6 +174,28 @@ public interface KafkaOperations<K, V> {
 	 * Flush the producer.
 	 */
 	void flush();
+
+	/**
+	 * When running in a transaction (usually synchronized with some other transaction),
+	 * send the consumer offset(s) to the transaction. The group id is obtained from
+	 * {@link ProducerFactoryUtils#getConsumerGroupId()}. It is not necessary to call
+	 * this method if the operations are invoked on a listener container thread since the
+	 * container will take care of sending the offsets to the transaction.
+	 * @param offsets The offsets.
+	 * @since 1.3
+	 */
+	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets);
+
+	/**
+	 * When running in a transaction (usually synchronized with some other transaction),
+	 * send the consumer offset(s) to the transaction. It is not necessary to call this
+	 * method if the operations are invoked on a listener container thread since the
+	 * container will take care of sending the offsets to the transaction.
+	 * @param offsets The offsets.
+	 * @param consumerGroupId the consumer's group.id.
+	 * @since 1.3
+	 */
+	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId);
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.

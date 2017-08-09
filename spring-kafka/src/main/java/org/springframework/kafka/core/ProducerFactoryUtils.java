@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import org.apache.kafka.clients.producer.Producer;
+
 import org.springframework.transaction.support.ResourceHolderSynchronization;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -31,6 +33,8 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  */
 public final class ProducerFactoryUtils {
+
+	private static ThreadLocal<String> groupIds = new ThreadLocal<>();
 
 	private ProducerFactoryUtils() {
 		super();
@@ -52,33 +56,54 @@ public final class ProducerFactoryUtils {
 		KafkaResourceHolder<K, V> resourceHolder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
 				.getResource(producerFactory);
 		if (resourceHolder == null) {
-			resourceHolder = new KafkaResourceHolder<K, V>(producerFactory.createProducer());
+			Producer<K, V> producer = producerFactory.createProducer();
+			producer.beginTransaction();
+			resourceHolder = new KafkaResourceHolder<K, V>(producer);
 			bindResourceToTransaction(resourceHolder, producerFactory);
 		}
 		return resourceHolder;
 	}
 
 	public static <K, V> void releaseResources(KafkaResourceHolder<K, V> resourceHolder) {
-		if (resourceHolder == null || resourceHolder.isSynchronizedWithTransaction()) {
-			return;
+		if (resourceHolder != null) {
+			resourceHolder.getProducer().close();
 		}
-		resourceHolder.getProducer().close();
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <K, V> KafkaResourceHolder<K, V> bindResourceToTransaction(KafkaResourceHolder<K, V> resourceHolder,
+	/**
+	 * Set the group id for the consumer bound to this thread.
+	 * @param groupId the group id.
+	 * @since 1.3
+	 */
+	public static void setConsumerGroupId(String groupId) {
+		groupIds.set(groupId);
+	}
+
+	/**
+	 * Get the group id for the consumer bound to this thread.
+	 * @return the group id.
+	 * @since 1.3
+	 */
+	public static String getConsumerGroupId() {
+		return groupIds.get();
+	}
+
+	/**
+	 * Clear the group id for the consumer bound to this thread.
+	 * @since 1.3
+	 */
+	public static void clearConsumerGroupId() {
+		groupIds.remove();
+	}
+
+	private static <K, V> void bindResourceToTransaction(KafkaResourceHolder<K, V> resourceHolder,
 			ProducerFactory<K, V> connectionFactory) {
-		if (TransactionSynchronizationManager.hasResource(connectionFactory)
-				|| !TransactionSynchronizationManager.isActualTransactionActive()) {
-			return (KafkaResourceHolder<K, V>) TransactionSynchronizationManager.getResource(connectionFactory);
-		}
 		TransactionSynchronizationManager.bindResource(connectionFactory, resourceHolder);
 		resourceHolder.setSynchronizedWithTransaction(true);
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {
-			TransactionSynchronizationManager.registerSynchronization(new KafkaResourceSynchronization<K, V>(resourceHolder,
-					connectionFactory));
+			TransactionSynchronizationManager
+					.registerSynchronization(new KafkaResourceSynchronization<K, V>(resourceHolder, connectionFactory));
 		}
-		return resourceHolder;
 	}
 
 	/**

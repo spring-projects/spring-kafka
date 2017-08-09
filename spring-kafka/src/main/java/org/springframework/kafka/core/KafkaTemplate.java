@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -28,6 +29,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
@@ -267,6 +269,23 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		}
 		finally {
 			closeProducer(producer, inTransaction());
+		}
+	}
+
+
+	@Override
+	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets) {
+		sendOffsetsToTransaction(offsets, ProducerFactoryUtils.getConsumerGroupId());
+	}
+
+	@Override
+	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) {
+		@SuppressWarnings("unchecked")
+		KafkaResourceHolder<K, V> resourceHolder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
+				.getResource(this.producerFactory);
+		Assert.isTrue(resourceHolder != null, "No transaction in process");
+		if (resourceHolder.getProducer() != null) {
+			resourceHolder.getProducer().sendOffsetsToTransaction(offsets, consumerGroupId);
 		}
 	}
 
