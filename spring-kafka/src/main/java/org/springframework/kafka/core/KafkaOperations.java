@@ -178,7 +178,7 @@ public interface KafkaOperations<K, V> {
 	/**
 	 * When running in a transaction (usually synchronized with some other transaction),
 	 * send the consumer offset(s) to the transaction. The group id is obtained from
-	 * {@link ProducerFactoryUtils#getContainerGroupId()}. It is not necessary to call
+	 * {@link ProducerFactoryUtils#getConsumerGroupId()}. It is not necessary to call
 	 * this method if the operations are invoked on a listener container thread since the
 	 * container will take care of sending the offsets to the transaction.
 	 * @param offsets The offsets.

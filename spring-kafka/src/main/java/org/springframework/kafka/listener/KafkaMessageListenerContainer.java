@@ -536,7 +536,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				((ConsumerSeekAware) this.genericListener).registerSeekCallback(this);
 			}
 			if (this.transactionManager != null) {
-				ProducerFactoryUtils.setContainerGroupId(this.consumerGroupId);
+				ProducerFactoryUtils.setConsumerGroupId(this.consumerGroupId);
 			}
 			this.count = 0;
 			this.last = System.currentTimeMillis();
@@ -593,7 +593,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 				}
 			}
-			ProducerFactoryUtils.clearContainerGroupId();
+			ProducerFactoryUtils.clearConsumerGroupId();
 			if (!this.fatalError) {
 				if (this.kafkaTxManager == null) {
 					commitPendingAcks();

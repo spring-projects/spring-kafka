@@ -275,7 +275,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	@Override
 	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets) {
-		sendOffsetsToTransaction(offsets, ProducerFactoryUtils.getContainerGroupId());
+		sendOffsetsToTransaction(offsets, ProducerFactoryUtils.getConsumerGroupId());
 	}
 
 	@Override

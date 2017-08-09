@@ -75,7 +75,7 @@ public final class ProducerFactoryUtils {
 	 * @param groupId the group id.
 	 * @since 1.3
 	 */
-	public static void setContainerGroupId(String groupId) {
+	public static void setConsumerGroupId(String groupId) {
 		groupIds.set(groupId);
 	}
 
@@ -84,7 +84,7 @@ public final class ProducerFactoryUtils {
 	 * @return the group id.
 	 * @since 1.3
 	 */
-	public static String getContainerGroupId() {
+	public static String getConsumerGroupId() {
 		return groupIds.get();
 	}
 
@@ -92,7 +92,7 @@ public final class ProducerFactoryUtils {
 	 * Clear the group id for the consumer bound to this thread.
 	 * @since 1.3
 	 */
-	public static void clearContainerGroupId() {
+	public static void clearConsumerGroupId() {
 		groupIds.remove();
 	}
 
