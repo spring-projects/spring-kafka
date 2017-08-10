@@ -102,11 +102,11 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 			this.headerMapper.toHeaders(record.headers(), rawHeaders);
 		}
 		else {
-			if (record.headers().iterator().hasNext() && logger.isDebugEnabled()) {
+			if (logger.isDebugEnabled()) {
 				logger.debug(
-					"Headers are present, but no header mapper is available; "
-					+ "Jackson is required for the default mapper; headers are not mapped but provided raw in "
-					+ KafkaHeaders.NATIVE_HEADERS);
+						"No header mapper is available; Jackson is required for the default mapper; "
+						+ "headers (if present) are not mapped but provided raw in "
+						+ KafkaHeaders.NATIVE_HEADERS);
 			}
 			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
 		}
