@@ -18,6 +18,7 @@ package org.springframework.kafka.core;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +35,9 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.context.SmartLifecycle;
 
 /**
  * An admin that delegates to an {@link AdminClient} to create topics defined
@@ -47,31 +47,19 @@ import org.springframework.context.SmartLifecycle;
  * @since 1.3
  *
  */
-public class KafkaAdmin implements ApplicationContextAware, SmartLifecycle, DisposableBean {
+public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSingleton {
 
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
 	private final Log logger = LogFactory.getLog(KafkaAdmin.class);
 
-	private final AdminClient adminClient;
-
-	private boolean running;
-
-	private int phase;
-
-	private boolean autoStartup = true;
+	private final Map<String, Object> config;
 
 	private ApplicationContext applicationContext;
 
 	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
-	/**
-	 * Create an instance with the provided {@link AdminClient}.
-	 * @param adminClient the client.
-	 */
-	public KafkaAdmin(AdminClient adminClient) {
-		this.adminClient = adminClient;
-	}
+	private boolean fatalIfBrokerNotAvailable;
 
 	/**
 	 * Create an instance with an {@link AdminClient} created from the supplied
@@ -79,28 +67,12 @@ public class KafkaAdmin implements ApplicationContextAware, SmartLifecycle, Disp
 	 * @param config the configuration.
 	 */
 	public KafkaAdmin(Map<String, Object> config) {
-		this.adminClient = AdminClient.create(config);
+		this.config = new HashMap<>(config);
 	}
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
-	}
-
-	public AdminClient getAdminClient() {
-		return this.adminClient;
-	}
-
-	public void setRunning(boolean running) {
-		this.running = running;
-	}
-
-	public void setPhase(int phase) {
-		this.phase = phase;
-	}
-
-	public void setAutoStartup(boolean autoStartup) {
-		this.autoStartup = autoStartup;
 	}
 
 	/**
@@ -111,62 +83,74 @@ public class KafkaAdmin implements ApplicationContextAware, SmartLifecycle, Disp
 		this.closeTimeout = closeTimeout;
 	}
 
+	/**
+	 * Set to true if you want the application context to fail to load if we are unable
+	 * to connect to the broker during initialization, to check/add topics.
+	 * @param fatalIfBrokerNotAvailable true to fail.
+	 */
+	public void setFatalIfBrokerNotAvailable(boolean fatalIfBrokerNotAvailable) {
+		this.fatalIfBrokerNotAvailable = fatalIfBrokerNotAvailable;
+	}
+
+	/**
+	 * Get an unmodifiable copy of this admin's configuration.
+	 * @return the configuration map.
+	 */
+	public Map<String, Object> getConfig() {
+		return Collections.unmodifiableMap(this.config);
+	}
+
 	@Override
-	public synchronized void start() {
-		if (!this.running) {
-			if (this.applicationContext != null) {
-				addTopicsIfNeeded(this.applicationContext.getBeansOfType(NewTopic.class, false, false).values());
+	public void afterSingletonsInstantiated() {
+		if (!initialize()) {
+			if (this.fatalIfBrokerNotAvailable) {
+				throw new IllegalStateException("Could not configure topics");
 			}
-			this.running = true;
 		}
 	}
 
-	@Override
-	public synchronized void stop() {
-		if (this.running) {
-			this.running = false;
+	/**
+	 * Call this method to check/add topics; this might be needed if the broker was not
+	 * available when the application context was initialized, and
+	 * {@link #setFatalIfBrokerNotAvailable(boolean) fatalIfBrokenNotAvailable} is false.
+	 * @return true if successful.
+	 */
+	public final boolean initialize() {
+		AdminClient adminClient = null;
+		try {
+			adminClient = AdminClient.create(this.config);
 		}
+		catch (Exception e) {
+			logger.error("Failed to create AdminClient", e);
+		}
+		if (adminClient != null) {
+			try {
+				if (this.applicationContext != null) {
+					addTopicsIfNeeded(adminClient,
+							this.applicationContext.getBeansOfType(NewTopic.class, false, false).values());
+				}
+				return true;
+			}
+			finally {
+				adminClient.close(this.closeTimeout, TimeUnit.SECONDS);
+			}
+		}
+		return false;
 	}
 
-	@Override
-	public boolean isRunning() {
-		return this.running;
-	}
-
-	@Override
-	public int getPhase() {
-		return this.phase;
-	}
-
-	@Override
-	public boolean isAutoStartup() {
-		return this.autoStartup;
-	}
-
-	@Override
-	public void stop(Runnable callback) {
-		stop();
-		callback.run();
-	}
-
-	@Override
-	public void destroy() throws Exception {
-		this.adminClient.close(this.closeTimeout, TimeUnit.SECONDS);
-	}
-
-	private void addTopicsIfNeeded(Collection<NewTopic> topics) {
+	private void addTopicsIfNeeded(AdminClient adminClient, Collection<NewTopic> topics) {
 		if (topics.size() > 0) {
 			Map<String, NewTopic> topicNameToTopic = new HashMap<>();
 			topics.stream().forEach(t -> topicNameToTopic.compute(t.name(), (k, v) -> v = t));
-			DescribeTopicsResult topicInfo = this.adminClient
+			DescribeTopicsResult topicInfo = adminClient
 					.describeTopics(topics.stream().map(t -> t.name()).collect(Collectors.toList()));
 			List<NewTopic> topicsToAdd = new ArrayList<>();
 			topicInfo.values().forEach((n, f) -> {
 				try {
 					TopicDescription topicDescription = f.get();
 					if (topicNameToTopic.get(n).numPartitions() != topicDescription.partitions().size()) {
-						if (logger.isDebugEnabled()) {
-							logger.debug(String.format(
+						if (logger.isInfoEnabled()) {
+							logger.info(String.format(
 									"Topic '%s' exists but has a different partition count: %d not %d", n,
 									topicDescription.partitions().size(), topicNameToTopic.get(n).numPartitions()));
 						}
@@ -180,7 +164,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartLifecycle, Disp
 				}
 			});
 			if (topicsToAdd.size() > 0) {
-				CreateTopicsResult topicResults = this.adminClient.createTopics(topicsToAdd);
+				CreateTopicsResult topicResults = adminClient.createTopics(topicsToAdd);
 				try {
 					topicResults.all().get();
 				}

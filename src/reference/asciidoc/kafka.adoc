@@ -2,6 +2,38 @@
 [[kafka]]
 === Using Spring for Apache Kafka
 
+==== Configuring Topics
+
+If you define a `KafkaAdmin` bean in your application context, it can automatically add topics to the broker.
+Simply add a `NewTopic` `@Bean` for each topic to the application context.
+
+[source, java]
+----
+@Bean
+public KafkaAdmin admin() {
+    Map<String, Object> configs = new HashMap<>();
+    configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+            StringUtils.arrayToCommaDelimitedString(kafkaEmbedded().getBrokerAddresses()));
+    return new KafkaAdmin(configs);
+}
+
+@Bean
+public NewTopic topic1() {
+    return new NewTopic("foo", 10, (short) 2);
+}
+
+@Bean
+public NewTopic topic2() {
+    return new NewTopic("bar", 10, (short) 2);
+}
+----
+
+By default, if the broker is not available, a message will be logged, but the context will continue to load.
+You can programmatically invoke the admin's `initialize()` method to try again later.
+If you wish this condition to be considered fatal, set the admin's `fatalIfBrokerNotAvailable` property to `true` and the context will fail to initialize.
+
+NOTE: The admin does not alter existing topics; it will log (INFO) if the number of partitions don't match.
+
 ==== Sending Messages
 
 [[kafka-template]]

@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -49,9 +50,10 @@ public class KafkAdminTests {
 
 	@Test
 	public void testAddTopics() throws Exception {
-		AdminClient adminClient = this.admin.getAdminClient();
+		AdminClient adminClient = AdminClient.create(this.admin.getConfig());
 		DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList(new String[] { "foo", "bar" }));
 		topics.all().get();
+		adminClient.close(10, TimeUnit.SECONDS);
 	}
 
 	@Configuration
