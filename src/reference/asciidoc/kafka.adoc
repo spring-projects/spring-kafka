@@ -1112,7 +1112,7 @@ To trust all packages use `mapper.addTrustedPackages("*")`.
 
 The `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter` by default, as long as Jackson is on the class path.
 
-With the batch converter, the converted headers are available in the `KafkaHeaders.BATCH_CONVERTED_HEADERS` as a `List<Map<String, Object>` where the map in a position of the list corresponds to the data position in the payload.
+With the batch converter, the converted headers are available in the `KafkaHeaders.BATCH_CONVERTED_HEADERS` as a `List<Map<String, Object>>` where the map in a position of the list corresponds to the data position in the payload.
 
 If the converter has no converter (either because Jackson is not present, or it is explicitly set to `null`), the headers from the consumer record are provided unconverted in the `KafkaHeaders.NATIVE_HEADERS` header (a `Headers` object, or a `List<Headers>` in the case of the batch converter, where the position in the list corresponds to the data position in the payload).
 

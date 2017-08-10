@@ -105,6 +105,6 @@ public abstract class KafkaHeaders {
 	 * listeners; the map at a particular list position corresponds to the data in the
 	 * payload list position.
 	 */
-	public static final String BATCH_CONVERTED_HEADERS = PREFIX + "convertedHeaders";
+	public static final String BATCH_CONVERTED_HEADERS = PREFIX + "batchConvertedHeaders";
 
 }
