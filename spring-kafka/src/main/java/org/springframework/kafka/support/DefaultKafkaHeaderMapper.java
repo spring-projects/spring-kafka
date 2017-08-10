@@ -77,6 +77,8 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_TOPIC),
 		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TIMESTAMP),
 		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TIMESTAMP_TYPE),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.BATCH_CONVERTED_HEADERS),
+		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.NATIVE_HEADERS),
 		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TOPIC));
 
 	private final ObjectMapper objectMapper;
