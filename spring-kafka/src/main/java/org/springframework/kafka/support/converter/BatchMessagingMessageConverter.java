@@ -132,6 +132,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 			rawHeaders.put(KafkaHeaders.CONSUMER, consumer);
 		}
 
+		boolean logged = false;
 		for (ConsumerRecord<?, ?> record : records) {
 			payloads.add(extractAndConvertValue(record, type));
 			keys.add(record.key());
@@ -146,11 +147,12 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				convertedHeaders.add(converted);
 			}
 			else {
-				if (record.headers().iterator().hasNext() && logger.isDebugEnabled()) {
+				if (record.headers().iterator().hasNext() && logger.isDebugEnabled() && !logged) {
 					logger.debug(
 						"Headers are present, but no header mapper is available; "
 						+ "Jackson is required for the default mapper; headers are not mapped but provided raw in "
 						+ KafkaHeaders.NATIVE_HEADERS);
+					logged = true;
 				}
 				natives.add(record.headers());
 			}
