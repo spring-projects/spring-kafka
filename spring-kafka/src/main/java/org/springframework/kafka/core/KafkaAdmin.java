@@ -32,7 +32,6 @@ import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
-import org.apache.kafka.common.acl.AclBinding;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
@@ -117,8 +116,6 @@ public class KafkaAdmin implements ApplicationContextAware, SmartLifecycle, Disp
 		if (!this.running) {
 			if (this.applicationContext != null) {
 				addTopicsIfNeeded(this.applicationContext.getBeansOfType(NewTopic.class, false, false).values());
-				addAclBindingsIfNeeded(
-						this.applicationContext.getBeansOfType(AclBinding.class, false, false).values());
 			}
 			this.running = true;
 		}
@@ -196,10 +193,6 @@ public class KafkaAdmin implements ApplicationContextAware, SmartLifecycle, Disp
 				}
 			}
 		}
-	}
-
-	private void addAclBindingsIfNeeded(Collection<AclBinding> bindings) {
-		// TODO (or not)
 	}
 
 }
