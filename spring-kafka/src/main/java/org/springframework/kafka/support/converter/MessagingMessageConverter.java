@@ -19,6 +19,8 @@ package org.springframework.kafka.support.converter;
 import java.lang.reflect.Type;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -26,6 +28,7 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
@@ -47,11 +50,19 @@ import org.springframework.messaging.support.MessageBuilder;
  */
 public class MessagingMessageConverter implements RecordMessageConverter {
 
+	protected final Log logger = LogFactory.getLog(getClass());
+
 	private boolean generateMessageId = false;
 
 	private boolean generateTimestamp = false;
 
-	private KafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
+	private KafkaHeaderMapper headerMapper;
+
+	public MessagingMessageConverter() {
+		if (JacksonPresent.isJackson2Present()) {
+			this.headerMapper = new DefaultKafkaHeaderMapper();
+		}
+	}
 
 	/**
 	 * Generate {@link Message} {@code ids} for produced messages. If set to {@code false},
@@ -87,7 +98,18 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 				this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
-		this.headerMapper.toHeaders(record.headers(), rawHeaders);
+		if (this.headerMapper != null) {
+			this.headerMapper.toHeaders(record.headers(), rawHeaders);
+		}
+		else {
+			if (record.headers().iterator().hasNext() && logger.isWarnEnabled()) {
+				logger.warn(
+					"Headers are present, but no header mapper is available; "
+					+ "Jackson is required for the default mapper; headers are not mapped but provided raw in "
+					+ KafkaHeaders.NATIVE_HEADERS);
+			}
+			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
+		}
 		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, record.key());
 		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, record.topic());
 		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, record.partition());

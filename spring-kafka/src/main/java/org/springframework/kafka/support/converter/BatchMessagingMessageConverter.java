@@ -18,14 +18,21 @@ package org.springframework.kafka.support.converter;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Headers;
 
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.JacksonPresent;
+import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
@@ -48,9 +55,19 @@ import org.springframework.messaging.support.MessageBuilder;
  */
 public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
+	protected final Log logger = LogFactory.getLog(getClass());
+
 	private boolean generateMessageId = false;
 
 	private boolean generateTimestamp = false;
+
+	private KafkaHeaderMapper headerMapper;
+
+	public BatchMessagingMessageConverter() {
+		if (JacksonPresent.isJackson2Present()) {
+			this.headerMapper = new DefaultKafkaHeaderMapper();
+		}
+	}
 
 	/**
 	 * Generate {@link Message} {@code ids} for produced messages. If set to {@code false},
@@ -70,6 +87,15 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		this.generateTimestamp = generateTimestamp;
 	}
 
+	/**
+	 * Set the header mapper to map headers.
+	 * @param headerMapper the mapper.
+	 * @since 1.3
+	 */
+	public void setHeaderMapper(KafkaHeaderMapper headerMapper) {
+		this.headerMapper = headerMapper;
+	}
+
 	@Override
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer, Type type) {
@@ -84,12 +110,20 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		List<Long> offsets = new ArrayList<>();
 		List<String> timestampTypes = new ArrayList<>();
 		List<Long> timestamps = new ArrayList<>();
+		List<Map<String, Object>> convertedHeaders = new ArrayList<>();
+		List<Headers> natives = new ArrayList<>();
 		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, keys);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topics);
 		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, partitions);
 		rawHeaders.put(KafkaHeaders.OFFSET, offsets);
 		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampTypes);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamps);
+		if (this.headerMapper != null) {
+			rawHeaders.put(KafkaHeaders.BATCH_CONVERTED_HEADERS, convertedHeaders);
+		}
+		else {
+			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, natives);
+		}
 
 		if (acknowledgment != null) {
 			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
@@ -106,6 +140,20 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 			offsets.add(record.offset());
 			timestampTypes.add(record.timestampType().name());
 			timestamps.add(record.timestamp());
+			if (this.headerMapper != null) {
+				Map<String, Object> converted = new HashMap<>();
+				this.headerMapper.toHeaders(record.headers(), converted);
+				convertedHeaders.add(converted);
+			}
+			else {
+				if (record.headers().iterator().hasNext() && logger.isWarnEnabled()) {
+					logger.warn(
+						"Headers are present, but no header mapper is available; "
+						+ "Jackson is required for the default mapper; headers are not mapped but provided raw in "
+						+ KafkaHeaders.NATIVE_HEADERS);
+				}
+				natives.add(record.headers());
+			}
 		}
 		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);
 	}

@@ -94,4 +94,17 @@ public abstract class KafkaHeaders {
 	 */
 	public static final String RECEIVED_TIMESTAMP = PREFIX + "receivedTimestamp";
 
+	/**
+	 * The header for holding the native headers of the consumer record; only provided
+	 * if no header mapper is present.
+	 */
+	public static final String NATIVE_HEADERS = PREFIX + "nativeHeaders";
+
+	/**
+	 * The header for a list of Maps of converted native Kafka headers. Used for batch
+	 * listeners; the map at a particular list position corresponds to the data in the
+	 * payload list position.
+	 */
+	public static final String BATCH_CONVERTED_HEADERS = PREFIX + "convertedHeaders";
+
 }
