@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
@@ -123,6 +124,14 @@ public interface KafkaOperations<K, V> {
 	 * @since 1.3
 	 */
 	ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
+
+	/**
+	 * Send the provided {@link ProducerRecord}.
+	 * @param record the record.
+	 * @return a Future for the {@link SendResult}.
+	 * @since 1.3
+	 */
+	ListenableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record);
 
 	/**
 	 * Send a message with routing information in message headers. The message payload
