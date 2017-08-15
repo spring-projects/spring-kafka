@@ -39,6 +39,8 @@ NOTE: The admin does not alter existing topics; it will log (INFO) if the number
 [[kafka-template]]
 ===== KafkaTemplate
 
+====== Overview
+
 The `KafkaTemplate` wraps a producer and provides convenience methods to send data to kafka topics.
 
 [source, java]
@@ -181,6 +183,50 @@ If you wish to block the sending thread, to await the result, you can invoke the
 You may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush`
 parameter which will cause the template to `flush()` on each send.
 Note, however that flushing will likely significantly reduce performance.
+
+====== Examples
+
+.Non Blocking (Async)
+[source, java]
+----
+public void sendToKafka(final MyOutputData data) {
+    final ProducerRecord<String, String> record = createRecord(data);
+
+    ListenableFuture<SendResult<Integer, String>> future = template.send(record);
+    future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
+
+        @Override
+        public void onSuccess(SendResult<Integer, String> result) {
+            handleSuccess(data);
+        }
+
+        @Override
+        public void onFailure(Throwable ex) {
+            handleFailure(data, record, ex);
+        }
+
+    });
+}
+----
+
+.Blocking (Sync)
+[source, java]
+----
+public void sendToKafka(final MyOutputData data) {
+    final ProducerRecord<String, String> record = createRecord(data);
+
+    try {
+        template.send(record).get(10, TimeUnit.seconds);
+        handleSuccess(data);
+    }
+    catch (ExecutionException e) {
+        handleFailure(data, record, e.getCause());
+    }
+    catch (TimeoutException | InterruptedException e) {
+        handleFailure(data, record, e);
+    }
+}
+----
 
 [[transactions]]
 ===== Transactions
