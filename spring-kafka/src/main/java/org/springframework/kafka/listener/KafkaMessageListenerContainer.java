@@ -41,6 +41,8 @@ import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
@@ -151,6 +153,22 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		else {
 			return null;
 		}
+	}
+
+	@Override
+	public Map<String, Map<MetricName, Metric>> metrics() {
+		ListenerConsumer listenerConsumer = this.listenerConsumer;
+		Map<String, Map<MetricName, Metric>> metrics = new HashMap<>();
+		if (listenerConsumer != null) {
+			for (Map.Entry<MetricName, ? extends Metric> entry : listenerConsumer.consumer.metrics().entrySet()) {
+				MetricName metricName = entry.getKey();
+				Metric metric = entry.getValue();
+				String client = metricName.tags().get("client-id");
+				Map<MetricName, Metric> clientMetrics = metrics.computeIfAbsent(client, k -> new HashMap<>());
+				clientMetrics.put(metricName, metric);
+			}
+		}
+		return metrics;
 	}
 
 	@Override

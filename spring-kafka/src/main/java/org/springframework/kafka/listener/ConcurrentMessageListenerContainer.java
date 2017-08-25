@@ -19,8 +19,13 @@ package org.springframework.kafka.listener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -87,6 +92,15 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	public List<KafkaMessageListenerContainer<K, V>> getContainers() {
 		return Collections.unmodifiableList(this.containers);
+	}
+
+	@Override
+	public Map<String, Map<MetricName, Metric>> metrics() {
+		Map<String, Map<MetricName, Metric>> metrics = new HashMap<>();
+		for (KafkaMessageListenerContainer<K, V> container : this.containers) {
+			metrics.putAll(container.metrics());
+		}
+		return metrics;
 	}
 
 	/*
