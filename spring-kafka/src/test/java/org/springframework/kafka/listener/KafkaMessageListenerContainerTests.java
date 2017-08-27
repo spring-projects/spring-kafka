@@ -119,9 +119,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic16 = "testTopic16";
 
+	private static String topic17 = "testTopic17";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -849,20 +851,20 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testSeek() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
-		testSeekGuts(props, topic11, false);
+		testSeekGuts(props, topic11, false, false);
 	}
 
 	@Test
 	public void testSeekAutoCommit() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
-		testSeekGuts(props, topic12, true);
+		testSeekGuts(props, topic12, true, false);
 	}
 
 	@Test
 	public void testSeekAutoCommitDefault() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
 		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test true by default
-		testSeekGuts(props, topic15, true);
+		testSeekGuts(props, topic15, true, false);
 	}
 
 	@Test
@@ -912,7 +914,13 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
-	private void testSeekGuts(Map<String, Object> props, String topic, boolean autoCommit) throws Exception {
+	@Test
+	public void testSeekAck() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test17", "false", embeddedKafka);
+		testSeekGuts(props, topic17, false, true);
+	}
+
+	private void testSeekGuts(Map<String, Object> props, String topic, boolean autoCommit, boolean acknowledging) throws Exception {
 		logger.info("Start seek " + topic);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -964,7 +972,14 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}
-		Listener messageListener = new Listener();
+
+		class AcknowledgingListener extends Listener implements AcknowledgingMessageListener<Integer, String> {
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> data, Acknowledgment acknowledgment) {
+				super.onMessage(data);
+			}
+		}
+		Listener messageListener = acknowledging ? new AcknowledgingListener() : new Listener();
 		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
