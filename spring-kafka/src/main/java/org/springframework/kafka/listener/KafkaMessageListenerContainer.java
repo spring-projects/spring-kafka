@@ -258,7 +258,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final Map<String, Map<Integer, Long>> offsets = new HashMap<>();
 
-		private final GenericMessageListener<?> genericListener;
+		private final KafkaDataListener<?> kafkaDataListener;
 
 		private final MessageListener<K, V> listener;
 
@@ -328,7 +328,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 										.createConsumer(KafkaMessageListenerContainer.this.clientIdSuffix)
 							: KafkaMessageListenerContainer.this.consumerFactory.createConsumer();
 
-			this.theListener = listener == null ? ackListener : listener;
+			this.kafkaDataListener = listener == null ? ackListener : listener;
+			this.theListener = this.kafkaDataListener;
 			ConsumerRebalanceListener rebalanceListener = createRebalanceListener(consumer);
 
 			if (KafkaMessageListenerContainer.this.topicPartitions == null) {
@@ -351,7 +352,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.consumer = consumer;
 			GenericErrorHandler<?> errHandler = this.containerProperties.getGenericErrorHandler();
-			this.genericListener = listener;			if (this.theListener instanceof BatchAcknowledgingMessageListener) {
+			if (this.theListener instanceof BatchAcknowledgingMessageListener) {
 				this.listener = null;
 				this.batchListener = null;
 				this.acknowledgingMessageListener = null;
@@ -457,7 +458,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 									KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
 						}
 					}
-					if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
+					if (ListenerConsumer.this.kafkaDataListener instanceof ConsumerSeekAware) {
 						seekPartitions(partitions, false);
 					}
 					// We will not start the invoker thread if we are in autocommit mode,
@@ -489,10 +490,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 			};
 			if (idle) {
-				((ConsumerSeekAware) ListenerConsumer.this.genericListener).onIdleContainer(current, callback);
+				((ConsumerSeekAware) ListenerConsumer.this.kafkaDataListener).onIdleContainer(current, callback);
 			}
 			else {
-				((ConsumerSeekAware) ListenerConsumer.this.genericListener).onPartitionsAssigned(current, callback);
+				((ConsumerSeekAware) ListenerConsumer.this.kafkaDataListener).onPartitionsAssigned(current, callback);
 			}
 		}
 
@@ -530,8 +531,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		@Override
 		public void run() {
-			if (this.genericListener instanceof ConsumerSeekAware) {
-				((ConsumerSeekAware) this.genericListener).registerSeekCallback(this);
+			if (this.kafkaDataListener instanceof ConsumerSeekAware) {
+				((ConsumerSeekAware) this.kafkaDataListener).registerSeekCallback(this);
 			}
 			this.count = 0;
 			this.last = System.currentTimeMillis();
@@ -588,7 +589,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 									&& now > lastAlertAt + this.containerProperties.getIdleEventInterval()) {
 								publishIdleContainerEvent(now - lastReceive);
 								lastAlertAt = now;
-								if (this.genericListener instanceof ConsumerSeekAware) {
+								if (this.kafkaDataListener instanceof ConsumerSeekAware) {
 									seekPartitions(getAssignedPartitions(), true);
 								}
 							}

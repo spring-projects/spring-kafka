@@ -526,7 +526,7 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch latch = new CountDownLatch(2);
 		willAnswer(invocation -> {
 
-			@SuppressWarnings({ "unchecked" })
+			@SuppressWarnings({"unchecked"})
 			Map<TopicPartition, OffsetAndMetadata> map = invocation.getArgumentAt(0, Map.class);
 			try {
 				return invocation.callRealMethod();
@@ -849,20 +849,39 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testSeek() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
-		testSeekGuts(props, topic11, false);
+		testSeekGuts(props, topic11, false, false);
 	}
 
 	@Test
 	public void testSeekAutoCommit() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
-		testSeekGuts(props, topic12, true);
+		testSeekGuts(props, topic12, true, false);
 	}
 
 	@Test
 	public void testSeekAutoCommitDefault() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
 		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test true by default
-		testSeekGuts(props, topic15, true);
+		testSeekGuts(props, topic15, true, false);
+	}
+
+	@Test
+	public void testSeekAck() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
+		testSeekGuts(props, topic11, false, true);
+	}
+
+	@Test
+	public void testSeekAckAutoCommit() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
+		testSeekGuts(props, topic12, true, true);
+	}
+
+	@Test
+	public void testSeekAckAutoCommitDefault() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
+		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test true by default
+		testSeekGuts(props, topic15, true, true);
 	}
 
 	@Test
@@ -912,7 +931,7 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
-	private void testSeekGuts(Map<String, Object> props, String topic, boolean autoCommit) throws Exception {
+	private void testSeekGuts(Map<String, Object> props, String topic, boolean autoCommit, boolean acknowledging) throws Exception {
 		logger.info("Start seek " + topic);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -964,7 +983,14 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}
-		Listener messageListener = new Listener();
+
+		class AcknowledgingListener extends Listener implements AcknowledgingMessageListener<Integer, String> {
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> data, Acknowledgment acknowledgment) {
+				super.onMessage(data);
+			}
+		}
+		Listener messageListener = acknowledging ? new AcknowledgingListener() : new Listener();
 		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
