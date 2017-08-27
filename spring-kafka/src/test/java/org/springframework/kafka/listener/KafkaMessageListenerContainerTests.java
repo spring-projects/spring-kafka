@@ -119,9 +119,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic16 = "testTopic16";
 
+	private static String topic17 = "testTopic17";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -526,7 +528,7 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch latch = new CountDownLatch(2);
 		willAnswer(invocation -> {
 
-			@SuppressWarnings({"unchecked"})
+			@SuppressWarnings({ "unchecked" })
 			Map<TopicPartition, OffsetAndMetadata> map = invocation.getArgumentAt(0, Map.class);
 			try {
 				return invocation.callRealMethod();
@@ -866,25 +868,6 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	public void testSeekAck() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
-		testSeekGuts(props, topic11, false, true);
-	}
-
-	@Test
-	public void testSeekAckAutoCommit() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
-		testSeekGuts(props, topic12, true, true);
-	}
-
-	@Test
-	public void testSeekAckAutoCommitDefault() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
-		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test true by default
-		testSeekGuts(props, topic15, true, true);
-	}
-
-	@Test
 	public void testSeekBatch() throws Exception {
 		logger.info("Start seek batch seek");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test16", "true", embeddedKafka);
@@ -929,6 +912,12 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(assignedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(idleLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+	}
+
+	@Test
+	public void testSeekAck() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test17", "false", embeddedKafka);
+		testSeekGuts(props, topic17, false, true);
 	}
 
 	private void testSeekGuts(Map<String, Object> props, String topic, boolean autoCommit, boolean acknowledging) throws Exception {
