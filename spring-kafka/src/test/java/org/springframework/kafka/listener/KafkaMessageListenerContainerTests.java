@@ -18,7 +18,12 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -27,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -52,10 +58,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -458,6 +466,52 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		consumer.close();
 		logger.info("Stop record ack");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testRecordAckMock() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(isNull(), isNull())).willReturn(consumer);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<Integer, String>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<Integer, String>("foo", 0, 1L, 1, "bar")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		given(consumer.poll(anyLong())).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
+				new TopicPartitionInitialOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setAckMode(AckMode.RECORD);
+		final CountDownLatch latch = new CountDownLatch(2);
+		MessageListener<Integer, String> messageListener = spy(
+			new MessageListener<Integer, String>() {
+
+				@Override
+				public void onMessage(ConsumerRecord<Integer, String> data) {
+					latch.countDown();
+					if (latch.getCount() == 0) {
+						records.clear();
+					}
+				}
+
+			});
+		containerProps.setMessageListener(messageListener);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		InOrder inOrder = inOrder(messageListener, consumer);
+		inOrder.verify(consumer).poll(1000);
+		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
+		inOrder.verify(consumer).commitSync(any(Map.class));
+		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
+		inOrder.verify(consumer).commitSync(any(Map.class));
+		container.stop();
 	}
 
 	@Test
