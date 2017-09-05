@@ -880,7 +880,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						this.listener.onMessage(record);
 						break;
 				}
-				if (!this.isAnyManualAck && !this.autoCommit) {
+				if (this.isRecordAck) {
+					if (this.containerProperties.isSyncCommits()) {
+						consumer.commitSync(
+								Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
+										new OffsetAndMetadata(record.offset() + 1)));
+					}
+					else {
+						consumer.commitAsync(
+								Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
+										new OffsetAndMetadata(record.offset() + 1)), this.commitCallback);
+					}
+				}
+				else if (!this.isAnyManualAck && !this.autoCommit) {
 					this.acks.add(record);
 				}
 				if (producer != null) {
