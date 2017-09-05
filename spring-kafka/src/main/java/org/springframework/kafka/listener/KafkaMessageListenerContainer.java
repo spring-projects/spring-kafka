@@ -547,7 +547,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			long lastAlertAt = lastReceive;
 			while (isRunning()) {
 				try {
-					if (!this.autoCommit) {
+					if (!this.autoCommit && !this.isRecordAck) {
 						processCommits();
 					}
 					processSeeks();
@@ -882,12 +882,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				if (this.isRecordAck) {
 					if (this.containerProperties.isSyncCommits()) {
-						consumer.commitSync(
+						this.consumer.commitSync(
 								Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 										new OffsetAndMetadata(record.offset() + 1)));
 					}
 					else {
-						consumer.commitAsync(
+						this.consumer.commitAsync(
 								Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 										new OffsetAndMetadata(record.offset() + 1)), this.commitCallback);
 					}
