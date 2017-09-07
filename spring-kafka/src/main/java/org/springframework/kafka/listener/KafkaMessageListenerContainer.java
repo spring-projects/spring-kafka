@@ -163,8 +163,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			for (Map.Entry<MetricName, ? extends Metric> entry : listenerConsumer.consumer.metrics().entrySet()) {
 				MetricName metricName = entry.getKey();
 				Metric metric = entry.getValue();
-				String client = metricName.tags().get("client-id");
-				Map<MetricName, Metric> clientMetrics = metrics.computeIfAbsent(client, k -> new HashMap<>());
+				String clientId = metricName.tags().get("client-id");
+				Map<MetricName, Metric> clientMetrics = metrics.get(clientId);
+				if (clientMetrics == null) {
+					clientMetrics = new HashMap<>();
+					metrics.put(clientId, clientMetrics);
+				}
 				clientMetrics.put(metricName, metric);
 			}
 		}
