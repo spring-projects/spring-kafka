@@ -23,11 +23,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.net.ServerSocketFactory;
 
@@ -35,6 +37,10 @@ import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.exception.ZkInterruptedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.Node;
@@ -53,7 +59,6 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 
-import kafka.admin.AdminUtils;
 import kafka.admin.AdminUtils$;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaConfig$;
@@ -198,11 +203,15 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
 			this.kafkaServers.add(server);
 		}
-		ZkUtils zkUtils = new ZkUtils(getZkClient(), null, false);
-		Properties props = new Properties();
-		for (String topic : this.topics) {
-			AdminUtils.createTopic(zkUtils, topic, this.partitionsPerTopic, this.count, props, null);
-		}
+		Map<String, Object> adminConfigs = new HashMap<>();
+		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
+		AdminClient admin = AdminClient.create(adminConfigs);
+		List<NewTopic> newTopics = Arrays.stream(this.topics)
+			.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
+			.collect(Collectors.toList());
+		CreateTopicsResult createTopics = admin.createTopics(newTopics);
+		createTopics.all().get();
+		admin.close();
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 	}
 
