@@ -1,41 +1,14 @@
-=== What's new in 2.0
+=== What's new in 2.0 Since 1.3
 
-==== Support for Transactions
+==== Spring Framework and Java Versions
 
-The 0.11.0.0 client library added support for transactions; the `KafkaTransactionManager` and other support for transactions has been added.
-See <<transactions>> for more information.
-
-==== Support for Headers
-
-The 0.11.0.0 client library added support for message headers; these can now be mapped to/from `spring-messaging` `MessageHeaders`.
-See <<headers>> for more information.
-
-==== Creating Topics
-
-The 0.11.0.0 client library provides an `AdminClient` which can be used to create topics.
-The `KafkaAdmin` uses this client to automatically add topics defined as `@Bean` s.
-
-
-==== Support for Kafka timestamps
-
-`KafkaTemplate` now supports API to add records with timestamps.
-New `KafkaHeaders` have been introduced regarding `timestamp` support.
-Also new `KafkaConditions.timestamp()` and `KafkaMatchers.hasTimestamp()` testing utilities have been added.
-See <<kafka-template>>, <<kafka-listener-annotation>> and <<testing>> for more details.
+The Spring for Apache Kafka project now requires Spring Framework 5.0 and Java 8.
 
 ==== @KafkaListener Changes
-
-You can now configure a `KafkaListenerErrorHandler` to handle exceptions.
-See <<annotation-error-handling>> for more information.
 
 You can now annotate `@KafkaListener` methods (and classes, and `@KafkaHandler` methods) with `@SendTo`.
 If the method returns a result, it is forwarded to the specified topic.
 See <<annotation-send-to>> for more information.
-
-By default, the `@KafkaListener` `id` property is now used as the `group.id` property, overriding the property configured in the consumer factory (if present).
-Further, you can explicitly configure the `groupId` on the annotation.
-Previously, you would have needed a separate container factory (and consumer factory) to use different `group.id` s for listeners.
-To restore the previous behavior of using the factory configured `group.id`, set the `idIsGroup` property on the annotation to `false`.
 
 ==== Message Listeners
 
@@ -51,8 +24,3 @@ See <<rebalance-listeners>> for more information.
 
 For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` as a bean.
 See <<testing>> for more information.
-
-==== Kerberos Configuration
-
-Support for configuring Kerberos is now provided.
-See <<kerberos>> for more information.

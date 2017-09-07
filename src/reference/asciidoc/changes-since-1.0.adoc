@@ -1,0 +1,75 @@
+[[migration]]
+=== Changes Between 1.2 and 1.3
+
+==== Support for Transactions
+
+The 0.11.0.0 client library added support for transactions; the `KafkaTransactionManager` and other support for transactions has been added.
+See <<transactions>> for more information.
+
+==== Support for Headers
+
+The 0.11.0.0 client library added support for message headers; these can now be mapped to/from `spring-messaging` `MessageHeaders`.
+See <<headers>> for more information.
+
+==== Creating Topics
+
+The 0.11.0.0 client library provides an `AdminClient` which can be used to create topics.
+The `KafkaAdmin` uses this client to automatically add topics defined as `@Bean` s.
+
+
+==== Support for Kafka timestamps
+
+`KafkaTemplate` now supports API to add records with timestamps.
+New `KafkaHeaders` have been introduced regarding `timestamp` support.
+Also new `KafkaConditions.timestamp()` and `KafkaMatchers.hasTimestamp()` testing utilities have been added.
+See <<kafka-template>>, <<kafka-listener-annotation>> and <<testing>> for more details.
+
+==== @KafkaListener Changes
+
+You can now configure a `KafkaListenerErrorHandler` to handle exceptions.
+See <<annotation-error-handling>> for more information.
+
+By default, the `@KafkaListener` `id` property is now used as the `group.id` property, overriding the property configured in the consumer factory (if present).
+Further, you can explicitly configure the `groupId` on the annotation.
+Previously, you would have needed a separate container factory (and consumer factory) to use different `group.id` s for listeners.
+To restore the previous behavior of using the factory configured `group.id`, set the `idIsGroup` property on the annotation to `false`.
+
+==== @EmbeddedKafka Annotation
+
+For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` as a bean.
+See <<testing>> for more information.
+
+==== Kerberos Configuration
+
+Support for configuring Kerberos is now provided.
+See <<kerberos>> for more information.
+
+
+=== Changes between 1.1 and 1.2
+
+This version uses the 0.10.2.x client.
+
+=== Changes between 1.0 and 1.1
+
+==== Kafka Client
+
+This version uses the Apache Kafka 0.10.x.x client.
+
+==== Batch Listeners
+
+Listeners can be configured to receive the entire batch of messages returned by the `consumer.poll()` operation, rather than one at a time.
+
+==== Null Payloads
+
+Null payloads are used to "delete" keys when using log compaction.
+
+==== Initial Offset
+
+When explicitly assigning partitions, you can now configure the initial offset relative to the current position for the consumer group, rather than absolute or relative to the current end.
+
+==== Seek
+
+You can now seek the position of each topic/partition.
+This can be used to set the initial position during initialization when group management is in use and Kafka assigns the partitions.
+You can also seek when an idle container is detected, or at any arbitrary point in your application's execution.
+See <<seek>> for more information.
