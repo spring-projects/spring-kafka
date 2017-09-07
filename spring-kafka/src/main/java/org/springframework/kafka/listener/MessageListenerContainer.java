@@ -39,13 +39,13 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	 */
 	void setupMessageListener(Object messageListener);
 
-    /**
-     * Returns metrics for this container's consumer(s), grouped by {@code client-id}.
-     *
-     * @return the consumer(s) metrics grouped by {@code client-id}
-     * @see org.apache.kafka.clients.consumer.Consumer#metrics()
-     * @since 2.0
-     */
-    Map<String, Map<MetricName, Metric>> metrics();
+	/**
+	 * Return metrics kept by this container's consumer(s), grouped by {@code client-id}.
+	 *
+	 * @return the consumer(s) metrics grouped by {@code client-id}
+	 * @since 2.0
+	 * @see org.apache.kafka.clients.consumer.Consumer#metrics()
+	 */
+	Map<String, Map<MetricName, ? extends Metric>> metrics();
 
 }

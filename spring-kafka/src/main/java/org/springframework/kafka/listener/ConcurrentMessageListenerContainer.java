@@ -95,12 +95,12 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
-	public Map<String, Map<MetricName, Metric>> metrics() {
-		Map<String, Map<MetricName, Metric>> metrics = new HashMap<>();
+	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
+		Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
 		for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 			metrics.putAll(container.metrics());
 		}
-		return metrics;
+		return Collections.unmodifiableMap(metrics);
 	}
 
 	/*

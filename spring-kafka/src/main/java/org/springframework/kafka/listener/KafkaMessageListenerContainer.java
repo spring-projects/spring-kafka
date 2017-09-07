@@ -156,23 +156,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 	@Override
-	public Map<String, Map<MetricName, Metric>> metrics() {
+	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		ListenerConsumer listenerConsumer = this.listenerConsumer;
-		Map<String, Map<MetricName, Metric>> metrics = new HashMap<>();
 		if (listenerConsumer != null) {
-			for (Map.Entry<MetricName, ? extends Metric> entry : listenerConsumer.consumer.metrics().entrySet()) {
-				MetricName metricName = entry.getKey();
-				Metric metric = entry.getValue();
-				String clientId = metricName.tags().get("client-id");
-				Map<MetricName, Metric> clientMetrics = metrics.get(clientId);
-				if (clientMetrics == null) {
-					clientMetrics = new HashMap<>();
-					metrics.put(clientId, clientMetrics);
-				}
-				clientMetrics.put(metricName, metric);
+			Map<MetricName, ? extends Metric> metrics = listenerConsumer.consumer.metrics();
+			Iterator<MetricName> it = metrics.keySet().iterator();
+			if (it.hasNext()) {
+				String clientId = it.next().tags().get("client-id");
+				return Collections.singletonMap(clientId, metrics);
 			}
 		}
-		return metrics;
+		return Collections.emptyMap();
 	}
 
 	@Override
