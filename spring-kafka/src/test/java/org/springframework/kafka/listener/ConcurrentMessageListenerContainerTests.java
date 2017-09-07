@@ -140,6 +140,7 @@ public class ConcurrentMessageListenerContainerTests {
 			assertThat(KafkaTestUtils.getPropertyValue(containers.get(i), "listenerConsumer.acks", Collection.class)
 					.size()).isEqualTo(0);
 		}
+		assertThat(container.metrics()).isNotNull();
 		container.stop();
 		this.logger.info("Stop auto");
 	}
