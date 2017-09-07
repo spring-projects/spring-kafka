@@ -102,6 +102,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	private Map<String, String> brokerProperties;
 
+	private int[] kafkaPorts;
+
 	public KafkaEmbedded(int count) {
 		this(count, false);
 	}
@@ -148,6 +150,16 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		return this;
 	}
 
+	/**
+	 * Set explicit ports on which the kafka brokers will listen. Useful when running an
+	 * embedded broker that you want to access from other processes.
+	 * @param kafkaPort the ports.
+	 * @since 1.3
+	 */
+	public void setKafkaPorts(int... kafkaPorts) {
+		this.kafkaPorts = kafkaPorts;
+	}
+
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		before();
@@ -164,16 +176,19 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 				ZKStringSerializer$.MODULE$);
 		this.kafkaServers.clear();
 		for (int i = 0; i < this.count; i++) {
-			ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
-			int randomPort = ss.getLocalPort();
-			ss.close();
+			Integer port = this.kafkaPorts != null && this.kafkaPorts.length > i ? this.kafkaPorts[i] : null;
+			if (port == null) {
+				ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
+				port = ss.getLocalPort();
+				ss.close();
+			}
 			Properties brokerConfigProperties = TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
-					true, randomPort,
+					true, port,
 					scala.Option.apply(null),
 					scala.Option.apply(null),
 					scala.Option.apply(null),
 					true, false, 0, false, 0, false, 0, scala.Option.apply(null));
-			brokerConfigProperties.setProperty(KafkaConfig$.MODULE$.PortProp(), "" + randomPort);
+			brokerConfigProperties.setProperty(KafkaConfig$.MODULE$.PortProp(), "" + port);
 			brokerConfigProperties.setProperty("replica.socket.timeout.ms", "1000");
 			brokerConfigProperties.setProperty("controller.socket.timeout.ms", "1000");
 			brokerConfigProperties.setProperty("offsets.topic.replication.factor", "1");
