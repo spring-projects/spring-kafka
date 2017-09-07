@@ -1,4 +1,8 @@
-[[migration-1.0-1.1]]
+[[migration]]
+=== Changes between 1.1 and 1.2
+
+This version uses the 0.10.2.x client.
+
 === Changes between 1.0 and 1.1
 
 ==== Kafka Client

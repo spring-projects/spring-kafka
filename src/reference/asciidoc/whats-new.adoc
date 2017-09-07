@@ -28,6 +28,11 @@ See <<kafka-template>>, <<kafka-listener-annotation>> and <<testing>> for more d
 You can now configure a `KafkaListenerErrorHandler` to handle exceptions.
 See <<annotation-error-handling>> for more information.
 
+By default, the `@KafkaListener` `id` property is now used as the `group.id` property, overriding the property configured in the consumer factory (if present).
+Further, you can explicitly configure the `groupId` on the annotation.
+Previously, you would have needed a separate container factory (and consumer factory) to use different `group.id` s for listeners.
+To restore the previous behavior of using the factory configured `group.id`, set the `idIsGroup` property on the annotation to `false`.
+
 ==== @EmbeddedKafka Annotation
 
 For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` as a bean.
