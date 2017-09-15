@@ -55,6 +55,11 @@ public abstract class KafkaHeaders {
 	public static final String RAW_DATA = PREFIX + "data";
 
 	/**
+	 * The header containing the {@code RecordMetadata} object after successful send to the topic.
+	 */
+	public static final String RECORD_METADATA = PREFIX + "recordMetadata";
+
+	/**
 	 * The header for the {@link Acknowledgment}.
 	 */
 	public static final String ACKNOWLEDGMENT = PREFIX + "acknowledgment";
@@ -106,5 +111,8 @@ public abstract class KafkaHeaders {
 	 * payload list position.
 	 */
 	public static final String BATCH_CONVERTED_HEADERS = PREFIX + "batchConvertedHeaders";
+
+
+
 
 }
