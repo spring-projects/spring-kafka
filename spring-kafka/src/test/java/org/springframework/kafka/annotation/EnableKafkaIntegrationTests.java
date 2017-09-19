@@ -18,6 +18,7 @@ package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -341,7 +342,7 @@ public class EnableKafkaIntegrationTests {
 			}
 
 		}).given(consumer)
-				.commitSync(any());
+				.commitSync(anyMap());
 
 		template.send("annotated14", null, "foo");
 		template.send("annotated14", null, "bar");
