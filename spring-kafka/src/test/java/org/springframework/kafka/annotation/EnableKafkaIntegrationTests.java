@@ -579,7 +579,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.config.badAckLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.badAckException).isInstanceOf(IllegalStateException.class);
 		assertThat(this.config.badAckException.getMessage())
-				.isEqualTo("No Acknowledgment availailable as an argument, "
+				.isEqualTo("No Acknowledgment available as an argument, "
 						+ "the listener container must have a MANUAL Ackmode to populate the Acknowledgment.");
 	}
 

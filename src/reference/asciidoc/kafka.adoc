@@ -218,7 +218,7 @@ public void sendToKafka(final MyOutputData data) {
     final ProducerRecord<String, String> record = createRecord(data);
 
     try {
-        template.send(record).get(10, TimeUnit.seconds);
+        template.send(record).get(10, TimeUnit.SECONDS);
         handleSuccess(data);
     }
     catch (ExecutionException e) {
@@ -1317,7 +1317,7 @@ public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer,
 }
 ----
 
-By default, if an annotated listener method throws an exception, it is thrown to the container, and the message will handled according to the container configuration.
+By default, if an annotated listener method throws an exception, it is thrown to the container, and the message will be handled according to the container configuration.
 Nothing is returned to the sender.
 
 Starting with _version 2.0_, the `@KafkaListener` annotation has a new attribute: `errorHandler`.

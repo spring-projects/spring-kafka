@@ -89,7 +89,7 @@ public KStreamBuilderFactoryBean myKStreamBuilder(StreamsConfig streamsConfig) {
 private KStreamBuilderFactoryBean myKStreamBuilderFactoryBean;
 ----
 
-Or add `@Qualifier` for injection by name If you use interface bean definition:
+Or add `@Qualifier` for injection by name if you use interface bean definition:
 [source,java]
 ----
 @Bean
