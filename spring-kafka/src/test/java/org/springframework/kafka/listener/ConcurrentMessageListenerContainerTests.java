@@ -314,7 +314,7 @@ public class ConcurrentMessageListenerContainerTests {
 			latch.countDown();
 		});
 		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
-
+		containerProps.setSyncCommits(false);
 		final CountDownLatch commits = new CountDownLatch(8);
 		final AtomicReference<Exception> exceptionRef = new AtomicReference<>();
 		containerProps.setCommitCallback((offsets, exception) -> {
