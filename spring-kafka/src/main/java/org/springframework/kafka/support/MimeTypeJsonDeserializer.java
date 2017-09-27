@@ -31,6 +31,8 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 /**
  * {@link MimeType} deserializer.
  *
+ * @param <T> the type.
+ *
  * @author Gary Russell
  * @since 1.3
  *
