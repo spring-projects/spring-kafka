@@ -36,10 +36,13 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.MimeType;
 import org.springframework.util.PatternMatchUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /**
  * Default header mapper for Apache Kafka.
@@ -56,7 +59,8 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	private static final List<String> DEFAULT_TRUSTED_PACKAGES =
 			Arrays.asList(
 					"java.util",
-					"java.lang"
+					"java.lang",
+					"org.springframework.util"
 			);
 
 	/**
@@ -152,6 +156,9 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
 		}
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		Module module = new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer(objectMapper));
+		this.objectMapper.registerModule(module);
 	}
 
 	/**
@@ -221,7 +228,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public void toHeaders(Headers source,  final Map<String, Object> headers) {
+	public void toHeaders(Headers source, final Map<String, Object> headers) {
 		Map<String, String> types = null;
 		Iterator<Header> iterator = source.iterator();
 		while (iterator.hasNext()) {
