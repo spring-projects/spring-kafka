@@ -162,6 +162,14 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	}
 
 	/**
+	 * Return the object mapper.
+	 * @return the mapper.
+	 */
+	protected ObjectMapper getObjectMapper() {
+		return this.objectMapper;
+	}
+
+	/**
 	 * Add packages to the trusted packages list (default {@code java.util, java.lang}) used
 	 * when constructing objects from JSON.
 	 * If any of the supplied packages is {@code "*"}, all packages are trusted.
@@ -193,7 +201,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 				}
 				else {
 					try {
-						target.add(new RecordHeader(k, this.objectMapper.writeValueAsBytes(v)));
+						target.add(new RecordHeader(k, getObjectMapper().writeValueAsBytes(v)));
 						jsonHeaders.put(k, v.getClass().getName());
 					}
 					catch (Exception e) {
@@ -206,7 +214,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 		});
 		if (jsonHeaders.size() > 0) {
 			try {
-				target.add(new RecordHeader(JSON_TYPES, this.objectMapper.writeValueAsBytes(jsonHeaders)));
+				target.add(new RecordHeader(JSON_TYPES, getObjectMapper().writeValueAsBytes(jsonHeaders)));
 			}
 			catch (IllegalStateException | JsonProcessingException e) {
 				logger.error("Could not add json types header", e);
@@ -235,7 +243,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 			Header next = iterator.next();
 			if (next.key().equals(JSON_TYPES)) {
 				try {
-					types = this.objectMapper.readValue(next.value(), HashMap.class);
+					types = getObjectMapper().readValue(next.value(), HashMap.class);
 				}
 				catch (IOException e) {
 					logger.error("Could not decode json types: " + new String(next.value()), e);
@@ -261,7 +269,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 					}
 					if (trusted) {
 						try {
-							headers.put(h.key(), this.objectMapper.readValue(h.value(), type));
+							headers.put(h.key(), getObjectMapper().readValue(h.value(), type));
 						}
 						catch (IOException e) {
 							logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h.key(),
@@ -280,7 +288,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 		});
 	}
 
-	private boolean trusted(String requestedType) {
+	protected boolean trusted(String requestedType) {
 		if (!this.trustedPackages.isEmpty()) {
 			int lastDot = requestedType.lastIndexOf(".");
 			if (lastDot < 0) {
