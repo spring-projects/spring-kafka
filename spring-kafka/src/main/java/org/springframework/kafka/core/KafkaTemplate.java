@@ -98,7 +98,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	/**
 	 * The default topic for send methods where a topic is not
-	 * providing.
+	 * provided.
 	 * @return the topic.
 	 */
 	public String getDefaultTopic() {
@@ -107,7 +107,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	/**
 	 * Set the default topic for send methods where a topic is not
-	 * providing.
+	 * provided.
 	 * @param defaultTopic the topic.
 	 */
 	public void setDefaultTopic(String defaultTopic) {
