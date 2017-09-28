@@ -132,6 +132,7 @@ public class KafkaMessageListenerContainerTests {
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic3);
+		containerProps.setShutdownTimeout(60_000L);
 		final AtomicReference<StackTraceElement[]> trace = new AtomicReference<>();
 		final CountDownLatch latch1 = new CountDownLatch(1);
 		containerProps.setMessageListener((MessageListener<Integer, String>) record -> {
@@ -197,6 +198,9 @@ public class KafkaMessageListenerContainerTests {
 //		assertThat(trace.get()[i + 2].getMethodName()).contains("onMessage"); // bridge
 //		assertThat(trace.get()[i + 3].getMethodName()).contains("invokeRecordListener");
 		container.stop();
+		long t = System.currentTimeMillis();
+		container.stop();
+		assertThat(System.currentTimeMillis() - t).isLessThan(5000L);
 
 		pf.destroy();
 	}
