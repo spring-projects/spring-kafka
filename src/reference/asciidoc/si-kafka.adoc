@@ -59,7 +59,11 @@ Here is an example of how the Kafka outbound channel adapter is configured with 
                                     auto-startup="false"
                                     channel="inputToKafka"
                                     topic="foo"
+                                    sync="false"
                                     message-key-expression="'bar'"
+                                    send-failure-channel="failures"
+                                    send-success-channel="successes"
+                                    error-message-strategy="ems"
                                     partition-id-expression="2">
 </int-kafka:outbound-channel-adapter>
 
@@ -90,6 +94,7 @@ public MessageHandler handler() throws Exception {
             new KafkaProducerMessageHandler<>(kafkaTemplate());
     handler.setTopicExpression(new LiteralExpression("someTopic"));
     handler.setMessageKeyExpression(new LiteralExpression("someKey"));
+    handler.setFailureChannel(failures());
     return handler;
 }
 
@@ -106,6 +111,13 @@ public ProducerFactory<String, String> producerFactory() {
     return new DefaultKafkaProducerFactory<>(props);
 }
 ----
+
+If a `send-failure-channel` is provided, if a send failure is received (sync or async), an `ErrorMessage` is sent to the channel.
+The payload is a `KafkaSendFailureException` with properties `failedMesssage`, `record` (the `ProducerRecord`) and `cause`.
+The `DefaultErrorMessageStrategy` can be overrided via the `error-message-strategy` property.
+
+If a `send-success-channel` is provided, a message with a payload of type `org.apache.kafka.clients.producer.RecordMetadata` will be sent after a successful send.
+When using Java configuration, use `setOutputChannel` for this purpose.
 
 [[si-inbound]]
 ==== Message Driven Channel Adapter
@@ -128,7 +140,10 @@ An example of xml configuration variant is shown here:
         phase="100"
         send-timeout="5000"
         mode="record"
-        channel="nullChannel"
+        retry-template="template"
+        recovery-callback="callback"
+        error-message-strategy="ems"
+        channel="someChannel"
         error-channel="errorChannel" />
 
 <bean id="container1" class="org.springframework.kafka.listener.KafkaMessageListenerContainer">
@@ -185,6 +200,13 @@ Refer to the `KafkaHeaders` class for more information.
 
 IMPORTANT: The `Consumer` object (in the `kafka_consumer` header) is not thread-safe; you must only invoke its methods on the thread that calls the listener within the adapter; if you hand off the message to another thread, you must not call its methods.
 
+When a `retry-template` is provided, delivery failures will be retried according to its retry policy.
+An `error-channel` is not allowed in this case.
+The `recovery-callback` can be used to handle the error when retries are exhausted.
+In most cases, this will be an `ErrorMessageSendingRecoverer` which will send the `ErrorMessage` to a channel.
+
+When building `ErrorMessage` (for use in the `error-channel` or `recovery-callback`), you can customize the error message using the `error-message-strategy` property.
+By default, a `RawRecordHeaderErrorMessageStrategy` is used; providing access to the converted message as well as the raw `ConsumerRecord`.
 
 [[message-conversion]]
 ==== Message Conversion

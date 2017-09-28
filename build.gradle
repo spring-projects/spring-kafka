@@ -79,7 +79,7 @@ subprojects { subproject ->
 		scalaVersion = '2.11'
 		slf4jVersion = '1.7.25'
 		springRetryVersion = '1.2.0.RELEASE'
-		springVersion = '5.0.0.RC4'
+		springVersion = '5.0.0.RELEASE'
 
 		idPrefix = 'kafka'
 
