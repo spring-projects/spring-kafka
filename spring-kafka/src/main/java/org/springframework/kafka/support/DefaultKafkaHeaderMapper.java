@@ -36,10 +36,13 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.MimeType;
 import org.springframework.util.PatternMatchUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /**
  * Default header mapper for Apache Kafka.
@@ -56,7 +59,8 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	private static final List<String> DEFAULT_TRUSTED_PACKAGES =
 			Arrays.asList(
 					"java.util",
-					"java.lang"
+					"java.lang",
+					"org.springframework.util"
 			);
 
 	/**
@@ -152,6 +156,17 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
 		}
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		Module module = new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer(objectMapper));
+		this.objectMapper.registerModule(module);
+	}
+
+	/**
+	 * Return the object mapper.
+	 * @return the mapper.
+	 */
+	protected ObjectMapper getObjectMapper() {
+		return this.objectMapper;
 	}
 
 	/**
@@ -186,7 +201,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 				}
 				else {
 					try {
-						target.add(new RecordHeader(k, this.objectMapper.writeValueAsBytes(v)));
+						target.add(new RecordHeader(k, getObjectMapper().writeValueAsBytes(v)));
 						jsonHeaders.put(k, v.getClass().getName());
 					}
 					catch (Exception e) {
@@ -199,7 +214,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 		});
 		if (jsonHeaders.size() > 0) {
 			try {
-				target.add(new RecordHeader(JSON_TYPES, this.objectMapper.writeValueAsBytes(jsonHeaders)));
+				target.add(new RecordHeader(JSON_TYPES, getObjectMapper().writeValueAsBytes(jsonHeaders)));
 			}
 			catch (IllegalStateException | JsonProcessingException e) {
 				logger.error("Could not add json types header", e);
@@ -221,14 +236,14 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public void toHeaders(Headers source,  final Map<String, Object> headers) {
+	public void toHeaders(Headers source, final Map<String, Object> headers) {
 		Map<String, String> types = null;
 		Iterator<Header> iterator = source.iterator();
 		while (iterator.hasNext()) {
 			Header next = iterator.next();
 			if (next.key().equals(JSON_TYPES)) {
 				try {
-					types = this.objectMapper.readValue(next.value(), HashMap.class);
+					types = getObjectMapper().readValue(next.value(), HashMap.class);
 				}
 				catch (IOException e) {
 					logger.error("Could not decode json types: " + new String(next.value()), e);
@@ -254,7 +269,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 					}
 					if (trusted) {
 						try {
-							headers.put(h.key(), this.objectMapper.readValue(h.value(), type));
+							headers.put(h.key(), getObjectMapper().readValue(h.value(), type));
 						}
 						catch (IOException e) {
 							logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h.key(),
@@ -273,7 +288,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 		});
 	}
 
-	private boolean trusted(String requestedType) {
+	protected boolean trusted(String requestedType) {
 		if (!this.trustedPackages.isEmpty()) {
 			int lastDot = requestedType.lastIndexOf(".");
 			if (lastDot < 0) {
