@@ -64,7 +64,7 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 				continue;
 			}
 			try {
-				properties.load(new StringReader(pair));
+				properties.load(new StringReader(context.getEnvironment().resolvePlaceholders(pair)));
 			}
 			catch (Exception ex) {
 				throw new IllegalStateException("Failed to load broker property from [" + pair + "]", ex);
