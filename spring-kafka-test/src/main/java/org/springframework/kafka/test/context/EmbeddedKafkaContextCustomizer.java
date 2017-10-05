@@ -49,6 +49,11 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 	@Override
 	@SuppressWarnings("unchecked")
 	public void customizeContext(ConfigurableApplicationContext context, MergedContextConfiguration mergedConfig) {
+
+		if (this.embeddedKafka.disabled()) {
+			return;
+		}
+
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
 		Assert.isInstanceOf(DefaultSingletonBeanRegistry.class, beanFactory);
 

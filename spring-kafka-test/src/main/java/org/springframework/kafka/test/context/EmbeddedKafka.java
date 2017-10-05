@@ -96,5 +96,14 @@ public @interface EmbeddedKafka {
 	 */
 	String[] brokerProperties() default { };
 
+	/**
+	 * When {@code true} no {@code KafkaEmbedded} instance is created, bypassing the {@link
+	 * EmbeddedKafkaContextCustomizer}.  Used to override the use of a Kafka broker in a subclass, where the parent
+	 * has defined {@code EmbeddedKafka}.
+	 *
+	 * @return {@code false}, by default
+	 */
+	boolean disabled() default false;
+
 }
 
