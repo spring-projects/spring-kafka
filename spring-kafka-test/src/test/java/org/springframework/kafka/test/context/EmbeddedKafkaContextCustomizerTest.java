@@ -56,6 +56,7 @@ public class EmbeddedKafkaContextCustomizerTest {
 	 * </p>
 	 */
 	@Test
+	@SuppressWarnings("serial")
 	public void testBrokerPropertyResolution() {
 
 		// Keys are the properties as they may appear in the @EmbeddedKafka brokerProperties attribute
