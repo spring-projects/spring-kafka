@@ -78,8 +78,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 				KafkaStreamsTests.STREAMING_TOPIC2,
 				KafkaStreamsTests.FOOS },
 		brokerProperties = {
-				"auto.create.topics.enable=false",
-				"delete.topic.enable=true" })
+				"auto.create.topics.enable=${topics.autoCreate:false}",
+				"delete.topic.enable=${topic.delete:true}" })
 public class KafkaStreamsTests {
 
 	static final String STREAMING_TOPIC1 = "streamingTopic1";
