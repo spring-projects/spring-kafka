@@ -90,7 +90,8 @@ public @interface EmbeddedKafka {
 
 	/**
 	 * Properties in form {@literal key=value} that should be added
-	 * to the broker config before runs.
+	 * to the broker config before runs.  Properties may contain property placeholders.
+	 * that will be resolved by the Spring {@code Environment}.
 	 * @return the properties to add
 	 * @see KafkaEmbedded#brokerProperties(java.util.Map)
 	 */
