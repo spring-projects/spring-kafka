@@ -23,6 +23,7 @@ import java.util.Properties;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
@@ -64,7 +65,8 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 				continue;
 			}
 			try {
-				properties.load(new StringReader(context.getEnvironment().resolvePlaceholders(pair)));
+				ConfigurableEnvironment environment = context.getEnvironment();
+				properties.load(new StringReader(environment.resolvePlaceholders(pair)));
 			}
 			catch (Exception ex) {
 				throw new IllegalStateException("Failed to load broker property from [" + pair + "]", ex);
