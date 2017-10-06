@@ -98,5 +98,18 @@ public @interface EmbeddedKafka {
 	 */
 	String[] brokerProperties() default { };
 
+	/**
+	 * Spring {@code Resource} url specifying the location of properties that should be
+	 * added to the broker config.
+	 * The {@code brokerPropertiesLocation} url and the properties themselves may contain
+	 * placeholders that are resolved against the Spring {@code Environment}, including
+	 * any {@code @TestPropertySource}s.
+	 * Properties specified by {@link #brokerProperties()} will override properties found
+	 * in {@code brokerPropertiesLocation}.
+	 * @return a {@code Resource} url specifying the location of properties to add
+	 * @see KafkaEmbedded#brokerProperties(java.util.Map)
+	 */
+	String brokerPropertiesLocation() default "";
+
 }
 
