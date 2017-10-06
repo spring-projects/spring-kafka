@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.test.context;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.util.Map;
 import java.util.Properties;
@@ -23,6 +25,8 @@ import java.util.Properties;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.io.Resource;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
@@ -58,16 +62,35 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 				this.embeddedKafka.topics());
 
 		Properties properties = new Properties();
+		ConfigurableEnvironment environment = context.getEnvironment();
 
 		for (String pair : this.embeddedKafka.brokerProperties()) {
 			if (!StringUtils.hasText(pair)) {
 				continue;
 			}
 			try {
-				properties.load(new StringReader(pair));
+				properties.load(new StringReader(environment.resolvePlaceholders(pair)));
 			}
 			catch (Exception ex) {
 				throw new IllegalStateException("Failed to load broker property from [" + pair + "]", ex);
+			}
+		}
+
+		if (StringUtils.hasText(this.embeddedKafka.brokerPropertiesLocation())) {
+			String propertiesLocation = environment.resolvePlaceholders(this.embeddedKafka.brokerPropertiesLocation());
+			Resource propertiesResource = context.getResource(propertiesLocation);
+			if (!propertiesResource.exists()) {
+				throw new IllegalStateException(
+						"Failed to load broker properties from [" + propertiesResource + "]: resource does not exist.");
+			}
+			try (InputStream in = propertiesResource.getInputStream()) {
+				Properties p = new Properties();
+				p.load(in);
+				p.forEach((key, value) -> properties.putIfAbsent(key, environment.resolvePlaceholders((String) value)));
+			}
+			catch (IOException ex) {
+				throw new IllegalStateException(
+						"Failed to load broker properties from [" + propertiesResource + "]", ex);
 			}
 		}
 

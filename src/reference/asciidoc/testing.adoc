@@ -150,6 +150,25 @@ public class KafkaStreamsTests {
 }
 ----
 
+'''
+
+The `brokerProperties` and `brokerPropertiesLocation` attribute of `@EmbeddedKafka` supports standard Spring property placeholder resolution from the `Environment`.
+The `Environment` contains system properties, the system environment, _and_ properties from the classpath resource `/test.properties`, and all of these property sources are consulted when resolving property placeholders.
+For example:
+[source, java]
+----
+@TestPropertySource(locations = { "classpath:/test.properties" })
+@EmbeddedKafka(topics = { "any-topic" },
+        brokerProperties = { "log.dir=${kafka.broker.logs-dir}",
+		                     "listeners=PLAINTEXT://localhost:${kafka.broker.port}",
+		                     "auto.create.topics.enable=${kafka.broker.topics-enable:true}" }
+        brokerPropertiesLocation = "classpath:/broker.properties")
+----
+In this example, the property placeholders `${kafka.broker.logs-dir}` and `${kafka.broker.port}` are resolved from the Spring `Environment`.
+Additional broker properties are loaded from the `broker.properties` classpath resource specified by the `brokerPropertiesLocation`.
+Property placeholders are resolved for the `brokerPropertiesLocation` URL _and_ for any property placeholders found in the resource.
+Properties defined by `brokerProperties` override properties found in `brokerPropertiesLocation`.
+
 ==== Hamcrest Matchers
 
 The `o.s.kafka.test.hamcrest.KafkaMatchers` provides the following matchers:

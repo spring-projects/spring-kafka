@@ -78,8 +78,9 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 				KafkaStreamsTests.STREAMING_TOPIC2,
 				KafkaStreamsTests.FOOS },
 		brokerProperties = {
-				"auto.create.topics.enable=false",
-				"delete.topic.enable=true" })
+				"auto.create.topics.enable=${topics.autoCreate:false}",
+				"delete.topic.enable=${topic.delete:true}" },
+		brokerPropertiesLocation = "classpath:/${broker.filename:broker}.properties")
 public class KafkaStreamsTests {
 
 	static final String STREAMING_TOPIC1 = "streamingTopic1";
@@ -105,6 +106,7 @@ public class KafkaStreamsTests {
 	public void testKStreams() throws Exception {
 		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().autoCreateTopicsEnable()).isFalse();
 		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().deleteTopicEnable()).isTrue();
+		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().brokerId()).isEqualTo(2);
 
 		this.kStreamBuilderFactoryBean.stop();
 
