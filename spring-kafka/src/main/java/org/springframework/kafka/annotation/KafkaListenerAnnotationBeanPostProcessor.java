@@ -612,10 +612,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private Object resolveExpression(String value) {
 		String resolvedValue = resolve(value);
 
-		if (!(resolvedValue.startsWith("#{") && value.endsWith("}"))) {
-			return resolvedValue;
-		}
-
 		return this.resolver.evaluate(resolvedValue, this.expressionContext);
 	}
 

@@ -1037,7 +1037,7 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory",
-				containerGroup = "quxGroup")
+				containerGroup = "qux#{'Group'}")
 		public void listen4(@Payload String foo, Acknowledgment ack, Consumer<?, ?> consumer) {
 			this.ack = ack;
 			this.ack.acknowledge();
