@@ -98,7 +98,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 
 	/**
 	 * Set to false to suppress auto creation of topics during context initialization.
-	 * @param autoCreate boolean flag to indicate creation or not topics during context initialization
+	 * @param autoCreate boolean flag to indicate creating topics or not during context initialization
 	 * @see #initialize()
 	 */
 	public void setAutoCreate(boolean autoCreate) {
@@ -124,7 +124,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	/**
 	 * Call this method to check/add topics; this might be needed if the broker was not
 	 * available when the application context was initialized, and
-	 * {@link #setFatalIfBrokerNotAvailable(boolean) fatalIfBrokenNotAvailable} is false,
+	 * {@link #setFatalIfBrokerNotAvailable(boolean) fatalIfBrokerNotAvailable} is false,
 	 * or {@link #setAutoCreate(boolean) autoCreate} was set to false.
 	 * @return true if successful.
 	 * @see #setFatalIfBrokerNotAvailable(boolean)

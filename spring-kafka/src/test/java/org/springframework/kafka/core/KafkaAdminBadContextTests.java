@@ -41,9 +41,8 @@ public class KafkaAdminBadContextTests {
 	@Test
 	public void testContextNotLoaded() {
 		try {
-			AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(BadConfig.class);
+			new AnnotationConfigApplicationContext(BadConfig.class);
 			fail("Expected Exception");
-			ctx.close();
 		}
 		catch (IllegalStateException e) {
 			assertThat(e.getMessage()).isEqualTo("Could not create admin");

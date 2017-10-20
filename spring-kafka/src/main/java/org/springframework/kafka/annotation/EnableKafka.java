@@ -113,7 +113,7 @@ import org.springframework.context.annotation.Import;
  * Annotated methods can use a flexible signature; in particular, it is possible to use
  * the {@link org.springframework.messaging.Message Message} abstraction and related
  * annotations, see {@link KafkaListener} Javadoc for more details. For instance, the
- * following would inject the content of the message and a the kafka partition
+ * following would inject the content of the message and the kafka partition
  * header:
  *
  * <pre class="code">

@@ -328,7 +328,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * specified container.
 	 * @param container the {@link MessageListenerContainer} to create a {@link MessageListener}.
 	 * @param messageConverter the message converter - may be null.
-	 * @return a a {@link MessageListener} instance.
+	 * @return a {@link MessageListener} instance.
 	 */
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			MessageConverter messageConverter);
@@ -339,7 +339,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
 			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-					this.retryTemplate, (RecoveryCallback<Object>) this.recoveryCallback);
+					this.retryTemplate, this.recoveryCallback);
 		}
 		if (this.recordFilterStrategy != null) {
 			if (this.batchListener) {
