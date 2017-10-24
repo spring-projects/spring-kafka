@@ -78,6 +78,7 @@ import scala.collection.Set;
  * @author Marius Bogoevici
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Kamill Sokol
  */
 public class KafkaEmbedded extends ExternalResource implements KafkaRule, InitializingBean, DisposableBean {
 
@@ -86,6 +87,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	public static final String BEAN_NAME = "kafkaEmbedded";
 
 	public static final String SPRING_EMBEDDED_KAFKA_BROKERS = "spring.embedded.kafka.brokers";
+
+	public static final String SPRING_EMBEDDED_ZOOKEEPER_CONNECT = "spring.embedded.zookeeper.connect";
 
 	public static final long METADATA_PROPAGATION_TIMEOUT = 10000L;
 
@@ -213,6 +216,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		createTopics.all().get();
 		admin.close();
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
+		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 	}
 
 
@@ -224,6 +228,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	@Override
 	public void after() {
 		System.getProperties().remove(SPRING_EMBEDDED_KAFKA_BROKERS);
+		System.getProperties().remove(SPRING_EMBEDDED_ZOOKEEPER_CONNECT);
 		for (KafkaServer kafkaServer : this.kafkaServers) {
 			try {
 				if (kafkaServer.brokerState().currentState() != (NotRunning.state())) {

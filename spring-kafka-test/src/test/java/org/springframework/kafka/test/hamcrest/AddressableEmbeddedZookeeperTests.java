@@ -16,63 +16,42 @@
 
 package org.springframework.kafka.test.hamcrest;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.IOException;
-import java.net.ServerSocket;
-
-import javax.net.ServerSocketFactory;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 /**
- * @author Gary Russell
  * @author Kamill Sokol
- * @since 1.3
+ * @since 2.0
  *
  */
 @RunWith(SpringRunner.class)
-public class AddressableEmbeddedBrokerTests {
-
-	@Autowired
-	private Config config;
+public class AddressableEmbeddedZookeeperTests {
 
 	@Autowired
 	private KafkaEmbedded broker;
 
 	@Test
-	public void testPort() {
-		assertThat(broker.getBrokersAsString()).isEqualTo("127.0.0.1:" + this.config.port);
-	}
-
-	@Test
-	public void testSystemPropertyKafkaBrokers() {
-		assertThat(broker.getBrokersAsString())
-				.isEqualTo(System.getProperty(KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS));
+	public void testSystemPropertyZookeeperConnect() {
+		assertThat(broker.getZookeeperConnectionString())
+				.isEqualTo(System.getProperty(KafkaEmbedded.SPRING_EMBEDDED_ZOOKEEPER_CONNECT));
 	}
 
 	@Configuration
 	public static class Config {
 
-		private int port;
-
 		@Bean
 		public KafkaEmbedded broker() throws IOException {
-			KafkaEmbedded broker = new KafkaEmbedded(1);
-			ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
-			this.port = ss.getLocalPort();
-			ss.close();
-			broker.setKafkaPorts(this.port);
-			return broker;
+			return new KafkaEmbedded(1);
 		}
 
 	}
-
 }
