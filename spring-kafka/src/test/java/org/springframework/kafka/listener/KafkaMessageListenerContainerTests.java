@@ -53,6 +53,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -68,6 +69,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -525,6 +527,45 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(consumer).commitSync(any(Map.class));
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
 		inOrder.verify(consumer).commitSync(any(Map.class));
+		container.stop();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testBrokerDownEvent() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(isNull(), isNull())).willReturn(consumer);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		final CountDownLatch deadLatch = new CountDownLatch(1);
+		given(consumer.poll(anyLong())).willAnswer(i -> {
+			deadLatch.await(10, TimeUnit.SECONDS);
+			throw new WakeupException();
+		});
+		willAnswer(i -> {
+			deadLatch.countDown();
+			return null;
+		}).given(consumer).wakeup();
+		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
+				new TopicPartitionInitialOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setNoPollThreshold(2.0f);
+		containerProps.setPollTimeout(10);
+		containerProps.setMonitorInterval(1);
+		containerProps.setMessageListener(mock(MessageListener.class));
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		final CountDownLatch latch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof NonResponsiveConsumerEvent) {
+				latch.countDown();
+			}
+		});
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 	}
 

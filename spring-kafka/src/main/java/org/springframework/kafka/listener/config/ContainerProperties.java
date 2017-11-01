@@ -30,6 +30,7 @@ import org.springframework.kafka.listener.BatchErrorHandler;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
 
@@ -142,6 +143,12 @@ public class ContainerProperties {
 	private String groupId;
 
 	private PlatformTransactionManager transactionManager;
+
+	private int monitorInterval = 30;
+
+	private TaskScheduler scheduler;
+
+	private float noPollThreshold;
 
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
@@ -401,6 +408,49 @@ public class ContainerProperties {
 	 */
 	public void setTransactionManager(PlatformTransactionManager transactionManager) {
 		this.transactionManager = transactionManager;
+	}
+
+	public int getMonitorInterval() {
+		return this.monitorInterval;
+	}
+
+	/**
+	 * The interval between checks for a non-responsive consumer in
+	 * seconds; default 30.
+	 * @param monitorInterval the interval.
+	 * @since 1.3.1
+	 */
+	public void setMonitorInterval(int monitorInterval) {
+		this.monitorInterval = monitorInterval;
+	}
+
+	public TaskScheduler getScheduler() {
+		return this.scheduler;
+	}
+
+	/**
+	 * A scheduler used with the monitor interval.
+	 * @param scheduler the scheduler.
+	 * @since 1.3.1
+	 * @see #setMonitorInterval(int)
+	 */
+	public void setScheduler(TaskScheduler scheduler) {
+		this.scheduler = scheduler;
+	}
+
+	public float getNoPollThreshold() {
+		return this.noPollThreshold;
+	}
+
+	/**
+	 * If the time since the last poll / {@link pollTimeout #setPollTimeout(long)}
+	 * exceeds this value, a NonResponsiveConsumerEvent is published.
+	 * Default 3.0.
+	 * @param noPollThreshold the threshold
+	 * @since 1.3.1
+	 */
+	public void setNoPollThreshold(float noPollThreshold) {
+		this.noPollThreshold = noPollThreshold;
 	}
 
 }
