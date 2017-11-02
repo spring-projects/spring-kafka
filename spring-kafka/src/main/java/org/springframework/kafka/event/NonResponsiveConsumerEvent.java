@@ -48,7 +48,7 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 		super(source);
 		this.timeSinceLastPoll = timeSinceLastPoll;
 		this.listenerId = id;
-		this.topicPartitions = new ArrayList<>(topicPartitions);
+		this.topicPartitions = topicPartitions == null ? null : new ArrayList<>(topicPartitions);
 		this.consumer = consumer;
 	}
 

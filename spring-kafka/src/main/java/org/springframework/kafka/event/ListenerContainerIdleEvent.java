@@ -47,7 +47,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 		super(source);
 		this.idleTime = idleTime;
 		this.listenerId = id;
-		this.topicPartitions = new ArrayList<>(topicPartitions);
+		this.topicPartitions = topicPartitions == null ? null : new ArrayList<>(topicPartitions);
 		this.consumer = consumer;
 	}
 
