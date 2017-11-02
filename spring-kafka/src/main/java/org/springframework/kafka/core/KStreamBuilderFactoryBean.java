@@ -21,8 +21,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 
 import org.springframework.beans.factory.config.AbstractFactoryBean;
@@ -31,7 +31,7 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.util.Assert;
 
 /**
- * An {@link AbstractFactoryBean} for the {@link KStreamBuilder} instance
+ * An {@link AbstractFactoryBean} for the {@link StreamsBuilder} instance
  * and lifecycle control for the internal {@link KafkaStreams} instance.
  *
  * @author Artem Bilan
@@ -39,7 +39,7 @@ import org.springframework.util.Assert;
  *
  * @since 1.1.4
  */
-public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilder> implements SmartLifecycle {
+public class KStreamBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder> implements SmartLifecycle {
 
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
@@ -96,12 +96,12 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 
 	@Override
 	public Class<?> getObjectType() {
-		return KStreamBuilder.class;
+		return StreamsBuilder.class;
 	}
 
 	@Override
-	protected KStreamBuilder createInstance() throws Exception {
-		return new KStreamBuilder();
+	protected StreamsBuilder createInstance() throws Exception {
+		return new StreamsBuilder();
 	}
 
 
@@ -130,7 +130,7 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<KStreamBuilde
 	public synchronized void start() {
 		if (!this.running) {
 			try {
-				this.kafkaStreams = new KafkaStreams(getObject(), this.streamsConfig, this.clientSupplier);
+				this.kafkaStreams = new KafkaStreams(getObject().build(), this.streamsConfig, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
 				this.kafkaStreams.start();

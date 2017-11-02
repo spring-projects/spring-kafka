@@ -29,9 +29,12 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Printed;
+import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
 import org.apache.kafka.streams.processor.internals.StreamThread;
@@ -180,21 +183,22 @@ public class KafkaStreamsTests {
 		}
 
 		@Bean
-		public KStream<Integer, String> kStream(KStreamBuilder kStreamBuilder) {
+		public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
 			KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
 			stream.mapValues(String::toUpperCase)
 					.mapValues(Foo::new)
-					.through(Serdes.Integer(), new JsonSerde<Foo>() {
+					.through(FOOS, Produced.with(Serdes.Integer(), new JsonSerde<Foo>() {
 
-					}, FOOS)
+					}))
 					.mapValues(Foo::getName)
 					.groupByKey()
-					.reduce((value1, value2) -> value1 + value2, TimeWindows.of(1000), "windowStore")
+					.windowedBy(TimeWindows.of(1000))
+					.reduce((value1, value2) -> value1 + value2, Materialized.as("windowStore"))
 					.toStream()
 					.map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
 					.filter((i, s) -> s.length() > 40).to(STREAMING_TOPIC2);
 
-			stream.print();
+			stream.print(Printed.toSysOut());
 
 			return stream;
 		}

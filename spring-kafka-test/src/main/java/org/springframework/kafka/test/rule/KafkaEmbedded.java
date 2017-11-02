@@ -43,10 +43,7 @@ import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.protocol.Errors;
-import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.utils.Time;
 import org.junit.rules.ExternalResource;
 
@@ -59,7 +56,6 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 
-import kafka.admin.AdminUtils$;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaConfig$;
 import kafka.server.KafkaServer;
@@ -67,10 +63,7 @@ import kafka.server.NotRunning;
 import kafka.utils.CoreUtils;
 import kafka.utils.TestUtils;
 import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 import kafka.zk.EmbeddedZookeeper;
-import scala.collection.JavaConversions;
-import scala.collection.Set;
 
 /**
  * The {@link KafkaRule} implementation for the embedded Kafka Broker and Zookeeper.
@@ -195,7 +188,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 					scala.Option.apply(null),
 					scala.Option.apply(null),
 					scala.Option.apply(null),
-					true, false, 0, false, 0, false, 0, scala.Option.apply(null));
+					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1);
 			brokerConfigProperties.setProperty(KafkaConfig$.MODULE$.PortProp(), "" + port);
 			brokerConfigProperties.setProperty("replica.socket.timeout.ms", "1000");
 			brokerConfigProperties.setProperty("controller.socket.timeout.ms", "1000");
@@ -315,42 +308,12 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		this.zookeeper = new EmbeddedZookeeper();
 	}
 
+	@Deprecated
 	public void bounce(int index, boolean waitForPropagation) {
-		this.kafkaServers.get(index).shutdown();
-		if (waitForPropagation) {
-			long initialTime = System.currentTimeMillis();
-			boolean canExit = false;
-			do {
-				try {
-					Thread.sleep(100);
-				}
-				catch (InterruptedException e) {
-					break;
-				}
-				canExit = true;
-				ZkUtils zkUtils = new ZkUtils(getZkClient(), null, false);
-				scala.collection.Map<String, Properties> topicProperties =
-						AdminUtils$.MODULE$.fetchAllTopicConfigs(zkUtils);
-				Set<MetadataResponse.TopicMetadata> topicMetadatas =
-						AdminUtils$.MODULE$.fetchTopicMetadataFromZk(topicProperties.keySet(), zkUtils);
-				for (MetadataResponse.TopicMetadata topicMetadata : JavaConversions.asJavaCollection(topicMetadatas)) {
-					if (Errors.forCode(topicMetadata.error().code()).exception() == null) {
-						for (MetadataResponse.PartitionMetadata partitionMetadata : topicMetadata.partitionMetadata()) {
-							Collection<Node> inSyncReplicas = partitionMetadata.isr();
-							for (Node node : inSyncReplicas) {
-								if (node.id() == index) {
-									canExit = false;
-								}
-							}
-						}
-					}
-				}
-			}
-			while (!canExit && (System.currentTimeMillis() - initialTime < METADATA_PROPAGATION_TIMEOUT));
-		}
-
+		throw new UnsupportedOperationException();
 	}
 
+	@Deprecated
 	public void bounce(int index) {
 		bounce(index, true);
 	}
@@ -382,36 +345,9 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		});
 	}
 
+	@Deprecated
 	public void waitUntilSynced(String topic, int brokerId) {
-		long initialTime = System.currentTimeMillis();
-		boolean canExit = false;
-		do {
-			try {
-				Thread.sleep(100);
-			}
-			catch (InterruptedException e) {
-				break;
-			}
-			canExit = true;
-			ZkUtils zkUtils = new ZkUtils(getZkClient(), null, false);
-			MetadataResponse.TopicMetadata topicMetadata = AdminUtils$.MODULE$.fetchTopicMetadataFromZk(topic, zkUtils);
-			if (Errors.forCode(topicMetadata.error().code()).exception() == null) {
-				for (MetadataResponse.PartitionMetadata partitionMetadata : topicMetadata.partitionMetadata()) {
-					Collection<Node> isr = partitionMetadata.isr();
-					boolean containsIndex = false;
-					for (Node node : isr) {
-						if (node.id() == brokerId) {
-							containsIndex = true;
-						}
-					}
-					if (!containsIndex) {
-						canExit = false;
-					}
-
-				}
-			}
-		}
-		while (!canExit && (System.currentTimeMillis() - initialTime < METADATA_PROPAGATION_TIMEOUT));
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
