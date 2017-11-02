@@ -103,12 +103,12 @@ See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more
 Starting with _version 1.3.1_, the embedded broker is also compatible with kafka version 1.0.0.
 Use the following in your pom to override the versions in a Spring Boot application:
 
-[source, xml]
+[source, xml, subs="+attributes"]
 ----
 <dependency>
 	<groupId>org.springframework.kafka</groupId>
 	<artifactId>spring-kafka</artifactId>
-	<version>1.3.1.RELEASE</version>
+	<version>{spring-kafka-version}</version>
 	<exclusions>
 		<exclusion>
 			<groupId>org.apache.kafka</groupId>
@@ -119,7 +119,7 @@ Use the following in your pom to override the versions in a Spring Boot applicat
 <dependency>
 	<groupId>org.springframework.kafka</groupId>
 	<artifactId>spring-kafka-test</artifactId>
-	<version>1.3.1.RELEASE</version>
+	<version>{spring-kafka-version}</version>
 	<scope>test</scope>
 	<exclusions>
 		<exclusion>
