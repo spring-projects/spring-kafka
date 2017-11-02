@@ -957,7 +957,7 @@ A retry adapter is not provided for any of the batch <<message-listeners, messag
 Users wishing retry capabilities, when using a batch listener, are advised to use a `RetryTemplate` within the listener itself.
 
 [[idle-containers]]
-===== Detecting Idle Asynchronous Consumers
+===== Detecting Idle and Non-Responsive Consumers
 
 While efficient, one problem with asynchronous consumers is detecting when they are idle - users might want to take
 some action if no messages arrive for some period of time.
@@ -996,6 +996,12 @@ public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 ----
 
 In each of these cases, an event will be published once per minute while the container is idle.
+
+In addition, if the broker is unreachable (at the time of writing), the consumer `poll()` method does not exit, so no messages are received, and idle events can't be generated.
+To solve this issue, the container will publish a `NonResponsiveConsumerEvent` if a poll does not return within 3x the `pollInterval` property.
+By default, this check is performed once every 30 seconds in each container.
+You can modify the behavior by setting the `monitorInterval` and `noPollThreshold` properties in the `ContainerProperties` when configuring the listener container.
+Receiveing such an event will allow you to stop the container(s), thus waking the consumer so it can terminate.
 
 ====== Event Consumption
 

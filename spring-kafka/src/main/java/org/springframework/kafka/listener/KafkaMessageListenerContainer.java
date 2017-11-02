@@ -425,7 +425,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			long timeSinceLastPoll = System.currentTimeMillis() - last;
 			if (((float) timeSinceLastPoll) / (float) this.containerProperties.getPollTimeout()
 					> this.containerProperties.getNoPollThreshold()) {
-				publishNonResponsiveConsumerEvent(timeSinceLastPoll, consumer);
+				publishNonResponsiveConsumerEvent(timeSinceLastPoll, this.consumer);
 			}
 		}
 
