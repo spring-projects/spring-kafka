@@ -28,7 +28,7 @@ compile 'org.springframework.kafka:spring-kafka:{spring-kafka-version}'
 [[compatibility]]
 ===== Compatibility
 
-- Apache Kafka 0.10.2.1
+- Apache Kafka 0.11.0.0 (can be overridden to 1.0.0)
 - Spring Framework 4.3.x
 - Minimum Java version: 7.
 

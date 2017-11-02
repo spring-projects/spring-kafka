@@ -7,7 +7,7 @@ The `spring-kafka-test` jar contains some useful utilities to assist with testin
 
 ==== JUnit
 
-`o.s.kafka.test.utils.KafkaUtils` provides some static methods to set up producer and consumer properties:
+`o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties:
 
 [source, java]
 ----
@@ -99,6 +99,110 @@ A convenient constant `KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS` is provided 
 
 With the `KafkaEmbedded.brokerProperties(Map<String, String>)` you can provide additional properties for the Kafka server(s).
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
+
+Starting with _version 1.3.1_, the embedded broker is also compatible with kafka version 1.0.0.
+Use the following in your pom to override the versions in a Spring Boot application:
+
+[source, xml]
+----
+<dependency>
+	<groupId>org.springframework.kafka</groupId>
+	<artifactId>spring-kafka</artifactId>
+	<version>1.3.1.RELEASE</version>
+	<exclusions>
+		<exclusion>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka-clients</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+<dependency>
+	<groupId>org.springframework.kafka</groupId>
+	<artifactId>spring-kafka-test</artifactId>
+	<version>1.3.1.RELEASE</version>
+	<scope>test</scope>
+	<exclusions>
+		<exclusion>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka-clients</artifactId>
+		</exclusion>
+		<exclusion>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka_2.11</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+<dependency>
+	<groupId>org.apache.kafka</groupId>
+	<artifactId>kafka-clients</artifactId>
+	<version>1.0.0</version>
+	<exclusions>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+<dependency>
+	<groupId>org.apache.kafka</groupId>
+	<artifactId>kafka-clients</artifactId>
+	<version>1.0.0</version>
+	<classifier>test</classifier>
+	<exclusions>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+<dependency>
+	<groupId>org.apache.kafka</groupId>
+	<artifactId>kafka-streams</artifactId>
+	<version>1.0.0</version>
+	<exclusions>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</exclusion>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+<dependency>
+	<groupId>org.apache.kafka</groupId>
+	<artifactId>kafka_2.11</artifactId>
+	<version>1.0.0</version>
+	<exclusions>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</exclusion>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+<dependency>
+	<groupId>org.apache.kafka</groupId>
+	<artifactId>kafka_2.11</artifactId>
+	<version>1.0.0</version>
+	<classifier>test</classifier>
+	<exclusions>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</exclusion>
+		<exclusion>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+----
+
 
 ==== @EmbeddedKafka Annotation
 It is generally recommended to use the rule as a `@ClassRule` to avoid starting/stopping the broker between tests (and use a different topic for each test).
@@ -255,7 +359,8 @@ public class KafkaTemplateTests {
 
     @Test
     public void testTemplate() throws Exception {
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false", embeddedKafka);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false",
+            embeddedKafka);
         DefaultKafkaConsumerFactory<Integer, String> cf =
                             new DefaultKafkaConsumerFactory<Integer, String>(consumerProps);
         ContainerProperties containerProperties = new ContainerProperties(TEMPLATE_TOPIC);
@@ -274,9 +379,10 @@ public class KafkaTemplateTests {
         container.setBeanName("templateTests");
         container.start();
         ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-        Map<String, Object> senderProps = KafkaTestUtils.senderProps(embeddedKafka.getBrokersAsString());
+        Map<String, Object> senderProps =
+                            KafkaTestUtils.senderProps(embeddedKafka.getBrokersAsString());
         ProducerFactory<Integer, String> pf =
-                             new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+                            new DefaultKafkaProducerFactory<Integer, String>(senderProps);
         KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
         template.setDefaultTopic(TEMPLATE_TOPIC);
         template.sendDefault("foo");
