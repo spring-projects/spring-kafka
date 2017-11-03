@@ -85,6 +85,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 	@Test
 	public void discardRemainingRecordsFromPollAndSeek() throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(this.consumer);
@@ -120,6 +121,8 @@ public class SeekToCurrentOnErrorRecordModeTests {
 		private final CountDownLatch deliveryLatch = new CountDownLatch(7);
 
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
+
+		private final CountDownLatch commitLatch = new CountDownLatch(6);
 
 		private int count;
 
@@ -188,6 +191,10 @@ public class SeekToCurrentOnErrorRecordModeTests {
 							return new ConsumerRecords(Collections.emptyMap());
 					}
 			}).given(consumer).poll(1000);
+			willAnswer(i -> {
+				this.commitLatch.countDown();
+				return null;
+			}).given(consumer).commitSync(any(Map.class));
 			willAnswer(i -> {
 				this.closeLatch.countDown();
 				return null;
