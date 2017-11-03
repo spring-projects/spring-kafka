@@ -51,6 +51,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.test.annotation.DirtiesContext;
@@ -70,10 +71,10 @@ public class SeekToCurrentOnErrorRecordModeTests {
 	private Consumer consumer;
 
 	@Autowired
-	private CountDownLatch latch;
+	private Config config;
 
 	@Autowired
-	private Config config;
+	private KafkaListenerEndpointRegistry registry;
 
 	/*
 	 * Deliver 6 records from three partitions, fail on the second record second
@@ -83,7 +84,9 @@ public class SeekToCurrentOnErrorRecordModeTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void discardRemainingRecordsFromPollAndSeek() throws Exception {
-		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		this.registry.stop();
+		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(1000);
@@ -114,12 +117,16 @@ public class SeekToCurrentOnErrorRecordModeTests {
 
 		private final List<String> contents = new ArrayList<>();
 
+		private final CountDownLatch deliveryLatch = new CountDownLatch(7);
+
+		private final CountDownLatch closeLatch = new CountDownLatch(1);
+
 		private int count;
 
 		@KafkaListener(topics = "foo")
 		public void foo(String in) {
 			this.contents.add(in);
-			latch().countDown();
+			this.deliveryLatch.countDown();
 			if (++this.count == 4) { // part 1, offset 1, first time
 				throw new RuntimeException("foo");
 			}
@@ -181,6 +188,10 @@ public class SeekToCurrentOnErrorRecordModeTests {
 							return new ConsumerRecords(Collections.emptyMap());
 					}
 			}).given(consumer).poll(1000);
+			willAnswer(i -> {
+				this.closeLatch.countDown();
+				return null;
+			}).given(consumer).close();
 			return consumer;
 		}
 
@@ -193,11 +204,6 @@ public class SeekToCurrentOnErrorRecordModeTests {
 			factory.getContainerProperties().setErrorHandler(new SeekToCurrentErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			return factory;
-		}
-
-		@Bean
-		public CountDownLatch latch() {
-			return new CountDownLatch(7);
 		}
 
 	}
