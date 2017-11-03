@@ -1419,6 +1419,48 @@ Similar to the `@KafkaListener` error handlers, you can reset the offsets as nee
 
 NOTE: Unlike the listener-level error handlers, however, you should set the container property `ackOnError` to false when making adjustments; otherwise any pending acks will be applied after your repositioning.
 
+If an `ErrorHandler` implements `RemainingRecordsErrorHandler`, the error handler is provided with the failed record and any unprocessed records retrieved by the previous `poll()`.
+Those records will not be passed to the listener after the handler exits.
+
+[source, java]
+----
+@FunctionalInterface
+public interface RemainingRecordsErrorHandler extends ConsumerAwareErrorHandler {
+
+	void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer);
+
+}
+----
+
+This allows implementations to seek all unprocessed topic/partitions so the current record (and the others remaining) will be retrieved by the next poll.
+The `SeekToCurrentErrorHandler` does exactly this.
+
+The container will commit any pending offset commits before calling the error handler.
+
+To configure the listener container with this handler, add it to the `ContainerProperties`.
+
+For example, with the `@KafkaListener` container factory:
+
+[source, java]
+----
+@Bean
+public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory();
+    factory.setConsumerFactory(consumerFactory());
+    factory.getContainerProperties().setAckOnError(false);
+    factory.getContainerProperties().setErrorHandler(new SeekToCurrentErrorHandler());
+    factory.getContainerProperties().setAckMode(AckMode.RECORD);
+    return factory;
+}
+----
+
+As an example; if the `poll` returns 6 records (2 from each partition 0, 1, 2) and the listener throws an exception on the fourth record,
+the container will have acknowledged the first 3 by committing their offsets.
+The `SeekToCurrentErrorHandler` will seek to offset 1 for partition 1 and offset 0 for partition 2.
+The next `poll()` will return the 3 unprocessed records.
+
+If the `AckMode` was `BATCH`, the container commits the offsets for the first 2 partitions before calling the error handler.
+
 [[kerberos]]
 ==== Kerberos
 
