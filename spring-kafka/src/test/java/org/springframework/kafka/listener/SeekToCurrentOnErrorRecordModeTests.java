@@ -125,7 +125,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		private final CountDownLatch commitLatch = new CountDownLatch(6);
+		private final CountDownLatch commitLatch = new CountDownLatch(7);
 
 		private int count;
 

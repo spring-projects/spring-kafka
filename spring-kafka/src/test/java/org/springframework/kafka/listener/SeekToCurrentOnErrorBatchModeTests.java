@@ -119,7 +119,7 @@ public class SeekToCurrentOnErrorBatchModeTests {
 
 		private final CountDownLatch deliveryLatch = new CountDownLatch(7);
 
-		private final CountDownLatch commitLatch = new CountDownLatch(2);
+		private final CountDownLatch commitLatch = new CountDownLatch(3);
 
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
 
