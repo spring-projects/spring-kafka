@@ -86,6 +86,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 	public void discardRemainingRecordsFromPollAndSeek() throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(this.consumer);
@@ -117,6 +118,8 @@ public class SeekToCurrentOnErrorRecordModeTests {
 	public static class Config {
 
 		private final List<String> contents = new ArrayList<>();
+
+		private final CountDownLatch pollLatch = new CountDownLatch(3);
 
 		private final CountDownLatch deliveryLatch = new CountDownLatch(7);
 
@@ -176,20 +179,21 @@ public class SeekToCurrentOnErrorRecordModeTests {
 					}));
 			final AtomicInteger which = new AtomicInteger();
 			willAnswer(i -> {
-					switch (which.getAndIncrement()) {
-						case 0:
-							return new ConsumerRecords(records1);
-						case 1:
-							return new ConsumerRecords(records2);
-						default:
-							try {
-								Thread.sleep(1000);
-							}
-							catch (InterruptedException e) {
-								Thread.currentThread().interrupt();
-							}
-							return new ConsumerRecords(Collections.emptyMap());
-					}
+				this.pollLatch.countDown();
+				switch (which.getAndIncrement()) {
+					case 0:
+						return new ConsumerRecords(records1);
+					case 1:
+						return new ConsumerRecords(records2);
+					default:
+						try {
+							Thread.sleep(1000);
+						}
+						catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+						return new ConsumerRecords(Collections.emptyMap());
+				}
 			}).given(consumer).poll(1000);
 			willAnswer(i -> {
 				this.commitLatch.countDown();
