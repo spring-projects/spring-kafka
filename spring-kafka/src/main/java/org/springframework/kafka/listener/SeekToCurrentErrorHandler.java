@@ -41,7 +41,7 @@ public class SeekToCurrentErrorHandler implements RemainingRecordsErrorHandler {
 		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
 		records.forEach(r ->
 			offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
-		offsets.entrySet().forEach(e -> consumer.seek(e.getKey(), e.getValue()));
+		offsets.forEach(consumer::seek);
 	}
 
 }

@@ -1427,7 +1427,7 @@ Those records will not be passed to the listener after the handler exits.
 @FunctionalInterface
 public interface RemainingRecordsErrorHandler extends ConsumerAwareErrorHandler {
 
-	void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer);
+    void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer);
 
 }
 ----
@@ -1454,8 +1454,7 @@ public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerCont
 }
 ----
 
-As an example; if the `poll` returns 6 records (2 from each partition 0, 1, 2) and the listener throws an exception on the fourth record,
-the container will have acknowledged the first 3 by committing their offsets.
+As an example; if the `poll` returns 6 records (2 from each partition 0, 1, 2) and the listener throws an exception on the fourth record, the container will have acknowledged the first 3 by committing their offsets.
 The `SeekToCurrentErrorHandler` will seek to offset 1 for partition 1 and offset 0 for partition 2.
 The next `poll()` will return the 3 unprocessed records.
 

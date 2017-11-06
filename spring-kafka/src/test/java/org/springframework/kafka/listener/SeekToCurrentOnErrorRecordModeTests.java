@@ -160,23 +160,19 @@ public class SeekToCurrentOnErrorRecordModeTests {
 				return null;
 			}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 			Map<TopicPartition, List<ConsumerRecord>> records1 = new LinkedHashMap<>();
-			records1.put(topicPartition0, Arrays.asList(new ConsumerRecord[] {
+			records1.put(topicPartition0, Arrays.asList(
 					new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"),
-					new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "bar")
-					}));
-			records1.put(topicPartition1, Arrays.asList(new ConsumerRecord[] {
+					new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "bar")));
+			records1.put(topicPartition1, Arrays.asList(
 					new ConsumerRecord("foo", 1, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "baz"),
-					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "qux")
-					}));
-			records1.put(topicPartition2, Arrays.asList(new ConsumerRecord[] {
+					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "qux")));
+			records1.put(topicPartition2, Arrays.asList(
 					new ConsumerRecord("foo", 2, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "fiz"),
-					new ConsumerRecord("foo", 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "buz")
-					}));
+					new ConsumerRecord("foo", 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "buz")));
 			Map<TopicPartition, List<ConsumerRecord>> records2 = new LinkedHashMap<>(records1);
 			records2.remove(topicPartition0);
-			records2.put(topicPartition1, Arrays.asList(new ConsumerRecord[] {
-					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "qux")
-					}));
+			records2.put(topicPartition1, Arrays.asList(
+					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "qux")));
 			final AtomicInteger which = new AtomicInteger();
 			willAnswer(i -> {
 				this.pollLatch.countDown();

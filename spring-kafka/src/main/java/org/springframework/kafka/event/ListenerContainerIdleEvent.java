@@ -64,7 +64,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	 * @return the TopicPartition list.
 	 */
 	public Collection<TopicPartition> getTopicPartitions() {
-		return Collections.unmodifiableList(this.topicPartitions);
+		return this.topicPartitions == null ? null : Collections.unmodifiableList(this.topicPartitions);
 	}
 
 	/**
