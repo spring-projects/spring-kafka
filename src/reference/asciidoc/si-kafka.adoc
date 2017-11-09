@@ -112,18 +112,62 @@ public ProducerFactory<String, String> producerFactory() {
 }
 ----
 
+When using Spring Integration Java DSL:
+
+[source, java]
+----
+@Bean
+public ProducerFactory<Integer, String> producerFactory() {
+    return new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(embeddedKafka));
+}
+
+@Bean
+public IntegrationFlow sendToKafkaFlow() {
+    return f -> f
+            .<String>split(p -> Stream.generate(() -> p).limit(101).iterator(), null)
+            .publishSubscribeChannel(c -> c
+                    .subscribe(sf -> sf.handle(
+                            kafkaMessageHandler(producerFactory(), TEST_TOPIC1)
+                                    .timestampExpression("T(Long).valueOf('1487694048633')"),
+                            e -> e.id("kafkaProducer1")))
+                    .subscribe(sf -> sf.handle(
+                            kafkaMessageHandler(producerFactory(), TEST_TOPIC2)
+                                   .timestamp(m -> 1487694048644L),
+                            e -> e.id("kafkaProducer2")))
+            );
+}
+
+@Bean
+public DefaultKafkaHeaderMapper mapper() {
+    return new DefaultKafkaHeaderMapper();
+}
+
+private KafkaProducerMessageHandlerSpec<Integer, String, ?> kafkaMessageHandler(
+        ProducerFactory<Integer, String> producerFactory, String topic) {
+    return Kafka
+            .outboundChannelAdapter(producerFactory)
+            .messageKey(m -> m
+                    .getHeaders()
+                    .get(IntegrationMessageHeaderAccessor.SEQUENCE_NUMBER))
+            .headerMapper(mapper())
+            .partitionId(m -> 10)
+            .topicExpression("headers[kafka_topic] ?: '" + topic + "'")
+            .configureKafkaTemplate(t -> t.id("kafkaTemplate:" + topic));
+}
+----
+
 If a `send-failure-channel` is provided, if a send failure is received (sync or async), an `ErrorMessage` is sent to the channel.
-The payload is a `KafkaSendFailureException` with properties `failedMesssage`, `record` (the `ProducerRecord`) and `cause`.
-The `DefaultErrorMessageStrategy` can be overrided via the `error-message-strategy` property.
+The payload is a `KafkaSendFailureException` with properties `failedMessage`, `record` (the `ProducerRecord`) and `cause`.
+The `DefaultErrorMessageStrategy` can be overridden via the `error-message-strategy` property.
 
 If a `send-success-channel` is provided, a message with a payload of type `org.apache.kafka.clients.producer.RecordMetadata` will be sent after a successful send.
 When using Java configuration, use `setOutputChannel` for this purpose.
 
+
 [[si-inbound]]
 ==== Message Driven Channel Adapter
 
-The `KafkaMessageDrivenChannelAdapter` (`<int-kafka:message-driven-channel-adapter>`) uses a `spring-kafka`
-`KafkaMessageListenerContainer` or `ConcurrentListenerContainer`.
+The `KafkaMessageDrivenChannelAdapter` (`<int-kafka:message-driven-channel-adapter>`) uses a `spring-kafka` `KafkaMessageListenerContainer` or `ConcurrentListenerContainer`.
 
 Starting with _spring-integration-kafka version 2.1_, the `mode` attribute is available (`record` or `batch`, default `record`).
 For `record` mode, each message payload is converted from a single `ConsumerRecord`; for mode `batch` the payload is a list of objects which are converted from all the `ConsumerRecord` s returned by the consumer poll.
@@ -192,6 +236,31 @@ public ConsumerFactory<String, String> consumerFactory() {
     props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddress);
     // set more properties
     return new DefaultKafkaConsumerFactory<>(props);
+}
+----
+
+When using Spring Integration Java DSL:
+
+[source, java]
+----
+@Bean
+public IntegrationFlow topic1ListenerFromKafkaFlow() {
+    return IntegrationFlows
+            .from(Kafka.messageDrivenChannelAdapter(consumerFactory(),
+                    KafkaMessageDrivenChannelAdapter.ListenerMode.record, TEST_TOPIC1)
+                    .configureListenerContainer(c ->
+                            c.ackMode(AbstractMessageListenerContainer.AckMode.MANUAL)
+                                    .id("topic1ListenerContainer"))
+                    .recoveryCallback(new ErrorMessageSendingRecoverer(errorChannel(),
+                            new RawRecordHeaderErrorMessageStrategy()))
+                    .retryTemplate(new RetryTemplate())
+                    .filterInRetry(true))
+            .filter(Message.class, m ->
+                            m.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY, Integer.class) < 101,
+                    f -> f.throwExceptionOnRejection(true))
+            .<String, String>transform(String::toUpperCase)
+            .channel(c -> c.queue("listeningFromKafkaResults1"))
+            .get();
 }
 ----
 
