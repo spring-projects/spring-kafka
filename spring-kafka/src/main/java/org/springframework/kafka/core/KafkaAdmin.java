@@ -29,10 +29,13 @@ import java.util.stream.Collectors;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.CreatePartitionsResult;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.common.errors.UnsupportedVersionException;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -174,15 +177,25 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 							.map(NewTopic::name)
 							.collect(Collectors.toList()));
 			List<NewTopic> topicsToAdd = new ArrayList<>();
+			Map<String, NewPartitions> topicsToModify = new HashMap<>();
 			topicInfo.values().forEach((n, f) -> {
 				try {
 					TopicDescription topicDescription = f.get();
-					if (topicNameToTopic.get(n).numPartitions() != topicDescription.partitions().size()) {
+					if (topicNameToTopic.get(n).numPartitions() < topicDescription.partitions().size()) {
 						if (logger.isInfoEnabled()) {
 							logger.info(String.format(
-									"Topic '%s' exists but has a different partition count: %d not %d", n,
-									topicDescription.partitions().size(), topicNameToTopic.get(n).numPartitions()));
+								"Topic '%s' exists but has a different partition count: %d not %d", n,
+								topicDescription.partitions().size(), topicNameToTopic.get(n).numPartitions()));
 						}
+					}
+					else if (topicNameToTopic.get(n).numPartitions() > topicDescription.partitions().size()) {
+						if (logger.isInfoEnabled()) {
+							logger.info(String.format(
+								"Topic '%s' exists but has a different partition count: %d not %d, increasing "
+								+ "if the broker supports it", n,
+								topicDescription.partitions().size(), topicNameToTopic.get(n).numPartitions()));
+						}
+						topicsToModify.put(n, NewPartitions.increaseTo(topicNameToTopic.get(n).numPartitions()));
 					}
 				}
 				catch (InterruptedException e) {
@@ -203,7 +216,22 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 				}
 				catch (ExecutionException e) {
 					logger.error("Failed to create topics", e.getCause());
-					throw e.getCause();
+				}
+			}
+			if (topicsToModify.size() > 0) {
+				CreatePartitionsResult partitionsResult = adminClient.createPartitions(topicsToModify);
+				try {
+					partitionsResult.all().get();
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					logger.error("Interrupted while waiting for partition creation results", e);
+				}
+				catch (ExecutionException e) {
+					logger.error("Failed to create partitions", e.getCause());
+					if (!(e.getCause() instanceof UnsupportedVersionException)) {
+						throw e.getCause();
+					}
 				}
 			}
 		}

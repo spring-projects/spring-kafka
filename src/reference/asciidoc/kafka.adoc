@@ -32,7 +32,7 @@ By default, if the broker is not available, a message will be logged, but the co
 You can programmatically invoke the admin's `initialize()` method to try again later.
 If you wish this condition to be considered fatal, set the admin's `fatalIfBrokerNotAvailable` property to `true` and the context will fail to initialize.
 
-NOTE: The admin does not alter existing topics; it will log (INFO) if the number of partitions don't match.
+NOTE: If the broker supports it (1.0.0 or higher), the admin will increase the number of partitions if it is found that an existing topic has fewer partitions than the `NewTopic.numPartitions`.
 
 ==== Sending Messages
 
