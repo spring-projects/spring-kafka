@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -41,6 +42,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.kafka.KafkaException;
 
 /**
  * An admin that delegates to an {@link AdminClient} to create topics defined
@@ -54,6 +56,8 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
+	private static final int DEFAULT_OPERATION_TIMEOUT = 30;
+
 	private final static Log logger = LogFactory.getLog(KafkaAdmin.class);
 
 	private final Map<String, Object> config;
@@ -61,6 +65,8 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	private ApplicationContext applicationContext;
 
 	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
+
+	private int operationTimeout = DEFAULT_OPERATION_TIMEOUT;
 
 	private boolean fatalIfBrokerNotAvailable;
 
@@ -88,6 +94,14 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	 */
 	public void setCloseTimeout(int closeTimeout) {
 		this.closeTimeout = closeTimeout;
+	}
+
+	/**
+	 * Set the operation timeout in seconds. Defaults to 30 seconds.
+	 * @param operationTimeout the timeout.
+	 */
+	public void setOperationTimeout(int operationTimeout) {
+		this.operationTimeout = operationTimeout;
 	}
 
 	/**
@@ -180,7 +194,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			Map<String, NewPartitions> topicsToModify = new HashMap<>();
 			topicInfo.values().forEach((n, f) -> {
 				try {
-					TopicDescription topicDescription = f.get();
+					TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
 					if (topicNameToTopic.get(n).numPartitions() < topicDescription.partitions().size()) {
 						if (logger.isInfoEnabled()) {
 							logger.info(String.format(
@@ -201,6 +215,9 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
+				catch (TimeoutException e) {
+					throw new KafkaException("Timed out waiting to get existing topics", e);
+				}
 				catch (ExecutionException e) {
 					topicsToAdd.add(topicNameToTopic.get(n));
 				}
@@ -208,11 +225,14 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			if (topicsToAdd.size() > 0) {
 				CreateTopicsResult topicResults = adminClient.createTopics(topicsToAdd);
 				try {
-					topicResults.all().get();
+					topicResults.all().get(this.operationTimeout, TimeUnit.SECONDS);
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					logger.error("Interrupted while waiting for topic creation results", e);
+				}
+				catch (TimeoutException e) {
+					throw new KafkaException("Timed out waiting for create topics results", e);
 				}
 				catch (ExecutionException e) {
 					logger.error("Failed to create topics", e.getCause());
