@@ -241,11 +241,14 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			if (topicsToModify.size() > 0) {
 				CreatePartitionsResult partitionsResult = adminClient.createPartitions(topicsToModify);
 				try {
-					partitionsResult.all().get();
+					partitionsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					logger.error("Interrupted while waiting for partition creation results", e);
+				}
+				catch (TimeoutException e) {
+					throw new KafkaException("Timed out waiting for create topics results", e);
 				}
 				catch (ExecutionException e) {
 					logger.error("Failed to create partitions", e.getCause());
