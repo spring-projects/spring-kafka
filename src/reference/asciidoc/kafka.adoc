@@ -34,6 +34,20 @@ If you wish this condition to be considered fatal, set the admin's `fatalIfBroke
 
 NOTE: If the broker supports it (1.0.0 or higher), the admin will increase the number of partitions if it is found that an existing topic has fewer partitions than the `NewTopic.numPartitions`.
 
+For more advanced features, such as assigning partitions to replicas, you can use the `AdminClient` directly:
+
+[source, java]
+----
+@Autowired
+private KafkaAdmin admin;
+
+...
+
+    AdminClient client = AdminClient.create(admin.getConfig());
+    ...
+    client.close();
+----
+
 ==== Sending Messages
 
 [[kafka-template]]
