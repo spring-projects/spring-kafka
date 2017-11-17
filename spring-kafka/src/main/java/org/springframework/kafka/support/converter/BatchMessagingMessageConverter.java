@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.converter;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +47,10 @@ import org.springframework.messaging.support.MessageBuilder;
  * Populates {@link KafkaHeaders} based on the {@link ConsumerRecord} onto the returned message.
  * Each header is a collection where the position in the collection matches the payload
  * position.
+ * <p>
+ * If a {@link RecordMessageConverter} is provided, and the batch type is a {@link ParameterizedType}
+ * with a single generic type parameter, each record will be passed to the converter, thus supporting
+ * a method signature {@code List<Foo> foos}.
  *
  * @author Marius Bogoevici
  * @author Gary Russell
@@ -57,13 +62,29 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	protected final Log logger = LogFactory.getLog(getClass());
 
+	private final RecordMessageConverter recordConverter;
+
 	private boolean generateMessageId = false;
 
 	private boolean generateTimestamp = false;
 
 	private KafkaHeaderMapper headerMapper;
 
+	/**
+	 * Create an instance that does not convert the record values.
+	 */
 	public BatchMessagingMessageConverter() {
+		this(null);
+	}
+
+	/**
+	 * Create an instance that converts record values using the supplied
+	 * converter.
+	 * @param recordConverter the converter.
+	 * @since 1.3.2
+	 */
+	public BatchMessagingMessageConverter(RecordMessageConverter recordConverter) {
+		this.recordConverter = recordConverter;
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
 		}
@@ -134,7 +155,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 		boolean logged = false;
 		for (ConsumerRecord<?, ?> record : records) {
-			payloads.add(extractAndConvertValue(record, type));
+			payloads.add(this.recordConverter == null || !containerType(type)
+					? extractAndConvertValue(record, type)
+					: convert(record, type));
 			keys.add(record.key());
 			topics.add(record.topic());
 			partitions.add(record.partition());
@@ -166,13 +189,38 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	/**
-	 * Subclasses can convert the value; by default, it's returned as provided by Kafka.
+	 * Subclasses can convert the value; by default, it's returned as provided by Kafka
+	 * unless a {@link RecordMessageConverter} has been provided.
 	 * @param record the record.
 	 * @param type the required type.
 	 * @return the value.
 	 */
 	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
 		return record.value() == null ? KafkaNull.INSTANCE : record.value();
+	}
+
+
+	/**
+	 * Convert the record value.
+	 * @param record the record.
+	 * @param type the type - must be a {@link ParameterizedType} with a single generic
+	 * type parameter.
+	 * @return the converted payload.
+	 */
+	protected Object convert(ConsumerRecord<?, ?> record, Type type) {
+		return this.recordConverter
+			.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
+	}
+
+	/**
+	 * Return true if the type is a parameterized type with a single generic type
+	 * parameter.
+	 * @param type the type.
+	 * @return true if the conditions are met.
+	 */
+	private boolean containerType(Type type) {
+		return type instanceof ParameterizedType
+				&& ((ParameterizedType) type).getActualTypeArguments().length == 1;
 	}
 
 }

@@ -339,7 +339,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private int count;
 
-		private long last;
+		private long last = System.currentTimeMillis();
 
 		private boolean fatalError;
 
