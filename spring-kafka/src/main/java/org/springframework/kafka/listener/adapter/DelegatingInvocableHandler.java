@@ -36,6 +36,7 @@ import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.kafka.KafkaException;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -185,11 +186,11 @@ public class DelegatingInvocableHandler {
 	protected boolean matchHandlerMethod(Class<? extends Object> payloadClass, InvocableHandlerMethod handler) {
 		Method method = handler.getMethod();
 		Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-		// Single param; no annotation or @Payload
+		// Single param; no annotation or not @Header
 		if (parameterAnnotations.length == 1) {
 			MethodParameter methodParameter = new MethodParameter(method, 0);
 			if ((methodParameter.getParameterAnnotations().length == 0
-					|| methodParameter.hasParameterAnnotation(Payload.class))
+					|| !methodParameter.hasParameterAnnotation(Header.class))
 					&& methodParameter.getParameterType().isAssignableFrom(payloadClass)) {
 				return true;
 			}
@@ -199,7 +200,7 @@ public class DelegatingInvocableHandler {
 		for (int i = 0; i < parameterAnnotations.length; i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
 			if ((methodParameter.getParameterAnnotations().length == 0
-					|| methodParameter.hasParameterAnnotation(Payload.class))
+					|| !methodParameter.hasParameterAnnotation(Header.class))
 					&& methodParameter.getParameterType().isAssignableFrom(payloadClass)) {
 				if (foundCandidate) {
 					throw new KafkaException("Ambiguous payload parameter for " + method.toGenericString());
