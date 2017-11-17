@@ -111,12 +111,6 @@ public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
 
-	@Autowired
-	private Config config;
-
-	@Autowired
-	public Listener listener;
-
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true,
 			"annotated1", "annotated2", "annotated3",
@@ -130,6 +124,12 @@ public class EnableKafkaIntegrationTests {
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
 //			"org.springframework.kafka", "org.apache.kafka.clients.consumer");
+
+	@Autowired
+	private Config config;
+
+	@Autowired
+	public Listener listener;
 
 	@Autowired
 	public IfaceListenerImpl ifaceListener;
@@ -731,7 +731,8 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
+			Map<String, Object> consumerProps =
+					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
