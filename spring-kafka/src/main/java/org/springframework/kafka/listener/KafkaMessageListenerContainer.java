@@ -663,8 +663,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				KafkaMessageListenerContainer.this.stop();
 			}
 			this.monitorTask.cancel(true);
-			if (taskScheduler instanceof ThreadPoolTaskScheduler) {
-                            ((ThreadPoolTaskScheduler) taskScheduler).destroy();
+			if (this.taskScheduler instanceof ThreadPoolTaskScheduler) {
+                            ((ThreadPoolTaskScheduler) this.taskScheduler).destroy();
                         }
 			this.consumer.close();
 			if (this.logger.isInfoEnabled()) {
