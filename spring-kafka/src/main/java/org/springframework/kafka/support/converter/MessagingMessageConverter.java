@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.kafka.support.Acknowledgment;
@@ -136,10 +137,20 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
 		Object payload = convertPayload(message);
 		Long timestamp = headers.get(KafkaHeaders.TIMESTAMP, Long.class);
-		RecordHeaders recordHeaders = new RecordHeaders();
+		Headers recordHeaders = initialRecordHeaders(message);
 		this.headerMapper.fromHeaders(headers, recordHeaders);
 		return new ProducerRecord(topic == null ? defaultTopic : topic, partition, timestamp, key, payload,
 				recordHeaders);
+	}
+
+	/**
+	 * Subclasses can populate additional headers before they are mapped.
+	 * @param message the message.
+	 * @return the headers
+	 * @since 2.1
+	 */
+	protected Headers initialRecordHeaders(Message<?> message) {
+		return new RecordHeaders();
 	}
 
 	/**

@@ -79,6 +79,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
+import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -119,7 +121,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-			"annotated29", "annotated30", "annotated30reply");
+			"annotated29", "annotated30", "annotated30reply", "annotated31");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -308,6 +310,28 @@ public class EnableKafkaIntegrationTests {
 				.getPropertyValue(buzConcurrentContainer, "containers", List.class).get(0);
 		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.coordinator.groupId"))
 				.isEqualTo("buz.explicitGroupId");
+	}
+
+	@Test
+	@DirtiesContext
+	public void testJsonHeaders() throws Exception {
+		ConcurrentMessageListenerContainer<?, ?> container =
+				(ConcurrentMessageListenerContainer<?, ?>) registry.getListenerContainer("jsonHeaders");
+		Object messageListener = container.getContainerProperties().getMessageListener();
+		DefaultJackson2JavaTypeMapper typeMapper = KafkaTestUtils.getPropertyValue(messageListener,
+				"messageConverter.typeMapper", DefaultJackson2JavaTypeMapper.class);
+		new DirectFieldAccessor(typeMapper).setPropertyValue("typePrecedence",
+				Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID);
+		assertThat(container).isNotNull();
+		Foo foo = new Foo();
+		foo.setBar("bar");
+		this.kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
+				.setHeader(KafkaHeaders.TOPIC, "annotated31")
+				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.build());
+		assertThat(this.listener.latch19.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
 	}
 
 	@Test
@@ -649,7 +673,11 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setMessageConverter(new StringJsonMessageConverter());
+			StringJsonMessageConverter converter = new StringJsonMessageConverter();
+			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+			typeMapper.addTrustedPackages("*");
+			converter.setTypeMapper(typeMapper);
+			factory.setMessageConverter(converter);
 			return factory;
 		}
 
@@ -966,6 +994,8 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch18 = new CountDownLatch(2);
 
+		private final CountDownLatch latch19 = new CountDownLatch(1);
+
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
 		private volatile Integer partition;
@@ -1070,6 +1100,14 @@ public class EnableKafkaIntegrationTests {
 		public void listen6(Foo foo) {
 			this.foo = foo;
 			this.latch6.countDown();
+		}
+
+		@KafkaListener(id = "jsonHeaders", topics = "annotated31",
+				containerFactory = "kafkaJsonListenerContainerFactory",
+				groupId = "jsonHeaders")
+		public void jsonHeaders(Bar foo) { // should be mapped to Foo via Headers
+			this.foo = (Foo) foo;
+			this.latch19.countDown();
 		}
 
 		@KafkaListener(id = "rebalanceListener", topics = "annotated11", idIsGroup = false,
@@ -1313,7 +1351,11 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public static class Foo {
+	public interface Bar {
+
+	}
+
+	public static class Foo implements Bar {
 
 		private String bar;
 
