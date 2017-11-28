@@ -342,6 +342,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private long last = System.currentTimeMillis();
 
 		private boolean fatalError;
+		
+		private boolean taskSchedulerExplicitlySet;
 
 		@SuppressWarnings("unchecked")
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
@@ -413,11 +415,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			if (this.containerProperties.getScheduler() != null) {
 				this.taskScheduler = this.containerProperties.getScheduler();
+				this.taskSchedulerExplicitlySet = true;
 			}
 			else {
 				ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
 				threadPoolTaskScheduler.initialize();
 				this.taskScheduler = threadPoolTaskScheduler;
+				this.taskSchedulerExplicitlySet = false;
 			}
 			this.monitorTask = this.taskScheduler.scheduleAtFixedRate(() -> checkConsumer(),
 					this.containerProperties.getMonitorInterval() * 1000);
@@ -663,7 +667,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				KafkaMessageListenerContainer.this.stop();
 			}
 			this.monitorTask.cancel(true);
-			if (this.taskScheduler instanceof ThreadPoolTaskScheduler) {
+			if (!this.taskSchedulerExplicitlySet) {
 				((ThreadPoolTaskScheduler) this.taskScheduler).destroy();
 			}
 			this.consumer.close();
