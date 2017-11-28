@@ -139,7 +139,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	private void enableIdempotentBehaviour() {
 		Object previousValue = this.configs.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
 		if (logger.isDebugEnabled() && previousValue != null && previousValue.equals(false)) {
-			logger.debug(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG +  "is set to " + previousValue + ",may result in duplicate messages");
+			logger.debug(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG +  "is set to " + previousValue + ", may result in duplicate messages");
 		}
 	}
 

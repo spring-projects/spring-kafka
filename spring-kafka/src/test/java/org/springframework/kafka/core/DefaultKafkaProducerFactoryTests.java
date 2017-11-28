@@ -28,7 +28,7 @@ import org.junit.Test;
  * @author Nakul Mishra
  */
 
-public class DefaultKafkaProducerFactoryTest {
+public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	public void testDefaultProducerIdempotentConfig() throws Exception {
