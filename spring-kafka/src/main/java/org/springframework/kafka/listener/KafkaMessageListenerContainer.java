@@ -422,6 +422,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
 				threadPoolTaskScheduler.initialize();
 				this.taskScheduler = threadPoolTaskScheduler;
+				this.taskSchedulerExplicitlySet = false;
 			}
 			this.monitorTask = this.taskScheduler.scheduleAtFixedRate(() -> checkConsumer(),
 					this.containerProperties.getMonitorInterval() * 1000);
