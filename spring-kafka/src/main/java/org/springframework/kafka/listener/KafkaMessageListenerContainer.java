@@ -342,7 +342,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private long last = System.currentTimeMillis();
 
 		private boolean fatalError;
-		
+
 		private boolean taskSchedulerExplicitlySet;
 
 		@SuppressWarnings("unchecked")
