@@ -67,6 +67,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Murali Reddy
+ * @author Nakul Mishra
  */
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, Lifecycle, DisposableBean {
 
@@ -129,6 +130,17 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	public void setTransactionIdPrefix(String transactionIdPrefix) {
 		Assert.notNull(transactionIdPrefix, "'transactionIdPrefix' cannot be null");
 		this.transactionIdPrefix = transactionIdPrefix;
+		enableIdempotentBehaviour();
+	}
+
+	/**
+	 * When set to 'true', the producer will ensure that exactly one copy of each message is written in the stream.
+	 */
+	private void enableIdempotentBehaviour() {
+		Object previousValue = this.configs.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+		if (logger.isDebugEnabled() && previousValue != null && previousValue.equals(false)) {
+			logger.debug("The '" + ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG +  "' is set to " + previousValue + ", may result in duplicate messages");
+		}
 	}
 
 	/**
