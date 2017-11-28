@@ -43,7 +43,10 @@ import org.springframework.util.Assert;
  */
 public class ContainerProperties {
 
+	private static final long DEFAULT_POLL_TIMEOUT = 1000L;
 	private static final int DEFAULT_SHUTDOWN_TIMEOUT = 10000;
+	private static final int DEFAULT_MONITOR_INTERVAL = 30;
+	private static final float DEFAULT_NO_POLL_THRESHOLD = 3f;
 
 	/**
 	 * Topic names.
@@ -98,7 +101,7 @@ public class ContainerProperties {
 	/**
 	 * The max time to block in the consumer waiting for records.
 	 */
-	private volatile long pollTimeout = 1000;
+	private volatile long pollTimeout = DEFAULT_POLL_TIMEOUT;
 
 	/**
 	 * The executor for threads that poll the consumer.
@@ -144,11 +147,11 @@ public class ContainerProperties {
 
 	private PlatformTransactionManager transactionManager;
 
-	private int monitorInterval = 30;
+	private int monitorInterval = DEFAULT_MONITOR_INTERVAL;
 
 	private TaskScheduler scheduler;
 
-	private float noPollThreshold;
+	private float noPollThreshold = DEFAULT_NO_POLL_THRESHOLD;
 
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
@@ -200,7 +203,7 @@ public class ContainerProperties {
 
 	/**
 	 * Set the max time to block in the consumer waiting for records.
-	 * @param pollTimeout the timeout in ms; default 1000.
+	 * @param pollTimeout the timeout in ms; default {@value #DEFAULT_POLL_TIMEOUT}.
 	 */
 	public void setPollTimeout(long pollTimeout) {
 		this.pollTimeout = pollTimeout;
@@ -416,7 +419,7 @@ public class ContainerProperties {
 
 	/**
 	 * The interval between checks for a non-responsive consumer in
-	 * seconds; default 30.
+	 * seconds; default {@value #DEFAULT_MONITOR_INTERVAL}.
 	 * @param monitorInterval the interval.
 	 * @since 1.3.1
 	 */
@@ -443,9 +446,9 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * If the time since the last poll / {@link pollTimeout #setPollTimeout(long)}
+	 * If the time since the last poll / {@link #getPollTimeout() poll timeout}
 	 * exceeds this value, a NonResponsiveConsumerEvent is published.
-	 * Default 3.0.
+	 * Default {@value #DEFAULT_NO_POLL_THRESHOLD}.
 	 * @param noPollThreshold the threshold
 	 * @since 1.3.1
 	 */
