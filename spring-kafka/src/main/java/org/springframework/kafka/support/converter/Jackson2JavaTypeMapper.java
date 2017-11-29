@@ -29,6 +29,8 @@ import com.fasterxml.jackson.databind.JavaType;
  * @author Sam Nelson
  * @author Andreas Asplund
  * @author Gary Russell
+ *
+ * @since 2.1
  */
 public interface Jackson2JavaTypeMapper extends ClassMapper {
 

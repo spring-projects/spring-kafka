@@ -26,6 +26,7 @@ import org.apache.kafka.common.header.Headers;
  * @author James Carr
  * @author Gary Russell
  *
+ * @since 2.1
  */
 public interface ClassMapper {
 

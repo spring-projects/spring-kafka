@@ -37,6 +37,8 @@ import org.springframework.util.ClassUtils;
  * @author Sam Nelson
  * @author Andreas Asplund
  * @author Gary Russell
+ *
+ * @since 2.1
  */
 public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 

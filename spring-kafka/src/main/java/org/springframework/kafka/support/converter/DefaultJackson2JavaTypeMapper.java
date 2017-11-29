@@ -32,11 +32,14 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * Jackson 2 type mapper.
+ *
  * @author Mark Pollack
  * @author Sam Nelson
  * @author Andreas Asplund
  * @author Artem Bilan
  * @author Gary Russell
+ *
+ * @since 2.1
  */
 public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 		implements Jackson2JavaTypeMapper, ClassMapper {
@@ -55,7 +58,6 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 	 * Return the precedence.
 	 * @return the precedence.
 	 * @see #setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence)
-	 * @since 1.6.
 	 */
 	@Override
 	public TypePrecedence getTypePrecedence() {
@@ -79,7 +81,6 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 	 * set the precedence to {@link Jackson2JavaTypeMapper.TypePrecedence#TYPE_ID}.
 	 *
 	 * @param typePrecedence the precedence.
-	 * @since 1.6
 	 */
 	public void setTypePrecedence(TypePrecedence typePrecedence) {
 		Assert.notNull(typePrecedence, "'typePrecedence' cannot be null");
