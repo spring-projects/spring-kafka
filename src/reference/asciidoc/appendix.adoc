@@ -1,4 +1,4 @@
 [[history]]
 == Change History
 
-include::./changes-1.0-1.1.adoc[]
+include::./changes-since-1.0.adoc[]

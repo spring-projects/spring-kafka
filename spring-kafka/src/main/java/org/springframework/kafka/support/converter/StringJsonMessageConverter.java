@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,11 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -43,6 +46,8 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 
 	private final ObjectMapper objectMapper;
 
+	private Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+
 	public StringJsonMessageConverter() {
 		this(new ObjectMapper());
 		this.objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
@@ -52,6 +57,27 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 	public StringJsonMessageConverter(ObjectMapper objectMapper) {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
 		this.objectMapper = objectMapper;
+	}
+
+	public Jackson2JavaTypeMapper getTypeMapper() {
+		return this.typeMapper;
+	}
+
+	/**
+	 * Set a customized type mapper.
+	 * @param typeMapper the type mapper.
+	 * @since 2.1
+	 */
+	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
+		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
+		this.typeMapper = typeMapper;
+	}
+
+	@Override
+	protected Headers initialRecordHeaders(Message<?> message) {
+		RecordHeaders headers = new RecordHeaders();
+		this.typeMapper.fromClass(message.getPayload().getClass(), headers);
+		return headers;
 	}
 
 	@Override
@@ -72,7 +98,12 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 			return KafkaNull.INSTANCE;
 		}
 
-		JavaType javaType = TypeFactory.defaultInstance().constructType(type);
+		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED)
+			? TypeFactory.defaultInstance().constructType(type)
+			: this.typeMapper.toJavaType(record.headers());
+		if (javaType == null) { // no headers
+			javaType = TypeFactory.defaultInstance().constructType(type);
+		}
 		if (value instanceof String) {
 			try {
 				return this.objectMapper.readValue((String) value, javaType);

@@ -52,6 +52,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.junit.ClassRule;
@@ -75,6 +76,8 @@ import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapte
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -90,6 +93,10 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 public class KafkaMessageListenerContainerTests {
 
 	private final Log logger = LogFactory.getLog(this.getClass());
+
+	private static String topic1 = "testTopic1";
+
+	private static String topic2 = "testTopic2";
 
 	private static String topic3 = "testTopic3";
 
@@ -122,8 +129,9 @@ public class KafkaMessageListenerContainerTests {
 	private static String topic17 = "testTopic17";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic3, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16,
+			topic17);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -1435,6 +1443,81 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop manual ack rebalance");
 	}
 
+	@Test
+	public void testJsonSerDeConfiguredType() throws Exception {
+		this.logger.info("Start JSON1");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+		props.put(JsonDeserializer.DEFAULT_VALUE_TYPE, Foo.class);
+		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<ConsumerRecord<?, ?>> received = new AtomicReference<>();
+		containerProps.setMessageListener((MessageListener<Integer, Foo>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("json: " + record);
+			received.set(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, Foo> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testJson1");
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		senderProps.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
+		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.sendDefault(0, new Foo("bar"));
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get().value()).isInstanceOf(Foo.class);
+		container.stop();
+		this.logger.info("Stop JSON1");
+	}
+
+	@Test
+	public void testJsonSerDeHeaderSimpleType() throws Exception {
+		this.logger.info("Start JSON2");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic2);
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<ConsumerRecord<?, ?>> received = new AtomicReference<>();
+		containerProps.setMessageListener((MessageListener<Integer, Foo>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("json: " + record);
+			received.set(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, Foo> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testJson2");
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic2);
+		template.sendDefault(0, new Foo("bar"));
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get().value()).isInstanceOf(Foo.class);
+		container.stop();
+		this.logger.info("Stop JSON2");
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
@@ -1462,6 +1545,33 @@ public class KafkaMessageListenerContainerTests {
 
 	@SuppressWarnings("serial")
 	public static class FooEx extends RuntimeException {
+
+	}
+
+	public static class Foo {
+
+		private String bar;
+
+		public Foo() {
+			super();
+		}
+
+		public Foo(String bar) {
+			this.bar = bar;
+		}
+
+		public String getBar() {
+			return this.bar;
+		}
+
+		public void setBar(String bar) {
+			this.bar = bar;
+		}
+
+		@Override
+		public String toString() {
+			return "Foo [bar=" + this.bar + "]";
+		}
 
 	}
 
