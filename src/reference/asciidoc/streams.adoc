@@ -17,11 +17,7 @@ The reference Apache Kafka Streams documentation suggests this way of using the 
 // from which input topics to read, which stream operations (filter, map, etc.)
 // should be called, and so on.
 
-KStreamBuilder builder = ...;  // when using the Kafka Streams DSL
-//
-// OR
-//
-TopologyBuilder builder = ...; // when using the Processor API
+StreamsBuilder builder = ...;  // when using the Kafka Streams DSL
 
 // Use the configuration to tell your application where the Kafka cluster is,
 // which serializers/deserializers to use by default, to specify security settings,
@@ -37,69 +33,69 @@ streams.start();
 streams.close();
 ----
 
-So, we have two main components: `KStreamBuilder` (which extends `TopologyBuilder` as well) with an API to build `KStream` (or `KTable`) instances and `KafkaStreams` to manage their lifecycle.
-Note: all `KStream` instances exposed to a `KafkaStreams` instance by a single `KStreamBuilder` will be started and stopped at the same time, even if they have a fully different logic.
-In other words all our streams defined by a `KStreamBuilder` are tied with a single lifecycle control.
+So, we have two main components: `StreamsBuilder` with an API to build `KStream` (or `KTable`) instances and `KafkaStreams` to manage their lifecycle.
+Note: all `KStream` instances exposed to a `KafkaStreams` instance by a single `StreamsBuilder` will be started and stopped at the same time, even if they have a fully different logic.
+In other words all our streams defined by a `StreamsBuilder` are tied with a single lifecycle control.
 Once a `KafkaStreams` instance has been closed via `streams.close()` it cannot be restarted, and a new `KafkaStreams` instance to restart stream processing must be created instead.
 
 ==== Spring Management
 
-To simplify the usage of Kafka Streams from the Spring application context perspective and utilize the lifecycle management via container, the Spring for Apache Kafka introduces `KStreamBuilderFactoryBean`.
-This is an `AbstractFactoryBean` implementation to expose a `KStreamBuilder` singleton instance as a bean:
+To simplify the usage of Kafka Streams from the Spring application context perspective and utilize the lifecycle management via container, the Spring for Apache Kafka introduces `StreamsBuilderFactoryBean`.
+This is an `AbstractFactoryBean` implementation to expose a `StreamsBuilder` singleton instance as a bean:
 
 [source, java]
 ----
 @Bean
-public FactoryBean<KStreamBuilder> myKStreamBuilder(StreamsConfig streamsConfig) {
-    return new KStreamBuilderFactoryBean(streamsConfig);
+public FactoryBean<StreamsBuilderFactoryBean> myKStreamBuilder(StreamsConfig streamsConfig) {
+    return new StreamsBuilderFactoryBean(streamsConfig);
 }
 ----
 
-The `KStreamBuilderFactoryBean` also implements `SmartLifecycle` to manage lifecycle of an internal `KafkaStreams` instance.
+The `StreamsBuilderFactoryBean` also implements `SmartLifecycle` to manage lifecycle of an internal `KafkaStreams` instance.
 Similar to the Kafka Streams API, the `KStream` instances must be defined before starting the `KafkaStreams`, and that also applies for the Spring API for Kafka Streams.
-Therefore we have to declare `KStream` s on the `KStreamBuilder` before the application context is refreshed, when we use default `autoStartup = true` on the `KStreamBuilderFactoryBean`.
+Therefore we have to declare `KStream` s on the `StreamsBuilder` before the application context is refreshed, when we use default `autoStartup = true` on the `StreamsBuilderFactoryBean`.
 For example, `KStream` can be just as a regular bean definition, meanwhile the Kafka Streams API is used without any impacts:
 
 [source, java]
 ----
 @Bean
-public KStream<?, ?> kStream(KStreamBuilder kStreamBuilder) {
+public KStream<?, ?> kStream(StreamsBuilder kStreamBuilder) {
     KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
     // Fluent KStream API
     return stream;
 }
 ----
 
-If you would like to control lifecycle manually (e.g. stop and start by some condition), you can reference the `KStreamBuilderFactoryBean` bean directly using factory bean (`&`) http://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-factory-extension-factorybean[prefix].
-Since `KStreamBuilderFactoryBean` utilize its internal `KafkaStreams` instance, it is safe to stop and restart it again - a new `KafkaStreams` is created on each `start()`.
-Also consider using different `KStreamBuilderFactoryBean` s, if you would like to control lifecycles for `KStream` instances separately.
+If you would like to control lifecycle manually (e.g. stop and start by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly using factory bean (`&`) http://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-factory-extension-factorybean[prefix].
+Since `StreamsBuilderFactoryBean` utilize its internal `KafkaStreams` instance, it is safe to stop and restart it again - a new `KafkaStreams` is created on each `start()`.
+Also consider using different `StreamsBuilderFactoryBean` s, if you would like to control lifecycles for `KStream` instances separately.
 
-You can specify `KafkaStreams.StateListener` and `Thread.UncaughtExceptionHandler` options on the `KStreamBuilderFactoryBean` which are delegated to the internal `KafkaStreams` instance.
-That internal `KafkaStreams` instance can be accessed via `KStreamBuilderFactoryBean.getKafkaStreams()` if you need to perform some `KafkaStreams` operations directly.
-You can autowire `KStreamBuilderFactoryBean` bean by type, but you should be sure that you use full type in the bean definition, for example:
+You can specify `KafkaStreams.StateListener` and `Thread.UncaughtExceptionHandler` options on the `StreamsBuilderFactoryBean` which are delegated to the internal `KafkaStreams` instance.
+That internal `KafkaStreams` instance can be accessed via `StreamsBuilderFactoryBean.getKafkaStreams()` if you need to perform some `KafkaStreams` operations directly.
+You can autowire `StreamsBuilderFactoryBean` bean by type, but you should be sure that you use full type in the bean definition, for example:
 
 [source,java]
 ----
 @Bean
-public KStreamBuilderFactoryBean myKStreamBuilder(StreamsConfig streamsConfig) {
-    return new KStreamBuilderFactoryBean(streamsConfig);
+public StreamsBuilderFactoryBean myKStreamBuilder(StreamsConfig streamsConfig) {
+    return new StreamsBuilderFactoryBean(streamsConfig);
 }
 ...
 @Autowired
-private KStreamBuilderFactoryBean myKStreamBuilderFactoryBean;
+private StreamsBuilderFactoryBean myKStreamBuilderFactoryBean;
 ----
 
 Or add `@Qualifier` for injection by name if you use interface bean definition:
 [source,java]
 ----
 @Bean
-public FactoryBean<KStreamBuilder> myKStreamBuilder(StreamsConfig streamsConfig) {
-    return new KStreamBuilderFactoryBean(streamsConfig);
+public FactoryBean<StreamsBuilder> myKStreamBuilder(StreamsConfig streamsConfig) {
+    return new StreamsBuilderFactoryBean(streamsConfig);
 }
 ...
 @Autowired
 @Qualifier("&myKStreamBuilder")
-private KStreamBuilderFactoryBean myKStreamBuilderFactoryBean;
+private StreamsBuilderFactoryBean myKStreamBuilderFactoryBean;
 ----
 
 ==== JSON Serdes
@@ -115,13 +111,13 @@ stream.through(Serdes.Integer(), new JsonSerde<>(Foo.class), "foos");
 
 ==== Configuration
 
-To configure the Kafka Streams environment, the `KStreamBuilderFactoryBean` requires a `Map` of particular properties or a `StreamsConfig` instance.
+To configure the Kafka Streams environment, the `StreamsBuilderFactoryBean` requires a `Map` of particular properties or a `StreamsConfig` instance.
 See Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs[documentation] for all possible options.
 
 To avoid boilerplate code for most cases, especially when you develop micro services, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which should be placed alongside with `@Configuration`.
 Only you need is to declare `StreamsConfig` bean with the `defaultKafkaStreamsConfig` name.
-A `KStreamBuilder` bean with the `defaultKStreamBuilder` name will be declare in the application context automatically.
-Any additional `KStreamBuilderFactoryBean` beans can be declared and used as well.
+A `StreamsBuilder` bean with the `defaultKafkaStreamsBuilder` name will be declare in the application context automatically.
+Any additional `StreamsBuilderFactoryBean` beans can be declared and used as well.
 
 ==== Kafka Streams Example
 
@@ -145,7 +141,7 @@ public static class KafkaStreamsConfiguration {
     }
 
     @Bean
-    public KStream<Integer, String> kStream(KStreamBuilder kStreamBuilder) {
+    public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
         KStream<Integer, String> stream = kStreamBuilder.stream("streamingTopic1");
         stream
                 .mapValues(String::toUpperCase)

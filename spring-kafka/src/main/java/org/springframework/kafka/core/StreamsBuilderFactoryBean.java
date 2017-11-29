@@ -39,7 +39,7 @@ import org.springframework.util.Assert;
  *
  * @since 1.1.4
  */
-public class KStreamBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder> implements SmartLifecycle {
+public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder> implements SmartLifecycle {
 
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
@@ -61,12 +61,12 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private volatile boolean running;
 
-	public KStreamBuilderFactoryBean(StreamsConfig streamsConfig) {
+	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		this.streamsConfig = streamsConfig;
 	}
 
-	public KStreamBuilderFactoryBean(Map<String, Object> streamsConfig) {
+	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		this.streamsConfig = new StreamsConfig(streamsConfig);
 	}
@@ -172,9 +172,9 @@ public class KStreamBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Get a managed by this {@link KStreamBuilderFactoryBean} {@link KafkaStreams} instance.
+	 * Get a managed by this {@link StreamsBuilderFactoryBean} {@link KafkaStreams} instance.
 	 * @return KafkaStreams managed instance;
-	 * may be null if this {@link KStreamBuilderFactoryBean} hasn't been started.
+	 * may be null if this {@link StreamsBuilderFactoryBean} hasn't been started.
 	 * @since 1.1.4
 	 */
 	public KafkaStreams getKafkaStreams() {

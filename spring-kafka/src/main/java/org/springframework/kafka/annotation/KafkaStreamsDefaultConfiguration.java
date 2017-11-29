@@ -23,10 +23,10 @@ import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.core.KStreamBuilderFactoryBean;
+import org.springframework.kafka.core.StreamsBuilderFactoryBean;
 
 /**
- * {@code @Configuration} class that registers a {@link KStreamBuilderFactoryBean}
+ * {@code @Configuration} class that registers a {@link StreamsBuilderFactoryBean}
  * if {@link StreamsConfig} with the name
  * {@link KafkaStreamsDefaultConfiguration#DEFAULT_STREAMS_CONFIG_BEAN_NAME} is present
  * in the application context. Otherwise a {@link UnsatisfiedDependencyException} is thrown.
@@ -43,25 +43,25 @@ public class KafkaStreamsDefaultConfiguration {
 
 	/**
 	 * The bean name for the {@link StreamsConfig} to be used for the default
-	 * {@link KStreamBuilderFactoryBean} bean definition.
+	 * {@link StreamsBuilderFactoryBean} bean definition.
 	 */
 	public static final String DEFAULT_STREAMS_CONFIG_BEAN_NAME = "defaultKafkaStreamsConfig";
 
 	/**
-	 * The bean name for auto-configured default {@link KStreamBuilderFactoryBean}.
+	 * The bean name for auto-configured default {@link StreamsBuilderFactoryBean}.
 	 */
-	public static final String DEFAULT_KSTREAM_BUILDER_BEAN_NAME = "defaultKStreamBuilder";
+	public static final String DEFAULT_STREAMS_BUILDER_BEAN_NAME = "defaultKafkaStreamsBuilder";
 
-	@Bean(name = DEFAULT_KSTREAM_BUILDER_BEAN_NAME)
-	public KStreamBuilderFactoryBean defaultKStreamBuilder(
+	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
+	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
 			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME) ObjectProvider<StreamsConfig> streamsConfigProvider) {
 		StreamsConfig streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
-			return new KStreamBuilderFactoryBean(streamsConfig);
+			return new StreamsBuilderFactoryBean(streamsConfig);
 		}
 		else {
 			throw new UnsatisfiedDependencyException(KafkaStreamsDefaultConfiguration.class.getName(),
-					DEFAULT_KSTREAM_BUILDER_BEAN_NAME, "streamsConfig", "There is no '" +
+					DEFAULT_STREAMS_BUILDER_BEAN_NAME, "streamsConfig", "There is no '" +
 					DEFAULT_STREAMS_CONFIG_BEAN_NAME + "' StreamsConfig bean in the application context.\n" +
 					"Consider to declare one or don't use @EnableKafkaStreams.");
 		}

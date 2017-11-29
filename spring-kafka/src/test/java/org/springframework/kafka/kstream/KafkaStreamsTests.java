@@ -54,9 +54,9 @@ import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.core.StreamsBuilderFactoryBean;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -100,7 +100,7 @@ public class KafkaStreamsTests {
 	private SettableListenableFuture<String> resultFuture;
 
 	@Autowired
-	private KStreamBuilderFactoryBean kStreamBuilderFactoryBean;
+	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
 	@Autowired
 	private KafkaEmbedded kafkaEmbedded;
@@ -112,15 +112,15 @@ public class KafkaStreamsTests {
 		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().deleteTopicEnable()).isTrue();
 		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().brokerId()).isEqualTo(2);
 
-		this.kStreamBuilderFactoryBean.stop();
+		this.streamsBuilderFactoryBean.stop();
 
 		CountDownLatch stateLatch = new CountDownLatch(1);
 
-		this.kStreamBuilderFactoryBean.setStateListener((newState, oldState) -> stateLatch.countDown());
+		this.streamsBuilderFactoryBean.setStateListener((newState, oldState) -> stateLatch.countDown());
 		Thread.UncaughtExceptionHandler exceptionHandler = mock(Thread.UncaughtExceptionHandler.class);
-		this.kStreamBuilderFactoryBean.setUncaughtExceptionHandler(exceptionHandler);
+		this.streamsBuilderFactoryBean.setUncaughtExceptionHandler(exceptionHandler);
 
-		this.kStreamBuilderFactoryBean.start();
+		this.streamsBuilderFactoryBean.start();
 
 		String payload = "foo" + UUID.randomUUID().toString();
 		String payload2 = "foo" + UUID.randomUUID().toString();
@@ -137,7 +137,7 @@ public class KafkaStreamsTests {
 
 		assertThat(stateLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		KafkaStreams kafkaStreams = this.kStreamBuilderFactoryBean.getKafkaStreams();
+		KafkaStreams kafkaStreams = this.streamsBuilderFactoryBean.getKafkaStreams();
 
 		StreamThread[] threads = KafkaTestUtils.getPropertyValue(kafkaStreams, "threads", StreamThread[].class);
 		assertThat(threads).isNotEmpty();
