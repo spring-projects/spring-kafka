@@ -38,6 +38,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -72,7 +73,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	private final Map<String, MessageListenerContainer> listenerContainers =
 			new ConcurrentHashMap<String, MessageListenerContainer>();
 
-	private int phase = Integer.MAX_VALUE;
+	private int phase = AbstractMessageListenerContainer.DEFAULT_PHASE;
 
 	private ConfigurableApplicationContext applicationContext;
 
@@ -191,10 +192,11 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		}
 
 		int containerPhase = listenerContainer.getPhase();
-		if (containerPhase < Integer.MAX_VALUE) {  // a custom phase value
-			if (this.phase < Integer.MAX_VALUE && this.phase != containerPhase) {
-				throw new IllegalStateException("Encountered phase mismatch between container factory definitions: " +
-						this.phase + " vs " + containerPhase);
+		if (listenerContainer.isAutoStartup() &&
+				containerPhase != AbstractMessageListenerContainer.DEFAULT_PHASE) {  // a custom phase value
+			if (this.phase != AbstractMessageListenerContainer.DEFAULT_PHASE && this.phase != containerPhase) {
+				throw new IllegalStateException("Encountered phase mismatch between container "
+						+ "factory definitions: " + this.phase + " vs " + containerPhase);
 			}
 			this.phase = listenerContainer.getPhase();
 		}

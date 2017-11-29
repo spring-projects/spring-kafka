@@ -565,6 +565,14 @@ public interface Acknowledgment {
 
 This gives the listener control over when offsets are committed.
 
+[[container-auto-startup]]
+====== Listener Container Auto Startup
+
+The listener containers implement `SmartLifecycle` and `autoStartup` is `true` by default; the containers are started in a late phase (`Integer.MAX-VALUE - 100`).
+Other components that implement `SmartLifecycle`, that handle data from listeners, should be started in an earlier phase.
+The `- 100` leaves room for later phases to enable components to be auto-started after the containers.
+
+
 [[kafka-listener-annotation]]
 ===== @KafkaListener Annotation
 
@@ -777,6 +785,31 @@ static class MultiListenerBean {
     }
 
 }
+----
+
+[[kafkalistener-lifecycle]]
+===== @KafkaListener Lifecycle Management
+
+The listener containers created for `@KafkaListener` annotations are not beans in the application context.
+Instead, they are registered with an infrastructure bean of type `KafkaListenerEndpointRegistry`.
+This bean manages the containers' lifecycles; it will auto-start any containers that have `autoStartup` set to `true`.
+All containers created by all container factories must be in the same `phase` - see <<container-auto-startup>> for more information.
+You can manage the lifecycle programmatically using the registry; starting/stopping the registry will start/stop all the registered containers.
+Or, you can get a reference to an individual container using its `id` attribute; you can set `autoStartup` on the annotation, which will override the default setting configured into the container factory.
+
+[source, java]
+----
+@Autowired
+private KafkaListenerEndpointRegistry registry;
+
+...
+
+@KafkaListener(id = "myContainer", topics = "myTopic", autoStartup = "false")
+public void listen(...) { ... }
+
+...
+
+    registry.getListenerContainer("myContainer").start();
 ----
 
 [[rebalance-listeners]]

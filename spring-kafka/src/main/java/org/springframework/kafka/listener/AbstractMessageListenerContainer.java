@@ -46,6 +46,11 @@ import org.springframework.util.Assert;
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements MessageListenerContainer, BeanNameAware, ApplicationEventPublisherAware, SmartLifecycle {
 
+	/**
+	 * The default {@link SmartLifecycle} phase for listener containers {@value #DEFAULT_PHASE}.
+	 */
+	public static final int DEFAULT_PHASE = Integer.MAX_VALUE - 100; // late phase
+
 	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
 
 	/**
@@ -109,7 +114,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private boolean autoStartup = true;
 
-	private int phase = 0;
+	private int phase = DEFAULT_PHASE;
 
 	private volatile boolean running = false;
 
