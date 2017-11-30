@@ -85,8 +85,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 	private KafkaListenerEndpointRegistry registry;
 
 	/*
-	 * Deliver 6 records from three partitions, fail on the second record second
-	 * partition.
+	 * Deliver 6 records from three partitions, fail on the first delivery.
 	 */
 	@SuppressWarnings("unchecked")
 	@Test
