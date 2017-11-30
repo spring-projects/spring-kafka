@@ -138,7 +138,9 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		Object payload = convertPayload(message);
 		Long timestamp = headers.get(KafkaHeaders.TIMESTAMP, Long.class);
 		Headers recordHeaders = initialRecordHeaders(message);
-		this.headerMapper.fromHeaders(headers, recordHeaders);
+		if (this.headerMapper != null) {
+			this.headerMapper.fromHeaders(headers, recordHeaders);
+		}
 		return new ProducerRecord(topic == null ? defaultTopic : topic, partition, timestamp, key, payload,
 				recordHeaders);
 	}
