@@ -934,12 +934,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 							Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 									new OffsetAndMetadata(record.offset() + 1));
-
-					if (this.containerProperties.isSyncCommits()) {
-						this.consumer.commitSync(offsetsToCommit);
+					if (producer == null) {
+						if (this.containerProperties.isSyncCommits()) {
+							this.consumer.commitSync(offsetsToCommit);
+						}
+						else {
+							this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
+						}
 					}
 					else {
-						this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
+						this.acks.add(record);
 					}
 				}
 				else if (!this.isAnyManualAck && !this.autoCommit) {
