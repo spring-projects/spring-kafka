@@ -408,8 +408,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			Assert.state(!this.isBatchListener || !this.isRecordAck, "Cannot use AckMode.RECORD with a batch listener");
 			if (this.transactionManager != null) {
 				this.transactionTemplate = new TransactionTemplate(this.transactionManager);
-				Assert.state(!(this.errorHandler instanceof RemainingRecordsErrorHandler),
-						"You cannot use a 'RemainingRecordsErrorHandler' with transactions");
 			}
 			else {
 				this.transactionTemplate = null;
@@ -884,7 +882,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
 										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())).getProducer();
 							}
-							RuntimeException aborted = doInvokeRecordListener(record, producer, null);
+							RuntimeException aborted = doInvokeRecordListener(record, producer, iterator);
 							if (aborted != null) {
 								throw aborted;
 							}
@@ -949,12 +947,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 							Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 									new OffsetAndMetadata(record.offset() + 1));
-
-					if (this.containerProperties.isSyncCommits()) {
-						this.consumer.commitSync(offsetsToCommit);
+					if (producer == null) {
+						if (this.containerProperties.isSyncCommits()) {
+							this.consumer.commitSync(offsetsToCommit);
+						}
+						else {
+							this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
+						}
 					}
 					else {
-						this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
+						this.acks.add(record);
 					}
 				}
 				else if (!this.isAnyManualAck && !this.autoCommit) {
