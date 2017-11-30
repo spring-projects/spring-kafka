@@ -23,6 +23,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.KafkaException;
+
 /**
  * An error handler that seeks to the current offset for each topic in batch of records.
  * Used to rewind partitions after a message failure so that the batch can be replayed.
@@ -39,6 +41,7 @@ public class SeekToCurrentBatchErrorHandler implements ContainerAwareBatchErrorH
 		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
 		data.forEach(r -> offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
 		offsets.forEach(consumer::seek);
+		throw new KafkaException("Seek to current after exception", thrownException);
 	}
 
 }

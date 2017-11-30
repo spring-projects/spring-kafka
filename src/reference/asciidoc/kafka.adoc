@@ -1577,15 +1577,20 @@ If the `AckMode` was `BATCH`, the container commits the offsets for the first 2 
 
 The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch so the whole batch is replayed.
 
+After seeking, an exception wrapping the `ListenerExecutionFailedException` is thrown.
+This is to cause the transaction to roll back (if transactions are enabled).
+
 ===== Container Stopping Error Handlers
 
-The `ContainerStoppingErrorHandler` will stop the container if the listener throws an exception.
+The `ContainerStoppingErrorHandler` (used with record listeners) will stop the container if the listener throws an exception.
 When the `AckMode` is `RECORD`, offsets for already processed records will be committed.
 When the `AckMode` is any manual, offsets for already acknowledged records will be committed.
-When the `AckMode` is `BATCH`, the entire batch will be replayed when the container is restarted.
+When the `AckMode` is `BATCH`, the entire batch will be replayed when the container is restarted, unless transactions are enabled in which case only the unprocessed records will be re-fetched.
 
 The `ContainerStoppingBatchErrorHandler` (used with batch listeners) will stop the container and the entire batch will be replayed when the container is restarted.
 
+After the container stops, an exception wrapping the `ListenerExecutionFailedException` is thrown.
+This is to cause the transaction to roll back (if transactions are enabled).
 
 [[kerberos]]
 ==== Kerberos
