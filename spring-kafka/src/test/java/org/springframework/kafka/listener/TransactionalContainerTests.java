@@ -61,6 +61,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -88,9 +89,18 @@ public class TransactionalContainerTests {
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(3, true, topic1, topic2);
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	public void testConsumeAndProduceTransaction() throws Exception {
+	public void testConsumeAndProduceTransactionBatch() throws Exception {
+		testConsumeAndProduceTransactionGuts(AckMode.BATCH);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionRecord() throws Exception {
+		testConsumeAndProduceTransactionGuts(AckMode.RECORD);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void testConsumeAndProduceTransactionGuts(AckMode ackMode) throws Exception {
 		Consumer consumer = mock(Consumer.class);
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
 		willAnswer(i -> {
@@ -129,6 +139,7 @@ public class TransactionalContainerTests {
 		props.setMessageListener((MessageListener) m -> {
 			template.send("bar", "baz");
 		});
+		props.setAckMode(ackMode);
 		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
 		container.setBeanName("commit");
 		container.start();

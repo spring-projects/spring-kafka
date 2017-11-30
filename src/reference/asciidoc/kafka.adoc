@@ -1525,6 +1525,8 @@ The next `poll()` will return the 3 unprocessed records.
 
 If the `AckMode` was `BATCH`, the container commits the offsets for the first 2 partitions before calling the error handler.
 
+After seeking, an exception wrapping the ListenerExecutionFailedException is thrown. This is to cause the transaction to roll back (if transactions are enabled).
+
 [[kerberos]]
 ==== Kerberos
 

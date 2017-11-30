@@ -24,6 +24,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.KafkaException;
+
 /**
  * An error handler that seeks to the current offset for each topic in the remaining
  * records. Used to rewind partitions after a message failure so that it can be
@@ -42,6 +44,7 @@ public class SeekToCurrentErrorHandler implements RemainingRecordsErrorHandler {
 		records.forEach(r ->
 			offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
 		offsets.forEach(consumer::seek);
+		throw new KafkaException("Seek to current after exception", thrownException);
 	}
 
 }
