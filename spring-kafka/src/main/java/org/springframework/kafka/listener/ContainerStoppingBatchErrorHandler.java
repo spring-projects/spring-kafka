@@ -58,10 +58,10 @@ public class ContainerStoppingBatchErrorHandler implements ContainerAwareBatchEr
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
-				return;
+				break;
 			}
-			throw new KafkaException("Stopped container");
 		}
+		throw new KafkaException("Stopped container", thrownException);
 	}
 
 }

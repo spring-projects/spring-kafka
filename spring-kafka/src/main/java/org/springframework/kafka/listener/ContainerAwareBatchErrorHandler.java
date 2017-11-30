@@ -27,6 +27,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
  * @since 2.1
  *
  */
+@FunctionalInterface
 public interface ContainerAwareBatchErrorHandler extends ConsumerAwareBatchErrorHandler {
 
 	@Override

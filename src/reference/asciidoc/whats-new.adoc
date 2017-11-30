@@ -8,3 +8,9 @@ This version requires the 1.0.0 `kafka-clients` or higher.
 
 The `StringJsonMessageConverter` and `JsonSerializer` now add type information in `Headers`, allowing the converter and `JsonDeserializer` to create specific types on reception, based on the message itself rather than a fixed configured type.
 See <<serdes>> for more information.
+
+
+==== Container Stopping Error Handlers
+
+Container Error handlers are now provided for both record and batch listeners that treat any exceptions thrown by the listener as fatal; they stop the container.
+See <<annotation-error-handling>> for more information.

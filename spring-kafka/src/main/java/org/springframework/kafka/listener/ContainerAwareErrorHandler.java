@@ -31,6 +31,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @since 2.1
  *
  */
+@FunctionalInterface
 public interface ContainerAwareErrorHandler extends RemainingRecordsErrorHandler {
 
 	@Override

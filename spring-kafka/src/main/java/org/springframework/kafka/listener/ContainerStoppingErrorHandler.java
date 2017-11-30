@@ -59,10 +59,10 @@ public class ContainerStoppingErrorHandler implements ContainerAwareErrorHandler
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
-				return;
+				break;
 			}
 		}
-		throw new KafkaException("Stopped container");
+		throw new KafkaException("Stopped container", thrownException);
 	}
 
 }
