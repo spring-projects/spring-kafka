@@ -1405,24 +1405,7 @@ static class MultiListenerBean {
 [[annotation-error-handling]]
 ==== Handling Exceptions
 
-You can specify a global error handler used for all listeners in the container factory.
-
-[source, java]
-----
-@Bean
-public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-        kafkaListenerContainerFactory() {
-    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
-            new ConcurrentKafkaListenerContainerFactory<>();
-    ...
-    factory.getContainerProperties().setErrorHandler(myErrorHandler);
-    ...
-    return factory;
-}
-----
-
-By default, if an annotated listener method throws an exception, it is thrown to the container, and the message will be handled according to the container configuration.
-Nothing is returned to the sender.
+===== Listener Error Handlers
 
 Starting with _version 2.0_, the `@KafkaListener` annotation has a new attribute: `errorHandler`.
 
@@ -1496,7 +1479,45 @@ public ConsumerAwareListenerErrorHandler listen10ErrorHandler() {
 
 This resets each topic/partition in the batch to the lowest offset in the batch.
 
-Similarly, the container-level error handler (`ErrorHandler` and `BatchErrorHandler`) have sub-interfaces `ConsumerAwareErrorHandler` and `ConsumerAwareBatchErrorHandler` with method signatures:
+===== Container Error Handlers
+
+You can specify a global error handler used for all listeners in the container factory.
+
+[source, java]
+----
+@Bean
+public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+        kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+            new ConcurrentKafkaListenerContainerFactory<>();
+    ...
+    factory.getContainerProperties().setErrorHandler(myErrorHandler);
+    ...
+    return factory;
+}
+----
+
+or
+
+[source, java]
+----
+@Bean
+public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+        kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+            new ConcurrentKafkaListenerContainerFactory<>();
+    ...
+    factory.getContainerProperties().setBatchErrorHandler(myBatchErrorHandler);
+    ...
+    return factory;
+}
+----
+
+By default, if an annotated listener method throws an exception, it is thrown to the container, and the message will be handled according to the container configuration.
+
+===== Consumer-Aware Container Error Handlers
+
+The container-level error handlers (`ErrorHandler` and `BatchErrorHandler`) have sub-interfaces `ConsumerAwareErrorHandler` and `ConsumerAwareBatchErrorHandler` with method signatures:
 
 [source, java]
 ----
@@ -1510,6 +1531,8 @@ respectively.
 Similar to the `@KafkaListener` error handlers, you can reset the offsets as needed based on the data that failed.
 
 NOTE: Unlike the listener-level error handlers, however, you should set the container property `ackOnError` to false when making adjustments; otherwise any pending acks will be applied after your repositioning.
+
+===== Seek To Current Container Error Handlers
 
 If an `ErrorHandler` implements `RemainingRecordsErrorHandler`, the error handler is provided with the failed record and any unprocessed records retrieved by the previous `poll()`.
 Those records will not be passed to the listener after the handler exits.
@@ -1551,6 +1574,23 @@ The `SeekToCurrentErrorHandler` will seek to offset 1 for partition 1 and offset
 The next `poll()` will return the 3 unprocessed records.
 
 If the `AckMode` was `BATCH`, the container commits the offsets for the first 2 partitions before calling the error handler.
+
+The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch so the whole batch is replayed.
+
+After seeking, an exception wrapping the `ListenerExecutionFailedException` is thrown.
+This is to cause the transaction to roll back (if transactions are enabled).
+
+===== Container Stopping Error Handlers
+
+The `ContainerStoppingErrorHandler` (used with record listeners) will stop the container if the listener throws an exception.
+When the `AckMode` is `RECORD`, offsets for already processed records will be committed.
+When the `AckMode` is any manual, offsets for already acknowledged records will be committed.
+When the `AckMode` is `BATCH`, the entire batch will be replayed when the container is restarted, unless transactions are enabled in which case only the unprocessed records will be re-fetched.
+
+The `ContainerStoppingBatchErrorHandler` (used with batch listeners) will stop the container and the entire batch will be replayed when the container is restarted.
+
+After the container stops, an exception wrapping the `ListenerExecutionFailedException` is thrown.
+This is to cause the transaction to roll back (if transactions are enabled).
 
 [[kerberos]]
 ==== Kerberos

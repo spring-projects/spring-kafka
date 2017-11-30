@@ -17,32 +17,29 @@
 package org.springframework.kafka.listener;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.KafkaException;
 
 /**
- * An error handler that seeks to the current offset for each topic in the remaining
- * records. Used to rewind partitions after a message failure so that it can be
- * replayed.
+ * An error handler that seeks to the current offset for each topic in batch of records.
+ * Used to rewind partitions after a message failure so that the batch can be replayed.
  *
  * @author Gary Russell
- * @since 2.0.1
+ * @since 2.1
  *
  */
-public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
+public class SeekToCurrentBatchErrorHandler implements ContainerAwareBatchErrorHandler {
 
 	@Override
-	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
-			Consumer<?, ?> consumer, MessageListenerContainer container) {
+	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+			MessageListenerContainer container) {
 		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
-		records.forEach(r ->
-			offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
+		data.forEach(r -> offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
 		offsets.forEach(consumer::seek);
 		throw new KafkaException("Seek to current after exception", thrownException);
 	}
