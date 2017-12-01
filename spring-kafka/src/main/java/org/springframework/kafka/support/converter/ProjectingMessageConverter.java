@@ -28,6 +28,7 @@ import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.web.JsonProjectingMethodInterceptorFactory;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,7 +39,7 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
  * to projection interfaces.
  *
  * @author Oliver Gierke
- * @since 2.2
+ * @since 2.1.1
  */
 public class ProjectingMessageConverter extends MessagingMessageConverter {
 
@@ -62,6 +63,15 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 
 		this.projectionFactory = factory;
 		this.delegate = new StringJsonMessageConverter(mapper);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.springframework.kafka.support.converter.MessagingMessageConverter#convertPayload(org.springframework.messaging.Message)
+	 */
+	@Override
+	protected Object convertPayload(Message<?> message) {
+		return this.delegate.convertPayload(message);
 	}
 
 	/*

@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Rule;
@@ -29,10 +31,13 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.web.JsonPath;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.messaging.support.MessageBuilder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.DocumentContext;
 
 /**
  * @author Oliver Gierke
@@ -87,6 +92,23 @@ public class ProjectingMessageConverterTests {
 		exception.expectMessage(Object.class.getName());
 
 		assertProjectionProxy(new Object());
+	}
+
+	@Test
+	public void writesProjectedPayloadUsingJackson() {
+
+		Map<String, Object> values = new HashMap<>();
+		values.put("username", "SomeUsername");
+		values.put("name", "SomeName");
+
+		Sample sample = new SpelAwareProxyProjectionFactory().createProjection(Sample.class, values);
+
+		Object payload = converter.convertPayload(MessageBuilder.withPayload(sample).build());
+
+		DocumentContext json = com.jayway.jsonpath.JsonPath.parse(payload.toString());
+
+		assertThat(json.read("$.username", String.class)).isEqualTo("SomeUsername");
+		assertThat(json.read("$.name", String.class)).isEqualTo("SomeName");
 	}
 
 	private void assertProjectionProxy(Object payload) {
