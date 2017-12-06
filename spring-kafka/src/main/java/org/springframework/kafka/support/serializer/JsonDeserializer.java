@@ -93,6 +93,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		if (targetType == null) {
 			targetType = (Class<T>) ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
 		}
+		if (targetType != null) {
+			this.addTrustedPackages(targetType.getPackage().getName());
+		}
 		this.targetType = targetType;
 	}
 

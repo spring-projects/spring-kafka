@@ -24,11 +24,13 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.Before;
 import org.junit.Test;
-
+import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -46,6 +48,8 @@ public class JsonSerializationTests {
 	private JsonSerializer<DummyEntity> jsonWriter;
 
 	private JsonDeserializer<DummyEntity> jsonReader;
+
+	private JsonDeserializer<DummyEntity> dummyEntityJsonDeserializer;
 
 	private DummyEntity entity;
 
@@ -73,6 +77,7 @@ public class JsonSerializationTests {
 		stringReader.configure(new HashMap<String, Object>(), false);
 		stringWriter = new StringSerializer();
 		stringWriter.configure(new HashMap<String, Object>(), false);
+		dummyEntityJsonDeserializer = new DummyEntityJsonDeserializer();
 	}
 
 	/*
@@ -83,6 +88,9 @@ public class JsonSerializationTests {
 	@Test
 	public void testDeserializeSerializedEntityEquals() {
 		assertThat(jsonReader.deserialize(topic, jsonWriter.serialize(topic, entity))).isEqualTo(entity);
+		Headers headers = new RecordHeaders();
+		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity.class.getName().getBytes());
+		assertThat(dummyEntityJsonDeserializer.deserialize(topic, headers, jsonWriter.serialize(topic, entity))).isEqualTo(entity);
 	}
 
 	/*
@@ -102,6 +110,18 @@ public class JsonSerializationTests {
 		}
 		catch (Exception e) {
 			fail("Expected SerializationException, not " + e.getClass());
+		}
+		try {
+			Headers headers = new RecordHeaders();
+			headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "com.malware.DummyEntity".getBytes());
+			dummyEntityJsonDeserializer.deserialize(topic, headers, jsonWriter.serialize(topic, entity));
+			fail("Expected IllegalArgumentException");
+		}
+		catch (IllegalArgumentException e) {
+			assertThat(e.getMessage()).contains("not in the trusted packages");
+		}
+		catch (Exception e) {
+			fail("Expected IllegalArgumentException, not " + e.getClass());
 		}
 	}
 
@@ -123,6 +143,10 @@ public class JsonSerializationTests {
 	@Test
 	public void testDeserializedJsonNullEqualsNull() {
 		assertThat(jsonReader.deserialize(topic, null)).isEqualTo(null);
+	}
+
+	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {
+	
 	}
 
 }
