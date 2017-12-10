@@ -45,7 +45,7 @@ public class KafkaAdminBadContextTests {
 			fail("Expected Exception");
 		}
 		catch (IllegalStateException e) {
-			assertThat(e.getMessage()).isEqualTo("Could not create admin");
+			assertThat(e.getMessage()).isIn("Could not create admin", "Could not configure topics");
 		}
 	}
 
