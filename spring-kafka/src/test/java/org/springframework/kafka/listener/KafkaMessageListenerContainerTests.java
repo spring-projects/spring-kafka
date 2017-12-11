@@ -115,9 +115,11 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic17 = "testTopic17";
 
+	private static String topic18 = "testTopic18";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17, topic18);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -1223,6 +1225,99 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(consumer.position(new TopicPartition(topic14, 1))).isEqualTo(2);
 		consumer.close();
 		logger.info("Stop manual ack rebalance");
+	}
+
+	@Test
+	public void testRebalanceAfterFailedRecord() throws Exception {
+		logger.info("Start rebalance after failed record");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test18", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic18);
+		final List<AtomicInteger> counts = new ArrayList<>();
+		counts.add(new AtomicInteger());
+		counts.add(new AtomicInteger());
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> message) {
+				// The 1st message per partition fails
+				if (counts.get(message.partition()).incrementAndGet() < 2) {
+					throw new RuntimeException("Failure wile processing message");
+				}
+			}
+		});
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.RECORD);
+		final CountDownLatch rebalanceLatch = new CountDownLatch(2);
+		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				logger.info("manual ack: assigned " + partitions);
+				rebalanceLatch.countDown();
+			}
+		});
+
+		CountDownLatch stubbingComplete1 = new CountDownLatch(1);
+		KafkaMessageListenerContainer<Integer, String> container1 = spyOnContainer(new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete1);
+		container1.setBeanName("testRebalanceAfterFailedRecord");
+		container1.start();
+		Consumer<?, ?> containerConsumer = spyOnConsumer(container1);
+		final CountDownLatch commitLatch = new CountDownLatch(2);
+		willAnswer(invocation -> {
+
+			@SuppressWarnings({ "unchecked" })
+			Map<TopicPartition, OffsetAndMetadata> map = invocation.getArgumentAt(0, Map.class);
+			try {
+				return invocation.callRealMethod();
+			}
+			finally {
+				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
+					// Decrement when the last (successful) has been committed
+					if (entry.getValue().offset() == 2) {
+						commitLatch.countDown();
+					}
+				}
+			}
+
+		}).given(containerConsumer).commitSync(any());
+		stubbingComplete1.countDown();
+		ContainerTestUtils.waitForAssignment(container1, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic18);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "baz");
+		template.sendDefault(0, 0, "bar");
+		template.sendDefault(1, 0, "qux");
+		template.flush();
+
+		// Wait until both partitions have committed offset 2 (i.e. the last message)
+		assertThat(commitLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+		// Start a 2nd consumer, triggering a rebalance
+		KafkaMessageListenerContainer<Integer, String> container2 = new KafkaMessageListenerContainer<>(cf, containerProps);
+		container2.setBeanName("testRebalanceAfterFailedRecord2");
+		container2.start();
+		// Wait until both consumers have finished rebalancing
+		assertThat(rebalanceLatch.await(60, TimeUnit.SECONDS)).isTrue();
+
+		// Stop both consumers
+		container1.stop();
+		container2.stop();
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		consumer.assign(Arrays.asList(new TopicPartition(topic18, 0), new TopicPartition(topic18, 1)));
+
+		// Verify that offset of both partitions is the highest committed offset
+		assertThat(consumer.position(new TopicPartition(topic18, 0))).isEqualTo(2);
+		assertThat(consumer.position(new TopicPartition(topic18, 1))).isEqualTo(2);
+		consumer.close();
+		logger.info("Stop rebalance after failed record");
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
