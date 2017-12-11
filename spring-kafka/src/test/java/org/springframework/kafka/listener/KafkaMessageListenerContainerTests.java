@@ -116,7 +116,7 @@ public class KafkaMessageListenerContainerTests {
 	private static String topic17 = "testTopic17";
 
 	private static String topic18 = "testTopic18";
-	
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic5,
 			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17, topic18);
@@ -1273,7 +1273,8 @@ public class KafkaMessageListenerContainerTests {
 			Map<TopicPartition, OffsetAndMetadata> map = invocation.getArgumentAt(0, Map.class);
 			try {
 				return invocation.callRealMethod();
-			} finally {
+			}
+			finally {
 				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
 					// Decrement when the last (successful) has been committed
 					if (entry.getValue().offset() == 2) {
@@ -1318,7 +1319,7 @@ public class KafkaMessageListenerContainerTests {
 		consumer.close();
 		logger.info("Stop rebalance after failed record");
 	}
-	
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
