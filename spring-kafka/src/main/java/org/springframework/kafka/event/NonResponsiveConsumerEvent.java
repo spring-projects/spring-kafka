@@ -87,7 +87,7 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 
 	@Override
 	public String toString() {
-		return "ListenerContainerIdleEvent [timeSinceLastPoll="
+		return "NonResponsiveConsumerEvent [timeSinceLastPoll="
 				+ ((float) this.timeSinceLastPoll / 1000) + "s, listenerId=" + this.listenerId
 				+ ", container=" + getSource()
 				+ ", topicPartitions=" + this.topicPartitions + "]";

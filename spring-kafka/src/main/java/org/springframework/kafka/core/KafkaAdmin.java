@@ -89,7 +89,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	}
 
 	/**
-	 * Set the close timeout in seconds. Defaults to 10 seconds.
+	 * Set the close timeout in seconds. Defaults to {@value #DEFAULT_CLOSE_TIMEOUT} seconds.
 	 * @param closeTimeout the timeout.
 	 */
 	public void setCloseTimeout(int closeTimeout) {
@@ -97,7 +97,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	}
 
 	/**
-	 * Set the operation timeout in seconds. Defaults to 30 seconds.
+	 * Set the operation timeout in seconds. Defaults to {@value #DEFAULT_OPERATION_TIMEOUT} seconds.
 	 * @param operationTimeout the timeout.
 	 */
 	public void setOperationTimeout(int operationTimeout) {
@@ -250,7 +250,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 					logger.error("Interrupted while waiting for partition creation results", e);
 				}
 				catch (TimeoutException e) {
-					throw new KafkaException("Timed out waiting for create topics results", e);
+					throw new KafkaException("Timed out waiting for create partitions results", e);
 				}
 				catch (ExecutionException e) {
 					logger.error("Failed to create partitions", e.getCause());

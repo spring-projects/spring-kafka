@@ -86,7 +86,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	/**
 	 * Specify the timeout in seconds for the {@link KafkaStreams#close(long, TimeUnit)} operation.
-	 * Defaults to 10 seconds.
+	 * Defaults to {@value #DEFAULT_CLOSE_TIMEOUT} seconds.
 	 * @param closeTimeout the timeout for close in seconds.
 	 * @see KafkaStreams#close(long, TimeUnit)
 	 */

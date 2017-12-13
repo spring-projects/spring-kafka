@@ -543,7 +543,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void testBrokerDownEvent() throws Exception {
+	public void testNonResponsiveConsumerEvent() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(isNull(), isNull())).willReturn(consumer);
