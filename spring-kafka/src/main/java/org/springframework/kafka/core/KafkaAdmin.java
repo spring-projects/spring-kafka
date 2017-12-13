@@ -193,23 +193,24 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			List<NewTopic> topicsToAdd = new ArrayList<>();
 			Map<String, NewPartitions> topicsToModify = new HashMap<>();
 			topicInfo.values().forEach((n, f) -> {
+				NewTopic topic = topicNameToTopic.get(n);
 				try {
 					TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
-					if (topicNameToTopic.get(n).numPartitions() < topicDescription.partitions().size()) {
+					if (topic.numPartitions() < topicDescription.partitions().size()) {
 						if (logger.isInfoEnabled()) {
 							logger.info(String.format(
 								"Topic '%s' exists but has a different partition count: %d not %d", n,
-								topicDescription.partitions().size(), topicNameToTopic.get(n).numPartitions()));
+								topicDescription.partitions().size(), topic.numPartitions()));
 						}
 					}
-					else if (topicNameToTopic.get(n).numPartitions() > topicDescription.partitions().size()) {
+					else if (topic.numPartitions() > topicDescription.partitions().size()) {
 						if (logger.isInfoEnabled()) {
 							logger.info(String.format(
 								"Topic '%s' exists but has a different partition count: %d not %d, increasing "
 								+ "if the broker supports it", n,
-								topicDescription.partitions().size(), topicNameToTopic.get(n).numPartitions()));
+								topicDescription.partitions().size(), topic.numPartitions()));
 						}
-						topicsToModify.put(n, NewPartitions.increaseTo(topicNameToTopic.get(n).numPartitions()));
+						topicsToModify.put(n, NewPartitions.increaseTo(topic.numPartitions()));
 					}
 				}
 				catch (InterruptedException e) {
@@ -219,7 +220,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 					throw new KafkaException("Timed out waiting to get existing topics", e);
 				}
 				catch (ExecutionException e) {
-					topicsToAdd.add(topicNameToTopic.get(n));
+					topicsToAdd.add(topic);
 				}
 			});
 			if (topicsToAdd.size() > 0) {
