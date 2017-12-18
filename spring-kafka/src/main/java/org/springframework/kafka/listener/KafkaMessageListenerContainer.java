@@ -699,9 +699,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				((ThreadPoolTaskScheduler) this.taskScheduler).destroy();
 			}
 			this.consumer.close();
-			if (this.logger.isInfoEnabled()) {
-				this.logger.info("Consumer stopped");
-			}
+			this.logger.info("Consumer stopped");
 		}
 
 		private void commitPendingAcks() {
@@ -1211,9 +1209,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				catch (WakeupException e) {
 					// ignore - not polling
-					if (this.logger.isDebugEnabled()) {
-						this.logger.debug("Woken up during commit");
-					}
+					this.logger.debug("Woken up during commit");
 				}
 			}
 		}
