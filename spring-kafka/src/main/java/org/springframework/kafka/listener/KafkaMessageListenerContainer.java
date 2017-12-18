@@ -300,7 +300,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	public String toString() {
 		return "KafkaMessageListenerContainer [id=" + getBeanName()
 				+ (this.clientIdSuffix != null ? ", clientIndex=" + this.clientIdSuffix : "")
-				+ ", topicPartitions=" + getAssignedPartitions()
+				+ ", topicPartitions="
+				+ (getAssignedPartitions() == null ? "none assigned" : getAssignedPartitions())
 				+ "]";
 	}
 
