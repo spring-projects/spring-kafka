@@ -157,6 +157,8 @@ public class ContainerProperties {
 
 	private float noPollThreshold = DEFAULT_NO_POLL_THRESHOLD;
 
+	private String clientId = "";
+
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
 		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
@@ -458,6 +460,27 @@ public class ContainerProperties {
 	 */
 	public void setNoPollThreshold(float noPollThreshold) {
 		this.noPollThreshold = noPollThreshold;
+	}
+
+	/**
+	 * Return the client id.
+	 * @return the client id.
+	 * @since 2.1.1
+	 * @see #setClientId(String)
+	 */
+	public String getClientId() {
+		return this.clientId;
+	}
+
+	/**
+	 * Set the client id; overrides the consumer factory client.id property.
+	 * When used in a concurrent container, will be suffixed with '-n' to
+	 * provide a unique value for each consumer.
+	 * @param clientId the client id.
+	 * @since 2.1.1
+	 */
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
 	}
 
 }

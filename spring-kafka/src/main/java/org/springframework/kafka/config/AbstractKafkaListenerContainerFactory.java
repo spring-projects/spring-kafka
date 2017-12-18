@@ -227,6 +227,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		endpoint.setupListenerContainer(instance, this.messageConverter);
 		initializeContainer(instance);
 		instance.getContainerProperties().setGroupId(endpoint.getGroupId());
+		instance.getContainerProperties().setClientId(endpoint.getClientIdPrefix());
 
 		return instance;
 	}

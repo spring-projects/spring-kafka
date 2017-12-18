@@ -383,6 +383,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		endpoint.setTopicPartitions(resolveTopicPartitions(kafkaListener));
 		endpoint.setTopics(resolveTopics(kafkaListener));
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
+		endpoint.setClientIdPrefix(resolveExpressionAsString(kafkaListener.clientIdPrefix(),
+				"clientIdPrefix"));
 		String group = kafkaListener.containerGroup();
 		if (StringUtils.hasText(group)) {
 			Object resolvedGroup = resolveExpression(group);

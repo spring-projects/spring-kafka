@@ -92,6 +92,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private KafkaTemplate<K, V> replyTemplate;
 
+	private String clientIdPrefix;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -299,6 +301,21 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
+	}
+
+	@Override
+	public String getClientIdPrefix() {
+		return this.clientIdPrefix;
+	}
+
+	/**
+	 * Set the client id prefix; overrides the client id in the consumer configuration
+	 * properties.
+	 * @param clientIdPrefix the prefix.
+	 * @since 2.1.1
+	 */
+	public void setClientIdPrefix(String clientIdPrefix) {
+		this.clientIdPrefix = clientIdPrefix;
 	}
 
 	@Override

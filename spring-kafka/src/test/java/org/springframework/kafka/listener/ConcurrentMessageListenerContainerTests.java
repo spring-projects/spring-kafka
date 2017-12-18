@@ -393,7 +393,7 @@ public class ConcurrentMessageListenerContainerTests {
 		};
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), anyString())).willReturn(consumer);
+		given(cf.createConsumer(isNull(), anyString(), anyString())).willReturn(consumer);
 		given(consumer.poll(anyLong()))
 			.willAnswer(new Answer<ConsumerRecords<Integer, String>>() {
 

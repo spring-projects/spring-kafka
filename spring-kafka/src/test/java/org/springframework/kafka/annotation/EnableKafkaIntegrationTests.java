@@ -218,6 +218,8 @@ public class EnableKafkaIntegrationTests {
 		List<?> containers = KafkaTestUtils.getPropertyValue(manualContainer, "containers", List.class);
 		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumerGroupId"))
 				.isEqualTo("qux");
+		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumer.clientId"))
+				.isEqualTo("clientIdViaProps3-0");
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -237,6 +239,8 @@ public class EnableKafkaIntegrationTests {
 		assertThat(offset.isRelativeToCurrent()).isTrue();
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.coordinator.groupId"))
 				.isEqualTo("fiz");
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.clientId"))
+				.isEqualTo("clientIdViaAnnotation-0");
 
 		template.send("annotated11", 0, "foo");
 		template.flush();
@@ -251,6 +255,10 @@ public class EnableKafkaIntegrationTests {
 				.getPropertyValue(rebalanceConcurrentContainer, "containers", List.class).get(0);
 		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.coordinator.groupId"))
 				.isNotEqualTo("rebalanceListener");
+		assertThat(
+				KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.clientId",
+					String.class))
+				.startsWith("consumer-");
 	}
 
 	@Test
@@ -673,7 +681,8 @@ public class EnableKafkaIntegrationTests {
 			ConsumerFactory spiedCf = mock(ConsumerFactory.class);
 			willAnswer(i -> {
 				Consumer<Integer, String> spy =
-						spy(consumerFactory().createConsumer(i.getArgument(0), i.getArgument(1)));
+						spy(consumerFactory().createConsumer(i.getArgument(0), i.getArgument(1),
+								i.getArgument(2)));
 				willAnswer(invocation -> {
 
 					try {
@@ -685,7 +694,7 @@ public class EnableKafkaIntegrationTests {
 
 				}).given(spy).commitSync(anyMap());
 				return spy;
-			}).given(spiedCf).createConsumer(anyString(), anyString());
+			}).given(spiedCf).createConsumer(anyString(), anyString(), anyString());
 			factory.setConsumerFactory(spiedCf);
 			factory.setBatchListener(true);
 			factory.setRecordFilterStrategy(recordFilter());
@@ -698,7 +707,18 @@ public class EnableKafkaIntegrationTests {
 		public KafkaListenerContainerFactory<?> batchManualFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(manualConsumerFactory());
+			factory.setConsumerFactory(manualConsumerFactory("clientIdViaProps1"));
+			ContainerProperties props = factory.getContainerProperties();
+			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
+			factory.setBatchListener(true);
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> batchManualFactory2() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(manualConsumerFactory("clientIdViaProps2"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			factory.setBatchListener(true);
@@ -710,7 +730,7 @@ public class EnableKafkaIntegrationTests {
 				kafkaManualAckListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(manualConsumerFactory());
+			factory.setConsumerFactory(manualConsumerFactory("clientIdViaProps3"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			props.setIdleEventInterval(100L);
@@ -751,10 +771,10 @@ public class EnableKafkaIntegrationTests {
 			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
 		}
 
-		@Bean
-		public ConsumerFactory<Integer, String> manualConsumerFactory() {
+		private ConsumerFactory<Integer, String> manualConsumerFactory(String clientId) {
 			Map<String, Object> configs = consumerConfigs();
 			configs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+			configs.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
 			return new DefaultKafkaConsumerFactory<>(configs);
 		}
 
@@ -1090,7 +1110,7 @@ public class EnableKafkaIntegrationTests {
 				@TopicPartition(topic = "annotated6", partitions = "0",
 						partitionOffsets = @PartitionOffset(partition = "${xxx:1}", initialOffset = "${yyy:0}",
 								relativeToCurrent = "${zzz:true}"))
-		})
+		}, clientIdPrefix = "${foo.xxx:clientIdViaAnnotation}")
 		public void listen5(ConsumerRecord<?, ?> record) {
 			this.record = record;
 			this.latch5.countDown();
@@ -1183,7 +1203,7 @@ public class EnableKafkaIntegrationTests {
 			this.latch14.countDown();
 		}
 
-		@KafkaListener(id = "list6", topics = "annotated19", containerFactory = "batchManualFactory")
+		@KafkaListener(id = "list6", topics = "annotated19", containerFactory = "batchManualFactory2")
 		public void listen15(List<Message<?>> list, Acknowledgment ack) {
 			this.payload = list;
 			this.ack = ack;

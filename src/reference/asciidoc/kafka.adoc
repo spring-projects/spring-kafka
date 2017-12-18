@@ -582,7 +582,7 @@ The `@KafkaListener` annotation provides a mechanism for simple POJO listeners:
 ----
 public class Listener {
 
-    @KafkaListener(id = "foo", topics = "myTopic")
+    @KafkaListener(id = "foo", topics = "myTopic", clientIdPrefix = "myClientId")
     public void listen(String data) {
         ...
     }
@@ -627,6 +627,9 @@ public class KafkaConfig {
 
 Notice that to set container properties, you must use the `getContainerProperties()` method on the factory.
 It is used as a template for the actual properties injected into the container.
+
+Starting with _version 2.1.1_, it is now possible to set the `client.id` property for consumers created by the annotation.
+The `clientIdPrefix` is suffixed with `-n` where `n` is an integer representing the container number when using concurrency.
 
 You can also configure POJO listeners with explicit topics and partitions (and, optionally, their initial offsets):
 

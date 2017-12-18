@@ -165,4 +165,13 @@ public @interface KafkaListener {
 	 */
 	boolean idIsGroup() default true;
 
+	/**
+	 * When provided, overrides the client id property in the consumer factory
+	 * configuration. A suffix ('-n') is added for each container instance to ensure
+	 * uniqueness when concurrency is used.
+	 * @return the client id prefix.
+	 * @since 2.1.1
+	 */
+	String clientIdPrefix() default "";
+
 }
