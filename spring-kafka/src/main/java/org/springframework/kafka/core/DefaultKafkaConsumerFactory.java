@@ -117,7 +117,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 			clientIdSuffix = "";
 		}
 		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
-				&& clientIdSuffix != null) || overrideClientIdPrefix;
+				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
 		if (groupId == null && !shouldModifyClientId) {
 			return createKafkaConsumer();
 		}

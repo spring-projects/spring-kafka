@@ -63,7 +63,7 @@ public interface ConsumerFactory<K, V> {
 	 * {@code client.id} property, if present.
 	 * If a factory does not implement this method, {@link #createConsumer(String, String)}
 	 * is invoked, ignoring the prefix.
-	 * TODO: remove default in 2.1
+	 * TODO: remove default in 2.2
 	 * @param groupId the group id.
 	 * @param clientIdPrefix the prefix.
 	 * @param clientIdSuffix the suffix.

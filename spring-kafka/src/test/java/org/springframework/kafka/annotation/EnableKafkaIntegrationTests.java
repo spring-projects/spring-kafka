@@ -255,10 +255,13 @@ public class EnableKafkaIntegrationTests {
 				.getPropertyValue(rebalanceConcurrentContainer, "containers", List.class).get(0);
 		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.coordinator.groupId"))
 				.isNotEqualTo("rebalanceListener");
+		String clientId = KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.clientId",
+			String.class);
 		assertThat(
-				KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.clientId",
-					String.class))
+				clientId)
 				.startsWith("consumer-");
+		assertThat(clientId.indexOf('-')).isEqualTo(clientId.lastIndexOf('-'));
+
 	}
 
 	@Test
