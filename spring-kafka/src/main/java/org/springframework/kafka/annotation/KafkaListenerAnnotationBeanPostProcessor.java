@@ -50,6 +50,7 @@ import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.convert.ConversionService;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -662,7 +663,17 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ConfigurableBeanFactory ?
 							(ConfigurableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory : null);
 
-			DefaultFormattingConversionService conversionService = new DefaultFormattingConversionService();
+			ConversionService conversionService;
+			try {
+				conversionService =
+						KafkaListenerAnnotationBeanPostProcessor.this.beanFactory.getBean(ConversionService.class);
+			}
+			catch (Exception e) {
+				KafkaListenerAnnotationBeanPostProcessor.this.logger.warn(
+						"Failed to get bean for type ConversionService. "
+								+ "Using DefaultFormattingConversionService.", e);
+				conversionService = new DefaultFormattingConversionService();
+			}
 			defaultFactory.setConversionService(conversionService);
 
 			List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
