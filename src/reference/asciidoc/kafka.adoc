@@ -496,6 +496,8 @@ return container;
 
 Refer to the JavaDocs for `ContainerProperties` for more information about the various properties that can be set.
 
+Since version _2.1.1_, a new property `logContainerConfig` is available; when true, and INFO logging is enabled, each listener container will write a log message summarizing its configuration properties.
+
 ====== ConcurrentMessageListenerContainer
 
 The single constructor is similar to the first `KafkaListenerContainer` constructor:

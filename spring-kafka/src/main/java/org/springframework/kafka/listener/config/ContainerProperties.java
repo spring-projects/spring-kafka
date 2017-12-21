@@ -499,7 +499,7 @@ public class ContainerProperties {
 	/**
 	 * Set to true to instruct each container to log this configuration.
 	 * @param logContainerConfig true to log.
-	 * @since 2.0.1
+	 * @since 2.1.1
 	 */
 	public void setLogContainerConfig(boolean logContainerConfig) {
 		this.logContainerConfig = logContainerConfig;
