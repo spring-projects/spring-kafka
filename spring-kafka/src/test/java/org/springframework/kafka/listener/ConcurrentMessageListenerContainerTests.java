@@ -102,6 +102,7 @@ public class ConcurrentMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setLogContainerConfig(true);
 
 		final CountDownLatch latch = new CountDownLatch(4);
 		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();

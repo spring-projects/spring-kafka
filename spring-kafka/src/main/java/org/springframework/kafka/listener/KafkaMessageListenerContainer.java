@@ -364,7 +364,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final String consumerGroupId = this.containerProperties.getGroupId() == null
 				? (String) KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
-				.get(ConsumerConfig.GROUP_ID_CONFIG)
+					.get(ConsumerConfig.GROUP_ID_CONFIG)
 				: this.containerProperties.getGroupId();
 
 		private final TaskScheduler taskScheduler;
@@ -463,6 +463,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.monitorTask = this.taskScheduler.scheduleAtFixedRate(() -> checkConsumer(),
 					this.containerProperties.getMonitorInterval() * 1000);
+			if (this.containerProperties.isLogContainerConfig() && this.logger.isInfoEnabled()) {
+				this.logger.info(this);
+			}
 		}
 
 		protected void checkConsumer() {
@@ -1258,6 +1261,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		@Override
 		public void seekToEnd(String topic, int partition) {
 			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.END));
+		}
+
+		@Override
+		public String toString() {
+			return "KafkaMessageListenerContainer.ListenerConsumer ["
+					+ "containerProperties=" + this.containerProperties
+					+ ", listenerType=" + this.listenerType
+					+ ", isConsumerAwareListener=" + this.isConsumerAwareListener
+					+ ", isBatchListener=" + this.isBatchListener
+					+ ", autoCommit=" + this.autoCommit
+					+ ", consumerGroupId=" + this.consumerGroupId
+					+ ", clientIdSuffix=" + KafkaMessageListenerContainer.this.clientIdSuffix
+					+ "]";
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {
