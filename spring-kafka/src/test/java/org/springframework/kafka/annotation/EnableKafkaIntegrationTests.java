@@ -779,8 +779,8 @@ public class EnableKafkaIntegrationTests {
 		recordAckListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(manualConsumerFactory());
+			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.RECORD);
 			props.setAckOnError(true);
 			props.setErrorHandler(listen16ErrorHandler());
