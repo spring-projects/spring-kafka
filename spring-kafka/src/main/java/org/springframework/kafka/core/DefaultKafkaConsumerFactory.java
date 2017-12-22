@@ -25,6 +25,8 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.Deserializer;
 
+import org.springframework.util.StringUtils;
+
 /**
  * The {@link ConsumerFactory} implementation to produce a new {@link Consumer} instance
  * for provided {@link Map} {@code configs} and optional {@link Deserializer} {@code keyDeserializer},
@@ -95,13 +97,27 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		return createKafkaConsumer(groupId, clientIdSuffix);
 	}
 
+	@Override
+	public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix, String clientIdSuffix) {
+		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffix);
+	}
+
 	protected KafkaConsumer<K, V> createKafkaConsumer() {
 		return createKafkaConsumer(this.configs);
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(String groupId, String clientIdSuffix) {
-		boolean shouldModifyClientId = this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
-				&& clientIdSuffix != null;
+		return createKafkaConsumer(groupId, null, clientIdSuffix);
+	}
+
+	protected KafkaConsumer<K, V> createKafkaConsumer(String groupId, String clientIdPrefix,
+			String clientIdSuffix) {
+		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefix);
+		if (clientIdSuffix == null) {
+			clientIdSuffix = "";
+		}
+		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
+				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
 		if (groupId == null && !shouldModifyClientId) {
 			return createKafkaConsumer();
 		}
@@ -112,7 +128,8 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 			}
 			if (shouldModifyClientId) {
 				modifiedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG,
-					modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG) + clientIdSuffix);
+					(overrideClientIdPrefix ? clientIdPrefix
+							: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
 			}
 			return createKafkaConsumer(modifiedConfigs);
 		}

@@ -33,6 +33,7 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * Contains runtime properties for a listener container.
@@ -157,6 +158,10 @@ public class ContainerProperties {
 
 	private float noPollThreshold = DEFAULT_NO_POLL_THRESHOLD;
 
+	private String clientId = "";
+
+	private boolean logContainerConfig;
+
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
 		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
@@ -202,6 +207,7 @@ public class ContainerProperties {
 	 * @param ackMode the {@link AckMode}; default BATCH.
 	 */
 	public void setAckMode(AbstractMessageListenerContainer.AckMode ackMode) {
+		Assert.notNull(ackMode, "'ackMode' cannot be null");
 		this.ackMode = ackMode;
 	}
 
@@ -458,6 +464,78 @@ public class ContainerProperties {
 	 */
 	public void setNoPollThreshold(float noPollThreshold) {
 		this.noPollThreshold = noPollThreshold;
+	}
+
+	/**
+	 * Return the client id.
+	 * @return the client id.
+	 * @since 2.1.1
+	 * @see #setClientId(String)
+	 */
+	public String getClientId() {
+		return this.clientId;
+	}
+
+	/**
+	 * Set the client id; overrides the consumer factory client.id property.
+	 * When used in a concurrent container, will be suffixed with '-n' to
+	 * provide a unique value for each consumer.
+	 * @param clientId the client id.
+	 * @since 2.1.1
+	 */
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
+	}
+
+	/**
+	 * Log the container configuration if true (INFO).
+	 * @return true to log.
+	 * @since 2.0.1
+	 */
+	public boolean isLogContainerConfig() {
+		return this.logContainerConfig;
+	}
+
+	/**
+	 * Set to true to instruct each container to log this configuration.
+	 * @param logContainerConfig true to log.
+	 * @since 2.1.1
+	 */
+	public void setLogContainerConfig(boolean logContainerConfig) {
+		this.logContainerConfig = logContainerConfig;
+	}
+
+	@Override
+	public String toString() {
+		return "ContainerProperties ["
+				+ (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
+				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
+				+ (this.topicPartitions != null
+						? ", topicPartitions=" + Arrays.toString(this.topicPartitions) : "")
+				+ ", ackMode=" + this.ackMode
+				+ ", ackCount=" + this.ackCount
+				+ ", ackTime=" + this.ackTime
+				+ ", messageListener=" + this.messageListener
+				+ ", pollTimeout=" + this.pollTimeout
+				+ (this.consumerTaskExecutor != null
+						? ", consumerTaskExecutor=" + this.consumerTaskExecutor : "")
+				+ (this.errorHandler != null ? ", errorHandler=" + this.errorHandler : "")
+				+ ", shutdownTimeout=" + this.shutdownTimeout
+				+ (this.consumerRebalanceListener != null
+						? ", consumerRebalanceListener=" + this.consumerRebalanceListener : "")
+				+ (this.commitCallback != null ? ", commitCallback=" + this.commitCallback : "")
+				+ ", syncCommits=" + this.syncCommits
+				+ ", ackOnError=" + this.ackOnError
+				+ ", idleEventInterval="
+						+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
+				+ (this.groupId != null ? ", groupId=" + this.groupId : "")
+				+ (this.transactionManager != null
+						? ", transactionManager=" + this.transactionManager : "")
+				+ ", monitorInterval=" + this.monitorInterval
+				+ (this.scheduler != null ? ", scheduler=" + this.scheduler : "")
+				+ ", noPollThreshold=" + this.noPollThreshold
+				+ (StringUtils.hasText(this.clientId) ? ", clientId=" + this.clientId : "")
+				+ "]";
 	}
 
 }

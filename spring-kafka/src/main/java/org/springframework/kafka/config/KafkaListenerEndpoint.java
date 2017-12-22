@@ -74,6 +74,15 @@ public interface KafkaListenerEndpoint {
 	 */
 	Pattern getTopicPattern();
 
+
+	/**
+	 * Return the client id prefix for the container; it will be suffixed by
+	 * '-n' to provide a unique id when concurrency is used.
+	 * @return the client id prefix.
+	 * @since 2.1.1
+	 */
+	String getClientIdPrefix();
+
 	/**
 	 * Setup the specified message listener container with the model
 	 * defined by this endpoint.

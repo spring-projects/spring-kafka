@@ -58,6 +58,23 @@ public interface ConsumerFactory<K, V> {
 	Consumer<K, V> createConsumer(String groupId, String clientIdSuffix);
 
 	/**
+	 * Create a consumer with an explicit group id; in addition, the
+	 * client id suffix is appended to the clientIdPrefix which overrides the
+	 * {@code client.id} property, if present.
+	 * If a factory does not implement this method, {@link #createConsumer(String, String)}
+	 * is invoked, ignoring the prefix.
+	 * TODO: remove default in 2.2
+	 * @param groupId the group id.
+	 * @param clientIdPrefix the prefix.
+	 * @param clientIdSuffix the suffix.
+	 * @return the consumer.
+	 * @since 2.1.1
+	 */
+	default Consumer<K, V> createConsumer(String groupId, String clientIdPrefix, String clientIdSuffix) {
+		return createConsumer(groupId, clientIdSuffix);
+	}
+
+	/**
 	 * Return true if consumers created by this factory use auto commit.
 	 * @return true if auto commit.
 	 */

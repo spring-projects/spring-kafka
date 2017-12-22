@@ -102,6 +102,7 @@ public class ConcurrentMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setLogContainerConfig(true);
 
 		final CountDownLatch latch = new CountDownLatch(4);
 		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
@@ -393,7 +394,7 @@ public class ConcurrentMessageListenerContainerTests {
 		};
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), anyString())).willReturn(consumer);
+		given(cf.createConsumer(isNull(), anyString(), anyString())).willReturn(consumer);
 		given(consumer.poll(anyLong()))
 			.willAnswer(new Answer<ConsumerRecords<Integer, String>>() {
 

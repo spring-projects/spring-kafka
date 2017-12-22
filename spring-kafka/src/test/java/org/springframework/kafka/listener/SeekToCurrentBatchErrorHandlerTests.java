@@ -138,7 +138,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		public ConsumerFactory consumerFactory() {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer(CONTAINER_ID, "-0")).willReturn(consumer);
+			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0")).willReturn(consumer);
 			return consumerFactory;
 		}
 

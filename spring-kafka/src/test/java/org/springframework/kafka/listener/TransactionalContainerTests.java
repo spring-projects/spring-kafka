@@ -111,7 +111,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null);
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -169,7 +169,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null);
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -228,7 +228,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null);
 		Producer producer = mock(Producer.class);
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
