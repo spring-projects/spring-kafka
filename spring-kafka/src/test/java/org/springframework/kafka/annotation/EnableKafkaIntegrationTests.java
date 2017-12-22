@@ -20,10 +20,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -49,7 +52,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
+import org.springframework.context.support.ConversionServiceFactoryBean;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -120,7 +126,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-			"annotated29", "annotated30", "annotated30reply", "annotated31");
+			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -158,6 +164,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	private List<?> quxGroup;
+
+	@Autowired
+	private FooConverter fooConverter;
 
 	@Test
 	public void testAnonymous() {
@@ -587,6 +596,25 @@ public class EnableKafkaIntegrationTests {
 						+ "the listener container must have a MANUAL Ackmode to populate the Acknowledgment.");
 	}
 
+	@Test
+	public void testConverterBean() throws Exception {
+		@SuppressWarnings("unchecked")
+		Converter<String, Foo> converterDelegate = mock(Converter.class);
+		fooConverter.setDelegate(converterDelegate);
+
+		Foo foo = new Foo();
+		willReturn(foo).given(converterDelegate).convert("{'bar':'foo'}");
+		template.send("annotated32", 0, 1, "{'bar':'foo'}");
+		assertThat(this.listener.latch20.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.listen16foo).isEqualTo(foo);
+
+		willThrow(new RuntimeException()).given(converterDelegate).convert("foobar");
+		template.send("annotated32", 0, 1, "foobar");
+		assertThat(this.config.listen16ErrorLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.listen16Exception).isNotNull();
+		assertThat(this.config.listen16Message).isEqualTo("foobar");
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -743,6 +771,19 @@ public class EnableKafkaIntegrationTests {
 			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(consumerFactory());
 			props.setConsumerRebalanceListener(consumerRebalanceListener(consumerRef()));
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+		recordAckListenerContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			ContainerProperties props = factory.getContainerProperties();
+			factory.setConsumerFactory(manualConsumerFactory());
+			props.setAckMode(AckMode.RECORD);
+			props.setAckOnError(true);
+			props.setErrorHandler(listen16ErrorHandler());
 			return factory;
 		}
 
@@ -953,6 +994,36 @@ public class EnableKafkaIntegrationTests {
 			};
 		}
 
+		private Throwable listen16Exception;
+
+		private Object listen16Message;
+
+		private CountDownLatch listen16ErrorLatch = new CountDownLatch(1);
+
+		@Bean
+		public ConsumerAwareErrorHandler listen16ErrorHandler() {
+			return (e, r, c) -> {
+				listen16Exception = e;
+				listen16Message = r.value();
+				listen16ErrorLatch.countDown();
+			};
+		}
+
+		@Bean
+		public FooConverter fooConverter() {
+			return new FooConverter();
+		}
+
+		@Bean
+		public ConversionService conversionService() {
+			ConversionServiceFactoryBean bean = new ConversionServiceFactoryBean();
+			bean.setConverters(Collections.singleton(
+					fooConverter()
+			));
+			bean.afterPropertiesSet();
+			return bean.getObject();
+		}
+
 	}
 
 	static class Listener implements ConsumerSeekAware {
@@ -997,6 +1068,8 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch19 = new CountDownLatch(1);
 
+		private final CountDownLatch latch20 = new CountDownLatch(1);
+
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
 		private volatile Integer partition;
@@ -1012,6 +1085,8 @@ public class EnableKafkaIntegrationTests {
 		private String topic;
 
 		private Foo foo;
+
+		private Foo listen16foo;
 
 		private volatile ListenerContainerIdleEvent event;
 
@@ -1189,6 +1264,13 @@ public class EnableKafkaIntegrationTests {
 			this.ack = ack;
 			ack.acknowledge();
 			this.latch15.countDown();
+		}
+
+		@KafkaListener(id = "converter", topics = "annotated32", containerFactory = "recordAckListenerContainerFactory",
+				groupId = "converter.explicitGroupId")
+		public void listen16(Foo foo) {
+			this.listen16foo = foo;
+			this.latch20.countDown();
 		}
 
 		@KafkaListener(id = "errorHandler", topics = "annotated20", errorHandler = "consumeException")
@@ -1382,4 +1464,22 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
+	public static class FooConverter implements Converter<String, Foo> {
+
+		private Converter<String, Foo> delegate;
+
+		public Converter<String, Foo> getDelegate() {
+			return delegate;
+		}
+
+		public void setDelegate(
+				Converter<String, Foo> delegate) {
+			this.delegate = delegate;
+		}
+
+		@Override
+		public Foo convert(String source) {
+			return delegate.convert(source);
+		}
+	}
 }
