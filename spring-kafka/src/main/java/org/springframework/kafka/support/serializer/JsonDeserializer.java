@@ -137,8 +137,8 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 				else {
 					throw new IllegalStateException(DEFAULT_VALUE_TYPE + " must be Class or String");
 				}
-				addTargetPackageToTrusted();
 			}
+			addTargetPackageToTrusted();
 		}
 		catch (ClassNotFoundException | LinkageError e) {
 			throw new IllegalStateException(e);
