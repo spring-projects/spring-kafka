@@ -26,7 +26,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -52,9 +51,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
-import org.springframework.context.support.ConversionServiceFactoryBean;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -110,6 +107,7 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @author Artem Bilan
  * @author Dariusz Szablinski
  * @author Venil Noronha
+ * @author Dimitri Penner
  */
 @ContextConfiguration
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -1035,16 +1033,6 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public FooConverter fooConverter() {
 			return new FooConverter();
-		}
-
-		@Bean
-		public ConversionService conversionService() {
-			ConversionServiceFactoryBean bean = new ConversionServiceFactoryBean();
-			bean.setConverters(Collections.singleton(
-					fooConverter()
-			));
-			bean.afterPropertiesSet();
-			return bean.getObject();
 		}
 
 	}

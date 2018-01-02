@@ -50,7 +50,10 @@ import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.convert.converter.GenericConverter;
+import org.springframework.format.Formatter;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -99,6 +102,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Dariusz Szablinski
  * @author Venil Noronha
+ * @author Dimitri Penner
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -665,17 +669,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ConfigurableBeanFactory ?
 							(ConfigurableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory : null);
 
-			ConversionService conversionService;
-			try {
-				conversionService =
-						KafkaListenerAnnotationBeanPostProcessor.this.beanFactory.getBean(ConversionService.class);
-			}
-			catch (Exception e) {
-				KafkaListenerAnnotationBeanPostProcessor.this.logger.warn(
-						"Failed to get bean for type ConversionService. "
-								+ "Using DefaultFormattingConversionService.", e);
-				conversionService = new DefaultFormattingConversionService();
-			}
+			DefaultFormattingConversionService conversionService = new DefaultFormattingConversionService();
+			addFormatters(conversionService);
 			defaultFactory.setConversionService(conversionService);
 
 			List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
@@ -701,6 +696,26 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return defaultFactory;
 		}
 
+		private void addFormatters(FormatterRegistry registry) {
+			for (Converter<?, ?> converter : getBeansOfType(Converter.class)) {
+				registry.addConverter(converter);
+			}
+			for (GenericConverter converter : getBeansOfType(GenericConverter.class)) {
+				registry.addConverter(converter);
+			}
+			for (Formatter<?> formatter : getBeansOfType(Formatter.class)) {
+				registry.addFormatter(formatter);
+			}
+		}
+
+		private <T> Collection<T> getBeansOfType(Class<T> type) {
+			if (KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ListableBeanFactory) {
+				return ((ListableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory).getBeansOfType(type).values();
+			}
+			else {
+				return Collections.emptySet();
+			}
+		}
 	}
 
 }
