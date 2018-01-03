@@ -229,6 +229,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (handlerMethodFactory != null) {
 			this.messageHandlerMethodFactory.setMessageHandlerMethodFactory(handlerMethodFactory);
 		}
+		else {
+			addFormatters(this.messageHandlerMethodFactory.defaultFormattingConversionService);
+		}
 
 		// Actually register all listeners
 		this.registrar.afterPropertiesSet();
@@ -635,6 +638,27 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return value;
 	}
 
+	private void addFormatters(FormatterRegistry registry) {
+		for (Converter<?, ?> converter : getBeansOfType(Converter.class)) {
+			registry.addConverter(converter);
+		}
+		for (GenericConverter converter : getBeansOfType(GenericConverter.class)) {
+			registry.addConverter(converter);
+		}
+		for (Formatter<?> formatter : getBeansOfType(Formatter.class)) {
+			registry.addFormatter(formatter);
+		}
+	}
+
+	private <T> Collection<T> getBeansOfType(Class<T> type) {
+		if (KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ListableBeanFactory) {
+			return ((ListableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory).getBeansOfType(type).values();
+		}
+		else {
+			return Collections.emptySet();
+		}
+	}
+
 	/**
 	 * An {@link MessageHandlerMethodFactory} adapter that offers a configurable underlying
 	 * instance to use. Useful if the factory to use is determined once the endpoints
@@ -642,6 +666,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * @see KafkaListenerEndpointRegistrar#setMessageHandlerMethodFactory
 	 */
 	private class KafkaHandlerMethodFactoryAdapter implements MessageHandlerMethodFactory {
+
+		private DefaultFormattingConversionService defaultFormattingConversionService = new DefaultFormattingConversionService();
 
 		private MessageHandlerMethodFactory messageHandlerMethodFactory;
 
@@ -669,18 +695,17 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ConfigurableBeanFactory ?
 							(ConfigurableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory : null);
 
-			DefaultFormattingConversionService conversionService = new DefaultFormattingConversionService();
-			addFormatters(conversionService);
-			defaultFactory.setConversionService(conversionService);
+
+			defaultFactory.setConversionService(this.defaultFormattingConversionService);
 
 			List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
 
 			// Annotation-based argument resolution
-			argumentResolvers.add(new HeaderMethodArgumentResolver(conversionService, cbf));
+			argumentResolvers.add(new HeaderMethodArgumentResolver(this.defaultFormattingConversionService, cbf));
 			argumentResolvers.add(new HeadersMethodArgumentResolver());
 
 			// Type-based argument resolution
-			final GenericMessageConverter messageConverter = new GenericMessageConverter(conversionService);
+			final GenericMessageConverter messageConverter = new GenericMessageConverter(this.defaultFormattingConversionService);
 			argumentResolvers.add(new MessageMethodArgumentResolver(messageConverter));
 			argumentResolvers.add(new PayloadArgumentResolver(messageConverter) {
 
@@ -696,26 +721,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return defaultFactory;
 		}
 
-		private void addFormatters(FormatterRegistry registry) {
-			for (Converter<?, ?> converter : getBeansOfType(Converter.class)) {
-				registry.addConverter(converter);
-			}
-			for (GenericConverter converter : getBeansOfType(GenericConverter.class)) {
-				registry.addConverter(converter);
-			}
-			for (Formatter<?> formatter : getBeansOfType(Formatter.class)) {
-				registry.addFormatter(formatter);
-			}
-		}
-
-		private <T> Collection<T> getBeansOfType(Class<T> type) {
-			if (KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ListableBeanFactory) {
-				return ((ListableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory).getBeansOfType(type).values();
-			}
-			else {
-				return Collections.emptySet();
-			}
-		}
 	}
 
 }
