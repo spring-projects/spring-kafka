@@ -117,11 +117,11 @@ For convenience a test class level `@EmbeddedKafka` annotation is provided with 
 public class KafkaStreamsTests {
 
     @Autowired
-    private KafkaEmbedded kafkaEmbedded;
+    private KafkaEmbedded embeddedKafka;
 
     @Test
     public void someTest() {
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "true", this.kafkaEmbedded);
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "true", this.embeddedKafka);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
         Consumer<Integer, String> consumer = cf.createConsumer();
