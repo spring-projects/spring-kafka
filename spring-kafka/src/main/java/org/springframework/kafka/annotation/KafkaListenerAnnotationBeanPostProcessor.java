@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,12 +41,14 @@ import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.config.Scope;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
@@ -128,6 +131,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final Log logger = LogFactory.getLog(getClass());
 
+	private final ListenerScope listenerScope = new ListenerScope();
+
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
 	private String containerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
@@ -192,7 +197,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		this.beanFactory = beanFactory;
 		if (beanFactory instanceof ConfigurableListableBeanFactory) {
 			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
-			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory, null);
+			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory,
+					this.listenerScope);
 		}
 	}
 
@@ -384,6 +390,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	protected void processListener(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean,
 			Object adminTarget, String beanName) {
+		String beanRef = kafkaListener.beanRef();
+		if (StringUtils.hasText(beanRef)) {
+			this.listenerScope.addListener(beanRef, bean);
+		}
 		endpoint.setBean(bean);
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
 		endpoint.setId(getEndpointId(kafkaListener));
@@ -416,6 +426,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		this.registrar.registerEndpoint(endpoint, factory);
+		if (StringUtils.hasText(beanRef)) {
+			this.listenerScope.removeListener(beanRef);
+		}
 	}
 
 	private String getEndpointId(KafkaListener kafkaListener) {
@@ -719,6 +732,48 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 			defaultFactory.afterPropertiesSet();
 			return defaultFactory;
+		}
+
+	}
+
+	private static class ListenerScope implements Scope {
+
+		private final Map<String, Object> listeners = new HashMap<>();
+
+		ListenerScope() {
+			super();
+		}
+
+		public void addListener(String key, Object bean) {
+			this.listeners.put(key, bean);
+		}
+
+		public void removeListener(String key) {
+			this.listeners.remove(key);
+		}
+
+		@Override
+		public Object get(String name, ObjectFactory<?> objectFactory) {
+			return this.listeners.get(name);
+		}
+
+		@Override
+		public Object remove(String name) {
+			return null;
+		}
+
+		@Override
+		public void registerDestructionCallback(String name, Runnable callback) {
+		}
+
+		@Override
+		public Object resolveContextualObject(String key) {
+			return this.listeners.get(key);
+		}
+
+		@Override
+		public String getConversationId() {
+			return null;
 		}
 
 	}

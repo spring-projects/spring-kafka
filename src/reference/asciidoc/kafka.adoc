@@ -756,6 +756,66 @@ public void listen(List<ConsumerRecord<Integer, String>> list, Acknowledgment ac
 Starting with _version 2.0_, the `id` attribute (if present) is used as the Kafka `group.id` property, overriding the configured property in the consumer factory, if present.
 You can also set `groupId` explicitly, or set `idIsGroup` to false, to restore the previous behavior of using the consumer factory `group.id`.
 
+You can use property placeholders or SpEL expressions within annotation properties, for example...
+
+[source, java]
+----
+@KafkaListener(topics = "${some.property}")
+
+@KafkaListener(topics = "#{someBean.someProperty}",
+    groupId = "#{someBean.someProperty}.group")
+----
+
+Starting with _version 2.1.2_, the SpEL expressions support a special token `__kafkaListener__` which is a pseudo bean name which represents the current bean instance within which this annotation exists.
+
+For example, given...
+
+[source, java]
+----
+@Bean
+public Listener listener1() {
+    return new Listener("topic1");
+}
+
+@Bean
+public Listener listener2() {
+    return new Listener("topic2");
+}
+----
+
+...we can use...
+
+[source, java]
+----
+public class Listener {
+
+    private final String topic;
+
+    public Listener(String topic) {
+        this.topic = topic;
+    }
+
+    @KafkaListener(topics = "#{__listenerBean__.topic}",
+        groupId = "#{__listenerBean__.topic}.group")
+    public void listen(...) {
+        ...
+    }
+
+    public String getTopic() {
+        return this.topic;
+    }
+
+}
+----
+
+If, in the unlikely event that you have an actual bean called `__kafkaListener__`, you can change the expression token using the `beanRef` attribute...
+
+[source, java]
+----
+@KafkaListener(beanRef = "__x__", topics = "#{__x__.topic}",
+    groupId = "#{__x__.topic}.group")
+----
+
 ===== Container Thread Naming
 
 Listener containers currently use two task executors, one to invoke the consumer and another which will be used to invoke the listener, when the kafka consumer property `enable.auto.commit` is `false`.

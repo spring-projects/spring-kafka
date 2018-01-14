@@ -70,18 +70,24 @@ public class BatchListenerConversionTests {
 	@Autowired
 	private KafkaTemplate<Integer, Foo> template;
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testBatchOfPojos() throws Exception {
+		doTest(this.config.listener1(), "blc1");
+		doTest(this.config.listener2(), "blc2");
+	}
+
+	private void doTest(Listener listener, String topic) throws InterruptedException {
 		this.template.send(new GenericMessage<>(
-				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, "blc1")));
+				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
 		this.template.send(new GenericMessage<>(
-				new Foo("baz"), Collections.singletonMap(KafkaHeaders.TOPIC, "blc1")));
-		assertThat(config.listener().latch1.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(config.listener().received).isInstanceOf(List.class);
-		assertThat(((List<?>) config.listener().received).size()).isGreaterThan(0);
-		assertThat(((List<?>) config.listener().received).get(0)).isInstanceOf(Foo.class);
-		assertThat(((List<Foo>) config.listener().received).get(0).bar).isEqualTo("bar");
+				new Foo("baz"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
+		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener.received.size()).isGreaterThan(0);
+		assertThat(listener.received.get(0)).isInstanceOf(Foo.class);
+		assertThat(listener.received.get(0).bar).isEqualTo("bar");
+		assertThat((listener.receivedTopics).get(0)).isEqualTo(topic);
+		assertThat((listener.receivedPartitions).get(0)).isEqualTo(0);
 	}
 
 	@Configuration
@@ -134,22 +140,53 @@ public class BatchListenerConversionTests {
 		}
 
 		@Bean
-		public Listener listener() {
-			return new Listener();
+		public Listener listener1() {
+			return new Listener("blc1");
+		}
+
+		@Bean
+		public Listener listener2() {
+			return new Listener("blc2");
 		}
 
 	}
 
 	public static class Listener {
 
+		private final String topic;
+
 		private final CountDownLatch latch1 = new CountDownLatch(1);
 
-		private Object received;
+		private final CountDownLatch latch2 = new CountDownLatch(1);
 
-		@KafkaListener(topics = "blc1")
-		public void listen(List<Foo> foos, @Header(KafkaHeaders.OFFSET) List<Long> offsets) {
-			this.received = foos;
+		private List<Foo> received;
+
+		private List<String> receivedTopics;
+
+		private List<Integer> receivedPartitions;
+
+		public Listener(String topic) {
+			this.topic = topic;
+		}
+
+		@KafkaListener(topics = "#{__listenerBean__.topic}", groupId = "#{__listenerBean__.topic}.group")
+		public void listen1(List<Foo> foos, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
+				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions) {
+			if (this.received == null) {
+				this.received = foos;
+			}
+			this.receivedTopics = topics;
+			this.receivedPartitions = partitions;
 			this.latch1.countDown();
+		}
+
+		@KafkaListener(beanRef = "__x__", topics = "#{__x__.topic}", groupId = "#{__x__.topic}.group2")
+		public void listen2(List<Foo> foos) {
+			this.latch2.countDown();
+		}
+
+		public String getTopic() {
+			return this.topic;
 		}
 
 	}
