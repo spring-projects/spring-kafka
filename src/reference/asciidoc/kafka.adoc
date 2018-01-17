@@ -795,8 +795,8 @@ public class Listener {
         this.topic = topic;
     }
 
-    @KafkaListener(topics = "#{__listenerBean__.topic}",
-        groupId = "#{__listenerBean__.topic}.group")
+    @KafkaListener(topics = "#{__listener.topic}",
+        groupId = "#{__listener.topic}.group")
     public void listen(...) {
         ...
     }
@@ -808,12 +808,12 @@ public class Listener {
 }
 ----
 
-If, in the unlikely event that you have an actual bean called `__kafkaListener__`, you can change the expression token using the `beanRef` attribute...
+If, in the unlikely event that you have an actual bean called `__listener`, you can change the expression token using the `beanRef` attribute...
 
 [source, java]
 ----
-@KafkaListener(beanRef = "__x__", topics = "#{__x__.topic}",
-    groupId = "#{__x__.topic}.group")
+@KafkaListener(beanRef = "__x", topics = "#{__x.topic}",
+    groupId = "#{__x.topic}.group")
 ----
 
 ===== Container Thread Naming

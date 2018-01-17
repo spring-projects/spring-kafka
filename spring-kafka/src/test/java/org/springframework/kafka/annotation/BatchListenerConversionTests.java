@@ -169,7 +169,7 @@ public class BatchListenerConversionTests {
 			this.topic = topic;
 		}
 
-		@KafkaListener(topics = "#{__listenerBean__.topic}", groupId = "#{__listenerBean__.topic}.group")
+		@KafkaListener(topics = "#{__listener.topic}", groupId = "#{__listener.topic}.group")
 		public void listen1(List<Foo> foos, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions) {
 			if (this.received == null) {
@@ -180,7 +180,7 @@ public class BatchListenerConversionTests {
 			this.latch1.countDown();
 		}
 
-		@KafkaListener(beanRef = "__x__", topics = "#{__x__.topic}", groupId = "#{__x__.topic}.group2")
+		@KafkaListener(beanRef = "__x", topics = "#{__x.topic}", groupId = "#{__x.topic}.group2")
 		public void listen2(List<Foo> foos) {
 			this.latch2.countDown();
 		}
