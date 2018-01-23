@@ -211,6 +211,8 @@ project ('spring-kafka-test') {
 
 		compile ("org.hamcrest:hamcrest-all:$hamcrestVersion", optional)
 		compile ("org.assertj:assertj-core:$assertjVersion", optional)
+
+        testCompile project(':spring-kafka')
 	}
 }
 
