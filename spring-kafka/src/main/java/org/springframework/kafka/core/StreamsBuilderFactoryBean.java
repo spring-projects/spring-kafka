@@ -44,6 +44,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
 	private final StreamsConfig streamsConfig;
+	private final CleanupConfig cleanupConfig;
 
 	private KafkaStreams kafkaStreams;
 
@@ -62,13 +63,23 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private volatile boolean running;
 
 	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig) {
+		this(streamsConfig, new CleanupConfig());
+	}
+
+	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig, CleanupConfig cleanupConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		this.streamsConfig = streamsConfig;
+		this.cleanupConfig = cleanupConfig;
 	}
 
 	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig) {
+		this(streamsConfig, new CleanupConfig());
+	}
+
+	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig, CleanupConfig cleanupConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		this.streamsConfig = new StreamsConfig(streamsConfig);
+		this.cleanupConfig = cleanupConfig;
 	}
 
 	public void setClientSupplier(KafkaClientSupplier clientSupplier) {
@@ -133,6 +144,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				this.kafkaStreams = new KafkaStreams(getObject().build(), this.streamsConfig, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
+				if (this.cleanupConfig.cleanupOnStart()) {
+					this.kafkaStreams.cleanUp();
+				}
 				this.kafkaStreams.start();
 				this.running = true;
 			}
@@ -148,6 +162,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			try {
 				if (this.kafkaStreams != null) {
 					this.kafkaStreams.close(this.closeTimeout, TimeUnit.SECONDS);
+					if (this.cleanupConfig.cleanupOnStop()) {
+						this.kafkaStreams.cleanUp();
+					}
 					this.kafkaStreams.cleanUp();
 					this.kafkaStreams = null;
 				}
