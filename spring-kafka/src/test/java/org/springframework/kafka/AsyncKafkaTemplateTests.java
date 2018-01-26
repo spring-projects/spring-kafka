@@ -17,13 +17,12 @@
 package org.springframework.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -32,9 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 
-import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -88,6 +85,7 @@ public class AsyncKafkaTemplateTests {
 	@Test
 	public void testGood() throws Exception {
 		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
+		template.setReplyTimeout(30_000);
 		ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
 		RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 		future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
@@ -99,15 +97,21 @@ public class AsyncKafkaTemplateTests {
 	@Test
 	public void testTimeout() throws Exception {
 		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
-		Log logger = spy(KafkaTestUtils.getPropertyValue(template, "logger", Log.class));
-		new DirectFieldAccessor(template).setPropertyValue("logger", logger);
 		template.setReplyTimeout(1);
 		ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
 		RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 		future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
-		ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-		verify(logger).warn(captor.capture());
-		assertThat(captor.getValue()).contains("Reply timed out for");
+		try {
+			future.get(30, TimeUnit.SECONDS);
+			fail("Expected Exception");
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw e;
+		}
+		catch (ExecutionException e) {
+			assertThat(e).hasCauseExactlyInstanceOf(KafkaException.class).hasMessageContaining("Reply timed out");
+		}
 		template.stop();
 	}
 

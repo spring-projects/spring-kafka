@@ -156,8 +156,12 @@ public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements 
 		this.futures.put(correlationId, future);
 		future.setSendFuture(send(record));
 		this.scheduler.schedule(() -> {
-			if (this.futures.remove(correlationId) != null) {
-				this.logger.warn("Reply timed out for: " + record + " with correlationId: " + correlationId);
+			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
+			if (removed != null) {
+				if (this.logger.isWarnEnabled()) {
+					this.logger.warn("Reply timed out for: " + record + " with correlationId: " + correlationId);
+				}
+				removed.setException(new KafkaException("Reply timed out"));
 			}
 		}, Instant.now().plusMillis(this.replyTimeout));
 		return future;
@@ -188,6 +192,9 @@ public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements 
 							+ correlationId + ", perhaps timed out");
 				}
 				else {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("Received: " + record + " with correlationId: " + correlationId);
+					}
 					future.set(record);
 				}
 			}
