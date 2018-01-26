@@ -45,12 +45,15 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 
 /**
@@ -273,7 +276,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		String replyTopic = evaluateReplyTopic(request, source, resultArg);
 		Assert.state(replyTopic == null || this.replyTemplate != null,
 				"a KafkaTemplate is required to support replies");
-		sendResponse(result, replyTopic);
+		sendResponse(result, replyTopic, source);
 	}
 
 	private String evaluateReplyTopic(Object request, Object source, Object result) {
@@ -298,12 +301,36 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+
+	/**
+	 * Send the result to the topic.
+	 *
+	 * @deprecated in favor of {@link #sendResponse(Object, String, Object)}.
+	 * @param result the result.
+	 * @param topic the topic.
+	 */
+	@Deprecated
 	protected void sendResponse(Object result, String topic) {
+		sendResponse(result, topic, null);
+	}
+
+	/**
+	 * Send the result to the topic.
+	 *
+	 * @param result the result.
+	 * @param topic the topic.
+	 * @param source the source (input).
+	 * @since 2.1.3
+	 */
+	@SuppressWarnings("unchecked")
+	protected void sendResponse(Object result, String topic, @Nullable Object source) {
 		if (topic == null) {
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("No replyTopic to handle the reply: " + result);
 			}
+		}
+		else if (result instanceof Message) {
+			this.replyTemplate.send((Message<?>) result);
 		}
 		else {
 			if (result instanceof Collection) {
@@ -312,7 +339,21 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				});
 			}
 			else {
-				this.replyTemplate.send(topic, (V) result);
+				byte[] correlationId = null;
+				if (source instanceof Message
+						&& ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID) != null) {
+					correlationId = ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
+				}
+				if (correlationId != null) {
+					// TODO: Perhaps more headers to control reply partioning?
+					this.replyTemplate.send(MessageBuilder.withPayload(result)
+							.setHeader(KafkaHeaders.CORRELATION_ID, correlationId)
+							.setHeader(KafkaHeaders.TOPIC, topic)
+							.build());
+				}
+				else {
+					this.replyTemplate.send(topic, (V) result);
+				}
 			}
 		}
 	}
