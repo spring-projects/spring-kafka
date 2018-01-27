@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -296,7 +297,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		else {
 			Object value = sendTo.getValue(this.evaluationContext, new ReplyExpressionRoot(request, source, result));
-			Assert.state(value instanceof String, "replyTopic expression must evaluate to a String or Address");
+			boolean isByteArray = value instanceof byte[];
+			Assert.state(value instanceof String || isByteArray,
+					"replyTopic expression must evaluate to a String or byte[]");
+			if (isByteArray) {
+				return new String((byte[]) value, StandardCharsets.UTF_8);
+			}
 			return (String) value;
 		}
 	}

@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -87,6 +88,7 @@ public class AsyncKafkaTemplateTests {
 		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
 		template.setReplyTimeout(30_000);
 		ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
+		record.headers().add(new RecordHeader("replyTopic", A_REPLY.getBytes()));
 		RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 		future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 		ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
@@ -99,6 +101,7 @@ public class AsyncKafkaTemplateTests {
 		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
 		template.setReplyTimeout(1);
 		ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
+		record.headers().add(new RecordHeader("replyTopic", A_REPLY.getBytes()));
 		RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 		future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 		try {
@@ -163,7 +166,7 @@ public class AsyncKafkaTemplateTests {
 		}
 
 		@KafkaListener(topics = A_REQUEST)
-		@SendTo(A_REPLY)
+		@SendTo("!{source.headers['replyTopic']}")
 		public String handle(String in) {
 			return in.toUpperCase();
 		}
