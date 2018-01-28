@@ -165,7 +165,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 					if (this.cleanupConfig.cleanupOnStop()) {
 						this.kafkaStreams.cleanUp();
 					}
-					this.kafkaStreams.cleanUp();
 					this.kafkaStreams = null;
 				}
 			}
