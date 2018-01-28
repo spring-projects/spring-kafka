@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +56,7 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
@@ -371,6 +372,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final ScheduledFuture<?> monitorTask;
 
+		private final LogIfLevelEnabled commitLogger = new LogIfLevelEnabled(this.logger,
+				this.containerProperties.getCommitLogLevel());
+
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private volatile Collection<TopicPartition> assignedPartitions;
@@ -529,9 +533,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 								return;
 							}
 						}
-						if (ListenerConsumer.this.logger.isDebugEnabled()) {
-							ListenerConsumer.this.logger.debug("Committing on assignment: " + offsets);
-						}
+						ListenerConsumer.this.commitLogger.log("Committing on assignment: " + offsets);
 						if (ListenerConsumer.this.transactionTemplate != null &&
 								ListenerConsumer.this.kafkaTxManager != null) {
 							ListenerConsumer.this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
@@ -755,15 +757,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
 					new TopicPartition(record.topic(), record.partition()),
 					new OffsetAndMetadata(record.offset() + 1));
-			if (ListenerConsumer.this.logger.isDebugEnabled()) {
-				ListenerConsumer.this.logger.debug("Committing: " + commits);
-			}
+			this.commitLogger.log("Committing: " + commits);
 			if (this.containerProperties.isSyncCommits()) {
-				ListenerConsumer.this.consumer.commitSync(commits);
+				this.consumer.commitSync(commits);
 			}
 			else {
-				ListenerConsumer.this.consumer.commitAsync(commits,
-						ListenerConsumer.this.commitCallback);
+				this.consumer.commitAsync(commits, this.commitCallback);
 			}
 		}
 
@@ -995,6 +994,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 									new OffsetAndMetadata(record.offset() + 1));
 					if (producer == null) {
+						this.commitLogger.log("Committing: " + offsetsToCommit);
 						if (this.containerProperties.isSyncCommits()) {
 							this.consumer.commitSync(offsetsToCommit);
 						}
@@ -1019,6 +1019,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 								Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 										new OffsetAndMetadata(record.offset() + 1));
+						this.commitLogger.log("Committing: " + offsetsToCommit);
 						if (this.containerProperties.isSyncCommits()) {
 							this.consumer.commitSync(offsetsToCommit);
 						}
@@ -1072,6 +1073,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private void sendOffsetsToTransaction(Producer producer) {
 			handleAcks();
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
+			this.commitLogger.log("Sending offsets to transaction: " + commits);
 			producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
 		}
 
@@ -1209,9 +1211,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.logger.debug("Commit list: " + commits);
 			}
 			if (!commits.isEmpty()) {
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("Committing: " + commits);
-				}
+				this.commitLogger.log("Committing: " + commits);
 				try {
 					if (this.containerProperties.isSyncCommits()) {
 						this.consumer.commitSync(commits);

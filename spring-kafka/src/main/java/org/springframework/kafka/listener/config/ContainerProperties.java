@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.BatchErrorHandler;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
+import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -161,6 +162,8 @@ public class ContainerProperties {
 	private String clientId = "";
 
 	private boolean logContainerConfig;
+
+	private LogIfLevelEnabled.Level commitLogLevel = LogIfLevelEnabled.Level.DEBUG;
 
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
@@ -490,7 +493,7 @@ public class ContainerProperties {
 	/**
 	 * Log the container configuration if true (INFO).
 	 * @return true to log.
-	 * @since 2.0.1
+	 * @since 2.1.1
 	 */
 	public boolean isLogContainerConfig() {
 		return this.logContainerConfig;
@@ -503,6 +506,26 @@ public class ContainerProperties {
 	 */
 	public void setLogContainerConfig(boolean logContainerConfig) {
 		this.logContainerConfig = logContainerConfig;
+	}
+
+	/**
+	 * The level at which to log offset commits.
+	 * @return the level.
+	 * @since 2.1.2
+	 */
+	public LogIfLevelEnabled.Level getCommitLogLevel() {
+		return this.commitLogLevel;
+	}
+
+	/**
+	 * Set the level at which to log offset commits.
+	 * Default: DEBUG.
+	 * @param commitLogLevel the level.
+	 * @since 2.1.2
+	 */
+	public void setCommitLogLevel(LogIfLevelEnabled.Level commitLogLevel) {
+		Assert.notNull(commitLogLevel, "'commitLogLevel' cannot be nul");
+		this.commitLogLevel = commitLogLevel;
 	}
 
 	@Override
