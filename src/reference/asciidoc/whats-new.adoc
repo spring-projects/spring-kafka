@@ -22,6 +22,13 @@ Starting with _version 2.1.1_, it is now possible to set the `client.id` prefix 
 Previously, to customize the client id, you would need a separate consumer factory (and container factory) per listener.
 The prefix is suffixed with `-n` to provide unique client ids when using concurrency.
 
+
+==== Logging Offset Commits
+
+By default, logging of topic offset commits is performed with the DEBUG logging level.
+Starting with _version 2.1.1_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
+See <<kafka-container>> for more information.
+
 ==== Migration Guide from 2.0
 
 https://github.com/spring-projects/spring-kafka/wiki/Spring-for-Apache-Kafka-2.0-to-2.1-Migration-Guide[2.0 to 2.1 Migration].

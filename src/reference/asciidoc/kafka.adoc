@@ -441,6 +441,7 @@ The `KafkaMessageListenerContainer` receives all message from all topics/partiti
 The `ConcurrentMessageListenerContainer` delegates to 1 or more `KafkaMessageListenerContainer` s to provide
 multi-threaded consumption.
 
+[[kafka-container]]
 ====== KafkaMessageListenerContainer
 
 The following constructors are available.
@@ -497,6 +498,10 @@ return container;
 Refer to the JavaDocs for `ContainerProperties` for more information about the various properties that can be set.
 
 Since version _2.1.1_, a new property `logContainerConfig` is available; when true, and INFO logging is enabled, each listener container will write a log message summarizing its configuration properties.
+
+By default, logging of topic offset commits is performed with the DEBUG logging level.
+Starting with _version 2.1.1_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
+For example, to change the log level to INFO, use `containerProperties.setCommitLogLevel(LogIfLevelEnabled.Level.INFO);`.
 
 ====== ConcurrentMessageListenerContainer
 
