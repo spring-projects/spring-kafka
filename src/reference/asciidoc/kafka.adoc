@@ -500,7 +500,7 @@ Refer to the JavaDocs for `ContainerProperties` for more information about the v
 Since version _2.1.1_, a new property `logContainerConfig` is available; when true, and INFO logging is enabled, each listener container will write a log message summarizing its configuration properties.
 
 By default, logging of topic offset commits is performed with the DEBUG logging level.
-Starting with _version 2.1.1_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
+Starting with _version 2.1.2_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
 For example, to change the log level to INFO, use `containerProperties.setCommitLogLevel(LogIfLevelEnabled.Level.INFO);`.
 
 ====== ConcurrentMessageListenerContainer

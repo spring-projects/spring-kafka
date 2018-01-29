@@ -20,6 +20,8 @@ import java.util.function.Supplier;
 
 import org.apache.commons.logging.Log;
 
+import org.springframework.util.Assert;
+
 /**
  * Wrapper for a commons-logging Log supporting configurable
  * logging levels.
@@ -35,6 +37,8 @@ public final class LogIfLevelEnabled {
 	private final Level level;
 
 	public LogIfLevelEnabled(Log logger, Level level) {
+		Assert.notNull(logger, "'logger' cannot be null");
+		Assert.notNull(level, "'level' cannot be null");
 		this.logger = logger;
 		this.level = level;
 	}

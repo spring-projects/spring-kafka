@@ -26,7 +26,7 @@ The prefix is suffixed with `-n` to provide unique client ids when using concurr
 ==== Logging Offset Commits
 
 By default, logging of topic offset commits is performed with the DEBUG logging level.
-Starting with _version 2.1.1_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
+Starting with _version 2.1.2_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
 See <<kafka-container>> for more information.
 
 ==== Migration Guide from 2.0
