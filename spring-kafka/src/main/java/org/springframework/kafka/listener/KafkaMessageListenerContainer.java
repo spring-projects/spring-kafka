@@ -533,7 +533,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 								return;
 							}
 						}
-						ListenerConsumer.this.commitLogger.log("Committing on assignment: " + offsets);
+						ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsets);
 						if (ListenerConsumer.this.transactionTemplate != null &&
 								ListenerConsumer.this.kafkaTxManager != null) {
 							ListenerConsumer.this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
@@ -757,7 +757,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
 					new TopicPartition(record.topic(), record.partition()),
 					new OffsetAndMetadata(record.offset() + 1));
-			this.commitLogger.log("Committing: " + commits);
+			this.commitLogger.log(() -> "Committing: " + commits);
 			if (this.containerProperties.isSyncCommits()) {
 				this.consumer.commitSync(commits);
 			}
@@ -994,7 +994,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 									new OffsetAndMetadata(record.offset() + 1));
 					if (producer == null) {
-						this.commitLogger.log("Committing: " + offsetsToCommit);
+						this.commitLogger.log(() -> "Committing: " + offsetsToCommit);
 						if (this.containerProperties.isSyncCommits()) {
 							this.consumer.commitSync(offsetsToCommit);
 						}
@@ -1019,7 +1019,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 								Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 										new OffsetAndMetadata(record.offset() + 1));
-						this.commitLogger.log("Committing: " + offsetsToCommit);
+						this.commitLogger.log(() -> "Committing: " + offsetsToCommit);
 						if (this.containerProperties.isSyncCommits()) {
 							this.consumer.commitSync(offsetsToCommit);
 						}
@@ -1073,7 +1073,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private void sendOffsetsToTransaction(Producer producer) {
 			handleAcks();
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
-			this.commitLogger.log("Sending offsets to transaction: " + commits);
+			this.commitLogger.log(() -> "Sending offsets to transaction: " + commits);
 			producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
 		}
 
@@ -1211,7 +1211,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.logger.debug("Commit list: " + commits);
 			}
 			if (!commits.isEmpty()) {
-				this.commitLogger.log("Committing: " + commits);
+				this.commitLogger.log(() -> "Committing: " + commits);
 				try {
 					if (this.containerProperties.isSyncCommits()) {
 						this.consumer.commitSync(commits);

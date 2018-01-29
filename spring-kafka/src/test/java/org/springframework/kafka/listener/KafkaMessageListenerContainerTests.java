@@ -76,7 +76,6 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMo
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
@@ -442,7 +441,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setAckOnError(false);
-		containerProps.setCommitLogLevel(LogIfLevelEnabled.Level.WARN);
+//		containerProps.setCommitLogLevel(LogIfLevelEnabled.Level.WARN);
 
 		CountDownLatch stubbingComplete = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(

@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.support;
 
+import java.util.function.Supplier;
+
 import org.apache.commons.logging.Log;
 
 /**
@@ -74,71 +76,71 @@ public final class LogIfLevelEnabled {
 
 	}
 
-	public void log(Object message) {
+	public void log(Supplier<Object> messageSupplier) {
 		switch (this.level) {
 			case FATAL:
 				if (this.logger.isFatalEnabled()) {
-					this.logger.fatal(message);
+					this.logger.fatal(messageSupplier.get());
 				}
 				break;
 			case ERROR:
 				if (this.logger.isErrorEnabled()) {
-					this.logger.error(message);
+					this.logger.error(messageSupplier.get());
 				}
 				break;
 			case WARN:
 				if (this.logger.isWarnEnabled()) {
-					this.logger.warn(message);
+					this.logger.warn(messageSupplier.get());
 				}
 				break;
 			case INFO:
 				if (this.logger.isInfoEnabled()) {
-					this.logger.info(message);
+					this.logger.info(messageSupplier.get());
 				}
 				break;
 			case DEBUG:
 				if (this.logger.isDebugEnabled()) {
-					this.logger.debug(message);
+					this.logger.debug(messageSupplier.get());
 				}
 				break;
 			case TRACE:
 				if (this.logger.isTraceEnabled()) {
-					this.logger.trace(message);
+					this.logger.trace(messageSupplier.get());
 				}
 				break;
 		}
 	}
 
-	public void log(Object message, Throwable t) {
+	public void log(Supplier<Object> messageSupplier, Throwable t) {
 		switch (this.level) {
 			case FATAL:
 				if (this.logger.isFatalEnabled()) {
-					this.logger.fatal(message, t);
+					this.logger.fatal(messageSupplier.get(), t);
 				}
 				break;
 			case ERROR:
 				if (this.logger.isErrorEnabled()) {
-					this.logger.error(message, t);
+					this.logger.error(messageSupplier.get(), t);
 				}
 				break;
 			case WARN:
 				if (this.logger.isWarnEnabled()) {
-					this.logger.warn(message, t);
+					this.logger.warn(messageSupplier.get(), t);
 				}
 				break;
 			case INFO:
 				if (this.logger.isInfoEnabled()) {
-					this.logger.info(message, t);
+					this.logger.info(messageSupplier.get(), t);
 				}
 				break;
 			case DEBUG:
 				if (this.logger.isDebugEnabled()) {
-					this.logger.debug(message, t);
+					this.logger.debug(messageSupplier.get(), t);
 				}
 				break;
 			case TRACE:
 				if (this.logger.isTraceEnabled()) {
-					this.logger.trace(message, t);
+					this.logger.trace(messageSupplier.get(), t);
 				}
 				break;
 		}
