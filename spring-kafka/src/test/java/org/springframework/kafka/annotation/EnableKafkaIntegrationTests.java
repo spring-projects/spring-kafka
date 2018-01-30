@@ -477,10 +477,10 @@ public class EnableKafkaIntegrationTests {
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated21reply");
-		template.send("annotated21", 0, "annotated21reply");
+		template.send("annotated21", 0, "nnotated21reply"); // drop the leading 'a'.
 		template.flush();
 		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated21reply");
-		assertThat(reply.value()).isEqualTo("ANNOTATED21REPLY");
+		assertThat(reply.value()).isEqualTo("NNOTATED21REPLY");
 		consumer.close();
 	}
 
@@ -1019,7 +1019,7 @@ public class EnableKafkaIntegrationTests {
 
 		private Object listen16Message;
 
-		private CountDownLatch listen16ErrorLatch = new CountDownLatch(1);
+		private final CountDownLatch listen16ErrorLatch = new CountDownLatch(1);
 
 		@Bean
 		public ConsumerAwareErrorHandler listen16ErrorHandler() {
@@ -1290,13 +1290,13 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "replyingListener", topics = "annotated21")
-		@SendTo("!{request.value()}") // runtime SpEL - test payload is the reply queue
+		@SendTo("a!{request.value()}") // runtime SpEL - test payload is the reply queue minus leading 'a'
 		public String replyingListener(String in) {
 			return in.toUpperCase();
 		}
 
 		@KafkaListener(id = "replyingBatchListener", topics = "annotated22", containerFactory = "batchFactory")
-		@SendTo("#{'annotated22reply'}") // config time SpEL
+		@SendTo("a#{'nnotated22reply'}") // config time SpEL
 		public Collection<String> replyingBatchListener(List<String> in) {
 			return in.stream().map(String::toUpperCase).collect(Collectors.toList());
 		}
