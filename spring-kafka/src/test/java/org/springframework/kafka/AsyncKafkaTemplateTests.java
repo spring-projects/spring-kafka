@@ -19,13 +19,17 @@ package org.springframework.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
+import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -152,8 +156,21 @@ public class AsyncKafkaTemplateTests {
 		}
 	}
 
-	public AsyncKafkaTemplate<Integer, String, String> createTemplate() {
+	public AsyncKafkaTemplate<Integer, String, String> createTemplate() throws Exception {
 		ContainerProperties containerProperties = new ContainerProperties(A_REPLY);
+		final CountDownLatch latch = new CountDownLatch(1);
+		containerProperties.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				// no op
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				latch.countDown();
+			}
+		});
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
 				embeddedKafka);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
@@ -165,6 +182,7 @@ public class AsyncKafkaTemplateTests {
 		scheduler.initialize();
 		template.setTaskScheduler(scheduler);
 		template.start();
+		assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
 		return template;
 	}
 
