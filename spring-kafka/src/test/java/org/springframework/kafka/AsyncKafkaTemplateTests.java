@@ -30,7 +30,9 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +47,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -66,9 +69,12 @@ public class AsyncKafkaTemplateTests {
 	private static final String A_REQUEST = "aRequest";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 1, A_REQUEST, A_REPLY);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 5, A_REQUEST, A_REPLY);
 
 	private static ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+
+	@Rule
+	public TestName testName = new TestName();
 
 	@Autowired
 	private Config config;
@@ -86,45 +92,75 @@ public class AsyncKafkaTemplateTests {
 	@Test
 	public void testGood() throws Exception {
 		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
-		template.setReplyTimeout(30_000);
-		ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
-		record.headers().add(new RecordHeader("replyTopic", A_REPLY.getBytes()));
-		RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
-		future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
-		ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
-		assertThat(consumerRecord.value()).isEqualTo("FOO");
-		template.stop();
+		try {
+			template.setReplyTimeout(30_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("FOO");
+		}
+		finally {
+			template.stop();
+		}
+	}
+
+	@Test
+	public void testGoodSamePartition() throws Exception {
+		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
+		try {
+			template.setReplyTimeout(30_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, 2, null, "foo");
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
+			record.headers()
+					.add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, "2".getBytes()));
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("FOO");
+			assertThat(consumerRecord.partition()).isEqualTo(2);
+		}
+		finally {
+			template.stop();
+		}
 	}
 
 	@Test
 	public void testTimeout() throws Exception {
 		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
-		template.setReplyTimeout(1);
-		ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
-		record.headers().add(new RecordHeader("replyTopic", A_REPLY.getBytes()));
-		RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
-		future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 		try {
-			future.get(30, TimeUnit.SECONDS);
-			fail("Expected Exception");
+			template.setReplyTimeout(1);
+			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			try {
+				future.get(30, TimeUnit.SECONDS);
+				fail("Expected Exception");
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw e;
+			}
+			catch (ExecutionException e) {
+				assertThat(e).hasCauseExactlyInstanceOf(KafkaException.class).hasMessageContaining("Reply timed out");
+			}
 		}
-		catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw e;
+		finally {
+			template.stop();
 		}
-		catch (ExecutionException e) {
-			assertThat(e).hasCauseExactlyInstanceOf(KafkaException.class).hasMessageContaining("Reply timed out");
-		}
-		template.stop();
 	}
 
 	public AsyncKafkaTemplate<Integer, String, String> createTemplate() {
 		ContainerProperties containerProperties = new ContainerProperties(A_REPLY);
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("reqResp", "false", embeddedKafka);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
+				embeddedKafka);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
+		container.setBeanName(this.testName.getMethodName());
 		AsyncKafkaTemplate<Integer, String, String> template = new AsyncKafkaTemplate<>(this.config.pf(), container);
 		scheduler.initialize();
 		template.setTaskScheduler(scheduler);
@@ -166,7 +202,7 @@ public class AsyncKafkaTemplateTests {
 		}
 
 		@KafkaListener(topics = A_REQUEST)
-		@SendTo("!{source.headers['replyTopic']}")
+		@SendTo  // default REPLY_TOPIC header
 		public String handle(String in) {
 			return in.toUpperCase();
 		}

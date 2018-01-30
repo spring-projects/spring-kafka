@@ -51,11 +51,13 @@ import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * An abstract {@link MessageListener} adapter providing the necessary infrastructure
@@ -158,10 +160,15 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	/**
 	 * Set the topic to which to send any result from the method invocation.
 	 * May be a SpEL expression {@code !{...}} evaluated at runtime.
-	 * @param replyTopic the topic or expression.
+	 * @param replyTopicParam the topic or expression.
 	 * @since 2.0
 	 */
-	public void setReplyTopic(String replyTopic) {
+	public void setReplyTopic(String replyTopicParam) {
+		String replyTopic = replyTopicParam;
+		if (!StringUtils.hasText(replyTopic)) {
+			replyTopic = PARSER_CONTEXT.getExpressionPrefix() + "source.headers['"
+					+ KafkaHeaders.REPLY_TOPIC + "']" + PARSER_CONTEXT.getExpressionSuffix();
+		}
 		if (replyTopic.contains(PARSER_CONTEXT.getExpressionPrefix())) {
 			this.replyTopicExpression = PARSER.parseExpression(replyTopic, PARSER_CONTEXT);
 		}
@@ -346,21 +353,32 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 			else {
 				byte[] correlationId = null;
-				if (source instanceof Message
+				boolean sourceIsMessage = source instanceof Message;
+				if (sourceIsMessage
 						&& ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID) != null) {
 					correlationId = ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
 				}
-				if (correlationId != null) {
-					// TODO: Perhaps more headers to control reply partioning?
-					this.replyTemplate.send(MessageBuilder.withPayload(result)
-							.setHeader(KafkaHeaders.CORRELATION_ID, correlationId)
-							.setHeader(KafkaHeaders.TOPIC, topic)
-							.build());
+				if (sourceIsMessage) {
+					MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
+							.setHeader(KafkaHeaders.TOPIC, topic);
+					if (correlationId != null) {
+						builder.setHeader(KafkaHeaders.CORRELATION_ID, correlationId);
+					}
+					setPartition(builder, ((Message<?>) source).getHeaders());
+					this.replyTemplate.send(builder.build());
 				}
 				else {
 					this.replyTemplate.send(topic, (V) result);
 				}
 			}
+		}
+	}
+
+	private void setPartition(MessageBuilder<Object> builder, MessageHeaders headers) {
+		byte[] partitionBytes = headers.get(KafkaHeaders.REPLY_PARTITION, byte[].class);
+		if (partitionBytes != null) {
+			String partition = new String(partitionBytes, StandardCharsets.UTF_8);
+			builder.setHeader(KafkaHeaders.PARTITION_ID, Integer.parseInt(partition));
 		}
 	}
 
