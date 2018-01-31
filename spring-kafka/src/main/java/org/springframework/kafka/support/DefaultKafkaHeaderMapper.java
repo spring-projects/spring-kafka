@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 package org.springframework.kafka.support;
 
 import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -27,8 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -37,7 +33,6 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.MimeType;
-import org.springframework.util.PatternMatchUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.Module;
@@ -46,15 +41,16 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /**
  * Default header mapper for Apache Kafka.
- * Headers in {@link KafkaHeaders} are never mapped on outbound messages.
+ * Most headers in {@link KafkaHeaders} are not mapped on outbound messages.
+ * The exceptions are correlation and reply headers for request/reply
+ * messaging.
+ * Header types are added to a special header {@link #JSON_TYPES}.
  *
  * @author Gary Russell
  * @since 1.3
  *
  */
-public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
-
-	private static final Log logger = LogFactory.getLog(DefaultKafkaHeaderMapper.class);
+public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	private static final List<String> DEFAULT_TRUSTED_PACKAGES =
 			Arrays.asList(
@@ -68,34 +64,15 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	 */
 	public static final String JSON_TYPES = "spring_json_header_types";
 
-	private static final List<SimplePatternBasedHeaderMatcher> NEVER_MAPPED = Arrays.asList(
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.ACKNOWLEDGMENT),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.CONSUMER),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.MESSAGE_KEY),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.OFFSET),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.PARTITION_ID),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RAW_DATA),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_MESSAGE_KEY),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_PARTITION_ID),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_TIMESTAMP),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.RECEIVED_TOPIC),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TIMESTAMP),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TIMESTAMP_TYPE),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.BATCH_CONVERTED_HEADERS),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.NATIVE_HEADERS),
-		new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TOPIC));
-
 	private final ObjectMapper objectMapper;
-
-	private final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>(NEVER_MAPPED);
 
 	private final Set<String> trustedPackages = new LinkedHashSet<>(DEFAULT_TRUSTED_PACKAGES);
 
 	/**
 	 * Construct an instance with the default object mapper and default header patterns
 	 * for outbound headers; all inbound headers are mapped. The default pattern list is
-	 * {@code "!id", "!timestamp" and "*"}. In addition, none of the headers in
-	 * {@link KafkaHeaders} are ever mapped as headers since they represent data in
+	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
+	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
 	 * consumer/producer records.
 	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
 	 */
@@ -108,8 +85,8 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
 	 * preceding them with "!". The default pattern list is
-	 * {@code "!id", "!timestamp" and "*"}. In addition, none of the headers in
-	 * {@link KafkaHeaders} are ever mapped as headers since they represent data in
+	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
+	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
 	 * consumer/producer records.
 	 * @param objectMapper the object mapper.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
@@ -127,7 +104,7 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
 	 * preceding them with "!". The patterns will replace the default patterns; you
 	 * generally should not map the {@code "id" and "timestamp"} headers. Note:
-	 * none of the headers in {@link KafkaHeaders} are ever mapped as headers since they
+	 * most of the headers in {@link KafkaHeaders} are ever mapped as headers since they
 	 * represent data in consumer/producer records.
 	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
@@ -141,21 +118,18 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * patterns for outbound headers; all inbound headers are mapped. The patterns are
 	 * applied in order, stopping on the first match (positive or negative). Patterns are
 	 * negated by preceding them with "!". The patterns will replace the default patterns;
-	 * you generally should not map the {@code "id" and "timestamp"} headers. Note: none
-	 * of the headers in {@link KafkaHeaders} are ever mapped as headers since they
+	 * you generally should not map the {@code "id" and "timestamp"} headers. Note: most
+	 * of the headers in {@link KafkaHeaders} are never mapped as headers since they
 	 * represent data in consumer/producer records.
 	 * @param objectMapper the object mapper.
 	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
+		super(patterns);
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
-		Assert.notNull(patterns, "'patterns' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
-		for (String pattern : patterns) {
-			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
-		}
 		Module module = new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer(objectMapper));
 		this.objectMapper.registerModule(module);
 	}
@@ -219,18 +193,6 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 				logger.error("Could not add json types header", e);
 			}
 		}
-	}
-
-	protected boolean matches(String header) {
-		for (SimplePatternBasedHeaderMatcher matcher : this.matchers) {
-			if (matcher.matchHeader(header)) {
-				return !matcher.isNegated();
-			}
-		}
-		if (logger.isDebugEnabled()) {
-			logger.debug(MessageFormat.format("headerName=[{0}] WILL NOT be mapped; matched no patterns", header));
-		}
-		return false;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -302,51 +264,6 @@ public class DefaultKafkaHeaderMapper implements KafkaHeaderMapper {
 			return false;
 		}
 		return true;
-	}
-
-	/**
-	 * A pattern-based header matcher that matches if the specified
-	 * header matches the specified simple pattern.
-	 * <p> The {@code negate == true} state indicates if the matching should be treated as "not matched".
-	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
-	 */
-	protected static class SimplePatternBasedHeaderMatcher {
-
-		private static final Log logger = LogFactory.getLog(SimplePatternBasedHeaderMatcher.class);
-
-		private final String pattern;
-
-		private final boolean negate;
-
-		public SimplePatternBasedHeaderMatcher(String pattern) {
-			this(pattern.startsWith("!") ? pattern.substring(1) : pattern, pattern.startsWith("!"));
-		}
-
-		SimplePatternBasedHeaderMatcher(String pattern, boolean negate) {
-			Assert.notNull(pattern, "Pattern must no be null");
-			this.pattern = pattern.toLowerCase();
-			this.negate = negate;
-		}
-
-		public boolean matchHeader(String headerName) {
-			String header = headerName.toLowerCase();
-			if (PatternMatchUtils.simpleMatch(this.pattern, header)) {
-				if (logger.isDebugEnabled()) {
-					logger.debug(
-							MessageFormat.format(
-									"headerName=[{0}] WILL " + (this.negate ? "NOT " : "")
-											+ "be mapped, matched pattern=" + (this.negate ? "!" : "") + "{1}",
-									headerName, this.pattern));
-				}
-				return true;
-			}
-			return false;
-		}
-
-		public boolean isNegated() {
-			return this.negate;
-		}
-
 	}
 
 	/**

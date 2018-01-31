@@ -422,6 +422,13 @@ public class KReplyingApplication {
         return new NewTopic("kRequests", 10, (short) 2);
     }
 
+    @Bean // not required if Jackson is on the classpath
+    public MessagingMessageConverter simpleMapperConverter() {
+        MessagingMessageConverter messagingMessageConverter = new MessagingMessageConverter();
+        messagingMessageConverter.setHeaderMapper(new SimpleKafkaHeaderMapper());
+        return messagingMessageConverter;
+    }
+
 }
 ----
 
@@ -430,9 +437,12 @@ The `@KafkaListener` infrastructure echoes the correlation id and determines the
 See <<annotation-send-to>> for more information about sending replies; in this case we use the default header `KafKaHeaders.REPLY_TOPIC` to indicate which topic the reply goes to.
 
 IMPORTANT: If you have multiple client instances, each will need a dedicated reply topic for each instance.
-An alternative is to set the `KafakHeaders.REPLY_PARTITION` and use a dedicated partition for each instance.
+An alternative is to set the `KafkaHeaders.REPLY_PARTITION` and use a dedicated partition for each instance.
 The server must use this header to route the reply to the correct topic (`@KafkaListener` does this).
 In this case, though, the reply container must not use Kafka's group management feature and must be configured to listen on a fixed partition (using a `TopicPartitionInitialOffset` in its `ContainerProperties` constructor).
+
+NOTE: The `DefaultKafkaHeaderMapper` requires Jackson to be on the classpath (for the `@KafkaListener`).
+If it is not available, the message converter has no header mapper, so you must configure a `MessagingMessageConverter` with a `SimpleKafkaHeaderMapper` as shown above.
 
 ==== Receiving Messages
 
@@ -1087,7 +1097,7 @@ public class MultiListenerSendTo {
 ----
 
 When using `@SendTo`, the `ConcurrentKafkaListenerContainerFactory` must be configured with a `KafkaTemplate` in its `replyTemplate` property, to perform the send.
-Note: only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition and/or key...
+NOTE: unless you are using <<replying-template,request/reply semantics>> only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition and/or key...
 
 [source, java]
 ----
@@ -1105,6 +1115,8 @@ public KafkaTemplate<String, String> myReplyingTemplate() {
     };
 }
 ----
+
+When using request/reply semantics, the target partition can be requested by the sender.
 
 NOTE: You can annotate a `@KafkaListener` method with `@SendTo` even if no result is returned.
 This is to allow the configuration of an `errorHandler` that can forward information about a failed message delivery to some topic.

@@ -70,7 +70,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private int phase;
 
-	private boolean autoStartup;
+	private boolean autoStartup = true;
 
 	private long replyTimeout = DEFAULT_REPLY_TIMEOUT;
 
@@ -164,7 +164,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	@Override
 	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record) {
 		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
-		CorrelationKey correlationId = createCorrelationId();
+		CorrelationKey correlationId = createCorrelationId(record);
 		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
 		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.correlationId));
 		if (this.logger.isDebugEnabled()) {
@@ -201,9 +201,10 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	/**
 	 * Subclasses can override this to generate custom correlation ids.
 	 * The default implementation is a 16 byte representation of a UUID.
+	 * @param record the record.
 	 * @return the key.
 	 */
-	protected CorrelationKey createCorrelationId() {
+	protected CorrelationKey createCorrelationId(ProducerRecord<K, V> record) {
 		UUID uuid = UUID.randomUUID();
 		byte[] bytes = new byte[16];
 		ByteBuffer bb = ByteBuffer.wrap(bytes);

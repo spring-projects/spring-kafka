@@ -35,7 +35,7 @@ See <<kafka-container>> for more information.
 
 ==== ReplyingKafkaTemplate
 
-Starting with _version 2.1.3_ a subclass of `KafkaTemplate` is provided to support request/reply semantics.
+Starting with _version 2.1.3_, a subclass of `KafkaTemplate` is provided to support request/reply semantics.
 See <<replying-template>> for more information.
 
 ==== Migration Guide from 2.0

@@ -50,6 +50,8 @@ import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.RequestReplyFuture;
+import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -69,8 +71,13 @@ public class ReplyingKafkaTemplateTests {
 
 	private static final String A_REQUEST = "aRequest";
 
+	private static final String B_REPLY = "bReply";
+
+	private static final String B_REQUEST = "bRequest";
+
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 5, A_REQUEST, A_REPLY);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 5, A_REQUEST, A_REPLY,
+			B_REQUEST, B_REPLY);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -80,7 +87,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@Test
 	public void testGood() throws Exception {
-		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate();
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
 		try {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
@@ -97,7 +104,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@Test
 	public void testGoodSamePartition() throws Exception {
-		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate();
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
 		try {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, 2, null, "foo");
@@ -117,7 +124,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@Test
 	public void testTimeout() throws Exception {
-		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate();
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
 		try {
 			template.setReplyTimeout(1);
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
@@ -141,8 +148,25 @@ public class ReplyingKafkaTemplateTests {
 		}
 	}
 
-	public ReplyingKafkaTemplate<Integer, String, String> createTemplate() throws Exception {
-		ContainerProperties containerProperties = new ContainerProperties(A_REPLY);
+	@Test
+	public void testGoodWithSimpleMapper() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(B_REPLY);
+		try {
+			template.setReplyTimeout(30_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(B_REQUEST, "qux");
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, B_REPLY.getBytes()));
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("qUX");
+		}
+		finally {
+			template.stop();
+		}
+	}
+
+	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(String topic) throws Exception {
+		ContainerProperties containerProperties = new ContainerProperties(topic);
 		final CountDownLatch latch = new CountDownLatch(1);
 		containerProperties.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
 
@@ -202,10 +226,28 @@ public class ReplyingKafkaTemplateTests {
 			return factory;
 		}
 
+		@Bean
+		public ConcurrentKafkaListenerContainerFactory<Integer, String> simpleMapperFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(cf());
+			factory.setReplyTemplate(template());
+			MessagingMessageConverter messageConverter = new MessagingMessageConverter();
+			messageConverter.setHeaderMapper(new SimpleKafkaHeaderMapper());
+			factory.setMessageConverter(messageConverter);
+			return factory;
+		}
+
 		@KafkaListener(topics = A_REQUEST)
 		@SendTo  // default REPLY_TOPIC header
-		public String handle(String in) {
+		public String handleA(String in) {
 			return in.toUpperCase();
+		}
+
+		@KafkaListener(topics = B_REQUEST, containerFactory = "simpleMapperFactory")
+		@SendTo  // default REPLY_TOPIC header
+		public String handleB(String in) {
+			return in.substring(0, 1) + in.substring(1).toUpperCase();
 		}
 
 	}
