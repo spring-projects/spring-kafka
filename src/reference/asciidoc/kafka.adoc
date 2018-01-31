@@ -335,6 +335,105 @@ If the callback exits normally, the transaction is committed; if an exception is
 
 NOTE: If there is a `KafkaTransactionManager` (or synchronized) transaction in process, it will not be used; a new "nested" transaction is used.
 
+[[replying-template]]
+===== ReplyingKafkaTemplate
+
+_Version 2.1.3_ introduced a subclass of `KafkaTemplate` to provide request/reply semantics; the class is named `ReplyingKafkaTemplate` and has one method (in addition to those in the superclass):
+
+[source, java]
+----
+RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record);
+----
+
+The result is a `ListenableFuture` that will asynchronously populated with the result (or an exception, for a timeout).
+The result also has a property `sendFuture` which is the result of calling `KafkaTemplate.send()`; you can use this future to determine the result of the send operation.
+
+The following Spring Boot application is an example of how to use the feature:
+
+[source, java]
+----
+@SpringBootApplication
+public class KRequestingApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(KRequestingApplication.class, args).close();
+    }
+
+    @Bean
+    public ApplicationRunner runner(ReplyingKafkaTemplate<String, String, String> template) {
+        return args -> {
+            ProducerRecord<String, String> record = new ProducerRecord<>("kRequests", "foo");
+            record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, "kReplies".getBytes()));
+            RequestReplyFuture<String, String, String> replyFuture = template.sendAndReceive(record);
+            SendResult<String, String> sendResult = replyFuture.getSendFuture().get();
+            System.out.println("Sent ok: " + sendResult.getRecordMetadata());
+            ConsumerRecord<String, String> consumerRecord = replyFuture.get();
+            System.out.println("Return value: " + consumerRecord.value());
+        };
+    }
+
+    @Bean
+    public ReplyingKafkaTemplate<String, String, String> kafkaTemplate(ProducerFactory<String, String> pf,
+            KafkaMessageListenerContainer<String, String> replyContainer) {
+        return new ReplyingKafkaTemplate<>(pf, replyContainer);
+    }
+
+    @Bean
+    public KafkaMessageListenerContainer<String, String> replyContainer(ConsumerFactory<String, String> cf) {
+        ContainerProperties containerProperties = new ContainerProperties("kReplies");
+        return new KafkaMessageListenerContainer<>(cf, containerProperties);
+    }
+
+    @Bean
+    public NewTopic kRequests() {
+        return new NewTopic("kRequests", 10, (short) 2);
+    }
+
+    @Bean
+    public NewTopic kReplies() {
+        return new NewTopic("kReplies", 10, (short) 2);
+    }
+
+}
+----
+
+In addition to the reply topic header set by user code, the template sets a header `KafkaHeaders.CORRELATION_ID` which must be echoed back by the server side.
+
+In this case, simple `@KafkaListener` application responds:
+
+[source, java]
+----
+@SpringBootApplication
+public class KReplyingApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(KReplyingApplication.class, args);
+    }
+
+    @KafkaListener(id="server", topics = "kRequests")
+    @SendTo // use default replyTo expression
+    public String listen(String in) {
+        System.out.println("Server received: " + in);
+        return in.toUpperCase();
+    }
+
+    @Bean
+    public NewTopic kRequests() {
+        return new NewTopic("kRequests", 10, (short) 2);
+    }
+
+}
+----
+
+The `@KafkaListener` infrastructure echoes the correlation id and determines the reply topic
+
+See <<annotation-send-to>> for more information about sending replies; in this case we use the default header `KafKaHeaders.REPLY_TOPIC` to indicate which topic the reply goes to.
+
+IMPORTANT: If you have multiple client instances, each will need a dedicated reply topic for each instance.
+An alternative is to set the `KafakHeaders.REPLY_PARTITION` and use a dedicated partition for each instance.
+The server must use this header to route the reply to the correct topic (`@KafkaListener` does this).
+In this case, though, the reply container must not use Kafka's group management feature and must be configured to listen on a fixed partition (using a `TopicPartitionInitialOffset` in its `ContainerProperties` constructor).
+
 ==== Receiving Messages
 
 Messages can be received by configuring a `MessageListenerContainer` and providing a Message Listener, or by
@@ -944,6 +1043,7 @@ The `#root` object for the evaluation has 3 properties:
   - request - the inbound `ConsumerRecord` (or `ConsumerRecords` object for a batch listener))
   - source - the `org.springframework.messaging.Message<?>` converted from the `request`.
   - result - the method return result.
+- `@SendTo` (no properties) - this is treated as `!{headers['kafka_replyTopic']}` (since version _2.1.3_).
 
 The result of the expression evaluation must be a `String` representing the topic name.
 

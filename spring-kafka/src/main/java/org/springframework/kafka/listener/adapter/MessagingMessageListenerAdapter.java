@@ -22,6 +22,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +31,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 
 import org.springframework.context.expression.MapAccessor;
 import org.springframework.core.MethodParameter;
@@ -51,7 +54,6 @@ import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -175,6 +177,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		else {
 			this.replyTopicExpression = new LiteralExpression(replyTopic);
 		}
+
 	}
 
 	/**
@@ -305,15 +308,23 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		else {
 			Object value = sendTo.getValue(this.evaluationContext, new ReplyExpressionRoot(request, source, result));
 			boolean isByteArray = value instanceof byte[];
-			Assert.state(value instanceof String || isByteArray,
-					"replyTopic expression must evaluate to a String or byte[]");
+			if (value == null) {
+				value = tryTopicFallback(source);
+				if (value != null) {
+					isByteArray = true;
+				}
+			}
+			if (!(value instanceof String || isByteArray)) {
+				throw new IllegalStateException(
+					"replyTopic expression must evaluate to a String or byte[], it is: "
+					+ (value == null ? null : value.getClass().getName()));
+			}
 			if (isByteArray) {
 				return new String((byte[]) value, StandardCharsets.UTF_8);
 			}
 			return (String) value;
 		}
 	}
-
 
 	/**
 	 * Send the result to the topic.
@@ -358,13 +369,16 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 						&& ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID) != null) {
 					correlationId = ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
 				}
+				if (correlationId == null) {
+					correlationId = tryCorrelationIdFallback(source);
+				}
 				if (sourceIsMessage) {
 					MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
 							.setHeader(KafkaHeaders.TOPIC, topic);
 					if (correlationId != null) {
 						builder.setHeader(KafkaHeaders.CORRELATION_ID, correlationId);
 					}
-					setPartition(builder, ((Message<?>) source).getHeaders());
+					setPartition(builder, ((Message<?>) source));
 					this.replyTemplate.send(builder.build());
 				}
 				else {
@@ -374,12 +388,49 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
-	private void setPartition(MessageBuilder<Object> builder, MessageHeaders headers) {
-		byte[] partitionBytes = headers.get(KafkaHeaders.REPLY_PARTITION, byte[].class);
+	private void setPartition(MessageBuilder<Object> builder, Message<?> source) {
+		byte[] partitionBytes = source.getHeaders().get(KafkaHeaders.REPLY_PARTITION, byte[].class);
+		if (partitionBytes == null) {
+			partitionBytes = tryPartitionFallback(source);
+		}
 		if (partitionBytes != null) {
 			String partition = new String(partitionBytes, StandardCharsets.UTF_8);
 			builder.setHeader(KafkaHeaders.PARTITION_ID, Integer.parseInt(partition));
 		}
+	}
+
+	@Nullable
+	private byte[] tryTopicFallback(Object source) {
+		return extractNativeHeader(source, KafkaHeaders.REPLY_TOPIC);
+	}
+
+	@Nullable
+	private byte[] tryPartitionFallback(Object source) {
+		return extractNativeHeader(source, KafkaHeaders.REPLY_PARTITION);
+	}
+
+	@Nullable
+	private byte[] tryCorrelationIdFallback(Object source) {
+		return extractNativeHeader(source, KafkaHeaders.CORRELATION_ID);
+	}
+
+	/*
+	 * Needed if Jackson is not on the classpath since we can't map headers in that case.
+	 */
+	private byte[] extractNativeHeader(Object source, String header) {
+		if (source instanceof Message) {
+			Headers headers = ((Message<?>) source).getHeaders().get(KafkaHeaders.NATIVE_HEADERS, Headers.class);
+			if (headers != null) {
+				Iterator<Header> iterator = headers.iterator();
+				while (iterator.hasNext()) {
+					Header next = iterator.next();
+					if (next.key().equals(header)) {
+						return next.value();
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	protected final String createMessagingErrorMessage(String description, Object payload) {

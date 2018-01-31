@@ -31,8 +31,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeader;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -42,7 +40,6 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.AsyncKafkaTemplate.RequestReplyFuture;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -52,10 +49,10 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.RequestReplyFuture;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -66,7 +63,7 @@ import org.springframework.test.context.junit4.SpringRunner;
  */
 @RunWith(SpringRunner.class)
 @DirtiesContext
-public class AsyncKafkaTemplateTests {
+public class ReplyingKafkaTemplateTests {
 
 	private static final String A_REPLY = "aReply";
 
@@ -75,27 +72,15 @@ public class AsyncKafkaTemplateTests {
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 5, A_REQUEST, A_REPLY);
 
-	private static ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-
 	@Rule
 	public TestName testName = new TestName();
 
 	@Autowired
 	private Config config;
 
-	@BeforeClass
-	public static void setUp() {
-		scheduler.initialize();
-	}
-
-	@AfterClass
-	public static void tearDown() {
-		scheduler.shutdown();
-	}
-
 	@Test
 	public void testGood() throws Exception {
-		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate();
 		try {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
@@ -112,7 +97,7 @@ public class AsyncKafkaTemplateTests {
 
 	@Test
 	public void testGoodSamePartition() throws Exception {
-		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate();
 		try {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, 2, null, "foo");
@@ -132,7 +117,7 @@ public class AsyncKafkaTemplateTests {
 
 	@Test
 	public void testTimeout() throws Exception {
-		AsyncKafkaTemplate<Integer, String, String> template = createTemplate();
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate();
 		try {
 			template.setReplyTimeout(1);
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
@@ -156,7 +141,7 @@ public class AsyncKafkaTemplateTests {
 		}
 	}
 
-	public AsyncKafkaTemplate<Integer, String, String> createTemplate() throws Exception {
+	public ReplyingKafkaTemplate<Integer, String, String> createTemplate() throws Exception {
 		ContainerProperties containerProperties = new ContainerProperties(A_REPLY);
 		final CountDownLatch latch = new CountDownLatch(1);
 		containerProperties.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
@@ -178,9 +163,7 @@ public class AsyncKafkaTemplateTests {
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
 		container.setBeanName(this.testName.getMethodName());
-		AsyncKafkaTemplate<Integer, String, String> template = new AsyncKafkaTemplate<>(this.config.pf(), container);
-		scheduler.initialize();
-		template.setTaskScheduler(scheduler);
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(this.config.pf(), container);
 		template.start();
 		assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
 		return template;

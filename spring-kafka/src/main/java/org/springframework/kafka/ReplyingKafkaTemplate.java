@@ -16,8 +16,10 @@
 
 package org.springframework.kafka;
 
-import java.nio.charset.StandardCharsets;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +31,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -36,14 +39,15 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.RequestReplyFuture;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
- * Async send/receive template.
+ * A KafkaTemplate that implements request/reply semantics.
  *
  * @param <K> the key type.
  * @param <V> the outbound data type.
@@ -53,16 +57,16 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @since 2.1.3
  *
  */
-public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements BatchMessageListener<K, R>,
-		InitializingBean, SmartLifecycle {
+public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements BatchMessageListener<K, R>,
+		InitializingBean, SmartLifecycle, DisposableBean, ReplyingKafkaOperations<K, V, R> {
 
 	private static final long DEFAULT_REPLY_TIMEOUT = 5000L;
 
 	private final GenericMessageListenerContainer<K, R> replyContainer;
 
-	private final ConcurrentMap<String, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
+	private final ConcurrentMap<CorrelationKey, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
 
-	private TaskScheduler scheduler;
+	private TaskScheduler scheduler = new ThreadPoolTaskScheduler();
 
 	private boolean running;
 
@@ -72,20 +76,24 @@ public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements 
 
 	private long replyTimeout = DEFAULT_REPLY_TIMEOUT;
 
-	public AsyncKafkaTemplate(ProducerFactory<K, V> producerFactory,
+	private volatile boolean schedulerSet;
+
+	public ReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, R> replyContainer) {
 		this(producerFactory, replyContainer, false);
 	}
 
-	public AsyncKafkaTemplate(ProducerFactory<K, V> producerFactory,
+	public ReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, R> replyContainer, boolean autoFlush) {
 		super(producerFactory, autoFlush);
+		Assert.notNull(replyContainer, "'replyContainer' cannot be null");
 		this.replyContainer = replyContainer;
 		this.replyContainer.setupMessageListener(this);
 	}
 
 	protected void setTaskScheduler(TaskScheduler scheduler) {
 		this.scheduler = scheduler;
+		this.schedulerSet = true;
 	}
 
 	protected void setReplyTimeout(long replyTimeout) {
@@ -95,7 +103,9 @@ public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements 
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		Assert.notNull(this.scheduler, "A scheduler is required for timeouts");
+		if (!this.schedulerSet) {
+			((ThreadPoolTaskScheduler) this.scheduler).initialize();
+		}
 	}
 
 	@Override
@@ -145,14 +155,14 @@ public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements 
 		callback.run();
 	}
 
+	@Override
 	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record) {
-		String correlationId = createCorrelationId();
-		record.headers()
-				.add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getBytes(StandardCharsets.UTF_8)));
+		CorrelationKey correlationId = createCorrelationId();
+		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.correlationId));
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug("Sending: " + record + " with correlationId: " + correlationId);
 		}
-		RequestReplyFuture<K, V, R> future = new RequestReplyFuture<>();
+		TemplateRequestReplyFuture<K, V, R> future = new TemplateRequestReplyFuture<>();
 		this.futures.put(correlationId, future);
 		future.setSendFuture(send(record));
 		this.scheduler.schedule(() -> {
@@ -167,19 +177,36 @@ public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements 
 		return future;
 	}
 
-	protected String createCorrelationId() {
-		return UUID.randomUUID().toString();
+	@Override
+	public void destroy() throws Exception {
+		if (!this.schedulerSet) {
+			((ThreadPoolTaskScheduler) this.scheduler).destroy();
+		}
+	}
+
+	/**
+	 * Subclasses can override this to generate custom correlation ids.
+	 * The default implementation is a 16 byte representation of a UUID.
+	 * @return the key.
+	 */
+	protected CorrelationKey createCorrelationId() {
+		UUID uuid = UUID.randomUUID();
+		byte[] bytes = new byte[16];
+		ByteBuffer bb = ByteBuffer.wrap(bytes);
+		bb.putLong(uuid.getMostSignificantBits());
+		bb.putLong(uuid.getLeastSignificantBits());
+		return new CorrelationKey(bytes);
 	}
 
 	@Override
 	public void onMessage(List<ConsumerRecord<K, R>> data) {
 		data.forEach(record -> {
 			Iterator<Header> iterator = record.headers().iterator();
-			String correlationId = null;
+			CorrelationKey correlationId = null;
 			while (correlationId == null && iterator.hasNext()) {
 				Header next = iterator.next();
 				if (next.key().equals(KafkaHeaders.CORRELATION_ID)) {
-					correlationId = new String(next.value(), StandardCharsets.UTF_8);
+					correlationId = new CorrelationKey(next.value());
 				}
 			}
 			if (correlationId == null) {
@@ -202,26 +229,74 @@ public class AsyncKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements 
 	}
 
 	/**
+	 * Wrapper for byte[] that can be used as a hash key. We could have used BigInteger
+	 * instead but this wrapper is less expensive. We do use a BigInteger in
+	 * {@link #toString()} though.
+	 */
+	public static final class CorrelationKey {
+
+		private final byte[] correlationId;
+
+		private volatile Integer hashCode;
+
+		public CorrelationKey(byte[] bytes) {
+			this.correlationId = bytes;
+		}
+
+		@Override
+		public int hashCode() {
+			if (this.hashCode != null) {
+				return this.hashCode;
+			}
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + Arrays.hashCode(this.correlationId);
+			this.hashCode = result;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			CorrelationKey other = (CorrelationKey) obj;
+			if (!Arrays.equals(this.correlationId, other.correlationId)) {
+				return false;
+			}
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "[" + new BigInteger(this.correlationId) + "]";
+		}
+
+	}
+
+	/**
 	 * A listenable future for requests/replies.
 	 *
 	 * @param <K> the key type.
 	 * @param <V> the outbound data type.
 	 * @param <R> the reply data type.
+	 *
 	 */
-	public static class RequestReplyFuture<K, V, R> extends SettableListenableFuture<ConsumerRecord<K, R>> {
+	public static class TemplateRequestReplyFuture<K, V, R> extends RequestReplyFuture<K, V, R> {
 
-		private volatile ListenableFuture<SendResult<K, V>> sendFuture;
-
-		RequestReplyFuture() {
+		TemplateRequestReplyFuture() {
 			super();
 		}
 
-		void setSendFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
-			this.sendFuture = sendFuture;
-		}
-
-		public ListenableFuture<SendResult<K, V>> getSendFuture() {
-			return this.sendFuture;
+		@Override
+		protected void setSendFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
+			super.setSendFuture(sendFuture);
 		}
 
 	}

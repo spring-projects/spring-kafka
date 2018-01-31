@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
@@ -194,6 +195,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	@Override
 	public ListenableFuture<SendResult<K, V>> send(Message<?> message) {
 		ProducerRecord<?, ?> producerRecord = this.messageConverter.fromMessage(message, this.defaultTopic);
+		if (!producerRecord.headers().iterator().hasNext()) { // possibly no Jackson
+			byte[] correlationId = message.getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
+			if (correlationId != null) {
+				producerRecord.headers().add(KafkaHeaders.CORRELATION_ID, correlationId);
+			}
+		}
 		return doSend((ProducerRecord<K, V>) producerRecord);
 	}
 
