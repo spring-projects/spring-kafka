@@ -345,7 +345,7 @@ _Version 2.1.3_ introduced a subclass of `KafkaTemplate` to provide request/repl
 RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record);
 ----
 
-The result is a `ListenableFuture` that will asynchronously populated with the result (or an exception, for a timeout).
+The result is a `ListenableFuture` that will asynchronously be populated with the result (or an exception, for a timeout).
 The result also has a property `sendFuture` which is the result of calling `KafkaTemplate.send()`; you can use this future to determine the result of the send operation.
 
 The following Spring Boot application is an example of how to use the feature:
@@ -425,7 +425,7 @@ public class KReplyingApplication {
 }
 ----
 
-The `@KafkaListener` infrastructure echoes the correlation id and determines the reply topic
+The `@KafkaListener` infrastructure echoes the correlation id and determines the reply topic.
 
 See <<annotation-send-to>> for more information about sending replies; in this case we use the default header `KafKaHeaders.REPLY_TOPIC` to indicate which topic the reply goes to.
 

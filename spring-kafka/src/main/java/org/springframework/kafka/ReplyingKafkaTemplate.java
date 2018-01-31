@@ -68,8 +68,6 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private TaskScheduler scheduler = new ThreadPoolTaskScheduler();
 
-	private boolean running;
-
 	private int phase;
 
 	private boolean autoStartup;
@@ -77,6 +75,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	private long replyTimeout = DEFAULT_REPLY_TIMEOUT;
 
 	private volatile boolean schedulerSet;
+
+	private volatile boolean running;
 
 	public ReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, R> replyContainer) {
@@ -91,12 +91,13 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.replyContainer.setupMessageListener(this);
 	}
 
-	protected void setTaskScheduler(TaskScheduler scheduler) {
+	public void setTaskScheduler(TaskScheduler scheduler) {
+		Assert.notNull(scheduler, "'scheduler' cannot be null");
 		this.scheduler = scheduler;
 		this.schedulerSet = true;
 	}
 
-	protected void setReplyTimeout(long replyTimeout) {
+	public void setReplyTimeout(long replyTimeout) {
 		Assert.isTrue(replyTimeout >= 0, "'replyTimeout' must be >= 0");
 		this.replyTimeout = replyTimeout;
 	}
@@ -110,24 +111,29 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	@Override
 	public synchronized void start() {
-		try {
-			afterPropertiesSet();
+		if (!this.running) {
+			try {
+				afterPropertiesSet();
+			}
+			catch (Exception e) {
+				throw new KafkaException("Failed to initialize", e);
+			}
+			this.replyContainer.start();
+			this.running = true;
 		}
-		catch (Exception e) {
-			throw new KafkaException("Failed to initialize", e);
-		}
-		this.replyContainer.start();
-		this.running = true;
 	}
 
 	@Override
 	public synchronized void stop() {
-		this.running = false;
-		this.replyContainer.stop();
+		if (this.running) {
+			this.running = false;
+			this.replyContainer.stop();
+			this.futures.clear();
+		}
 	}
 
 	@Override
-	public synchronized boolean isRunning() {
+	public boolean isRunning() {
 		return this.running;
 	}
 
@@ -157,14 +163,22 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	@Override
 	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record) {
+		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
 		CorrelationKey correlationId = createCorrelationId();
+		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
 		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.correlationId));
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug("Sending: " + record + " with correlationId: " + correlationId);
 		}
 		TemplateRequestReplyFuture<K, V, R> future = new TemplateRequestReplyFuture<>();
 		this.futures.put(correlationId, future);
-		future.setSendFuture(send(record));
+		try {
+			future.setSendFuture(send(record));
+		}
+		catch (Exception e) {
+			this.futures.remove(correlationId);
+			throw new KafkaException("Send failed", e);
+		}
 		this.scheduler.schedule(() -> {
 			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
 			if (removed != null) {
@@ -210,7 +224,9 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 			}
 			if (correlationId == null) {
-				this.logger.error("No correlationId found in reply: " + record);
+				this.logger.error("No correlationId found in reply: " + record
+						+ " - to use request/reply semantics, the responding server must return the correlation id "
+						+ " in the '" + KafkaHeaders.CORRELATION_ID + "' header");
 			}
 			else {
 				RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);
@@ -239,8 +255,9 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 		private volatile Integer hashCode;
 
-		public CorrelationKey(byte[] bytes) {
-			this.correlationId = bytes;
+		public CorrelationKey(byte[] correlationId) {
+			Assert.notNull(correlationId, "'correlationId' cannot be null");
+			this.correlationId = correlationId;
 		}
 
 		@Override
