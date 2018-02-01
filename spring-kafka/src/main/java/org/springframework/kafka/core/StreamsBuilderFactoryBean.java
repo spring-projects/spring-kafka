@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,9 +44,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
-	private StreamsConfig streamsConfig;
-
 	private final CleanupConfig cleanupConfig;
+
+	private StreamsConfig streamsConfig;
 
 	private KafkaStreams kafkaStreams;
 
@@ -65,7 +65,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private volatile boolean running;
 
 	/**
-	 * Default constructor.
+	 * Default constructor that creates the factory without a {@link StreamsConfig}.
+	 * It is the factory user's responsibility to properly set {@link StreamsConfig}
+	 * using {@link StreamsBuilderFactoryBean#setStreamsConfig(StreamsConfig)}
 	 * @since 2.1.3.
 	 */
 	public StreamsBuilderFactoryBean() {
@@ -116,7 +118,13 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		this.cleanupConfig = cleanupConfig;
 	}
 
+	/**
+	 * Set {@link StreamsConfig} on this factory.
+	 * @param streamsConfig the streams configuration.
+	 * @since 2.1.3
+	 */
 	public void setStreamsConfig(StreamsConfig streamsConfig) {
+		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		this.streamsConfig = streamsConfig;
 	}
 
@@ -150,6 +158,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	@Override
 	protected StreamsBuilder createInstance() throws Exception {
+		Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
 		return new StreamsBuilder();
 	}
 
@@ -179,7 +188,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public synchronized void start() {
 		if (!this.running) {
 			try {
-				Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
 				this.kafkaStreams = new KafkaStreams(getObject().build(), this.streamsConfig, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
