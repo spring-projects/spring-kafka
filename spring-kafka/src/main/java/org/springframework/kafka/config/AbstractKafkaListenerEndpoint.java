@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017 the original author or authors.
+ * Copyright 2014-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +87,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private RetryTemplate retryTemplate;
 
 	private RecoveryCallback<? extends Object> recoveryCallback;
+
+	private boolean statefulRetry;
 
 	private boolean batchListener;
 
@@ -303,6 +305,23 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.recoveryCallback = recoveryCallback;
 	}
 
+	protected boolean isStatefulRetry() {
+		return this.statefulRetry;
+	}
+
+	/**
+	 * When using a {@link RetryTemplate}, set to true to enable stateful retry. Use in
+	 * conjunction with a
+	 * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler} when retry can
+	 * take excessive time; each failure goes back to the broker, to keep the Consumer
+	 * alive.
+	 * @param statefulRetry true to enable stateful retry.
+	 * @since 2.1.3
+	 */
+	public void setStatefulRetry(boolean statefulRetry) {
+		this.statefulRetry = statefulRetry;
+	}
+
 	@Override
 	public String getClientIdPrefix() {
 		return this.clientIdPrefix;
@@ -356,7 +375,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
 			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-					this.retryTemplate, this.recoveryCallback);
+					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
 		}
 		if (this.recordFilterStrategy != null) {
 			if (this.batchListener) {

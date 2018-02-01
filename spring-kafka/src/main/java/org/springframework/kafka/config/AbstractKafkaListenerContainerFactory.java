@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017 the original author or authors.
+ * Copyright 2014-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private RetryTemplate retryTemplate;
 
 	private RecoveryCallback<? extends Object> recoveryCallback;
+
+	private Boolean statefulRetry;
 
 	private Boolean batchListener;
 
@@ -144,6 +146,20 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * When using a {@link RetryTemplate} Set to true to enable stateful retry. Use in
+	 * conjunction with a
+	 * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler} when retry can
+	 * take excessive time; each failure goes back to the broker, to keep the Consumer
+	 * alive.
+	 * @param statefulRetry true to enable stateful retry.
+	 * @since 2.1.3
+	 */
+	public void setStatefulRetry(boolean statefulRetry) {
+		this.statefulRetry = statefulRetry;
+	}
+
+
+	/**
 	 * Return true if this endpoint creates a batch listener.
 	 * @return true for a batch listener.
 	 * @since 1.1
@@ -215,6 +231,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			}
 			if (this.recoveryCallback != null) {
 				aklEndpoint.setRecoveryCallback(this.recoveryCallback);
+			}
+			if (this.statefulRetry != null) {
+				aklEndpoint.setStatefulRetry(this.statefulRetry);
 			}
 			if (this.batchListener != null) {
 				aklEndpoint.setBatchListener(this.batchListener);

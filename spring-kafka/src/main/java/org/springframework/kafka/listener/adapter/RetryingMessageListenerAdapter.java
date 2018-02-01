@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
@@ -23,6 +26,8 @@ import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListe
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.RetryState;
+import org.springframework.retry.support.DefaultRetryState;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
@@ -56,6 +61,10 @@ public class RetryingMessageListenerAdapter<K, V>
 	 */
 	public static final String CONTEXT_RECORD = "record";
 
+	private final ConcurrentMap<String, RetryState> states = new ConcurrentHashMap<>();
+
+	private boolean stateful;
+
 	/**
 	 * Construct an instance with the provided template and delegate. The exception will
 	 * be thrown to the container after retries are exhausted.
@@ -75,13 +84,38 @@ public class RetryingMessageListenerAdapter<K, V>
 	 */
 	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
 			RecoveryCallback<? extends Object> recoveryCallback) {
+		this(messageListener, retryTemplate, recoveryCallback, false);
+	}
+
+	/**
+	 * Construct an instance with the provided template, callback and delegate.
+	 * @param messageListener the delegate listener.
+	 * @param retryTemplate the template.
+	 * @param recoveryCallback the recovery callback; if null, the exception will be
+	 * thrown to the container after retries are exhausted.
+	 * @param stateful true for stateful retry.
+	 */
+	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
+			RecoveryCallback<? extends Object> recoveryCallback, boolean stateful) {
+
 		super(messageListener, retryTemplate, recoveryCallback);
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
+		this.stateful = stateful;
 	}
 
 	@Override
 	public void onMessage(final ConsumerRecord<K, V> record, final Acknowledgment acknowledgment,
 			final Consumer<?, ?> consumer) {
+		RetryState retryState = null;
+		String recordKey = null;
+		if (this.stateful) {
+			recordKey = record.topic() + "-" + record.partition() + "-" + record.offset();
+			retryState = states.get(recordKey);
+			if (retryState == null) {
+				retryState = new DefaultRetryState(recordKey);
+				states.put(recordKey, retryState);
+			}
+		}
 		getRetryTemplate().execute(context -> {
 					context.setAttribute(CONTEXT_RECORD, record);
 					switch (RetryingMessageListenerAdapter.this.delegateType) {
@@ -103,7 +137,10 @@ public class RetryingMessageListenerAdapter<K, V>
 					}
 					return null;
 				},
-				getRecoveryCallback());
+				getRecoveryCallback(), retryState);
+		if (this.stateful) {
+			this.states.remove(recordKey);
+		}
 	}
 
 	/*
