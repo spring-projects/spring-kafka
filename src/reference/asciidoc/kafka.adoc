@@ -1053,7 +1053,7 @@ The `#root` object for the evaluation has 3 properties:
   - request - the inbound `ConsumerRecord` (or `ConsumerRecords` object for a batch listener))
   - source - the `org.springframework.messaging.Message<?>` converted from the `request`.
   - result - the method return result.
-- `@SendTo` (no properties) - this is treated as `!{headers['kafka_replyTopic']}` (since version _2.1.3_).
+- `@SendTo` (no properties) - this is treated as `!{source.headers['kafka_replyTopic']}` (since version _2.1.3_).
 
 The result of the expression evaluation must be a `String` representing the topic name.
 
@@ -1097,7 +1097,7 @@ public class MultiListenerSendTo {
 ----
 
 When using `@SendTo`, the `ConcurrentKafkaListenerContainerFactory` must be configured with a `KafkaTemplate` in its `replyTemplate` property, to perform the send.
-NOTE: unless you are using <<replying-template,request/reply semantics>> only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition and/or key...
+NOTE: unless you are using <<replying-template,request/reply semantics>> only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition and/or key:
 
 [source, java]
 ----

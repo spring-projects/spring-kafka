@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.sendreceive;
+package org.springframework.kafka.requestreply;
 
-import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.support.RequestReplyFuture;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
- * Request/reply operations.
+ * A listenable future for requests/replies.
  *
  * @param <K> the key type.
  * @param <V> the outbound data type.
@@ -31,13 +33,20 @@ import org.springframework.kafka.support.RequestReplyFuture;
  * @since 2.1.3
  *
  */
-public interface ReplyingKafkaOperations<K, V, R> {
+public class RequestReplyFuture<K, V, R> extends SettableListenableFuture<ConsumerRecord<K, R>> {
 
-	/**
-	 * Send a request and receive a reply.
-	 * @param record the record to send.
-	 * @return a RequestReplyFuture.
-	 */
-	RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record);
+	private volatile ListenableFuture<SendResult<K, V>> sendFuture;
+
+	public RequestReplyFuture() {
+		super();
+	}
+
+	protected void setSendFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
+		this.sendFuture = sendFuture;
+	}
+
+	public ListenableFuture<SendResult<K, V>> getSendFuture() {
+		return this.sendFuture;
+	}
 
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.sendreceive;
+package org.springframework.kafka.requestreply;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -40,7 +40,6 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.RequestReplyFuture;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
