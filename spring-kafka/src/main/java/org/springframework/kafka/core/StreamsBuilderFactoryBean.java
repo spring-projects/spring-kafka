@@ -36,6 +36,7 @@ import org.springframework.util.Assert;
  *
  * @author Artem Bilan
  * @author Ivan Ursul
+ * @author Soby Chacko
  *
  * @since 1.1.4
  */
@@ -43,7 +44,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
-	private final StreamsConfig streamsConfig;
+	private StreamsConfig streamsConfig;
 
 	private final CleanupConfig cleanupConfig;
 
@@ -53,7 +54,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private boolean autoStartup = true;
 
-	private int phase = Integer.MIN_VALUE;
+	private int phase = Integer.MAX_VALUE - 1000;
 
 	private KafkaStreams.StateListener stateListener;
 
@@ -62,6 +63,14 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
 	private volatile boolean running;
+
+	/**
+	 * Default constructor.
+	 * @since 2.1.3.
+	 */
+	public StreamsBuilderFactoryBean() {
+		this.cleanupConfig = new CleanupConfig();
+	}
 
 	/**
 	 * Construct an instance with the supplied streams configuration.
@@ -105,6 +114,10 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		Assert.notNull(cleanupConfig, "'cleanupConfig' must not be null");
 		this.streamsConfig = new StreamsConfig(streamsConfig);
 		this.cleanupConfig = cleanupConfig;
+	}
+
+	public void setStreamsConfig(StreamsConfig streamsConfig) {
+		this.streamsConfig = streamsConfig;
 	}
 
 	public void setClientSupplier(KafkaClientSupplier clientSupplier) {
@@ -166,6 +179,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public synchronized void start() {
 		if (!this.running) {
 			try {
+				Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
 				this.kafkaStreams = new KafkaStreams(getObject().build(), this.streamsConfig, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
