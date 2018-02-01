@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
@@ -379,8 +380,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private void setPartition(MessageBuilder<Object> builder, Message<?> source) {
 		byte[] partitionBytes = source.getHeaders().get(KafkaHeaders.REPLY_PARTITION, byte[].class);
 		if (partitionBytes != null) {
-			String partition = new String(partitionBytes, StandardCharsets.UTF_8);
-			builder.setHeader(KafkaHeaders.PARTITION_ID, Integer.parseInt(partition));
+			builder.setHeader(KafkaHeaders.PARTITION_ID, ByteBuffer.wrap(partitionBytes).getInt());
 		}
 	}
 

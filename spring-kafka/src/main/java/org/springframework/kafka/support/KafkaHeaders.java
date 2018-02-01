@@ -114,16 +114,19 @@ public abstract class KafkaHeaders {
 
 	/**
 	 * The header containing information to correlate requests/replies.
+	 * Type: byte[].
 	 */
 	public static final String CORRELATION_ID = PREFIX + "correlationId";
 
 	/**
 	 * The header containing the default reply topic.
+	 * Type: byte[].
 	 */
 	public static final String REPLY_TOPIC = PREFIX + "replyTopic";
 
 	/**
 	 * The header containing a partition number on which to send the reply.
+	 * Type: binary (int) in byte[].
 	 */
 	public static final String REPLY_PARTITION = PREFIX + "replyPartition";
 

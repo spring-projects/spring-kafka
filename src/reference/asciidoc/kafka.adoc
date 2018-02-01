@@ -437,7 +437,7 @@ The `@KafkaListener` infrastructure echoes the correlation id and determines the
 See <<annotation-send-to>> for more information about sending replies; in this case we use the default header `KafKaHeaders.REPLY_TOPIC` to indicate which topic the reply goes to.
 
 IMPORTANT: If you have multiple client instances, each will need a dedicated reply topic for each instance.
-An alternative is to set the `KafkaHeaders.REPLY_PARTITION` and use a dedicated partition for each instance.
+An alternative is to set the `KafkaHeaders.REPLY_PARTITION` and use a dedicated partition for each instance; the `Header` contains a 4 byte int (Big-endian).
 The server must use this header to route the reply to the correct topic (`@KafkaListener` does this).
 In this case, though, the reply container must not use Kafka's group management feature and must be configured to listen on a fixed partition (using a `TopicPartitionInitialOffset` in its `ContainerProperties` constructor).
 

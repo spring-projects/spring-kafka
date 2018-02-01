@@ -111,7 +111,7 @@ public class ReplyingKafkaTemplateTests {
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, 2, null, "foo");
 			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
 			record.headers()
-					.add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, "2".getBytes()));
+					.add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, new byte[] { 0, 0, 0, 2 }));
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
