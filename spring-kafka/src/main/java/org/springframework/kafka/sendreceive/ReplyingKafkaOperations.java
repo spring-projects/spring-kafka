@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka;
+package org.springframework.kafka.sendreceive;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 

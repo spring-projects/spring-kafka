@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka;
+package org.springframework.kafka.sendreceive;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -34,6 +34,7 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchMessageListener;
