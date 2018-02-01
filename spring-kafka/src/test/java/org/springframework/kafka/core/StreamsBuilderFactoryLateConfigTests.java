@@ -21,34 +21,75 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.EnableKafkaStreams;
+import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.junit4.SpringRunner;
 
 /**
  * @author Soby Chacko
  */
+@RunWith(SpringRunner.class)
+@DirtiesContext
+@EmbeddedKafka
 public class StreamsBuilderFactoryLateConfigTests {
 
 	private static final String APPLICATION_ID = "streamsBuilderFactoryLateConfigTests";
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testStreamBuilderFactoryCannotBeStartedWithoutStreamconfig() throws Exception {
+	@Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
+	private String brokerAddresses;
+
+	@Autowired
+	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
+
+	@Test(expected = KafkaException.class)
+	public void testStreamBuilderFactoryCannotBeStartedWithoutStreamconfig() {
 		StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
+		streamsBuilderFactoryBean.start();
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testStreamBuilderFactoryCannotBeInstantiatedWhenAutoStart() throws Exception {
+		StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
+		streamsBuilderFactoryBean.setAutoStartup(true);
 		streamsBuilderFactoryBean.createInstance();
 	}
 
 	@Test
-	public void testStreamsBuilderFactoryWithConfigProvidedLater() throws Exception {
-		StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
-
+	public void testStreamsBuilderFactoryWithConfigProvidedLater() {
 		Map<String, Object> props = new HashMap<>();
 		props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
-		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost");
+		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
 		StreamsConfig streamsConfig = new StreamsConfig(props);
 		streamsBuilderFactoryBean.setStreamsConfig(streamsConfig);
 
-		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.createInstance();
-		assertThat(streamsBuilder).isNotNull();
+		assertThat(streamsBuilderFactoryBean.isRunning()).isFalse();
+		streamsBuilderFactoryBean.start();
+		assertThat(streamsBuilderFactoryBean.isRunning()).isTrue();
+	}
+
+	@Configuration
+	@EnableKafka
+	@EnableKafkaStreams
+	public static class KafkaStreamsConfiguration {
+
+		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
+		public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder() {
+			StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
+			streamsBuilderFactoryBean.setAutoStartup(false);
+			return streamsBuilderFactoryBean;
+		}
 	}
 }

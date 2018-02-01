@@ -158,7 +158,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	@Override
 	protected StreamsBuilder createInstance() throws Exception {
-		Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
+		if (this.autoStartup) {
+			Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
+		}
 		return new StreamsBuilder();
 	}
 
@@ -188,6 +190,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public synchronized void start() {
 		if (!this.running) {
 			try {
+				Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
 				this.kafkaStreams = new KafkaStreams(getObject().build(), this.streamsConfig, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
