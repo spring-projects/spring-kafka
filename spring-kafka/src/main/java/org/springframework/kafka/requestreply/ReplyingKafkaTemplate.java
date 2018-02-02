@@ -16,10 +16,8 @@
 
 package org.springframework.kafka.requestreply;
 
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -166,7 +164,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
 		CorrelationKey correlationId = createCorrelationId(record);
 		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
-		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.correlationId));
+		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug("Sending: " + record + " with correlationId: " + correlationId);
 		}
@@ -243,59 +241,6 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 			}
 		});
-	}
-
-	/**
-	 * Wrapper for byte[] that can be used as a hash key. We could have used BigInteger
-	 * instead but this wrapper is less expensive. We do use a BigInteger in
-	 * {@link #toString()} though.
-	 */
-	public static final class CorrelationKey {
-
-		private final byte[] correlationId;
-
-		private volatile Integer hashCode;
-
-		public CorrelationKey(byte[] correlationId) {
-			Assert.notNull(correlationId, "'correlationId' cannot be null");
-			this.correlationId = correlationId;
-		}
-
-		@Override
-		public int hashCode() {
-			if (this.hashCode != null) {
-				return this.hashCode;
-			}
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + Arrays.hashCode(this.correlationId);
-			this.hashCode = result;
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) {
-				return true;
-			}
-			if (obj == null) {
-				return false;
-			}
-			if (getClass() != obj.getClass()) {
-				return false;
-			}
-			CorrelationKey other = (CorrelationKey) obj;
-			if (!Arrays.equals(this.correlationId, other.correlationId)) {
-				return false;
-			}
-			return true;
-		}
-
-		@Override
-		public String toString() {
-			return "[" + new BigInteger(this.correlationId) + "]";
-		}
-
 	}
 
 	/**
