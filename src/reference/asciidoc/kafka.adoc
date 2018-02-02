@@ -1077,14 +1077,19 @@ Users wishing retry capabilities, when using a batch listener, are advised to us
 [[stateful-retry]]
 ===== Stateful Retry
 
-It is important to understand that the retry discussed above suspends the consumer thread (if a `BackOffPolicy` is used); there is no interaction with the broker during retry.
-For lengthy retry sequences, if the `max.poll.interval.ms` property is exceeded, the broker will think the consumer is dead and will revoke the assigned partitions and perform a rebalance.
+It is important to understand that the retry discussed above suspends the consumer thread (if a `BackOffPolicy` is used); there are no calls to `Consumer.poll()` during the retries.
+Kafka has two properties to determine consumer health; the `session.timeout.ms` is used to determine if the consumer is active.
+Since version `0.10.1.0` heartbeats are sent on a background thread so a slow consumer no longer affects that.
+`max.poll.interval.ms` (default 5 minutes) is used to determine if a consumer appears to be hung (taking too long to process records from the last poll).
+If the time between `poll()` s exceeds this, the broker will revoke the assigned partitions and perform a rebalance.
+For lengthy retry sequences, with back off, this can easily happen.
 
 Since _version 2.1.3_, you can avoid this problem by using stateful retry in conjunction with a `SeekToCurrentErrorHandler`.
-In this case, each delivery attempt will throw the exception back to the container and the error handler will re-seek the unprocessed offsets and the same message will be redelivered.
+In this case, each delivery attempt will throw the exception back to the container and the error handler will re-seek the unprocessed offsets and the same message will be redelivered by the next `poll()`.
 This avoids the problem of exceeding the `max.poll.interval.ms` property (as long as an individual delay between attempts does not exceed it).
-To enable stateful retry use the `RetryingMessageListenerAdapter` constructor that takes a `stateful` `boolean` argument.
-When configuring using the listener container factory (for `@KafkaListener` s, set the factory's `statefulRetry` property to `true`).
+So, when using an `ExponentialBackOffPolicy`, it's important to ensure that the `maxInterval` is rather less than the `max.poll.interval.ms` property.
+To enable stateful retry, use the `RetryingMessageListenerAdapter` constructor that takes a `stateful` `boolean` argument (set it to `true`).
+When configuring using the listener container factory (for `@KafkaListener` s), set the factory's `statefulRetry` property to `true`.
 
 [[idle-containers]]
 ===== Detecting Idle and Non-Responsive Consumers
