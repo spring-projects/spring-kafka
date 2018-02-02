@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
@@ -61,8 +58,6 @@ public class RetryingMessageListenerAdapter<K, V>
 	 */
 	public static final String CONTEXT_RECORD = "record";
 
-	private final ConcurrentMap<String, RetryState> states = new ConcurrentHashMap<>();
-
 	private boolean stateful;
 
 	/**
@@ -88,12 +83,18 @@ public class RetryingMessageListenerAdapter<K, V>
 	}
 
 	/**
-	 * Construct an instance with the provided template, callback and delegate.
+	 * Construct an instance with the provided template, callback and delegate. When using
+	 * stateful retry, the retry context key is a concatenated String
+	 * {@code topic-partition-offset}. A
+	 * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler} is required in
+	 * the listener container because stateful retry will throw the exception to the
+	 * container for each delivery attempt.
 	 * @param messageListener the delegate listener.
 	 * @param retryTemplate the template.
 	 * @param recoveryCallback the recovery callback; if null, the exception will be
 	 * thrown to the container after retries are exhausted.
 	 * @param stateful true for stateful retry.
+	 * @since 2.1.3
 	 */
 	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
 			RecoveryCallback<? extends Object> recoveryCallback, boolean stateful) {
@@ -107,14 +108,8 @@ public class RetryingMessageListenerAdapter<K, V>
 	public void onMessage(final ConsumerRecord<K, V> record, final Acknowledgment acknowledgment,
 			final Consumer<?, ?> consumer) {
 		RetryState retryState = null;
-		String recordKey = null;
 		if (this.stateful) {
-			recordKey = record.topic() + "-" + record.partition() + "-" + record.offset();
-			retryState = states.get(recordKey);
-			if (retryState == null) {
-				retryState = new DefaultRetryState(recordKey);
-				states.put(recordKey, retryState);
-			}
+			retryState = new DefaultRetryState(record.topic() + "-" + record.partition() + "-" + record.offset());
 		}
 		getRetryTemplate().execute(context -> {
 					context.setAttribute(CONTEXT_RECORD, record);
@@ -138,9 +133,6 @@ public class RetryingMessageListenerAdapter<K, V>
 					return null;
 				},
 				getRecoveryCallback(), retryState);
-		if (this.stateful) {
-			this.states.remove(recordKey);
-		}
 	}
 
 	/*
