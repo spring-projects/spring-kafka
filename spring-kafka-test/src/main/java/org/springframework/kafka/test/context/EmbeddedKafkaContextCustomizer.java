@@ -19,6 +19,7 @@ package org.springframework.kafka.test.context;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
 
@@ -40,6 +41,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Artem Bilan
  * @author Elliot Metsger
+ * @author Zach Olauson
  *
  * @since 1.3
  */
@@ -57,13 +59,18 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
 		Assert.isInstanceOf(DefaultSingletonBeanRegistry.class, beanFactory);
 
+		ConfigurableEnvironment environment = context.getEnvironment();
+
+		String[] topics = Arrays.stream(this.embeddedKafka.topics())
+				.map(environment::resolvePlaceholders)
+				.toArray(String[]::new);
+
 		KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(this.embeddedKafka.count(),
 				this.embeddedKafka.controlledShutdown(),
 				this.embeddedKafka.partitions(),
-				this.embeddedKafka.topics());
+				topics);
 
 		Properties properties = new Properties();
-		ConfigurableEnvironment environment = context.getEnvironment();
 
 		for (String pair : this.embeddedKafka.brokerProperties()) {
 			if (!StringUtils.hasText(pair)) {

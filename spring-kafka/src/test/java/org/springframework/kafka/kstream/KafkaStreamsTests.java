@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -63,6 +64,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -71,15 +73,17 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Elliot Metsger
+ * @author Zach Olauson
  *
  * @since 1.1.4
  */
 @RunWith(SpringRunner.class)
 @DirtiesContext
+@TestPropertySource(properties = "streaming.topic.two=streamingTopic2")
 @EmbeddedKafka(partitions = 1,
 		topics = {
 				KafkaStreamsTests.STREAMING_TOPIC1,
-				KafkaStreamsTests.STREAMING_TOPIC2,
+				"${streaming.topic.two}",
 				KafkaStreamsTests.FOOS },
 		brokerProperties = {
 				"auto.create.topics.enable=${topics.autoCreate:false}",
@@ -89,15 +93,13 @@ public class KafkaStreamsTests {
 
 	static final String STREAMING_TOPIC1 = "streamingTopic1";
 
-	static final String STREAMING_TOPIC2 = "streamingTopic2";
-
 	static final String FOOS = "foos";
 
 	@Autowired
 	private KafkaTemplate<Integer, String> kafkaTemplate;
 
 	@Autowired
-	private SettableListenableFuture<String> resultFuture;
+	private SettableListenableFuture<ConsumerRecord<?, String>> resultFuture;
 
 	@Autowired
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
@@ -105,6 +107,8 @@ public class KafkaStreamsTests {
 	@Autowired
 	private KafkaEmbedded kafkaEmbedded;
 
+	@Value("${streaming.topic.two}")
+	private String streamingTopic2;
 
 	@Test
 	public void testKStreams() throws Exception {
@@ -129,11 +133,12 @@ public class KafkaStreamsTests {
 		this.kafkaTemplate.sendDefault(0, payload2);
 		this.kafkaTemplate.flush();
 
-		String result = resultFuture.get(600, TimeUnit.SECONDS);
+		ConsumerRecord<?, String> result = resultFuture.get(600, TimeUnit.SECONDS);
 
 		assertThat(result).isNotNull();
 
-		assertThat(result).isEqualTo(payload.toUpperCase() + payload2.toUpperCase());
+		assertThat(result.topic()).isEqualTo(streamingTopic2);
+		assertThat(result.value()).isEqualTo(payload.toUpperCase() + payload2.toUpperCase());
 
 		assertThat(stateLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
@@ -151,6 +156,9 @@ public class KafkaStreamsTests {
 
 		@Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
+
+		@Value("${streaming.topic.two}")
+		private String streamingTopic2;
 
 		@Bean
 		public ProducerFactory<Integer, String> producerFactory() {
@@ -196,7 +204,7 @@ public class KafkaStreamsTests {
 					.reduce((value1, value2) -> value1 + value2, Materialized.as("windowStore"))
 					.toStream()
 					.map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
-					.filter((i, s) -> s.length() > 40).to(STREAMING_TOPIC2);
+					.filter((i, s) -> s.length() > 40).to(streamingTopic2);
 
 			stream.print(Printed.toSysOut());
 
@@ -224,12 +232,12 @@ public class KafkaStreamsTests {
 		}
 
 		@Bean
-		public SettableListenableFuture<String> resultFuture() {
+		public SettableListenableFuture<ConsumerRecord<?, String>> resultFuture() {
 			return new SettableListenableFuture<>();
 		}
 
-		@KafkaListener(topics = STREAMING_TOPIC2)
-		public void listener(String payload) {
+		@KafkaListener(topics = "${streaming.topic.two}")
+		public void listener(ConsumerRecord<?, String> payload) {
 			resultFuture().set(payload);
 		}
 
