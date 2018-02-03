@@ -19,6 +19,7 @@ package org.springframework.kafka.requestreply;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -190,6 +191,7 @@ public class ReplyingKafkaTemplateTests {
 		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(this.config.pf(), container);
 		template.start();
 		assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(template.obtainReplyTopics(p -> { })).isEqualTo(Arrays.asList(topic));
 		return template;
 	}
 

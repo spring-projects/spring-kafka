@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 
 import org.springframework.context.SmartLifecycle;
+import org.springframework.kafka.listener.config.ContainerProperties;
 
 /**
  * Internal abstraction used by the framework representing a message
@@ -47,5 +48,14 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	 * @see org.apache.kafka.clients.consumer.Consumer#metrics()
 	 */
 	Map<String, Map<MetricName, ? extends Metric>> metrics();
+
+	/**
+	 * Return the container properties for this container.
+	 * @return the properties.
+	 * @since 2.1.3
+	 */
+	default ContainerProperties getContainerProperties() {
+		throw new UnsupportedOperationException("This container doesn't support retrieving its properties");
+	}
 
 }

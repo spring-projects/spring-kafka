@@ -196,6 +196,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.phase;
 	}
 
+	@Override
 	public ContainerProperties getContainerProperties() {
 		return this.containerProperties;
 	}
