@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -128,11 +126,10 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	/**
-	 * Return the topics configured for the replying listener container.
-	 * @param patternConsumer called if the container is subscribed to a pattern.
-	 * @return the topics or an empty list if the container is subscribed to a pattern.
+	 * Return the topics/partitions assigned to the replying listener container.
+	 * @return the topics/partitions.
 	 */
-	public Collection<TopicPartition> obtainReplyTopics(Consumer<Pattern> patternConsumer) {
+	public Collection<TopicPartition> getAssignedReplyTopicPartitions() {
 		return this.replyContainer.getAssignedPartitions();
 	}
 
