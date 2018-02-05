@@ -35,7 +35,7 @@ import org.springframework.kafka.core.StreamsBuilderFactoryBean;
  * &#064;EnableKafkaStreams
  * public class AppConfig {
  *
- * 	&#064;Bean(name = KStreamDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+ * 	&#064;Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
  *  public StreamsConfig kStreamsConfigs() {
  *     ...
  *  }
