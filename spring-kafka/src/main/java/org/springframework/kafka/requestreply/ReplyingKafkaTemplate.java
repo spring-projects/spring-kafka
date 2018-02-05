@@ -18,8 +18,7 @@ package org.springframework.kafka.requestreply;
 
 import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -27,10 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
@@ -42,10 +41,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
-import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
@@ -135,20 +132,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * @param patternConsumer called if the container is subscribed to a pattern.
 	 * @return the topics or an empty list if the container is subscribed to a pattern.
 	 */
-	public List<String> obtainReplyTopics(Consumer<Pattern> patternConsumer) {
-		ContainerProperties containerProperties = this.replyContainer.getContainerProperties();
-		String[] topics = containerProperties.getTopics();
-		if (topics != null) {
-			return Arrays.asList(topics);
-		}
-		TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
-		if (topicPartitions != null) {
-			return Arrays.asList(topicPartitions).stream()
-					.map(tp -> tp.topic())
-					.collect(Collectors.toList());
-		}
-		patternConsumer.accept(containerProperties.getTopicPattern());
-		return Collections.emptyList();
+	public Collection<TopicPartition> obtainReplyTopics(Consumer<Pattern> patternConsumer) {
+		return this.replyContainer.getAssignedPartitions();
 	}
 
 	@Override

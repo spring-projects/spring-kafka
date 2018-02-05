@@ -16,10 +16,12 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -56,6 +58,15 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	 */
 	default ContainerProperties getContainerProperties() {
 		throw new UnsupportedOperationException("This container doesn't support retrieving its properties");
+	}
+
+	/**
+	 * Return the assigned topics/partitions for this container.
+	 * @return the topics/partitions.
+	 * @since 2.1.3
+	 */
+	default Collection<TopicPartition> getAssignedPartitions() {
+		throw new UnsupportedOperationException("This container doesn't support retrieving its assigned partitions");
 	}
 
 }

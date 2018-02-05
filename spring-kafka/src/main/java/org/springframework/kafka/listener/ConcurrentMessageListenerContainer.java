@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.config.ContainerProperties;
@@ -93,6 +95,18 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	public List<KafkaMessageListenerContainer<K, V>> getContainers() {
 		return Collections.unmodifiableList(this.containers);
+	}
+
+	@Override
+	public Collection<TopicPartition> getAssignedPartitions() {
+		List<TopicPartition> assigned = new ArrayList<>();
+		this.containers.forEach(c -> {
+			Collection<TopicPartition> assignedPartitions = c.getAssignedPartitions();
+			if (assignedPartitions != null) {
+				assigned.addAll(assignedPartitions);
+			}
+		});
+		return assigned;
 	}
 
 	@Override

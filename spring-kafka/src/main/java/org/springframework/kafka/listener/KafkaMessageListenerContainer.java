@@ -180,6 +180,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 * @return the {@link TopicPartition}s currently assigned to this container,
 	 * either explicitly or by Kafka; may be null if not assigned yet.
 	 */
+	@Override
 	public Collection<TopicPartition> getAssignedPartitions() {
 		ListenerConsumer listenerConsumer = this.listenerConsumer;
 		if (listenerConsumer != null) {
