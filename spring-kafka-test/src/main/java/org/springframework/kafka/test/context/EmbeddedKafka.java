@@ -51,6 +51,7 @@ import org.springframework.kafka.test.rule.KafkaEmbedded;
  *
  * @author Artem Bilan
  * @author Elliot Metsger
+ * @author Zach Olauson
  *
  * @since 1.3
  *
@@ -85,6 +86,8 @@ public @interface EmbeddedKafka {
 	int partitions() default 2;
 
 	/**
+	 * Topics that should be created
+	 * Topics may contain property placeholders, e.g. {@code topics = "${kafka.topic.one:topicOne}"}
 	 * @return the topics to create
 	 */
 	String[] topics() default { };

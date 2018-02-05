@@ -150,17 +150,17 @@ public class KafkaStreamsTests {
 }
 ----
 
-The `brokerProperties` and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
+The `topics`, `brokerProperties`, and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
 [source, java]
 ----
 @TestPropertySource(locations = "classpath:/test.properties")
-@EmbeddedKafka(topics = "any-topic",
+@EmbeddedKafka(topics = { "any-topic", "${kafka.topics.another-topic}" },
         brokerProperties = { "log.dir=${kafka.broker.logs-dir}",
                             "listeners=PLAINTEXT://localhost:${kafka.broker.port}",
                             "auto.create.topics.enable=${kafka.broker.topics-enable:true}" }
         brokerPropertiesLocation = "classpath:/broker.properties")
 ----
-In the example above, the property placeholders `${kafka.broker.logs-dir}` and `${kafka.broker.port}` are resolved from the Spring `Environment`.
+In the example above, the property placeholders `${kafka.topics.another-topic}`, `${kafka.broker.logs-dir}`, and `${kafka.broker.port}` are resolved from the Spring `Environment`.
 In addition the broker properties are loaded from the `broker.properties` classpath resource specified by the `brokerPropertiesLocation`.
 Property placeholders are resolved for the `brokerPropertiesLocation` URL and for any property placeholders found in the resource.
 Properties defined by `brokerProperties` override properties found in `brokerPropertiesLocation`.
