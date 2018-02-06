@@ -37,6 +37,7 @@ import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.Assert;
 
 /**
  * A Messaging {@link MessageConverter} implementation for a message listener that
@@ -135,12 +136,15 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	public ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic) {
 		MessageHeaders headers = message.getHeaders();
 		Object topicHeader = headers.get(KafkaHeaders.TOPIC);
-		String topic;
+		String topic = null;
 		if (topicHeader instanceof byte[]) {
 			topic = new String(((byte[]) topicHeader), StandardCharsets.UTF_8);
 		}
 		else if (topicHeader instanceof String) {
 			topic = (String) topicHeader;
+		}
+		else if (topicHeader == null) {
+			Assert.state(defaultTopic != null, "With no topic header, a defaultTopic is required");
 		}
 		else {
 			throw new IllegalStateException(KafkaHeaders.TOPIC + " must be a String or byte[], not "
