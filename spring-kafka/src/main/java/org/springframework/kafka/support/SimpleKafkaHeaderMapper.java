@@ -65,7 +65,7 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@Override
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		headers.forEach((k, v) -> {
-			if (v instanceof byte[] && matches(k)) {
+			if (v instanceof byte[] && matches(k, v)) {
 				target.add(new RecordHeader(k, (byte[]) v));
 			}
 		});

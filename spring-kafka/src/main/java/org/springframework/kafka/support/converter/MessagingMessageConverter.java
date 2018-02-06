@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.converter;
 
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -133,7 +134,18 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	@Override
 	public ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic) {
 		MessageHeaders headers = message.getHeaders();
-		String topic = headers.get(KafkaHeaders.TOPIC, String.class);
+		Object topicHeader = headers.get(KafkaHeaders.TOPIC);
+		String topic;
+		if (topicHeader instanceof byte[]) {
+			topic = new String(((byte[]) topicHeader), StandardCharsets.UTF_8);
+		}
+		else if (topicHeader instanceof String) {
+			topic = (String) topicHeader;
+		}
+		else {
+			throw new IllegalStateException(KafkaHeaders.TOPIC + " must be a String or byte[], not "
+					+ topicHeader.getClass());
+		}
 		Integer partition = headers.get(KafkaHeaders.PARTITION_ID, Integer.class);
 		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
 		Object payload = convertPayload(message);

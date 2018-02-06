@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.PatternMatchUtils;
 
@@ -62,6 +63,21 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
 		}
+	}
+
+	protected boolean matches(String header, Object value) {
+		if (matches(header)) {
+			if ((header.equals(MessageHeaders.REPLY_CHANNEL) || header.equals(MessageHeaders.ERROR_CHANNEL))
+					&& !(value instanceof String)) {
+				if (this.logger.isDebugEnabled()) {
+					this.logger.debug("Cannot map " + header + " when type is [" + value.getClass()
+							+ "]; it must be a String");
+				}
+				return false;
+			}
+			return true;
+		}
+		return false;
 	}
 
 	protected boolean matches(String header) {

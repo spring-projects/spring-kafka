@@ -168,7 +168,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		final Map<String, String> jsonHeaders = new HashMap<>();
 		headers.forEach((k, v) -> {
-			if (matches(k)) {
+			if (matches(k, v)) {
 				if (v instanceof byte[]) {
 					target.add(new RecordHeader(k, (byte[]) v));
 				}
