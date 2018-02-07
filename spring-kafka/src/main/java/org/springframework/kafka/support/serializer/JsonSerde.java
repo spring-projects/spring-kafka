@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @param <T> target class for serialization/deserialization
  *
  * @author Marius Bogoevici
+ * @author Elliot Kennedy
  *
  * @since 1.1.5
  */
@@ -101,6 +102,18 @@ public class JsonSerde<T> implements Serde<T> {
 	@Override
 	public Deserializer<T> deserializer() {
 		return this.jsonDeserializer;
+	}
+
+	/**
+	 * Configure the TypeMapper to use key types if the JsonSerde is used to serialize keys.
+	 * @param isKey Use key type headers if true
+	 * @return the JsonSerde
+	 * @since 2.1.3
+	 */
+	public JsonSerde<T> setUseTypeMapperForKey(boolean isKey) {
+		this.jsonSerializer.setUseTypeMapperForKey(isKey);
+		this.jsonDeserializer.setUseTypeMapperForKey(isKey);
+		return this;
 	}
 
 }

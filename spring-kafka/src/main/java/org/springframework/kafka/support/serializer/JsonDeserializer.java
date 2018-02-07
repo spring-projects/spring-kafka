@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.ExtendedDeserializer;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.util.Assert;
@@ -47,6 +48,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
  * @author Artem Bilan
  * @author Gary Russell
  * @author Yanming Zhou
+ * @author Elliot Kennedy
  */
 public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
@@ -72,6 +74,8 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	private volatile ObjectReader reader;
 
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+
+	private boolean typeMapperExplicitlySet = false;
 
 	public JsonDeserializer() {
 		this((Class<T>) null);
@@ -110,11 +114,27 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
+		this.typeMapperExplicitlySet = true;
+	}
+
+	/**
+	 * Configure the default Jackson2JavaTypeMapper to use key type headers.
+	 * @param isKey Use key type headers if true
+	 * @since 2.1.3
+	 */
+	public void setUseTypeMapperForKey(boolean isKey) {
+		if (!this.typeMapperExplicitlySet) {
+			if (this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
+				AbstractJavaTypeMapper typeMapper = (AbstractJavaTypeMapper) this.getTypeMapper();
+				typeMapper.setUseForKey(isKey);
+			}
+		}
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
+		setUseTypeMapperForKey(isKey);
 		try {
 			if (isKey && configs.containsKey(DEFAULT_KEY_TYPE)) {
 				if (configs.get(DEFAULT_KEY_TYPE) instanceof Class) {

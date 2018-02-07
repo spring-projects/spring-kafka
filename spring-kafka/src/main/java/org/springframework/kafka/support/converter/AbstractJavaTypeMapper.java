@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import org.springframework.util.ClassUtils;
  * @author Sam Nelson
  * @author Andreas Asplund
  * @author Gary Russell
+ * @author Elliot Kennedy
  *
  * @since 2.1
  */
@@ -57,22 +58,70 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	 */
 	public static final String DEFAULT_KEY_CLASSID_FIELD_NAME = "__KeyTypeId__";
 
+	/**
+	 * Default header name for key type information.
+	 */
+	public static final String KEY_DEFAULT_CLASSID_FIELD_NAME = "__Key_TypeId__";
+
+	/**
+	 * Default header name for key container object contents type information.
+	 */
+	public static final String KEY_DEFAULT_CONTENT_CLASSID_FIELD_NAME = "__Key_ContentTypeId__";
+
+	/**
+	 * Default header name for key map key type information.
+	 */
+	public static final String KEY_DEFAULT_KEY_CLASSID_FIELD_NAME = "__Key_KeyTypeId__";
+
 	private final Map<String, Class<?>> idClassMapping = new HashMap<String, Class<?>>();
 
 	private final Map<Class<?>, byte[]> classIdMapping = new HashMap<Class<?>, byte[]>();
 
+	private String classIdFieldName = DEFAULT_CLASSID_FIELD_NAME;
+
+	private String contentClassIdFieldName = DEFAULT_CONTENT_CLASSID_FIELD_NAME;
+
+	private String keyClassIdFieldName = DEFAULT_KEY_CLASSID_FIELD_NAME;
+
 	private ClassLoader classLoader = ClassUtils.getDefaultClassLoader();
 
 	public String getClassIdFieldName() {
-		return DEFAULT_CLASSID_FIELD_NAME;
+		return this.classIdFieldName;
+	}
+
+	/**
+	 * Configure header name for type information.
+	 * @param classIdFieldName the header name.
+	 * @since 2.1.3
+	 */
+	public void setClassIdFieldName(String classIdFieldName) {
+		this.classIdFieldName = classIdFieldName;
 	}
 
 	public String getContentClassIdFieldName() {
-		return DEFAULT_CONTENT_CLASSID_FIELD_NAME;
+		return this.contentClassIdFieldName;
+	}
+
+	/**
+	 * Configure header name for container object contents type information.
+	 * @param contentClassIdFieldName the header name.
+	 * @since 2.1.3
+	 */
+	public void setContentClassIdFieldName(String contentClassIdFieldName) {
+		this.contentClassIdFieldName = contentClassIdFieldName;
 	}
 
 	public String getKeyClassIdFieldName() {
-		return DEFAULT_KEY_CLASSID_FIELD_NAME;
+		return this.keyClassIdFieldName;
+	}
+
+	/**
+	 * Configure header name for map key type information.
+	 * @param keyClassIdFieldName the header name.
+	 * @since 2.1.3
+	 */
+	public void setKeyClassIdFieldName(String keyClassIdFieldName) {
+		this.keyClassIdFieldName = keyClassIdFieldName;
 	}
 
 	public void setIdClassMapping(Map<String, Class<?>> idClassMapping) {
@@ -131,6 +180,19 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 
 	public Map<String, Class<?>> getIdClassMapping() {
 		return Collections.unmodifiableMap(this.idClassMapping);
+	}
+
+	/**
+	 * Configure the TypeMapper to use default key type class.
+	 * @param isKey Use key type headers if true
+	 * @since 2.1.3
+	 */
+	public void setUseForKey(boolean isKey) {
+		if (isKey) {
+			setClassIdFieldName(AbstractJavaTypeMapper.KEY_DEFAULT_CLASSID_FIELD_NAME);
+			setContentClassIdFieldName(AbstractJavaTypeMapper.KEY_DEFAULT_CONTENT_CLASSID_FIELD_NAME);
+			setKeyClassIdFieldName(AbstractJavaTypeMapper.KEY_DEFAULT_KEY_CLASSID_FIELD_NAME);
+		}
 	}
 
 }
