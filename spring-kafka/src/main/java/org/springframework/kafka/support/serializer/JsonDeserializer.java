@@ -60,7 +60,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	/**
 	 * Kafka config property for the default value type if no header.
 	 */
-	public static final String DEFAULT_VALUE_TYPE = "spring.json.default.value.type";
+	public static final String DEFAULT_VALUE_TYPE = "spring.json.value.default.type";
 
 	/**
 	 * Kafka config property for trusted deserialization packages.
