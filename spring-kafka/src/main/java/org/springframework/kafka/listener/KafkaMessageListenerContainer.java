@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 
@@ -320,7 +322,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final Consumer<K, V> consumer;
 
-		private final Map<String, Map<Integer, Long>> offsets = new HashMap<>();
+		private final ConcurrentMap<String, ConcurrentMap<Integer, Long>> offsets = new ConcurrentHashMap<>();
 
 		private final GenericMessageListener<?> genericListener;
 
@@ -1202,7 +1204,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void addOffset(ConsumerRecord<K, V> record) {
-			this.offsets.computeIfAbsent(record.topic(), v -> new HashMap<>())
+			this.offsets.computeIfAbsent(record.topic(), v -> new ConcurrentHashMap<>())
 					.compute(record.partition(), (k, v) -> v == null ? record.offset() : Math.max(v, record.offset()));
 		}
 
@@ -1230,7 +1232,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private Map<TopicPartition, OffsetAndMetadata> buildCommits() {
 			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
-			for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
+			for (Entry<String, ConcurrentMap<Integer, Long>> entry : this.offsets.entrySet()) {
 				for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
 					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
 							new OffsetAndMetadata(offset.getValue() + 1));
