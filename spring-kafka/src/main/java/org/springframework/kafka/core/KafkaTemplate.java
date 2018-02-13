@@ -145,6 +145,16 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		this.messageConverter = messageConverter;
 	}
 
+	/**
+	 * Return true if this template supports transactions (has a transaction-capable
+	 * producer factory).
+	 * @return true or false.
+	 * @since 2.1.3
+	 */
+	public boolean isTransactional() {
+		return this.transactional;
+	}
+
 	@Override
 	public ListenableFuture<SendResult<K, V>> sendDefault(V data) {
 		return send(this.defaultTopic, data);
