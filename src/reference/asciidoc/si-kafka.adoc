@@ -277,6 +277,125 @@ In most cases, this will be an `ErrorMessageSendingRecoverer` which will send th
 When building `ErrorMessage` (for use in the `error-channel` or `recovery-callback`), you can customize the error message using the `error-message-strategy` property.
 By default, a `RawRecordHeaderErrorMessageStrategy` is used; providing access to the converted message as well as the raw `ConsumerRecord`.
 
+
+[[si-outbound-gateway]]
+==== Outbound Gateway
+
+The outbound gateway is for request/reply operations; it is different to most Spring Integration gateways in that the sending thread does not block in the gateway, the reply is processed on the reply listener container thread.
+Of course, if user code invokes the gateway behind a synchronous https://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#gateway[Messaging Gateway], the user thread will block there until the reply is received (or a timeout occurs).
+
+IMPORTANT: the gateway will not accept requests until the reply container has been assigned its topics and partitions.
+It is suggested that you add a `ConsumerRebalanceListener` to the template's reply container properties and wait for the `onPartitionsAssigned` call before sending messages to the gateway.
+
+Here is an example of configuring a gateway, with Java Configuration:
+
+[source, java]
+----
+@Bean
+@ServiceActivator(inputChannel = "kafkaRequests", outputChannel = "kafkaReplies")
+public KafkaProducerMessageHandler<String, String> outGateway(
+        ReplyingKafkaTemplate<String, String, String> kafkaTemplate) {
+    return new KafkaProducerMessageHandler<>(kafkaTemplate);
+}
+----
+
+Notice that the same class as the <<si-outbound, outbound channel adapter>> is used, the only difference being that the kafka template passed into the constructor is a `ReplyingKafkaTemplate` - see <<replying-template>> for more information.
+
+The outbound topic, partition, key etc, are determined the same way as the outbound adapter.
+The reply topic is determined as follows:
+
+1. A message header `KafkaHeaders.REPLY_TOPIC`, if present (must have a `String` or `byte[]` value) - validated against the template's reply container subscribed topics.
+2. If the template's `replyContainer` is subscribed to just one topic, it will be used.
+
+You can also specify a `KafkaHeaders.REPLY_PARTITION` header to determine a specific partition to be used for replies.
+Again, this is validated against the template's reply container subscriptions.
+
+Configuring with the Java DSL:
+
+[source, java]
+----
+@Bean
+public IntegrationFlow outboundGateFlow(
+        ReplyingKafkaTemplate<String, String, String> kafkaTemplate) {
+    return IntegrationFlows.from("kafkaRequests")
+            .handle(Kafka.outboundGateway(kafkaTemplate))
+            .channel("kafkaReplies")
+            .get();
+}
+----
+
+Or:
+
+[source, java]
+----
+@Bean
+public IntegrationFlow outboundGateFlow() {
+    return IntegrationFlows.from("kafkaRequests")
+            .handle(Kafka.outboundGateway(producerFactory(), replyContainer())
+                .configureKafkaTemplate(t -> t.replyTimeout(30_000)))
+            .channel("kafkaReplies")
+            .get();
+}
+----
+
+XML configuration is not currently available for this component.
+
+[[si-inbound-gateway]]
+==== Inbound Gateway
+
+The inbound gateway is for request/reply operations.
+
+Configuring an inbound gateway with Java Configuration:
+
+[source, java]
+----
+@Bean
+public KafkaInboundGateway<Integer, String, String> inboundGateway(
+        AbstractMessageListenerContainer<Integer, String>container,
+        KafkaTemplate<Integer, String> replyTemplate) {
+
+    KafkaInboundGateway<Integer, String, String> gateway =
+        new KafkaInboundGateway<>(container, replyTemplate);
+    gateway.setRequestChannel(requests);
+    gateway.setReplyChannel(replies);
+    gateway.setReplyTimeout(30_000);
+    return gateway;
+}
+----
+
+Configuring a simple upper case converter with the Java DSL:
+
+[source, java]
+----
+@Bean
+public IntegrationFlow serverGateway(
+        ConcurrentMessageListenerContainer<Integer, String> container,
+        KafkaTemplate<Integer, String> replyTemplate) {
+    return IntegrationFlows
+            .from(Kafka.inboundGateway(container, template)
+                .replyTimeout(30_000))
+            .<String, String>transform(String::toUpperCase)
+            .get();
+}
+----
+
+Or:
+
+[source, java]
+----
+@Bean
+public IntegrationFlow serverGateway() {
+    return IntegrationFlows
+            .from(Kafka.inboundGateway(consumerFactory(), containerProperties(),
+                    producerFactory())
+                .replyTimeout(30_000))
+            .<String, String>transform(String::toUpperCase)
+            .get();
+}
+----
+
+XML configuration is not currently available for this component.
+
 [[message-conversion]]
 ==== Message Conversion
 
@@ -350,3 +469,4 @@ The 2.3.x branch introduced the following changes:
 * Support `ConsumerAwareMessageListener` (`Consumer` is available in a message header)
 * Update to Spring Integration 5.0 and Java 8
 * Moved Java DSL to main project
+* Added inbound and outbound gateways (3.0.2)

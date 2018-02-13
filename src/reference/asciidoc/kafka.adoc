@@ -373,13 +373,15 @@ public class KRequestingApplication {
     }
 
     @Bean
-    public ReplyingKafkaTemplate<String, String, String> kafkaTemplate(ProducerFactory<String, String> pf,
+    public ReplyingKafkaTemplate<String, String, String> kafkaTemplate(
+            ProducerFactory<String, String> pf,
             KafkaMessageListenerContainer<String, String> replyContainer) {
         return new ReplyingKafkaTemplate<>(pf, replyContainer);
     }
 
     @Bean
-    public KafkaMessageListenerContainer<String, String> replyContainer(ConsumerFactory<String, String> cf) {
+    public KafkaMessageListenerContainer<String, String> replyContainer(
+            ConsumerFactory<String, String> cf) {
         ContainerProperties containerProperties = new ContainerProperties("kReplies");
         return new KafkaMessageListenerContainer<>(cf, containerProperties);
     }
@@ -1467,7 +1469,7 @@ public void listen(List<Foo> foos, @Header(KafkaHeaders.OFFSET) List<Long> offse
 Notice that you can still access the batch headers too.
 
 Starting with _versions 2.1.1_, the `org.springframework.core.convert.ConversionService` used by the default
-`org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory` to reslove parameters for the invocation
+`o.s.messaging.handler.annotation.support.MessageHandlerMethodFactory` to reslove parameters for the invocation
 of a listener method is supplied with all beans implementing any of the following interfaces:
 
  - `org.springframework.core.convert.converter.Converter`

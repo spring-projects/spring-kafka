@@ -86,10 +86,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush setting.
-	 * Set autoFlush to true if you wish to synchronously interact with Kafka, calling
-	 * {@link java.util.concurrent.Future#get()} on the result.
+	 * <p>
+	 * Set autoFlush to {@code true} if you have configured the producer's
+	 * {@code linger.ms} to a non-default value and wish send operations on this template
+	 * to occur immediately, regardless of that setting, or if you wish to block until the
+	 * broker has acknowledged receipt according to the producer's {@code acks} property.
 	 * @param producerFactory the producer factory.
 	 * @param autoFlush true to flush after each send.
+	 * @see Producer#flush()
 	 */
 	public KafkaTemplate(ProducerFactory<K, V> producerFactory, boolean autoFlush) {
 		this.producerFactory = producerFactory;
