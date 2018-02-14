@@ -346,6 +346,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 							KafkaTemplate.this.producerListener.onSuccess(producerRecord.topic(),
 									producerRecord.partition(), producerRecord.key(), producerRecord.value(), metadata);
 						}
+						if (KafkaTemplate.this.logger.isTraceEnabled()) {
+							KafkaTemplate.this.logger.trace("Sent ok: " + producerRecord + ", metadata: " + metadata);
+						}
 					}
 					else {
 						future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
@@ -355,6 +358,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 									producerRecord.key(),
 									producerRecord.value(),
 									exception);
+						}
+						if (KafkaTemplate.this.logger.isDebugEnabled()) {
+							KafkaTemplate.this.logger.debug("Failed to send: " + producerRecord, exception);
 						}
 					}
 				}

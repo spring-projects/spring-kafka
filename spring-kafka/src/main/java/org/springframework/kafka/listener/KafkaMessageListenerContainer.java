@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -657,6 +658,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
 					if (records != null && this.logger.isDebugEnabled()) {
 						this.logger.debug("Received: " + records.count() + " records");
+						if (records.count() > 0 && this.logger.isTraceEnabled()) {
+							this.logger.trace(records.partitions().stream()
+								.flatMap(p -> records.records(p).stream())
+								// map to same format as send metadata toString()
+								.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
+								.collect(Collectors.toList()));
+						}
 					}
 					if (records != null && records.count() > 0) {
 						if (this.containerProperties.getIdleEventInterval() != null) {

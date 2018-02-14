@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -163,7 +164,12 @@ public final class KafkaTestUtils {
 		logger.debug("Polling...");
 		ConsumerRecords<K, V> received = consumer.poll(timeout);
 		if (logger.isDebugEnabled()) {
-			logger.debug("Received: " + received.count());
+			logger.debug("Received: " + received.count() + ", "
+					+ received.partitions().stream()
+							.flatMap(p -> received.records(p).stream())
+							// map to same format as send metadata toString()
+							.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
+							.collect(Collectors.toList()));
 		}
 		assertThat(received).as("null received from consumer.poll()").isNotNull();
 		return received;
