@@ -43,6 +43,7 @@ import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.junit.rules.ExternalResource;
@@ -410,7 +411,18 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 			}
 
 		});
-		consumer.poll(0); // force assignment
+		ConsumerRecords<?, ?> records = consumer.poll(0); // force assignment
+		if (records.count() > 0) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Records received on initial poll for assignment; re-seeking to beginning; "
+						+ records.partitions().stream()
+							.flatMap(p -> records.records(p).stream())
+							// map to same format as send metadata toString()
+							.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
+							.collect(Collectors.toList()));
+			}
+			consumer.seekToBeginning(records.partitions());
+		}
 		assertThat(consumerLatch.await(30, TimeUnit.SECONDS))
 				.as("Failed to be assigned partitions from the embedded topics")
 				.isTrue();
