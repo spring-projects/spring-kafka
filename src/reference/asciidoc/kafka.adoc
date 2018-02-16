@@ -280,7 +280,7 @@ If the listener throws an exception, the transaction is rolled back and the cons
 If you need to synchronize a Kafka transaction with some other transaction; simply configure the listener container with the appropriate transaction manager (one that supports synchronization, such as the `DataSourceTransactionManager`).
 Any operations performed on a **transactional** `KafkaTemplate` from the listener will participate in a single transaction.
 The Kafka transaction will be committed (or rolled back) immediately after the controlling transaction.
-Before exiting the listener, you should invoke one of the template's `sendOffsetsToTransaction` methods.
+Before exiting the listener, you should invoke one of the template's `sendOffsetsToTransaction` methods (unless you use a <<chained-transaction-manager, `ChainedKafkaTransactionManager` - see below>>).
 For convenience, the listener container binds its consumer group id to the thread so, generally, you can use the first method:
 
 [source, java]
@@ -316,6 +316,15 @@ NOTE: The offset to be committed is one greater than the offset of the record(s)
 
 IMPORTANT: This should only be called when using transaction synchronization.
 When a listener container is configured to use a `KafkaTransactionManager`, it will take care of sending the offsets to the transaction.
+
+[[chained-transaction-manager]]
+====== ChainedKafkaTransactionManager
+
+The `ChainedKafkaTransactionManager` was introduced in _version 2.1.3_.
+This is a subclass of `ChainedTransactionManager` that can have exactly one `KafkaTransactionManager`.
+Since it is a `KafkaAwareTransactionManager`, the container can send the offsets to the transaction in the same way as when the container is configured with a simple `KafkaTransactionManager`.
+This provides another mechanism for synchronizing transactions without having to send the offsets to the transaction in the listener code.
+Chain your transaction managers in the desired order and provide the `ChainedTransactionManager` in the `ContainerProperties`.
 
 ====== KafkaTemplate Local Transactions
 

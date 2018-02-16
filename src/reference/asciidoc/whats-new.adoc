@@ -38,6 +38,10 @@ See <<kafka-container>> for more information.
 Starting with _version 2.1.3_, a subclass of `KafkaTemplate` is provided to support request/reply semantics.
 See <<replying-template>> for more information.
 
+==== ChainedKafkaTransactionManager
+
+_version 2.1.3_ introduced the `ChainedKafkaTransactionManager` see <<chained-transaction-manager>> for more information.
+
 ==== Migration Guide from 2.0
 
 https://github.com/spring-projects/spring-kafka/wiki/Spring-for-Apache-Kafka-2.0-to-2.1-Migration-Guide[2.0 to 2.1 Migration].

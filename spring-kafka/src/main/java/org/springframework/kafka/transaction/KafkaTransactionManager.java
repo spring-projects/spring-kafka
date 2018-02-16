@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ import org.springframework.util.Assert;
  */
 @SuppressWarnings("serial")
 public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionManager
-		implements ResourceTransactionManager {
+		implements ResourceTransactionManager, KafkaAwareTransactionManager<K, V> {
 
 	private final ProducerFactory<K, V> producerFactory;
 
@@ -88,6 +88,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	 * Get the producer factory.
 	 * @return the producerFactory
 	 */
+	@Override
 	public ProducerFactory<K, V> getProducerFactory() {
 		return this.producerFactory;
 	}

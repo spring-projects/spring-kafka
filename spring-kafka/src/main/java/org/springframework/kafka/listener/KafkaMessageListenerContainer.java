@@ -62,7 +62,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
-import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -361,9 +361,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private final PlatformTransactionManager transactionManager = this.containerProperties.getTransactionManager();
 
 		@SuppressWarnings("rawtypes")
-		private final KafkaTransactionManager kafkaTxManager =
-				this.transactionManager instanceof KafkaTransactionManager
-						? ((KafkaTransactionManager) this.transactionManager) : null;
+		private final KafkaAwareTransactionManager kafkaTxManager =
+				this.transactionManager instanceof KafkaAwareTransactionManager
+						? ((KafkaAwareTransactionManager) this.transactionManager) : null;
 
 		private final TransactionTemplate transactionTemplate;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,9 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.kafka.transaction.ChainedKafkaTransactionManager;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
@@ -88,9 +90,18 @@ public class TransactionalContainerTests {
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(3, true, topic1, topic2);
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	public void testConsumeAndProduceTransaction() throws Exception {
+	public void testConsumeAndProduceTransactionKTM() throws Exception {
+		testConsumeAndProduceTransactionGuts(false);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionKCTM() throws Exception {
+		testConsumeAndProduceTransactionGuts(true);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void testConsumeAndProduceTransactionGuts(boolean chained) throws Exception {
 		Consumer consumer = mock(Consumer.class);
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
 		willAnswer(i -> {
@@ -122,9 +133,13 @@ public class TransactionalContainerTests {
 		given(pf.transactionCapable()).willReturn(true);
 		given(pf.createProducer()).willReturn(producer);
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		PlatformTransactionManager ptm = tm;
+		if (chained) {
+			ptm = new ChainedKafkaTransactionManager(new SomeOtherTransactionManager(), tm);
+		}
 		ContainerProperties props = new ContainerProperties("foo");
 		props.setGroupId("group");
-		props.setTransactionManager(tm);
+		props.setTransactionManager(ptm);
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		props.setMessageListener((MessageListener) m -> {
 			template.send("bar", "baz");
