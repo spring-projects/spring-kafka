@@ -94,7 +94,7 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
-		this.setTypeMapperExplicitlySet(true);
+		this.typeMapperExplicitlySet = true;
 	}
 
 	/**
@@ -103,7 +103,7 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	 * @since 2.1.3
 	 */
 	public void setUseTypeMapperForKey(boolean isKey) {
-		if (!isTypeMapperExplicitlySet()) {
+		if (!this.typeMapperExplicitlySet) {
 			if (this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
 				AbstractJavaTypeMapper typeMapper = (AbstractJavaTypeMapper) this.getTypeMapper();
 				typeMapper.setUseForKey(isKey);
@@ -153,13 +153,5 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	@Override
 	public void close() {
 		// No-op
-	}
-
-	private boolean isTypeMapperExplicitlySet() {
-		return this.typeMapperExplicitlySet;
-	}
-
-	private void setTypeMapperExplicitlySet(boolean typeMapperExplicitlySet) {
-		this.typeMapperExplicitlySet = typeMapperExplicitlySet;
 	}
 }
