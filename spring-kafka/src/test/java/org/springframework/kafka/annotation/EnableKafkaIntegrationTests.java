@@ -83,6 +83,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
+import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -92,6 +93,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -124,7 +126,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32");
+			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -141,6 +143,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	public MultiListenerBean multiListener;
+
+	@Autowired
+	public MultiJsonListenerBean multiJsonListener;
 
 	@Autowired
 	public KafkaTemplate<Integer, String> template;
@@ -304,6 +309,21 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
+	public void testMultiJson() throws Exception {
+		this.kafkaJsonTemplate.setDefaultTopic("annotated33");
+		this.kafkaJsonTemplate.send(new GenericMessage<>(new Foo("one")));
+		this.kafkaJsonTemplate.send(new GenericMessage<>(new Baz("two")));
+		this.kafkaJsonTemplate.send(new GenericMessage<>(new Qux("three")));
+		assertThat(this.multiJsonListener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiJsonListener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiJsonListener.latch3.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiJsonListener.foo.getBar()).isEqualTo("one");
+		assertThat(this.multiJsonListener.baz.getBar()).isEqualTo("two");
+		assertThat(this.multiJsonListener.bar.getBar()).isEqualTo("three");
+		assertThat(this.multiJsonListener.bar).isInstanceOf(Qux.class);
+	}
+
+	@Test
 	public void testTx() throws Exception {
 		template.send("annotated9", 0, "foo");
 		template.flush();
@@ -312,8 +332,7 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testJson() throws Exception {
-		Foo foo = new Foo();
-		foo.setBar("bar");
+		Foo foo = new Foo("bar");
 		kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
 				.setHeader(KafkaHeaders.TOPIC, "annotated10")
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
@@ -339,8 +358,7 @@ public class EnableKafkaIntegrationTests {
 				"messageConverter.typeMapper", DefaultJackson2JavaTypeMapper.class);
 		typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID);
 		assertThat(container).isNotNull();
-		Foo foo = new Foo();
-		foo.setBar("bar");
+		Foo foo = new Foo("bar");
 		this.kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
 				.setHeader(KafkaHeaders.TOPIC, "annotated31")
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
@@ -611,7 +629,7 @@ public class EnableKafkaIntegrationTests {
 		Converter<String, Foo> converterDelegate = mock(Converter.class);
 		fooConverter.setDelegate(converterDelegate);
 
-		Foo foo = new Foo();
+		Foo foo = new Foo("foo");
 		willReturn(foo).given(converterDelegate).convert("{'bar':'foo'}");
 		template.send("annotated32", 0, 1, "{'bar':'foo'}");
 		assertThat(this.listener.latch20.await(10, TimeUnit.SECONDS)).isTrue();
@@ -685,6 +703,23 @@ public class EnableKafkaIntegrationTests {
 			StringJsonMessageConverter converter = new StringJsonMessageConverter();
 			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
+			converter.setTypeMapper(typeMapper);
+			factory.setMessageConverter(converter);
+			return factory;
+		}
+
+		/*
+		 * Uses Type_Id header
+		 */
+		@Bean
+		public KafkaListenerContainerFactory<?> kafkaJsonListenerContainerFactory2() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			StringJsonMessageConverter converter = new StringJsonMessageConverter();
+			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+			typeMapper.addTrustedPackages("*");
+			typeMapper.setTypePrecedence(TypePrecedence.TYPE_ID);
 			converter.setTypeMapper(typeMapper);
 			factory.setMessageConverter(converter);
 			return factory;
@@ -841,6 +876,11 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public MultiListenerBean multiListener() {
 			return new MultiListenerBean();
+		}
+
+		@Bean
+		public MultiJsonListenerBean multiJsonListener() {
+			return new MultiJsonListenerBean();
 		}
 
 		@Bean
@@ -1414,15 +1454,50 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaHandler
 		public void bar(@NonNull String bar) {
-			latch1.countDown();
+			this.latch1.countDown();
 		}
 
 		@KafkaHandler
 		public void bar(@Payload(required = false) KafkaNull nul, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
-			latch2.countDown();
+			this.latch2.countDown();
 		}
 
 		public void foo(String bar) {
+		}
+
+	}
+
+	@KafkaListener(id = "multiJson", topics = "annotated33", containerFactory = "kafkaJsonListenerContainerFactory2")
+	static class MultiJsonListenerBean {
+
+		private final CountDownLatch latch1 = new CountDownLatch(1);
+
+		private final CountDownLatch latch2 = new CountDownLatch(1);
+
+		private final CountDownLatch latch3 = new CountDownLatch(1);
+
+		private Foo foo;
+
+		private Baz baz;
+
+		private Bar bar;
+
+		@KafkaHandler
+		public void bar(Foo foo) {
+			this.foo = foo;
+			this.latch1.countDown();
+		}
+
+		@KafkaHandler
+		public void bar(Baz baz) {
+			this.baz = baz;
+			this.latch2.countDown();
+		}
+
+		@KafkaHandler(isDefault = true)
+		public void defaultHandler(Bar bar) {
+			this.bar = bar;
+			this.latch3.countDown();
 		}
 
 	}
@@ -1447,12 +1522,70 @@ public class EnableKafkaIntegrationTests {
 
 	public interface Bar {
 
+		String getBar();
+
 	}
 
 	public static class Foo implements Bar {
 
 		private String bar;
 
+
+		public Foo() {
+			super();
+		}
+
+		public Foo(String bar) {
+			this.bar = bar;
+		}
+
+		@Override
+		public String getBar() {
+			return this.bar;
+		}
+
+		public void setBar(String bar) {
+			this.bar = bar;
+		}
+
+	}
+
+	public static class Baz implements Bar {
+
+		private String bar;
+
+		public Baz() {
+			super();
+		}
+
+		public Baz(String bar) {
+			this.bar = bar;
+		}
+
+		@Override
+		public String getBar() {
+			return this.bar;
+		}
+
+		public void setBar(String bar) {
+			this.bar = bar;
+		}
+
+	}
+
+	public static class Qux implements Bar {
+
+		private String bar;
+
+		public Qux() {
+			super();
+		}
+
+		public Qux(String bar) {
+			this.bar = bar;
+		}
+
+		@Override
 		public String getBar() {
 			return this.bar;
 		}

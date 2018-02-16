@@ -32,6 +32,10 @@ By default, logging of topic offset commits is performed with the DEBUG logging 
 Starting with _version 2.1.2_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
 See <<kafka-container>> for more information.
 
+==== Default @KafkaHandler
+
+Starting with _version 2.1.3_, one of the `@KafkaHandler` s on a class-level `@KafkaListener` can be designated as the default.
+See <<class-level-kafkalistener>> for more information.
 
 ==== ReplyingKafkaTemplate
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,13 @@ public class HandlerAdapter {
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
 		if (this.invokerHandlerMethod != null) {
 			return this.invokerHandlerMethod.invoke(message, providedArgs);
+		}
+		else if (this.delegatingHandler.hasDefaultHandler()) {
+			// Needed to avoid returning raw Message which matches Object
+			Object[] args = new Object[providedArgs.length + 1];
+			args[0] = message.getPayload();
+			System.arraycopy(providedArgs, 0, args, 1, providedArgs.length);
+			return this.delegatingHandler.invoke(message, args);
 		}
 		else {
 			return this.delegatingHandler.invoke(message, providedArgs);

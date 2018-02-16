@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.List;
 import org.springframework.kafka.listener.adapter.DelegatingInvocableHandler;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
 /**
@@ -41,20 +42,44 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 
 	private final List<Method> methods;
 
+	private final Method defaultMethod;
+
+	/**
+	 * Construct an instance for the provided methods and bean with no default method.
+	 * @param methods the methods.
+	 * @param bean the bean.
+	 */
 	public MultiMethodKafkaListenerEndpoint(List<Method> methods, Object bean) {
+		this(methods, null, bean);
+	}
+
+	/**
+	 * Construct an instance for the provided methods, default method and bean.
+	 * @param methods the methods.
+	 * @param defaultMethod the default method.
+	 * @param bean the bean.
+	 * @since 2.1.3
+	 */
+	public MultiMethodKafkaListenerEndpoint(List<Method> methods, @Nullable Method defaultMethod, Object bean) {
 		this.methods = methods;
+		this.defaultMethod = defaultMethod;
 		setBean(bean);
 	}
 
 	@Override
 	protected HandlerAdapter configureListenerAdapter(MessagingMessageListenerAdapter<K, V> messageListener) {
 		List<InvocableHandlerMethod> invocableHandlerMethods = new ArrayList<InvocableHandlerMethod>();
+		InvocableHandlerMethod defaultHandler = null;
 		for (Method method : this.methods) {
-			invocableHandlerMethods.add(getMessageHandlerMethodFactory()
-					.createInvocableHandlerMethod(getBean(), method));
+			InvocableHandlerMethod handler = getMessageHandlerMethodFactory()
+					.createInvocableHandlerMethod(getBean(), method);
+			invocableHandlerMethods.add(handler);
+			if (method.equals(this.defaultMethod)) {
+				defaultHandler = handler;
+			}
 		}
 		DelegatingInvocableHandler delegatingHandler = new DelegatingInvocableHandler(invocableHandlerMethods,
-				getBean(), getResolver(), getBeanExpressionContext());
+				defaultHandler, getBean(), getResolver(), getBeanExpressionContext());
 		return new HandlerAdapter(delegatingHandler);
 	}
 

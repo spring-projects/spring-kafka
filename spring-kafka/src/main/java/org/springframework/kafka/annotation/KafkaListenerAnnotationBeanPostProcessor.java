@@ -333,12 +333,20 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private void processMultiMethodListeners(Collection<KafkaListener> classLevelListeners, List<Method> multiMethods,
 			Object bean, String beanName) {
 		List<Method> checkedMethods = new ArrayList<Method>();
+		Method defaultMethod = null;
 		for (Method method : multiMethods) {
-			checkedMethods.add(checkProxy(method, bean));
+			Method checked = checkProxy(method, bean);
+			if (AnnotationUtils.findAnnotation(method, KafkaHandler.class).isDefault()) {
+				final Method toAssert = defaultMethod;
+				Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
+						+ toAssert.toString() + " and " + method.toString());
+				defaultMethod = checked;
+			}
+			checkedMethods.add(checked);
 		}
 		for (KafkaListener classLevelListener : classLevelListeners) {
-			MultiMethodKafkaListenerEndpoint<K, V> endpoint = new MultiMethodKafkaListenerEndpoint<K, V>(checkedMethods,
-					bean);
+			MultiMethodKafkaListenerEndpoint<K, V> endpoint =
+					new MultiMethodKafkaListenerEndpoint<K, V>(checkedMethods, defaultMethod, bean);
 			endpoint.setBeanFactory(this.beanFactory);
 			processListener(endpoint, classLevelListener, bean, bean.getClass(), beanName);
 		}
@@ -680,7 +688,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 */
 	private class KafkaHandlerMethodFactoryAdapter implements MessageHandlerMethodFactory {
 
-		private DefaultFormattingConversionService defaultFormattingConversionService = new DefaultFormattingConversionService();
+		private final DefaultFormattingConversionService defaultFormattingConversionService = new DefaultFormattingConversionService();
 
 		private MessageHandlerMethodFactory messageHandlerMethodFactory;
 

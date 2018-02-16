@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,5 +47,13 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 @MessageMapping
 @Documented
 public @interface KafkaHandler {
+
+	/**
+	 * When true, designate that this is the default fallback method if the payload type
+	 * matches no other {@link KafkaHandler} method. Only one method can be so designated.
+	 * @return true if this is the default method.
+	 * @since 2.1.3
+	 */
+	boolean isDefault() default false;
 
 }
