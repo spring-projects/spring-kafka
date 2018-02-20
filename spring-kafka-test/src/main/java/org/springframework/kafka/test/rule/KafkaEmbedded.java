@@ -18,7 +18,6 @@ package org.springframework.kafka.test.rule;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -30,8 +29,6 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import javax.net.ServerSocketFactory;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.exception.ZkInterruptedException;
@@ -45,6 +42,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
 import org.junit.rules.ExternalResource;
 
@@ -56,9 +54,9 @@ import org.springframework.retry.RetryContext;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.util.Assert;
 
 import kafka.server.KafkaConfig;
-import kafka.server.KafkaConfig$;
 import kafka.server.KafkaServer;
 import kafka.server.NotRunning;
 import kafka.utils.CoreUtils;
@@ -122,8 +120,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	}
 
 	/**
-	 *
-	 * Create embedded Kafka brokers.
+	 * Create embedded Kafka brokers listening on random ports.
 	 * @param count the number of brokers.
 	 * @param controlledShutdown passed into TestUtils.createBrokerConfig.
 	 * @param partitions partitions per topic.
@@ -131,6 +128,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 */
 	public KafkaEmbedded(int count, boolean controlledShutdown, int partitions, String... topics) {
 		this.count = count;
+		this.kafkaPorts = new int[this.count]; // random ports by default.
 		this.controlledShutdown = controlledShutdown;
 		if (topics != null) {
 			this.topics = topics;
@@ -160,6 +158,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @since 1.3
 	 */
 	public void setKafkaPorts(int... kafkaPorts) {
+		Assert.isTrue(kafkaPorts.length == this.count, "A port must be provided for each instance ["
+				+ this.count + "], provided: " + Arrays.toString(kafkaPorts) + ", use 0 for a random port");
 		this.kafkaPorts = kafkaPorts;
 	}
 
@@ -179,19 +179,12 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 				ZKStringSerializer$.MODULE$);
 		this.kafkaServers.clear();
 		for (int i = 0; i < this.count; i++) {
-			Integer port = this.kafkaPorts != null && this.kafkaPorts.length > i ? this.kafkaPorts[i] : null;
-			if (port == null) {
-				ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
-				port = ss.getLocalPort();
-				ss.close();
-			}
 			Properties brokerConfigProperties = TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
-					true, port,
+					true, this.kafkaPorts[i],
 					scala.Option.apply(null),
 					scala.Option.apply(null),
 					scala.Option.apply(null),
 					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1);
-			brokerConfigProperties.setProperty(KafkaConfig$.MODULE$.PortProp(), "" + port);
 			brokerConfigProperties.setProperty("replica.socket.timeout.ms", "1000");
 			brokerConfigProperties.setProperty("controller.socket.timeout.ms", "1000");
 			brokerConfigProperties.setProperty("offsets.topic.replication.factor", "1");
@@ -200,6 +193,9 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 			}
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
 			this.kafkaServers.add(server);
+			if (this.kafkaPorts[i] == 0) {
+				this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
+			}
 		}
 		Map<String, Object> adminConfigs = new HashMap<>();
 		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
@@ -286,8 +282,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	@Override
 	public BrokerAddress[] getBrokerAddresses() {
 		List<BrokerAddress> addresses = new ArrayList<BrokerAddress>();
-		for (KafkaServer kafkaServer : this.kafkaServers) {
-			addresses.add(new BrokerAddress("127.0.0.1", kafkaServer.config().port()));
+		for (int i = 0; i < this.kafkaPorts.length; i++) {
+			addresses.add(new BrokerAddress("127.0.0.1", this.kafkaPorts[i]));
 		}
 		return addresses.toArray(new BrokerAddress[addresses.size()]);
 	}
