@@ -15,6 +15,11 @@ See <<serdes>> for more information.
 Container Error handlers are now provided for both record and batch listeners that treat any exceptions thrown by the listener as fatal; they stop the container.
 See <<annotation-error-handling>> for more information.
 
+==== Pausing/Resuming Containers
+
+The listener containers now have `pause()` and `resume()` methods (since _version 2.1.3_).
+See <<pause-resume>> for more information.
+
 ==== Stateful Retry
 
 Starting with _version 2.1.3_, stateful retry can be configured; see <<stateful-retry>> for more information.

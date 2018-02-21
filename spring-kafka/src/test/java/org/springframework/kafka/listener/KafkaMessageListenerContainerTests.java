@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1619,6 +1620,59 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(consumer.position(new TopicPartition(topic18, 1))).isEqualTo(2);
 		consumer.close();
 		logger.info("Stop rebalance after failed record");
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testPauseResume() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(anyLong())).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+		final CountDownLatch commitLatch = new CountDownLatch(2);
+		willAnswer(i -> {
+			commitLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(any(Map.class));
+		given(consumer.assignment()).willReturn(records.keySet());
+		final CountDownLatch pauseLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			pauseLatch.countDown();
+			return null;
+		}).given(consumer).pause(records.keySet());
+		given(consumer.paused()).willReturn(records.keySet());
+		final CountDownLatch resumeLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			resumeLatch.countDown();
+			return null;
+		}).given(consumer).resume(records.keySet());
+		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
+				new TopicPartitionInitialOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setIdleEventInterval(100L);
+		containerProps.setMessageListener((MessageListener) r -> { });
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer, times(2)).commitSync(any(Map.class));
+		container.pause();
+		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.resume();
+		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {

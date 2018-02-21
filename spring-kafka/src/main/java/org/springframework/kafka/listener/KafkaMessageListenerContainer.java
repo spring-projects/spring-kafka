@@ -391,6 +391,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private boolean taskSchedulerExplicitlySet;
 
+		private boolean consumerPaused;
+
 		@SuppressWarnings("unchecked")
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
@@ -655,7 +657,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						processCommits();
 					}
 					processSeeks();
+					if (!this.consumerPaused && isPaused()) {
+						this.consumer.pause(this.consumer.assignment());
+						this.consumerPaused = true;
+						if (this.logger.isDebugEnabled()) {
+							this.logger.debug("Paused consumption from: " + this.consumer.paused());
+						}
+					}
 					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
+					if (this.consumerPaused && !isPaused()) {
+						if (this.logger.isDebugEnabled()) {
+							this.logger.debug("Resuming consumption from: " + this.consumer.paused());
+						}
+						this.consumer.resume(this.consumer.paused());
+						this.consumerPaused = false;
+					}
 					if (records != null && this.logger.isDebugEnabled()) {
 						this.logger.debug("Received: " + records.count() + " records");
 						if (records.count() > 0 && this.logger.isTraceEnabled()) {

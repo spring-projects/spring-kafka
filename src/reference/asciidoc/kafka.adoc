@@ -1369,6 +1369,16 @@ You can also perform seek operations from `onIdleContainer()` when an idle conta
 
 To arbitrarily seek at runtime, use the callback reference from the `registerSeekCallback` for the appropriate thread.
 
+[[pause-resume]]
+==== Pausing/Resuming Listener Containers
+
+_Version 2.1.3_ added `pause()` and `resume()` methods to listener containers.
+Previously, you could pause a consumer within a `ConsumerAwareMessageListener` and resume it by listening for `ListenerContainerIdleEvent` s, which provide access to the `Consumer` object.
+While you could pause a consumer in an idle container via an event listener, in some cases this was not thread-safe since there is no guarantee that the event listener is invoked on the consumer thread.
+To safely pause/resume consumers, you should use the methods on the listener containers.
+`pause()` takes effect just before the next `poll()`; `resume` takes effect, just after the current `poll()` returns.
+When a container is paused, it continues to `poll()` the consumer, avoiding a rebalance if group management is being used, but will not retrieve any records; refer to the Kafka documentation for more information.
+
 [[serdes]]
 ==== Serialization/Deserialization and Message Conversion
 

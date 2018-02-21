@@ -118,6 +118,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean running = false;
 
+	private volatile boolean paused;
+
 	protected AbstractMessageListenerContainer(ContainerProperties containerProperties) {
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 
@@ -187,6 +189,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.running;
 	}
 
+	protected boolean isPaused() {
+		return this.paused;
+	}
+
 	public void setPhase(int phase) {
 		this.phase = phase;
 	}
@@ -239,6 +245,16 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				}
 			}
 		}
+	}
+
+	@Override
+	public void pause() {
+		this.paused = true;
+	}
+
+	@Override
+	public void resume() {
+		this.paused = false;
 	}
 
 	@Override

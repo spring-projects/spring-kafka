@@ -69,4 +69,20 @@ public interface MessageListenerContainer extends SmartLifecycle {
 		throw new UnsupportedOperationException("This container doesn't support retrieving its assigned partitions");
 	}
 
+	/**
+	 * Pause this container before the next poll().
+	 * @since 2.1.3
+	 */
+	default void pause() {
+		throw new UnsupportedOperationException("This container doesn't support pause");
+	}
+
+	/**
+	 * Resume this container, if paused, after the next poll().
+	 * @since 2.1.3
+	 */
+	default void resume() {
+		throw new UnsupportedOperationException("This container doesn't support resume");
+	}
+
 }

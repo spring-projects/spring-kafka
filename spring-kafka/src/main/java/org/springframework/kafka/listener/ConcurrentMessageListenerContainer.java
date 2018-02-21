@@ -214,6 +214,18 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
+	public void pause() {
+		super.pause();
+		this.containers.forEach(c -> c.pause());
+	}
+
+	@Override
+	public void resume() {
+		super.resume();
+		this.containers.forEach(c -> c.resume());
+	}
+
+	@Override
 	public String toString() {
 		return "ConcurrentMessageListenerContainer [concurrency=" + this.concurrency + ", beanName="
 				+ this.getBeanName() + ", running=" + this.isRunning() + "]";
