@@ -242,6 +242,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS);
 				}
 				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
 				}
 			}
 		}
