@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import kafka.server.KafkaConfig;
+
 /**
  * @author Gary Russell
  * @author Nakul Mishra
@@ -70,7 +72,9 @@ public class KafkaTemplateTransactionTests {
 	private static final String STRING_KEY_TOPIC = "stringKeyTopic";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(3, true, STRING_KEY_TOPIC);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, STRING_KEY_TOPIC)
+		.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
+		.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
 
 	@Test
 	public void testLocalTransaction() throws Exception {

@@ -95,13 +95,13 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	private final List<KafkaServer> kafkaServers = new ArrayList<>();
 
+	private final Map<String, Object> brokerProperties = new HashMap<>();
+
 	private EmbeddedZookeeper zookeeper;
 
 	private ZkClient zookeeperClient;
 
 	private String zkConnect;
-
-	private Map<String, String> brokerProperties;
 
 	private int[] kafkaPorts;
 
@@ -147,7 +147,19 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @see KafkaConfig
 	 */
 	public KafkaEmbedded brokerProperties(Map<String, String> brokerProperties) {
-		this.brokerProperties = brokerProperties;
+		this.brokerProperties.putAll(brokerProperties);
+		return this;
+	}
+
+	/**
+	 * Specify a broker property.
+	 * @param property the property name.
+	 * @param value the value.
+	 * @return the {@link KafkaEmbedded}.
+	 * @since 2.1.4
+	 */
+	public KafkaEmbedded brokerProperty(String property, Object value) {
+		this.brokerProperties.put(property, value);
 		return this;
 	}
 
@@ -185,11 +197,11 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 					scala.Option.apply(null),
 					scala.Option.apply(null),
 					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1);
-			brokerConfigProperties.setProperty("replica.socket.timeout.ms", "1000");
-			brokerConfigProperties.setProperty("controller.socket.timeout.ms", "1000");
-			brokerConfigProperties.setProperty("offsets.topic.replication.factor", "1");
+			brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
+			brokerConfigProperties.setProperty(KafkaConfig.ControllerSocketTimeoutMsProp(), "1000");
+			brokerConfigProperties.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
 			if (this.brokerProperties != null) {
-				this.brokerProperties.forEach(brokerConfigProperties::setProperty);
+				this.brokerProperties.forEach(brokerConfigProperties::put);
 			}
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
 			this.kafkaServers.add(server);

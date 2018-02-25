@@ -72,6 +72,8 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
 
+import kafka.server.KafkaConfig;
+
 /**
  * @author Gary Russell
  * @author Artem Bilan
@@ -88,7 +90,9 @@ public class TransactionalContainerTests {
 	private static String topic2 = "txTopic2";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(3, true, topic1, topic2);
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2)
+			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
+			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
