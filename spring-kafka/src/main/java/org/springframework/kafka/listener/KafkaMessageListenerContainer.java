@@ -92,6 +92,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Artem Bilan
  * @author Loic Talhouarne
  * @author Vladimir Tsanev
+ * @author Chen Binbin
  * @author Yang Qiju
  * @author Tom van den Berge
  */
@@ -719,11 +720,20 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					break;
 				}
 				catch (Exception e) {
-					if (this.containerProperties.getGenericErrorHandler() != null) {
-						this.containerProperties.getGenericErrorHandler().handle(e, null);
-					}
-					else {
-						this.logger.error("Container exception", e);
+					try {
+						GenericErrorHandler<?> containerErrorHandler = this.containerProperties.getGenericErrorHandler();
+						if (containerErrorHandler != null) {
+							if (containerErrorHandler instanceof ConsumerAwareErrorHandler
+									|| containerErrorHandler instanceof ConsumerAwareBatchErrorHandler) {
+								containerErrorHandler.handle(e, null, this.consumer);
+							} else {
+								containerErrorHandler.handle(e, null);
+							}
+						} else {
+							this.logger.error("Container exception", e);
+						}
+					} catch (Exception ex) {
+						this.logger.error("Container exception", ex);
 					}
 				}
 			}
