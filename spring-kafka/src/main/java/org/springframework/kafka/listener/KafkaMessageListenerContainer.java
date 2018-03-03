@@ -726,13 +726,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							if (containerErrorHandler instanceof ConsumerAwareErrorHandler
 									|| containerErrorHandler instanceof ConsumerAwareBatchErrorHandler) {
 								containerErrorHandler.handle(e, null, this.consumer);
-							} else {
+							}
+							else {
 								containerErrorHandler.handle(e, null);
 							}
-						} else {
+						}
+						else {
 							this.logger.error("Container exception", e);
 						}
-					} catch (Exception ex) {
+					}
+					catch (Exception ex) {
 						this.logger.error("Container exception", ex);
 					}
 				}
