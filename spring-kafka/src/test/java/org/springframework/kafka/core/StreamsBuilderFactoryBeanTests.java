@@ -26,9 +26,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.streams.StreamsConfig;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,13 +39,14 @@ import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Pawel Szymczyk
- * @author Artme Bilan
+ * @author Artem Bilan
+ * @author Gary Russell
  */
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka
 public class StreamsBuilderFactoryBeanTests {
@@ -55,7 +55,7 @@ public class StreamsBuilderFactoryBeanTests {
 
 	private static Path stateStoreDir;
 
-	@BeforeClass
+	@BeforeAll
 	public static void setup() throws IOException {
 		stateStoreDir = Files.createTempDirectory("test-state-dir");
 	}
