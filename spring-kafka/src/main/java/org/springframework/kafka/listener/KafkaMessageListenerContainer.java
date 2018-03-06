@@ -27,6 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -420,7 +421,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.definedPartitions = new HashMap<>(topicPartitions.size());
 				for (TopicPartitionInitialOffset topicPartition : topicPartitions) {
 					this.definedPartitions.put(topicPartition.topicPartition(),
-							new OffsetMetadata(topicPartition.initialOffset(), topicPartition.isRelativeToCurrent()));
+							new OffsetMetadata(topicPartition.initialOffset(), topicPartition.isRelativeToCurrent(),
+									topicPartition.getPosition()));
 				}
 				consumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
 			}
@@ -647,7 +649,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.count = 0;
 			this.last = System.currentTimeMillis();
 			if (isRunning() && this.definedPartitions != null) {
-				initPartitionsIfNeeded();
+				try {
+					initPartitionsIfNeeded();
+				}
+				catch (Exception e) {
+					this.logger.error("Failed to set initial offsets", e);
+				}
 			}
 			long lastReceive = System.currentTimeMillis();
 			long lastAlertAt = lastReceive;
@@ -1186,9 +1193,27 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			/*
 			 * Note: initial position setting is only supported with explicit topic assignment.
 			 * When using auto assignment (subscribe), the ConsumerRebalanceListener is not
-			 * called until we poll() the consumer.
+			 * called until we poll() the consumer. Users can use a ConsumerAwareRebalanceListener
+			 * or a ConsumerSeekAware listener in that case.
 			 */
-			for (Entry<TopicPartition, OffsetMetadata> entry : this.definedPartitions.entrySet()) {
+			Map<TopicPartition, OffsetMetadata> partitions = new HashMap<>(this.definedPartitions);
+			Set<TopicPartition> beginnings = partitions.entrySet().stream()
+					.filter(e -> SeekPosition.BEGINNING.equals(e.getValue().seekPosition))
+					.map(e -> e.getKey())
+					.collect(Collectors.toSet());
+			beginnings.forEach(k -> partitions.remove(k));
+			Set<TopicPartition> ends = partitions.entrySet().stream()
+					.filter(e -> SeekPosition.END.equals(e.getValue().seekPosition))
+					.map(e -> e.getKey())
+					.collect(Collectors.toSet());
+			ends.forEach(k -> partitions.remove(k));
+			if (beginnings.size() > 0) {
+				this.consumer.seekToBeginning(beginnings);
+			}
+			if (ends.size() > 0) {
+				this.consumer.seekToEnd(ends);
+			}
+			for (Entry<TopicPartition, OffsetMetadata> entry : partitions.entrySet()) {
 				TopicPartition topicPartition = entry.getKey();
 				OffsetMetadata metadata = entry.getValue();
 				Long offset = metadata.offset;
@@ -1378,9 +1403,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final boolean relativeToCurrent;
 
-		OffsetMetadata(Long offset, boolean relativeToCurrent) {
+		private final SeekPosition seekPosition;
+
+		OffsetMetadata(Long offset, boolean relativeToCurrent, SeekPosition seekPosition) {
 			this.offset = offset;
 			this.relativeToCurrent = relativeToCurrent;
+			this.seekPosition = seekPosition;
 		}
 
 	}
