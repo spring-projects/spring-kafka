@@ -1458,7 +1458,7 @@ public class KafkaMessageListenerContainerTests {
 		this.logger.info("Start JSON1");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-		props.put(JsonDeserializer.DEFAULT_VALUE_TYPE, Foo.class);
+		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Foo.class);
 		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 

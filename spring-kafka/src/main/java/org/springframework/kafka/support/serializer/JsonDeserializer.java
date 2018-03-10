@@ -53,15 +53,17 @@ import com.fasterxml.jackson.databind.ObjectReader;
 public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
 	/**
+	 * Kafka config property for the default key type if no header.
+	 *
 	 * @deprecated in favor of {@link #KEY_DEFAULT_TYPE}
 	 */
 	@Deprecated
 	public static final String DEFAULT_KEY_TYPE = "spring.json.key.default.type";
 
 	/**
-	 * @deprecated in favor of {@link #VALUE_DEFAULT_TYPE}
+	 * Kafka config property for the default value type if no header.
+	 * <p>Will be removed in the future, use {@link #VALUE_DEFAULT_TYPE} instead.
 	 */
-	@Deprecated
 	public static final String DEFAULT_VALUE_TYPE = "spring.json.default.value.type";
 
 	/**
@@ -159,6 +161,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 					throw new IllegalStateException(KEY_DEFAULT_TYPE + " must be Class or String");
 				}
 			}
+			// TODO don't forget to remove these code after DEFAULT_VALUE_TYPE being removed.
 			else if (!isKey && configs.containsKey(DEFAULT_VALUE_TYPE)) {
 				if (configs.get(DEFAULT_VALUE_TYPE) instanceof Class) {
 					this.targetType = (Class<T>) configs.get(DEFAULT_VALUE_TYPE);

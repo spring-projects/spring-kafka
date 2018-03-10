@@ -1421,8 +1421,8 @@ Starting with _version 2.1_, type information can be conveyed in record `Headers
 In addition, the serializer/deserializer can be configured using Kafka properties.
 
 -  `JsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`); set to `false` to disable this feature.
-- `JsonDeserializer.DEFAULT_KEY_TYPE`; fallback type for deserialization of keys if no header information is present.
-- `JsonDeserializer.DEFAULT_VALUE_TYPE`; fallback type for deserialization of values if no header information is present.
+- `JsonDeserializer.KEY_DEFAULT_TYPE`; fallback type for deserialization of keys if no header information is present.
+- `JsonDeserializer.VALUE_DEFAULT_TYPE`; fallback type for deserialization of values if no header information is present.
 - `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`); comma-delimited list of package patterns allowed for deserialization; `*` means deserialize all.
 
 Although the `Serializer`/`Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and
