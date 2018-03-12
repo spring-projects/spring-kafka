@@ -35,6 +35,7 @@ import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -78,6 +79,7 @@ import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapte
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -1672,6 +1674,47 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.resume();
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testInitialSeek() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		final CountDownLatch latch = new CountDownLatch(1);
+		given(consumer.poll(anyLong())).willAnswer(i -> {
+			latch.countDown();
+			Thread.sleep(50);
+			return emptyRecords;
+		});
+		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
+				new TopicPartitionInitialOffset("foo", 0, SeekPosition.BEGINNING),
+				new TopicPartitionInitialOffset("foo", 1, SeekPosition.END),
+				new TopicPartitionInitialOffset("foo", 2, 0L),
+				new TopicPartitionInitialOffset("foo", 3, Long.MAX_VALUE),
+				new TopicPartitionInitialOffset("foo", 4, SeekPosition.BEGINNING),
+				new TopicPartitionInitialOffset("foo", 5, SeekPosition.END),
+		};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> { });
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		ArgumentCaptor<Collection<TopicPartition>> captor = ArgumentCaptor.forClass(List.class);
+		verify(consumer).seekToBeginning(captor.capture());
+		assertThat(captor.getValue()
+				.equals(new HashSet<>(Arrays.asList(new TopicPartition("foo", 0), new TopicPartition("foo", 4)))));
+		verify(consumer).seekToEnd(captor.capture());
+		assertThat(captor.getValue()
+				.equals(new HashSet<>(Arrays.asList(new TopicPartition("foo", 1), new TopicPartition("foo", 5)))));
+		verify(consumer).seek(new TopicPartition("foo", 2), 0L);
+		verify(consumer).seek(new TopicPartition("foo", 3), Long.MAX_VALUE);
 		container.stop();
 	}
 
