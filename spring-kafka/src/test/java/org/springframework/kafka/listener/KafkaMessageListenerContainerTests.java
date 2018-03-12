@@ -134,11 +134,13 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic18 = "testTopic18";
 
+	private static String topic19 = "testTopic19";
+
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, topic1, topic2, topic3, topic4, topic5,
 			topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16, topic17,
-			topic18);
+			topic18, topic19);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -1715,6 +1717,68 @@ public class KafkaMessageListenerContainerTests {
 				.equals(new HashSet<>(Arrays.asList(new TopicPartition("foo", 1), new TopicPartition("foo", 5)))));
 		verify(consumer).seek(new TopicPartition("foo", 2), 0L);
 		verify(consumer).seek(new TopicPartition("foo", 3), Long.MAX_VALUE);
+		container.stop();
+	}
+
+	@Test
+	public void testExceptionWhenCommitAfterRebalance() throws Exception {
+		final CountDownLatch rebalanceLatch = new CountDownLatch(2);
+		final CountDownLatch consumeLatch = new CountDownLatch(7);
+
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test19", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+		props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 15000);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic19);
+		containerProps.setMessageListener((MessageListener<Integer, String>) messages -> {
+			logger.info("listener: " + messages);
+			consumeLatch.countDown();
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		});
+		containerProps.setSyncCommits(true);
+		containerProps.setAckMode(AckMode.BATCH);
+		containerProps.setPollTimeout(100);
+		containerProps.setAckOnError(false);
+		containerProps.setErrorHandler(new SeekToCurrentErrorHandler());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic19);
+
+		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				logger.info("rebalance occurred.");
+				rebalanceLatch.countDown();
+			}
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testContainerException");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		container.pause();
+
+		for (int i = 0; i < 6; i++) {
+			template.sendDefault(0, 0, "a");
+		}
+		template.flush();
+
+		container.resume();
+		// should be rebalanced and consume again
+		assertThat(rebalanceLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(consumeLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 	}
 
