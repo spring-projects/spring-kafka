@@ -1735,7 +1735,8 @@ public class KafkaMessageListenerContainerTests {
 			consumeLatch.countDown();
 			try {
 				Thread.sleep(3000);
-			} catch (InterruptedException e) {
+			}
+			catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		});
