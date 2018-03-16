@@ -1,4 +1,3 @@
-
 [[kafka]]
 === Using Spring for Apache Kafka
 
@@ -863,6 +862,11 @@ public void listen15(List<Message<?>> list, Acknowledgment ack) {
 }
 ----
 
+No conversion is performed on the payloads in this case.
+
+If the `BatchMessagingMessageConverter` is configured with a `RecordMessageConverter`, you can also add a generic type to the `Message` parameter and the payloads will be converted.
+See <<payload-conversion-with-batch>> for more information.
+
 You can also receive a list of `ConsumerRecord<?, ?>` objects but it must be the only parameter (aside from an optional `Acknowledgment` when using manual commits) defined on the method:
 
 [source, java]
@@ -1382,6 +1386,8 @@ When a container is paused, it continues to `poll()` the consumer, avoiding a re
 [[serdes]]
 ==== Serialization/Deserialization and Message Conversion
 
+===== Overview
+
 Apache Kafka provides a high-level API for serializing/deserializing record values as well as their keys.
 It is present with the `org.apache.kafka.common.serialization.Serializer<T>` and
 `org.apache.kafka.common.serialization.Deserializer<T>` abstractions with some built-in implementations.
@@ -1460,7 +1466,10 @@ With a class-level `@KafkaListener`, the payload type is used to select which `@
 
 NOTE: When using the `StringJsonMessageConverter`, you should use a `StringDeserializer` in the kafka consumer configuration and `StringSerializer` in the kafka producer configuration, when using Spring Integration or the `KafkaTemplate.send(Message<?> message)` method.
 
-Starting with _version 1.3.2_ you can also use a `StringJsonMessageConverter` within a `BatchMessagingMessageConverter` for converting batch messages, when using a batch listener container factory.
+[[payload-conversion-with-batch]]
+===== Payload Conversion with Batch Listeners
+
+Starting with _version 1.3.2_, you can also use a `StringJsonMessageConverter` within a `BatchMessagingMessageConverter` for converting batch messages, when using a batch listener container factory.
 
 By default, the type for the conversion is inferred from the listener argument.
 If you configure the `StringJsonMessageConverter` with a `DefaultJackson2TypeMapper` that has its `TypePrecedence` set to `TYPE_ID` (instead of the default `INFERRED`), then the converter will use type information in headers (if present) instead.
@@ -1498,8 +1507,20 @@ public void listen(List<Foo> foos, @Header(KafkaHeaders.OFFSET) List<Long> offse
 
 Notice that you can still access the batch headers too.
 
-Starting with _versions 2.1.1_, the `org.springframework.core.convert.ConversionService` used by the default
-`o.s.messaging.handler.annotation.support.MessageHandlerMethodFactory` to reslove parameters for the invocation
+If the batch converter has a record converter that supports it, you can also receive a list of messages where the payloads are converted according to the generic type:
+
+[source, java]
+----
+@KafkaListener(topics = "blc3", groupId = "blc3")
+public void listen1(List<Message<Foo>> fooMessages) {
+    ...
+}
+----
+
+===== ConversionService Customization
+
+Starting with _version 2.1.1_, the `org.springframework.core.convert.ConversionService` used by the default
+`o.s.messaging.handler.annotation.support.MessageHandlerMethodFactory` to resolve parameters for the invocation
 of a listener method is supplied with all beans implementing any of the following interfaces:
 
  - `org.springframework.core.convert.converter.Converter`

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import org.springframework.kafka.support.converter.BatchMessagingMessageConverte
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.test.annotation.DirtiesContext;
@@ -62,7 +63,7 @@ public class BatchListenerConversionTests {
 	private static final String DEFAULT_TEST_GROUP_ID = "blc";
 
 	@ClassRule // one topic to preserve order
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 1, "blc1", "blc2");
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 1, "blc1", "blc2", "blc3");
 
 	@Autowired
 	private Config config;
@@ -88,6 +89,20 @@ public class BatchListenerConversionTests {
 		assertThat(listener.received.get(0).bar).isEqualTo("bar");
 		assertThat((listener.receivedTopics).get(0)).isEqualTo(topic);
 		assertThat((listener.receivedPartitions).get(0)).isEqualTo(0);
+	}
+
+	@Test
+	public void testBatchOfPojoMessages() throws Exception {
+		String topic = "blc3";
+		this.template.send(new GenericMessage<>(
+				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
+		this.template.send(new GenericMessage<>(
+				new Foo("baz"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
+		Listener3 listener = this.config.listener3();
+		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener.received.size()).isGreaterThan(0);
+		assertThat(listener.received.get(0).getPayload()).isInstanceOf(Foo.class);
+		assertThat(listener.received.get(0).getPayload().getBar()).isEqualTo("bar");
 	}
 
 	@Configuration
@@ -149,6 +164,11 @@ public class BatchListenerConversionTests {
 			return new Listener("blc2");
 		}
 
+		@Bean
+		public Listener3 listener3() {
+			return new Listener3();
+		}
+
 	}
 
 	public static class Listener {
@@ -187,6 +207,22 @@ public class BatchListenerConversionTests {
 
 		public String getTopic() {
 			return this.topic;
+		}
+
+	}
+
+	public static class Listener3 {
+
+		private final CountDownLatch latch1 = new CountDownLatch(1);
+
+		private List<Message<Foo>> received;
+
+		@KafkaListener(topics = "blc3", groupId = "blc3")
+		public void listen1(List<Message<Foo>> foos) {
+			if (this.received == null) {
+				this.received = foos;
+			}
+			this.latch1.countDown();
 		}
 
 	}

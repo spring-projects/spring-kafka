@@ -428,9 +428,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 							this.isConsumerRecordList =	paramType.equals(ConsumerRecord.class)
 									|| (paramType instanceof ParameterizedType
 										&& ((ParameterizedType) paramType).getRawType().equals(ConsumerRecord.class));
-							this.isMessageList = paramType.equals(Message.class)
-									|| (paramType instanceof ParameterizedType
-											&& ((ParameterizedType) paramType).getRawType().equals(Message.class));
+							boolean messageHasGeneric = paramType instanceof ParameterizedType
+									&& ((ParameterizedType) paramType).getRawType().equals(Message.class);
+							this.isMessageList = paramType.equals(Message.class) || messageHasGeneric;
+							if (messageHasGeneric) {
+								genericParameterType = ((ParameterizedType) paramType).getActualTypeArguments()[0];
+							}
 						}
 					}
 				}
