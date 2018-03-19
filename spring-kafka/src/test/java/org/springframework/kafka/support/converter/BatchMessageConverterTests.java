@@ -53,9 +53,9 @@ public class BatchMessageConverterTests {
 		@SuppressWarnings("unchecked")
 		List<Map<String, Object>> converted = (List<Map<String, Object>>) headers
 				.get(KafkaHeaders.BATCH_CONVERTED_HEADERS);
-		assertThat(converted.size()).isEqualTo(3);
+		assertThat(converted).hasSize(3);
 		Map<String, Object> map = converted.get(0);
-		assertThat(map.size()).isEqualTo(1);
+		assertThat(map).hasSize(1);
 		assertThat(new String((byte[]) map.get("foo"))).isEqualTo("bar");
 	}
 
@@ -67,7 +67,7 @@ public class BatchMessageConverterTests {
 		MessageHeaders headers = testGuts(batchMessageConverter);
 		@SuppressWarnings("unchecked")
 		List<Headers> natives = (List<Headers>) headers.get(KafkaHeaders.NATIVE_HEADERS);
-		assertThat(natives.size()).isEqualTo(3);
+		assertThat(natives).hasSize(3);
 		Iterator<Header> iterator = natives.get(0).iterator();
 		assertThat(iterator.hasNext()).isEqualTo(true);
 		Header next = iterator.next();

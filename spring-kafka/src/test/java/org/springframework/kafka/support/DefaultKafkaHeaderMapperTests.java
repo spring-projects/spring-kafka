@@ -69,7 +69,7 @@ public class DefaultKafkaHeaderMapperTests {
 		NonTrustedHeaderType ntht = (NonTrustedHeaderType) headers.get("fix");
 		assertThat(ntht.getHeaderValue()).isNotNull();
 		assertThat(ntht.getUntrustedType()).isEqualTo(Foo.class.getName());
-		assertThat(headers.size()).isEqualTo(6);
+		assertThat(headers).hasSize(6);
 		mapper.addTrustedPackages(getClass().getPackage().getName());
 		headers = new HashMap<>();
 		mapper.toHeaders(recordHeaders, headers);
@@ -77,7 +77,7 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(new String((byte[]) headers.get("foo"))).isEqualTo("bar");
 		assertThat(headers.get("baz")).isEqualTo("qux");
 		assertThat(headers.get("fix")).isEqualTo(new Foo());
-		assertThat(headers.size()).isEqualTo(6);
+		assertThat(headers).hasSize(6);
 	}
 
 	public static final class Foo {

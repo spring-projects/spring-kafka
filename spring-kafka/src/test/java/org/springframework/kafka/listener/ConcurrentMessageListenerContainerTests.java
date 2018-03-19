@@ -119,7 +119,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.start();
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-		assertThat(container.getAssignedPartitions().size()).isEqualTo(2);
+		assertThat(container.getAssignedPartitions()).hasSize(2);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -137,7 +137,7 @@ public class ConcurrentMessageListenerContainerTests {
 		@SuppressWarnings("unchecked")
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
-		assertThat(containers.size()).isEqualTo(2);
+		assertThat(containers).hasSize(2);
 		for (int i = 0; i < 2; i++) {
 			assertThat(KafkaTestUtils.getPropertyValue(containers.get(i), "listenerConsumer.acks", Collection.class)
 					.size()).isEqualTo(0);
@@ -415,7 +415,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.start();
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
-		assertThat(containers.size()).isEqualTo(3);
+		assertThat(containers).hasSize(3);
 		for (int i = 0; i < 3; i++) {
 			assertThat(KafkaTestUtils.getPropertyValue(containers.get(i), "topicPartitions",
 					TopicPartitionInitialOffset[].class).length).isEqualTo(i < 2 ? 2 : 3);

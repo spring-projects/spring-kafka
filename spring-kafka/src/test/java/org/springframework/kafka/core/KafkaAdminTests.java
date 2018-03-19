@@ -68,7 +68,7 @@ public class KafkaAdminTests {
 		this.admin.initialize();
 		topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
 		Map<String, TopicDescription> results = topics.all().get();
-		results.forEach((name, td) -> assertThat(td.partitions().size()).isEqualTo(name.equals("foo") ? 2 : 3));
+		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 3));
 		adminClient.close(10, TimeUnit.SECONDS);
 	}
 

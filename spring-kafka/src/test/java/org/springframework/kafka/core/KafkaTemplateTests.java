@@ -145,7 +145,7 @@ public class KafkaTemplateTests {
 		assertThat(metrics).isNotNull();
 		List<PartitionInfo> partitions = template.partitionsFor(INT_KEY_TOPIC);
 		assertThat(partitions).isNotNull();
-		assertThat(partitions.size()).isEqualTo(2);
+		assertThat(partitions).hasSize(2);
 		pf.destroy();
 	}
 
@@ -173,7 +173,7 @@ public class KafkaTemplateTests {
 		assertThat(metrics).isNotNull();
 		List<PartitionInfo> partitions = template.partitionsFor(INT_KEY_TOPIC);
 		assertThat(partitions).isNotNull();
-		assertThat(partitions.size()).isEqualTo(2);
+		assertThat(partitions).hasSize(2);
 		pf.destroy();
 	}
 

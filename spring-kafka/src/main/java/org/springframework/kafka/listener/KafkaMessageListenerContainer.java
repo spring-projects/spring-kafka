@@ -192,16 +192,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (listenerConsumer.definedPartitions != null) {
 				return Collections.unmodifiableCollection(listenerConsumer.definedPartitions.keySet());
 			}
-			else if (listenerConsumer.assignedPartitions != null) {
+			if (listenerConsumer.assignedPartitions != null) {
 				return Collections.unmodifiableCollection(listenerConsumer.assignedPartitions);
 			}
-			else {
-				return null;
-			}
 		}
-		else {
-			return null;
-		}
+		return null;
 	}
 
 	@Override
@@ -476,7 +471,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.monitorTask = this.taskScheduler.scheduleAtFixedRate(() -> checkConsumer(),
 					this.containerProperties.getMonitorInterval() * 1000);
-			if (this.containerProperties.isLogContainerConfig() && this.logger.isInfoEnabled()) {
+			if (this.containerProperties.isLogContainerConfig()) {
 				this.logger.info(this);
 			}
 		}

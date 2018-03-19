@@ -23,7 +23,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -99,14 +101,9 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public Collection<TopicPartition> getAssignedPartitions() {
-		List<TopicPartition> assigned = new ArrayList<>();
-		this.containers.forEach(c -> {
-			Collection<TopicPartition> assignedPartitions = c.getAssignedPartitions();
-			if (assignedPartitions != null) {
-				assigned.addAll(assignedPartitions);
-			}
-		});
-		return assigned;
+		return this.containers.stream()
+				.map(KafkaMessageListenerContainer::getAssignedPartitions).filter(Objects::nonNull)
+				.flatMap(assignedPartitions -> assignedPartitions.stream()).collect(Collectors.toList());
 	}
 
 	@Override
