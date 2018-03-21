@@ -44,11 +44,31 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 
 	private transient Consumer<?, ?> consumer;
 
+	/**
+	 * Construct an instance with the provided arguments.
+	 * @param source the container.
+	 * @param idleTime the idle time.
+	 * @param id the container id.
+	 * @param topicPartitions the topics/partitions currently assigned.
+	 * @param consumer the consumer.
+	 * @deprecated
+	 */
+	@Deprecated
 	public ListenerContainerIdleEvent(Object source, long idleTime, String id,
 			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
 		this(source, idleTime, id, topicPartitions, consumer, false);
 	}
 
+	/**
+	 * Construct an instance with the provided arguments.
+	 * @param source the container.
+	 * @param idleTime the idle time.
+	 * @param id the container id.
+	 * @param topicPartitions the topics/partitions currently assigned.
+	 * @param consumer the consumer.
+	 * @param paused true if the consumer is paused.
+	 * @since 2.1.5
+	 */
 	public ListenerContainerIdleEvent(Object source, long idleTime, String id,
 			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer, boolean paused) {
 		super(source);
