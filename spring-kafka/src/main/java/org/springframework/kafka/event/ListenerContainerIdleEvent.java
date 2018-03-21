@@ -51,7 +51,8 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	 * @param id the container id.
 	 * @param topicPartitions the topics/partitions currently assigned.
 	 * @param consumer the consumer.
-	 * @deprecated
+	 * @deprecated in favor of
+	 * {@link #ListenerContainerIdleEvent(Object, long, String, Collection, Consumer, boolean)}
 	 */
 	@Deprecated
 	public ListenerContainerIdleEvent(Object source, long idleTime, String id,
