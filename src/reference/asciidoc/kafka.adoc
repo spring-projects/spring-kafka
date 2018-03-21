@@ -1273,7 +1273,7 @@ In addition, if the broker is unreachable (at the time of writing), the consumer
 To solve this issue, the container will publish a `NonResponsiveConsumerEvent` if a poll does not return within 3x the `pollInterval` property.
 By default, this check is performed once every 30 seconds in each container.
 You can modify the behavior by setting the `monitorInterval` and `noPollThreshold` properties in the `ContainerProperties` when configuring the listener container.
-Receiveing such an event will allow you to stop the container(s), thus waking the consumer so it can terminate.
+Receiving such an event will allow you to stop the container(s), thus waking the consumer so it can terminate.
 
 ====== Event Consumption
 
@@ -1293,7 +1293,9 @@ The events have 5 properties:
 - `topicPartitions` - the topics/partitions that the container was assigned at the time the event was generated
 - `consumer` - a reference to the kafka `Consumer` object; for example, if the consumer was previously `pause()` d, it can be `resume()` d when the event is received.
 
-The event is published on the consumer thread, so it is safe to interact with the `Consumer` object.
+Starting with _version 2.1.5_, the idle event has a boolean property `paused` which indicates whether the consumer is currently paused; see <<pause-resume>> for more information.
+
+The event is normally published on the consumer thread, so it is safe to interact with the `Consumer` object.
 
 [source, xml]
 ----
@@ -1382,6 +1384,11 @@ While you could pause a consumer in an idle container via an event listener, in 
 To safely pause/resume consumers, you should use the methods on the listener containers.
 `pause()` takes effect just before the next `poll()`; `resume` takes effect, just after the current `poll()` returns.
 When a container is paused, it continues to `poll()` the consumer, avoiding a rebalance if group management is being used, but will not retrieve any records; refer to the Kafka documentation for more information.
+
+Starting with _version 2.1.5_, you can call `isPauseRequested()` to see if `pause()` has been called.
+However, the consumers might not have actually paused yet; `isConsumerPaused()` will return true if all `Consumer` s have actually paused.
+
+In addition, also since _2.1.5_, `ConsumerPausedEvent` s and `ConsumerResumedEvent` s are published with the container as the `source` property and the `TopicPatition` s involved in the `partitions` s property.
 
 [[serdes]]
 ==== Serialization/Deserialization and Message Conversion

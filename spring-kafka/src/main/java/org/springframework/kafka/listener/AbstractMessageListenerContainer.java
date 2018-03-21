@@ -193,6 +193,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.paused;
 	}
 
+	@Override
+	public boolean isPauseRequested() {
+		return this.paused;
+	}
+
 	public void setPhase(int phase) {
 		this.phase = phase;
 	}

@@ -110,6 +110,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
+	public boolean isContainerPaused() {
+		boolean paused = isPaused();
+		if (paused) {
+			for (AbstractMessageListenerContainer<K, V> container : this.containers) {
+				if (!container.isContainerPaused()) {
+					return false;
+				}
+			}
+		}
+		return paused;
+	}
+
+	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
 		for (KafkaMessageListenerContainer<K, V> container : this.containers) {

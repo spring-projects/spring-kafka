@@ -55,6 +55,8 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactoryUtils;
+import org.springframework.kafka.event.ConsumerPausedEvent;
+import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
@@ -205,6 +207,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 
 	@Override
+	public boolean isContainerPaused() {
+		return isPaused() && this.listenerConsumer.consumerPaused;
+	}
+
+	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		ListenerConsumer listenerConsumer = this.listenerConsumer;
 		if (listenerConsumer != null) {
@@ -288,18 +295,32 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 	}
 
-	private void publishIdleContainerEvent(long idleTime, Consumer<?, ?> consumer) {
+	private void publishIdleContainerEvent(long idleTime, Consumer<?, ?> consumer, boolean paused) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(
-					KafkaMessageListenerContainer.this, idleTime, getBeanName(), getAssignedPartitions(), consumer));
+					this, idleTime, getBeanName(), getAssignedPartitions(), consumer, paused));
 		}
 	}
 
 	private void publishNonResponsiveConsumerEvent(long timeSinceLastPoll, Consumer<?, ?> consumer) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(
-					new NonResponsiveConsumerEvent(KafkaMessageListenerContainer.this, timeSinceLastPoll,
+					new NonResponsiveConsumerEvent(this, timeSinceLastPoll,
 							getBeanName(), getAssignedPartitions(), consumer));
+		}
+	}
+
+	private void publishConsumerPausedEvent(Collection<TopicPartition> partitions) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerPausedEvent(this,
+					Collections.unmodifiableCollection(partitions)));
+		}
+	}
+
+	private void publishConsumerResumedEvent(Collection<TopicPartition> partitions) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerResumedEvent(this,
+					Collections.unmodifiableCollection(partitions)));
 		}
 	}
 
@@ -671,14 +692,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						if (this.logger.isDebugEnabled()) {
 							this.logger.debug("Paused consumption from: " + this.consumer.paused());
 						}
+						publishConsumerPausedEvent(this.consumer.assignment());
 					}
 					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
 					if (this.consumerPaused && !isPaused()) {
 						if (this.logger.isDebugEnabled()) {
 							this.logger.debug("Resuming consumption from: " + this.consumer.paused());
 						}
-						this.consumer.resume(this.consumer.paused());
+						Set<TopicPartition> paused = this.consumer.paused();
+						this.consumer.resume(paused);
 						this.consumerPaused = false;
+						publishConsumerResumedEvent(paused);
 					}
 					if (records != null && this.logger.isDebugEnabled()) {
 						this.logger.debug("Received: " + records.count() + " records");
@@ -702,7 +726,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							if (now > lastReceive + this.containerProperties.getIdleEventInterval()
 									&& now > lastAlertAt + this.containerProperties.getIdleEventInterval()) {
 								publishIdleContainerEvent(now - lastReceive, this.isConsumerAwareListener
-										? this.consumer : null);
+										? this.consumer : null, this.consumerPaused);
 								lastAlertAt = now;
 								if (this.genericListener instanceof ConsumerSeekAware) {
 									seekPartitions(getAssignedPartitions(), true);

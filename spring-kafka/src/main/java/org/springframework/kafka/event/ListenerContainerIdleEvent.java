@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,15 +40,23 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 
 	private final List<TopicPartition> topicPartitions;
 
+	private final boolean paused;
+
 	private transient Consumer<?, ?> consumer;
 
 	public ListenerContainerIdleEvent(Object source, long idleTime, String id,
 			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
+		this(source, idleTime, id, topicPartitions, consumer, false);
+	}
+
+	public ListenerContainerIdleEvent(Object source, long idleTime, String id,
+			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer, boolean paused) {
 		super(source);
 		this.idleTime = idleTime;
 		this.listenerId = id;
 		this.topicPartitions = topicPartitions == null ? null : new ArrayList<>(topicPartitions);
 		this.consumer = consumer;
+		this.paused = paused;
 	}
 
 	/**
@@ -85,11 +93,21 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 		return this.consumer;
 	}
 
+	/**
+	 * Return true if the consumer was paused at the time the idle event was published.
+	 * @return paused.
+	 * @since 2.1.5
+	 */
+	public boolean isPaused() {
+		return this.paused;
+	}
+
 	@Override
 	public String toString() {
 		return "ListenerContainerIdleEvent [idleTime="
 				+ ((float) this.idleTime / 1000) + "s, listenerId=" + this.listenerId
 				+ ", container=" + getSource()
+				+ ", paused=" + this.paused
 				+ ", topicPartitions=" + this.topicPartitions + "]";
 	}
 

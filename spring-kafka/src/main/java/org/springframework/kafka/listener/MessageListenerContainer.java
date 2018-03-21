@@ -85,4 +85,24 @@ public interface MessageListenerContainer extends SmartLifecycle {
 		throw new UnsupportedOperationException("This container doesn't support resume");
 	}
 
+	/**
+	 * Return true if {@link #pause()} has been called; the container might not have actually
+	 * paused yet.
+	 * @return true if pause has been requested.
+	 * @since 2.1.5
+	 */
+	default boolean isPauseRequested() {
+		throw new UnsupportedOperationException("This container doesn't support pause/resume");
+	}
+
+	/**
+	 * Return true if {@link #pause()} has been called; and all consumers in this container
+	 * have actually paused.
+	 * @return true if the container is paused.
+	 * @since 2.1.5
+	 */
+	default boolean isContainerPaused() {
+		throw new UnsupportedOperationException("This container doesn't support pause/resume");
+	}
+
 }

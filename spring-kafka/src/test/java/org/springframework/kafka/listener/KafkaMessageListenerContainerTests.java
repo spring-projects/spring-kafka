@@ -73,6 +73,8 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.ConsumerPausedEvent;
+import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
@@ -1649,13 +1651,13 @@ public class KafkaMessageListenerContainerTests {
 			return null;
 		}).given(consumer).commitSync(any(Map.class));
 		given(consumer.assignment()).willReturn(records.keySet());
-		final CountDownLatch pauseLatch = new CountDownLatch(1);
+		final CountDownLatch pauseLatch = new CountDownLatch(2);
 		willAnswer(i -> {
 			pauseLatch.countDown();
 			return null;
 		}).given(consumer).pause(records.keySet());
 		given(consumer.paused()).willReturn(records.keySet());
-		final CountDownLatch resumeLatch = new CountDownLatch(1);
+		final CountDownLatch resumeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
 			resumeLatch.countDown();
 			return null;
@@ -1669,6 +1671,14 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener((MessageListener) r -> { });
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerPausedEvent) {
+				pauseLatch.countDown();
+			}
+			else if (e instanceof ConsumerResumedEvent) {
+				resumeLatch.countDown();
+			}
+		});
 		container.start();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(consumer, times(2)).commitSync(any(Map.class));
