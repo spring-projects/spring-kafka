@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,9 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 
 /**
- * A rebalance listener that provides access to the consumer object.
+ * A rebalance listener that provides access to the consumer object. Starting with version
+ * 2.1.5, as a convenience, default no-op implementations are provided for all methods,
+ * allowing the user to implement just those (s)he is interested in.
  *
  * @author Gary Russell
  * @since 2.0
@@ -37,7 +39,9 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	 * @param consumer the consumer.
 	 * @param partitions the partitions.
 	 */
-	void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
+	default void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		// do nothing
+	}
 
 	/**
 	 * The same as {@link #onPartitionsRevoked(Collection)} with the additional consumer
@@ -45,7 +49,9 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	 * @param consumer the consumer.
 	 * @param partitions the partitions.
 	 */
-	void onPartitionsRevokedAfterCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
+	default void onPartitionsRevokedAfterCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		// do nothing
+	}
 
 	/**
 	 * The same as {@link #onPartitionsAssigned(Collection)} with the additional consumer
@@ -53,7 +59,9 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	 * @param consumer the consumer.
 	 * @param partitions the partitions.
 	 */
-	void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
+	default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		// do nothing
+	}
 
 	@Override
 	default void onPartitionsRevoked(Collection<TopicPartition> partitions) {
