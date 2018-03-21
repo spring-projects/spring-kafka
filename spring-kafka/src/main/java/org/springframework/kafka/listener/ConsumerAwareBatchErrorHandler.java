@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,5 +37,11 @@ public interface ConsumerAwareBatchErrorHandler extends BatchErrorHandler {
 
 	@Override
 	void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer);
+
+	@Override
+	default void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+			MessageListenerContainer container) {
+		handle(thrownException, data, consumer);
+	}
 
 }

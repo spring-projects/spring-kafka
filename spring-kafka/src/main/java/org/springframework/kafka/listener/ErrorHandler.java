@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.List;
+
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
@@ -25,5 +28,17 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @author Gary Russell
  */
 public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> {
+
+	/**
+	 * Handle the exception.
+	 * @param thrownException the exception.
+	 * @param records the remaining records including the one that failed.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 */
+	default void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
+			MessageListenerContainer container) {
+		handle(thrownException, null);
+	}
 
 }

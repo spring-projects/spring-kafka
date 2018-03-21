@@ -744,24 +744,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					break;
 				}
 				catch (Exception e) {
-					try {
-						GenericErrorHandler<?> containerErrorHandler = this.containerProperties.getGenericErrorHandler();
-						if (containerErrorHandler != null) {
-							if (containerErrorHandler instanceof ConsumerAwareErrorHandler
-									|| containerErrorHandler instanceof ConsumerAwareBatchErrorHandler) {
-								containerErrorHandler.handle(e, null, this.consumer);
-							}
-							else {
-								containerErrorHandler.handle(e, null);
-							}
-						}
-						else {
-							this.logger.error("Container exception", e);
-						}
-					}
-					catch (Exception ex) {
-						this.logger.error("Container exception", ex);
-					}
+					handleConsumerException(e);
 				}
 			}
 			ProducerFactoryUtils.clearConsumerGroupId();
@@ -786,6 +769,30 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.consumer.close();
 			this.logger.info("Consumer stopped");
+		}
+
+		/**
+		 * Handle exceptions thrown by the consumer outside of message listener
+		 * invocation (e.g. commit exceptions).
+		 * @param e the exception.
+		 */
+		protected void handleConsumerException(Exception e) {
+			try {
+				if (this.errorHandler != null) {
+					this.errorHandler.handle(e, Collections.emptyList(), this.consumer,
+							KafkaMessageListenerContainer.this);
+				}
+				else if (this.batchErrorHandler != null) {
+					this.batchErrorHandler.handle(e, new ConsumerRecords<K, V>(Collections.emptyMap()), this.consumer,
+							KafkaMessageListenerContainer.this);
+				}
+				else {
+					this.logger.error("Consumer exception", e);
+				}
+			}
+			catch (Exception ex) {
+				this.logger.error("Consumer exception", ex);
+			}
 		}
 
 		private void commitPendingAcks() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 package org.springframework.kafka.listener;
+
+import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -37,5 +39,11 @@ public interface ConsumerAwareErrorHandler extends ErrorHandler {
 
 	@Override
 	void handle(Exception thrownException, ConsumerRecord<?, ?> data, Consumer<?, ?> consumer);
+
+	@Override
+	default void handle(Exception thrownException, List<ConsumerRecord<?, ?>> data, Consumer<?, ?> consumer,
+			MessageListenerContainer container) {
+		handle(thrownException, null, consumer);
+	}
 
 }
