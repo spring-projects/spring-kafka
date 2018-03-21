@@ -102,8 +102,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	public Collection<TopicPartition> getAssignedPartitions() {
 		return this.containers.stream()
-				.map(KafkaMessageListenerContainer::getAssignedPartitions).filter(Objects::nonNull)
-				.flatMap(assignedPartitions -> assignedPartitions.stream()).collect(Collectors.toList());
+				.map(KafkaMessageListenerContainer::getAssignedPartitions)
+				.filter(Objects::nonNull)
+				.flatMap(assignedPartitions -> assignedPartitions.stream())
+				.collect(Collectors.toList());
 	}
 
 	@Override

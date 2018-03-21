@@ -121,16 +121,18 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		if (groupId == null && !shouldModifyClientId) {
 			return createKafkaConsumer();
 		}
-		Map<String, Object> modifiedConfigs = new HashMap<>(this.configs);
-		if (groupId != null) {
-			modifiedConfigs.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+		else {
+			Map<String, Object> modifiedConfigs = new HashMap<>(this.configs);
+			if (groupId != null) {
+				modifiedConfigs.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+			}
+			if (shouldModifyClientId) {
+				modifiedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG,
+						(overrideClientIdPrefix ? clientIdPrefix
+								: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
+			}
+			return createKafkaConsumer(modifiedConfigs);
 		}
-		if (shouldModifyClientId) {
-			modifiedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG,
-				(overrideClientIdPrefix ? clientIdPrefix
-						: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
-		}
-		return createKafkaConsumer(modifiedConfigs);
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(Map<String, Object> configs) {

@@ -192,11 +192,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (listenerConsumer.definedPartitions != null) {
 				return Collections.unmodifiableCollection(listenerConsumer.definedPartitions.keySet());
 			}
-			if (listenerConsumer.assignedPartitions != null) {
+			else if (listenerConsumer.assignedPartitions != null) {
 				return Collections.unmodifiableCollection(listenerConsumer.assignedPartitions);
 			}
+			else {
+				return null;
+			}
 		}
-		return null;
+		else {
+			return null;
+		}
 	}
 
 	@Override
