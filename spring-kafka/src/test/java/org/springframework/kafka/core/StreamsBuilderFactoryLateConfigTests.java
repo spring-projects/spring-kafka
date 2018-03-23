@@ -55,7 +55,7 @@ public class StreamsBuilderFactoryLateConfigTests {
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
 	@Test(expected = KafkaException.class)
-	public void testStreamBuilderFactoryCannotBeStartedWithoutStreamconfig() {
+	public void testStreamBuilderFactoryCannotBeStartedWithoutStreamsConfig() {
 		StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
 		streamsBuilderFactoryBean.start();
 	}
