@@ -28,6 +28,7 @@ import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.KafkaException;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -37,6 +38,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  * @author Ivan Ursul
  * @author Soby Chacko
+ * @author Zach Olauson
  *
  * @since 1.1.4
  */
@@ -126,6 +128,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public void setStreamsConfig(StreamsConfig streamsConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		this.streamsConfig = streamsConfig;
+	}
+
+	@Nullable
+	public StreamsConfig getStreamsConfig() {
+		return this.streamsConfig;
 	}
 
 	public void setClientSupplier(KafkaClientSupplier clientSupplier) {
