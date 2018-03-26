@@ -1863,6 +1863,71 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testAckModeCount() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		TopicPartition topicPartition = new TopicPartition("foo", 0);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records1 = new HashMap<>();
+		records1.put(topicPartition, Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records2 = new HashMap<>();
+		records2.put(topicPartition, Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
+				new ConsumerRecord<>("foo", 0, 3L, 1, "qux"))); // commit (4 >= 3)
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records3 = new HashMap<>();
+		records3.put(topicPartition, Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 4L, 1, "fiz"),
+				new ConsumerRecord<>("foo", 0, 5L, 1, "buz"),
+				new ConsumerRecord<>("foo", 0, 6L, 1, "bif"))); // commit (3 >= 3)
+		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1);
+		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2);
+		ConsumerRecords<Integer, String> consumerRecords3 = new ConsumerRecords<>(records3);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicInteger which = new AtomicInteger();
+		given(consumer.poll(anyLong())).willAnswer(i -> {
+			Thread.sleep(50);
+			int recordsToUse = which.incrementAndGet();
+			switch (recordsToUse) {
+				case 1:
+					return consumerRecords1;
+				case 2:
+					return consumerRecords2;
+				case 3:
+					return consumerRecords3;
+				default:
+					return emptyRecords;
+			}
+		});
+		final CountDownLatch commitLatch = new CountDownLatch(2);
+		willAnswer(i -> {
+			commitLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(any(Map.class));
+		given(consumer.assignment()).willReturn(records1.keySet());
+		TopicPartitionInitialOffset[] topicPartitionOffset = new TopicPartitionInitialOffset[] {
+				new TopicPartitionInitialOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartitionOffset);
+		containerProps.setAckMode(AckMode.COUNT);
+		containerProps.setAckCount(3);
+		containerProps.setClientId("clientId");
+		AtomicInteger recordCount = new AtomicInteger();
+		containerProps.setMessageListener((MessageListener) r -> {
+			recordCount.incrementAndGet();
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(recordCount.get()).isEqualTo(7);
+		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(4L)));
+		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(7L)));
+		container.stop();
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));

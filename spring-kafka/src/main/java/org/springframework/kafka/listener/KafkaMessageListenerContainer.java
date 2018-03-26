@@ -1170,8 +1170,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private void processCommits() {
-			handleAcks();
 			this.count += this.acks.size();
+			handleAcks();
 			long now;
 			AckMode ackMode = this.containerProperties.getAckMode();
 			if (!this.isManualImmediateAck) {

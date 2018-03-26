@@ -47,4 +47,9 @@ public class SendResult<K, V> {
 		return this.recordMetadata;
 	}
 
+	@Override
+	public String toString() {
+		return "SendResult [producerRecord=" + this.producerRecord + ", recordMetadata=" + this.recordMetadata + "]";
+	}
+
 }
