@@ -16,6 +16,9 @@
 
 package org.springframework.kafka.annotation;
 
+import java.util.List;
+import java.util.Optional;
+import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -23,6 +26,7 @@ import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.KafkaStreamsCustomizer;
 import org.springframework.kafka.core.StreamsBuilderFactoryBean;
 
 /**
@@ -31,10 +35,14 @@ import org.springframework.kafka.core.StreamsBuilderFactoryBean;
  * {@link KafkaStreamsDefaultConfiguration#DEFAULT_STREAMS_CONFIG_BEAN_NAME} is present
  * in the application context. Otherwise a {@link UnsatisfiedDependencyException} is thrown.
  *
+ * Also collects {@link KafkaStreamsCustomizer}s to be applied just after {@link KafkaStreams}
+ * created and before {@link KafkaStreams#start()}.
+ *
  * <p>This configuration class is automatically imported when using the @{@link EnableKafkaStreams}
  * annotation. See {@link EnableKafkaStreams} Javadoc for complete usage.
  *
  * @author Artem Bilan
+ * @author Nurettin Yilmaz
  *
  * @since 1.1.4
  */
@@ -54,10 +62,13 @@ public class KafkaStreamsDefaultConfiguration {
 
 	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
-			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME) ObjectProvider<StreamsConfig> streamsConfigProvider) {
+			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME) ObjectProvider<StreamsConfig> streamsConfigProvider,
+			Optional<List<KafkaStreamsCustomizer>> kafkaStreamsCustomizers) {
 		StreamsConfig streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
-			return new StreamsBuilderFactoryBean(streamsConfig);
+			StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(streamsConfig);
+			kafkaStreamsCustomizers.ifPresent(streamsBuilderFactoryBean::addKafkaStreamsCustomizers);
+			return streamsBuilderFactoryBean;
 		}
 		else {
 			throw new UnsatisfiedDependencyException(KafkaStreamsDefaultConfiguration.class.getName(),

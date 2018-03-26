@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -23,6 +24,8 @@ import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 
 import org.springframework.beans.factory.config.AbstractFactoryBean;
@@ -35,10 +38,13 @@ import org.springframework.util.Assert;
  * An {@link AbstractFactoryBean} for the {@link StreamsBuilder} instance
  * and lifecycle control for the internal {@link KafkaStreams} instance.
  *
+ * <p>Delegates {@link KafkaStreams} customizations to {@link KafkaStreamsConfigurer}</p>
+ *
  * @author Artem Bilan
  * @author Ivan Ursul
  * @author Soby Chacko
  * @author Zach Olauson
+ * @author Nurettin Yilmaz
  *
  * @since 1.1.4
  */
@@ -52,15 +58,13 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private KafkaStreams kafkaStreams;
 
+	private KafkaStreamsConfigurer kafkaStreamsConfigurer = new KafkaStreamsConfigurer();
+
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
 
 	private boolean autoStartup = true;
 
 	private int phase = Integer.MAX_VALUE - 1000;
-
-	private KafkaStreams.StateListener stateListener;
-
-	private Thread.UncaughtExceptionHandler exceptionHandler;
 
 	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
@@ -140,12 +144,21 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		this.clientSupplier = clientSupplier; // NOSONAR (sync)
 	}
 
+	public void addKafkaStreamsCustomizers(List<KafkaStreamsCustomizer> kafkaStreamsCustomizers) {
+		Assert.notNull(clientSupplier, "'kafkaStreamsCustomizers' must not be null");
+		this.kafkaStreamsConfigurer.addKafkaStreamsCustomizers(kafkaStreamsCustomizers);
+	}
+
 	public void setStateListener(KafkaStreams.StateListener stateListener) {
-		this.stateListener = stateListener; // NOSONAR (sync)
+		this.kafkaStreamsConfigurer.setStateListener(stateListener);
 	}
 
 	public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
-		this.exceptionHandler = exceptionHandler; // NOSONAR (sync)
+		this.kafkaStreamsConfigurer.setUncaughtExceptionHandler(exceptionHandler);
+	}
+
+	public void setStateRestoreListener(StateRestoreListener stateRestoreListener) {
+		this.kafkaStreamsConfigurer.setStateRestoreListener(stateRestoreListener);
 	}
 
 	/**
@@ -170,7 +183,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		}
 		return new StreamsBuilder();
 	}
-
 
 	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
@@ -197,20 +209,25 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public synchronized void start() {
 		if (!this.running) {
 			try {
-				Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
-				this.kafkaStreams = new KafkaStreams(getObject().build(), this.streamsConfig, this.clientSupplier);
-				this.kafkaStreams.setStateListener(this.stateListener);
-				this.kafkaStreams.setUncaughtExceptionHandler(this.exceptionHandler);
-				if (this.cleanupConfig.cleanupOnStart()) {
-					this.kafkaStreams.cleanUp();
-				}
-				this.kafkaStreams.start();
-				this.running = true;
+				Topology topology = getObject().build();
+				logger.debug(topology.describe());
+				doStart(topology);
 			}
 			catch (Exception e) {
 				throw new KafkaException("Could not start stream: ", e);
 			}
 		}
+	}
+
+	private void doStart(Topology topology) {
+    Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
+		this.kafkaStreams = new KafkaStreams(topology, this.streamsConfig, this.clientSupplier);
+		this.kafkaStreamsConfigurer.configure(kafkaStreams);
+		if (this.cleanupConfig.cleanupOnStart()) {
+			this.kafkaStreams.cleanUp();
+		}
+		this.kafkaStreams.start();
+		this.running = true;
 	}
 
 	@Override
