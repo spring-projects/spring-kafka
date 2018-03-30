@@ -991,7 +991,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
 			if (this.transactionTemplate != null) {
-				innvokeRecordListenerInTx(records);
+				invokeRecordListenerInTx(records);
 			}
 			else {
 				doInvokeWithRecords(records);
@@ -1003,7 +1003,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 * @param records the records.
 		 */
 		@SuppressWarnings({ "rawtypes" })
-		private void innvokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
+		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
