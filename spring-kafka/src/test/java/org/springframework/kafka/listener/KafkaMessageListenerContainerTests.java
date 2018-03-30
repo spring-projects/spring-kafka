@@ -499,7 +499,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testRecordAckMock() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -512,6 +512,7 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		final CountDownLatch latch = new CountDownLatch(2);
 		MessageListener<Integer, String> messageListener = spy(
@@ -565,7 +566,7 @@ public class KafkaMessageListenerContainerTests {
 	private void testRecordAckMockForeignThreadGuts(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -578,6 +579,7 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
 		containerProps.setAckMode(ackMode);
 		final CountDownLatch latch = new CountDownLatch(2);
 		final List<Acknowledgment> acks = new ArrayList<>();
@@ -627,7 +629,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testNonResponsiveConsumerEvent() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq(""), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq(""), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -644,6 +646,7 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
 		containerProps.setNoPollThreshold(2.0f);
 		containerProps.setPollTimeout(10);
 		containerProps.setMonitorInterval(1);
@@ -1703,7 +1706,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testPauseResume() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -1735,6 +1738,7 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
@@ -1764,7 +1768,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInitialSeek() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		final CountDownLatch latch = new CountDownLatch(1);
 		given(consumer.poll(anyLong())).willAnswer(i -> {
@@ -1781,6 +1785,7 @@ public class KafkaMessageListenerContainerTests {
 				new TopicPartitionInitialOffset("foo", 5, SeekPosition.END),
 		};
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setClientId("clientId");
 		containerProps.setMessageListener((MessageListener) r -> { });
@@ -1868,7 +1873,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testAckModeCount() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
 		TopicPartition topicPartition = new TopicPartition("foo", 0);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records1 = new HashMap<>();
 		records1.put(topicPartition, Arrays.asList(
@@ -1911,6 +1916,7 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartitionInitialOffset[] topicPartitionOffset = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartitionOffset);
+		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.COUNT);
 		containerProps.setAckCount(3);
 		containerProps.setClientId("clientId");

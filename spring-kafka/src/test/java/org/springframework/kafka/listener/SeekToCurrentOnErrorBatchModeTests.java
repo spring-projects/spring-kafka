@@ -125,7 +125,7 @@ public class SeekToCurrentOnErrorBatchModeTests {
 
 		private int count;
 
-		@KafkaListener(topics = "foo")
+		@KafkaListener(topics = "foo", groupId = "grp")
 		public void foo(String in) {
 			this.contents.add(in);
 			this.deliveryLatch.countDown();
@@ -139,7 +139,7 @@ public class SeekToCurrentOnErrorBatchModeTests {
 		public ConsumerFactory consumerFactory() {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer(null, "", "-0")).willReturn(consumer);
+			given(consumerFactory.createConsumer("grp", "", "-0")).willReturn(consumer);
 			return consumerFactory;
 		}
 

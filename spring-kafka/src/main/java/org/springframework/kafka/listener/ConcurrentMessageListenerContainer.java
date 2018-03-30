@@ -55,8 +55,6 @@ import org.springframework.util.Assert;
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
-	private final ConsumerFactory<K, V> consumerFactory;
-
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
 
 	private int concurrency = 1;
@@ -70,9 +68,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
 			ContainerProperties containerProperties) {
-		super(containerProperties);
+		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		this.consumerFactory = consumerFactory;
 	}
 
 	public int getConcurrency() {

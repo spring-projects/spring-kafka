@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 
@@ -30,8 +31,10 @@ import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * The base implementation for the {@link MessageListenerContainer}.
@@ -104,6 +107,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	}
 
+	protected final ConsumerFactory<K, V> consumerFactory; // NOSONAR (final)
+
 	private final ContainerProperties containerProperties;
 
 	private final Object lifecycleMonitor = new Object();
@@ -120,9 +125,27 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean paused;
 
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param containerProperties the properties.
+	 * @deprecated in favor of
+	 * {@link #AbstractMessageListenerContainer(ConsumerFactory, ContainerProperties)}.
+	 */
+	@Deprecated
 	protected AbstractMessageListenerContainer(ContainerProperties containerProperties) {
-		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
+		this(null, containerProperties);
+	}
 
+	/**
+	 * Construct an instance with the provided factory and properties.
+	 * @param consumerFactory the factory.
+	 * @param containerProperties the properties.
+	 */
+	protected AbstractMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+			ContainerProperties containerProperties) {
+
+		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
+		this.consumerFactory = consumerFactory;
 		if (containerProperties.getTopics() != null) {
 			this.containerProperties = new ContainerProperties(containerProperties.getTopics());
 		}
@@ -219,6 +242,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public final void start() {
+		checkGroupId();
 		synchronized (this.lifecycleMonitor) {
 			if (!isRunning()) {
 				Assert.isTrue(
@@ -226,6 +250,21 @@ public abstract class AbstractMessageListenerContainer<K, V>
 						"A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				doStart();
 			}
+		}
+	}
+
+	public void checkGroupId() {
+		if (this.containerProperties.getTopicPartitions() == null) {
+			boolean hasGroupIdConsumerConfig = true; // assume true for non-standard containers
+			if (this.consumerFactory != null) { // we always have one for standard containers
+				Object groupIdConfig = this.consumerFactory.getConfigurationProperties()
+						.get(ConsumerConfig.GROUP_ID_CONFIG);
+				hasGroupIdConsumerConfig = groupIdConfig != null && groupIdConfig instanceof String
+						&& StringUtils.hasText((String) groupIdConfig);
+			}
+			Assert.state(hasGroupIdConsumerConfig || StringUtils.hasText(this.containerProperties.getGroupId()),
+					"No group.id found in consumer config, container properties, or @KafkaListener annotation; "
+					+ "a group.id is required when group management is used.");
 		}
 	}
 

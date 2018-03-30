@@ -102,8 +102,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private final AbstractMessageListenerContainer<K, V> container;
 
-	private final ConsumerFactory<K, V> consumerFactory;
-
 	private final TopicPartitionInitialOffset[] topicPartitions;
 
 	private volatile ListenerConsumer listenerConsumer;
@@ -159,10 +157,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	KafkaMessageListenerContainer(AbstractMessageListenerContainer<K, V> container,
 			ConsumerFactory<K, V> consumerFactory,
 			ContainerProperties containerProperties, TopicPartitionInitialOffset... topicPartitions) {
-		super(containerProperties);
+		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 		this.container = container == null ? this : container;
-		this.consumerFactory = consumerFactory;
 		if (topicPartitions != null) {
 			this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);
 		}
