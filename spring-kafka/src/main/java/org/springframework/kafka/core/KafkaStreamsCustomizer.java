@@ -20,8 +20,7 @@ import org.apache.kafka.streams.KafkaStreams;
 
 /**
  * Callback interface that can be used to configure {@link KafkaStreams} directly.
- * <p>Beans of type {@link KafkaStreamsCustomizer}s are automatically added to configuration.
- * </p>
+ *
  * @author Nurettin Yilmaz
  */
 @FunctionalInterface

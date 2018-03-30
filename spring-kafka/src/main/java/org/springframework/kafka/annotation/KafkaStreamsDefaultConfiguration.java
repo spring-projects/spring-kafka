@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.annotation;
 
-import java.util.List;
-import java.util.Optional;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 
@@ -62,13 +60,10 @@ public class KafkaStreamsDefaultConfiguration {
 
 	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
-			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME) ObjectProvider<StreamsConfig> streamsConfigProvider,
-			Optional<List<KafkaStreamsCustomizer>> kafkaStreamsCustomizers) {
+			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME) ObjectProvider<StreamsConfig> streamsConfigProvider) {
 		StreamsConfig streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
-			StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(streamsConfig);
-			kafkaStreamsCustomizers.ifPresent(streamsBuilderFactoryBean::addKafkaStreamsCustomizers);
-			return streamsBuilderFactoryBean;
+			return new StreamsBuilderFactoryBean(streamsConfig);
 		}
 		else {
 			throw new UnsatisfiedDependencyException(KafkaStreamsDefaultConfiguration.class.getName(),

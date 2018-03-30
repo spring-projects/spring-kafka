@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.core;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -38,7 +37,8 @@ import org.springframework.util.Assert;
  * An {@link AbstractFactoryBean} for the {@link StreamsBuilder} instance
  * and lifecycle control for the internal {@link KafkaStreams} instance.
  *
- * <p>Delegates {@link KafkaStreams} customizations to {@link KafkaStreamsConfigurer}</p>
+ * <p>A fine grained control on {@link KafkaStreams} can be achieved by
+ * {@link KafkaStreamsCustomizer}s</p>
  *
  * @author Artem Bilan
  * @author Ivan Ursul
@@ -58,9 +58,15 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private KafkaStreams kafkaStreams;
 
-	private KafkaStreamsConfigurer kafkaStreamsConfigurer = new KafkaStreamsConfigurer();
+	private KafkaStreamsCustomizer kafkaStreamsCustomizer = new CompositeKafkaStreamsCustomizer();
 
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
+
+	private KafkaStreams.StateListener stateListener;
+
+	private StateRestoreListener stateRestoreListener;
+
+	private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
 	private boolean autoStartup = true;
 
@@ -144,21 +150,21 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		this.clientSupplier = clientSupplier; // NOSONAR (sync)
 	}
 
-	public void addKafkaStreamsCustomizers(List<KafkaStreamsCustomizer> kafkaStreamsCustomizers) {
-		Assert.notNull(clientSupplier, "'kafkaStreamsCustomizers' must not be null");
-		this.kafkaStreamsConfigurer.addKafkaStreamsCustomizers(kafkaStreamsCustomizers);
+	public void setKafkaStreamsCustomizer(KafkaStreamsCustomizer kafkaStreamsCustomizer) {
+		Assert.notNull(kafkaStreamsCustomizer, "'kafkaStreamsCustomizer' must not be null");
+		this.kafkaStreamsCustomizer = kafkaStreamsCustomizer; // NOSONAR (sync)
 	}
 
 	public void setStateListener(KafkaStreams.StateListener stateListener) {
-		this.kafkaStreamsConfigurer.setStateListener(stateListener);
+		this.stateListener = stateListener;
 	}
 
 	public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
-		this.kafkaStreamsConfigurer.setUncaughtExceptionHandler(exceptionHandler);
+		this.uncaughtExceptionHandler = exceptionHandler;
 	}
 
 	public void setStateRestoreListener(StateRestoreListener stateRestoreListener) {
-		this.kafkaStreamsConfigurer.setStateRestoreListener(stateRestoreListener);
+		this.stateRestoreListener = stateRestoreListener;
 	}
 
 	/**
@@ -209,25 +215,26 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public synchronized void start() {
 		if (!this.running) {
 			try {
+				Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
 				Topology topology = getObject().build();
-				logger.debug(topology.describe());
-				doStart(topology);
+				if (logger.isDebugEnabled()) {
+					logger.debug(topology.describe());
+				}
+				this.kafkaStreams = new KafkaStreams(topology, this.streamsConfig, this.clientSupplier);
+				this.kafkaStreams.setStateListener(this.stateListener);
+				this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
+				this.kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
+				this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
+				if (this.cleanupConfig.cleanupOnStart()) {
+					this.kafkaStreams.cleanUp();
+				}
+				this.kafkaStreams.start();
+				this.running = true;
 			}
 			catch (Exception e) {
 				throw new KafkaException("Could not start stream: ", e);
 			}
 		}
-	}
-
-	private void doStart(Topology topology) {
-    Assert.notNull(this.streamsConfig, "'streamsConfig' must not be null");
-		this.kafkaStreams = new KafkaStreams(topology, this.streamsConfig, this.clientSupplier);
-		this.kafkaStreamsConfigurer.configure(kafkaStreams);
-		if (this.cleanupConfig.cleanupOnStart()) {
-			this.kafkaStreams.cleanUp();
-		}
-		this.kafkaStreams.start();
-		this.running = true;
 	}
 
 	@Override
