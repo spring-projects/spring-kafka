@@ -70,7 +70,8 @@ If you would like to control lifecycle manually (e.g. stop and start by some con
 Since `StreamsBuilderFactoryBean` utilize its internal `KafkaStreams` instance, it is safe to stop and restart it again - a new `KafkaStreams` is created on each `start()`.
 Also consider using different `StreamsBuilderFactoryBean` s, if you would like to control lifecycles for `KStream` instances separately.
 
-You can specify `KafkaStreams.StateListener` and `Thread.UncaughtExceptionHandler` options on the `StreamsBuilderFactoryBean` which are delegated to the internal `KafkaStreams` instance.
+You can specify `KafkaStreams.StateListener`, `Thread.UncaughtExceptionHandler` and `StateRestoreListener` options on the `StreamsBuilderFactoryBean` which are delegated to the internal `KafkaStreams` instance.
+Also apart from setting those options indirectly on `StreamsBuilderFactoryBean`, `KafkaStreamsCustomizer` callback interface can be used to configure inner `KafkaStreams` instance. Note that `KafkaStreamsCustomizer` will override the options which are given via `StreamsBuilderFactoryBean`.
 That internal `KafkaStreams` instance can be accessed via `StreamsBuilderFactoryBean.getKafkaStreams()` if you need to perform some `KafkaStreams` operations directly.
 You can autowire `StreamsBuilderFactoryBean` bean by type, but you should be sure that you use full type in the bean definition, for example:
 
