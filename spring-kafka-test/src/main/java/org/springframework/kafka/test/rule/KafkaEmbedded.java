@@ -225,7 +225,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	}
 
 	public Properties createBrokerProperties(int i) {
-		if (this.clientVersion.startsWith("1.0.0")) {
+		if (this.clientVersion.startsWith("1.0.")) {
 			return TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
 					true, this.kafkaPorts[i],
 					scala.Option.apply(null),
