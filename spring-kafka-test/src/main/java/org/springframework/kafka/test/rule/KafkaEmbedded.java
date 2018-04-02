@@ -89,7 +89,24 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	public static final long METADATA_PROPAGATION_TIMEOUT = 10000L;
 
-	private final String clientVersion;
+	private static final String clientVersion;
+
+	private static final Method testUtilsCreateBrokerConfigMethod;
+
+	static {
+		clientVersion = AppInfoParser.getVersion();
+		try {
+			testUtilsCreateBrokerConfigMethod = TestUtils.class.getDeclaredMethod("createBrokerConfig",
+					int.class, String.class, boolean.class, boolean.class, int.class,
+					scala.Option.class, scala.Option.class, scala.Option.class,
+					boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
+					int.class, scala.Option.class, int.class, boolean.class);
+		}
+		catch (NoSuchMethodException | SecurityException e) {
+			throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method");
+		}
+
+	}
 
 	private final int count;
 
@@ -133,7 +150,6 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @param topics the topics to create.
 	 */
 	public KafkaEmbedded(int count, boolean controlledShutdown, int partitions, String... topics) {
-		this.clientVersion = AppInfoParser.getVersion();
 		this.count = count;
 		this.kafkaPorts = new int[this.count]; // random ports by default.
 		this.controlledShutdown = controlledShutdown;
@@ -225,7 +241,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	}
 
 	public Properties createBrokerProperties(int i) {
-		if (this.clientVersion.startsWith("1.0.")) {
+		if (clientVersion.startsWith("1.0.")) {
 			return TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
 					true, this.kafkaPorts[i],
 					scala.Option.apply(null),
@@ -235,20 +251,15 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		}
 		else {
 			try {
-				Method method = TestUtils.class.getDeclaredMethod("createBrokerConfig",
-						int.class, String.class, boolean.class, boolean.class, int.class,
-						scala.Option.class, scala.Option.class, scala.Option.class,
-						boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
-						int.class, scala.Option.class, int.class, boolean.class);
-				return (Properties) method.invoke(null, i, this.zkConnect, this.controlledShutdown,
+				return (Properties) testUtilsCreateBrokerConfigMethod.invoke(null, i, this.zkConnect,
+					this.controlledShutdown,
 					true, this.kafkaPorts[i],
 					scala.Option.<SecurityProtocol>apply(null),
 					scala.Option.<File>apply(null),
 					scala.Option.<Properties>apply(null),
 					true, false, 0, false, 0, false, 0, scala.Option.<String>apply(null), 1, false);
 			}
-			catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException e) {
+			catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 				throw new RuntimeException(e);
 			}
 		}
