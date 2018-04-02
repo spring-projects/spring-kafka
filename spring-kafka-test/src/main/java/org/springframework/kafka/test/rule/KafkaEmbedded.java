@@ -95,17 +95,21 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	static {
 		clientVersion = AppInfoParser.getVersion();
-		try {
-			testUtilsCreateBrokerConfigMethod = TestUtils.class.getDeclaredMethod("createBrokerConfig",
-					int.class, String.class, boolean.class, boolean.class, int.class,
-					scala.Option.class, scala.Option.class, scala.Option.class,
-					boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
-					int.class, scala.Option.class, int.class, boolean.class);
+		if (clientVersion.startsWith("1.1.")) {
+			try {
+				testUtilsCreateBrokerConfigMethod = TestUtils.class.getDeclaredMethod("createBrokerConfig",
+						int.class, String.class, boolean.class, boolean.class, int.class,
+						scala.Option.class, scala.Option.class, scala.Option.class,
+						boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
+						int.class, scala.Option.class, int.class, boolean.class);
+			}
+			catch (NoSuchMethodException | SecurityException e) {
+				throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method");
+			}
 		}
-		catch (NoSuchMethodException | SecurityException e) {
-			throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method");
+		else {
+			testUtilsCreateBrokerConfigMethod = null;
 		}
-
 	}
 
 	private final int count;
@@ -241,7 +245,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	}
 
 	public Properties createBrokerProperties(int i) {
-		if (clientVersion.startsWith("1.0.")) {
+		if (testUtilsCreateBrokerConfigMethod == null) {
 			return TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
 					true, this.kafkaPorts[i],
 					scala.Option.apply(null),
