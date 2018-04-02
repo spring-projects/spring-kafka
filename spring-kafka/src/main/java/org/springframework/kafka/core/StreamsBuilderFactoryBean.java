@@ -58,7 +58,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private KafkaStreams kafkaStreams;
 
-	private KafkaStreamsCustomizer kafkaStreamsCustomizer = new CompositeKafkaStreamsCustomizer();
+	private KafkaStreamsCustomizer kafkaStreamsCustomizer;
 
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
 
@@ -156,15 +156,15 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	public void setStateListener(KafkaStreams.StateListener stateListener) {
-		this.stateListener = stateListener;
+		this.stateListener = stateListener; // NOSONAR (sync)
 	}
 
 	public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
-		this.uncaughtExceptionHandler = exceptionHandler;
+		this.uncaughtExceptionHandler = exceptionHandler; // NOSONAR (sync)
 	}
 
 	public void setStateRestoreListener(StateRestoreListener stateRestoreListener) {
-		this.stateRestoreListener = stateRestoreListener;
+		this.stateRestoreListener = stateRestoreListener; // NOSONAR (sync)
 	}
 
 	/**
@@ -224,7 +224,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
 				this.kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
-				this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
+				if (this.kafkaStreamsCustomizer != null) {
+					this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
+				}
 				if (this.cleanupConfig.cleanupOnStart()) {
 					this.kafkaStreams.cleanUp();
 				}
