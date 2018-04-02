@@ -4,6 +4,9 @@
 
 This version requires the 1.0.0 `kafka-clients` or higher.
 
+NOTE: The 1.1.x client is supported, with _version 2.1.5_, but you will need to override dependencies as described in <<deps-for-11x>>.
+The 1.1.x client will be supported natively in _version 2.2_.
+
 ==== JSON Improvements
 
 The `StringJsonMessageConverter` and `JsonSerializer` now add type information in `Headers`, allowing the converter and `JsonDeserializer` to create specific types on reception, based on the message itself rather than a fixed configured type.

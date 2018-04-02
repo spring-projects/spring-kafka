@@ -5,6 +5,8 @@
 
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
+NOTE: See <<deps-for-11x>> if you wish to use the 1.1.x `kafka-clients` jar with _version 2.1.x_.
+
 ==== JUnit
 
 `o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties:
