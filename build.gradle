@@ -78,7 +78,8 @@ subprojects { subproject ->
 		junitJupiterVersion = '5.1.0'
 		junitPlatformVersion = '1.1.0'
 		junitVintageVersion = '5.1.0'
-		kafkaVersion = '1.0.1'
+		kafkaVersion = '1.1.0'
+		log4jVersion = '2.10.0'
 		mockitoVersion = '2.15.0'
 		scalaVersion = '2.11'
 		slf4jVersion = '1.7.25'
@@ -198,6 +199,7 @@ project ('spring-kafka') {
 		testCompile "org.springframework:spring-tx:$springVersion"
 
 		testRuntime "org.slf4j:slf4j-log4j12:$slf4jVersion"
+		testRuntime "org.apache.logging.log4j:log4j-core:$log4jVersion"
 	}
 }
 
@@ -228,6 +230,8 @@ project ('spring-kafka-test') {
 
 		compile ("org.hamcrest:hamcrest-all:$hamcrestVersion", optional)
 		compile ("org.assertj:assertj-core:$assertjVersion", optional)
+		compile ("org.apache.logging.log4j:log4j-core:$log4jVersion", optional)
+
 	}
 }
 

@@ -37,6 +37,7 @@ import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.ValueMapper;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
 import org.apache.kafka.streams.processor.internals.StreamThread;
 import org.junit.Test;
@@ -193,8 +194,8 @@ public class KafkaStreamsTests {
 		@Bean
 		public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
 			KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
-			stream.mapValues(String::toUpperCase)
-					.mapValues(Foo::new)
+			stream.mapValues((ValueMapper<String, String>) String::toUpperCase)
+					.mapValues((ValueMapper<String, Foo>) Foo::new)
 					.through(FOOS, Produced.with(Serdes.Integer(), new JsonSerde<Foo>() {
 
 					}))

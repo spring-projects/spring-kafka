@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+	<Appenders>
+		<Console name="STDOUT" target="SYSTEM_OUT">
+			<PatternLayout pattern="%d %p [%t] [%c] - %m%n" />
+		</Console>
+	</Appenders>
+	<Loggers>
+		<Logger name="org.springframework.kafka" level="warn"/>
+		<Logger name="org.springframework.kafka.ReplyingKafkaTemplate" level="warn"/>
+		<Logger name="org.apache.kafka.clients" level="warn"/>
+		<Logger name="org.apache.kafka.common.network.Selector" level="error"/>
+		<Logger name="kafka.server.ReplicaFetcherThread" level="error"/>
+		<Logger name="org.apache.kafka.clients.producer.internals.TransactionManager" level="warn"/>
+		<Root level="warn">
+			<AppenderRef ref="STDOUT" />
+		</Root>
+	</Loggers>
+</Configuration>

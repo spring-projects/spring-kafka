@@ -46,7 +46,6 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
-import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.common.utils.Time;
 import org.junit.rules.ExternalResource;
 
@@ -89,27 +88,27 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	public static final long METADATA_PROPAGATION_TIMEOUT = 10000L;
 
-	private static final String clientVersion;
+//	private static final String clientVersion;
 
 	private static final Method testUtilsCreateBrokerConfigMethod;
 
 	static {
-		clientVersion = AppInfoParser.getVersion();
-		if (clientVersion.startsWith("1.1.")) {
-			try {
-				testUtilsCreateBrokerConfigMethod = TestUtils.class.getDeclaredMethod("createBrokerConfig",
-						int.class, String.class, boolean.class, boolean.class, int.class,
-						scala.Option.class, scala.Option.class, scala.Option.class,
-						boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
-						int.class, scala.Option.class, int.class, boolean.class);
-			}
-			catch (NoSuchMethodException | SecurityException e) {
-				throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method");
-			}
-		}
-		else {
+//		clientVersion = AppInfoParser.getVersion();
+//		if (clientVersion.startsWith("1.1.")) {
+//			try {
+//				testUtilsCreateBrokerConfigMethod = TestUtils.class.getDeclaredMethod("createBrokerConfig",
+//						int.class, String.class, boolean.class, boolean.class, int.class,
+//						scala.Option.class, scala.Option.class, scala.Option.class,
+//						boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
+//						int.class, scala.Option.class, int.class, boolean.class);
+//			}
+//			catch (NoSuchMethodException | SecurityException e) {
+//				throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method");
+//			}
+//		}
+//		else {
 			testUtilsCreateBrokerConfigMethod = null;
-		}
+//		}
 	}
 
 	private final int count;
@@ -251,7 +250,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 					scala.Option.apply(null),
 					scala.Option.apply(null),
 					scala.Option.apply(null),
-					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1);
+					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false);
 		}
 		else {
 			try {

@@ -62,7 +62,7 @@ public class KafkaJaasLoginModuleInitializerTests {
 		assertThat(kafkaConfiguration).hasSize(1);
 		assertThat(kafkaConfiguration[0].getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
 
-		JaasContext context = JaasContext.load(JaasContext.Type.CLIENT, null, Collections.emptyMap());
+		JaasContext context = JaasContext.loadClientContext(Collections.emptyMap());
 
 		List<AppConfigurationEntry> appConfigurationEntries = context.configurationEntries();
 		assertThat(appConfigurationEntries).hasSize(1);
