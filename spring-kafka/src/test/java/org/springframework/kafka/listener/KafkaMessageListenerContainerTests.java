@@ -664,6 +664,40 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testNonResponsiveConsumerEventNotIssuedWithActiveConsumer() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(isNull(), eq(""), isNull())).willReturn(consumer);
+		ConsumerRecords records = new ConsumerRecords(Collections.emptyMap());
+		CountDownLatch latch = new CountDownLatch(20);
+		given(consumer.poll(anyLong())).willAnswer(i -> {
+			Thread.sleep(100);
+			latch.countDown();
+			return records;
+		});
+		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
+				new TopicPartitionInitialOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setNoPollThreshold(2.0f);
+		containerProps.setPollTimeout(100);
+		containerProps.setMonitorInterval(1);
+		containerProps.setMessageListener(mock(MessageListener.class));
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		final AtomicInteger eventCounter = new AtomicInteger();
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof NonResponsiveConsumerEvent) {
+				eventCounter.incrementAndGet();
+			}
+		});
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		assertThat(eventCounter.get()).isEqualTo(0);
+	}
+
 	@Test
 	public void testBatchAck() throws Exception {
 		logger.info("Start batch ack");

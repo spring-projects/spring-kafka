@@ -415,6 +415,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private boolean consumerPaused;
 
+		private volatile long lastPoll = System.currentTimeMillis();
+
 		@SuppressWarnings("unchecked")
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
@@ -502,7 +504,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		protected void checkConsumer() {
-			long timeSinceLastPoll = System.currentTimeMillis() - last;
+			long timeSinceLastPoll = System.currentTimeMillis() - this.lastPoll;
 			if (((float) timeSinceLastPoll) / (float) this.containerProperties.getPollTimeout()
 					> this.containerProperties.getNoPollThreshold()) {
 				publishNonResponsiveConsumerEvent(timeSinceLastPoll, this.consumer);
@@ -695,6 +697,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						publishConsumerPausedEvent(this.consumer.assignment());
 					}
 					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
+					this.lastPoll = System.currentTimeMillis();
 					if (this.consumerPaused && !isPaused()) {
 						if (this.logger.isDebugEnabled()) {
 							this.logger.debug("Resuming consumption from: " + this.consumer.paused());
