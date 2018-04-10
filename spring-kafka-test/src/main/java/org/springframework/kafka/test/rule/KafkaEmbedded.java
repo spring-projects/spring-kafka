@@ -221,6 +221,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 			brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
 			brokerConfigProperties.setProperty(KafkaConfig.ControllerSocketTimeoutMsProp(), "1000");
 			brokerConfigProperties.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
+			brokerConfigProperties.setProperty(KafkaConfig.ReplicaHighWatermarkCheckpointIntervalMsProp(),
+					String.valueOf(Long.MAX_VALUE));
 			if (this.brokerProperties != null) {
 				this.brokerProperties.forEach(brokerConfigProperties::put);
 			}

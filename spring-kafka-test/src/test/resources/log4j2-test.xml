@@ -6,8 +6,7 @@
 		</Console>
 	</Appenders>
 	<Loggers>
-		<Logger name="org.springframework.kafka" level="warn"/>
-		<Logger name="org.springframework.kafka.ReplyingKafkaTemplate" level="warn"/>
+		<Logger name="org.springframework.kafka.test" level="warn"/>
 		<Logger name="org.apache.kafka.clients" level="warn"/>
 		<Logger name="org.apache.kafka.clients.NetworkClient" level="error"/>
 		<Logger name="org.apache.kafka.common.network.Selector" level="error"/>

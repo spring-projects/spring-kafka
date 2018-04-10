@@ -79,7 +79,7 @@ subprojects { subproject ->
 		junitPlatformVersion = '1.1.0'
 		junitVintageVersion = '5.1.0'
 		kafkaVersion = '1.1.0'
-		log4jVersion = '2.10.0'
+		log4jVersion = '2.11.0'
 		mockitoVersion = '2.15.0'
 		scalaVersion = '2.11'
 		slf4jVersion = '1.7.25'
@@ -108,6 +108,10 @@ subprojects { subproject ->
 
 		// To avoid compiler warnings about @API annotations in JUnit code
 		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
+
+		testRuntime "org.slf4j:slf4j-api:$slf4jVersion"
+		testRuntime "org.apache.logging.log4j:log4j-core:$log4jVersion"
+		testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -184,7 +188,6 @@ project ('spring-kafka') {
 		compile ("org.apache.kafka:kafka-streams:$kafkaVersion") {
 			optional it
 			exclude group: 'org.slf4j', module: 'slf4j-api'
-			exclude group: 'org.slf4j', module: 'slf4j-log4j12'
 		}
 
 		compile ("com.fasterxml.jackson.core:jackson-core:$jacksonVersion", optional)
@@ -197,9 +200,6 @@ project ('spring-kafka') {
 		testCompile project (":spring-kafka-test")
 		testCompile "org.assertj:assertj-core:$assertjVersion"
 		testCompile "org.springframework:spring-tx:$springVersion"
-
-		testRuntime "org.slf4j:slf4j-log4j12:$slf4jVersion"
-		testRuntime "org.apache.logging.log4j:log4j-core:$log4jVersion"
 	}
 }
 
@@ -213,13 +213,8 @@ project ('spring-kafka-test') {
 
 		compile ("org.apache.kafka:kafka-clients:$kafkaVersion:test")
 
-		compile ("org.apache.kafka:kafka_$scalaVersion:$kafkaVersion") {
-			exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-		}
-
-		compile ("org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test") {
-			exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-		}
+		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
+		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
 
 		compile ("junit:junit:$junit4Version") {
 			exclude group: 'org.hamcrest', module: 'hamcrest-core'
@@ -231,7 +226,6 @@ project ('spring-kafka-test') {
 		compile ("org.hamcrest:hamcrest-all:$hamcrestVersion", optional)
 		compile ("org.assertj:assertj-core:$assertjVersion", optional)
 		compile ("org.apache.logging.log4j:log4j-core:$log4jVersion", optional)
-
 	}
 }
 
