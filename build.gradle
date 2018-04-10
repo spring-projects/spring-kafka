@@ -82,7 +82,6 @@ subprojects { subproject ->
 		log4jVersion = '2.11.0'
 		mockitoVersion = '2.15.0'
 		scalaVersion = '2.11'
-		slf4jVersion = '1.7.25'
 		springRetryVersion = '1.2.2.RELEASE'
 		springVersion = '5.0.4.RELEASE'
 		springDataCommonsVersion = '2.0.4.RELEASE'
@@ -109,7 +108,6 @@ subprojects { subproject ->
 		// To avoid compiler warnings about @API annotations in JUnit code
 		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
-		testRuntime "org.slf4j:slf4j-api:$slf4jVersion"
 		testRuntime "org.apache.logging.log4j:log4j-core:$log4jVersion"
 		testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
 	}
@@ -182,13 +180,8 @@ project ('spring-kafka') {
 		compile "org.springframework:spring-messaging:$springVersion"
 		compile "org.springframework:spring-tx:$springVersion"
 		compile "org.springframework.retry:spring-retry:$springRetryVersion"
-		compile ("org.apache.kafka:kafka-clients:$kafkaVersion") {
-			exclude group: 'org.slf4j', module: 'slf4j-api'
-		}
-		compile ("org.apache.kafka:kafka-streams:$kafkaVersion") {
-			optional it
-			exclude group: 'org.slf4j', module: 'slf4j-api'
-		}
+		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
+		compile ("org.apache.kafka:kafka-streams:$kafkaVersion", optional)
 
 		compile ("com.fasterxml.jackson.core:jackson-core:$jacksonVersion", optional)
 		compile ("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion", optional)
