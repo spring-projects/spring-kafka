@@ -265,10 +265,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			result = callback.doInOperations(this);
 		}
 		catch (Exception e) {
-			producer.abortTransaction();
-			this.producers.remove();
-			closeProducer(producer, false);
-			producer = null;
+			try {
+				producer.abortTransaction();
+			}
+			finally {
+				this.producers.remove();
+				closeProducer(producer, false);
+				producer = null;
+			}
 		}
 		if (producer != null) {
 			try {
@@ -328,12 +332,19 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * @return a Future for the {@link RecordMetadata}.
 	 */
 	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
+		if (this.transactional) {
+			Assert.state(inTransaction(),
+					"No transaction is in process; "
+						+ "possible solutions: run the template operation within the scope of a "
+						+ "template.executeInTransaction() operation, start a transaction with @Transactional "
+						+ "before invoking the template method, "
+						+ "run in a transaction started by a listener container when consuming a record");
+		}
 		final Producer<K, V> producer = getTheProducer();
 		if (this.logger.isTraceEnabled()) {
 			this.logger.trace("Sending: " + producerRecord);
 		}
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
-		final boolean inLocalTx = inTransaction();
 		producer.send(producerRecord, new Callback() {
 
 			@Override
@@ -365,8 +376,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 					}
 				}
 				finally {
-					if (KafkaTemplate.this.producers.get() == null) {
-						closeProducer(producer, inLocalTx);
+					if (!KafkaTemplate.this.transactional) {
+						closeProducer(producer, false);
 					}
 				}
 			}
@@ -381,8 +392,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return future;
 	}
 
+
 	protected boolean inTransaction() {
-		return this.producers.get() != null || TransactionSynchronizationManager.isActualTransactionActive();
+		return this.transactional && (this.producers.get() != null
+				|| TransactionSynchronizationManager.getResource(this.producerFactory) != null
+				|| TransactionSynchronizationManager.isActualTransactionActive());
 	}
 
 	private Producer<K, V> getTheProducer() {
