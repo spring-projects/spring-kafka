@@ -302,9 +302,13 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 
 		@Override
-		public synchronized void close() {
-			if (this.cache != null && !this.cache.contains(this)) {
-				this.cache.offer(this);
+		public void close() {
+			if (this.cache != null) {
+				synchronized (this) {
+					if (!this.cache.contains(this)) {
+						this.cache.offer(this);
+					}
+				}
 			}
 		}
 
