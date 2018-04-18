@@ -111,6 +111,8 @@ In the following example we use the `JsonSerde` to serialize and deserialize the
 stream.through(Serdes.Integer(), new JsonSerde<>(Foo.class), "foos");
 ----
 
+IMPORTANT: Since Kafka Streams do not support headers, the `addTypeInfo` property on the `JsonSerializer` is ignored.
+
 ==== Configuration
 
 To configure the Kafka Streams environment, the `StreamsBuilderFactoryBean` requires a `Map` of particular properties or a `StreamsConfig` instance.
