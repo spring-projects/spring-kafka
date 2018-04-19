@@ -1866,6 +1866,17 @@ The `ContainerStoppingBatchErrorHandler` (used with batch listeners) will stop t
 After the container stops, an exception wrapping the `ListenerExecutionFailedException` is thrown.
 This is to cause the transaction to roll back (if transactions are enabled).
 
+[[after-rollback]]
+===== After Rollback Processor
+
+When using transactions, if the listener container throws an exception (and an error handler, if present, throws an exception), the transaction is rolled back.
+By default, any unprocessed records (including the failed record) will be re-fetched on the next poll.
+This is achieved by performing `seek` operations in the `DefaultAfterRollbackProcessor`.
+With a batch listener, the entire batch of records will be reprocessed (the container has no knowledge of which record in the batch failed).
+To modify this behavior, configure the listener container with a custom `AfterRollbackProcessor`.
+For example, with a record-based listener, you might want to keep track of the failed record and give up after some number of attempts - perhaps by publishing it to a dead-letter topic.
+
+
 [[kerberos]]
 ==== Kerberos
 

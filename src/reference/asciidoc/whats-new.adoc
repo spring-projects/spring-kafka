@@ -11,3 +11,8 @@ The class `ContainerProperties` has been moved from `org.springframework.kafka.l
 The enum `AckMode` has been moved from `AbstractMessageListenerContainer` to `ContainerProperties`.
 
 `setBatchErrorHandler()` and `setErrorHandler()` methods have been moved from `ContainterProperties` to `AbstractMessageListenerContainer` (and `AbstractKafkaListenerContainerFactory`).
+
+==== After rollback processing
+
+A new `AfterRollbackProcessor` strategy is provided - see <<after-rollback>> for more information.
+(Added in 2.1.6).
