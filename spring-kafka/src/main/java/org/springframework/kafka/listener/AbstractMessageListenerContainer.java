@@ -115,6 +115,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private int phase = DEFAULT_PHASE;
 
+	private AfterRollbackProcessor<K, V> afterRollbackProcessor = new DefaultAfterRollbackProcessor<>();
+
 	private volatile boolean running = false;
 
 	protected AbstractMessageListenerContainer(ContainerProperties containerProperties) {
@@ -187,6 +189,22 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Override
 	public int getPhase() {
 		return this.phase;
+	}
+
+	protected AfterRollbackProcessor<K, V> getAfterRollbackProcessor() {
+		return this.afterRollbackProcessor;
+	}
+
+	/**
+	 * Set a processor to perform seeks on unprocessed records after a rollback.
+	 * Default will seek to current position all topics/partitions, including the failed
+	 * record.
+	 * @param afterRollbackProcessor the processor.
+	 * @since 1.3.5
+	 */
+	public void setAfterRollbackProcessor(AfterRollbackProcessor<K, V> afterRollbackProcessor) {
+		Assert.notNull(afterRollbackProcessor, "'afterRollbackProcessor' cannot be null");
+		this.afterRollbackProcessor = afterRollbackProcessor;
 	}
 
 	public ContainerProperties getContainerProperties() {

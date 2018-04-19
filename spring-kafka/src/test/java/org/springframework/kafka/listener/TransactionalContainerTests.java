@@ -33,6 +33,8 @@ import static org.mockito.Mockito.verify;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +65,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode;
 import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
@@ -161,14 +164,12 @@ public class TransactionalContainerTests {
 	@Test
 	public void testConsumeAndProduceTransactionRollback() throws Exception {
 		Consumer consumer = mock(Consumer.class);
-		final TopicPartition topicPartition = new TopicPartition("foo", 0);
-		willAnswer(i -> {
-			i.getArgumentAt(1, ConsumerRebalanceListener.class)
-					.onPartitionsAssigned(Collections.singletonList(topicPartition));
-			return null;
-		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
-		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(topicPartition,
-				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))));
+		final TopicPartition topicPartition0 = new TopicPartition("foo", 0);
+		final TopicPartition topicPartition1 = new TopicPartition("foo", 1);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
+		recordMap.put(topicPartition0, Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value")));
+		recordMap.put(topicPartition1, Collections.singletonList(new ConsumerRecord<>("foo", 1, 0, "key", "value")));
+		ConsumerRecords records = new ConsumerRecords(recordMap);
 		final AtomicBoolean done = new AtomicBoolean();
 		willAnswer(i -> {
 			if (done.compareAndSet(false, true)) {
@@ -179,6 +180,11 @@ public class TransactionalContainerTests {
 				return null;
 			}
 		}).given(consumer).poll(anyLong());
+		final CountDownLatch seekLatch = new CountDownLatch(2);
+		willAnswer(i -> {
+			seekLatch.countDown();
+			return null;
+		}).given(consumer).seek(any(), anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		willReturn(consumer).given(cf).createConsumer("group", null);
 		Producer producer = mock(Producer.class);
@@ -191,7 +197,8 @@ public class TransactionalContainerTests {
 		given(pf.transactionCapable()).willReturn(true);
 		given(pf.createProducer()).willReturn(producer);
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		ContainerProperties props = new ContainerProperties("foo");
+		ContainerProperties props = new ContainerProperties(new TopicPartitionInitialOffset("foo", 0),
+				new TopicPartitionInitialOffset("foo", 1));
 		props.setGroupId("group");
 		props.setTransactionManager(tm);
 		final KafkaTemplate template = new KafkaTemplate(pf);
@@ -203,6 +210,7 @@ public class TransactionalContainerTests {
 		container.setBeanName("rollback");
 		container.start();
 		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(seekLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(producer);
 		inOrder.verify(producer).beginTransaction();
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
@@ -212,6 +220,76 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer, never()).commitTransaction();
 		inOrder.verify(producer).abortTransaction();
 		inOrder.verify(producer).close();
+		verify(consumer).seek(topicPartition0, 0);
+		verify(consumer).seek(topicPartition1, 0);
+		verify(consumer, never()).commitSync(any());
+		container.stop();
+		verify(pf, times(1)).createProducer();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	public void testConsumeAndProduceTransactionRollbackBatch() throws Exception {
+		Consumer consumer = mock(Consumer.class);
+		final TopicPartition topicPartition0 = new TopicPartition("foo", 0);
+		final TopicPartition topicPartition1 = new TopicPartition("foo", 1);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
+		recordMap.put(topicPartition0, Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value")));
+		recordMap.put(topicPartition1, Collections.singletonList(new ConsumerRecord<>("foo", 1, 0, "key", "value")));
+		ConsumerRecords records = new ConsumerRecords(recordMap);
+		final AtomicBoolean done = new AtomicBoolean();
+		willAnswer(i -> {
+			if (done.compareAndSet(false, true)) {
+				return records;
+			}
+			else {
+				Thread.sleep(500);
+				return null;
+			}
+		}).given(consumer).poll(anyLong());
+		final CountDownLatch seekLatch = new CountDownLatch(2);
+		willAnswer(i -> {
+			seekLatch.countDown();
+			return null;
+		}).given(consumer).seek(any(), anyLong());
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		willReturn(consumer).given(cf).createConsumer("group", null);
+		Producer producer = mock(Producer.class);
+		final CountDownLatch closeLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			closeLatch.countDown();
+			return null;
+		}).given(producer).close();
+		ProducerFactory pf = mock(ProducerFactory.class);
+		given(pf.transactionCapable()).willReturn(true);
+		given(pf.createProducer()).willReturn(producer);
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		ContainerProperties props = new ContainerProperties(new TopicPartitionInitialOffset("foo", 0),
+				new TopicPartitionInitialOffset("foo", 1));
+		props.setGroupId("group");
+		props.setTransactionManager(tm);
+		final KafkaTemplate template = new KafkaTemplate(pf);
+		props.setMessageListener((BatchMessageListener) recordlist -> {
+			template.send("bar", "baz");
+			throw new RuntimeException("fail");
+		});
+		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
+		container.setBeanName("rollback");
+		container.start();
+		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(seekLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		InOrder inOrder = inOrder(producer);
+		inOrder.verify(producer).beginTransaction();
+		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(producer).send(captor.capture(), any(Callback.class));
+		assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
+		inOrder.verify(producer, never()).sendOffsetsToTransaction(anyMap(), anyString());
+		inOrder.verify(producer, never()).commitTransaction();
+		inOrder.verify(producer).abortTransaction();
+		inOrder.verify(producer).close();
+		verify(consumer).seek(topicPartition0, 0);
+		verify(consumer).seek(topicPartition1, 0);
+		verify(consumer, never()).commitSync(any());
 		container.stop();
 		verify(pf, times(1)).createProducer();
 	}

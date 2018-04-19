@@ -38,6 +38,10 @@ To restore the previous behavior of using the factory configured `group.id`, set
 For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` as a bean.
 See <<testing>> for more information.
 
+==== After rollback processing
+
+Starting with _version 1.3.5_, a new `AfterRollbackProcessor` strategy is provided - see <<after-rollback>> for more information.
+
 ==== Kerberos Configuration
 
 Support for configuring Kerberos is now provided.

@@ -804,18 +804,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			catch (RuntimeException e) {
 				this.logger.error("Transaction rolled back", e);
-				Map<TopicPartition, Long> seekOffsets = new HashMap<>();
-				Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-				while (iterator.hasNext()) {
-					ConsumerRecord<K, V> record = iterator.next();
-					TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-					if (!seekOffsets.containsKey(topicPartition)) {
-						seekOffsets.put(topicPartition, record.offset());
-					}
-				}
-				for (Entry<TopicPartition, Long> entry : seekOffsets.entrySet()) {
-					this.consumer.seek(entry.getKey(), entry.getValue());
-				}
+				getAfterRollbackProcessor().process(recordList, this.consumer);
 			}
 		}
 
@@ -850,7 +839,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			catch (RuntimeException e) {
-				if (this.containerProperties.isAckOnError() && !this.autoCommit) {
+				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
 					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
 						this.acks.add(record);
 					}
@@ -860,7 +849,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				try {
 					this.batchErrorHandler.handle(e, records);
+					// if the handler handled the error (no exception), go ahead and commit
 					if (producer != null) {
+						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
+							this.acks.add(record);
+						}
 						sendOffsetsToTransaction(producer);
 					}
 				}
@@ -920,8 +913,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 				catch (RuntimeException e) {
 					this.logger.error("Transaction rolled back", e);
-					this.consumer.seek(new TopicPartition(record.topic(), record.partition()), record.offset());
-					break;
+					List<ConsumerRecord<K, V>> unprocessed = new ArrayList<>();
+					unprocessed.add(record);
+					while (iterator.hasNext()) {
+						unprocessed.add(iterator.next());
+					}
+					getAfterRollbackProcessor().process(unprocessed, this.consumer);
 				}
 			}
 		}
@@ -957,45 +954,11 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				else {
 					this.listener.onMessage(record);
 				}
-				if (this.isRecordAck) {
-					Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
-							Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-									new OffsetAndMetadata(record.offset() + 1));
-					if (producer == null) {
-						if (this.containerProperties.isSyncCommits()) {
-							this.consumer.commitSync(offsetsToCommit);
-						}
-						else {
-							this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
-						}
-					}
-					else {
-						this.acks.add(record);
-					}
-				}
-				else if (!this.isAnyManualAck && !this.autoCommit) {
-					this.acks.add(record);
-				}
-				if (producer != null) {
-					sendOffsetsToTransaction(producer);
-				}
+				ackCurrent(record, producer);
 			}
 			catch (RuntimeException e) {
 				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
-					if (this.isRecordAck) {
-						Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
-								Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-										new OffsetAndMetadata(record.offset() + 1));
-						if (this.containerProperties.isSyncCommits()) {
-							this.consumer.commitSync(offsetsToCommit);
-						}
-						else {
-							this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
-						}
-					}
-					else if (!this.isAnyManualAck) {
-						this.acks.add(record);
-					}
+					ackCurrent(record, producer);
 				}
 				if (this.errorHandler == null) {
 					throw e;
@@ -1021,6 +984,39 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			return null;
+		}
+
+		public void ackCurrent(final ConsumerRecord<K, V> record, @SuppressWarnings("rawtypes") Producer producer) {
+			if (this.isRecordAck) {
+				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
+						Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
+								new OffsetAndMetadata(record.offset() + 1));
+				if (producer == null) {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("Committing: " + offsetsToCommit);
+					}
+					if (this.containerProperties.isSyncCommits()) {
+						this.consumer.commitSync(offsetsToCommit);
+					}
+					else {
+						this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
+					}
+				}
+				else {
+					this.acks.add(record);
+				}
+			}
+			else if (!this.isAnyManualAck && !this.autoCommit) {
+				this.acks.add(record);
+			}
+			if (producer != null) {
+				try {
+					sendOffsetsToTransaction(producer);
+				}
+				catch (Exception e) {
+					this.logger.error("Send offsets to transaction failed", e);
+				}
+			}
 		}
 
 		@SuppressWarnings({ "unchecked", "rawtypes" })
