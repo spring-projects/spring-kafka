@@ -24,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+import org.springframework.kafka.listener.AfterRollbackProcessor;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -67,6 +68,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Boolean batchListener;
 
 	private ApplicationEventPublisher applicationEventPublisher;
+
+	private AfterRollbackProcessor<K, V> afterRollbackProcessor;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -163,6 +166,17 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Set a processor to invoke after a transaction rollback; typically will
+	 * seek the unprocessed topic/partition to reprocess the records.
+	 * The default does so, including the failed record.
+	 * @param afterRollbackProcessor the processor.
+	 * @since 1.3.5
+	 */
+	public void setAfterRollbackProcessor(AfterRollbackProcessor<K, V> afterRollbackProcessor) {
+		this.afterRollbackProcessor = afterRollbackProcessor;
+	}
+
+	/**
 	 * Obtain the properties template for this factory - set properties as needed
 	 * and they will be copied to a final properties instance for the endpoint.
 	 * @return the properties.
@@ -232,6 +246,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
 				"messageListener", "ackCount", "ackTime");
+		if (this.afterRollbackProcessor != null) {
+			instance.setAfterRollbackProcessor(this.afterRollbackProcessor);
+		}
 		if (this.containerProperties.getAckCount() > 0) {
 			properties.setAckCount(this.containerProperties.getAckCount());
 		}

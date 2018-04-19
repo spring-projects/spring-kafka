@@ -513,7 +513,7 @@ public class ConcurrentMessageListenerContainerTests {
 			}
 		}
 		assertThat(consumer.position(new TopicPartition(topic9, 0))).isEqualTo(1);
-		// this consumer is positioned at 1, the next offset after the successfully
+		// this consumer is positioned at 2, the next offset after the successfully
 		// processed 'qux'
 		// it has been updated even 'baz' failed
 		for (int i = 0; i < 100; i++) {

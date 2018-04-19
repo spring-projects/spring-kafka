@@ -1165,6 +1165,17 @@ public interface KafkaListenerErrorHandler {
 As you can see, you have access to the spring-messaging `Message<?>` object produced by the message converter and the exception that was thrown by the listener, wrapped in a `ListenerExecutionFailedException`.
 The error handler can throw the original or a new exception which will be thrown to the container. Anything returned by the error handler is ignored.
 
+[[after-rollback]]
+===== After Rollback Processor
+
+When using transactions, if the listener container throws an exception (and an error handler, if present, throws an exception), the transaction is rolled back.
+By default, any unprocessed records (including the failed record) will be re-fetched on the next poll.
+This is achieved by performing `seek` operations in the `DefaultAfterRollbackProcessor`.
+With a batch listener, the entire batch of records will be reprocessed (the container has no knowledge of which record in the batch failed).
+To modify this behavior, configure the listener container with a custom `AfterRollbackProcessor`.
+For example, with a record-based listener, you might want to keep track of the failed record and give up after some number of attempts - perhaps by publishing it to a dead-letter topic.
+
+
 [[kerberos]]
 ==== Kerberos
 
