@@ -216,10 +216,21 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		return this.producer;
 	}
 
+	/**
+	 * Subclasses must return a raw producer which will be wrapped in a
+	 * {@link CloseSafeProducer}.
+	 * @return the producer.
+	 */
 	protected Producer<K, V> createKafkaProducer() {
 		return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
 	}
 
+	/**
+	 * Subclasses must return a producer from the {@link #getCache()} or a
+	 * new raw producer wrapped in a {@link CloseSafeProducer}.
+	 * @return the producer - cannot be null.
+	 * @since 1.3
+	 */
 	protected Producer<K, V> createTransactionalProducer() {
 		Producer<K, V> producer = this.cache.poll();
 		if (producer == null) {
@@ -235,14 +246,28 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 	}
 
-	private static class CloseSafeProducer<K, V> implements Producer<K, V> {
+	protected BlockingQueue<CloseSafeProducer<K, V>> getCache() {
+		return this.cache;
+	}
+
+	/**
+	 * A wrapper class for the delegate.
+	 *
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 *
+	 */
+	protected static class CloseSafeProducer<K, V> implements Producer<K, V> {
 
 		private final Producer<K, V> delegate;
 
 		private final BlockingQueue<CloseSafeProducer<K, V>> cache;
 
+		private volatile boolean txFailed;
+
 		CloseSafeProducer(Producer<K, V> delegate) {
 			this(delegate, null);
+			Assert.isTrue(!(delegate instanceof CloseSafeProducer), "Cannot double-wrap a producer");
 		}
 
 		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache) {
@@ -282,7 +307,21 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public void beginTransaction() throws ProducerFencedException {
-			this.delegate.beginTransaction();
+			try {
+				this.delegate.beginTransaction();
+			}
+			catch (RuntimeException e) {
+				this.txFailed = true;
+				logger.error("Illegal transaction state; producer removed from cache; possible cause: "
+						+ "broker restarted during transaction", e);
+				try {
+					this.delegate.close();
+				}
+				catch (Exception ee) {
+					// empty
+				}
+				throw e;
+			}
 		}
 
 		@Override
@@ -303,7 +342,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public void close() {
-			if (this.cache != null) {
+			if (this.cache != null && !this.txFailed) {
 				synchronized (this) {
 					if (!this.cache.contains(this)) {
 						this.cache.offer(this);

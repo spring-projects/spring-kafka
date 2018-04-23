@@ -258,8 +258,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		Producer<K, V> producer = this.producers.get();
 		Assert.state(producer == null, "Nested calls to 'executeInTransaction' are not allowed");
 		producer = this.producerFactory.createProducer();
-		this.producers.set(producer);
 		producer.beginTransaction();
+		this.producers.set(producer);
 		T result = null;
 		try {
 			result = callback.doInOperations(this);
