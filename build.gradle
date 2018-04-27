@@ -1,10 +1,12 @@
 buildscript {
+	ext.kotlinVersion = '1.2.40'
 	repositories {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
 		classpath 'io.spring.gradle:docbook-reference-plugin:0.3.1'
 		classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.3'
+		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
 	}
 }
 
@@ -49,14 +51,22 @@ subprojects { subproject ->
 	apply plugin: 'idea'
 	apply plugin: 'jacoco'
 	apply plugin: 'checkstyle'
+	apply plugin: 'kotlin'
 
 	compileJava {
 		sourceCompatibility = 1.8
 		targetCompatibility = 1.8
 	}
 
+	compileTestKotlin {
+		kotlinOptions {
+			jvmTarget = '1.8'
+		}
+	}
+
 	ext {
 		assertjVersion = '3.9.1'
+		assertkVersion = '0.10'
 		hamcrestVersion = '1.3'
 		jacksonVersion = '2.9.5'
 		jaywayJsonPathVersion = '2.4.0'
@@ -94,6 +104,13 @@ subprojects { subproject ->
 		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
 		testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+
+		testCompile("com.willowtreeapps.assertk:assertk:$assertkVersion") {
+				exclude group: 'org.jetbrains.kotlin', module: 'kotlin-reflect'
+		}
+
+		testCompile "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+		testRuntime "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
 	}
 
 	// enable all compiler warnings; individual projects may customize further
