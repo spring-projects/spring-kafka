@@ -61,7 +61,7 @@ class EnableKafkaKotlinTests {
 
 	@Configuration
 	@EnableKafka
-	open class Config {
+	class Config {
 
 		lateinit var received: String
 
@@ -71,7 +71,7 @@ class EnableKafkaKotlinTests {
 		private lateinit var brokerAddresses: String
 
 		@Bean
-		open fun kpf(): ProducerFactory<String, String> {
+		fun kpf(): ProducerFactory<String, String> {
 			val configs = HashMap<String, Any>()
 			configs[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = this.brokerAddresses
 			configs[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
@@ -80,7 +80,7 @@ class EnableKafkaKotlinTests {
 		}
 
 		@Bean
-		open fun kcf(): ConsumerFactory<String, String> {
+		fun kcf(): ConsumerFactory<String, String> {
 			val configs = HashMap<String, Any>()
 			configs["foo"] = "bar"
 			configs[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = this.brokerAddresses
@@ -92,12 +92,12 @@ class EnableKafkaKotlinTests {
 		}
 
 		@Bean
-		open fun kt(): KafkaTemplate<String, String> {
+		fun kt(): KafkaTemplate<String, String> {
 			return KafkaTemplate(kpf())
 		}
 
 		@Bean
-		open fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
+		fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
 			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
 				= ConcurrentKafkaListenerContainerFactory()
 			factory.consumerFactory = kcf()
