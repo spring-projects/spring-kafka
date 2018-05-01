@@ -28,8 +28,8 @@ compile 'org.springframework.kafka:spring-kafka:{spring-kafka-version}'
 [[compatibility]]
 ===== Compatibility
 
-- Apache Kafka Clients 1.0.0
-- Spring Framework 5.0.x
+- Apache Kafka Clients 1.1.0
+- Spring Framework 5.1.x
 - Minimum Java version: 8
 
 ===== Very, Very Quick
