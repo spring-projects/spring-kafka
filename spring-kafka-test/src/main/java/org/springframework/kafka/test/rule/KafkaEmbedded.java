@@ -104,7 +104,9 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 						int.class, scala.Option.class, int.class, boolean.class);
 			}
 			catch (NoSuchMethodException | SecurityException e) {
-				throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method");
+				throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method, "
+						+ "possible mismatched versions of the client/broker jars; see the appendix in "
+						+ "the reference manual when overriding kafka-clients to version " + clientVersion);
 			}
 		}
 		else {
