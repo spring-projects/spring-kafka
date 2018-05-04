@@ -102,6 +102,54 @@ Convenient constants `KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS` and `KafkaEmb
 With the `KafkaEmbedded.brokerProperties(Map<String, String>)` you can provide additional properties for the Kafka server(s).
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
 
+
+==== Using the Same Broker(s) for Multiple Test Classes
+
+There is no built-in support for this, but it can be achieved with something similar to the following:
+
+[source, java]
+----
+public final class KafkaEmbeddedHolder {
+
+	private static KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(1, false);
+
+	private static boolean started;
+
+	public static KafkaEmbedded getKafkaEmbedded() {
+		if (!started) {
+			try {
+				kafkaEmbedded.before();
+			}
+			catch (Exception e) {
+				throw new KafkaException(e);
+			}
+			started = true;
+		}
+		return kafkaEmbedded;
+	}
+
+	private KafkaEmbeddedHolder() {
+		super();
+	}
+
+}
+----
+
+And then, in each test class:
+
+[source, java]
+----
+static {
+    KafkaEmbeddedHolder.getKafkaEmbedded().addTopics(topic1, topic2);
+}
+
+private static KafkaEmbedded embeddedKafka = KafkaEmbeddedHolder.getKafkaEmbedded();
+----
+
+IMPORTANT: This example provides no mechanism for shutting down the broker(s) when all tests are complete.
+This could be a problem if, say, you run your tests in a gradle daemon.
+You should not use this technique in such a situation, or use something to call `destroy()` on the `KafkaEmbedded` when your tests are complete.
+
 ==== @EmbeddedKafka Annotation
 It is generally recommended to use the rule as a `@ClassRule` to avoid starting/stopping the broker between tests (and use a different topic for each test).
 Starting with _version 2.0_, if you are using Spring's test application context caching, you can also declare a `KafkaEmbedded` bean, so a single broker can be used across multiple test classes.

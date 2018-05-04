@@ -59,6 +59,7 @@ import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
+import kafka.common.KafkaException;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
 import kafka.server.NotRunning;
@@ -234,17 +235,43 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 				this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
 			}
 		}
-		Map<String, Object> adminConfigs = new HashMap<>();
-		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
-		AdminClient admin = AdminClient.create(adminConfigs);
-		List<NewTopic> newTopics = Arrays.stream(this.topics)
-				.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
-				.collect(Collectors.toList());
-		CreateTopicsResult createTopics = admin.createTopics(newTopics);
-		createTopics.all().get();
-		admin.close();
+		addTopics(this.topics);
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
+	}
+
+	/**
+	 * Add topics to the existing broker(s) using the configured number of partitions.
+	 * @param topics the topics.
+	 * @since 2.1
+	 */
+	public void addTopics(String... topics) {
+		doWithAdmin(admin -> {
+			List<NewTopic> newTopics = Arrays.stream(topics)
+					.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
+					.collect(Collectors.toList());
+			CreateTopicsResult createTopics = admin.createTopics(newTopics);
+			try {
+				createTopics.all().get();
+			}
+			catch (Exception e) {
+				throw new KafkaException(e);
+			}
+		});
+	}
+
+	/**
+	 * Create an {@link AdminClient} invoke the callback and reliable close the
+	 * admin.
+	 * @param callback the callback.
+	 * @since 2.1
+	 */
+	public void doWithAdmin(java.util.function.Consumer<AdminClient> callback) {
+		Map<String, Object> adminConfigs = new HashMap<>();
+		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
+		try (AdminClient admin = AdminClient.create(adminConfigs)) {
+			callback.accept(admin);
+		}
 	}
 
 	public Properties createBrokerProperties(int i) {
