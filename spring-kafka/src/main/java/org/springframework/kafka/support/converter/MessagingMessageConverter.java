@@ -34,6 +34,7 @@ import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
@@ -65,7 +66,9 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
 		}
-		// TODO: In 2.2, default to SimpleKafkaHeaderMapper if no Jackson
+		else {
+			this.headerMapper = new SimpleKafkaHeaderMapper();
+		}
 	}
 
 	/**
