@@ -28,6 +28,7 @@ import org.apache.kafka.common.serialization.Deserializer;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  */
 public interface ConsumerFactory<K, V> {
 
@@ -35,7 +36,9 @@ public interface ConsumerFactory<K, V> {
 	 * Create a consumer with the group id and client id as configured in the properties.
 	 * @return the consumer.
 	 */
-	Consumer<K, V> createConsumer();
+	default Consumer<K, V> createConsumer() {
+		return createConsumer(null);
+	}
 
 	/**
 	 * Create a consumer, appending the suffix to the {@code client.id} property,
@@ -44,7 +47,9 @@ public interface ConsumerFactory<K, V> {
 	 * @return the consumer.
 	 * @since 1.3
 	 */
-	Consumer<K, V> createConsumer(String clientIdSuffix);
+	default Consumer<K, V> createConsumer(String clientIdSuffix) {
+		return createConsumer(null, clientIdSuffix);
+	}
 
 	/**
 	 * Create a consumer with an explicit group id; in addition, the
@@ -55,7 +60,9 @@ public interface ConsumerFactory<K, V> {
 	 * @return the consumer.
 	 * @since 1.3
 	 */
-	Consumer<K, V> createConsumer(String groupId, String clientIdSuffix);
+	default Consumer<K, V> createConsumer(String groupId, String clientIdSuffix) {
+		return createConsumer(groupId, null, clientIdSuffix);
+	}
 
 	/**
 	 * Create a consumer with an explicit group id; in addition, the

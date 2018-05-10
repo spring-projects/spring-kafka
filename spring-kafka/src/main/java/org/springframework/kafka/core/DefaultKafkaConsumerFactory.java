@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Gary Russell
  * @author Murali Reddy
+ * @author Artem Bilan
  */
 public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
@@ -83,35 +84,13 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	@Override
-	public Consumer<K, V> createConsumer() {
-		return createKafkaConsumer();
-	}
-
-	@Override
-	public Consumer<K, V> createConsumer(String clientIdSuffix) {
-		return createKafkaConsumer(null, clientIdSuffix);
-	}
-
-	@Override
-	public Consumer<K, V> createConsumer(String groupId, String clientIdSuffix) {
-		return createKafkaConsumer(groupId, clientIdSuffix);
-	}
-
-	@Override
 	public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix, String clientIdSuffix) {
 		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffix);
 	}
 
-	protected KafkaConsumer<K, V> createKafkaConsumer() {
-		return createKafkaConsumer(this.configs);
-	}
-
-	protected KafkaConsumer<K, V> createKafkaConsumer(String groupId, String clientIdSuffix) {
-		return createKafkaConsumer(groupId, null, clientIdSuffix);
-	}
-
 	protected KafkaConsumer<K, V> createKafkaConsumer(String groupId, String clientIdPrefix,
 			String clientIdSuffix) {
+
 		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefix);
 		if (clientIdSuffix == null) {
 			clientIdSuffix = "";
@@ -119,7 +98,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
 				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
 		if (groupId == null && !shouldModifyClientId) {
-			return createKafkaConsumer();
+			return createKafkaConsumer(this.configs);
 		}
 		else {
 			Map<String, Object> modifiedConfigs = new HashMap<>(this.configs);
@@ -136,7 +115,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(Map<String, Object> configs) {
-		return new KafkaConsumer<K, V>(configs, this.keyDeserializer, this.valueDeserializer);
+		return new KafkaConsumer<>(configs, this.keyDeserializer, this.valueDeserializer);
 	}
 
 	@Override
