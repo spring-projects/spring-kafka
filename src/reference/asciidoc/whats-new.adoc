@@ -1,4 +1,4 @@
-=== What's new in 2.1 Since 2.0
+=== What's new in 2.2 Since 2.1
 
 ==== Kafka Client Version
 
@@ -15,3 +15,8 @@ The enum `AckMode` has been moved from `AbstractMessageListenerContainer` to `Co
 ==== After rollback processing
 
 A new `AfterRollbackProcessor` strategy is provided - see <<after-rollback>> for more information.
+
+==== ConcurrentKafkaListenerContainerFactory changes
+
+The `ConcurrentKafkaListenerContainerFactory` can now be used to create/configure any `ConcurrentMessageListenerContainer`, not just those for `@KafkaListener` annotations.
+See <<container-factory>> for more information.

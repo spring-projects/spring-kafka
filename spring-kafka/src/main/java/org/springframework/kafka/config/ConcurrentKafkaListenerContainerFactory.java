@@ -16,7 +16,9 @@
 
 package org.springframework.kafka.config;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.regex.Pattern;
 
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -26,8 +28,11 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
  * A {@link KafkaListenerContainerFactory} implementation to build a
  * {@link ConcurrentMessageListenerContainer}.
  * <p>
- * This should be the default for most users and a good transition paths
- * for those that are used to build such container definitions manually.
+ * This should be the default for most users and a good transition paths for those that
+ * are used to building such container definitions manually.
+ *
+ * This factory is primarily for building containers for {@code KafkaListener} annotated
+ * methods but can also be used to create any container.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -80,4 +85,51 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 		}
 	}
 
+	@Override
+	public ConcurrentMessageListenerContainer<K, V> createContainer(
+			final Collection<TopicPartitionInitialOffset> topicPartitions) {
+		ConcurrentMessageListenerContainer<K, V> container = createContainerInstance(
+				new KafkaListenerEndpointAdapter() {
+
+					@Override
+					public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
+						return topicPartitions;
+					}
+
+				});
+		initializeContainer(container);
+		return container;
+	}
+
+	@Override
+	public ConcurrentMessageListenerContainer<K, V> createContainer(final String... topics) {
+		ConcurrentMessageListenerContainer<K, V> container = createContainerInstance(
+				new KafkaListenerEndpointAdapter() {
+
+					@Override
+					public Collection<String> getTopics() {
+						return Arrays.asList(topics);
+					}
+
+				});
+		initializeContainer(container);
+		return container;
+	}
+
+	@Override
+	public ConcurrentMessageListenerContainer<K, V> createContainer(final Pattern topicPattern) {
+		ConcurrentMessageListenerContainer<K, V> container = createContainerInstance(
+				new KafkaListenerEndpointAdapter() {
+
+					@Override
+					public Pattern getTopicPattern() {
+						return topicPattern;
+					}
+
+				});
+		initializeContainer(container);
+		return container;
+	}
+
 }
+

@@ -1375,6 +1375,15 @@ You can also perform seek operations from `onIdleContainer()` when an idle conta
 
 To arbitrarily seek at runtime, use the callback reference from the `registerSeekCallback` for the appropriate thread.
 
+[[container-factory]]
+===== Container factory
+
+As discussed in <<kafka-listener-annotation>> a `ConcurrentKafkaListenerContainerFactory` is used to create containers for annotated methods.
+
+Starting with _version 2.2_, the same factory can be used to create any `ConcurrentMessageListenerContainer`.
+This might be useful if you want to create several containers with similar properties, or you wish to use some exernally configured factory, such as the one provided by Spring Boot auto configuration.
+Once the container is created, you can further modify its properties, many of which are set by using `container.getContainerProperties()`.
+
 [[pause-resume]]
 ==== Pausing/Resuming Listener Containers
 

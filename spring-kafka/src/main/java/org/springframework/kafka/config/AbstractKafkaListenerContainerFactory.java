@@ -241,15 +241,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
 		C instance = createContainerInstance(endpoint);
 
-		if (this.autoStartup != null) {
-			instance.setAutoStartup(this.autoStartup);
-		}
-		if (this.phase != null) {
-			instance.setPhase(this.phase);
-		}
-		if (this.applicationEventPublisher != null) {
-			instance.setApplicationEventPublisher(this.applicationEventPublisher);
-		}
 		if (endpoint.getId() != null) {
 			instance.setBeanName(endpoint.getId());
 		}
@@ -315,6 +306,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		}
 		if (this.errorHandler != null) {
 			instance.setGenericErrorHandler(this.errorHandler);
+		}
+		if (this.autoStartup != null) {
+			instance.setAutoStartup(this.autoStartup);
+		}
+		if (this.phase != null) {
+			instance.setPhase(this.phase);
+		}
+		if (this.applicationEventPublisher != null) {
+			instance.setApplicationEventPublisher(this.applicationEventPublisher);
 		}
 	}
 
