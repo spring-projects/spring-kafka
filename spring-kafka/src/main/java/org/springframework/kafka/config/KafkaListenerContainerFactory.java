@@ -23,12 +23,12 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 
 /**
- * Factory of {@link MessageListenerContainer} based on a
- * {@link KafkaListenerEndpoint} definition.
+ * Factory for {@link MessageListenerContainer}s.
  *
  * @param <C> the {@link MessageListenerContainer} implementation type.
  *
  * @author Stephane Nicoll
+ * @author Gary Russell
  *
  * @see KafkaListenerEndpoint
  */
