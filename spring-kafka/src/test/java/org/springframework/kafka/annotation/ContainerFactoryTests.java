@@ -33,20 +33,21 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  */
 public class ContainerFactoryTests {
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	public void testConfigContainer() {
-		ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
+		ConcurrentKafkaListenerContainerFactory<String, String> factory =
+				new ConcurrentKafkaListenerContainerFactory<>();
 		factory.setAutoStartup(false);
 		factory.setConcurrency(22);
-		ConsumerFactory cf = mock(ConsumerFactory.class);
+		@SuppressWarnings("unchecked")
+		ConsumerFactory<String, String> cf = mock(ConsumerFactory.class);
 		factory.setConsumerFactory(cf);
 		factory.setPhase(42);
 		factory.getContainerProperties().setAckCount(123);
-		ConcurrentMessageListenerContainer container = factory.createContainer("foo");
+		ConcurrentMessageListenerContainer<String, String> container = factory.createContainer("foo");
 		assertThat(container.isAutoStartup()).isFalse();
-		assertThat(container.getPhase()).isEqualTo(42L);
-		assertThat(container.getContainerProperties().getAckCount()).isEqualTo(123L);
+		assertThat(container.getPhase()).isEqualTo(42);
+		assertThat(container.getContainerProperties().getAckCount()).isEqualTo(123);
 		assertThat(KafkaTestUtils.getPropertyValue(container, "concurrency", Integer.class)).isEqualTo(22);
 	}
 

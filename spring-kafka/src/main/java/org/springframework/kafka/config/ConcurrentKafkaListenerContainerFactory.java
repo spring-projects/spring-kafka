@@ -16,9 +16,7 @@
 
 package org.springframework.kafka.config;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.regex.Pattern;
 
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -83,52 +81,6 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 		if (this.concurrency != null) {
 			instance.setConcurrency(this.concurrency);
 		}
-	}
-
-	@Override
-	public ConcurrentMessageListenerContainer<K, V> createContainer(
-			final Collection<TopicPartitionInitialOffset> topicPartitions) {
-		ConcurrentMessageListenerContainer<K, V> container = createContainerInstance(
-				new KafkaListenerEndpointAdapter() {
-
-					@Override
-					public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
-						return topicPartitions;
-					}
-
-				});
-		initializeContainer(container);
-		return container;
-	}
-
-	@Override
-	public ConcurrentMessageListenerContainer<K, V> createContainer(final String... topics) {
-		ConcurrentMessageListenerContainer<K, V> container = createContainerInstance(
-				new KafkaListenerEndpointAdapter() {
-
-					@Override
-					public Collection<String> getTopics() {
-						return Arrays.asList(topics);
-					}
-
-				});
-		initializeContainer(container);
-		return container;
-	}
-
-	@Override
-	public ConcurrentMessageListenerContainer<K, V> createContainer(final Pattern topicPattern) {
-		ConcurrentMessageListenerContainer<K, V> container = createContainerInstance(
-				new KafkaListenerEndpointAdapter() {
-
-					@Override
-					public Pattern getTopicPattern() {
-						return topicPattern;
-					}
-
-				});
-		initializeContainer(container);
-		return container;
 	}
 
 }

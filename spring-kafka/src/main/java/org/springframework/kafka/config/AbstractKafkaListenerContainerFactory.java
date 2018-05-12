@@ -17,6 +17,8 @@
 package org.springframework.kafka.config;
 
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.BeanUtils;
@@ -31,6 +33,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
@@ -316,6 +319,48 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (this.applicationEventPublisher != null) {
 			instance.setApplicationEventPublisher(this.applicationEventPublisher);
 		}
+	}
+
+	@Override
+	public C createContainer(final Collection<TopicPartitionInitialOffset> topicPartitions) {
+		C container = createContainerInstance(new KafkaListenerEndpointAdapter() {
+
+					@Override
+					public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
+						return topicPartitions;
+					}
+
+				});
+		initializeContainer(container);
+		return container;
+	}
+
+	@Override
+	public C createContainer(final String... topics) {
+		C container = createContainerInstance(new KafkaListenerEndpointAdapter() {
+
+					@Override
+					public Collection<String> getTopics() {
+						return Arrays.asList(topics);
+					}
+
+				});
+		initializeContainer(container);
+		return container;
+	}
+
+	@Override
+	public C createContainer(final Pattern topicPattern) {
+		C container = createContainerInstance(new KafkaListenerEndpointAdapter() {
+
+					@Override
+					public Pattern getTopicPattern() {
+						return topicPattern;
+					}
+
+				});
+		initializeContainer(container);
+		return container;
 	}
 
 }
