@@ -110,6 +110,7 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @author Dariusz Szablinski
  * @author Venil Noronha
  * @author Dimitri Penner
+ * @author Nakul Mishra
  */
 @ContextConfiguration
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -640,6 +641,13 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.config.listen16ErrorLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.listen16Exception).isNotNull();
 		assertThat(this.config.listen16Message).isEqualTo("foobar");
+	}
+
+	@Test
+	public void testAddingTopics() {
+		int count = embeddedKafka.getTopics().size();
+		embeddedKafka.addTopics("testAddingTopics");
+		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 1);
 	}
 
 	@Configuration

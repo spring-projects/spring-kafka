@@ -26,9 +26,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -76,6 +78,7 @@ import kafka.zk.EmbeddedZookeeper;
  * @author Gary Russell
  * @author Kamill Sokol
  * @author Elliot Kennedy
+ * @author Nakul Mishra
  */
 public class KafkaEmbedded extends ExternalResource implements KafkaRule, InitializingBean, DisposableBean {
 
@@ -118,7 +121,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	private final boolean controlledShutdown;
 
-	private final String[] topics;
+	private final Set<String> topics;
 
 	private final int partitionsPerTopic;
 
@@ -160,10 +163,10 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		this.kafkaPorts = new int[this.count]; // random ports by default.
 		this.controlledShutdown = controlledShutdown;
 		if (topics != null) {
-			this.topics = topics;
+			this.topics = new HashSet<>(Arrays.asList(topics));
 		}
 		else {
-			this.topics = new String[0];
+			this.topics = new HashSet<>();
 		}
 		this.partitionsPerTopic = partitions;
 	}
@@ -235,10 +238,33 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 				this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
 			}
 		}
-		addTopics(this.topics);
+		createKafkaTopics(this.topics, (topics) -> {
+		});
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 	}
+
+	/**
+	 * Create topics in the existing broker(s) using the configured number of partitions.
+	 * @param topics the topics.
+	 * @param callback the callback.
+	 */
+	private void createKafkaTopics(Set<String> topics, java.util.function.Consumer<Set<String>> callback) {
+		doWithAdmin(admin -> {
+			List<NewTopic> newTopics = topics.stream()
+					.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
+					.collect(Collectors.toList());
+			CreateTopicsResult createTopics = admin.createTopics(newTopics);
+			try {
+				createTopics.all().get();
+				callback.accept(topics);
+			}
+			catch (Exception e) {
+				throw new KafkaException(e);
+			}
+		});
+	}
+
 
 	/**
 	 * Add topics to the existing broker(s) using the configured number of partitions.
@@ -246,18 +272,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @since 2.1
 	 */
 	public void addTopics(String... topics) {
-		doWithAdmin(admin -> {
-			List<NewTopic> newTopics = Arrays.stream(topics)
-					.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
-					.collect(Collectors.toList());
-			CreateTopicsResult createTopics = admin.createTopics(newTopics);
-			try {
-				createTopics.all().get();
-			}
-			catch (Exception e) {
-				throw new KafkaException(e);
-			}
-		});
+		createKafkaTopics(new HashSet<>(Arrays.asList(topics)), this.topics::addAll);
 	}
 
 	/**
@@ -338,6 +353,10 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		catch (Exception e) {
 			// do nothing
 		}
+	}
+
+	public Set<String> getTopics() {
+		return new HashSet<>(this.topics);
 	}
 
 	@Override
@@ -457,7 +476,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @throws Exception an exception.
 	 */
 	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) throws Exception {
-		consumeFromEmbeddedTopics(consumer, this.topics);
+		consumeFromEmbeddedTopics(consumer, this.topics.toArray(new String[this.topics.size()]));
 	}
 
 	/**
@@ -477,9 +496,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @throws Exception an exception.
 	 */
 	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) throws Exception {
-		for (String topic : topics) {
-			assertThat(this.topics).as("topic '" + topic + "' is not in embedded topic list").contains(topic);
-		}
+		assertThat(this.topics).as("topic(s):'" + Arrays.toString(topics) + "' are not in embedded topic list").containsAll(new HashSet<>(Arrays.asList(topics)));
 		final CountDownLatch consumerLatch = new CountDownLatch(1);
 		consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
 
