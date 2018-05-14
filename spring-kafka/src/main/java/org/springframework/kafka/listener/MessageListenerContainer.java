@@ -104,4 +104,14 @@ public interface MessageListenerContainer extends SmartLifecycle {
 		throw new UnsupportedOperationException("This container doesn't support pause/resume");
 	}
 
+	/**
+	 * Set the autoStartup.
+	 * @param autoStartup the autoStartup to set.
+	 * @since 2.2
+	 * @see SmartLifecycle
+	 */
+	default void setAutoStartup(boolean autoStartup) {
+		// empty
+	}
+
 }
