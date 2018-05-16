@@ -288,11 +288,15 @@ With the Java DSL, the container does not have to be configured as a `@Bean` bec
 public IntegrationFlow topic2ListenerFromKafkaFlow() {
     return IntegrationFlows
             .from(Kafka.messageDrivenChannelAdapter(kafkaListenerContainerFactory().createContainer(TEST_TOPIC2),
-                        KafkaMessageDrivenChannelAdapter.ListenerMode.record))
+            KafkaMessageDrivenChannelAdapter.ListenerMode.record)
+                .id("topic2Adapter"))
             ...
             get();
 }
 ----
+
+Notice that, in this case, the adapter is given an `id` ("topic2Adapter"); the container will be registered in the application context with the name `topic2Adapter.container`.
+If the adapter does not have an `id` property, the container's bean name will be the container's fully qualified class name + `#n` where `n` is incremented for each container.
 
 [[si-outbound-gateway]]
 ==== Outbound Gateway

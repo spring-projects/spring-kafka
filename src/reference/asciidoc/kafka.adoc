@@ -1398,7 +1398,7 @@ public ConcurrentMessageListenerContainer<String, String>(
 ----
 
 IMPORTANT: Containers created this way are not added to the endpoint registry.
-They should be created as `@Bean` s or used with the Java DSL so that they will be registered with the application context.
+They should be created as `@Bean` s so that they will be registered with the application context.
 
 [[pause-resume]]
 ==== Pausing/Resuming Listener Containers
