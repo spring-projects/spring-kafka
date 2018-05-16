@@ -1381,8 +1381,24 @@ To arbitrarily seek at runtime, use the callback reference from the `registerSee
 As discussed in <<kafka-listener-annotation>> a `ConcurrentKafkaListenerContainerFactory` is used to create containers for annotated methods.
 
 Starting with _version 2.2_, the same factory can be used to create any `ConcurrentMessageListenerContainer`.
-This might be useful if you want to create several containers with similar properties, or you wish to use some exernally configured factory, such as the one provided by Spring Boot auto configuration.
+This might be useful if you want to create several containers with similar properties, or you wish to use some externally configured factory, such as the one provided by Spring Boot auto configuration.
 Once the container is created, you can further modify its properties, many of which are set by using `container.getContainerProperties()`.
+
+[source, java]
+----
+@Bean
+public ConcurrentMessageListenerContainer<String, String>(
+        ConcurrentKafkaListenerContainerFactory<String, String> factory) {
+
+    ConcurrentMessageListenerContainer<String, String> container =
+        factory.createContainer("topic1", "topci2");
+    container.setMessageListener(m -> { ... } );
+    return container;
+}
+----
+
+IMPORTANT: Containers created this way are not added to the endpoint registry.
+They should be created as `@Bean` s or used with the Java DSL so that they will be registered with the application context.
 
 [[pause-resume]]
 ==== Pausing/Resuming Listener Containers

@@ -277,6 +277,22 @@ In most cases, this will be an `ErrorMessageSendingRecoverer` which will send th
 When building `ErrorMessage` (for use in the `error-channel` or `recovery-callback`), you can customize the error message using the `error-message-strategy` property.
 By default, a `RawRecordHeaderErrorMessageStrategy` is used; providing access to the converted message as well as the raw `ConsumerRecord`.
 
+Starting with _Spring for Apache Kafka version 2.2_ (_Spring Integration Kafka 3.1_), the container factory used for `@KafkaListener` annotations can also be used to create `ConcurrentMessageListenerContainer` s for other purposes.
+See <<container-factory>> for an example.
+
+With the Java DSL, the container does not have to be configured as a `@Bean` because the DSL will register the container as a bean.
+
+[source, java]
+----
+@Bean
+public IntegrationFlow topic2ListenerFromKafkaFlow() {
+    return IntegrationFlows
+            .from(Kafka.messageDrivenChannelAdapter(kafkaListenerContainerFactory().createContainer(TEST_TOPIC2),
+                        KafkaMessageDrivenChannelAdapter.ListenerMode.record))
+            ...
+            get();
+}
+----
 
 [[si-outbound-gateway]]
 ==== Outbound Gateway
@@ -395,6 +411,9 @@ public IntegrationFlow serverGateway() {
 ----
 
 XML configuration is not currently available for this component.
+
+Starting with _Spring for Apache Kafka version 2.2_ (_Spring Integration Kafka 3.1_), the container factory used for `@KafkaListener` annotations can also be used to create `ConcurrentMessageListenerContainer` s for other purposes.
+See <<container-factory>> and <<si-inbound>> for examples.
 
 [[message-conversion]]
 ==== Message Conversion

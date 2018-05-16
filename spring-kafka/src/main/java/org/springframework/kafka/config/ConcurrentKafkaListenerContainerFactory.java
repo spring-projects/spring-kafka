@@ -32,6 +32,9 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
  * This factory is primarily for building containers for {@code KafkaListener} annotated
  * methods but can also be used to create any container.
  *
+ * Only containers for {@code KafkaListener} annotated methods are added to the
+ * {@code KafkaListenerEndpointRegistry}.
+ *
  * @param <K> the key type.
  * @param <V> the value type.
  *

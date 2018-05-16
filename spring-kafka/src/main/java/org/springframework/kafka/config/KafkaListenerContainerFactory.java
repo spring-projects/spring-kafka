@@ -36,6 +36,7 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 
 	/**
 	 * Create a {@link MessageListenerContainer} for the given {@link KafkaListenerEndpoint}.
+	 * Containers created using this method are added to the listener endpoint registry.
 	 * @param endpoint the endpoint to configure
 	 * @return the created container
 	 */
@@ -43,7 +44,8 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 
 	/**
 	 * Create and configure a container without a listener; used to create containers that
-	 * are not used for KafkaListener annotations.
+	 * are not used for KafkaListener annotations. Containers created using this method
+	 * are not added to the listener endpoint registry.
 	 * @param topicPartitions the topicPartitions.
 	 * @return the container.
 	 * @since 2.2
@@ -52,7 +54,8 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 
 	/**
 	 * Create and configure a container without a listener; used to create containers that
-	 * are not used for KafkaListener annotations.
+	 * are not used for KafkaListener annotations. Containers created using this method
+	 * are not added to the listener endpoint registry.
 	 * @param topics the topics.
 	 * @return the container.
 	 * @since 2.2
@@ -61,7 +64,8 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 
 	/**
 	 * Create and configure a container without a listener; used to create containers that
-	 * are not used for KafkaListener annotations.
+	 * are not used for KafkaListener annotations. Containers created using this method
+	 * are not added to the listener endpoint registry.
 	 * @param topicPattern the topicPattern.
 	 * @return the container.
 	 * @since 2.2
