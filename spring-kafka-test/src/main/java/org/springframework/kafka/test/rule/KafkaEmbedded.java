@@ -475,7 +475,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @throws Exception an exception.
 	 */
 	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) throws Exception {
-		consumeFromEmbeddedTopics(consumer, this.topics.toArray(new String[this.topics.size()]));
+		consumeFromEmbeddedTopics(consumer, this.topics.toArray(new String[0]));
 	}
 
 	/**
