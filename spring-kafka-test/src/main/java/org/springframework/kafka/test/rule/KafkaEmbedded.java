@@ -238,8 +238,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 				this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
 			}
 		}
-		createKafkaTopics(this.topics, (topics) -> {
-		});
+		createKafkaTopics(this.topics);
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 	}
@@ -247,9 +246,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	/**
 	 * Create topics in the existing broker(s) using the configured number of partitions.
 	 * @param topics the topics.
-	 * @param callback the callback.
 	 */
-	private void createKafkaTopics(Set<String> topics, java.util.function.Consumer<Set<String>> callback) {
+	private void createKafkaTopics(Set<String> topics) {
 		doWithAdmin(admin -> {
 			List<NewTopic> newTopics = topics.stream()
 					.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
@@ -257,7 +255,6 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 			CreateTopicsResult createTopics = admin.createTopics(newTopics);
 			try {
 				createTopics.all().get();
-				callback.accept(topics);
 			}
 			catch (Exception e) {
 				throw new KafkaException(e);
@@ -272,7 +269,9 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @since 2.1
 	 */
 	public void addTopics(String... topics) {
-		createKafkaTopics(new HashSet<>(Arrays.asList(topics)), this.topics::addAll);
+		HashSet<String> set = new HashSet<>(Arrays.asList(topics));
+		createKafkaTopics(set);
+		this.topics.addAll(set);
 	}
 
 	/**
@@ -496,7 +495,11 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @throws Exception an exception.
 	 */
 	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) throws Exception {
-		assertThat(this.topics).as("topic(s):'" + Arrays.toString(topics) + "' are not in embedded topic list").containsAll(new HashSet<>(Arrays.asList(topics)));
+		HashSet<String> diff = new HashSet<>(Arrays.asList(topics));
+		diff.removeAll(new HashSet<>(this.topics));
+		assertThat(this.topics)
+				.as("topic(s):'" + diff + "' are not in embedded topic list")
+				.containsAll(new HashSet<>(Arrays.asList(topics)));
 		final CountDownLatch consumerLatch = new CountDownLatch(1);
 		consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
 
