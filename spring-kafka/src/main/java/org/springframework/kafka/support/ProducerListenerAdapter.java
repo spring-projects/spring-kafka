@@ -21,6 +21,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 /**
  * No-op implementation of {@link ProducerListener}, to be used as base class for other implementations.
  *
+ * @deprecated as the ProducerListener has default methods and can be implemented directly without the need for this adapter
+ *
  * @param <K> the key type.
  * @param <V> the value type.
  *
@@ -28,6 +30,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  * @author Gary Russell
  * @author Artem Bilan
  */
+@Deprecated
 public abstract class ProducerListenerAdapter<K, V> implements ProducerListener<K, V> {
 
 	@Override
