@@ -31,6 +31,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  *
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @author Endika Gutiérrez
  *
  * @see org.apache.kafka.clients.producer.Callback
  */
@@ -82,8 +83,10 @@ public interface ProducerListener<K, V> {
 
 	/**
 	 * Return true if this listener is interested in success as well as failure.
+	 * @deprecated the result of this method will be ignored.
 	 * @return true to express interest in successful sends.
 	 */
+	@Deprecated
 	default boolean isInterestedInSuccess() {
 		return false;
 	}

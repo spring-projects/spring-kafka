@@ -56,6 +56,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Igor Stepanov
  * @author Artem Bilan
  * @author Biju Kunjummen
+ * @author Endika Gutiérrez
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
@@ -352,8 +353,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 				try {
 					if (exception == null) {
 						future.set(new SendResult<>(producerRecord, metadata));
-						if (KafkaTemplate.this.producerListener != null
-								&& KafkaTemplate.this.producerListener.isInterestedInSuccess()) {
+						if (KafkaTemplate.this.producerListener != null) {
 							KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
 						}
 						if (KafkaTemplate.this.logger.isTraceEnabled()) {

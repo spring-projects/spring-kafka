@@ -66,6 +66,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Artem Bilan
  * @author Igor Stepanov
  * @author Biju Kunjummen
+ * @author Endika Gutiérrez
  */
 public class KafkaTemplateTests {
 
@@ -250,11 +251,6 @@ public class KafkaTemplateTests {
 				latch.countDown();
 			}
 
-			@Override
-			public boolean isInterestedInSuccess() {
-				return true;
-			}
-
 		});
 		template.sendDefault("foo");
 		template.flush();
@@ -277,11 +273,6 @@ public class KafkaTemplateTests {
 			@Override
 			public void onSuccess(ProducerRecord<Integer, String> record, RecordMetadata recordMetadata) {
 				latch.countDown();
-			}
-
-			@Override
-			public boolean isInterestedInSuccess() {
-				return true;
 			}
 
 		});
