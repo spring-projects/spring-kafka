@@ -326,6 +326,13 @@ public class ContainerProperties {
 	 * offset of the failed message anyway, so this option has limited applicability.
 	 * Perhaps useful for a component that starts throwing exceptions consistently;
 	 * allowing it to resume when restarted from the last successfully processed message.
+	 * <p>
+	 * Does not apply when transactions are used - in that case, whether or not the
+	 * offsets are sent to the transaction depends on whether the transaction is committed
+	 * or rolled back. If a listener throws an exception, the transaction will normally
+	 * be rolled back unless an error handler is provided that handles the error and
+	 * exits normally; in which case the offsets are sent to the transaction and the
+	 * transaction is committed.
 	 * @param ackOnError whether the container should acknowledge messages that throw
 	 * exceptions.
 	 */
