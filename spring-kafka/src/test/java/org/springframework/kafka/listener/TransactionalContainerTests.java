@@ -98,16 +98,21 @@ public class TransactionalContainerTests {
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(false);
+		testConsumeAndProduceTransactionGuts(false, false);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKCTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(true);
+		testConsumeAndProduceTransactionGuts(true, false);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionHandleError() throws Exception {
+		testConsumeAndProduceTransactionGuts(false, true);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void testConsumeAndProduceTransactionGuts(boolean chained) throws Exception {
+	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError) throws Exception {
 		Consumer consumer = mock(Consumer.class);
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
 		willAnswer(i -> {
@@ -149,9 +154,15 @@ public class TransactionalContainerTests {
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		props.setMessageListener((MessageListener) m -> {
 			template.send("bar", "baz");
+			if (handleError) {
+				throw new RuntimeException("fail");
+			}
 		});
 		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
 		container.setBeanName("commit");
+		if (handleError) {
+			container.setErrorHandler((e, data) -> { });
+		}
 		container.start();
 		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(producer);

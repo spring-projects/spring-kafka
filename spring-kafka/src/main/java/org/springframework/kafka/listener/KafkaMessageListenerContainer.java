@@ -1112,12 +1112,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						this.errorHandler.handle(e, record, this.consumer);
 					}
 					if (producer != null) {
-						try {
-							sendOffsetsToTransaction(producer);
-						}
-						catch (Exception e1) {
-							this.logger.error("Send offsets to transaction failed", e1);
-						}
+						ackCurrent(record, producer);
 					}
 				}
 				catch (RuntimeException ee) {
