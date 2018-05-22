@@ -190,6 +190,7 @@ public class BatchListenerConversionTests {
 		}
 
 		@KafkaListener(topics = "#{__listener.topic}", groupId = "#{__listener.topic}.group")
+		// @SendTo("foo") test WARN log for void return
 		public void listen1(List<Foo> foos, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions) {
 			if (this.received == null) {

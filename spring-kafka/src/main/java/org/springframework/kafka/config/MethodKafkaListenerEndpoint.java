@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ package org.springframework.kafka.config;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
@@ -47,6 +50,8 @@ import org.springframework.util.Assert;
  * @author Venil Noronha
  */
 public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndpoint<K, V> {
+
+	private final Log logger = LogFactory.getLog(getClass());
 
 	private Object bean;
 
@@ -105,6 +110,9 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		if (method != null) {
 			SendTo ann = AnnotationUtils.getAnnotation(method, SendTo.class);
 			if (ann != null) {
+				if (method.getReturnType().equals(void.class)) {
+					this.logger.warn("Method has a void return type; @SendTo is ignored");
+				}
 				String[] destinations = ann.value();
 				if (destinations.length > 1) {
 					throw new IllegalStateException("Invalid @" + SendTo.class.getSimpleName() + " annotation on '"
@@ -132,7 +140,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance(messageConverter);
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
 		String replyTopic = getReplyTopic();
-		if (replyTopic != null) {
+		if (replyTopic != null && !getMethod().getReturnType().equals(void.class)) {
 			Assert.state(getReplyTemplate() != null, "a KafkaTemplate is required to support replies");
 			messageListener.setReplyTopic(replyTopic);
 		}

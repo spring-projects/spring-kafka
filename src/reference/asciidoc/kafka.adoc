@@ -1067,7 +1067,7 @@ containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListe
 [[annotation-send-to]]
 ===== Forwarding Listener Results using @SendTo
 
-Starting with _version 2.0_, if you also annotate a `@KafkaListener` with a `@SendTo` annotation and the method invocation returns a result, the result will be forwared to the topic specified by the `@SendTo`.
+Starting with _version 2.0_, if you also annotate a `@KafkaListener` with a `@SendTo` annotation and the method invocation returns a result, the result will be forwarded to the topic specified by the `@SendTo`.
 
 The `@SendTo` value can have several forms:
 
