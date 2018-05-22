@@ -111,7 +111,10 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 			SendTo ann = AnnotationUtils.getAnnotation(method, SendTo.class);
 			if (ann != null) {
 				if (method.getReturnType().equals(void.class)) {
-					this.logger.warn("Method has a void return type; @SendTo is ignored");
+					if (this.logger.isWarnEnabled()) {
+						this.logger.warn("Method has a void return type; @SendTo is ignored" +
+								(this.errorHandler == null ? "" : " unless the error handler returns a result"));
+					}
 				}
 				String[] destinations = ann.value();
 				if (destinations.length > 1) {
@@ -140,8 +143,9 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance(messageConverter);
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
 		String replyTopic = getReplyTopic();
-		if (replyTopic != null && !getMethod().getReturnType().equals(void.class)) {
-			Assert.state(getReplyTemplate() != null, "a KafkaTemplate is required to support replies");
+		if (replyTopic != null) {
+			Assert.state(getMethod().getReturnType().equals(void.class)
+					|| getReplyTemplate() != null, "a KafkaTemplate is required to support replies");
 			messageListener.setReplyTopic(replyTopic);
 		}
 		if (getReplyTemplate() != null) {
