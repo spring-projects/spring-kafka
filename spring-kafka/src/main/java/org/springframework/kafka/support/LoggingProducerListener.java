@@ -30,7 +30,7 @@ import org.springframework.util.ObjectUtils;
  * @author Marius Bogoevici
  * @author Gary Russell
  */
-public class LoggingProducerListener<K, V> extends ProducerListenerAdapter<K, V> {
+public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 
 	private static final Log log = LogFactory.getLog(LoggingProducerListener.class);
 

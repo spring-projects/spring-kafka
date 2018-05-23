@@ -34,6 +34,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -50,7 +51,7 @@ import org.junit.Test;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.ProducerListenerAdapter;
+import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -65,6 +66,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Artem Bilan
  * @author Igor Stepanov
  * @author Biju Kunjummen
+ * @author Endika Gutiérrez
  */
 public class KafkaTemplateTests {
 
@@ -241,7 +243,7 @@ public class KafkaTemplateTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(INT_KEY_TOPIC);
 		final CountDownLatch latch = new CountDownLatch(1);
-		template.setProducerListener(new ProducerListenerAdapter<Integer, String>() {
+		template.setProducerListener(new ProducerListener<Integer, String>() {
 
 			@Override
 			public void onSuccess(String topic, Integer partition, Integer key, String value,
@@ -249,9 +251,28 @@ public class KafkaTemplateTests {
 				latch.countDown();
 			}
 
+		});
+		template.sendDefault("foo");
+		template.flush();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		//Drain the topic
+		KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
+		pf.destroy();
+	}
+
+	@Test
+	public void withProducerRecordListener() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(INT_KEY_TOPIC);
+		final CountDownLatch latch = new CountDownLatch(1);
+		template.setProducerListener(new ProducerListener<Integer, String>() {
+
 			@Override
-			public boolean isInterestedInSuccess() {
-				return true;
+			public void onSuccess(ProducerRecord<Integer, String> record, RecordMetadata recordMetadata) {
+				latch.countDown();
 			}
 
 		});
