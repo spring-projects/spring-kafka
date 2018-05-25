@@ -25,6 +25,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.BytesDeserializer;
+import org.apache.kafka.common.serialization.BytesSerializer;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -40,7 +43,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
+import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
@@ -128,6 +131,7 @@ public class BatchListenerConversionTests {
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps =
 					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
+			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, BytesDeserializer.class);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
@@ -140,8 +144,8 @@ public class BatchListenerConversionTests {
 		}
 
 		@Bean
-		public StringJsonMessageConverter converter() {
-			return new StringJsonMessageConverter();
+		public BytesJsonMessageConverter converter() {
+			return new BytesJsonMessageConverter();
 		}
 
 		@Bean
@@ -151,7 +155,9 @@ public class BatchListenerConversionTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.producerProps(embeddedKafka);
+			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka);
+			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class);
+			return props;
 		}
 
 		@Bean

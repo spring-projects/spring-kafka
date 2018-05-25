@@ -989,7 +989,7 @@ static class MultiListenerBean {
 Starting with _version 2.1.3_, a `@KafkaHandler` method can be designated as the default method which is invoked if there is no match on other methods.
 At most one method can be so designated.
 When using `@KafkaHandler` methods, the payload must have already been converted to the domain object (so the match can be performed).
-Use a custom deserializer, the `JsonDeserializer` or the `StringJsonMessageConverter` with its `TypePrecedence` set to `TYPE_ID` - see <<serdes>> for more information.
+Use a custom deserializer, the `JsonDeserializer` or the `(String|Bytes)JsonMessageConverter` with its `TypePrecedence` set to `TYPE_ID` - see <<serdes>> for more information.
 
 [[kafkalistener-lifecycle]]
 ===== @KafkaListener Lifecycle Management
@@ -1466,7 +1466,7 @@ In addition, the serializer/deserializer can be configured using Kafka propertie
 Although the `Serializer`/`Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and
 `Producer` perspective, you might need more flexibility at the Spring Messaging level, either when using `@KafkaListener` or <<si-kafka,Spring Integration>>.
 To easily convert to/from `org.springframework.messaging.Message`, Spring for Apache Kafka provides a `MessageConverter`
-abstraction with the `MessagingMessageConverter` implementation and its `StringJsonMessageConverter` customization.
+abstraction with the `MessagingMessageConverter` implementation and its `StringJsonMessageConverter` and `BytesJsonMessageConverter` customization.
 The `MessageConverter` can be injected into `KafkaTemplate` instance directly and via
 `AbstractKafkaListenerContainerFactory` bean definition for the `@KafkaListener.containerFactory()` property:
 
@@ -1497,14 +1497,17 @@ With a class-level `@KafkaListener`, the payload type is used to select which `@
 ====
 
 NOTE: When using the `StringJsonMessageConverter`, you should use a `StringDeserializer` in the kafka consumer configuration and `StringSerializer` in the kafka producer configuration, when using Spring Integration or the `KafkaTemplate.send(Message<?> message)` method.
+When using the `BytesJsonMessageConverter`, you should use a `BytesDeserializer` in the kafka consumer configuration and `BytesSerializer` in the kafka producer configuration, when using Spring Integration or the `KafkaTemplate.send(Message<?> message)` method.
+Generally, the `BytesJsonMessageConverter` is more efficient because it avoids a `String` to/from `byte[]` conversion.
 
 [[payload-conversion-with-batch]]
 ===== Payload Conversion with Batch Listeners
 
-Starting with _version 1.3.2_, you can also use a `StringJsonMessageConverter` within a `BatchMessagingMessageConverter` for converting batch messages, when using a batch listener container factory.
+Starting with _version 1.3.2_, you can also use a `StringJsonMessageConverter` or `BytesJsonMessageConverter` within a `BatchMessagingMessageConverter` for converting batch messages, when using a batch listener container factory.
+See <<serdes>> for more information.
 
 By default, the type for the conversion is inferred from the listener argument.
-If you configure the `StringJsonMessageConverter` with a `DefaultJackson2TypeMapper` that has its `TypePrecedence` set to `TYPE_ID` (instead of the default `INFERRED`), then the converter will use type information in headers (if present) instead.
+If you configure the `(Bytes|String)JsonMessageConverter` with a `DefaultJackson2TypeMapper` that has its `TypePrecedence` set to `TYPE_ID` (instead of the default `INFERRED`), then the converter will use type information in headers (if present) instead.
 This allows, for example, listener methods to be declared with interfaces instead of concrete classes.
 Also, the type converter supports mapping so the deserialization can be to a different type than the source (as long as the data is compatible).
 This is also useful when using <<class-level-kafkalistener,class-level `@KafkaListener` s>> where the payload must have already been converted, to determine which method to invoke.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.lang.reflect.Type;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.utils.Bytes;
 
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
@@ -36,7 +37,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
- * JSON Message converter - String on output, String or byte[] on input.
+ * JSON Message converter - String on output, String, Bytes, or byte[] on input. Used in
+ * conjunction with Kafka
+ * {@code StringSerializer/StringDeserializer or BytesDeserializer}. Consider using the
+ * BytesJsonMessageConverter instead.
  *
  * @author Gary Russell
  * @author Artem Bilan
@@ -73,6 +77,15 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 		this.typeMapper = typeMapper;
 	}
 
+	/**
+	 * Return the object mapper.
+	 * @return the mapper.
+	 * @since 2.1.7
+	 */
+	protected ObjectMapper getObjectMapper() {
+		return this.objectMapper;
+	}
+
 	@Override
 	protected Headers initialRecordHeaders(Message<?> message) {
 		RecordHeaders headers = new RecordHeaders();
@@ -103,6 +116,9 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 			: this.typeMapper.toJavaType(record.headers());
 		if (javaType == null) { // no headers
 			javaType = TypeFactory.defaultInstance().constructType(type);
+		}
+		if (value instanceof Bytes) {
+			value = ((Bytes) value).get();
 		}
 		if (value instanceof String) {
 			try {
