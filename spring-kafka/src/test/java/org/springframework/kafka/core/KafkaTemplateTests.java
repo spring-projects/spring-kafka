@@ -49,6 +49,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.CompositeProducerListener;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.ProducerListener;
@@ -242,16 +243,19 @@ public class KafkaTemplateTests {
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(INT_KEY_TOPIC);
-		final CountDownLatch latch = new CountDownLatch(1);
-		template.setProducerListener(new ProducerListener<Integer, String>() {
+		final CountDownLatch latch = new CountDownLatch(2);
+		class PL implements ProducerListener<Integer, String> {
 
 			@Override
-			public void onSuccess(String topic, Integer partition, Integer key, String value,
-					RecordMetadata recordMetadata) {
+			public void onSuccess(ProducerRecord<Integer, String> record, RecordMetadata recordMetadata) {
 				latch.countDown();
 			}
 
-		});
+		}
+		PL pl1 = new PL();
+		PL pl2 = new PL();
+		CompositeProducerListener<Integer, String> cpl = new CompositeProducerListener<>(pl1, pl2);
+		template.setProducerListener(cpl);
 		template.sendDefault("foo");
 		template.flush();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
