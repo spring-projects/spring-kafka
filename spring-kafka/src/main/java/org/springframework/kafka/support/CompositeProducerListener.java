@@ -65,7 +65,7 @@ public class CompositeProducerListener<K, V> implements ProducerListener<K, V> {
 
 	@Override
 	public void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata) {
-		this.delegates.forEach(d -> d.onSuccess(null, recordMetadata));
+		this.delegates.forEach(d -> d.onSuccess(producerRecord, recordMetadata));
 	}
 
 	@Override
