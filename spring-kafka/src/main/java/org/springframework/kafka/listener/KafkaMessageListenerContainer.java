@@ -227,6 +227,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		if (isRunning()) {
 			return;
 		}
+		if (this.clientIdSuffix == null) { // stand-alone container
+			checkTopics();
+		}
 		ContainerProperties containerProperties = getContainerProperties();
 		if (!this.consumerFactory.isAutoCommit()) {
 			AckMode ackMode = containerProperties.getAckMode();

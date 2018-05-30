@@ -16,12 +16,16 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
@@ -181,6 +185,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.autoStartup;
 	}
 
+	@Override
 	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
 	}
@@ -247,6 +252,33 @@ public abstract class AbstractMessageListenerContainer<K, V>
 						this.containerProperties.getMessageListener() instanceof GenericMessageListener,
 						"A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				doStart();
+			}
+		}
+	}
+
+	protected void checkTopics() {
+		if (this.containerProperties.isMissingTopicsFatal() && this.containerProperties.getTopicPattern() == null) {
+			try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(this.containerProperties.getGroupId(),
+					this.containerProperties.getClientId(), null)) {
+				if (consumer != null) {
+					String[] topics = this.containerProperties.getTopics();
+					if (topics == null) {
+						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
+								.map(tp -> tp.topic())
+								.toArray(String[]::new);
+					}
+					List<String> missing = new ArrayList<>();
+					for (String topic : topics) {
+						if (consumer.partitionsFor(topic) == null) {
+							missing.add(topic);
+						}
+					}
+					if (missing.size() > 0) {
+						throw new IllegalStateException(
+								"Topic(s) " + missing.toString()
+										+ " is/are not present and missingTopicsFatal is true");
+					}
+				}
 			}
 		}
 	}

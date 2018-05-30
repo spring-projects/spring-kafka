@@ -20,3 +20,9 @@ A new `AfterRollbackProcessor` strategy is provided - see <<after-rollback>> for
 
 The `ConcurrentKafkaListenerContainerFactory` can now be used to create/configure any `ConcurrentMessageListenerContainer`, not just those for `@KafkaListener` annotations.
 See <<container-factory>> for more information.
+
+==== Listener Container Changes
+
+A new container property `missingTopicsFatal` has been added.
+
+See <<kafka-container>> for more information.

@@ -616,11 +616,16 @@ return container;
 
 Refer to the JavaDocs for `ContainerProperties` for more information about the various properties that can be set.
 
-Since version _2.1.1_, a new property `logContainerConfig` is available; when true, and INFO logging is enabled, each listener container will write a log message summarizing its configuration properties.
+Since _version 2.1.1_, a new property `logContainerConfig` is available; when true, and INFO logging is enabled, each listener container will write a log message summarizing its configuration properties.
 
 By default, logging of topic offset commits is performed with the DEBUG logging level.
 Starting with _version 2.1.2_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
 For example, to change the log level to INFO, use `containerProperties.setCommitLogLevel(LogIfLevelEnabled.Level.INFO);`.
+
+Starting with _version 2.2_, a new container property `missingTopicsFatal` has been added (default `true`).
+This prevents the container from starting if any of the configured topics are not present on the broker; it does not apply if the container is configured to listen to a topic pattern (regex).
+Previously, the container threads looped within the `consumer.poll()` method waiting for the topic to appear, while logging many messages; aside from the logs, there was no indication that there was a problem.
+To restore the previous behavior, set the property to `false`.
 
 ====== ConcurrentMessageListenerContainer
 

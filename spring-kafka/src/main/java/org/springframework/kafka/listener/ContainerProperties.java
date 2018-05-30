@@ -206,6 +206,8 @@ public class ContainerProperties {
 
 	private LogIfLevelEnabled.Level commitLogLevel = LogIfLevelEnabled.Level.DEBUG;
 
+	private boolean missingTopicsFatal = true;
+
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
 		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
@@ -554,6 +556,27 @@ public class ContainerProperties {
 	public void setCommitLogLevel(LogIfLevelEnabled.Level commitLogLevel) {
 		Assert.notNull(commitLogLevel, "'commitLogLevel' cannot be nul");
 		this.commitLogLevel = commitLogLevel;
+	}
+
+	/**
+	 * If true, the container won't start if any of the configured topics are not present
+	 * on the broker. Does not apply when topic patterns are configured. Default true;
+	 * @return the missingTopicsFatal.
+	 * @since 2.2
+	 */
+	public boolean isMissingTopicsFatal() {
+		return this.missingTopicsFatal;
+	}
+
+	/**
+	 * Set to false to allow the container to start even if any of the configured topics
+	 * are not present on the broker. Does not apply when topic patterns are configured.
+	 * Default true;
+	 * @param missingTopicsFatal the missingTopicsFatal.
+	 * @since 2.2
+	 */
+	public void setMissingTopicsFatal(boolean missingTopicsFatal) {
+		this.missingTopicsFatal = missingTopicsFatal;
 	}
 
 	@Override

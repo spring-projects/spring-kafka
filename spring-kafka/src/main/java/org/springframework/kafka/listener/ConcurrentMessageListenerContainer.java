@@ -132,6 +132,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	protected void doStart() {
 		if (!isRunning()) {
+			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
 			TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
 			if (topicPartitions != null
