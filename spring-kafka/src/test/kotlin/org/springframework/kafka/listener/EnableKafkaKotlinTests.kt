@@ -15,6 +15,8 @@
  */
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
@@ -59,13 +61,21 @@ class EnableKafkaKotlinTests {
 		assertThat(this.config.received).isEqualTo("foo")
 	}
 
+	@Test
+	fun `test batch listener`() {
+		this.template.send("kotlinTestTopic", "foo")
+		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue()
+		assertThat(this.config.batchReceived).isEqualTo("foo")
+	}
+
 	@Configuration
 	@EnableKafka
 	class Config {
 
 		lateinit var received: String
+		lateinit var batchReceived: String
 
-		val latch = CountDownLatch(1)
+		val latch = CountDownLatch(2)
 
 		@Value("\${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private lateinit var brokerAddresses: String
@@ -104,9 +114,24 @@ class EnableKafkaKotlinTests {
 			return factory
 		}
 
-		@KafkaListener(id = "kotlin", topics = ["kotlinTestTopic"])
+		@Bean
+		fun kafkaBatchListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
+			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
+					= ConcurrentKafkaListenerContainerFactory()
+			factory.isBatchListener = true
+			factory.consumerFactory = kcf()
+			return factory
+		}
+
+		@KafkaListener(id = "kotlin", topics = ["kotlinTestTopic"], containerFactory = "kafkaListenerContainerFactory")
 		fun listen(value: String) {
 			this.received = value
+			this.latch.countDown()
+		}
+
+		@KafkaListener(id = "kotlin-batch", topics = ["kotlinTestTopic"], containerFactory = "kafkaBatchListenerContainerFactory")
+		fun batchListen(values: List<ConsumerRecord<String, String>>) {
+			this.batchReceived = values.first().value()
 			this.latch.countDown()
 		}
 
