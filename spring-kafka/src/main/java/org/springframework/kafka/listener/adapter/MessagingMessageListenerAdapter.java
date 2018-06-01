@@ -59,8 +59,6 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import sun.reflect.generics.reflectiveObjects.WildcardTypeImpl;
-
 /**
  * An abstract {@link MessageListener} adapter providing the necessary infrastructure
  * to extract the payload of a {@link org.springframework.messaging.Message}.
@@ -430,11 +428,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 							this.isConsumerRecordList =	paramType.equals(ConsumerRecord.class)
 									|| (paramType instanceof ParameterizedType
 										&& ((ParameterizedType) paramType).getRawType().equals(ConsumerRecord.class)
-									|| (paramType instanceof WildcardTypeImpl
-										&& ((WildcardTypeImpl) paramType).getUpperBounds() != null
-										&& ((WildcardTypeImpl) paramType).getUpperBounds().length > 0
-										&& ((WildcardTypeImpl) paramType).getUpperBounds()[0] instanceof ParameterizedType
-										&& ((ParameterizedType) ((WildcardTypeImpl) paramType).getUpperBounds()[0]).getRawType().equals(ConsumerRecord.class))
+									|| (paramType instanceof WildcardType
+										&& ((WildcardType) paramType).getUpperBounds() != null
+										&& ((WildcardType) paramType).getUpperBounds().length > 0
+										&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType
+										&& ((ParameterizedType) ((WildcardType) paramType).getUpperBounds()[0]).getRawType().equals(ConsumerRecord.class))
 							);
 							boolean messageHasGeneric = paramType instanceof ParameterizedType
 									&& ((ParameterizedType) paramType).getRawType().equals(Message.class);
