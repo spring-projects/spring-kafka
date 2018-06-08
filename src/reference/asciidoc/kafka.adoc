@@ -707,6 +707,9 @@ The `- 100` leaves room for later phases to enable components to be auto-started
 [[kafka-listener-annotation]]
 ===== @KafkaListener Annotation
 
+[[record-listener]]
+====== Record Listeners
+
 The `@KafkaListener` annotation provides a mechanism for simple POJO listeners:
 
 [source, java]
@@ -813,6 +816,9 @@ public void listen(@Payload String foo,
 }
 ----
 
+[[batch-listeners]]
+====== Batch listeners
+
 Starting with _version 1.1_, `@KafkaListener` methods can be configured to receive the entire batch of consumer records received from the consumer poll.
 To configure the listener container factory to create batch listeners, set the `batchListener` property:
 
@@ -852,7 +858,7 @@ public void listen(List<String> list,
 }
 ----
 
-Alternatively you can receive a List of `Message<?>` objects with each offset, etc in each message, but it must be the only parameter (aside from an optional `Acknowledgment` when using manual commits) defined on the method:
+Alternatively you can receive a List of `Message<?>` objects with each offset, etc in each message, but it must be the only parameter (aside from optional `Acknowledgment`, when using manual commits, and/or `Consumer<?, ?>` parameters) defined on the method:
 
 [source, java]
 ----
@@ -865,6 +871,11 @@ public void listen14(List<Message<?>> list) {
 public void listen15(List<Message<?>> list, Acknowledgment ack) {
     ...
 }
+
+@KafkaListener(id = "listMsgAckConsumer", topics = "myTopic", containerFactory = "batchFactory")
+public void listen16(List<Message<?>> list, Acknowledgment ack, Consumer<?, ?> consumer) {
+    ...
+}
 ----
 
 No conversion is performed on the payloads in this case.
@@ -872,7 +883,7 @@ No conversion is performed on the payloads in this case.
 If the `BatchMessagingMessageConverter` is configured with a `RecordMessageConverter`, you can also add a generic type to the `Message` parameter and the payloads will be converted.
 See <<payload-conversion-with-batch>> for more information.
 
-You can also receive a list of `ConsumerRecord<?, ?>` objects but it must be the only parameter (aside from an optional `Acknowledgment` when using manual commits) defined on the method:
+You can also receive a list of `ConsumerRecord<?, ?>` objects but it must be the only parameter (aside from optional `Acknowledgment`, when using manual commits, and/or `Consumer<?, ?>` parameters) defined on the method:
 
 [source, java]
 ----
@@ -886,6 +897,20 @@ public void listen(List<ConsumerRecord<Integer, String>> list, Acknowledgment ac
     ...
 }
 ----
+
+Starting with _version 2.2_, the listener can receive the complete `ConsumerRecords<?, ?>` object returned by the `poll()` method, allowing the listener to access additional methods such as `partitions()` which returns the `TopicPartition` s in the list and `records(TopicPartition)` to get selective records.
+Again, this must be the only parameter (aside from optional `Acknowledgment`, when using manual commits, and/or `Consumer<?, ?>` parameters) on the method:
+
+[source, java]
+----
+@KafkaListener(id = "pollResults", topics = "myTopic", containerFactory = "batchFactory")
+public void pollResults(ConsumerRecords<?, ?> records) {
+    ...
+}
+----
+
+IMPORTANT: If the container factory has a `RecordFilterStrategy` configured, it will be ignored for `ConsumerRecords<?, ?>` listeners, with a WARNing log emitted.
+Records can only be filtered with a batch listener if the `<List<?>>` form of listener is used.
 
 Starting with _version 2.0_, the `id` attribute (if present) is used as the Kafka `group.id` property, overriding the configured property in the consumer factory, if present.
 You can also set `groupId` explicitly, or set `idIsGroup` to false, to restore the previous behavior of using the consumer factory `group.id`.

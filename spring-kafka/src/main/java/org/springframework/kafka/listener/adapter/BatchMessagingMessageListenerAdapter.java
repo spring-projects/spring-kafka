@@ -22,6 +22,7 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.kafka.listener.BatchAcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
@@ -95,6 +96,16 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		return this.batchMessageConverter;
 	}
 
+	@Override
+	public boolean wantsPollResult() {
+		return isConsumerRecords();
+	}
+
+	@Override
+	public void onMessage(ConsumerRecords<K, V> records, Acknowledgment acknowledgment, Consumer<K, V> consumer) {
+		invoke(records, acknowledgment, consumer, NULL_MESSAGE);
+	}
+
 	/**
 	 * Kafka {@link MessageListener} entry point.
 	 * <p> Delegate the message to the target listener method,
@@ -124,6 +135,11 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing [" + message + "]");
 		}
+		invoke(records, acknowledgment, consumer, message);
+	}
+
+	protected void invoke(Object records, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+			Message<?> message) {
 		try {
 			Object result = invokeHandler(records, acknowledgment, message, consumer);
 			if (result != null) {

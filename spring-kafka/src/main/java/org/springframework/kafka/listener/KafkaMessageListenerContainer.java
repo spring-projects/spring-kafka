@@ -360,6 +360,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final boolean isBatchListener;
 
+		private final boolean wantsFullRecords;
+
 		private final boolean autoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
 
 		private final boolean isManualAck = this.containerProperties.getAckMode().equals(AckMode.MANUAL);
@@ -458,11 +460,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.listener = null;
 				this.batchListener = (BatchMessageListener<K, V>) listener;
 				this.isBatchListener = true;
+				this.wantsFullRecords = this.batchListener.wantsPollResult();
 			}
 			else if (listener instanceof MessageListener) {
 				this.listener = (MessageListener<K, V>) listener;
 				this.batchListener = null;
 				this.isBatchListener = false;
+				this.wantsFullRecords = false;
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
@@ -872,11 +876,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private void invokeBatchListener(final ConsumerRecords<K, V> records) {
 			List<ConsumerRecord<K, V>> recordList = new LinkedList<ConsumerRecord<K, V>>();
-			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-			while (iterator.hasNext()) {
-				recordList.add(iterator.next());
+			if (!this.wantsFullRecords) {
+				Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+				while (iterator.hasNext()) {
+					recordList.add(iterator.next());
+				}
 			}
-			if (recordList.size() > 0) {
+			if (recordList.size() > 0 || this.wantsFullRecords) {
 				if (this.transactionTemplate != null) {
 					invokeBatchListenerInTx(records, recordList);
 				}
@@ -926,10 +932,18 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			try {
 				switch (this.listenerType) {
 					case ACKNOWLEDGING_CONSUMER_AWARE:
-						this.batchListener.onMessage(recordList,
-								this.isAnyManualAck
-										? new ConsumerBatchAcknowledgment(recordList)
-										: null, this.consumer);
+						if (this.wantsFullRecords) {
+							this.batchListener.onMessage(records,
+									this.isAnyManualAck
+											? new ConsumerRecordsAcknowledgment(records)
+											: null, this.consumer);
+						}
+						else {
+							this.batchListener.onMessage(recordList,
+									this.isAnyManualAck
+											? new ConsumerBatchAcknowledgment(recordList)
+											: null, this.consumer);
+						}
 						break;
 					case ACKNOWLEDGING:
 						this.batchListener.onMessage(recordList,
@@ -945,8 +959,15 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						break;
 				}
 				if (!this.isAnyManualAck && !this.autoCommit) {
-					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
-						this.acks.put(record);
+					if (this.wantsFullRecords) {
+						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
+							this.acks.put(record);
+						}
+					}
+					else {
+						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
+							this.acks.put(record);
+						}
 					}
 					if (producer != null) {
 						sendOffsetsToTransaction(producer);
@@ -972,8 +993,15 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					}
 					// if the handler handled the error (no exception), go ahead and commit
 					if (producer != null) {
-						for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
-							this.acks.add(record);
+						if (this.wantsFullRecords) {
+							for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
+								this.acks.add(record);
+							}
+						}
+						else {
+							for (ConsumerRecord<K, V> record : getHighestOffsetRecords(recordList)) {
+								this.acks.add(record);
+							}
 						}
 						sendOffsetsToTransaction(producer);
 					}
@@ -1358,6 +1386,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			return highestOffsetMap.values();
 		}
 
+		private Collection<ConsumerRecord<K, V>> getHighestOffsetRecords(ConsumerRecords<K, V> records) {
+			final Map<TopicPartition, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
+			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+			while (iterator.hasNext()) {
+				ConsumerRecord<K, V> r = iterator.next();
+				highestOffsetMap.compute(new TopicPartition(r.topic(), r.partition()),
+						(k, v) -> v == null ? r : r.offset() > v.offset() ? r : v);
+			}
+			return highestOffsetMap.values();
+		}
+
 		@Override
 		public void seek(String topic, int partition, long offset) {
 			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, offset));
@@ -1415,6 +1454,30 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			ConsumerBatchAcknowledgment(List<ConsumerRecord<K, V>> records) {
 				// make a copy in case the listener alters the list
 				this.records = new LinkedList<ConsumerRecord<K, V>>(records);
+			}
+
+			@Override
+			public void acknowledge() {
+				Assert.state(ListenerConsumer.this.isAnyManualAck,
+						"A manual ackmode is required for an acknowledging listener");
+				for (ConsumerRecord<K, V> record : getHighestOffsetRecords(this.records)) {
+					processAck(record);
+				}
+			}
+
+			@Override
+			public String toString() {
+				return "Acknowledgment for " + this.records;
+			}
+
+		}
+
+		private final class ConsumerRecordsAcknowledgment implements Acknowledgment {
+
+			private final ConsumerRecords<K, V> records;
+
+			ConsumerRecordsAcknowledgment(ConsumerRecords<K, V> records) {
+				this.records = records;
 			}
 
 			@Override

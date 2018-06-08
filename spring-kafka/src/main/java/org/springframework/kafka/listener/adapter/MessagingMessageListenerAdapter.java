@@ -30,6 +30,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.expression.MapAccessor;
@@ -88,6 +89,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private HandlerAdapter handlerMethod;
 
 	private boolean isConsumerRecordList;
+
+	private boolean isConsumerRecords;
 
 	private boolean isMessageList;
 
@@ -155,6 +158,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	protected boolean isConsumerRecordList() {
 		return this.isConsumerRecordList;
+	}
+
+	public boolean isConsumerRecords() {
+		return this.isConsumerRecords;
 	}
 
 	/**
@@ -442,6 +449,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 								genericParameterType = ((ParameterizedType) paramType).getActualTypeArguments()[0];
 							}
 						}
+						else {
+							this.isConsumerRecords = parameterizedType.getRawType().equals(ConsumerRecords.class);
+						}
 					}
 				}
 				else {
@@ -468,12 +478,14 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		boolean validParametersForBatch = validParametersForBatch(method.getGenericParameterTypes().length,
 				this.hasAckParameter, hasConsumerParameter);
-		String stateMessage = "A parameter of type 'List<%s>' must be the only parameter "
+		String stateMessage = "A parameter of type '%s' must be the only parameter "
 				+ "(except for an optional 'Acknowledgment' and/or 'Consumer')";
+		Assert.state(!this.isConsumerRecords || validParametersForBatch,
+				() -> String.format(stateMessage, "ConsumerRecords"));
 		Assert.state(!this.isConsumerRecordList || validParametersForBatch,
-				() -> String.format(stateMessage, "ConsumerRecord"));
+				() -> String.format(stateMessage, "List<ConsumerRecord>"));
 		Assert.state(!this.isMessageList || validParametersForBatch,
-				() -> String.format(stateMessage, "Message<?>"));
+				() -> String.format(stateMessage, "List<Message<?>>"));
 		return genericParameterType;
 	}
 

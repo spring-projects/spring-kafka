@@ -22,6 +22,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.regex.Pattern;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -59,6 +62,8 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractKafkaListenerEndpoint<K, V>
 		implements KafkaListenerEndpoint, BeanFactoryAware, InitializingBean {
+
+	private final Log logger = LogFactory.getLog(getClass());
 
 	private String id;
 
@@ -379,8 +384,16 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		}
 		if (this.recordFilterStrategy != null) {
 			if (this.batchListener) {
-				messageListener = new FilteringBatchMessageListenerAdapter<>(
+				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {
+					if (this.logger.isWarnEnabled()) {
+						this.logger.warn("Filter strategy ignored when consuming 'ConsumerRecords'"
+								+ (this.id != null ? " id: " + this.id : ""));
+					}
+				}
+				else {
+					messageListener = new FilteringBatchMessageListenerAdapter<>(
 						(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy, this.ackDiscarded);
+				}
 			}
 			else {
 				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
