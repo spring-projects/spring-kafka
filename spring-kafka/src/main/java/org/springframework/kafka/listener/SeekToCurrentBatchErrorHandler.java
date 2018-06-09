@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,8 @@ public class SeekToCurrentBatchErrorHandler implements ContainerAwareBatchErrorH
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
-		data.forEach(r -> offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
+		data.partitions()
+			.forEach(tp -> offsets.put(tp, data.records(tp).get(0).offset()));
 		offsets.forEach(consumer::seek);
 		throw new KafkaException("Seek to current after exception", thrownException);
 	}

@@ -1366,9 +1366,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private Collection<ConsumerRecord<K, V>> getHighestOffsetRecords(ConsumerRecords<K, V> records) {
 			final Map<TopicPartition, ConsumerRecord<K, V>> highestOffsetMap = new HashMap<>();
 			records.partitions().forEach(tp -> {
-				records.records(tp).forEach(r ->
-					highestOffsetMap.compute(tp,
-						(k, v) -> v == null ? r : r.offset() > v.offset() ? r : v));
+					List<ConsumerRecord<K, V>> recordList = records.records(tp);
+					highestOffsetMap.put(tp, recordList.get(recordList.size() - 1));
 			});
 			return highestOffsetMap.values();
 		}
