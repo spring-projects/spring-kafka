@@ -127,7 +127,8 @@ public class EnableKafkaIntegrationTests {
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33");
+			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
+			"annotated34");
 
 //	@Rule
 //	public Log4jLevelAdjuster adjuster = new Log4jLevelAdjuster(Level.TRACE,
@@ -650,6 +651,15 @@ public class EnableKafkaIntegrationTests {
 		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 1);
 	}
 
+	@Test
+	public void testReceivePollResults() throws Exception {
+		this.template.send("annotated34", "allRecords");
+		assertThat(this.listener.latch21.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.consumerRecords).isNotNull();
+		assertThat(this.listener.consumerRecords.count()).isEqualTo(1);
+		assertThat(this.listener.consumerRecords.iterator().next().value()).isEqualTo("allRecords");
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -1130,6 +1140,8 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch20 = new CountDownLatch(1);
 
+		private final CountDownLatch latch21 = new CountDownLatch(1);
+
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
 		private volatile Integer partition;
@@ -1163,6 +1175,8 @@ public class EnableKafkaIntegrationTests {
 		private volatile Consumer<?, ?> listen12Consumer;
 
 		private volatile Consumer<?, ?> listen13Consumer;
+
+		private volatile ConsumerRecords<?, ?> consumerRecords;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
@@ -1399,6 +1413,12 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(topics = "annotated29")
 		public void anonymousListener(String in) {
+		}
+
+		@KafkaListener(id = "pollResults", topics = "annotated34", containerFactory = "batchFactory")
+		public void pollResults(ConsumerRecords<?, ?> records) {
+			this.consumerRecords = records;
+			this.latch21.countDown();
 		}
 
 		@Override
