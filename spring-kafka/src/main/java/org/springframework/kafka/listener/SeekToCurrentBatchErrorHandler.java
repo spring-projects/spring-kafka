@@ -17,11 +17,10 @@
 package org.springframework.kafka.listener;
 
 import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.KafkaException;
 
@@ -38,10 +37,9 @@ public class SeekToCurrentBatchErrorHandler implements ContainerAwareBatchErrorH
 	@Override
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
-		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
-		data.partitions()
-			.forEach(tp -> offsets.put(tp, data.records(tp).get(0).offset()));
-		offsets.forEach(consumer::seek);
+		data.partitions().stream().collect(Collectors.toMap(tp -> tp, tp -> data.records(tp).get(0).offset(),
+						(u, v) -> v, () -> new LinkedHashMap<>()))
+				.forEach(consumer::seek);
 		throw new KafkaException("Seek to current after exception", thrownException);
 	}
 
