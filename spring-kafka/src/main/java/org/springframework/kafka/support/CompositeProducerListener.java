@@ -30,7 +30,9 @@ import org.springframework.util.Assert;
  *
  * @param <K> the key type.
  * @param <V> the value type.
+ *
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @since 2.1.6
  *
@@ -40,13 +42,16 @@ public class CompositeProducerListener<K, V> implements ProducerListener<K, V> {
 	private final List<ProducerListener<K, V>> delegates = new CopyOnWriteArrayList<>();
 
 	@SafeVarargs
+	@SuppressWarnings("varargs")
 	public CompositeProducerListener(ProducerListener<K, V>... delegates) {
 		setDelegates(delegates);
 	}
 
 	@SafeVarargs
+	@SuppressWarnings("varargs")
 	public final void setDelegates(ProducerListener<K, V>... delegates) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
+		Assert.noNullElements(delegates, "'delegates' cannot contain null elements");
 		this.delegates.clear();
 		this.delegates.addAll(Arrays.asList(delegates));
 	}
