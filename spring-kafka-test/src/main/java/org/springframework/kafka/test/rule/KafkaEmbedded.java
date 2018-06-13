@@ -266,7 +266,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	/**
 	 * Add topics to the existing broker(s) using the configured number of partitions.
 	 * @param topics the topics.
-	 * @since 2.1
+	 * @since 2.1.6
 	 */
 	public void addTopics(String... topics) {
 		HashSet<String> set = new HashSet<>(Arrays.asList(topics));
@@ -278,7 +278,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * Create an {@link AdminClient} invoke the callback and reliable close the
 	 * admin.
 	 * @param callback the callback.
-	 * @since 2.1
+	 * @since 2.1.6
 	 */
 	public void doWithAdmin(java.util.function.Consumer<AdminClient> callback) {
 		Map<String, Object> adminConfigs = new HashMap<>();
