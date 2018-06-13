@@ -215,6 +215,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
 	@Override
 	public T deserialize(String topic, Headers headers, byte[] data) {
+		if (data == null) {
+			return null;
+		}
 		JavaType javaType = this.typeMapper.toJavaType(headers);
 		if (javaType == null) {
 			Assert.state(this.targetType != null, "No type information in headers and no default type provided");
@@ -233,6 +236,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
 	@Override
 	public T deserialize(String topic, byte[] data) {
+		if (data == null) {
+			return null;
+		}
 		if (this.reader == null) {
 			this.reader = this.objectMapper.readerFor(this.targetType);
 		}

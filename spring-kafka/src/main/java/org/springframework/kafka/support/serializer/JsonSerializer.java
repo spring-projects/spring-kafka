@@ -130,6 +130,9 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 
 	@Override
 	public byte[] serialize(String topic, Headers headers, T data) {
+		if (data == null) {
+			return null;
+		}
 		if (this.addTypeInfo && headers != null) {
 			this.typeMapper.fromJavaType(this.objectMapper.constructType(data.getClass()), headers);
 		}
@@ -138,6 +141,9 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 
 	@Override
 	public byte[] serialize(String topic, T data) {
+		if (data == null) {
+			return null;
+		}
 		try {
 			byte[] result = null;
 			if (data != null) {
