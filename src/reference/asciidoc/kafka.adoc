@@ -1686,11 +1686,11 @@ If the converter has no converter (either because Jackson is not present, or it 
 IMPORTANT: The Jackson `ObjectMapper` (even if provided) will be enhanced to support deserializing `org.springframework.util.MimeType` objects, often used in the `spring-messaging` `contentType` header.
 If you don't wish your mapper to be enhanced in this way, for some reason, you should subclass the `DefaultKafkaHeaderMapper` and override `getObjectMapper()` to return your mapper.
 
-==== Log Compaction
+==== Null Payloads and Log Compaction 'Tombstone' Records
 
 When using https://kafka.apache.org/documentation/#compaction[Log Compaction], it is possible to send and receive messages with `null` payloads which identifies the deletion of a key.
 
-Starting with _version 1.0.3_, this is now fully supported.
+It is also possible to receive `null` values for other reasons - such as a `Deserializer` that might return `null` when it can't deserialize a value.
 
 To send a `null` payload using the `KafkaTemplate` simply pass null into the value argument of the `send()` methods.
 One exception to this is the `send(Message<?> message)` variant.
@@ -1699,7 +1699,7 @@ For convenience, the static `KafkaNull.INSTANCE` is provided.
 
 When using a message listener container, the received `ConsumerRecord` will have a `null` `value()`.
 
-To configure the `@KafkaListener` to handle `null` payloads, you must use the `@Payload` annotation with `required = false`; you will usually also need the key so your application knows which key was "deleted":
+To configure the `@KafkaListener` to handle `null` payloads, you must use the `@Payload` annotation with `required = false`; if it's a tombstone message for a compacted log, you will usually also need the key so your application can determine which key was "deleted":
 
 [source, java]
 ----
@@ -1709,7 +1709,7 @@ public void listen(@Payload(required = false) String value, @Header(KafkaHeaders
 }
 ----
 
-When using a class-level `@KafkaListener`, some additional configuration is needed - a `@KafkaHandler` method with a `KafkaNull` payload:
+When using a class-level `@KafkaListener` with multiple `@KafkaHandler` methods, some additional configuration is needed - a `@KafkaHandler` method with a `KafkaNull` payload:
 
 [source, java]
 ----
@@ -1733,6 +1733,8 @@ static class MultiListenerBean {
 
 }
 ----
+
+Note that the argument will be `null` not a `KafkaNull`.
 
 [[annotation-error-handling]]
 ==== Handling Exceptions

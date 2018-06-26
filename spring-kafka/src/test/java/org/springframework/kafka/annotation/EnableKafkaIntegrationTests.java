@@ -257,11 +257,15 @@ public class EnableKafkaIntegrationTests {
 				.isEqualTo("clientIdViaAnnotation-0");
 
 		template.send("annotated11", 0, "foo");
-		template.flush();
 		assertThat(this.listener.latch7.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.consumerRef.get()).isNotNull();
+		assertThat(this.listener.latch7String).isEqualTo("foo");
 
 		assertThat(this.recordFilter.called).isTrue();
+
+		template.send("annotated11", 0, null);
+		assertThat(this.listener.latch7a.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.latch7String).isNull();
 
 		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
 		assertThat(rebalanceConcurrentContainer).isNotNull();
@@ -1114,6 +1118,10 @@ public class EnableKafkaIntegrationTests {
 
 		private final CountDownLatch latch7 = new CountDownLatch(1);
 
+		private final CountDownLatch latch7a = new CountDownLatch(2);
+
+		private volatile String latch7String;
+
 		private final CountDownLatch latch8 = new CountDownLatch(1);
 
 		private final CountDownLatch latch9 = new CountDownLatch(1);
@@ -1262,8 +1270,10 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(id = "rebalanceListener", topics = "annotated11", idIsGroup = false,
 				containerFactory = "kafkaRebalanceListenerContainerFactory")
-		public void listen7(String foo) {
+		public void listen7(@Payload(required = false) String foo) {
+			this.latch7String = foo;
 			this.latch7.countDown();
+			this.latch7a.countDown();
 		}
 
 		@KafkaListener(id = "quux", topics = "annotated12")
