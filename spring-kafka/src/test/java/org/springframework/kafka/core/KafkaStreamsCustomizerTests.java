@@ -18,8 +18,7 @@ package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Properties;
 
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
@@ -78,11 +77,11 @@ public class KafkaStreamsCustomizerTests {
 		}
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-		public StreamsConfig kStreamsConfigs() {
-			Map<String, Object> props = new HashMap<>();
+		public Properties kStreamsConfigs() {
+			Properties props = new Properties();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
-			return new StreamsConfig(props);
+			return props;
 		}
 
 

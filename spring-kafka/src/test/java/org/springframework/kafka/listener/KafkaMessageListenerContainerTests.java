@@ -18,7 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -29,6 +29,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -432,10 +433,10 @@ public class KafkaMessageListenerContainerTests {
 		// Verify that commitSync is called when paused
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		// Verify that just the initial commit is processed before stop
-		verify(consumer, times(1)).commitSync(any());
+		verify(consumer, times(1)).commitSync(anyMap());
 		container.stop();
 		// Verify that a commit has been made on stop
-		verify(consumer, times(2)).commitSync(any());
+		verify(consumer, times(2)).commitSync(anyMap());
 	}
 
 	@Test
@@ -474,7 +475,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete.countDown();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -507,7 +508,7 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
 		});
@@ -546,7 +547,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(messageListener, consumer);
-		inOrder.verify(consumer).poll(1000);
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
 		inOrder.verify(consumer).commitSync(any(Map.class));
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
@@ -574,7 +575,7 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
 		});
@@ -619,7 +620,7 @@ public class KafkaMessageListenerContainerTests {
 		acks.get(1).acknowledge();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(messageListener, consumer);
-		inOrder.verify(consumer).poll(1000);
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(messageListener, times(2)).onMessage(any(ConsumerRecord.class), any(Acknowledgment.class));
 		inOrder.verify(consumer).commitSync(any(Map.class));
 		container.stop();
@@ -637,7 +638,7 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
 		final CountDownLatch deadLatch = new CountDownLatch(1);
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			deadLatch.await(10, TimeUnit.SECONDS);
 			throw new WakeupException();
 		});
@@ -674,7 +675,7 @@ public class KafkaMessageListenerContainerTests {
 		given(cf.createConsumer(isNull(), eq(""), isNull())).willReturn(consumer);
 		ConsumerRecords records = new ConsumerRecords(Collections.emptyMap());
 		CountDownLatch latch = new CountDownLatch(20);
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(100);
 			latch.countDown();
 			return records;
@@ -744,7 +745,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -813,7 +814,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -895,7 +896,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete.countDown();
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
@@ -956,7 +957,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -1185,7 +1186,7 @@ public class KafkaMessageListenerContainerTests {
 				return new KafkaConsumer<Integer, String>(props) {
 
 					@Override
-					public ConsumerRecords<Integer, String> poll(long timeout) {
+					public ConsumerRecords<Integer, String> poll(Duration timeout) {
 						try {
 							return super.poll(timeout);
 						}
@@ -1223,7 +1224,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(container1))
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete1.countDown();
 
 		TopicPartitionInitialOffset topic1Partition1 = new TopicPartitionInitialOffset(topic13, 1, 0L);
@@ -1251,7 +1252,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(container2))
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete2.countDown();
 
 		assertThat(initialConsumersLatch.await(20, TimeUnit.SECONDS)).isTrue();
@@ -1310,7 +1311,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete3.countDown();
 
 		listenerConsumerStartLatch.countDown();
@@ -1354,7 +1355,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete4.countDown();
 
 		assertThat(latch4.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1399,7 +1400,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete5.countDown();
 
 		assertThat(latch5.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1446,7 +1447,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete6.countDown();
 
 		assertThat(latch6.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1539,7 +1540,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(any());
+				.commitSync(anyMap());
 		stubbingComplete1.countDown();
 		ContainerTestUtils.waitForAssignment(container1, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -1699,7 +1700,7 @@ public class KafkaMessageListenerContainerTests {
 				}
 			}
 
-		}).given(containerConsumer).commitSync(any());
+		}).given(containerConsumer).commitSync(anyMap());
 		stubbingComplete1.countDown();
 		ContainerTestUtils.waitForAssignment(container1, embeddedKafka.getPartitionsPerTopic());
 
@@ -1750,7 +1751,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		AtomicBoolean first = new AtomicBoolean(true);
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return first.getAndSet(false) ? consumerRecords : emptyRecords;
 		});
@@ -1807,7 +1808,7 @@ public class KafkaMessageListenerContainerTests {
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		final CountDownLatch latch = new CountDownLatch(1);
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			latch.countDown();
 			Thread.sleep(50);
 			return emptyRecords;
@@ -1929,7 +1930,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecords<Integer, String> consumerRecords3 = new ConsumerRecords<>(records3);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		AtomicInteger which = new AtomicInteger();
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			int recordsToUse = which.incrementAndGet();
 			switch (recordsToUse) {
@@ -1983,7 +1984,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		AtomicBoolean first = new AtomicBoolean(true);
-		given(consumer.poll(anyLong())).willAnswer(i -> {
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return first.getAndSet(false) ? consumerRecords : emptyRecords;
 		});

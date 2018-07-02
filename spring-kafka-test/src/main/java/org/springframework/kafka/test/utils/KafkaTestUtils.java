@@ -18,6 +18,7 @@ package org.springframework.kafka.test.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -191,7 +192,7 @@ public final class KafkaTestUtils {
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
 		logger.debug("Polling...");
-		ConsumerRecords<K, V> received = consumer.poll(timeout);
+		ConsumerRecords<K, V> received = consumer.poll(Duration.ofMillis(timeout));
 		if (logger.isDebugEnabled()) {
 			logger.debug("Received: " + received.count() + ", "
 					+ received.partitions().stream()

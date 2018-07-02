@@ -19,9 +19,9 @@ package org.springframework.kafka.kstream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -29,9 +29,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.streams.Consumed;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.junit.Test;
@@ -56,6 +56,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 /**
  * @author Elliot Kennedy
  * @author Artem Bilan
+ * @author Gary Russell
  *
  * @since 1.3.3
  */
@@ -143,13 +144,13 @@ public class KafkaStreamsBranchTests {
 		}
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-		public StreamsConfig kStreamsConfigs() {
-			Map<String, Object> props = new HashMap<>();
+		public Properties kStreamsConfigs() {
+			Properties props = new Properties();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
 			props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
 			props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-			return new StreamsConfig(props);
+			return props;
 		}
 
 		@Bean

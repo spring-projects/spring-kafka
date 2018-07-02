@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -704,7 +705,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 						publishConsumerPausedEvent(this.consumer.assignment());
 					}
-					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
+					ConsumerRecords<K, V> records = this.consumer
+							.poll(Duration.ofMillis(this.containerProperties.getPollTimeout()));
 					this.lastPoll = System.currentTimeMillis();
 					if (this.consumerPaused && !isPaused()) {
 						if (this.logger.isDebugEnabled()) {

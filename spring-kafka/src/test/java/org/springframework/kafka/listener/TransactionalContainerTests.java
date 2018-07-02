@@ -30,6 +30,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -134,7 +135,7 @@ public class TransactionalContainerTests {
 				Thread.sleep(500);
 				return null;
 			}
-		}).given(consumer).poll(anyLong());
+		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		willReturn(consumer).given(cf).createConsumer("group", "", null);
 		Producer producer = mock(Producer.class);
@@ -200,7 +201,7 @@ public class TransactionalContainerTests {
 				Thread.sleep(500);
 				return null;
 			}
-		}).given(consumer).poll(anyLong());
+		}).given(consumer).poll(any(Duration.class));
 		final CountDownLatch seekLatch = new CountDownLatch(2);
 		willAnswer(i -> {
 			seekLatch.countDown();
@@ -243,7 +244,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).close();
 		verify(consumer).seek(topicPartition0, 0);
 		verify(consumer).seek(topicPartition1, 0);
-		verify(consumer, never()).commitSync(any());
+		verify(consumer, never()).commitSync(anyMap());
 		container.stop();
 		verify(pf, times(1)).createProducer();
 	}
@@ -267,7 +268,7 @@ public class TransactionalContainerTests {
 				Thread.sleep(500);
 				return null;
 			}
-		}).given(consumer).poll(anyLong());
+		}).given(consumer).poll(any(Duration.class));
 		final CountDownLatch seekLatch = new CountDownLatch(2);
 		willAnswer(i -> {
 			seekLatch.countDown();
@@ -310,7 +311,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).close();
 		verify(consumer).seek(topicPartition0, 0);
 		verify(consumer).seek(topicPartition1, 0);
-		verify(consumer, never()).commitSync(any());
+		verify(consumer, never()).commitSync(anyMap());
 		container.stop();
 		verify(pf, times(1)).createProducer();
 	}
@@ -336,7 +337,7 @@ public class TransactionalContainerTests {
 				Thread.sleep(500);
 				return null;
 			}
-		}).given(consumer).poll(anyLong());
+		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		willReturn(consumer).given(cf).createConsumer("group", "", null);
 		Producer producer = mock(Producer.class);
@@ -443,9 +444,15 @@ public class TransactionalContainerTests {
 			}
 
 		});
-		ConsumerRecords<Integer, String> records = consumer.poll(0);
+		ConsumerRecords<Integer, String> records = null;
+		int n = 0;
+		while (subsLatch.getCount() > 0 && n++ < 600) {
+			records = consumer.poll(Duration.ofMillis(100));
+		}
+		assertThat(subsLatch.await(1, TimeUnit.MILLISECONDS)).isTrue();
 		assertThat(records.count()).isEqualTo(0);
-		assertThat(consumer.position(new TopicPartition(topic1, 0))).isEqualTo(1);
+		// depending on timing, the position might include the offset representing the commit in the log
+		assertThat(consumer.position(new TopicPartition(topic1, 0))).isGreaterThanOrEqualTo(1L);
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
 		consumer.close();

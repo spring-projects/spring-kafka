@@ -23,6 +23,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -97,13 +98,13 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(this.consumer, this.producer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
-		inOrder.verify(this.consumer).poll(1000);
+		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.producer).beginTransaction();
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 0), 0L);
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 1), 0L);
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 2), 0L);
 		inOrder.verify(this.producer).abortTransaction();
-		inOrder.verify(this.consumer).poll(1000);
+		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.producer).beginTransaction();
 		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
 		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(2L));
@@ -180,7 +181,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 						}
 						return new ConsumerRecords(Collections.emptyMap());
 				}
-			}).given(consumer).poll(1000);
+			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {
 				this.closeLatch.countDown();
 				return null;

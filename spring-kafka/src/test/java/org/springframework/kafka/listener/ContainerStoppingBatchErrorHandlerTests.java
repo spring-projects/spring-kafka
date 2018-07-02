@@ -23,6 +23,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -90,7 +91,7 @@ public class ContainerStoppingBatchErrorHandlerTests {
 		assertThat(container.isRunning()).isFalse();
 		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
-		inOrder.verify(this.consumer).poll(1000);
+		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).wakeup();
 		inOrder.verify(this.consumer).unsubscribe();
 		inOrder.verify(this.consumer).close();
@@ -163,7 +164,7 @@ public class ContainerStoppingBatchErrorHandlerTests {
 						}
 						return new ConsumerRecords(Collections.emptyMap());
 				}
-			}).given(consumer).poll(1000);
+			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;

@@ -22,8 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Properties;
 
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeAll;
@@ -91,12 +90,12 @@ public class StreamsBuilderFactoryBeanTests {
 		}
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-		public StreamsConfig kStreamsConfigs() {
-			Map<String, Object> props = new HashMap<>();
+		public Properties kStreamsConfigs() {
+			Properties props = new Properties();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
 			props.put(StreamsConfig.STATE_DIR_CONFIG, stateStoreDir.toString());
-			return new StreamsConfig(props);
+			return props;
 		}
 
 	}

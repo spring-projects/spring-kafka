@@ -17,11 +17,12 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
@@ -46,7 +47,6 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -243,16 +243,16 @@ public class ConcurrentMessageListenerContainerTests {
 
 	@Test
 	public void testManualCommit() throws Exception {
-		testManualCommitGuts(ContainerProperties.AckMode.MANUAL, topic4);
-		testManualCommitGuts(ContainerProperties.AckMode.MANUAL_IMMEDIATE, topic5);
+		testManualCommitGuts(ContainerProperties.AckMode.MANUAL, topic4, 1);
+		testManualCommitGuts(ContainerProperties.AckMode.MANUAL_IMMEDIATE, topic5, 1);
 		// to be sure the commits worked ok so run the tests again and the second tests start at the committed offset.
-		testManualCommitGuts(ContainerProperties.AckMode.MANUAL, topic4);
-		testManualCommitGuts(ContainerProperties.AckMode.MANUAL_IMMEDIATE, topic5);
+		testManualCommitGuts(ContainerProperties.AckMode.MANUAL, topic4, 2);
+		testManualCommitGuts(ContainerProperties.AckMode.MANUAL_IMMEDIATE, topic5, 2);
 	}
 
-	private void testManualCommitGuts(ContainerProperties.AckMode ackMode, String topic) throws Exception {
+	private void testManualCommitGuts(ContainerProperties.AckMode ackMode, String topic, int qual) throws Exception {
 		this.logger.info("Start " + ackMode);
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test" + ackMode, "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test" + ackMode + qual, "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -396,7 +396,7 @@ public class ConcurrentMessageListenerContainerTests {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(anyString(), anyString(), anyString())).willReturn(consumer);
-		given(consumer.poll(anyLong()))
+		given(consumer.poll(any(Duration.class)))
 			.willAnswer(new Answer<ConsumerRecords<Integer, String>>() {
 
 				@Override
@@ -431,9 +431,7 @@ public class ConcurrentMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic6);
 		containerProps.setAckCount(23);
-		ContainerProperties containerProps2 = new ContainerProperties(topic2);
-		BeanUtils.copyProperties(containerProps, containerProps2,
-				"topics", "topicPartitions", "topicPattern", "ackCount", "ackTime");
+		containerProps.setGroupId("testListenerException");
 		final CountDownLatch latch = new CountDownLatch(4);
 		final AtomicBoolean catchError = new AtomicBoolean(false);
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {

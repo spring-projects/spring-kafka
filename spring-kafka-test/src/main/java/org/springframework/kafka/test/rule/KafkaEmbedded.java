@@ -97,6 +97,7 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	 * @return this for chaining configuration
 	 * @see KafkaConfig
 	 */
+	@Override
 	public KafkaEmbedded brokerProperties(Map<String, String> brokerProperties) {
 		super.brokerProperties(brokerProperties);
 		return this;
@@ -109,6 +110,7 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	 * @return the {@link KafkaEmbedded}.
 	 * @since 2.1.4
 	 */
+	@Override
 	public KafkaEmbedded brokerProperty(String property, Object value) {
 		super.brokerProperty(property, value);
 		return this;

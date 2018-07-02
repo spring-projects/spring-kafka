@@ -23,6 +23,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -93,7 +94,7 @@ public class ContainerStoppingErrorHandlerRecordModeTests {
 		assertThat(container.isRunning()).isFalse();
 		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
-		inOrder.verify(this.consumer).poll(1000);
+		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)));
 		inOrder.verify(this.consumer).commitSync(
@@ -182,7 +183,7 @@ public class ContainerStoppingErrorHandlerRecordModeTests {
 						}
 						return new ConsumerRecords(Collections.emptyMap());
 				}
-			}).given(consumer).poll(1000);
+			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;

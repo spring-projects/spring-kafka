@@ -95,12 +95,12 @@ public class ContainerProperties {
 	/**
 	 * The default {@link #setPollTimeout(long) pollTimeout} (ms).
 	 */
-	public static final long DEFAULT_POLL_TIMEOUT = 1000L;
+	public static final long DEFAULT_POLL_TIMEOUT = 5_000L;
 
 	/**
 	 * The default {@link #setShutdownTimeout(long) shutDownTimeout} (ms).
 	 */
-	public static final int DEFAULT_SHUTDOWN_TIMEOUT = 10000;
+	public static final long DEFAULT_SHUTDOWN_TIMEOUT = 10_000L;
 
 	/**
 	 * The default {@link #setMonitorInterval(int) monitorInterval} (s).

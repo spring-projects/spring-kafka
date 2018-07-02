@@ -36,6 +36,7 @@ allprojects {
 	group = 'org.springframework.kafka'
 
 	repositories {
+		mavenLocal()
 		maven { url 'https://repo.spring.io/libs-milestone' }
 		if (version.endsWith('BUILD-SNAPSHOT')) {
 			maven { url 'https://repo.spring.io/libs-snapshot' }
@@ -76,7 +77,7 @@ subprojects { subproject ->
 		junit4Version = '4.12'
 		junitJupiterVersion = '5.1.1'
 		junitPlatformVersion = '1.1.1'
-		kafkaVersion = '1.1.1'
+		kafkaVersion = '2.0.0'
 		log4jVersion = '2.11.0'
 		mockitoVersion = '2.18.0'
 		scalaVersion = '2.11'

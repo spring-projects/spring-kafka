@@ -23,6 +23,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -91,7 +92,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
-		inOrder.verify(this.consumer).poll(1000);
+		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)));
 		inOrder.verify(this.consumer).commitSync(
@@ -100,14 +101,14 @@ public class SeekToCurrentOnErrorRecordModeTests {
 				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(1L)));
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 2), 0L);
-		inOrder.verify(this.consumer).poll(1000);
+		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(2L)));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 2), new OffsetAndMetadata(1L)));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 2), new OffsetAndMetadata(2L)));
-		inOrder.verify(this.consumer).poll(1000);
+		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		assertThat(this.config.count).isEqualTo(7);
 		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
 				{ "foo", "bar", "baz", "qux", "qux", "fiz", "buz" });
@@ -190,7 +191,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 						}
 						return new ConsumerRecords(Collections.emptyMap());
 				}
-			}).given(consumer).poll(1000);
+			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;

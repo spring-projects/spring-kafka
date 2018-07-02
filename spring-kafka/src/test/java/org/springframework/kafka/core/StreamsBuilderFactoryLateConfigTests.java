@@ -41,6 +41,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 /**
  * @author Soby Chacko
  * @author Artem Bilan
+ * @author Gary Russell
  */
 @RunWith(SpringRunner.class)
 @DirtiesContext
@@ -61,7 +62,7 @@ public class StreamsBuilderFactoryLateConfigTests {
 		streamsBuilderFactoryBean.start();
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test(expected = IllegalStateException.class)
 	public void testStreamBuilderFactoryCannotBeInstantiatedWhenAutoStart() throws Exception {
 		StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
 		streamsBuilderFactoryBean.setAutoStartup(true);

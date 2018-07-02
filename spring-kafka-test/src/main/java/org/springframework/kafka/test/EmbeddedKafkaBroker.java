@@ -18,6 +18,7 @@ package org.springframework.kafka.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,8 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.I0Itec.zkclient.ZkClient;
@@ -405,7 +405,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		assertThat(this.topics)
 				.as("topic(s):'" + diff + "' are not in embedded topic list")
 				.containsAll(new HashSet<>(Arrays.asList(topics)));
-		final CountDownLatch consumerLatch = new CountDownLatch(1);
+		final AtomicBoolean assigned = new AtomicBoolean();
 		consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
 
 			@Override
@@ -414,26 +414,31 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				consumerLatch.countDown();
+				assigned.set(true);
 				if (logger.isDebugEnabled()) {
 					logger.debug("partitions assigned: " + partitions);
 				}
 			}
 
 		});
-		ConsumerRecords<?, ?> records = consumer.poll(0); // force assignment
-		if (records.count() > 0) {
+		ConsumerRecords<?, ?> records = null;
+		int n = 0;
+		while (!assigned.get() && n++ < 600) {
+			records = consumer.poll(Duration.ofMillis(100)); // force assignment
+		}
+		if (records != null && records.count() > 0) {
+			final ConsumerRecords<?, ?> theRecords = records;
 			if (logger.isDebugEnabled()) {
 				logger.debug("Records received on initial poll for assignment; re-seeking to beginning; "
 						+ records.partitions().stream()
-						.flatMap(p -> records.records(p).stream())
+						.flatMap(p -> theRecords.records(p).stream())
 						// map to same format as send metadata toString()
 						.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
 						.collect(Collectors.toList()));
 			}
 			consumer.seekToBeginning(records.partitions());
 		}
-		assertThat(consumerLatch.await(30, TimeUnit.SECONDS))
+		assertThat(assigned.get())
 				.as("Failed to be assigned partitions from the embedded topics")
 				.isTrue();
 		logger.debug("Subscription Initiated");

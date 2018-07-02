@@ -179,6 +179,7 @@ public class EnableKafkaIntegrationTests {
 		List<?> containers = KafkaTestUtils.getPropertyValue(container, "containers", List.class);
 		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumerGroupId"))
 				.isEqualTo(DEFAULT_TEST_GROUP_ID);
+		container.stop();
 	}
 
 	@Test
@@ -281,7 +282,7 @@ public class EnableKafkaIntegrationTests {
 				String.class);
 		assertThat(
 				clientId)
-				.startsWith("consumer-");
+				.startsWith("rebal-");
 		assertThat(clientId.indexOf('-')).isEqualTo(clientId.lastIndexOf('-'));
 	}
 
@@ -796,7 +797,7 @@ public class EnableKafkaIntegrationTests {
 		public KafkaListenerContainerFactory<?> batchManualFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(manualConsumerFactory("clientIdViaProps1"));
+			factory.setConsumerFactory(configuredConsumerFactory("clientIdViaProps1"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			factory.setBatchListener(true);
@@ -807,7 +808,7 @@ public class EnableKafkaIntegrationTests {
 		public KafkaListenerContainerFactory<?> batchManualFactory2() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(manualConsumerFactory("clientIdViaProps2"));
+			factory.setConsumerFactory(configuredConsumerFactory("clientIdViaProps2"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			factory.setBatchListener(true);
@@ -816,10 +817,11 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaManualAckListenerContainerFactory() {
+				kafkaManualAckListenerContainerFactory() {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(manualConsumerFactory("clientIdViaProps3"));
+			factory.setConsumerFactory(configuredConsumerFactory("clientIdViaProps3"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			props.setIdleEventInterval(100L);
@@ -832,7 +834,8 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaAutoStartFalseListenerContainerFactory() {
+				kafkaAutoStartFalseListenerContainerFactory() {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			ContainerProperties props = factory.getContainerProperties();
@@ -846,23 +849,24 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		kafkaRebalanceListenerContainerFactory() {
+				kafkaRebalanceListenerContainerFactory() {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			ContainerProperties props = factory.getContainerProperties();
-			factory.setConsumerFactory(consumerFactory());
 			factory.setAutoStartup(true);
+			factory.setConsumerFactory(configuredConsumerFactory("rebal"));
 			props.setConsumerRebalanceListener(consumerRebalanceListener(consumerRef()));
 			return factory;
 		}
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-		recordAckListenerContainerFactory() {
+				recordAckListenerContainerFactory() {
 
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(manualConsumerFactory("clientIdViaProps4"));
+			factory.setConsumerFactory(configuredConsumerFactory("clientIdViaProps4"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.RECORD);
 			props.setAckOnError(true);
@@ -875,10 +879,11 @@ public class EnableKafkaIntegrationTests {
 			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
 		}
 
-		private ConsumerFactory<Integer, String> manualConsumerFactory(String clientId) {
+		private ConsumerFactory<Integer, String> configuredConsumerFactory(String clientAndGroupId) {
 			Map<String, Object> configs = consumerConfigs();
 			configs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-			configs.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
+			configs.put(ConsumerConfig.CLIENT_ID_CONFIG, clientAndGroupId);
+			configs.put(ConsumerConfig.GROUP_ID_CONFIG, clientAndGroupId);
 			return new DefaultKafkaConsumerFactory<>(configs);
 		}
 
