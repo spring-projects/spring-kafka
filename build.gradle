@@ -190,7 +190,7 @@ project ('spring-kafka') {
 		compile "org.springframework:spring-messaging:$springVersion"
 		compile "org.springframework:spring-tx:$springVersion"
 		compile ("org.springframework.retry:spring-retry:$springRetryVersion") {
-			exclude group: 'org.springframework'
+			exclude group: 'org.springframework', module: 'spring-core'
 		}
 		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
 		compile ("org.apache.kafka:kafka-streams:$kafkaVersion", optional)
