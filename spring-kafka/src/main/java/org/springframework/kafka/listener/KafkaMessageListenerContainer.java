@@ -65,6 +65,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
+import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.scheduling.TaskScheduler;
@@ -1095,6 +1096,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				@SuppressWarnings("rawtypes") Producer producer,
 				Iterator<ConsumerRecord<K, V>> iterator) throws Error {
 			try {
+				if (record.value() instanceof DeserializationException) {
+					throw (DeserializationException) record.value();
+				}
+				if (record.key() instanceof DeserializationException) {
+					throw (DeserializationException) record.key();
+				}
 				switch (this.listenerType) {
 					case ACKNOWLEDGING_CONSUMER_AWARE:
 						this.listener.onMessage(record,
