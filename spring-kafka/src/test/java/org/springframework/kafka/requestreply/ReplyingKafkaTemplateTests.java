@@ -42,6 +42,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -54,7 +55,10 @@ import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -75,9 +79,13 @@ public class ReplyingKafkaTemplateTests {
 
 	private static final String B_REQUEST = "bRequest";
 
+	private static final String C_REPLY = "cReply";
+
+	private static final String C_REQUEST = "cRequest";
+
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 5, A_REQUEST, A_REPLY,
-			B_REQUEST, B_REPLY);
+			B_REQUEST, B_REPLY, C_REQUEST, C_REPLY);
 
 	@Rule
 	public TestName testName = new TestName();
@@ -92,6 +100,23 @@ public class ReplyingKafkaTemplateTests {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "foo");
 			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("FOO");
+		}
+		finally {
+			template.stop();
+		}
+	}
+
+	@Test
+	public void testMultiListenerMessageReturn() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(C_REPLY);
+		try {
+			template.setReplyTimeout(30_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(C_REQUEST, "foo");
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, C_REPLY.getBytes()));
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
@@ -250,6 +275,27 @@ public class ReplyingKafkaTemplateTests {
 		@SendTo  // default REPLY_TOPIC header
 		public String handleB(String in) {
 			return in.substring(0, 1) + in.substring(1).toUpperCase();
+		}
+
+		@Bean
+		public MultiMessageReturn mmr() {
+			return new MultiMessageReturn();
+		}
+
+	}
+
+	@KafkaListener(topics = C_REQUEST, groupId = C_REQUEST)
+	@SendTo
+	public static class MultiMessageReturn {
+
+		@KafkaHandler
+		public Message<?> listen1(String in, @Header(KafkaHeaders.REPLY_TOPIC) byte[] replyTo,
+				@Header(KafkaHeaders.CORRELATION_ID) byte[] correlation) {
+			return MessageBuilder.withPayload(in.toUpperCase())
+					.setHeader(KafkaHeaders.TOPIC, replyTo)
+					.setHeader(KafkaHeaders.MESSAGE_KEY, 42)
+					.setHeader(KafkaHeaders.CORRELATION_ID, correlation)
+					.build();
 		}
 
 	}

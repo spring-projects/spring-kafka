@@ -30,9 +30,12 @@ public final class InvocationResult {
 
 	private final Expression sendTo;
 
-	public InvocationResult(Object result, Expression sendTo) {
+	private final boolean messageReturnType;
+
+	public InvocationResult(Object result, Expression sendTo, boolean messageReturnType) {
 		this.result = result;
 		this.sendTo = sendTo;
+		this.messageReturnType = messageReturnType;
 	}
 
 	public Object getResult() {
@@ -41,6 +44,10 @@ public final class InvocationResult {
 
 	public Expression getSendTo() {
 		return this.sendTo;
+	}
+
+	public boolean isMessageReturnType() {
+		return this.messageReturnType;
 	}
 
 	@Override

@@ -49,6 +49,7 @@ import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
@@ -103,6 +104,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private KafkaTemplate<K, V> replyTemplate;
 
 	private boolean hasAckParameter;
+
+	private boolean messageReturnType;
 
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
@@ -288,11 +291,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			this.logger.debug("Listener method returned result [" + resultArg
 					+ "] - generating response message for it");
 		}
-		Object result = resultArg instanceof InvocationResult ? ((InvocationResult) resultArg).getResult() : resultArg;
+		boolean isInvocationResult = resultArg instanceof InvocationResult;
+		Object result = isInvocationResult ? ((InvocationResult) resultArg).getResult() : resultArg;
 		String replyTopic = evaluateReplyTopic(request, source, resultArg);
 		Assert.state(replyTopic == null || this.replyTemplate != null,
 				"a KafkaTemplate is required to support replies");
-		sendResponse(result, replyTopic, source);
+		sendResponse(result, replyTopic, source, isInvocationResult
+				? ((InvocationResult) resultArg).isMessageReturnType() : this.messageReturnType);
 	}
 
 	private String evaluateReplyTopic(Object request, Object source, Object result) {
@@ -311,12 +316,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			return sendTo.getValue(String.class);
 		}
 		else {
-			Object value = sendTo.getValue(this.evaluationContext, new ReplyExpressionRoot(request, source, result));
+			Object value = sendTo == null ? null
+					: sendTo.getValue(this.evaluationContext, new ReplyExpressionRoot(request, source, result));
 			boolean isByteArray = value instanceof byte[];
-			if (!(value instanceof String || isByteArray)) {
+			if (!(value == null || value instanceof String || isByteArray)) {
 				throw new IllegalStateException(
 					"replyTopic expression must evaluate to a String or byte[], it is: "
-					+ (value == null ? null : value.getClass().getName()));
+					+ value.getClass().getName());
 			}
 			if (isByteArray) {
 				return new String((byte[]) value, StandardCharsets.UTF_8);
@@ -334,7 +340,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	@Deprecated
 	protected void sendResponse(Object result, String topic) {
-		sendResponse(result, topic, null);
+		sendResponse(result, topic, null, false);
 	}
 
 	/**
@@ -343,11 +349,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param result the result.
 	 * @param topic the topic.
 	 * @param source the source (input).
+	 * @param messageReturnType true if we are returning message(s).
 	 * @since 2.1.3
 	 */
 	@SuppressWarnings("unchecked")
-	protected void sendResponse(Object result, String topic, @Nullable Object source) {
-		if (topic == null) {
+	protected void sendResponse(Object result, String topic, @Nullable Object source, boolean messageReturnType) {
+		if (!messageReturnType && topic == null) {
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("No replyTopic to handle the reply: " + result);
 			}
@@ -358,7 +365,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		else {
 			if (result instanceof Collection) {
 				((Collection<V>) result).forEach(v -> {
-					this.replyTemplate.send(topic, v);
+					if (v instanceof Message) {
+						this.replyTemplate.send((Message<?>) v);
+					}
+					else {
+						this.replyTemplate.send(topic, v);
+					}
 				});
 			}
 			else {
@@ -486,6 +498,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				() -> String.format(stateMessage, "List<ConsumerRecord>"));
 		Assert.state(!this.isMessageList || validParametersForBatch,
 				() -> String.format(stateMessage, "List<Message<?>>"));
+		this.messageReturnType = KafkaUtils.returnTypeMessageOrCollectionOf(method);
 		return genericParameterType;
 	}
 
