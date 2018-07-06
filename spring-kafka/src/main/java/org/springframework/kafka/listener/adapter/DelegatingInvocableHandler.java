@@ -35,6 +35,7 @@ import org.springframework.expression.ParserContext;
 import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
@@ -65,6 +66,8 @@ public class DelegatingInvocableHandler {
 	private final InvocableHandlerMethod defaultHandler;
 
 	private final Map<InvocableHandlerMethod, Expression> handlerSendTo = new HashMap<>();
+
+	private final Map<InvocableHandlerMethod, Boolean> handlerReturnsMessage = new HashMap<>();
 
 	private final Object bean;
 
@@ -124,10 +127,7 @@ public class DelegatingInvocableHandler {
 		InvocableHandlerMethod handler = getHandlerForPayload(payloadClass);
 		Object result = handler.invoke(message, providedArgs);
 		Expression replyTo = this.handlerSendTo.get(handler);
-		if (replyTo != null) {
-			result = new InvocationResult(result, replyTo);
-		}
-		return result;
+		return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
 	}
 
 	/**
@@ -162,6 +162,7 @@ public class DelegatingInvocableHandler {
 		if (replyTo != null) {
 			this.handlerSendTo.put(handler, PARSER.parseExpression(replyTo, PARSER_CONTEXT));
 		}
+		this.handlerReturnsMessage.put(handler, KafkaUtils.returnTypeMessageOrCollectionOf(method));
 	}
 
 	private String extractSendTo(String element, SendTo ann) {

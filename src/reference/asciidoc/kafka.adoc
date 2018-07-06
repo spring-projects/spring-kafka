@@ -1171,6 +1171,22 @@ public KafkaTemplate<String, String> myReplyingTemplate() {
 }
 ----
 
+IMPORTANT: If the listener method returns `Message<?>` or `Collection<Messge<?>>` the listener method is responsible for setting up the message headers for the reply; for example, when handling a request from a `ReplyingKafkaTemplate`, you might do the following:
+
+[source, java]
+----
+@KafkaListener(id = "messageReturned", topics = "someTopic")
+public Message<?> listen(String in, @Header(KafkaHeaders.REPLY_TOPIC) byte[] replyTo,
+        @Header(KafkaHeaders.CORRELATION_ID) byte[] correlation) {
+    return MessageBuilder.withPayload(in.toUpperCase())
+            .setHeader(KafkaHeaders.TOPIC, replyTo)
+            .setHeader(KafkaHeaders.MESSAGE_KEY, 42)
+            .setHeader(KafkaHeaders.CORRELATION_ID, correlation)
+            .setHeader("someOtherHeader", "someValue")
+            .build();
+}
+----
+
 When using request/reply semantics, the target partition can be requested by the sender.
 
 NOTE: You can annotate a `@KafkaListener` method with `@SendTo` even if no result is returned.
