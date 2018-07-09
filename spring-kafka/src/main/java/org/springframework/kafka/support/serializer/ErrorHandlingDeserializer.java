@@ -34,8 +34,14 @@ import org.springframework.util.ClassUtils;
  */
 public class ErrorHandlingDeserializer implements ExtendedDeserializer<Object> {
 
+	/**
+	 * Property name for the delegate key deserializer.
+	 */
 	public static final String KEY_DESERIALIZER_CLASS = "spring.deserializer.key.delegate.class";
 
+	/**
+	 * Property name for the delegate value deserializer.
+	 */
 	public static final String VALUE_DESERIALIZER_CLASS = "spring.deserializer.value.delegate.class";
 
 	private ExtendedDeserializer<Object> delegate;
