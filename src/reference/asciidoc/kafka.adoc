@@ -371,7 +371,6 @@ public class KRequestingApplication {
     public ApplicationRunner runner(ReplyingKafkaTemplate<String, String, String> template) {
         return args -> {
             ProducerRecord<String, String> record = new ProducerRecord<>("kRequests", "foo");
-            record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, "kReplies".getBytes()));
             RequestReplyFuture<String, String, String> replyFuture = template.sendAndReceive(record);
             SendResult<String, String> sendResult = replyFuture.getSendFuture().get();
             System.out.println("Sent ok: " + sendResult.getRecordMetadata());
@@ -384,12 +383,14 @@ public class KRequestingApplication {
     public ReplyingKafkaTemplate<String, String, String> kafkaTemplate(
             ProducerFactory<String, String> pf,
             KafkaMessageListenerContainer<String, String> replyContainer) {
+
         return new ReplyingKafkaTemplate<>(pf, replyContainer);
     }
 
     @Bean
     public KafkaMessageListenerContainer<String, String> replyContainer(
             ConsumerFactory<String, String> cf) {
+
         ContainerProperties containerProperties = new ContainerProperties("kReplies");
         return new KafkaMessageListenerContainer<>(cf, containerProperties);
     }
@@ -407,7 +408,7 @@ public class KRequestingApplication {
 }
 ----
 
-In addition to the reply topic header set by user code, the template sets a header `KafkaHeaders.CORRELATION_ID` which must be echoed back by the server side.
+The template sets a header `KafkaHeaders.CORRELATION_ID` which must be echoed back by the server side.
 
 In this case, simple `@KafkaListener` application responds:
 
@@ -444,9 +445,23 @@ public class KReplyingApplication {
 
 The `@KafkaListener` infrastructure echoes the correlation id and determines the reply topic.
 
-See <<annotation-send-to>> for more information about sending replies; in this case we use the default header `KafKaHeaders.REPLY_TOPIC` to indicate which topic the reply goes to.
+See <<annotation-send-to>> for more information about sending replies; the template uses the default header `KafKaHeaders.REPLY_TOPIC` to indicate which topic the reply goes to.
 
-IMPORTANT: If you have multiple client instances, each will need a dedicated reply topic for each instance.
+Starting with version 2.2, the template will attempt to detect the reply topic/partition from the configured reply container.
+If the container is configured to listen to a single topic or a single `TopicPartitionInitialOffset`, it will be used to set the reply headers.
+If the container is configured otherwise, the user must set up the reply header(s); in this case, an INFO log is written during initialization.
+
+[source, java]
+----
+record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, "kReplies".getBytes()));
+----
+
+When configuring with a single reply `TopicPartitionInitialOffset`, you can use the same reply topic for multiple templates, as long as each instance listens on a different partition.
+When configuring with a single reply topic, each instance must use a different `group.id` - in this case, all instances will receive each reply, but only the instance that sent the request will find the correlation id.
+This may be useful for auto-scaling, but with the overhead of additional network traffic and the small cost of discarding each unwanted reply.
+When using this setting, it is recommended that you set the template's `sharedReplyTopic` to true, which will reduce the logging level of unexpected replies to DEBUG instead of the default ERROR.
+
+IMPORTANT: If you have multiple client instances, and you don't configure them as discussed in the paragraphe above, each instance will need a dedicated reply topic.
 An alternative is to set the `KafkaHeaders.REPLY_PARTITION` and use a dedicated partition for each instance; the `Header` contains a 4 byte int (Big-endian).
 The server must use this header to route the reply to the correct topic (`@KafkaListener` does this).
 In this case, though, the reply container must not use Kafka's group management feature and must be configured to listen on a fixed partition (using a `TopicPartitionInitialOffset` in its `ContainerProperties` constructor).

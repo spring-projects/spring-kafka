@@ -52,6 +52,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -99,7 +100,6 @@ public class ReplyingKafkaTemplateTests {
 		try {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, "foo");
-			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
@@ -128,18 +128,36 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	@Test
+	public void testGoodDefaultReplyHeaders() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(
+				new TopicPartitionInitialOffset(A_REPLY, 3));
+		try {
+			template.setReplyTimeout(30_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<Integer, String>(A_REQUEST, "bar");
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("BAR");
+			assertThat(consumerRecord.partition()).isEqualTo(3);
+		}
+		finally {
+			template.stop();
+		}
+	}
+
+	@Test
 	public void testGoodSamePartition() throws Exception {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
 		try {
 			template.setReplyTimeout(30_000);
-			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, 2, null, "foo");
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, 2, null, "baz");
 			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
 			record.headers()
 					.add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, new byte[] { 0, 0, 0, 2 }));
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
-			assertThat(consumerRecord.value()).isEqualTo("FOO");
+			assertThat(consumerRecord.value()).isEqualTo("BAZ");
 			assertThat(consumerRecord.partition()).isEqualTo(2);
 		}
 		finally {
@@ -152,7 +170,7 @@ public class ReplyingKafkaTemplateTests {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
 		try {
 			template.setReplyTimeout(1);
-			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, "foo");
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, "fiz");
 			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, A_REPLY.getBytes()));
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
@@ -214,10 +232,30 @@ public class ReplyingKafkaTemplateTests {
 				containerProperties);
 		container.setBeanName(this.testName.getMethodName());
 		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(this.config.pf(), container);
+		template.setSharedReplyTopic(true);
 		template.start();
 		assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(5);
 		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic);
+		return template;
+	}
+
+	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionInitialOffset topic)
+			throws Exception {
+
+		ContainerProperties containerProperties = new ContainerProperties(topic);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
+				embeddedKafka);
+		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
+				containerProperties);
+		container.setBeanName(this.testName.getMethodName());
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(this.config.pf(), container);
+		template.setSharedReplyTopic(true);
+		template.start();
+		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(1);
+		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic.topic());
 		return template;
 	}
 

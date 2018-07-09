@@ -17,6 +17,7 @@
 package org.springframework.kafka.requestreply;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Iterator;
@@ -29,6 +30,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.beans.factory.DisposableBean;
@@ -38,6 +40,7 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchMessageListener;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
@@ -74,7 +77,13 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private long replyTimeout = DEFAULT_REPLY_TIMEOUT;
 
-	private volatile boolean schedulerSet;
+	private boolean schedulerSet;
+
+	private boolean sharedReplyTopic;
+
+	private String replyTopic;
+
+	private byte[] replyPartition;
 
 	private volatile boolean running;
 
@@ -89,6 +98,20 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		Assert.notNull(replyContainer, "'replyContainer' cannot be null");
 		this.replyContainer = replyContainer;
 		this.replyContainer.setupMessageListener(this);
+		ContainerProperties properties = this.replyContainer.getContainerProperties();
+		if (properties.getTopics() != null && properties.getTopics().length == 1) {
+			this.replyTopic = properties.getTopics()[0];
+		}
+		else if (properties.getTopicPartitions() != null && properties.getTopicPartitions().length == 1) {
+			this.replyTopic = properties.getTopicPartitions()[0].topic();
+			ByteBuffer buffer = ByteBuffer.allocate(4);
+			buffer.putInt(properties.getTopicPartitions()[0].partition());
+			this.replyPartition = buffer.array();
+		}
+		if (this.replyTopic == null) {
+			this.logger.debug("Could not determine container's reply topic/partition; senders must populate "
+					+ "at least the " + KafkaHeaders.REPLY_PARTITION + " header");
+		}
 	}
 
 	public void setTaskScheduler(TaskScheduler scheduler) {
@@ -133,6 +156,16 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		return this.replyContainer.getAssignedPartitions();
 	}
 
+	/**
+	 * Set to true when multiple templates are using the same topic for replies.
+	 * This simply changes logs for unexpected replies to debug instead of error.
+	 * @param sharedReplyTopic true if using a shared topic.
+	 * @since 2.2
+	 */
+	public void setSharedReplyTopic(boolean sharedReplyTopic) {
+		this.sharedReplyTopic = sharedReplyTopic;
+	}
+
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		if (!this.schedulerSet) {
@@ -174,7 +207,21 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
 		CorrelationKey correlationId = createCorrelationId(record);
 		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
-		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
+		boolean hasReplyTopic = false;
+		Headers headers = record.headers();
+		Iterator<Header> iterator = headers.iterator();
+		while (iterator.hasNext() && !hasReplyTopic) {
+			if (iterator.next().key().equals(KafkaHeaders.REPLY_TOPIC)) {
+				hasReplyTopic = true;
+			}
+		}
+		if (!hasReplyTopic && this.replyTopic != null) {
+			headers.add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, this.replyTopic.getBytes(StandardCharsets.UTF_8)));
+			if (this.replyPartition != null) {
+				headers.add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, this.replyPartition));
+			}
+		}
+		headers.add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug("Sending: " + record + " with correlationId: " + correlationId);
 		}
@@ -240,8 +287,16 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			else {
 				RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);
 				if (future == null) {
-					this.logger.error("No pending reply: " + record + " with correlationId: "
-							+ correlationId + ", perhaps timed out");
+					if (this.sharedReplyTopic) {
+						if (this.logger.isDebugEnabled()) {
+							this.logger.debug("No pending reply: " + record + " with correlationId: "
+									+ correlationId + ", perhaps timed out, or using a shared reply topic");
+						}
+					}
+					else if (this.logger.isErrorEnabled()) {
+						this.logger.error("No pending reply: " + record + " with correlationId: "
+								+ correlationId + ", perhaps timed out, or using a shared reply topic");
+					}
 				}
 				else {
 					if (this.logger.isDebugEnabled()) {
