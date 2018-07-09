@@ -69,6 +69,10 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private final ConcurrentMap<CorrelationKey, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
 
+	private final byte[] replyTopic;
+
+	private final byte[] replyPartition;
+
 	private TaskScheduler scheduler = new ThreadPoolTaskScheduler();
 
 	private int phase;
@@ -80,10 +84,6 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	private boolean schedulerSet;
 
 	private boolean sharedReplyTopic;
-
-	private String replyTopic;
-
-	private byte[] replyPartition;
 
 	private volatile boolean running;
 
@@ -99,18 +99,26 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.replyContainer = replyContainer;
 		this.replyContainer.setupMessageListener(this);
 		ContainerProperties properties = this.replyContainer.getContainerProperties();
+		String replyTopic = null;
+		byte[] replyPartition = null;
 		if (properties.getTopics() != null && properties.getTopics().length == 1) {
-			this.replyTopic = properties.getTopics()[0];
+			replyTopic = properties.getTopics()[0];
 		}
 		else if (properties.getTopicPartitions() != null && properties.getTopicPartitions().length == 1) {
-			this.replyTopic = properties.getTopicPartitions()[0].topic();
+			replyTopic = properties.getTopicPartitions()[0].topic();
 			ByteBuffer buffer = ByteBuffer.allocate(4);
 			buffer.putInt(properties.getTopicPartitions()[0].partition());
-			this.replyPartition = buffer.array();
+			replyPartition = buffer.array();
 		}
-		if (this.replyTopic == null) {
+		if (replyTopic == null) {
+			this.replyTopic = null;
+			this.replyPartition = null;
 			this.logger.debug("Could not determine container's reply topic/partition; senders must populate "
 					+ "at least the " + KafkaHeaders.REPLY_PARTITION + " header");
+		}
+		else {
+			this.replyTopic = replyTopic.getBytes(StandardCharsets.UTF_8);
+			this.replyPartition = replyPartition;
 		}
 	}
 
@@ -216,7 +224,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			}
 		}
 		if (!hasReplyTopic && this.replyTopic != null) {
-			headers.add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, this.replyTopic.getBytes(StandardCharsets.UTF_8)));
+			headers.add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, this.replyTopic));
 			if (this.replyPartition != null) {
 				headers.add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, this.replyPartition));
 			}
@@ -289,13 +297,11 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				if (future == null) {
 					if (this.sharedReplyTopic) {
 						if (this.logger.isDebugEnabled()) {
-							this.logger.debug("No pending reply: " + record + " with correlationId: "
-									+ correlationId + ", perhaps timed out, or using a shared reply topic");
+							this.logger.debug(missingCorrelationLogMessage(record, correlationId));
 						}
 					}
 					else if (this.logger.isErrorEnabled()) {
-						this.logger.error("No pending reply: " + record + " with correlationId: "
-								+ correlationId + ", perhaps timed out, or using a shared reply topic");
+						this.logger.error(missingCorrelationLogMessage(record, correlationId));
 					}
 				}
 				else {
@@ -306,6 +312,11 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 			}
 		});
+	}
+
+	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
+		return "No pending reply: " + record + " with correlationId: "
+				+ correlationId + ", perhaps timed out, or using a shared reply topic";
 	}
 
 	/**
