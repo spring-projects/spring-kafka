@@ -17,6 +17,7 @@
 package org.springframework.kafka.support;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -32,12 +33,9 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
-import org.springframework.util.MimeType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /**
  * Default header mapper for Apache Kafka.
@@ -55,8 +53,13 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	private static final List<String> DEFAULT_TRUSTED_PACKAGES =
 			Arrays.asList(
 					"java.util",
-					"java.lang",
-					"org.springframework.util"
+					"java.lang"
+			);
+
+	private static final List<String> DEFAULT_TO_STRING_CLASSES =
+			Arrays.asList(
+					"org.springframework.util.MimeType",
+					"org.springframework.http.MediaType"
 			);
 
 	/**
@@ -67,6 +70,8 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	private final ObjectMapper objectMapper;
 
 	private final Set<String> trustedPackages = new LinkedHashSet<>(DEFAULT_TRUSTED_PACKAGES);
+
+	private final Set<String> toStringClasses = new LinkedHashSet<>(DEFAULT_TO_STRING_CLASSES);
 
 	/**
 	 * Construct an instance with the default object mapper and default header patterns
@@ -130,8 +135,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
-		Module module = new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer(objectMapper));
-		this.objectMapper.registerModule(module);
 	}
 
 	/**
@@ -140,6 +143,24 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 */
 	protected ObjectMapper getObjectMapper() {
 		return this.objectMapper;
+	}
+
+	/**
+	 * Provide direct access to the trusted packages set for subclasses.
+	 * @return the trusted packages.
+	 * @since 2.2
+	 */
+	protected Set<String> getTrustedPackages() {
+		return this.trustedPackages;
+	}
+
+	/**
+	 * Provide direct access to the toString() classes by subclasses.
+	 * @return the toString() classes.
+	 * @since 2.2
+	 */
+	protected Set<String> getToStringClasses() {
+		return this.toStringClasses;
 	}
 
 	/**
@@ -164,6 +185,16 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		}
 	}
 
+	/**
+	 * Add class names that the outbound mapper should perform toString() operations on
+	 * before mapping.
+	 * @param classNames the class names.
+	 * @since 2.2
+	 */
+	public void addToStringClasses(String... classNames) {
+		this.toStringClasses.addAll(Arrays.asList(classNames));
+	}
+
 	@Override
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		final Map<String, String> jsonHeaders = new HashMap<>();
@@ -174,8 +205,14 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				}
 				else {
 					try {
-						target.add(new RecordHeader(k, getObjectMapper().writeValueAsBytes(v)));
-						jsonHeaders.put(k, v.getClass().getName());
+						Object value = v;
+						String className = v.getClass().getName();
+						if (this.toStringClasses.contains(className)) {
+							value = v.toString();
+							className = "java.lang.String";
+						}
+						target.add(new RecordHeader(k, getObjectMapper().writeValueAsBytes(value)));
+						jsonHeaders.put(k, className);
 					}
 					catch (Exception e) {
 						if (logger.isDebugEnabled()) {
@@ -290,8 +327,14 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 		@Override
 		public String toString() {
-			return "NonTrustedHeaderType [headerValue=" + Arrays.toString(this.headerValue) + ", untrustedType="
-					+ this.untrustedType + "]";
+			try {
+				return "NonTrustedHeaderType [headerValue=" + new String(this.headerValue, StandardCharsets.UTF_8)
+						+ ", untrustedType=" + this.untrustedType + "]";
+			}
+			catch (Exception e) {
+				return "NonTrustedHeaderType [headerValue=" + Arrays.toString(this.headerValue) + ", untrustedType="
+						+ this.untrustedType + "]";
+			}
 		}
 
 	}

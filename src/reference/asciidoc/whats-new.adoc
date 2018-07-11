@@ -30,3 +30,13 @@ See <<kafka-container>> for more information.
 Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` object instead of a `List<ConsumerRecord<?, ?>`.
 
 See <<batch-listeners>> for more information.
+
+==== Header Mapping Changes
+
+Headers of type `MimeType` and `MediaType` are now mapped as simple strings in the `RecordHeader` value.
+Previously, they were mapped as JSON and only `MimeType` was decoded, `MediaType` could not be decoded.
+They are now simple strings for interoperability.
+
+Also, the `DefaultKafkaHeaderMapper` has a new method `addToStringClasses` allowing the specification of types that should be mapped using `toString()` instead of JSON.
+
+See <<headers>> for more information.

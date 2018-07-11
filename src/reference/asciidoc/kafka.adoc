@@ -1742,8 +1742,10 @@ With the batch converter, the converted headers are available in the `KafkaHeade
 
 If the converter has no converter (either because Jackson is not present, or it is explicitly set to `null`), the headers from the consumer record are provided unconverted in the `KafkaHeaders.NATIVE_HEADERS` header (a `Headers` object, or a `List<Headers>` in the case of the batch converter, where the position in the list corresponds to the data position in the payload).
 
-IMPORTANT: The Jackson `ObjectMapper` (even if provided) will be enhanced to support deserializing `org.springframework.util.MimeType` objects, often used in the `spring-messaging` `contentType` header.
-If you don't wish your mapper to be enhanced in this way, for some reason, you should subclass the `DefaultKafkaHeaderMapper` and override `getObjectMapper()` to return your mapper.
+IMPORTANT: Certain types are not suitable for JSON serialization and a simple `toString()` serialization might be preferred for these types.
+The `DefaultKafkaHeaderMapper` has a method `addToStringClasses()` where you can supply names of classes that should be treated this way for outbound mapping.
+During inbound mapping, they will be mapped as `String`.
+By default, just `org.springframework.util.MimeType` and `org.springframework.http.MediaType` are mapped this way.
 
 ==== Null Payloads and Log Compaction 'Tombstone' Records
 
