@@ -97,7 +97,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private boolean batchListener;
 
-	private KafkaTemplate<K, V> replyTemplate;
+	private KafkaTemplate<?, ?> replyTemplate;
 
 	private String clientIdPrefix;
 
@@ -252,11 +252,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @param replyTemplate the template.
 	 * @since 2.0
 	 */
-	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+	public void setReplyTemplate(KafkaTemplate<?, ?> replyTemplate) {
 		this.replyTemplate = replyTemplate;
 	}
 
-	protected KafkaTemplate<K, V> getReplyTemplate() {
+	protected KafkaTemplate<?, ?> getReplyTemplate() {
 		return this.replyTemplate;
 	}
 

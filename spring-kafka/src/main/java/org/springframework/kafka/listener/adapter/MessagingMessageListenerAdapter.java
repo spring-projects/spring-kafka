@@ -101,7 +101,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private Expression replyTopicExpression;
 
-	private KafkaTemplate<K, V> replyTemplate;
+	@SuppressWarnings("rawtypes")
+	private KafkaTemplate replyTemplate;
 
 	private boolean hasAckParameter;
 
@@ -193,7 +194,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param replyTemplate the template.
 	 * @since 2.0
 	 */
-	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+	public void setReplyTemplate(KafkaTemplate<?, ?> replyTemplate) {
 		this.replyTemplate = replyTemplate;
 	}
 
@@ -390,7 +391,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					this.replyTemplate.send(builder.build());
 				}
 				else {
-					this.replyTemplate.send(topic, (V) result);
+					this.replyTemplate.send(topic, result);
 				}
 			}
 		}
