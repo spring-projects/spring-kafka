@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.Deserializer;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -48,13 +49,23 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 
 	private Deserializer<V> valueDeserializer;
 
+	/**
+	 * Construct a factory with the provided configuration.
+	 * @param configs the configuration.
+	 */
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs) {
 		this(configs, null, null);
 	}
 
+	/**
+	 * Construct a factory with the provided configuration and deserializers.
+	 * @param configs the configuration.
+	 * @param keyDeserializer the key {@link Deserializer}.
+	 * @param valueDeserializer the value {@link Deserializer}.
+	 */
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
-			Deserializer<K> keyDeserializer,
-			Deserializer<V> valueDeserializer) {
+			@Nullable Deserializer<K> keyDeserializer,
+			@Nullable Deserializer<V> valueDeserializer) {
 		this.configs = new HashMap<>(configs);
 		this.keyDeserializer = keyDeserializer;
 		this.valueDeserializer = valueDeserializer;

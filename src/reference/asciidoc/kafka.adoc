@@ -1557,10 +1557,9 @@ props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 for more complex or particular cases, the `KafkaConsumer`, and therefore `KafkaProducer`, provides overloaded
 constructors to accept `(De)Serializer` instances for `keys` and/or `values`, respectively.
 
-To meet this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties to allow
-to inject a custom `(De)Serializer` to target `Producer`/`Consumer`.
+Using this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (via constructors or setter methods) to inject custom `(De)Serializer` s to the target `Producer`/`Consumer`.
 
-For this purpose, Spring for Apache Kafka also provides `JsonSerializer`/`JsonDeserializer` implementations based on the
+Spring for Apache Kafka also provides `JsonSerializer`/`JsonDeserializer` implementations based on the
 Jackson JSON object mapper.
 The `JsonSerializer` is quite simple and just allows writing any Java object as a JSON `byte[]`, the `JsonDeserializer`
 requires an additional `Class<?> targetType` argument to allow the deserialization of a consumed `byte[]` to the proper target
@@ -1582,6 +1581,31 @@ In addition, the serializer/deserializer can be configured using Kafka propertie
 - `JsonDeserializer.KEY_DEFAULT_TYPE`; fallback type for deserialization of keys if no header information is present.
 - `JsonDeserializer.VALUE_DEFAULT_TYPE`; fallback type for deserialization of values if no header information is present.
 - `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`); comma-delimited list of package patterns allowed for deserialization; `*` means deserialize all.
+
+IMPORTANT: Only simple configuration can be performed with properties; for more advanced configuration (such as using a custom `ObjectMapper` in the serializer/deserializer), you should use the producer/consumer factory constructors that accept a pre-built serializer and deserializer. For example, with Spring Boot, to override the default factories:
+
+[source, java]
+----
+@Bean
+public ConsumerFactory<String, String> c\kafkaConsumerFactory(KafkaProperties properties,
+    JsonDeserializer customDeserializer) {
+
+    return new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties(),
+        customDeserializer, customDeserializer);
+}
+
+@Bean
+public ProducererFactory<String, String> kafkaProducerFactory(KafkaProperties properties,
+    JsonSserializer customSerializer) {
+
+    return new DefaultKafkaConsumerFactory<>(properties.buildProducerProperties(),
+        customSerializer, customSerializer);
+}
+----
+
+Setters are also provided, as an alternative to using these constructors.
+
+===== Spring Messaging Message Conversion
 
 Although the `Serializer`/`Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and
 `Producer` perspective, you might need more flexibility at the Spring Messaging level, either when using `@KafkaListener` or <<si-kafka,Spring Integration>>.
@@ -1617,7 +1641,7 @@ With a class-level `@KafkaListener`, the payload type is used to select which `@
 ====
 
 NOTE: When using the `StringJsonMessageConverter`, you should use a `StringDeserializer` in the kafka consumer configuration and `StringSerializer` in the kafka producer configuration, when using Spring Integration or the `KafkaTemplate.send(Message<?> message)` method.
-When using the `BytesJsonMessageConverter`, you should use a `BytesDeserializer` in the kafka consumer configuration and `BytesSerializer` in the kafka producer configuration, when using Spring Integration or the `KafkaTemplate.send(Message<?> message)` method.
+When using the `BytesJsonMessageConverter`, you should use a `BytesDeserializer` in the kafka consumer configuration and `BytesSerializer` in the kafka producer configuration, when using Spring Integration or the `KafkaTemplate.send(Message<?> message)` method (see <<kafka-template>>).
 Generally, the `BytesJsonMessageConverter` is more efficient because it avoids a `String` to/from `byte[]` conversion.
 
 [[error-handling-deserializer]]

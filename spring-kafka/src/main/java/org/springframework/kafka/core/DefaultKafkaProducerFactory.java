@@ -44,6 +44,7 @@ import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -93,12 +94,23 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private volatile boolean running;
 
+	/**
+	 * Construct a factory with the provided configuration.
+	 * @param configs the configuration.
+	 */
 	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
 		this(configs, null, null);
 	}
 
-	public DefaultKafkaProducerFactory(Map<String, Object> configs, Serializer<K> keySerializer,
-			Serializer<V> valueSerializer) {
+	/**
+	 * Construct a factory with the provided configuration and {@link Serializer}s.
+	 * @param configs the configuration.
+	 * @param keySerializer the key {@link Serializer}.
+	 * @param valueSerializer the value {@link Serializer}.
+	 */
+	public DefaultKafkaProducerFactory(Map<String, Object> configs,
+			@Nullable Serializer<K> keySerializer,
+			@Nullable Serializer<V> valueSerializer) {
 		this.configs = new HashMap<>(configs);
 		this.keySerializer = keySerializer;
 		this.valueSerializer = valueSerializer;
