@@ -43,7 +43,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -63,7 +63,7 @@ public class ErrorHandlingDeserializerTests {
 	public Config config;
 
 	@Test
-	public void testBadDeser() throws Exception {
+	public void testBadDeserializer() throws Exception {
 		this.config.template().send(TOPIC, "foo", "bar");
 		this.config.template().send(TOPIC, "fail", "bar");
 		this.config.template().send(TOPIC, "foo", "fail");
@@ -93,8 +93,8 @@ public class ErrorHandlingDeserializerTests {
 
 
 		@Bean
-		public KafkaEmbedded embeddedKafka() {
-			return new KafkaEmbedded(1, true, 1, TOPIC);
+		public EmbeddedKafkaBroker embeddedKafka() {
+			return new EmbeddedKafkaBroker(1, true, 1, TOPIC);
 		}
 
 		@Bean

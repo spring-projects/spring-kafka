@@ -24,14 +24,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.springframework.core.annotation.AliasFor;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 /**
  * Annotation that can be specified on a test class that runs Spring Kafka based tests.
  * Provides the following features over and above the regular <em>Spring TestContext
  * Framework</em>:
  * <ul>
- * <li>Registers a {@link KafkaEmbedded} bean with the {@link KafkaEmbedded#BEAN_NAME} bean name.
+ * <li>Registers a {@link EmbeddedKafkaBroker} bean with the
+ * {@link EmbeddedKafkaBroker#BEAN_NAME} bean name.
  * </li>
  * </ul>
  * <p>
@@ -42,7 +43,7 @@ import org.springframework.kafka.test.rule.KafkaEmbedded;
  * public class MyKafkaTests {
  *
  *    &#064;Autowired
- *    private KafkaEmbedded kafkaEmbedded;
+ *    private EmbeddedKafkaBroker kafkaEmbedded;
  *
  *    &#064;Value("${spring.embedded.kafka.brokers}")
  *    private String brokerAddresses;
@@ -55,7 +56,7 @@ import org.springframework.kafka.test.rule.KafkaEmbedded;
  *
  * @since 1.3
  *
- * @see KafkaEmbedded
+ * @see EmbeddedKafkaBroker
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -98,7 +99,7 @@ public @interface EmbeddedKafka {
 	 * Properties may contain property placeholders, e.g. {@code delete.topic.enable=${topic.delete:true}}.
 	 * @return the properties to add
 	 * @see #brokerPropertiesLocation()
-	 * @see KafkaEmbedded#brokerProperties(java.util.Map)
+	 * @see EmbeddedKafkaBroker#brokerProperties(java.util.Map)
 	 */
 	String[] brokerProperties() default { };
 
@@ -111,7 +112,7 @@ public @interface EmbeddedKafka {
 	 * in {@code brokerPropertiesLocation}.
 	 * @return a {@code Resource} url specifying the location of properties to add
 	 * @see #brokerProperties()
-	 * @see KafkaEmbedded#brokerProperties(java.util.Map)
+	 * @see EmbeddedKafkaBroker#brokerProperties(java.util.Map)
 	 */
 	String brokerPropertiesLocation() default "";
 

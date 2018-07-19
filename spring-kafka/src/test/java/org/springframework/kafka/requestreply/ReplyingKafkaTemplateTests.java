@@ -54,7 +54,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
@@ -85,8 +86,10 @@ public class ReplyingKafkaTemplateTests {
 	private static final String C_REQUEST = "cRequest";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 5, A_REQUEST, A_REPLY,
+	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, 5, A_REQUEST, A_REPLY,
 			B_REQUEST, B_REPLY, C_REQUEST, C_REPLY);
+
+	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
 	@Rule
 	public TestName testName = new TestName();

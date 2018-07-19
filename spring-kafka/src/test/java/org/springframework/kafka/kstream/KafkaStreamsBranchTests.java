@@ -47,8 +47,8 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -78,15 +78,15 @@ public class KafkaStreamsBranchTests {
 	private KafkaTemplate<String, String> kafkaTemplate;
 
 	@Autowired
-	private KafkaEmbedded kafkaEmbedded;
+	private EmbeddedKafkaBroker embeddedKafka;
 
 	@Test
 	public void testBranchingStream() throws Exception {
 		Consumer<String, String> falseConsumer = createConsumer();
-		this.kafkaEmbedded.consumeFromAnEmbeddedTopic(falseConsumer, FALSE_TOPIC);
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(falseConsumer, FALSE_TOPIC);
 
 		Consumer<String, String> trueConsumer = createConsumer();
-		this.kafkaEmbedded.consumeFromAnEmbeddedTopic(trueConsumer, TRUE_TOPIC);
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(trueConsumer, TRUE_TOPIC);
 
 		this.kafkaTemplate.sendDefault(String.valueOf(true));
 		this.kafkaTemplate.sendDefault(String.valueOf(true));
@@ -110,7 +110,7 @@ public class KafkaStreamsBranchTests {
 
 	private Consumer<String, String> createConsumer() {
 		Map<String, Object> consumerProps =
-				KafkaTestUtils.consumerProps(UUID.randomUUID().toString(), "false", this.kafkaEmbedded);
+				KafkaTestUtils.consumerProps(UUID.randomUUID().toString(), "false", this.embeddedKafka);
 		consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10000);
 
 		DefaultKafkaConsumerFactory<String, String> kafkaConsumerFactory =
@@ -122,7 +122,7 @@ public class KafkaStreamsBranchTests {
 	@EnableKafkaStreams
 	public static class Config {
 
-		@Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
+		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
 
 		@Bean

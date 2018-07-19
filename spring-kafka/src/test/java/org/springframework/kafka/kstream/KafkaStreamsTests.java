@@ -61,8 +61,8 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.StreamsBuilderFactoryBean;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.support.serializer.JsonSerde;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -106,16 +106,16 @@ public class KafkaStreamsTests {
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
 	@Autowired
-	private KafkaEmbedded kafkaEmbedded;
+	private EmbeddedKafkaBroker embeddedKafka;
 
 	@Value("${streaming.topic.two}")
 	private String streamingTopic2;
 
 	@Test
 	public void testKStreams() throws Exception {
-		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().autoCreateTopicsEnable()).isFalse();
-		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().deleteTopicEnable()).isTrue();
-		assertThat(this.kafkaEmbedded.getKafkaServer(0).config().brokerId()).isEqualTo(2);
+		assertThat(this.embeddedKafka.getKafkaServer(0).config().autoCreateTopicsEnable()).isFalse();
+		assertThat(this.embeddedKafka.getKafkaServer(0).config().deleteTopicEnable()).isTrue();
+		assertThat(this.embeddedKafka.getKafkaServer(0).config().brokerId()).isEqualTo(2);
 
 		this.streamsBuilderFactoryBean.stop();
 
@@ -155,7 +155,7 @@ public class KafkaStreamsTests {
 	@EnableKafkaStreams
 	public static class KafkaStreamsConfiguration {
 
-		@Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
+		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
 
 		@Value("${streaming.topic.two}")
@@ -195,7 +195,7 @@ public class KafkaStreamsTests {
 		public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
 			KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
 			stream.mapValues((ValueMapper<String, String>) String::toUpperCase)
-					.mapValues((ValueMapper<String, Foo>) Foo::new)
+					.mapValues(Foo::new)
 					.through(FOOS, Produced.with(Serdes.Integer(), new JsonSerde<Foo>() {
 
 					}))

@@ -25,7 +25,8 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
@@ -36,8 +37,10 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 public class MissingTopicsTests {
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true)
+	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true)
 		.brokerProperty("auto.create.topics.enable", false);
+
+	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
 	@Test
 	public void testMissingTopicCMLC() throws Exception {
@@ -77,6 +80,5 @@ public class MissingTopicsTests {
 		container.start();
 		container.stop();
 	}
-
 
 }

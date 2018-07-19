@@ -51,8 +51,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -86,7 +86,7 @@ public class KafkaStreamsJsonSerializationTests {
 	private KafkaTemplate<Object, Object> template;
 
 	@Autowired
-	private KafkaEmbedded kafkaEmbedded;
+	private EmbeddedKafkaBroker embeddedKafka;
 
 	private Consumer<JsonObjectKey, JsonObjectValue> objectOutputTopicConsumer;
 
@@ -119,13 +119,13 @@ public class KafkaStreamsJsonSerializationTests {
 
 	private <K, V> Consumer<K, V> consumer(String topic, Serde<K> keySerde, Serde<V> valueSerde) throws Exception {
 		Map<String, Object> consumerProps =
-				KafkaTestUtils.consumerProps(UUID.randomUUID().toString(), "false", this.kafkaEmbedded);
+				KafkaTestUtils.consumerProps(UUID.randomUUID().toString(), "false", this.embeddedKafka);
 		consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10000);
 
 		DefaultKafkaConsumerFactory<K, V> kafkaConsumerFactory =
 				new DefaultKafkaConsumerFactory<>(consumerProps, keySerde.deserializer(), valueSerde.deserializer());
 		Consumer<K, V> consumer = kafkaConsumerFactory.createConsumer();
-		this.kafkaEmbedded.consumeFromAnEmbeddedTopic(consumer, topic);
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic);
 		return consumer;
 	}
 
@@ -181,7 +181,7 @@ public class KafkaStreamsJsonSerializationTests {
 	@EnableKafkaStreams
 	public static class Config {
 
-		@Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
+		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
 
 		@Bean

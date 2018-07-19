@@ -28,16 +28,14 @@ import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.io.Resource;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * The {@link ContextCustomizer} implementation for Spring Integration specific environment.
- * <p>
- * Registers {@link KafkaEmbedded} bean.
+ * The {@link ContextCustomizer} implementation for the {@link EmbeddedKafkaBroker} bean registration.
  *
  * @author Artem Bilan
  * @author Elliot Metsger
@@ -66,7 +64,7 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 						.map(environment::resolvePlaceholders)
 						.toArray(String[]::new);
 
-		KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(this.embeddedKafka.count(),
+		EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(this.embeddedKafka.count(),
 				this.embeddedKafka.controlledShutdown(),
 				this.embeddedKafka.partitions(),
 				topics);
@@ -102,11 +100,11 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 			}
 		}
 
-		kafkaEmbedded.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
+		embeddedKafka.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
 
-		beanFactory.initializeBean(kafkaEmbedded, KafkaEmbedded.BEAN_NAME);
-		beanFactory.registerSingleton(KafkaEmbedded.BEAN_NAME, kafkaEmbedded);
-		((DefaultSingletonBeanRegistry) beanFactory).registerDisposableBean(KafkaEmbedded.BEAN_NAME, kafkaEmbedded);
+		beanFactory.initializeBean(embeddedKafka, EmbeddedKafkaBroker.BEAN_NAME);
+		beanFactory.registerSingleton(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafka);
+		((DefaultSingletonBeanRegistry) beanFactory).registerDisposableBean(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafka);
 	}
 
 }

@@ -111,21 +111,21 @@ There is no built-in support for this, but it can be achieved with something sim
 ----
 public final class KafkaEmbeddedHolder {
 
-	private static KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(1, false);
+	private static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, false);
 
 	private static boolean started;
 
 	public static KafkaEmbedded getKafkaEmbedded() {
 		if (!started) {
 			try {
-				kafkaEmbedded.before();
+				embeddedKafka.before();
 			}
 			catch (Exception e) {
 				throw new KafkaException(e);
 			}
 			started = true;
 		}
-		return kafkaEmbedded;
+		return embeddedKafka;
 	}
 
 	private KafkaEmbeddedHolder() {

@@ -50,7 +50,8 @@ import org.mockito.InOrder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -73,9 +74,11 @@ public class KafkaTemplateTransactionTests {
 	private static final String STRING_KEY_TOPIC = "stringKeyTopic";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, STRING_KEY_TOPIC)
-		.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
-		.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
+	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, STRING_KEY_TOPIC)
+			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
+			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
+
+	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
 	@Test
 	public void testLocalTransaction() throws Exception {
@@ -205,8 +208,8 @@ public class KafkaTemplateTransactionTests {
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 		assertThatThrownBy(() -> template.send("foo", "bar"))
-			.isInstanceOf(IllegalStateException.class)
-			.hasMessageContaining("No transaction is in process;");
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("No transaction is in process;");
 	}
 
 	@Configuration

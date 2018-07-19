@@ -29,7 +29,7 @@ import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 /**
  * @author Gary Russell
@@ -53,8 +53,8 @@ public class KafkaAdminBadContextTests {
 	public static class BadConfig {
 
 		@Bean
-		public KafkaEmbedded kafkaEmbedded() {
-			return new KafkaEmbedded(1);
+		public EmbeddedKafkaBroker kafkaEmbedded() {
+			return new EmbeddedKafkaBroker(1);
 		}
 
 		@Bean
