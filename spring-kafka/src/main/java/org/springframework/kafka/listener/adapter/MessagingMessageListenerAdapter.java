@@ -491,14 +491,16 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		boolean validParametersForBatch = validParametersForBatch(method.getGenericParameterTypes().length,
 				this.hasAckParameter, hasConsumerParameter);
-		String stateMessage = "A parameter of type '%s' must be the only parameter "
-				+ "(except for an optional 'Acknowledgment' and/or 'Consumer')";
-		Assert.state(!this.isConsumerRecords || validParametersForBatch,
-				() -> String.format(stateMessage, "ConsumerRecords"));
-		Assert.state(!this.isConsumerRecordList || validParametersForBatch,
-				() -> String.format(stateMessage, "List<ConsumerRecord>"));
-		Assert.state(!this.isMessageList || validParametersForBatch,
-				() -> String.format(stateMessage, "List<Message<?>>"));
+		if (!validParametersForBatch) {
+			String stateMessage = "A parameter of type '%s' must be the only parameter "
+					+ "(except for an optional 'Acknowledgment' and/or 'Consumer')";
+			Assert.state(!this.isConsumerRecords,
+					() -> String.format(stateMessage, "ConsumerRecords"));
+			Assert.state(!this.isConsumerRecordList,
+					() -> String.format(stateMessage, "List<ConsumerRecord>"));
+			Assert.state(!this.isMessageList,
+					() -> String.format(stateMessage, "List<Message<?>>"));
+		}
 		this.messageReturnType = KafkaUtils.returnTypeMessageOrCollectionOf(method);
 		return genericParameterType;
 	}
