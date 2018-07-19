@@ -1587,7 +1587,7 @@ IMPORTANT: Only simple configuration can be performed with properties; for more 
 [source, java]
 ----
 @Bean
-public ConsumerFactory<Foo, Bar> c\kafkaConsumerFactory(KafkaProperties properties,
+public ConsumerFactory<Foo, Bar> kafkaConsumerFactory(KafkaProperties properties,
     JsonDeserializer customDeserializer) {
 
     return new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties(),
