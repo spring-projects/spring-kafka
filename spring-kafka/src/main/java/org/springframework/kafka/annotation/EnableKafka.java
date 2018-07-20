@@ -165,7 +165,7 @@ import org.springframework.context.annotation.Import;
  * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistry
  * KafkaListenerEndpointRegistry} in case you need more control on the way the containers
  * are created and managed. The example below also demonstrates how to customize the
- * {@code KafkaHandlerMethodFactory} to use with a custom
+ * {@link org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory} to use with a custom
  * {@link org.springframework.validation.Validator Validator} so that payloads annotated
  * with {@link org.springframework.validation.annotation.Validated Validated} are first
  * validated against a custom {@code Validator}.
@@ -188,8 +188,8 @@ import org.springframework.context.annotation.Import;
  * 		}
  *
  * 		&#064;Bean
- * 		public KafkaHandlerMethodFactory myMessageHandlerMethodFactory() {
- * 			DefaultKafkaHandlerMethodFactory factory = new DefaultKafkaHandlerMethodFactory();
+ * 		public MessageHandlerMethodFactory myMessageHandlerMethodFactory() {
+ * 			DefaultMessageHandlerMethodFactory factory = new DefaultMessageHandlerMethodFactory();
  * 			factory.setValidator(new MyValidator());
  * 			return factory;
  * 		}
