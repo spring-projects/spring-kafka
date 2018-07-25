@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.StringUtils;
@@ -76,8 +76,8 @@ public class KafkaAdminTests {
 	public static class Config {
 
 		@Bean
-		public KafkaEmbedded kafkaEmbedded() {
-			return new KafkaEmbedded(1);
+		public EmbeddedKafkaBroker kafkaEmbedded() {
+			return new EmbeddedKafkaBroker(1);
 		}
 
 		@Bean

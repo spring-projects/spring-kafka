@@ -35,7 +35,8 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 
 /**
  * @author Gary Russell
@@ -45,7 +46,9 @@ import org.springframework.kafka.test.rule.KafkaEmbedded;
 public class MissingGroupIdTests {
 
 	@ClassRule
-	public static KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(1, true, "missing.group");
+	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, "missing.group");
+
+	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
 	@Test
 	public void testContextFailsWithKafkaListener() {
@@ -78,7 +81,7 @@ public class MissingGroupIdTests {
 		public ConsumerFactory<String, String> cf() {
 			return new DefaultKafkaConsumerFactory<>(
 					Collections.singletonMap(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-							kafkaEmbedded.getBrokersAsString()),
+							embeddedKafka.getBrokersAsString()),
 					new StringDeserializer(), new StringDeserializer());
 		}
 
@@ -105,7 +108,7 @@ public class MissingGroupIdTests {
 		public ConsumerFactory<String, String> cf() {
 			return new DefaultKafkaConsumerFactory<>(
 					Collections.singletonMap(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-							kafkaEmbedded.getBrokersAsString()),
+							embeddedKafka.getBrokersAsString()),
 					new StringDeserializer(), new StringDeserializer());
 		}
 
@@ -125,7 +128,7 @@ public class MissingGroupIdTests {
 		public ConsumerFactory<String, String> cf() {
 			return new DefaultKafkaConsumerFactory<>(
 					Collections.singletonMap(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-							kafkaEmbedded.getBrokersAsString()),
+							embeddedKafka.getBrokersAsString()),
 					new StringDeserializer(), new StringDeserializer());
 		}
 

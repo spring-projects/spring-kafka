@@ -219,14 +219,12 @@ project ('spring-kafka-test') {
 		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
 
-		compile ("junit:junit:$junit4Version") {
-			exclude group: 'org.hamcrest', module: 'hamcrest-core'
-		}
-		compile ("org.mockito:mockito-core:$mockitoVersion") {
-			exclude group: 'org.hamcrest', module: 'hamcrest-core'
-		}
-
 		compile ("org.hamcrest:hamcrest-all:$hamcrestVersion", optional)
+
+		compile ("org.mockito:mockito-core:$mockitoVersion", optional)
+
+		compile ("junit:junit:$junit4Version", optional)
+
 		compile ("org.assertj:assertj-core:$assertjVersion", optional)
 		compile ("org.apache.logging.log4j:log4j-core:$log4jVersion", optional)
 	}

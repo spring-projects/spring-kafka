@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import org.springframework.beans.DirectFieldAccessor;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.util.Assert;
 
 /**
@@ -43,6 +43,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Hugo Wood
+ * @author Artem Bilan
  */
 public final class KafkaTestUtils {
 
@@ -56,21 +57,49 @@ public final class KafkaTestUtils {
 	 * Set up test properties for an {@code <Integer, String>} consumer.
 	 * @param group the group id.
 	 * @param autoCommit the auto commit.
-	 * @param embeddedKafka a {@link KafkaEmbedded} instance.
+	 * @param embeddedKafka a {@link org.springframework.kafka.test.rule.KafkaEmbedded} instance.
 	 * @return the properties.
+	 * @deprecated since 2.2 in favor of {@link #consumerProps(String, String, EmbeddedKafkaBroker)}
 	 */
-	public static Map<String, Object> consumerProps(String group, String autoCommit, KafkaEmbedded embeddedKafka) {
+	@SuppressWarnings("deprecation")
+	@Deprecated
+	public static Map<String, Object> consumerProps(String group, String autoCommit,
+			org.springframework.kafka.test.rule.KafkaEmbedded embeddedKafka) {
 		return consumerProps(embeddedKafka.getBrokersAsString(), group, autoCommit);
 	}
 
 	/**
 	 * Set up test properties for an {@code <Integer, String>} producer.
-	 * @param embeddedKafka a {@link KafkaEmbedded} instance.
+	 * @param embeddedKafka a {@link org.springframework.kafka.test.rule.KafkaEmbedded} instance.
 	 * @return the properties.
+	 * @deprecated since 2.2 in favor of {@link #producerProps(EmbeddedKafkaBroker)}
 	 */
-	public static Map<String, Object> producerProps(KafkaEmbedded embeddedKafka) {
+	@SuppressWarnings("deprecation")
+	@Deprecated
+	public static Map<String, Object> producerProps(org.springframework.kafka.test.rule.KafkaEmbedded embeddedKafka) {
 		return senderProps(embeddedKafka.getBrokersAsString());
 	}
+
+	/**
+	 * Set up test properties for an {@code <Integer, String>} consumer.
+	 * @param group the group id.
+	 * @param autoCommit the auto commit.
+	 * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
+	 * @return the properties.
+	 */
+	public static Map<String, Object> consumerProps(String group, String autoCommit, EmbeddedKafkaBroker embeddedKafka) {
+		return consumerProps(embeddedKafka.getBrokersAsString(), group, autoCommit);
+	}
+
+	/**
+	 * Set up test properties for an {@code <Integer, String>} producer.
+	 * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
+	 * @return the properties.
+	 */
+	public static Map<String, Object> producerProps(EmbeddedKafkaBroker embeddedKafka) {
+		return senderProps(embeddedKafka.getBrokersAsString());
+	}
+
 
 	/**
 	 * Set up test properties for an {@code <Integer, String>} consumer.
@@ -166,10 +195,10 @@ public final class KafkaTestUtils {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Received: " + received.count() + ", "
 					+ received.partitions().stream()
-							.flatMap(p -> received.records(p).stream())
-							// map to same format as send metadata toString()
-							.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-							.collect(Collectors.toList()));
+					.flatMap(p -> received.records(p).stream())
+					// map to same format as send metadata toString()
+					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
+					.collect(Collectors.toList()));
 		}
 		assertThat(received).as("null received from consumer.poll()").isNotNull();
 		return received;

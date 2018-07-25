@@ -16,58 +16,24 @@
 
 package org.springframework.kafka.test.rule;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.exception.ZkInterruptedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.CreateTopicsResult;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.security.auth.SecurityProtocol;
-import org.apache.kafka.common.utils.Time;
-import org.junit.rules.ExternalResource;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.core.BrokerAddress;
-import org.springframework.retry.RetryCallback;
-import org.springframework.retry.RetryContext;
-import org.springframework.retry.backoff.ExponentialBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
-import org.springframework.util.Assert;
 
-import kafka.common.KafkaException;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
-import kafka.server.NotRunning;
-import kafka.utils.CoreUtils;
-import kafka.utils.TestUtils;
-import kafka.utils.ZKStringSerializer$;
 import kafka.zk.EmbeddedZookeeper;
 
 /**
@@ -79,63 +45,24 @@ import kafka.zk.EmbeddedZookeeper;
  * @author Kamill Sokol
  * @author Elliot Kennedy
  * @author Nakul Mishra
+ *
+ * @deprecated since 2.2 in favor of {@link EmbeddedKafkaRule}
  */
-public class KafkaEmbedded extends ExternalResource implements KafkaRule, InitializingBean, DisposableBean {
+@Deprecated
+public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, InitializingBean, DisposableBean {
 
 	private static final Log logger = LogFactory.getLog(KafkaEmbedded.class);
 
 	public static final String BEAN_NAME = "kafkaEmbedded";
 
-	public static final String SPRING_EMBEDDED_KAFKA_BROKERS = "spring.embedded.kafka.brokers";
+	public static final String SPRING_EMBEDDED_KAFKA_BROKERS = EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS;
 
-	public static final String SPRING_EMBEDDED_ZOOKEEPER_CONNECT = "spring.embedded.zookeeper.connect";
+	public static final String SPRING_EMBEDDED_ZOOKEEPER_CONNECT = EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT;
 
 	public static final long METADATA_PROPAGATION_TIMEOUT = 10000L;
 
-//	private static final String clientVersion;
-
-	private static final Method testUtilsCreateBrokerConfigMethod;
-
-	static {
-//		clientVersion = AppInfoParser.getVersion();
-//		if (clientVersion.startsWith("1.1.")) {
-//			try {
-//				testUtilsCreateBrokerConfigMethod = TestUtils.class.getDeclaredMethod("createBrokerConfig",
-//						int.class, String.class, boolean.class, boolean.class, int.class,
-//						scala.Option.class, scala.Option.class, scala.Option.class,
-//						boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
-//						int.class, scala.Option.class, int.class, boolean.class);
-//			}
-//			catch (NoSuchMethodException | SecurityException e) {
-//				throw new RuntimeException("Failed to determine TestUtils.createBrokerConfig() method, "
-//						+ "possible mismatched versions of the client/broker jars; see the appendix in "
-//						+ "the reference manual when overriding kafka-clients to version " + clientVersion);
-//			}
-//		}
-//		else {
-			testUtilsCreateBrokerConfigMethod = null;
-//		}
-	}
-
-	private final int count;
-
 	private final boolean controlledShutdown;
 
-	private final Set<String> topics;
-
-	private final int partitionsPerTopic;
-
-	private final List<KafkaServer> kafkaServers = new ArrayList<>();
-
-	private final Map<String, Object> brokerProperties = new HashMap<>();
-
-	private EmbeddedZookeeper zookeeper;
-
-	private ZkClient zookeeperClient;
-
-	private String zkConnect;
-
-	private int[] kafkaPorts;
 
 	public KafkaEmbedded(int count) {
 		this(count, false);
@@ -159,16 +86,8 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @param topics the topics to create.
 	 */
 	public KafkaEmbedded(int count, boolean controlledShutdown, int partitions, String... topics) {
-		this.count = count;
-		this.kafkaPorts = new int[this.count]; // random ports by default.
+		super(count, controlledShutdown, partitions, topics);
 		this.controlledShutdown = controlledShutdown;
-		if (topics != null) {
-			this.topics = new HashSet<>(Arrays.asList(topics));
-		}
-		else {
-			this.topics = new HashSet<>();
-		}
-		this.partitionsPerTopic = partitions;
 	}
 
 	/**
@@ -179,7 +98,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @see KafkaConfig
 	 */
 	public KafkaEmbedded brokerProperties(Map<String, String> brokerProperties) {
-		this.brokerProperties.putAll(brokerProperties);
+		super.brokerProperties(brokerProperties);
 		return this;
 	}
 
@@ -191,7 +110,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @since 2.1.4
 	 */
 	public KafkaEmbedded brokerProperty(String property, Object value) {
-		this.brokerProperties.put(property, value);
+		super.brokerProperty(property, value);
 		return this;
 	}
 
@@ -202,9 +121,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @since 1.3
 	 */
 	public void setKafkaPorts(int... kafkaPorts) {
-		Assert.isTrue(kafkaPorts.length == this.count, "A port must be provided for each instance ["
-				+ this.count + "], provided: " + Arrays.toString(kafkaPorts) + ", use 0 for a random port");
-		this.kafkaPorts = kafkaPorts;
+		super.kafkaPorts(kafkaPorts);
 	}
 
 	@Override
@@ -212,66 +129,13 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		before();
 	}
 
-	@Override
-	public void before() throws Exception { //NOSONAR
-		startZookeeper();
-		int zkConnectionTimeout = 6000;
-		int zkSessionTimeout = 6000;
-
-		this.zkConnect = "127.0.0.1:" + this.zookeeper.port();
-		this.zookeeperClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
-				ZKStringSerializer$.MODULE$);
-		this.kafkaServers.clear();
-		for (int i = 0; i < this.count; i++) {
-			Properties brokerConfigProperties = createBrokerProperties(i);
-			brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
-			brokerConfigProperties.setProperty(KafkaConfig.ControllerSocketTimeoutMsProp(), "1000");
-			brokerConfigProperties.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
-			brokerConfigProperties.setProperty(KafkaConfig.ReplicaHighWatermarkCheckpointIntervalMsProp(),
-					String.valueOf(Long.MAX_VALUE));
-			if (this.brokerProperties != null) {
-				this.brokerProperties.forEach(brokerConfigProperties::put);
-			}
-			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
-			this.kafkaServers.add(server);
-			if (this.kafkaPorts[i] == 0) {
-				this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
-			}
-		}
-		createKafkaTopics(this.topics);
-		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
-		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
-	}
-
-	/**
-	 * Create topics in the existing broker(s) using the configured number of partitions.
-	 * @param topics the topics.
-	 */
-	private void createKafkaTopics(Set<String> topics) {
-		doWithAdmin(admin -> {
-			List<NewTopic> newTopics = topics.stream()
-					.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
-					.collect(Collectors.toList());
-			CreateTopicsResult createTopics = admin.createTopics(newTopics);
-			try {
-				createTopics.all().get();
-			}
-			catch (Exception e) {
-				throw new KafkaException(e);
-			}
-		});
-	}
-
-
 	/**
 	 * Add topics to the existing broker(s) using the configured number of partitions.
 	 * @param topics the topics.
 	 * @since 2.1.6
 	 */
 	public void addTopics(String... topics) {
-		HashSet<String> set = new HashSet<>(Arrays.asList(topics));
-		createKafkaTopics(set);
-		this.topics.addAll(set);
+		getEmbeddedKafka().addTopics(topics);
 	}
 
 	/**
@@ -281,136 +145,66 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @since 2.1.6
 	 */
 	public void doWithAdmin(java.util.function.Consumer<AdminClient> callback) {
-		Map<String, Object> adminConfigs = new HashMap<>();
-		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
-		try (AdminClient admin = AdminClient.create(adminConfigs)) {
-			callback.accept(admin);
-		}
+		getEmbeddedKafka().doWithAdmin(callback);
 	}
 
 	public Properties createBrokerProperties(int i) {
-		if (testUtilsCreateBrokerConfigMethod == null) {
-			return TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
-					true, this.kafkaPorts[i],
-					scala.Option.apply(null),
-					scala.Option.apply(null),
-					scala.Option.apply(null),
-					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false);
-		}
-		else {
-			try {
-				return (Properties) testUtilsCreateBrokerConfigMethod.invoke(null, i, this.zkConnect,
-					this.controlledShutdown,
-					true, this.kafkaPorts[i],
-					scala.Option.<SecurityProtocol>apply(null),
-					scala.Option.<File>apply(null),
-					scala.Option.<Properties>apply(null),
-					true, false, 0, false, 0, false, 0, scala.Option.<String>apply(null), 1, false);
-			}
-			catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				throw new RuntimeException(e);
-			}
-		}
+		throw new UnsupportedOperationException();
 	}
 
 
 	@Override
-	public void destroy() throws Exception {
+	public void destroy() {
 		after();
 	}
 
-	@Override
-	public void after() {
-		System.getProperties().remove(SPRING_EMBEDDED_KAFKA_BROKERS);
-		System.getProperties().remove(SPRING_EMBEDDED_ZOOKEEPER_CONNECT);
-		for (KafkaServer kafkaServer : this.kafkaServers) {
-			try {
-				if (kafkaServer.brokerState().currentState() != (NotRunning.state())) {
-					kafkaServer.shutdown();
-					kafkaServer.awaitShutdown();
-				}
-			}
-			catch (Exception e) {
-				// do nothing
-			}
-			try {
-				CoreUtils.delete(kafkaServer.config().logDirs());
-			}
-			catch (Exception e) {
-				// do nothing
-			}
-		}
-		try {
-			this.zookeeperClient.close();
-		}
-		catch (ZkInterruptedException e) {
-			// do nothing
-		}
-		try {
-			this.zookeeper.shutdown();
-		}
-		catch (Exception e) {
-			// do nothing
-		}
-	}
-
 	public Set<String> getTopics() {
-		return new HashSet<>(this.topics);
+		return getEmbeddedKafka().getTopics();
 	}
 
 	@Override
 	public List<KafkaServer> getKafkaServers() {
-		return this.kafkaServers;
+		return getEmbeddedKafka().getKafkaServers();
 	}
 
 	public KafkaServer getKafkaServer(int id) {
-		return this.kafkaServers.get(id);
+		return getEmbeddedKafka().getKafkaServer(id);
 	}
 
 	public EmbeddedZookeeper getZookeeper() {
-		return this.zookeeper;
+		return getEmbeddedKafka().getZookeeper();
 	}
 
 	@Override
 	public ZkClient getZkClient() {
-		return this.zookeeperClient;
+		return getEmbeddedKafka().getZkClient();
 	}
 
 	@Override
 	public String getZookeeperConnectionString() {
-		return this.zkConnect;
+		return getEmbeddedKafka().getZookeeperConnectionString();
 	}
 
 	public BrokerAddress getBrokerAddress(int i) {
-		KafkaServer kafkaServer = this.kafkaServers.get(i);
-		return new BrokerAddress("127.0.0.1", kafkaServer.config().port());
+		return getEmbeddedKafka().getBrokerAddress(i);
 	}
 
 	@Override
 	public BrokerAddress[] getBrokerAddresses() {
-		List<BrokerAddress> addresses = new ArrayList<BrokerAddress>();
-		for (int i = 0; i < this.kafkaPorts.length; i++) {
-			addresses.add(new BrokerAddress("127.0.0.1", this.kafkaPorts[i]));
-		}
-		return addresses.toArray(new BrokerAddress[addresses.size()]);
+		return getEmbeddedKafka().getBrokerAddresses();
 	}
 
 	@Override
 	public int getPartitionsPerTopic() {
-		return this.partitionsPerTopic;
+		return getEmbeddedKafka().getPartitionsPerTopic();
 	}
 
 	public void bounce(BrokerAddress brokerAddress) {
-		for (KafkaServer kafkaServer : getKafkaServers()) {
-			if (brokerAddress.equals(new BrokerAddress(kafkaServer.config().hostName(), kafkaServer.config().port()))) {
-				kafkaServer.shutdown();
-				kafkaServer.awaitShutdown();
-			}
-		}
+		getEmbeddedKafka().bounce(brokerAddress);
 	}
 
 	public void startZookeeper() {
-		this.zookeeper = new EmbeddedZookeeper();
+
 	}
 
 	@Deprecated
@@ -424,30 +218,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	}
 
 	public void restart(final int index) throws Exception { //NOSONAR
-
-		// retry restarting repeatedly, first attempts may fail
-
-		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(10,
-				Collections.<Class<? extends Throwable>, Boolean>singletonMap(Exception.class, true));
-
-		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(100);
-		backOffPolicy.setMaxInterval(1000);
-		backOffPolicy.setMultiplier(2);
-
-		RetryTemplate retryTemplate = new RetryTemplate();
-		retryTemplate.setRetryPolicy(retryPolicy);
-		retryTemplate.setBackOffPolicy(backOffPolicy);
-
-
-		retryTemplate.execute(new RetryCallback<Void, Exception>() {
-
-			@Override
-			public Void doWithRetry(RetryContext context) throws Exception { //NOSONAR
-				KafkaEmbedded.this.kafkaServers.get(index).startup();
-				return null;
-			}
-		});
+		getEmbeddedKafka().restart(index);
 	}
 
 	@Deprecated
@@ -457,11 +228,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	@Override
 	public String getBrokersAsString() {
-		StringBuilder builder = new StringBuilder();
-		for (BrokerAddress brokerAddress : getBrokerAddresses()) {
-			builder.append(brokerAddress.toString()).append(',');
-		}
-		return builder.substring(0, builder.length() - 1);
+		return getEmbeddedKafka().getBrokersAsString();
 	}
 
 	@Override
@@ -475,7 +242,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @throws Exception an exception.
 	 */
 	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) throws Exception {
-		consumeFromEmbeddedTopics(consumer, this.topics.toArray(new String[0]));
+		getEmbeddedKafka().consumeFromAllEmbeddedTopics(consumer);
 	}
 
 	/**
@@ -495,43 +262,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 	 * @throws Exception an exception.
 	 */
 	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) throws Exception {
-		HashSet<String> diff = new HashSet<>(Arrays.asList(topics));
-		diff.removeAll(new HashSet<>(this.topics));
-		assertThat(this.topics)
-				.as("topic(s):'" + diff + "' are not in embedded topic list")
-				.containsAll(new HashSet<>(Arrays.asList(topics)));
-		final CountDownLatch consumerLatch = new CountDownLatch(1);
-		consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
-
-			@Override
-			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-			}
-
-			@Override
-			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				consumerLatch.countDown();
-				if (logger.isDebugEnabled()) {
-					logger.debug("partitions assigned: " + partitions);
-				}
-			}
-
-		});
-		ConsumerRecords<?, ?> records = consumer.poll(0); // force assignment
-		if (records.count() > 0) {
-			if (logger.isDebugEnabled()) {
-				logger.debug("Records received on initial poll for assignment; re-seeking to beginning; "
-						+ records.partitions().stream()
-							.flatMap(p -> records.records(p).stream())
-							// map to same format as send metadata toString()
-							.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-							.collect(Collectors.toList()));
-			}
-			consumer.seekToBeginning(records.partitions());
-		}
-		assertThat(consumerLatch.await(30, TimeUnit.SECONDS))
-				.as("Failed to be assigned partitions from the embedded topics")
-				.isTrue();
-		logger.debug("Subscription Initiated");
+		getEmbeddedKafka().consumeFromEmbeddedTopics(consumer, topics);
 	}
 
 }

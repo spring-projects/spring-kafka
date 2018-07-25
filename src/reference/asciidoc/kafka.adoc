@@ -12,7 +12,7 @@ Simply add a `NewTopic` `@Bean` for each topic to the application context.
 public KafkaAdmin admin() {
     Map<String, Object> configs = new HashMap<>();
     configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-            StringUtils.arrayToCommaDelimitedString(kafkaEmbedded().getBrokerAddresses()));
+            StringUtils.arrayToCommaDelimitedString(embeddedKafka().getBrokerAddresses()));
     return new KafkaAdmin(configs);
 }
 

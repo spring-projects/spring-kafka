@@ -30,7 +30,10 @@ import kafka.server.KafkaServer;
  *
  * @author Marius Bogoevici
  * @author Gary Russell
+ *
+ * @deprecated since 2.2 in favor of {@link EmbeddedKafkaRule}
  */
+@Deprecated
 public interface KafkaRule extends TestRule {
 
 	ZkClient getZkClient();

@@ -17,21 +17,21 @@ NOTE: See <<deps-for-11x>> if you wish to use the 1.1.x `kafka-clients` jar with
  * Set up test properties for an {@code <Integer, String>} consumer.
  * @param group the group id.
  * @param autoCommit the auto commit.
- * @param embeddedKafka a {@link KafkaEmbedded} instance.
+ * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
  * @return the properties.
  */
 public static Map<String, Object> consumerProps(String group, String autoCommit,
-                                       KafkaEmbedded embeddedKafka) { ... }
+                                       EmbeddedKafkaBroker embeddedKafka) { ... }
 
 /**
  * Set up test properties for an {@code <Integer, String>} producer.
- * @param embeddedKafka a {@link KafkaEmbedded} instance.
+ * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
  * @return the properties.
  */
-public static Map<String, Object> senderProps(KafkaEmbedded embeddedKafka) { ... }
+public static Map<String, Object> senderProps(EmbeddedKafkaBroker embeddedKafka) { ... }
 ----
 
-A JUnit `@Rule` is provided that creates an embedded Kafka and an embedded Zookeeper server.
+A JUnit `@Rule` wrapper for the `EmbeddedKafkaBroker` is provided that creates an embedded Kafka and an embedded Zookeeper server.
 
 [source, java]
 ----
@@ -41,7 +41,7 @@ A JUnit `@Rule` is provided that creates an embedded Kafka and an embedded Zooke
  * @param controlledShutdown passed into TestUtils.createBrokerConfig.
  * @param topics the topics to create (2 partitions per).
  */
-public KafkaEmbedded(int count, boolean controlledShutdown, String... topics) { ... }
+public EmbeddedKafkaRule(int count, boolean controlledShutdown, String... topics) { ... }
 
 /**
  *
@@ -51,10 +51,10 @@ public KafkaEmbedded(int count, boolean controlledShutdown, String... topics) { 
  * @param partitions partitions per topic.
  * @param topics the topics to create.
  */
-public KafkaEmbedded(int count, boolean controlledShutdown, int partitions, String... topics) { ... }
+public EmbeddedKafkaRule(int count, boolean controlledShutdown, int partitions, String... topics) { ... }
 ----
 
-The embedded kafka class has a utility method allowing you to consume for all the topics it created:
+The `EmbeddedKafkaBroker` class has a utility method allowing you to consume for all the topics it created:
 
 [source, java]
 ----
@@ -96,10 +96,10 @@ ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consum
 ...
 ----
 
-When the embedded Kafka and embedded Zookeeper server are started by JUnit, a system property `spring.embedded.kafka.brokers` is set to the address of the Kafka broker(s) and a system property `spring.embedded.zookeeper.connect` is set to the address of Zookeeper.
-Convenient constants `KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS` and `KafkaEmbedded.SPRING_EMBEDDED_ZOOKEEPER_CONNECT` are provided for this property.
+When the embedded Kafka and embedded Zookeeper server are started by by the `EmbeddedKafkaBroker`, a system property `spring.embedded.kafka.brokers` is set to the address of the Kafka broker(s) and a system property `spring.embedded.zookeeper.connect` is set to the address of Zookeeper.
+Convenient constants `EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS` and `EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT` are provided for this property.
 
-With the `KafkaEmbedded.brokerProperties(Map<String, String>)` you can provide additional properties for the Kafka server(s).
+With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)` you can provide additional properties for the Kafka server(s).
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
 
 
@@ -109,26 +109,26 @@ There is no built-in support for this, but it can be achieved with something sim
 
 [source, java]
 ----
-public final class KafkaEmbeddedHolder {
+public final class EmbeddedKafkaHolder {
 
-	private static KafkaEmbedded kafkaEmbedded = new KafkaEmbedded(1, false);
+	private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false);
 
 	private static boolean started;
 
-	public static KafkaEmbedded getKafkaEmbedded() {
+	public static EmbeddedKafkaRule getEmbeddedKafka() {
 		if (!started) {
 			try {
-				kafkaEmbedded.before();
+				embeddedKafka.before();
 			}
 			catch (Exception e) {
 				throw new KafkaException(e);
 			}
 			started = true;
 		}
-		return kafkaEmbedded;
+		return embeddedKafka;
 	}
 
-	private KafkaEmbeddedHolder() {
+	private EmbeddedKafkaHolder() {
 		super();
 	}
 
@@ -140,21 +140,20 @@ And then, in each test class:
 [source, java]
 ----
 static {
-    KafkaEmbeddedHolder.getKafkaEmbedded().addTopics(topic1, topic2);
+    EmbeddedKafkaHolder.getEmbeddedKafka().addTopics(topic1, topic2);
 }
 
-private static KafkaEmbedded embeddedKafka = KafkaEmbeddedHolder.getKafkaEmbedded();
+private static EmbeddedKafkaRule embeddedKafka = EmbeddedKafkaHolder.getEmbeddedKafka();
 ----
 
 IMPORTANT: This example provides no mechanism for shutting down the broker(s) when all tests are complete.
-This could be a problem if, say, you run your tests in a gradle daemon.
-You should not use this technique in such a situation, or use something to call `destroy()` on the `KafkaEmbedded` when your tests are complete.
+This could be a problem if, say, you run your tests in a Gradle daemon.
+You should not use this technique in such a situation, or use something to call `destroy()` on the `EmbeddedKafkaBroker` when your tests are complete.
 
 ==== @EmbeddedKafka Annotation
 It is generally recommended to use the rule as a `@ClassRule` to avoid starting/stopping the broker between tests (and use a different topic for each test).
-Starting with _version 2.0_, if you are using Spring's test application context caching, you can also declare a `KafkaEmbedded` bean, so a single broker can be used across multiple test classes.
-The JUnit `ExternalResource` `before()/after()` lifecycle is wrapped to the `afterPropertiesSet()` and `destroy()` Spring infrastructure hooks.
-For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` bean:
+Starting with _version 2.0_, if you are using Spring's test application context caching, you can also declare a `EmbeddedKafkaBroker` bean, so a single broker can be used across multiple test classes.
+For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `EmbeddedKafkaBroker` bean:
 
 [source, java]
 ----
@@ -167,7 +166,7 @@ For convenience a test class level `@EmbeddedKafka` annotation is provided with 
 public class KafkaStreamsTests {
 
     @Autowired
-    private KafkaEmbedded embeddedKafka;
+    private EmbeddedKafkaBroker embeddedKafka;
 
     @Test
     public void someTest() {
@@ -184,7 +183,7 @@ public class KafkaStreamsTests {
     @EnableKafkaStreams
     public static class KafkaStreamsConfiguration {
 
-        @Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
+        @Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
         private String brokerAddresses;
 
         @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
@@ -316,7 +315,7 @@ public class KafkaTemplateTests {
     private static final String TEMPLATE_TOPIC = "templateTopic";
 
     @ClassRule
-    public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, TEMPLATE_TOPIC);
+    public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, TEMPLATE_TOPIC);
 
     @Test
     public void testTemplate() throws Exception {
@@ -339,9 +338,9 @@ public class KafkaTemplateTests {
         });
         container.setBeanName("templateTests");
         container.start();
-        ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+        ContainerTestUtils.waitForAssignment(container, embeddedKafka.getEmbeddedKafka().getPartitionsPerTopic());
         Map<String, Object> senderProps =
-                            KafkaTestUtils.senderProps(embeddedKafka.getBrokersAsString());
+                            KafkaTestUtils.senderProps(embeddedKafka.getEmbeddedKafka().getBrokersAsString());
         ProducerFactory<Integer, String> pf =
                             new DefaultKafkaProducerFactory<Integer, String>(senderProps);
         KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);

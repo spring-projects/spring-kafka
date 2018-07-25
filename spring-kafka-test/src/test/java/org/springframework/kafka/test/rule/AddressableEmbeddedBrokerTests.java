@@ -36,6 +36,7 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -43,6 +44,8 @@ import org.springframework.test.context.junit4.SpringRunner;
  * @author Gary Russell
  * @author Kamill Sokol
  * @author Elliot Kennedy
+ * @author Artem Bilan
+ *
  * @since 1.3
  *
  */
@@ -55,15 +58,15 @@ public class AddressableEmbeddedBrokerTests {
 	private Config config;
 
 	@Autowired
-	private KafkaEmbedded broker;
+	private EmbeddedKafkaBroker broker;
 
 	@Test
 	public void testKafkaEmbedded() {
 		assertThat(broker.getBrokersAsString()).isEqualTo("127.0.0.1:" + this.config.port);
 		assertThat(broker.getBrokersAsString())
-				.isEqualTo(System.getProperty(KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS));
+				.isEqualTo(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS));
 		assertThat(broker.getZookeeperConnectionString())
-				.isEqualTo(System.getProperty(KafkaEmbedded.SPRING_EMBEDDED_ZOOKEEPER_CONNECT));
+				.isEqualTo(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT));
 	}
 
 	@Test
@@ -74,7 +77,7 @@ public class AddressableEmbeddedBrokerTests {
 		this.broker.consumeFromAnEmbeddedTopic(consumer, TEST_EMBEDDED);
 
 		Producer<String, Object> producer = new KafkaProducer<>(KafkaTestUtils.producerProps(this.broker));
-		producer.send(new ProducerRecord<String, Object>(TEST_EMBEDDED, "foo"));
+		producer.send(new ProducerRecord<>(TEST_EMBEDDED, "foo"));
 		producer.close();
 		KafkaTestUtils.getSingleRecord(consumer, TEST_EMBEDDED);
 
@@ -94,13 +97,13 @@ public class AddressableEmbeddedBrokerTests {
 		private int port;
 
 		@Bean
-		public KafkaEmbedded broker() throws IOException {
-			KafkaEmbedded broker = new KafkaEmbedded(1, true, TEST_EMBEDDED);
+		public EmbeddedKafkaBroker broker() throws IOException {
 			ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
 			this.port = ss.getLocalPort();
 			ss.close();
-			broker.setKafkaPorts(this.port);
-			return broker;
+
+			return new EmbeddedKafkaBroker(1, true, TEST_EMBEDDED)
+					.kafkaPorts(this.port);
 		}
 
 	}

@@ -46,7 +46,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
@@ -59,6 +59,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 1.3.2
  *
  */
@@ -70,7 +72,7 @@ public class BatchListenerConversionTests {
 	private static final String DEFAULT_TEST_GROUP_ID = "blc";
 
 	@ClassRule // one topic to preserve order
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 1, "blc1", "blc2", "blc3",
+	public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, 1, "blc1", "blc2", "blc3",
 			"blc4", "blc5");
 
 	@Autowired
@@ -153,7 +155,7 @@ public class BatchListenerConversionTests {
 		@Bean
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
+					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka.getEmbeddedKafka());
 			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, BytesDeserializer.class);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
@@ -178,7 +180,7 @@ public class BatchListenerConversionTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka);
+			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka());
 			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class);
 			return props;
 		}
@@ -280,7 +282,7 @@ public class BatchListenerConversionTests {
 					.setHeader(KafkaHeaders.TOPIC, "blc5")
 					.setHeader(KafkaHeaders.MESSAGE_KEY, 42)
 					.build())
-				.collect(Collectors.toList());
+					.collect(Collectors.toList());
 		}
 
 		@KafkaListener(topics = "blc5", groupId = "blc5")

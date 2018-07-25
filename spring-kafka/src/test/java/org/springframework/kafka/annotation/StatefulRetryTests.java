@@ -41,7 +41,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
-import org.springframework.kafka.test.rule.KafkaEmbedded;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -49,6 +49,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.1.3
  *
  */
@@ -59,7 +61,7 @@ public class StatefulRetryTests {
 	private static final String DEFAULT_TEST_GROUP_ID = "statefulRetry";
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 1, "sr1");
+	public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, 1, "sr1");
 
 	@Autowired
 	private Config config;
@@ -117,15 +119,14 @@ public class StatefulRetryTests {
 		@Bean
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
+					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka.getEmbeddedKafka());
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
 
 		@Bean
 		public KafkaTemplate<Integer, String> template() {
-			KafkaTemplate<Integer, String> kafkaTemplate = new KafkaTemplate<>(producerFactory());
-			return kafkaTemplate;
+			return new KafkaTemplate<>(producerFactory());
 		}
 
 		@Bean
@@ -135,7 +136,7 @@ public class StatefulRetryTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.producerProps(embeddedKafka);
+			return KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka());
 		}
 
 		@KafkaListener(id = "retry", topics = "sr1", groupId = "sr1")
