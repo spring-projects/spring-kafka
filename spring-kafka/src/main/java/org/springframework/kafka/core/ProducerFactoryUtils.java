@@ -57,7 +57,15 @@ public final class ProducerFactoryUtils {
 				.getResource(producerFactory);
 		if (resourceHolder == null) {
 			Producer<K, V> producer = producerFactory.createProducer();
-			producer.beginTransaction();
+
+			try {
+				producer.beginTransaction();
+			}
+			catch (RuntimeException e) {
+				producer.close();
+				throw e;
+			}
+
 			resourceHolder = new KafkaResourceHolder<K, V>(producer);
 			bindResourceToTransaction(resourceHolder, producerFactory);
 		}
@@ -128,14 +136,17 @@ public final class ProducerFactoryUtils {
 
 		@Override
 		public void afterCompletion(int status) {
-			if (status == TransactionSynchronization.STATUS_COMMITTED) {
-				this.resourceHolder.commit();
+			try {
+				if (status == TransactionSynchronization.STATUS_COMMITTED) {
+					this.resourceHolder.commit();
+				}
+				else {
+					this.resourceHolder.rollback();
+				}
 			}
-			else {
-				this.resourceHolder.rollback();
+			finally {
+				super.afterCompletion(status);
 			}
-
-			super.afterCompletion(status);
 		}
 
 		@Override

@@ -37,6 +37,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -50,6 +51,7 @@ import org.mockito.InOrder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.support.transaction.ResourcelessTransactionManager;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
@@ -207,6 +209,58 @@ public class KafkaTemplateTransactionTests {
 		assertThatThrownBy(() -> template.send("foo", "bar"))
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("No transaction is in process;");
+	}
+
+	@Test
+	public void testTransactionSynchronization() {
+		MockProducer<String, String> producer = new MockProducer<>();
+		producer.initTransactions();
+
+		@SuppressWarnings("unchecked")
+		ProducerFactory<String, String> pf = mock(ProducerFactory.class);
+		given(pf.transactionCapable()).willReturn(true);
+		given(pf.createProducer()).willReturn(producer);
+
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+
+		ResourcelessTransactionManager tm = new ResourcelessTransactionManager();
+
+		new TransactionTemplate(tm).execute(s -> {
+			template.sendDefault("foo", "bar");
+			return null;
+		});
+
+		assertThat(producer.history()).containsExactly(new ProducerRecord<>(STRING_KEY_TOPIC, "foo", "bar"));
+		assertThat(producer.transactionCommitted()).isTrue();
+		assertThat(producer.closed()).isTrue();
+	}
+
+	@Test
+	public void testTransactionSynchronizationExceptionOnCommit() {
+		MockProducer<String, String> producer = new MockProducer<>();
+		producer.initTransactions();
+
+		@SuppressWarnings("unchecked")
+		ProducerFactory<String, String> pf = mock(ProducerFactory.class);
+		given(pf.transactionCapable()).willReturn(true);
+		given(pf.createProducer()).willReturn(producer);
+
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+
+		ResourcelessTransactionManager tm = new ResourcelessTransactionManager();
+
+		new TransactionTemplate(tm).execute(s -> {
+			template.sendDefault("foo", "bar");
+
+			// Mark the mock producer as fenced so it throws when committing the transaction
+			producer.fenceProducer();
+			return null;
+		});
+
+		assertThat(producer.transactionCommitted()).isFalse();
+		assertThat(producer.closed()).isTrue();
 	}
 
 	@Configuration

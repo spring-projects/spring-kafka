@@ -324,14 +324,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 			catch (RuntimeException e) {
 				this.txFailed = true;
-				logger.error("Illegal transaction state; producer removed from cache; possible cause: "
-						+ "broker restarted during transaction", e);
-				try {
-					this.delegate.close();
-				}
-				catch (Exception ee) {
-					// empty
-				}
 				throw e;
 			}
 		}
@@ -344,20 +336,40 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public void commitTransaction() throws ProducerFencedException {
-			this.delegate.commitTransaction();
+			try {
+				this.delegate.commitTransaction();
+			}
+			catch (RuntimeException e) {
+				this.txFailed = true;
+				throw e;
+			}
 		}
 
 		@Override
 		public void abortTransaction() throws ProducerFencedException {
-			this.delegate.abortTransaction();
+			try {
+				this.delegate.abortTransaction();
+			}
+			catch (RuntimeException e) {
+				this.txFailed = true;
+				throw e;
+			}
 		}
 
 		@Override
 		public void close() {
-			if (this.cache != null && !this.txFailed) {
-				synchronized (this) {
-					if (!this.cache.contains(this)) {
-						this.cache.offer(this);
+			if (this.cache != null) {
+				if (this.txFailed) {
+					logger.warn("Error during transactional operation; producer removed from cache; possible cause: "
+							+ "broker restarted during transaction");
+
+					this.delegate.close();
+				}
+				else {
+					synchronized (this) {
+						if (!this.cache.contains(this)) {
+							this.cache.offer(this);
+						}
 					}
 				}
 			}
