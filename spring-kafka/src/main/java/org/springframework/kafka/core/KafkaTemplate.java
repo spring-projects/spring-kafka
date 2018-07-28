@@ -30,6 +30,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
@@ -57,7 +58,6 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Artem Bilan
  * @author Biju Kunjummen
  * @author Endika Gutiérrez
- * @author Mark Norkin
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
@@ -213,6 +213,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	@Override
 	public ListenableFuture<SendResult<K, V>> send(Message<?> message) {
 		ProducerRecord<?, ?> producerRecord = this.messageConverter.fromMessage(message, this.defaultTopic);
+		if (!producerRecord.headers().iterator().hasNext()) { // possibly no Jackson
+			byte[] correlationId = message.getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
+			if (correlationId != null) {
+				producerRecord.headers().add(KafkaHeaders.CORRELATION_ID, correlationId);
+			}
+		}
 		return doSend((ProducerRecord<K, V>) producerRecord);
 	}
 
