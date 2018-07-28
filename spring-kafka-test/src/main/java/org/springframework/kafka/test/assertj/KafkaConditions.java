@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,10 @@
 
 package org.springframework.kafka.test.assertj;
 
+import java.util.function.Predicate;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.record.TimestampType;
 import org.assertj.core.api.Condition;
 
@@ -26,6 +29,7 @@ import org.assertj.core.api.Condition;
  * @author Artem Bilan
  * @author Gary Russell
  * @author Biju Kunjummen
+ * @author Mark Norkin
  */
 public final class KafkaConditions {
 
@@ -78,6 +82,18 @@ public final class KafkaConditions {
 		return new ConsumerRecordPartitionCondition(partition);
 	}
 
+	/**
+	 * @param condition the record metadata predicate to test.
+	 * @return a Condition that match given predicate.
+	 */
+	public static Condition<RecordMetadata> matchingCondition(Predicate<RecordMetadata> condition) {
+		return new Condition<RecordMetadata>() {
+			@Override
+			public boolean matches(RecordMetadata value) {
+				return condition.test(value);
+			}
+		};
+	}
 
 	public static class ConsumerRecordKeyCondition<K> extends Condition<ConsumerRecord<K, ?>> {
 
