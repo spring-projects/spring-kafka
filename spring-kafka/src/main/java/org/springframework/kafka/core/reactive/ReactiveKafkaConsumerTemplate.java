@@ -16,12 +16,6 @@
 
 package org.springframework.kafka.core.reactive;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -30,13 +24,18 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.TransactionManager;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Reactive kafka consumer operations implementation.
@@ -78,8 +77,9 @@ public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsume
 		return this.kafkaReceiver.doOnConsumer(function);
 	}
 
-	public Mono<Set<TopicPartition>> assignment() {
-		return doOnConsumer(Consumer::assignment);
+	public Flux<TopicPartition> assignment() {
+		Mono<Set<TopicPartition>> partitions = doOnConsumer(Consumer::assignment);
+		return partitions.flatMapIterable(Function.identity());
 	}
 
 	public Mono<Set<String>> subscription() {

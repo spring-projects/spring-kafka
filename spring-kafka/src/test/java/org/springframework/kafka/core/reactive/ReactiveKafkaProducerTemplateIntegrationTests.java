@@ -366,10 +366,10 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 	@Test
 	public void shouldReturnPartitionsForTopic() {
-		Mono<List<PartitionInfo>> topicPartitionsMono = reactiveKafkaProducerTemplate.partitionsFromProducerFor(REACTIVE_INT_KEY_TOPIC);
+		Flux<PartitionInfo> topicPartitionsMono = reactiveKafkaProducerTemplate.partitionsFromProducerFor(REACTIVE_INT_KEY_TOPIC);
 
 		StepVerifier.create(topicPartitionsMono)
-				.assertNext(partitionInfo -> Assertions.assertThat(partitionInfo).isNotNull().hasSize(DEFAULT_PARTITIONS_COUNT))
+				.expectNextCount(DEFAULT_PARTITIONS_COUNT)
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}

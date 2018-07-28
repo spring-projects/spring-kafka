@@ -125,8 +125,9 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 		});
 	}
 
-	public Mono<List<PartitionInfo>> partitionsFromProducerFor(String topic) {
-		return doOnProducer(producer -> producer.partitionsFor(topic));
+	public Flux<PartitionInfo> partitionsFromProducerFor(String topic) {
+		Mono<List<PartitionInfo>> partitionsInfo = doOnProducer(producer -> producer.partitionsFor(topic));
+		return partitionsInfo.flatMapIterable(Function.identity());
 	}
 
 	public Mono<? extends Map<MetricName, ? extends Metric>> metricsFromProducer() {
