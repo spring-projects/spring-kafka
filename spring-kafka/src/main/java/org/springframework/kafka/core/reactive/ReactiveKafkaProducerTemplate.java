@@ -30,6 +30,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.reactivestreams.Publisher;
 
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
@@ -95,6 +96,12 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 	public Mono<SenderResult<Void>> send(String topic, Message<?> message) {
 		@SuppressWarnings("unchecked")
 		ProducerRecord<K, V> producerRecord = (ProducerRecord<K, V>) this.messageConverter.fromMessage(message, topic);
+		if (!producerRecord.headers().iterator().hasNext()) { // possibly no Jackson
+			byte[] correlationId = message.getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
+			if (correlationId != null) {
+				producerRecord.headers().add(KafkaHeaders.CORRELATION_ID, correlationId);
+			}
+		}
 		return send(producerRecord);
 	}
 
