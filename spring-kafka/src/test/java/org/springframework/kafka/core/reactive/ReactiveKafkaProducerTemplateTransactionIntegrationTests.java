@@ -40,7 +40,6 @@ import org.junit.Test;
 import org.reactivestreams.Subscription;
 
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -67,14 +66,14 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(3, true, DEFAULT_PARTITIONS_COUNT, REACTIVE_INT_KEY_TOPIC);
-	private static Map<String, Object> consumerProps;
 
+	private static ReactiveKafkaConsumerTemplate<Integer, String> reactiveKafkaConsumerTemplate;
 	private ReactiveKafkaProducerTemplate<Integer, String> reactiveKafkaProducerTemplate;
-	private ReactiveKafkaConsumerTemplate<Integer, String> reactiveKafkaConsumerTemplate;
 
 	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		consumerProps = KafkaTestUtils.consumerProps("reactive_transaction_consumer_group", "false", embeddedKafka);
+	public static void setUpBeforeClass() {
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("reactive_transaction_consumer_group", "false", embeddedKafka);
+		reactiveKafkaConsumerTemplate = new ReactiveKafkaConsumerTemplate<>(setupReceiverOptionsWithDefaultTopic(consumerProps));
 	}
 
 	@Before
@@ -85,12 +84,10 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.producerProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "reactive.transaction")
 				.producerProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true)
 				.producerProperty(ProducerConfig.RETRIES_CONFIG, 1);
-		RecordMessageConverter messagingConverter = new MessagingMessageConverter();
-		reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(senderOptions, messagingConverter);
-		reactiveKafkaConsumerTemplate = new ReactiveKafkaConsumerTemplate<>(setupReceiverOptionsWithDefaultTopic(consumerProps));
+		reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(senderOptions, new MessagingMessageConverter());
 	}
 
-	private ReceiverOptions<Integer, String> setupReceiverOptionsWithDefaultTopic(Map<String, Object> consumerProps) {
+	private static ReceiverOptions<Integer, String> setupReceiverOptionsWithDefaultTopic(Map<String, Object> consumerProps) {
 		ReceiverOptions<Integer, String> basicReceiverOptions = ReceiverOptions.create(consumerProps);
 		return basicReceiverOptions
 				.consumerProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
