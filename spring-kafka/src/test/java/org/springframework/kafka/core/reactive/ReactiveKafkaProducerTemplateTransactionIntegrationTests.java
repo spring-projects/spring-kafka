@@ -57,7 +57,7 @@ import reactor.test.StepVerifier;
  */
 public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	private static final int DEFAULT_PARTITIONS_COUNT = 2;
-	private static final Integer DEFAULT_KEY = 42;
+	private static final int DEFAULT_KEY = 42;
 	private static final String DEFAULT_VALUE = "foo_data";
 	private static final int DEFAULT_PARTITION = 1;
 	private static final long DEFAULT_TIMESTAMP = Instant.now().toEpochMilli();
@@ -78,13 +78,17 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 	@Before
 	public void setUp() {
+		reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(setupSenderOptionsWithDefaultTopic(), new MessagingMessageConverter());
+	}
+
+	private SenderOptions<Integer, String> setupSenderOptionsWithDefaultTopic() {
 		Map<String, Object> senderProps = KafkaTestUtils.senderProps(embeddedKafka.getBrokersAsString());
 		SenderOptions<Integer, String> senderOptions = SenderOptions.create(senderProps);
 		senderOptions = senderOptions
 				.producerProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "reactive.transaction")
 				.producerProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true)
 				.producerProperty(ProducerConfig.RETRIES_CONFIG, 1);
-		reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(senderOptions, new MessagingMessageConverter());
+		return senderOptions;
 	}
 
 	private static ReceiverOptions<Integer, String> setupReceiverOptionsWithDefaultTopic(Map<String, Object> consumerProps) {
