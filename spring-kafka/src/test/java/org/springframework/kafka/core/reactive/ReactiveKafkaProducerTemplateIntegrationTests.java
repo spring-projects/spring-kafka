@@ -42,7 +42,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Subscription;
 
@@ -141,7 +140,6 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
-		
 		StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
 				.assertNext(receiverRecord -> {
 					Assertions.assertThat(receiverRecord.key()).isEqualTo(DEFAULT_KEY);
@@ -346,10 +344,24 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
-	@Test//todo
-	@Ignore
+	@Test
 	public void shouldFlushRecordsOnDemand() {
-		Mono<Void> flushMono = reactiveKafkaProducerTemplate.flush();
+		Mono<Void> sendWithFlushMono = reactiveKafkaProducerTemplate.createOutbound()
+				.send(Mono.just(new ProducerRecord<>(REACTIVE_INT_KEY_TOPIC, DEFAULT_KEY, DEFAULT_VALUE)))
+				.then(reactiveKafkaProducerTemplate.flush())
+				.then();
+
+		StepVerifier.create(sendWithFlushMono)
+				.expectComplete()
+				.verify(DEFAULT_VERIFY_TIMEOUT);
+
+		StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
+				.assertNext(receiverRecord -> {
+					Assertions.assertThat(receiverRecord.key()).isEqualTo(DEFAULT_KEY);
+					Assertions.assertThat(receiverRecord.value()).isEqualTo(DEFAULT_VALUE);
+				})
+				.thenCancel()
+				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
 	@Test
