@@ -16,12 +16,17 @@
 
 package org.springframework.kafka.core.reactive;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.reactivestreams.Publisher;
 
 import org.springframework.beans.factory.DisposableBean;
@@ -47,8 +52,6 @@ import reactor.kafka.sender.TransactionManager;
  * @author Mark Norkin
  */
 public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProducerOperations<K, V>, AutoCloseable, DisposableBean {
-	private static final Log LOG = LogFactory.getLog(ReactiveKafkaProducerTemplate.class);
-
 	private final KafkaSender<K, V> sender;
 	private final RecordMessageConverter messageConverter;
 
@@ -62,10 +65,45 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
+	public <T> Flux<Flux<SenderResult<T>>> sendTransactionally(Publisher<? extends Publisher<? extends SenderRecord<K, V, T>>> records) {
+		return this.sender.sendTransactionally(records);
+	}
+
+	public <T> Mono<SenderResult<T>> sendTransactionally(SenderRecord<K, V, T> record) {
+		Flux<Flux<SenderResult<T>>> sendTransactionally = sendTransactionally(Mono.just(Mono.just(record)));
+		return sendTransactionally
+				.concatMap(Flux::next)
+				.last();
+	}
+
+	public Mono<SenderResult<Void>> send(String topic, V value) {
+		return send(new ProducerRecord<>(topic, value));
+	}
+
+	public Mono<SenderResult<Void>> send(String topic, K key, V value) {
+		return send(new ProducerRecord<>(topic, key, value));
+	}
+
+	public Mono<SenderResult<Void>> send(String topic, int partition, K key, V value) {
+		return send(new ProducerRecord<>(topic, partition, key, value));
+	}
+
+	public Mono<SenderResult<Void>> send(String topic, int partition, long timestamp, K key, V value) {
+		return send(new ProducerRecord<>(topic, partition, timestamp, key, value));
+	}
+
 	public Mono<SenderResult<Void>> send(String topic, Message<?> message) {
-		ProducerRecord<?, ?> producerRecord = this.messageConverter.fromMessage(message, topic);
-		return this.send((ProducerRecord<K, V>) producerRecord);
+		@SuppressWarnings("unchecked")
+		ProducerRecord<K, V> producerRecord = (ProducerRecord<K, V>) this.messageConverter.fromMessage(message, topic);
+		return send(producerRecord);
+	}
+
+	public Mono<SenderResult<Void>> send(ProducerRecord<K, V> record) {
+		return send(SenderRecord.create(record, null));
+	}
+
+	public <T> Mono<SenderResult<T>> send(SenderRecord<K, V, T> record) {
+		return send(Mono.just(record)).single();
 	}
 
 	@Override
@@ -73,9 +111,28 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 		return this.sender.send(records);
 	}
 
+	public Mono<Void> flush() {
+		return doOnProducer(producer -> {
+			producer.flush();
+			return null;
+		});
+	}
+
+	public Mono<List<PartitionInfo>> partitionsFromProducerFor(String topic) {
+		return doOnProducer(producer -> producer.partitionsFor(topic));
+	}
+
+	public Mono<? extends Map<MetricName, ? extends Metric>> metricsFromProducer() {
+		return doOnProducer(Producer::metrics);
+	}
+
 	@Override
-	public <T> Flux<Flux<SenderResult<T>>> sendTransactionally(Publisher<? extends Publisher<? extends SenderRecord<K, V, T>>> records) {
-		return this.sender.sendTransactionally(records);
+	public <T> Mono<T> doOnProducer(Function<Producer<K, V>, ? extends T> action) {
+		return this.sender.doOnProducer(action);
+	}
+
+	public Mono<Void> sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerId) {
+		return transactionManager().sendOffsets(offsets, consumerId);
 	}
 
 	@Override
@@ -86,11 +143,6 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 	@Override
 	public KafkaOutbound<K, V> createOutbound() {
 		return this.sender.createOutbound();
-	}
-
-	@Override
-	public <T> Mono<T> doOnProducer(Function<Producer<K, V>, ? extends T> action) {
-		return this.sender.doOnProducer(action);
 	}
 
 	@Override

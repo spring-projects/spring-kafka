@@ -16,20 +16,10 @@
 
 package org.springframework.kafka.core.reactive;
 
-import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
 import org.reactivestreams.Publisher;
-
-import org.springframework.messaging.Message;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -49,40 +39,7 @@ import reactor.kafka.sender.TransactionManager;
  */
 public interface ReactiveKafkaProducerOperations<K, V> {
 
-	default Mono<SenderResult<Void>> send(String topic, V value) {
-		return send(new ProducerRecord<>(topic, value));
-	}
-
-	default Mono<SenderResult<Void>> send(String topic, K key, V value) {
-		return send(new ProducerRecord<>(topic, key, value));
-	}
-
-	default Mono<SenderResult<Void>> send(String topic, int partition, K key, V value) {
-		return send(new ProducerRecord<>(topic, partition, key, value));
-	}
-
-	default Mono<SenderResult<Void>> send(String topic, int partition, long timestamp, K key, V value) {
-		return send(new ProducerRecord<>(topic, partition, timestamp, key, value));
-	}
-
-	default Mono<SenderResult<Void>> send(ProducerRecord<K, V> record) {
-		return send(SenderRecord.create(record, null));
-	}
-
-	default <T> Mono<SenderResult<T>> send(SenderRecord<K, V, T> record) {
-		return send(Mono.just(record)).single();
-	}
-
-	Mono<SenderResult<Void>> send(String topic, Message<?> message);
-
 	<T> Flux<SenderResult<T>> send(Publisher<? extends SenderRecord<K, V, T>> records);
-
-	default <T> Mono<SenderResult<T>> sendTransactionally(SenderRecord<K, V, T> record) {
-		Flux<Flux<SenderResult<T>>> sendTransactionally = sendTransactionally(Mono.just(Mono.just(record)));
-		return sendTransactionally
-				.concatMap(Flux::next)
-				.last();
-	}
 
 	<T> Flux<Flux<SenderResult<T>>> sendTransactionally(Publisher<? extends Publisher<? extends SenderRecord<K, V, T>>> records);
 
@@ -92,22 +49,4 @@ public interface ReactiveKafkaProducerOperations<K, V> {
 
 	<T> Mono<T> doOnProducer(Function<Producer<K, V>, ? extends T> action);
 
-	default Mono<Void> flush() {
-		return doOnProducer(producer -> {
-			producer.flush();
-			return null;
-		});
-	}
-
-	default Mono<List<PartitionInfo>> partitionsFromProducerFor(String topic) {
-		return doOnProducer(producer -> producer.partitionsFor(topic));
-	}
-
-	default Mono<? extends Map<MetricName, ? extends Metric>> metricsFromProducer() {
-		return doOnProducer(Producer::metrics);
-	}
-
-	default Mono<Void> sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerId) {
-		return transactionManager().sendOffsets(offsets, consumerId);
-	}
 }
