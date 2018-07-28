@@ -58,8 +58,8 @@ public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsume
 	}
 
 	@Override
-	public Flux<Flux<ConsumerRecord<K, V>>> receiveAutoAck() {
-		return this.kafkaReceiver.receiveAutoAck();
+	public Flux<ConsumerRecord<K, V>> receiveAutoAck() {
+		return this.kafkaReceiver.receiveAutoAck().flatMap(Function.identity());
 	}
 
 	@Override

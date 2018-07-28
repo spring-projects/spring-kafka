@@ -39,7 +39,7 @@ public interface ReactiveKafkaConsumerOperations<K, V> {
 
 	Flux<ReceiverRecord<K, V>> receive();
 
-	Flux<Flux<ConsumerRecord<K, V>>> receiveAutoAck();
+	Flux<ConsumerRecord<K, V>> receiveAutoAck();
 
 	Flux<ConsumerRecord<K, V>> receiveAtmostOnce();
 
