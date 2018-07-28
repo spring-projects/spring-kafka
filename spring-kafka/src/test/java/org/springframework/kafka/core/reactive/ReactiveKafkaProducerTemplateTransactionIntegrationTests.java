@@ -63,7 +63,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	private static final int DEFAULT_PARTITION = 1;
 	private static final long DEFAULT_TIMESTAMP = Instant.now().toEpochMilli();
 	private static final String REACTIVE_INT_KEY_TOPIC = "reactive_int_key_topic";
-	public static final Duration DEFAULT_VERIFY_TIMEOUT = Duration.ofSeconds(10);
+	private static final Duration DEFAULT_VERIFY_TIMEOUT = Duration.ofSeconds(10);
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(3, true, DEFAULT_PARTITIONS_COUNT, REACTIVE_INT_KEY_TOPIC);
@@ -251,7 +251,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 					//check first record value
 					ReceiverRecord<Integer, String> firstRecord = receiverRecords.iterator().next();
-					Assertions.assertThat(firstRecord.value()).endsWith(String.valueOf(10));
+					Assertions.assertThat(firstRecord.value()).endsWith("10");
 
 					receiverRecords.forEach(receiverRecord -> {
 						Assertions.assertThat(receiverRecord.partition()).isEqualTo(DEFAULT_PARTITION);
