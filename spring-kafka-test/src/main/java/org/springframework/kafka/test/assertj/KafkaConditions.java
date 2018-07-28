@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.test.assertj;
 
-import java.util.function.Predicate;
-
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.record.TimestampType;
 import org.assertj.core.api.Condition;
@@ -28,7 +26,6 @@ import org.assertj.core.api.Condition;
  * @author Artem Bilan
  * @author Gary Russell
  * @author Biju Kunjummen
- * @author Mark Norkin
  */
 public final class KafkaConditions {
 
@@ -80,6 +77,7 @@ public final class KafkaConditions {
 	public static Condition<ConsumerRecord<?, ?>> partition(int partition) {
 		return new ConsumerRecordPartitionCondition(partition);
 	}
+
 
 	public static class ConsumerRecordKeyCondition<K> extends Condition<ConsumerRecord<K, ?>> {
 
