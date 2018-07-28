@@ -148,11 +148,6 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 	}
 
 	@Override
-	public KafkaOutbound<K, V> createOutbound() {
-		return this.sender.createOutbound();
-	}
-
-	@Override
 	public void destroy() throws Exception {
 		doClose();
 	}

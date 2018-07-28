@@ -45,8 +45,6 @@ public interface ReactiveKafkaProducerOperations<K, V> {
 
 	TransactionManager transactionManager();
 
-	KafkaOutbound<K, V> createOutbound();
-
 	<T> Mono<T> doOnProducer(Function<Producer<K, V>, ? extends T> action);
 
 }
