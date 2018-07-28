@@ -125,7 +125,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
+		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().commit().block()))
 				.assertNext(receiverRecord -> {
 					Assertions.assertThat(receiverRecord.partition()).isEqualTo(DEFAULT_PARTITION);
 					Assertions.assertThat(receiverRecord.timestamp()).isEqualTo(DEFAULT_TIMESTAMP);
@@ -148,7 +148,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
+		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().commit().block()))
 				.assertNext(receiverRecord -> {
 					Assertions.assertThat(receiverRecord.partition()).isEqualTo(DEFAULT_PARTITION);
 					Assertions.assertThat(receiverRecord.timestamp()).isEqualTo(DEFAULT_TIMESTAMP);
@@ -171,7 +171,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
+		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().commit().block()))
 				.assertNext(receiverRecord -> {
 					Assertions.assertThat(receiverRecord.partition()).isEqualTo(DEFAULT_PARTITION);
 					Assertions.assertThat(receiverRecord.timestamp()).isEqualTo(DEFAULT_TIMESTAMP);
@@ -197,7 +197,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
 		Flux<ReceiverRecord<Integer, String>> receiverRecordFlux = reactiveKafkaConsumerTemplate.receive()
-				.filter(rr -> !DEFAULT_VALUE.equals(rr.value())); // skip records published from other tests
+				.doOnNext(rr -> rr.receiverOffset().commit().block());
 
 		StepVerifier.create(receiverRecordFlux)
 				.recordWith(ArrayList::new)
@@ -211,7 +211,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 					Assertions.assertThat(firstRecord.value()).endsWith(String.valueOf(10));
 
 					receiverRecords.forEach(receiverRecord -> {
-						Assertions.assertThat(receiverRecord.partition()).isEqualTo(0);
+						Assertions.assertThat(receiverRecord.partition()).isEqualTo(DEFAULT_PARTITION);
 						Assertions.assertThat(receiverRecord.timestamp()).isEqualTo(DEFAULT_TIMESTAMP);
 						Assertions.assertThat(receiverRecord.key()).isEqualTo(DEFAULT_KEY);
 						Assertions.assertThat(receiverRecord.value()).startsWith(DEFAULT_VALUE);
@@ -241,7 +241,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
 		Flux<ReceiverRecord<Integer, String>> receiverRecordFlux = reactiveKafkaConsumerTemplate.receive()
-				.filter(rr -> !DEFAULT_VALUE.equals(rr.value())); // skip records published from other tests
+				.doOnNext(rr -> rr.receiverOffset().commit().block());
 
 		StepVerifier.create(receiverRecordFlux)
 				.recordWith(ArrayList::new)
