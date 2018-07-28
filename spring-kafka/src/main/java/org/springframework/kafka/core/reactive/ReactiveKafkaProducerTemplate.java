@@ -50,20 +50,14 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 	private static final Log LOG = LogFactory.getLog(ReactiveKafkaProducerTemplate.class);
 
 	private final KafkaSender<K, V> sender;
-	private final boolean autoFlush;
 	private final RecordMessageConverter messageConverter;
 
 	public ReactiveKafkaProducerTemplate(SenderOptions<K, V> senderOptions) {
-		this(senderOptions, false);
+		this(senderOptions, new MessagingMessageConverter());
 	}
 
-	public ReactiveKafkaProducerTemplate(SenderOptions<K, V> senderOptions, boolean autoFlush) {
-		this(senderOptions, autoFlush, new MessagingMessageConverter());
-	}
-
-	public ReactiveKafkaProducerTemplate(SenderOptions<K, V> senderOptions, boolean autoFlush, RecordMessageConverter messageConverter) {
+	public ReactiveKafkaProducerTemplate(SenderOptions<K, V> senderOptions, RecordMessageConverter messageConverter) {
 		this.sender = KafkaSender.create(senderOptions);
-		this.autoFlush = autoFlush;
 		this.messageConverter = messageConverter;
 	}
 
@@ -76,9 +70,7 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 
 	@Override
 	public <T> Flux<SenderResult<T>> send(Publisher<? extends SenderRecord<K, V, T>> records) {
-		return this.autoFlush ?
-				this.sender.send(records).flatMap(sr -> flush().then(Mono.just(sr))) :
-				this.sender.send(records);
+		return this.sender.send(records);
 	}
 
 	@Override

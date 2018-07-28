@@ -94,7 +94,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 		SenderOptions<Integer, String> senderOptions = SenderOptions.create(senderProps);
 		RecordMessageConverter messagingConverter = new MessagingMessageConverter();
-		reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(senderOptions, false, messagingConverter);
+		reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(senderOptions, messagingConverter);
 		reactiveKafkaConsumerTemplate = new ReactiveKafkaConsumerTemplate<>(setupReceiverOptionsWithDefaultTopic(consumerProps));
 	}
 
@@ -349,11 +349,6 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 	@Ignore
 	public void shouldFlushRecordsOnDemand() {
 		Mono<Void> flushMono = reactiveKafkaProducerTemplate.flush();
-	}
-
-	@Test//todo
-	@Ignore
-	public void shouldAutoFlushWhenEnabled() {
 	}
 
 	@Test
