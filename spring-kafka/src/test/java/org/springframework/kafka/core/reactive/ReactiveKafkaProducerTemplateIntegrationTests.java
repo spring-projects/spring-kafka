@@ -21,15 +21,18 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.match;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
@@ -38,12 +41,12 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.reactivestreams.Subscription;
 
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaderMapper;
@@ -56,8 +59,10 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.ReceiverOptions;
+import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
@@ -306,9 +311,52 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.verify(Duration.ofSeconds(10));
 	}
 
-	@Test//todo
-	@Ignore
+	@Test
 	public void sendMultipleRecordsAsPublisherAndReceiveThem() {
+		int msgCount = 10;
+		List<SenderRecord<Integer, String, Integer>> senderRecords =
+				IntStream.range(0, msgCount)
+						.mapToObj(i -> SenderRecord.create(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, System.currentTimeMillis(), DEFAULT_KEY, DEFAULT_VALUE + i, i))
+						.collect(Collectors.toList());
+
+		Flux<SenderRecord<Integer, String, Integer>> senderRecordWithDelay = Flux.fromIterable(senderRecords).delayElements(Duration.ofSeconds(1));
+		Flux<SenderResult<Integer>> resultFlux = reactiveKafkaProducerTemplate.send(senderRecordWithDelay);
+
+		StepVerifier.create(resultFlux)
+				.recordWith(ArrayList::new)
+				.expectNextCount(msgCount)
+				.consumeRecordedWith(senderResults -> {
+					Assertions.assertThat(senderResults).hasSize(msgCount);
+
+					List<RecordMetadata> records = senderResults.stream().map(SenderResult::recordMetadata).collect(Collectors.toList());
+
+					Assertions.assertThat(records).extracting(RecordMetadata::topic).areExactly(msgCount, match(REACTIVE_INT_KEY_TOPIC::equals));
+					Assertions.assertThat(records).extracting(RecordMetadata::partition).areExactly(msgCount, match(actualPartition -> DEFAULT_PARTITION == actualPartition));
+					List<Long> senderRecordsTimestamps = senderRecords.stream().map(SenderRecord::timestamp).collect(Collectors.toList());
+					Assertions.assertThat(records).extracting(RecordMetadata::timestamp).containsExactlyElementsOf(senderRecordsTimestamps);
+					List<Integer> senderRecordsCorrelationMetadata = senderRecords.stream().map(SenderRecord::correlationMetadata).collect(Collectors.toList());
+					Assertions.assertThat(senderRecords).extracting(SenderRecord::correlationMetadata).containsExactlyElementsOf(senderRecordsCorrelationMetadata);
+				})
+				.then(() -> {
+					StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
+							.recordWith(ArrayList::new)
+							.expectNextCount(msgCount)
+							.consumeSubscriptionWith(Subscription::cancel)
+							.consumeRecordedWith(receiverRecords -> {
+								Assertions.assertThat(receiverRecords).hasSize(msgCount);
+
+								Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::partition).areExactly(msgCount, match(actualPartition -> DEFAULT_PARTITION == actualPartition));
+								Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::key).areExactly(msgCount, match(DEFAULT_KEY::equals));
+								List<Long> senderRecordsTimestamps = senderRecords.stream().map(SenderRecord::timestamp).collect(Collectors.toList());
+								Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::timestamp).containsExactlyElementsOf(senderRecordsTimestamps);
+								List<String> senderRecordsValues = senderRecords.stream().map(SenderRecord::value).collect(Collectors.toList());
+								Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::value).containsExactlyElementsOf(senderRecordsValues);
+							})
+							.thenCancel()
+							.verify(Duration.ofSeconds(10));
+				})
+				.expectComplete()
+				.verify(Duration.ofSeconds(30));
 	}
 
 	@Test//todo
