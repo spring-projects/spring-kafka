@@ -19,7 +19,6 @@ package org.springframework.kafka.test.assertj;
 import java.util.function.Predicate;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.record.TimestampType;
 import org.assertj.core.api.Condition;
 
@@ -83,13 +82,13 @@ public final class KafkaConditions {
 	}
 
 	/**
-	 * @param condition the record metadata predicate to test.
-	 * @return a Condition that match given predicate.
+	 * @param condition the predicate to test.
+	 * @return a Condition with given predicate.
 	 */
-	public static Condition<RecordMetadata> matchingCondition(Predicate<RecordMetadata> condition) {
-		return new Condition<RecordMetadata>() {
+	public static <T> Condition<T> match(Predicate<T> condition) {
+		return new Condition<T>() {
 			@Override
-			public boolean matches(RecordMetadata value) {
+			public boolean matches(T value) {
 				return condition.test(value);
 			}
 		};
