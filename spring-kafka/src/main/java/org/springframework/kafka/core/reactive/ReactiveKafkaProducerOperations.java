@@ -23,11 +23,9 @@ import org.reactivestreams.Publisher;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.kafka.sender.KafkaOutbound;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 import reactor.kafka.sender.TransactionManager;
-
 
 /**
  * Interface for executing reactive kafka operations on producer side.
