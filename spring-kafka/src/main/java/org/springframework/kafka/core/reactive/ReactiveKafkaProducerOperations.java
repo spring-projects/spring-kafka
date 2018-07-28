@@ -80,8 +80,8 @@ public interface ReactiveKafkaProducerOperations<K, V> {
 	default <T> Mono<SenderResult<T>> sendTransactionally(SenderRecord<K, V, T> record) {
 		Flux<Flux<SenderResult<T>>> sendTransactionally = sendTransactionally(Mono.just(Mono.just(record)));
 		return sendTransactionally
-				.flatMap(Flux::single)
-				.single();
+				.concatMap(Flux::next)
+				.last();
 	}
 
 	<T> Flux<Flux<SenderResult<T>>> sendTransactionally(Publisher<? extends Publisher<? extends SenderRecord<K, V, T>>> records);

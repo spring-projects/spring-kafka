@@ -30,13 +30,11 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.assertj.core.api.Assertions;
@@ -357,19 +355,6 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				})
 				.expectComplete()
 				.verify(Duration.ofSeconds(30));
-	}
-
-	@Test//todo
-	@Ignore
-	public void sendTransactionally() {
-	}
-
-	@Test//todo
-	@Ignore
-	public void shouldSendOffsetsToTransaction() {
-		Map<TopicPartition, OffsetAndMetadata> offsets = null;
-		String consumerId = null;
-		Mono<Void> sendOffsetsToTransaction = reactiveKafkaProducerTemplate.sendOffsetsToTransaction(offsets, consumerId);
 	}
 
 	@Test//todo
