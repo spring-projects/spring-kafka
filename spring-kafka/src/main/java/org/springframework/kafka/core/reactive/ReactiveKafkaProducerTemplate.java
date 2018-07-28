@@ -66,15 +66,14 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 	}
 
 	@Override
-	public <T> Flux<Flux<SenderResult<T>>> sendTransactionally(Publisher<? extends Publisher<? extends SenderRecord<K, V, T>>> records) {
-		return this.sender.sendTransactionally(records);
+	public <T> Flux<SenderResult<T>> sendTransactionally(Publisher<? extends SenderRecord<K, V, T>> records) {
+		Flux<Flux<SenderResult<T>>> sendTransactionally = this.sender.sendTransactionally(Flux.just(records));
+		return sendTransactionally.flatMap(Function.identity());
 	}
 
 	public <T> Mono<SenderResult<T>> sendTransactionally(SenderRecord<K, V, T> record) {
-		Flux<Flux<SenderResult<T>>> sendTransactionally = sendTransactionally(Mono.just(Mono.just(record)));
-		return sendTransactionally
-				.concatMap(Flux::next)
-				.last();
+		Flux<SenderResult<T>> sendTransactionally = sendTransactionally(Mono.just(record));
+		return sendTransactionally.single();
 	}
 
 	public Mono<SenderResult<Void>> send(String topic, V value) {

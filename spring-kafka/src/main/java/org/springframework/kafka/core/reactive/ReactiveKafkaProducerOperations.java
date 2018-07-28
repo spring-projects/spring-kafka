@@ -41,7 +41,7 @@ public interface ReactiveKafkaProducerOperations<K, V> {
 
 	<T> Flux<SenderResult<T>> send(Publisher<? extends SenderRecord<K, V, T>> records);
 
-	<T> Flux<Flux<SenderResult<T>>> sendTransactionally(Publisher<? extends Publisher<? extends SenderRecord<K, V, T>>> records);
+	<T> Flux<SenderResult<T>> sendTransactionally(Publisher<? extends SenderRecord<K, V, T>> records);
 
 	TransactionManager transactionManager();
 

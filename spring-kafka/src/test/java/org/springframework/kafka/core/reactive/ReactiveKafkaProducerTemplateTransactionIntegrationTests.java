@@ -141,9 +141,8 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				new ProducerRecord<>(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP, DEFAULT_KEY, DEFAULT_VALUE);
 
 		Flux<SenderRecord<Integer, String, Long>> senderRecordsGroupTransaction = Flux.just(SenderRecord.create(producerRecord, 1L));
-		Flux<Flux<SenderRecord<Integer, String, Long>>> groupTransactions = Flux.just(senderRecordsGroupTransaction);
 
-		StepVerifier.create(reactiveKafkaProducerTemplate.sendTransactionally(groupTransactions).then())
+		StepVerifier.create(reactiveKafkaProducerTemplate.sendTransactionally(senderRecordsGroupTransaction).then())
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
@@ -228,12 +227,10 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	@Test
 	public void shouldSendMultipleRecordsTransactionallyViaTemplateAndReceiveIt() {
 		int recordsCountInGroup = 10;
-		int transactionGroupsCount = 3;
+		int transactionGroupsCount = 1;
 		int expectedTotalRecordsCount = recordsCountInGroup * transactionGroupsCount;
 
-		Flux<Flux<SenderRecord<Integer, String, Integer>>> groupTransactions =
-				Flux.range(1, transactionGroupsCount)
-						.map(transactionGroupNumber -> generateSenderRecords(recordsCountInGroup, transactionGroupNumber));
+		Flux<SenderRecord<Integer, String, Integer>> groupTransactions = generateSenderRecords(recordsCountInGroup, 1);
 
 		StepVerifier.create(reactiveKafkaProducerTemplate.sendTransactionally(groupTransactions).then())
 				.expectComplete()
