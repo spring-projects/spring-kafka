@@ -82,8 +82,9 @@ public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsume
 		return partitions.flatMapIterable(Function.identity());
 	}
 
-	public Mono<Set<String>> subscription() {
-		return doOnConsumer(Consumer::subscription);
+	public Flux<String> subscription() {
+		Mono<Set<String>> subscriptions = doOnConsumer(Consumer::subscription);
+		return subscriptions.flatMapIterable(Function.identity());
 	}
 
 	public Mono<Void> seek(TopicPartition partition, long offset) {
@@ -115,8 +116,9 @@ public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsume
 		return doOnConsumer(consumer -> consumer.committed(partition));
 	}
 
-	public Mono<List<PartitionInfo>> partitionsFromConsumerFor(String topic) {
-		return doOnConsumer(c -> c.partitionsFor(topic));
+	public Flux<PartitionInfo> partitionsFromConsumerFor(String topic) {
+		Mono<List<PartitionInfo>> partitions = doOnConsumer(c -> c.partitionsFor(topic));
+		return partitions.flatMapIterable(Function.identity());
 	}
 
 	public Mono<? extends Map<MetricName, ? extends Metric>> metricsFromConsumer() {
@@ -127,8 +129,9 @@ public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsume
 		return doOnConsumer(Consumer::listTopics);
 	}
 
-	public Mono<Set<TopicPartition>> paused() {
-		return doOnConsumer(Consumer::paused);
+	public Flux<TopicPartition> paused() {
+		Mono<Set<TopicPartition>> paused = doOnConsumer(Consumer::paused);
+		return paused.flatMapIterable(Function.identity());
 	}
 
 	public Mono<Void> pause(Collection<TopicPartition> partitions) {
