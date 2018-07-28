@@ -81,19 +81,6 @@ public final class KafkaConditions {
 		return new ConsumerRecordPartitionCondition(partition);
 	}
 
-	/**
-	 * @param condition the predicate to test.
-	 * @return a Condition with given predicate.
-	 */
-	public static <T> Condition<T> match(Predicate<T> condition) {
-		return new Condition<T>() {
-			@Override
-			public boolean matches(T value) {
-				return condition.test(value);
-			}
-		};
-	}
-
 	public static class ConsumerRecordKeyCondition<K> extends Condition<ConsumerRecord<K, ?>> {
 
 		private final K key;

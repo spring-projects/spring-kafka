@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.core.reactive;
 
-import static org.springframework.kafka.test.assertj.KafkaConditions.match;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.AbstractMap.SimpleImmutableEntry;
@@ -118,7 +116,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 		StepVerifier.create(senderResultMono)
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
-							.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())));
+						.extracting(RecordMetadata::topic)
+						.containsExactly(REACTIVE_INT_KEY_TOPIC);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -136,7 +135,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 		StepVerifier.create(resultMono)
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
-							.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())));
+						.extracting(RecordMetadata::topic)
+						.containsExactly(REACTIVE_INT_KEY_TOPIC);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -156,8 +156,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 		StepVerifier.create(resultMono)
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
-							.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())))
-							.has(match(recordMetadata -> DEFAULT_PARTITION == recordMetadata.partition()));
+						.extracting(RecordMetadata::topic, RecordMetadata::partition)
+						.containsExactly(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -179,9 +179,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 		StepVerifier.create(resultMono)
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
-							.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())))
-							.has(match(recordMetadata -> DEFAULT_PARTITION == recordMetadata.partition()))
-							.has(match(recordMetadata -> DEFAULT_TIMESTAMP == recordMetadata.timestamp()));
+						.extracting(RecordMetadata::topic, RecordMetadata::partition, RecordMetadata::timestamp)
+						.containsExactly(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -212,9 +211,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 		StepVerifier.create(resultMono)
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
-							.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())))
-							.has(match(recordMetadata -> DEFAULT_PARTITION == recordMetadata.partition()))
-							.has(match(recordMetadata -> DEFAULT_TIMESTAMP == recordMetadata.timestamp()));
+						.extracting(RecordMetadata::topic, RecordMetadata::partition, RecordMetadata::timestamp)
+						.containsExactly(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -247,11 +245,10 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 		StepVerifier.create(resultMono)
 				.assertNext(senderResult -> {
+					Assertions.assertThat(senderRecord.correlationMetadata()).isEqualTo(correlationMetadata);
 					Assertions.assertThat(senderResult.recordMetadata())
-							.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())))
-							.has(match(recordMetadata -> DEFAULT_PARTITION == recordMetadata.partition()))
-							.has(match(recordMetadata -> DEFAULT_TIMESTAMP == recordMetadata.timestamp()))
-							.has(match(recordMetadata -> correlationMetadata == senderRecord.correlationMetadata()));
+							.extracting(RecordMetadata::topic, RecordMetadata::partition, RecordMetadata::timestamp)
+							.containsExactly(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -281,7 +278,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 		StepVerifier.create(resultMono)
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
-							.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())));
+						.extracting(RecordMetadata::topic)
+						.containsExactly(REACTIVE_INT_KEY_TOPIC);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -316,8 +314,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 					List<RecordMetadata> records = senderResults.stream().map(SenderResult::recordMetadata).collect(Collectors.toList());
 
-					Assertions.assertThat(records).extracting(RecordMetadata::topic).areExactly(msgCount, match(REACTIVE_INT_KEY_TOPIC::equals));
-					Assertions.assertThat(records).extracting(RecordMetadata::partition).areExactly(msgCount, match(actualPartition -> DEFAULT_PARTITION == actualPartition));
+					Assertions.assertThat(records).extracting(RecordMetadata::topic).allSatisfy(actualTopic -> Assertions.assertThat(actualTopic).isEqualTo(REACTIVE_INT_KEY_TOPIC));
+					Assertions.assertThat(records).extracting(RecordMetadata::partition).allSatisfy(actualPartition -> Assertions.assertThat(actualPartition).isEqualTo(DEFAULT_PARTITION));
 					List<Long> senderRecordsTimestamps = senderRecords.stream().map(SenderRecord::timestamp).collect(Collectors.toList());
 					Assertions.assertThat(records).extracting(RecordMetadata::timestamp).containsExactlyElementsOf(senderRecordsTimestamps);
 					List<Integer> senderRecordsCorrelationMetadata = senderRecords.stream().map(SenderRecord::correlationMetadata).collect(Collectors.toList());
@@ -333,8 +331,8 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.consumeRecordedWith(receiverRecords -> {
 					Assertions.assertThat(receiverRecords).hasSize(msgCount);
 
-					Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::partition).areExactly(msgCount, match(actualPartition -> DEFAULT_PARTITION == actualPartition));
-					Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::key).areExactly(msgCount, match(actualKey -> DEFAULT_KEY == actualKey));
+					Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::partition).allSatisfy(actualPartition -> Assertions.assertThat(actualPartition).isEqualTo(DEFAULT_PARTITION));
+					Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::key).allSatisfy(actualKey -> Assertions.assertThat(actualKey).isEqualTo(DEFAULT_KEY));
 					List<Long> senderRecordsTimestamps = senderRecords.stream().map(SenderRecord::timestamp).collect(Collectors.toList());
 					Assertions.assertThat(receiverRecords).extracting(ReceiverRecord::timestamp).containsExactlyElementsOf(senderRecordsTimestamps);
 					List<String> senderRecordsValues = senderRecords.stream().map(SenderRecord::value).collect(Collectors.toList());

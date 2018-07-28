@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.core.reactive;
 
-import static org.springframework.kafka.test.assertj.KafkaConditions.match;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,6 +27,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
@@ -115,12 +114,12 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 		Mono<SenderResult<Long>> publisher = reactiveKafkaProducerTemplate.sendTransactionally(senderRecord);
 		StepVerifier.create(publisher)
-				.assertNext(senderResult ->
-						Assertions.assertThat(senderResult.recordMetadata())
-								.has(match(recordMetadata -> REACTIVE_INT_KEY_TOPIC.equals(recordMetadata.topic())))
-								.has(match(recordMetadata -> DEFAULT_PARTITION == recordMetadata.partition()))
-								.has(match(recordMetadata -> DEFAULT_TIMESTAMP == recordMetadata.timestamp()))
-								.has(match(recordMetadata -> correlationMetadata == senderRecord.correlationMetadata()))
+				.assertNext(senderResult -> {
+					Assertions.assertThat(senderRecord.correlationMetadata()).isEqualTo(correlationMetadata);
+					Assertions.assertThat(senderResult.recordMetadata())
+						.extracting(RecordMetadata::topic, RecordMetadata::partition, RecordMetadata::timestamp)
+						.containsExactly(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP);
+				}
 				)
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
