@@ -51,6 +51,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Dariusz Szablinski
  * @author Biju Kunjummen
+ * @author Mark Norkin
  */
 public class MessagingMessageConverter implements RecordMessageConverter {
 
@@ -161,6 +162,14 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		if (this.headerMapper != null) {
 			this.headerMapper.fromHeaders(headers, recordHeaders);
 		}
+
+		if (!recordHeaders.iterator().hasNext()) { // possibly no Jackson
+			byte[] correlationId = headers.get(KafkaHeaders.CORRELATION_ID, byte[].class);
+			if (correlationId != null) {
+				recordHeaders.add(KafkaHeaders.CORRELATION_ID, correlationId);
+			}
+		}
+
 		return new ProducerRecord(topic == null ? defaultTopic : topic, partition, timestamp, key, payload,
 				recordHeaders);
 	}
