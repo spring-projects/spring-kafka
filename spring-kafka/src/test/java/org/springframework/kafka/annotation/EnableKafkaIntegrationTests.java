@@ -255,6 +255,13 @@ public class EnableKafkaIntegrationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.clientId"))
 				.isEqualTo("clientIdViaAnnotation-0");
 
+		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
+		assertThat(rebalanceConcurrentContainer).isNotNull();
+		assertThat(rebalanceConcurrentContainer.isAutoStartup()).isFalse();
+		assertThat(KafkaTestUtils.getPropertyValue(rebalanceConcurrentContainer, "concurrency", Integer.class))
+				.isEqualTo(3);
+		rebalanceConcurrentContainer.start();
+
 		template.send("annotated11", 0, "foo");
 		assertThat(this.listener.latch7.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.consumerRef.get()).isNotNull();
@@ -266,8 +273,6 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.latch7a.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.latch7String).isNull();
 
-		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
-		assertThat(rebalanceConcurrentContainer).isNotNull();
 		MessageListenerContainer rebalanceContainer = (MessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(rebalanceConcurrentContainer, "containers", List.class).get(0);
 		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.coordinator.groupId"))
@@ -278,7 +283,6 @@ public class EnableKafkaIntegrationTests {
 				clientId)
 				.startsWith("consumer-");
 		assertThat(clientId.indexOf('-')).isEqualTo(clientId.lastIndexOf('-'));
-
 	}
 
 	@Test
@@ -847,6 +851,7 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			ContainerProperties props = factory.getContainerProperties();
 			factory.setConsumerFactory(consumerFactory());
+			factory.setAutoStartup(true);
 			props.setConsumerRebalanceListener(consumerRebalanceListener(consumerRef()));
 			return factory;
 		}
@@ -1268,7 +1273,8 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "rebalanceListener", topics = "annotated11", idIsGroup = false,
-				containerFactory = "kafkaRebalanceListenerContainerFactory")
+				containerFactory = "kafkaRebalanceListenerContainerFactory", autoStartup = "${foobarbaz:false}",
+				concurrency = "${fixbux:3}")
 		public void listen7(@Payload(required = false) String foo) {
 			this.latch7String = foo;
 			this.latch7.countDown();

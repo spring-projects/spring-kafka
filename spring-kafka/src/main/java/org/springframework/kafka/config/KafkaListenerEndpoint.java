@@ -84,6 +84,20 @@ public interface KafkaListenerEndpoint {
 	String getClientIdPrefix();
 
 	/**
+	 * Return the concurrency for this endpoint's container.
+	 * @return the concurrency.
+	 * @since 2.2
+	 */
+	Integer getConcurrency();
+
+	/**
+	 * Return the autoStartup for this endpoint's container.
+	 * @return the autoStartup.
+	 * @since 2.2
+	 */
+	Boolean getAutoStartup();
+
+	/**
 	 * Setup the specified message listener container with the model
 	 * defined by this endpoint.
 	 * <p>This endpoint must provide the requested missing option(s) of

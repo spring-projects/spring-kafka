@@ -79,9 +79,12 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 	}
 
 	@Override
-	protected void initializeContainer(ConcurrentMessageListenerContainer<K, V> instance) {
-		super.initializeContainer(instance);
-		if (this.concurrency != null) {
+	protected void initializeContainer(ConcurrentMessageListenerContainer<K, V> instance, KafkaListenerEndpoint endpoint) {
+		super.initializeContainer(instance, endpoint);
+		if (endpoint.getConcurrency() != null) {
+			instance.setConcurrency(endpoint.getConcurrency());
+		}
+		else if (this.concurrency != null) {
 			instance.setConcurrency(this.concurrency);
 		}
 	}

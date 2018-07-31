@@ -101,6 +101,10 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private String clientIdPrefix;
 
+	private Integer concurrency;
+
+	private Boolean autoStartup;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -340,6 +344,34 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setClientIdPrefix(String clientIdPrefix) {
 		this.clientIdPrefix = clientIdPrefix;
+	}
+
+	@Override
+	public Integer getConcurrency() {
+		return this.concurrency;
+	}
+
+	/**
+	 * Set the concurrency for this endpoint's container.
+	 * @param concurrency the concurrency.
+	 * @since 2.2
+	 */
+	public void setConcurrency(int concurrency) {
+		this.concurrency = concurrency;
+	}
+
+	@Override
+	public Boolean getAutoStartup() {
+		return this.autoStartup;
+	}
+
+	/**
+	 * Set the autoStartup for this endpoint's container.
+	 * @param autoStartup the autoStartup.
+	 * @since 2.2
+	 */
+	public void setAutoStartup(Boolean autoStartup) {
+		this.autoStartup = autoStartup;
 	}
 
 	@Override

@@ -73,6 +73,16 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 	}
 
 	@Override
+	public Integer getConcurrency() {
+		return null;
+	}
+
+	@Override
+	public Boolean getAutoStartup() {
+		return null;
+	}
+
+	@Override
 	public void setupListenerContainer(MessageListenerContainer listenerContainer,
 			MessageConverter messageConverter) {
 	}

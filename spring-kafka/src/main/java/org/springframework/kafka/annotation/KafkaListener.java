@@ -186,4 +186,19 @@ public @interface KafkaListener {
 	 */
 	String beanRef() default "__listener";
 
+	/**
+	 * Override the container factory's {@code concurrency} setting for this listener.
+	 * May be a property placeholder or SpEL expression that evaluates to an integer.
+	 * @return the concurrency.
+	 * @since 2.2
+	 */
+	String concurrency() default "";
+
+	/**
+	 * Set to true or false, to override the default setting in the container factory.
+	 * @return true to auto start, false to not auto start.
+	 * @since 2.2
+	 */
+	String autoStartup() default "";
+
 }

@@ -247,7 +247,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (endpoint.getId() != null) {
 			instance.setBeanName(endpoint.getId());
 		}
-
 		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
 			AbstractKafkaListenerEndpoint<K, V> aklEndpoint = (AbstractKafkaListenerEndpoint<K, V>) endpoint;
 			if (this.recordFilterStrategy != null) {
@@ -274,7 +273,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		}
 
 		endpoint.setupListenerContainer(instance, this.messageConverter);
-		initializeContainer(instance);
+		initializeContainer(instance, endpoint);
 		instance.getContainerProperties().setGroupId(endpoint.getGroupId());
 		instance.getContainerProperties().setClientId(endpoint.getClientIdPrefix());
 
@@ -293,8 +292,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * <p>Subclasses can inherit from this method to apply extra
 	 * configuration if necessary.
 	 * @param instance the container instance to configure.
+	 * @param endpoint the endpoint.
 	 */
-	protected void initializeContainer(C instance) {
+	protected void initializeContainer(C instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
 				"messageListener", "ackCount", "ackTime");
@@ -310,7 +310,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (this.errorHandler != null) {
 			instance.setGenericErrorHandler(this.errorHandler);
 		}
-		if (this.autoStartup != null) {
+		if (endpoint.getAutoStartup() != null) {
+			instance.setAutoStartup(endpoint.getAutoStartup());
+		}
+		else if (this.autoStartup != null) {
 			instance.setAutoStartup(this.autoStartup);
 		}
 		if (this.phase != null) {
@@ -323,43 +326,46 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	@Override
 	public C createContainer(final Collection<TopicPartitionInitialOffset> topicPartitions) {
-		C container = createContainerInstance(new KafkaListenerEndpointAdapter() {
+		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 					@Override
 					public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
 						return topicPartitions;
 					}
 
-				});
-		initializeContainer(container);
+				};
+		C container = createContainerInstance(endpoint);
+		initializeContainer(container, endpoint);
 		return container;
 	}
 
 	@Override
 	public C createContainer(final String... topics) {
-		C container = createContainerInstance(new KafkaListenerEndpointAdapter() {
+		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 					@Override
 					public Collection<String> getTopics() {
 						return Arrays.asList(topics);
 					}
 
-				});
-		initializeContainer(container);
+				};
+		C container = createContainerInstance(endpoint);
+		initializeContainer(container, endpoint);
 		return container;
 	}
 
 	@Override
 	public C createContainer(final Pattern topicPattern) {
-		C container = createContainerInstance(new KafkaListenerEndpointAdapter() {
+		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 					@Override
 					public Pattern getTopicPattern() {
 						return topicPattern;
 					}
 
-				});
-		initializeContainer(container);
+				};
+		C container = createContainerInstance(endpoint);
+		initializeContainer(container, endpoint);
 		return container;
 	}
 
