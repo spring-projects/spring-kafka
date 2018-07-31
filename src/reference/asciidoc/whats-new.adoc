@@ -31,6 +31,12 @@ Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` obje
 
 See <<batch-listeners>> for more information.
 
+==== @KafkaListener Changes
+
+You can now override the `concurrency` and `autoStartup` properties of the listener container factory by setting properties on the annotation.
+
+See <<kafka-listener-annotation>> for more information.
+
 ==== Header Mapping Changes
 
 Headers of type `MimeType` and `MediaType` are now mapped as simple strings in the `RecordHeader` value.

@@ -777,8 +777,22 @@ public class KafkaConfig {
 Notice that to set container properties, you must use the `getContainerProperties()` method on the factory.
 It is used as a template for the actual properties injected into the container.
 
-Starting with _version 2.1.1_, it is now possible to set the `client.id` property for consumers created by the annotation.
+Starting with version 2.1.1, it is now possible to set the `client.id` property for consumers created by the annotation.
 The `clientIdPrefix` is suffixed with `-n` where `n` is an integer representing the container number when using concurrency.
+
+Starting with version 2.2, you can now override the container factory's `concurrency` and `autoStartup` properties using properties on the annotation itself.
+The properties can be simple values, property placeholders or SpEL expressions.
+
+====
+[source, java]
+----
+@KafkaListener(id = "myListener", topics = "myTopic",
+        autoStartup = "${listen.auto.start:true}", concurrency = "${listen.concurrency:3}")
+public void listen(String data) {
+    ...
+}
+----
+====
 
 You can also configure POJO listeners with explicit topics and partitions (and, optionally, their initial offsets):
 

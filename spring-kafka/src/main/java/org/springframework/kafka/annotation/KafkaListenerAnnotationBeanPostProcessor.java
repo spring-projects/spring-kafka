@@ -657,8 +657,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return ((Number) resolved).intValue();
 		}
 		else {
-			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
-					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+			throw new IllegalStateException(
+					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
+							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
 		}
 	}
 
@@ -672,8 +673,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return Boolean.parseBoolean(s);
 		}
 		else {
-			throw new IllegalStateException("The [" + attribute + "] must resolve to a Boolean. "
-					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+			throw new IllegalStateException(
+					"The [" + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
+							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
 		}
 	}
 
