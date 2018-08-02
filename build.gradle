@@ -359,3 +359,7 @@ task dist(dependsOn: assemble) {
 	group = 'Distribution'
 	description = 'Builds -dist, -docs distribution archives.'
 }
+
+wrapper {
+	gradleVersion = '4.9'
+}
