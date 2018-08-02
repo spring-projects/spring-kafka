@@ -71,11 +71,11 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		this.valueDeserializer = valueDeserializer;
 	}
 
-	public void setKeyDeserializer(Deserializer<K> keyDeserializer) {
+	public void setKeyDeserializer(@Nullable Deserializer<K> keyDeserializer) {
 		this.keyDeserializer = keyDeserializer;
 	}
 
-	public void setValueDeserializer(Deserializer<V> valueDeserializer) {
+	public void setValueDeserializer(@Nullable Deserializer<V> valueDeserializer) {
 		this.valueDeserializer = valueDeserializer;
 	}
 
@@ -95,12 +95,14 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	@Override
-	public Consumer<K, V> createConsumer(String groupId, String clientIdPrefix, String clientIdSuffix) {
+	public Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable String clientIdSuffix) {
+
 		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffix);
 	}
 
-	protected KafkaConsumer<K, V> createKafkaConsumer(String groupId, String clientIdPrefix,
-			String clientIdSuffix) {
+	protected KafkaConsumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable String clientIdSuffix) {
 
 		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefix);
 		if (clientIdSuffix == null) {

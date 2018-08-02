@@ -18,6 +18,7 @@ package org.springframework.kafka.core;
 
 import org.apache.kafka.clients.producer.Producer;
 
+import org.springframework.lang.Nullable;
 import org.springframework.transaction.support.ResourceHolderSynchronization;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -72,7 +73,7 @@ public final class ProducerFactoryUtils {
 		return resourceHolder;
 	}
 
-	public static <K, V> void releaseResources(KafkaResourceHolder<K, V> resourceHolder) {
+	public static <K, V> void releaseResources(@Nullable KafkaResourceHolder<K, V> resourceHolder) {
 		if (resourceHolder != null) {
 			resourceHolder.getProducer().close();
 		}

@@ -21,6 +21,8 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.serialization.Deserializer;
 
+import org.springframework.lang.Nullable;
+
 /**
  * The strategy to produce a {@link Consumer} instance(s).
  *
@@ -47,7 +49,7 @@ public interface ConsumerFactory<K, V> {
 	 * @return the consumer.
 	 * @since 1.3
 	 */
-	default Consumer<K, V> createConsumer(String clientIdSuffix) {
+	default Consumer<K, V> createConsumer(@Nullable String clientIdSuffix) {
 		return createConsumer(null, clientIdSuffix);
 	}
 
@@ -60,7 +62,7 @@ public interface ConsumerFactory<K, V> {
 	 * @return the consumer.
 	 * @since 1.3
 	 */
-	default Consumer<K, V> createConsumer(String groupId, String clientIdSuffix) {
+	default Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdSuffix) {
 		return createConsumer(groupId, null, clientIdSuffix);
 	}
 
@@ -76,7 +78,8 @@ public interface ConsumerFactory<K, V> {
 	 * @return the consumer.
 	 * @since 2.1.1
 	 */
-	Consumer<K, V> createConsumer(String groupId, String clientIdPrefix, String clientIdSuffix);
+	Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable String clientIdSuffix);
 
 	/**
 	 * Return true if consumers created by this factory use auto commit.

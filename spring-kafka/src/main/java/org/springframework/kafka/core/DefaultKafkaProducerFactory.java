@@ -116,11 +116,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		this.valueSerializer = valueSerializer;
 	}
 
-	public void setKeySerializer(Serializer<K> keySerializer) {
+	public void setKeySerializer(@Nullable Serializer<K> keySerializer) {
 		this.keySerializer = keySerializer;
 	}
 
-	public void setValueSerializer(Serializer<V> valueSerializer) {
+	public void setValueSerializer(@Nullable Serializer<V> valueSerializer) {
 		this.valueSerializer = valueSerializer;
 	}
 

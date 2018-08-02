@@ -406,6 +406,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		private final LogIfLevelEnabled commitLogger = new LogIfLevelEnabled(this.logger,
 				this.containerProperties.getCommitLogLevel());
 
+		private final Duration pollTimeout = Duration.ofMillis(this.containerProperties.getPollTimeout());
+
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private volatile Collection<TopicPartition> assignedPartitions;
@@ -705,8 +707,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 						publishConsumerPausedEvent(this.consumer.assignment());
 					}
-					ConsumerRecords<K, V> records = this.consumer
-							.poll(Duration.ofMillis(this.containerProperties.getPollTimeout()));
+					ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
 					this.lastPoll = System.currentTimeMillis();
 					if (this.consumerPaused && !isPaused()) {
 						if (this.logger.isDebugEnabled()) {

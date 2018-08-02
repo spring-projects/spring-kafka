@@ -38,6 +38,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
@@ -126,7 +127,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * which logs errors only.
 	 * @param producerListener the listener; may be {@code null}.
 	 */
-	public void setProducerListener(ProducerListener<K, V> producerListener) {
+	public void setProducerListener(@Nullable ProducerListener<K, V> producerListener) {
 		this.producerListener = producerListener;
 	}
 
@@ -143,6 +144,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * @param messageConverter the message converter.
 	 */
 	public void setMessageConverter(RecordMessageConverter messageConverter) {
+		Assert.notNull(messageConverter, "'messageConverter' cannot be null");
 		this.messageConverter = messageConverter;
 	}
 
@@ -157,49 +159,50 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(V data) {
+	public ListenableFuture<SendResult<K, V>> sendDefault(@Nullable V data) {
 		return send(this.defaultTopic, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(K key, V data) {
+	public ListenableFuture<SendResult<K, V>> sendDefault(K key, @Nullable V data) {
 		return send(this.defaultTopic, key, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, @Nullable V data) {
 		return send(this.defaultTopic, partition, key, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, @Nullable V data) {
 		return send(this.defaultTopic, partition, timestamp, key, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, @Nullable V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, K key, @Nullable V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, @Nullable V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data) {
+	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key,
+			@Nullable V data) {
+
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, timestamp, key, data);
 		return doSend(producerRecord);
 	}
-
 
 	@Override
 	public ListenableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record) {
@@ -244,6 +247,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	@Override
 	public <T> T execute(ProducerCallback<K, V, T> callback) {
+		Assert.notNull(callback, "'callback' cannot be null");
 		Producer<K, V> producer = getTheProducer();
 		try {
 			return callback.doInKafka(producer);
@@ -255,6 +259,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	@Override
 	public <T> T executeInTransaction(OperationsCallback<K, V, T> callback) {
+		Assert.notNull(callback, "'callback' cannot be null");
 		Assert.state(this.transactional, "Producer factory does not support transactions");
 		Producer<K, V> producer = this.producers.get();
 		Assert.state(producer == null, "Nested calls to 'executeInTransaction' are not allowed");
