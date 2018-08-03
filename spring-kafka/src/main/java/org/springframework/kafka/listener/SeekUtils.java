@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 
 import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -57,11 +57,11 @@ public final class SeekUtils {
 	 * @param <V> the value type.
 	 */
 	public static  <K, V> void doSeeks(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
-			boolean recoverable, BiFunction<ConsumerRecord<K, V>, Exception, Boolean> skipper, Log logger) {
+			boolean recoverable, BiPredicate<ConsumerRecord<K, V>, Exception> skipper, Log logger) {
 		Map<TopicPartition, Long> partitions = new HashMap<>();
 		AtomicBoolean first = new AtomicBoolean(true);
 		records.forEach(record ->  {
-			if (!recoverable || !first.get() || !skipper.apply(record, exception)) {
+			if (!recoverable || !first.get() || !skipper.test(record, exception)) {
 				partitions.computeIfAbsent(new TopicPartition(record.topic(), record.partition()), offset -> record.offset());
 			}
 			first.set(false);
