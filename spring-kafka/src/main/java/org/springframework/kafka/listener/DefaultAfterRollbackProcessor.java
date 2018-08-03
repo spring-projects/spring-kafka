@@ -88,7 +88,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 */
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<K, V>, Exception> recoverer, int maxFailures) {
 		if (recoverer == null) {
-			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for:" + r, t);
+			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: " + r, t);
 		}
 		else {
 			this.recoverer = recoverer;
