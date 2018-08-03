@@ -16,15 +16,17 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.function.BiConsumer;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.support.SeekUtils;
+import org.springframework.lang.Nullable;
 
 /**
  * An error handler that seeks to the current offset for each topic in the remaining
@@ -37,14 +39,52 @@ import org.springframework.kafka.KafkaException;
  */
 public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 
+	private static final Log logger = LogFactory.getLog(SeekToCurrentErrorHandler.class);
+
+	private final FailedRecordTracker failureTracker;
+
+	/**
+	 * Construct an instance with the default recoverer which simply logs the record after
+	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
+	 * topic/partition/offset.
+	 * @since 2.2
+	 */
+	public SeekToCurrentErrorHandler() {
+		this(null, SeekUtils.DEFAULT_MAX_FAILURES);
+	}
+
+	/**
+	 * Construct an instance with the provided recoverer which will be called after
+	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
+	 * topic/partition/offset.
+	 * @param recoverer the recoverer.
+	 * @since 2.2
+	 */
+	public SeekToCurrentErrorHandler(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
+		this(recoverer, SeekUtils.DEFAULT_MAX_FAILURES);
+	}
+
+	/**
+	 * Construct an instance with the provided recoverer which will be called after
+	 * maxFailures have occurred for a topic/partition/offset.
+	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
+	 * @param maxFailures the maxFailures.
+	 * @since 2.2
+	 */
+	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
+		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, logger);
+	}
+
 	@Override
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
-		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
-		records.forEach(r ->
-			offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
-		offsets.forEach(consumer::seek);
+		SeekUtils.doSeeks(records, consumer, thrownException, true, this.failureTracker::skip, logger);
 		throw new KafkaException("Seek to current after exception", thrownException);
+	}
+
+	@Override
+	public void clearThreadState() {
+		this.failureTracker.clearThreadState();
 	}
 
 }

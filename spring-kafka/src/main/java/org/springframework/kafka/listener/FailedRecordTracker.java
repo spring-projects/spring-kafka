@@ -21,25 +21,24 @@ import java.util.function.BiConsumer;
 import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.lang.Nullable;
+
 /**
  * Track record processing failure counts.
- *
- * @param <K> the key type.
- * @param <V> the value type.
  *
  * @author Gary Russell
  * @since 2.2
  *
  */
-public class FailedRecordTracker<K, V> {
+class FailedRecordTracker {
 
 	private final ThreadLocal<FailedRecord> failures = new ThreadLocal<>(); // intentionally not static
 
-	private final BiConsumer<ConsumerRecord<K, V>, Exception> recoverer;
+	private final BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer;
 
 	private final int maxFailures;
 
-	public FailedRecordTracker(BiConsumer<ConsumerRecord<K, V>, Exception> recoverer, int maxFailures, Log logger) {
+	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures, Log logger) {
 		if (recoverer == null) {
 			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: " + r, t);
 		}
@@ -49,7 +48,7 @@ public class FailedRecordTracker<K, V> {
 		this.maxFailures = maxFailures;
 	}
 
-	public boolean skip(ConsumerRecord<K, V> record, Exception exception) {
+	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
 		FailedRecord failedRecord = this.failures.get();
 		if (failedRecord == null || !failedRecord.getTopic().equals(record.topic())
 				|| failedRecord.getPartition() != record.partition() || failedRecord.getOffset() != record.offset()) {
@@ -65,7 +64,7 @@ public class FailedRecordTracker<K, V> {
 		}
 	}
 
-	public void clearThreadState() {
+	void clearThreadState() {
 		this.failures.remove();
 	}
 

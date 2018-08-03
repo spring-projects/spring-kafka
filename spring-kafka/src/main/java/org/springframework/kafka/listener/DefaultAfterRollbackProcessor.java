@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
 
 /**
@@ -43,7 +44,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 
 	private static final Log logger = LogFactory.getLog(DefaultAfterRollbackProcessor.class);
 
-	private final FailedRecordTracker<K, V> failureTracker;
+	private final FailedRecordTracker failureTracker;
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
@@ -62,7 +63,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * @param recoverer the recoverer.
 	 * @since 2.2
 	 */
-	public DefaultAfterRollbackProcessor(BiConsumer<ConsumerRecord<K, V>, Exception> recoverer) {
+	public DefaultAfterRollbackProcessor(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
 		this(recoverer, SeekUtils.DEFAULT_MAX_FAILURES);
 	}
 
@@ -73,14 +74,14 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * @param maxFailures the maxFailures.
 	 * @since 2.2
 	 */
-	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<K, V>, Exception> recoverer, int maxFailures) {
-		this.failureTracker = new FailedRecordTracker<>(recoverer, maxFailures, logger);
+	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
+		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, logger);
 	}
 
 	@Override
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
 			boolean recoverable) {
-		SeekUtils.doSeeks(records, consumer, exception, recoverable, this.failureTracker::skip, logger);
+		SeekUtils.doTypedSeeks(records, consumer, exception, recoverable, this.failureTracker::skip, logger);
 	}
 
 	@Override

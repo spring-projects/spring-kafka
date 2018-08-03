@@ -35,9 +35,9 @@ Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` obje
 
 See <<batch-listeners>> for more information.
 
-The `DefaultAfterRollbackProcessor` can now recover (skip) records that keep failing.
+The `DefaultAfterRollbackProcessor` and `SeekToCurrentErrorHandler` can now recover (skip) records that keep failing, and will do so after 10 failures, by default.
 
-See <<after-rollback>> for more information.
+See <<after-rollback>> and <<seek-to-current>> for more information.
 
 ==== @KafkaListener Changes
 

@@ -790,6 +790,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.consumer.close();
 			getAfterRollbackProcessor().clearThreadState();
+			if (this.errorHandler != null) {
+				this.errorHandler.clearThreadState();
+			}
 			this.logger.info("Consumer stopped");
 			publishConsumerStoppedEvent();
 		}

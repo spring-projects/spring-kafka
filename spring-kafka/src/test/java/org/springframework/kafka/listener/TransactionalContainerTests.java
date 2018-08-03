@@ -67,6 +67,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
@@ -496,12 +497,18 @@ public class TransactionalContainerTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
-		BiConsumer<ConsumerRecord<Integer, String>, Exception> recoverer = (r, t) -> {
+		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = (r, t) -> {
 			recoverLatch.countDown();
 		};
 		DefaultAfterRollbackProcessor<Integer, String> afterRollbackProcessor =
 				spy(new DefaultAfterRollbackProcessor<>(recoverer, 3));
 		container.setAfterRollbackProcessor(afterRollbackProcessor);
+		final CountDownLatch stopLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerStoppedEvent) {
+				stopLatch.countDown();
+			}
+		});
 		container.start();
 
 		template.setDefaultTopic(topic3);
@@ -516,6 +523,7 @@ public class TransactionalContainerTests {
 		container.stop();
 		logger.info("Stop testMaxAttempts");
 		pf.destroy();
+		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(afterRollbackProcessor).clearThreadState();
 	}
 

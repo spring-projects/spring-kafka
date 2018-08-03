@@ -2042,6 +2042,7 @@ Similar to the `@KafkaListener` error handlers, you can reset the offsets as nee
 
 NOTE: Unlike the listener-level error handlers, however, you should set the container property `ackOnError` to false when making adjustments; otherwise any pending acks will be applied after your repositioning.
 
+[[seek-to-current]]
 ===== Seek To Current Container Error Handlers
 
 If an `ErrorHandler` implements `RemainingRecordsErrorHandler`, the error handler is provided with the failed record and any unprocessed records retrieved by the previous `poll()`.
@@ -2085,7 +2086,24 @@ The next `poll()` will return the 3 unprocessed records.
 
 If the `AckMode` was `BATCH`, the container commits the offsets for the first 2 partitions before calling the error handler.
 
+Starting with version 2.2, the `SeekToCurrentErrorHandler` can now recover (skip) a record that keeps failing.
+By default, after 10 failures, the failed record will be logged (ERROR).
+You can configure the handler with a custom recoverer (`BiConsumer`) and/or max failures.
+
+====
+[source, java]
+----
+SeekToCurrentErrorHandler errorHandler =
+    new SeekToCurrentErrorHandler((record, exception) -> {
+        // recover after 3 failures - e.g. send to a dead-letter topic
+    }, 3);
+----
+====
+
+When using transactions, similar functionality is provided by the `DefaultAfterRollbackProcessor`; see <<after-rollback>>.
+
 The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch so the whole batch is replayed.
+This error handler does not support recovery because the framework cannot know which message in the batch is failing.
 
 After seeking, an exception wrapping the `ListenerExecutionFailedException` is thrown.
 This is to cause the transaction to roll back (if transactions are enabled).
@@ -2125,6 +2143,8 @@ AfterRollbackProcessor<String, String> processor =
     }, 3);
 ----
 ====
+
+When not using transactions, similar functionality can be achieved by configuring a `SeekToCurrentErrorHandler`; see <<seek-to-current>>.
 
 IMPORTANT: Recovery is not possible with a batch listener since the framework has no knowledge about which record in the batch keeps failing.
 In such cases, the application listener must handle a record that keeps failing.
