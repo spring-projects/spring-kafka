@@ -27,6 +27,10 @@ A new container property `missingTopicsFatal` has been added.
 
 See <<kafka-container>> for more information.
 
+A `ConsumerStoppedEvent` is now emitted when a consumer terminates.
+
+See <<thread-safety>> for more information.
+
 Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` object instead of a `List<ConsumerRecord<?, ?>`.
 
 See <<batch-listeners>> for more information.

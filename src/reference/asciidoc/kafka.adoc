@@ -1475,6 +1475,24 @@ public ConcurrentMessageListenerContainer<String, String>(
 IMPORTANT: Containers created this way are not added to the endpoint registry.
 They should be created as `@Bean` s so that they will be registered with the application context.
 
+[[thread-safety]]
+===== Thread Safety
+
+When using a concurrent message listener container, a single listener instance is invoked on all consumer threads.
+Listeners, therefore, need to be thread-safe; and it is preferable to use stateless listeners.
+If it is not possible to make your listener thread-safe, or adding synchronization would significantly reduce the benefit of adding concurreny, there are several techniques you can use.
+
+. Use `n` containers with `concurrency=1` with a prototype scoped `MessageListener` bean so each container gets its own instance (this is not possible when using `@KafkaListener`).
+. Keep the state in `ThreadLocal<?>` s.
+. Have the singleton listener delegate to a bean that is declared in `SimpleThreadScope` or similar.
+
+To facilitate cleaning up thread state (for 2 and 3), starting with version 2.2, the listener container will publish `ConsumerStoppedEvent` s when each thread exits.
+Consume these events with an `ApplicationListener` or `@EventListener` method to remove `ThreadLocal<?>` s, or `remove()` thread-scoped beans from the scope.
+Note that `SimpleThreadScope` does not destroy beans that have a destruction interface (e.g. `DisposableBean`) so you should `destroy()` the instance yourself.
+
+IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
+If you change the multicaster to use an async executor, thread cleanup will not be effective.
+
 [[pause-resume]]
 ==== Pausing/Resuming Listener Containers
 

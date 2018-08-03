@@ -76,6 +76,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
@@ -1782,12 +1783,16 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener((MessageListener) r -> { });
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
+		CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
 			if (e instanceof ConsumerPausedEvent) {
 				pauseLatch.countDown();
 			}
 			else if (e instanceof ConsumerResumedEvent) {
 				resumeLatch.countDown();
+			}
+			else if (e instanceof ConsumerStoppedEvent) {
+				stopLatch.countDown();
 			}
 		});
 		container.start();
@@ -1798,6 +1803,7 @@ public class KafkaMessageListenerContainerTests {
 		container.resume();
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

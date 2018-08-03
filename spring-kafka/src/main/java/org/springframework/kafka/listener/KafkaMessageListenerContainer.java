@@ -58,6 +58,7 @@ import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
@@ -323,6 +324,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ConsumerResumedEvent(this,
 					Collections.unmodifiableCollection(partitions)));
+		}
+	}
+
+	private void publishConsumerStoppedEvent() {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this));
 		}
 	}
 
@@ -783,6 +790,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.consumer.close();
 			this.logger.info("Consumer stopped");
+			publishConsumerStoppedEvent();
 		}
 
 		/**
