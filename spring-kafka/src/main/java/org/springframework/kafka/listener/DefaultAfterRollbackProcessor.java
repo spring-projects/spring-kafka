@@ -16,17 +16,13 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.lang.Nullable;
 
@@ -45,38 +41,29 @@ import org.springframework.lang.Nullable;
  */
 public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcessor<K, V> {
 
-	/**
-	 * The number of times a topic/partition/offset can fail before being rejected.
-	 */
-	public static final int DEFAULT_MAX_FAILURES = 10;
-
 	private static final Log logger = LogFactory.getLog(DefaultAfterRollbackProcessor.class);
 
-	private static final ThreadLocal<FailedRecord> failures = new ThreadLocal<>();
-
-	private final BiConsumer<ConsumerRecord<K, V>, Exception> recoverer;
-
-	private final int maxFailures;
+	private final FailedRecordTracker<K, V> failureTracker;
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
-	 * {@value #DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
+	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
 	 * topic/partition/offset.
 	 * @since 2.2
 	 */
 	public DefaultAfterRollbackProcessor() {
-		this(null, DEFAULT_MAX_FAILURES);
+		this(null, SeekUtils.DEFAULT_MAX_FAILURES);
 	}
 
 	/**
 	 * Construct an instance with the provided recoverer which will be called after
-	 * {@value #DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
+	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
 	 * topic/partition/offset.
 	 * @param recoverer the recoverer.
 	 * @since 2.2
 	 */
 	public DefaultAfterRollbackProcessor(BiConsumer<ConsumerRecord<K, V>, Exception> recoverer) {
-		this(recoverer, DEFAULT_MAX_FAILURES);
+		this(recoverer, SeekUtils.DEFAULT_MAX_FAILURES);
 	}
 
 	/**
@@ -87,90 +74,18 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * @since 2.2
 	 */
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<K, V>, Exception> recoverer, int maxFailures) {
-		if (recoverer == null) {
-			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: " + r, t);
-		}
-		else {
-			this.recoverer = recoverer;
-		}
-		this.maxFailures = maxFailures;
+		this.failureTracker = new FailedRecordTracker<>(recoverer, maxFailures, logger);
 	}
 
 	@Override
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
 			boolean recoverable) {
-		Map<TopicPartition, Long> partitions = new HashMap<>();
-		AtomicBoolean first = new AtomicBoolean(true);
-		records.forEach(record ->  {
-			if (!recoverable || !first.get() || !skip(record, exception)) {
-				partitions.computeIfAbsent(new TopicPartition(record.topic(), record.partition()), offset -> record.offset());
-			}
-			first.set(false);
-		});
-		partitions.forEach((topicPartition, offset) -> {
-			try {
-				consumer.seek(topicPartition, offset);
-			}
-			catch (Exception e) {
-				logger.error("Failed to seek " + topicPartition + " to " + offset);
-			}
-		});
-	}
-
-	private boolean skip(ConsumerRecord<K, V> record, Exception exception) {
-		FailedRecord failedRecord = failures.get();
-		if (failedRecord == null || !failedRecord.getTopic().equals(record.topic())
-				|| failedRecord.getPartition() != record.partition() || failedRecord.getOffset() != record.offset()) {
-			failures.set(new FailedRecord(record.topic(), record.partition(), record.offset()));
-			return false;
-		}
-		else {
-			if (failedRecord.incrementAndGet() >= this.maxFailures) {
-				this.recoverer.accept(record, exception);
-				return true;
-			}
-			return false;
-		}
+		SeekUtils.doSeeks(records, consumer, exception, recoverable, this.failureTracker::skip, logger);
 	}
 
 	@Override
 	public void clearThreadState() {
-		failures.remove();
-	}
-
-	private static final class FailedRecord {
-
-		private final String topic;
-
-		private final int partition;
-
-		private final long offset;
-
-		private int count;
-
-		FailedRecord(String topic, int partition, long offset) {
-			this.topic = topic;
-			this.partition = partition;
-			this.offset = offset;
-			this.count = 1;
-		}
-
-		private String getTopic() {
-			return this.topic;
-		}
-
-		private int getPartition() {
-			return this.partition;
-		}
-
-		private long getOffset() {
-			return this.offset;
-		}
-
-		private int incrementAndGet() {
-			return ++this.count;
-		}
-
+		this.failureTracker.clearThreadState();
 	}
 
 }

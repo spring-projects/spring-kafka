@@ -1,0 +1,79 @@
+/*
+ * Copyright 2018 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.kafka.listener;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
+
+import org.apache.commons.logging.Log;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
+
+/**
+ * Seek utilities.
+ *
+ * @author Gary Russell
+ * @since 2.2
+ *
+ */
+public final class SeekUtils {
+
+	/**
+	 * The number of times a topic/partition/offset can fail before being rejected.
+	 */
+	public static final int DEFAULT_MAX_FAILURES = 10;
+
+	private SeekUtils() {
+		super();
+	}
+
+	/**
+	 * Seek records to earliest position, optionally skipping the first.
+	 * @param records the records.
+	 * @param consumer the consumer.
+	 * @param exception the exception
+	 * @param recoverable true if skipping the first record is allowed.
+	 * @param skipper function to determine whether or not to skip seeking the first.
+	 * @param logger a {@link Log} for seek errors.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 */
+	public static  <K, V> void doSeeks(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
+			boolean recoverable, BiFunction<ConsumerRecord<K, V>, Exception, Boolean> skipper, Log logger) {
+		Map<TopicPartition, Long> partitions = new HashMap<>();
+		AtomicBoolean first = new AtomicBoolean(true);
+		records.forEach(record ->  {
+			if (!recoverable || !first.get() || !skipper.apply(record, exception)) {
+				partitions.computeIfAbsent(new TopicPartition(record.topic(), record.partition()), offset -> record.offset());
+			}
+			first.set(false);
+		});
+		partitions.forEach((topicPartition, offset) -> {
+			try {
+				consumer.seek(topicPartition, offset);
+			}
+			catch (Exception e) {
+				logger.error("Failed to seek " + topicPartition + " to " + offset, e);
+			}
+		});
+	}
+
+}
