@@ -2112,6 +2112,22 @@ With a batch listener, the entire batch of records will be reprocessed (the cont
 To modify this behavior, configure the listener container with a custom `AfterRollbackProcessor`.
 For example, with a record-based listener, you might want to keep track of the failed record and give up after some number of attempts - perhaps by publishing it to a dead-letter topic.
 
+Starting with version 2.2, the `DefaultAfterRollbackProcessor` can now recover (skip) a record that keeps failing.
+By default, after 10 failures, the failed record will be logged (ERROR).
+You can configure the processor with a custom recoverer (`BiConsumer`) and/or max failures.
+
+====
+[source, java]
+----
+AfterRollbackProcessor<String, String> processor =
+    new DefaultAfterRollbackProcessor((record, exception) -> {
+        // recover after 3 failures - e.g. send to a dead-letter topic
+    }, 3);
+----
+====
+
+IMPORTANT: Recovery is not possible with a batch listener since the framework has no knowledge about which record in the batch keeps failing.
+In such cases, the application listener must handle a record that keeps failing.
 
 [[kerberos]]
 ==== Kerberos

@@ -789,6 +789,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				((ThreadPoolTaskScheduler) this.taskScheduler).destroy();
 			}
 			this.consumer.close();
+			getAfterRollbackProcessor().clearThreadState();
 			this.logger.info("Consumer stopped");
 			publishConsumerStoppedEvent();
 		}
@@ -924,10 +925,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			catch (RuntimeException e) {
 				this.logger.error("Transaction rolled back", e);
 				if (recordList == null) {
-					getAfterRollbackProcessor().process(createRecordList(records), this.consumer);
+					getAfterRollbackProcessor().process(createRecordList(records), this.consumer, e, false);
 				}
 				else {
-					getAfterRollbackProcessor().process(recordList, this.consumer);
+					getAfterRollbackProcessor().process(recordList, this.consumer, e, false);
 				}
 			}
 		}
@@ -1077,7 +1078,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					while (iterator.hasNext()) {
 						unprocessed.add(iterator.next());
 					}
-					getAfterRollbackProcessor().process(unprocessed, this.consumer);
+					getAfterRollbackProcessor().process(unprocessed, this.consumer, e, true);
 				}
 			}
 		}

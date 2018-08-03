@@ -27,6 +27,7 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -40,6 +41,8 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -93,8 +96,10 @@ public class TransactionalContainerTests {
 
 	private static String topic2 = "txTopic2";
 
+	private static String topic3 = "txTopic3";
+
 	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2)
+	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3)
 			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
 			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
 
@@ -456,6 +461,62 @@ public class TransactionalContainerTests {
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
 		consumer.close();
+	}
+
+	@Test
+	public void testMaxFailures() throws Exception {
+		logger.info("Start testMaxFailures");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("txTestMaxFailures", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
+		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic3);
+		containerProps.setPollTimeout(10_000);
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setTransactionIdPrefix("maxAtt.");
+		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		final CountDownLatch latch = new CountDownLatch(1);
+		AtomicReference<String> data = new AtomicReference<>();
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			data.set(message.value());
+			if (message.offset() == 0) {
+				throw new RuntimeException("fail for max failures");
+			}
+			latch.countDown();
+		});
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		containerProps.setTransactionManager(tm);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testMaxFailures");
+		final CountDownLatch recoverLatch = new CountDownLatch(1);
+		BiConsumer<ConsumerRecord<Integer, String>, Exception> recoverer = (r, t) -> {
+			recoverLatch.countDown();
+		};
+		DefaultAfterRollbackProcessor<Integer, String> afterRollbackProcessor =
+				spy(new DefaultAfterRollbackProcessor<>(recoverer, 3));
+		container.setAfterRollbackProcessor(afterRollbackProcessor);
+		container.start();
+
+		template.setDefaultTopic(topic3);
+		template.executeInTransaction(t -> {
+			template.sendDefault(0, 0, "foo");
+			template.sendDefault(0, 0, "bar");
+			return null;
+		});
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(data.get()).isEqualTo("bar");
+		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		logger.info("Stop testMaxAttempts");
+		pf.destroy();
+		verify(afterRollbackProcessor).clearThreadState();
 	}
 
 	@SuppressWarnings("serial")

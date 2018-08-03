@@ -35,6 +35,10 @@ Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` obje
 
 See <<batch-listeners>> for more information.
 
+The `DefaultAfterRollbackProcessor` can now recover (skip) records that keep failing.
+
+See <<after-rollback>> for more information.
+
 ==== @KafkaListener Changes
 
 You can now override the `concurrency` and `autoStartup` properties of the listener container factory by setting properties on the annotation.

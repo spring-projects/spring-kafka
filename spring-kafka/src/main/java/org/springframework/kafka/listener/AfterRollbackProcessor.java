@@ -40,10 +40,25 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public interface AfterRollbackProcessor<K, V> {
 
 	/**
-	 * Process the remaining records.
+	 * Process the remaining records. Recoverable will be true if the container is
+	 * processing individual records; this allows the processor to recover (skip) the
+	 * failed record rather than re-seeking it. This is not possible with a batch listener
+	 * since only the listener itself knows which record in the batch keeps failing.
 	 * @param records the records.
 	 * @param consumer the consumer.
+	 * @param exception the exception
+	 * @param recoverable the recoverable.
+	 * @since 2.2
 	 */
-	void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer);
+	void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception, boolean recoverable);
+
+	/**
+	 * Optional method to clear thread state; will be called just before a consumer
+	 * thread terminates.
+	 * @since 2.2
+	 */
+	default void clearThreadState() {
+		// NOSONAR
+	}
 
 }
