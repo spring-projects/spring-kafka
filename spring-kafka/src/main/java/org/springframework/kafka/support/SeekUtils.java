@@ -53,37 +53,6 @@ public final class SeekUtils {
 	 * @param recoverable true if skipping the first record is allowed.
 	 * @param skipper function to determine whether or not to skip seeking the first.
 	 * @param logger a {@link Log} for seek errors.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 */
-	public static  <K, V> void doTypedSeeks(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
-			boolean recoverable, BiPredicate<ConsumerRecord<K, V>, Exception> skipper, Log logger) {
-		Map<TopicPartition, Long> partitions = new LinkedHashMap<>();
-		AtomicBoolean first = new AtomicBoolean(true);
-		records.forEach(record ->  {
-			if (!recoverable || !first.get() || !skipper.test(record, exception)) {
-				partitions.computeIfAbsent(new TopicPartition(record.topic(), record.partition()), offset -> record.offset());
-			}
-			first.set(false);
-		});
-		partitions.forEach((topicPartition, offset) -> {
-			try {
-				consumer.seek(topicPartition, offset);
-			}
-			catch (Exception e) {
-				logger.error("Failed to seek " + topicPartition + " to " + offset, e);
-			}
-		});
-	}
-
-	/**
-	 * Seek records to earliest position, optionally skipping the first.
-	 * @param records the records.
-	 * @param consumer the consumer.
-	 * @param exception the exception
-	 * @param recoverable true if skipping the first record is allowed.
-	 * @param skipper function to determine whether or not to skip seeking the first.
-	 * @param logger a {@link Log} for seek errors.
 	 */
 	public static void doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
 			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, Log logger) {

@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -81,7 +82,8 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	@Override
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
 			boolean recoverable) {
-		SeekUtils.doTypedSeeks(records, consumer, exception, recoverable, this.failureTracker::skip, logger);
+		SeekUtils.doSeeks(records.stream().collect(Collectors.toList()),
+				consumer, exception, recoverable, this.failureTracker::skip, logger);
 	}
 
 	@Override
