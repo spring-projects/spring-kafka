@@ -2143,6 +2143,8 @@ SeekToCurrentErrorHandler errorHandler =
 ----
 ====
 
+Also see <<dead-letters>>.
+
 When using transactions, similar functionality is provided by the `DefaultAfterRollbackProcessor`; see <<after-rollback>>.
 
 The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch so the whole batch is replayed.
@@ -2191,6 +2193,48 @@ When not using transactions, similar functionality can be achieved by configurin
 
 IMPORTANT: Recovery is not possible with a batch listener since the framework has no knowledge about which record in the batch keeps failing.
 In such cases, the application listener must handle a record that keeps failing.
+
+Also see <<dead-letters>>.
+
+[[dead-letters]]
+===== Publishing Dead-Letter Records
+
+As discussed above, the `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor` can be configured with a record recoverer when the maximum number of failures is reached for a record.
+The framework provides the `DeadLetterPublishingRecoverer` which will publish the failed message to another topic.
+The recoverer requires a `KafkaTemplate<Object, Object>` which is used to send the record.
+It also, optionally, can be configured with a `BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>` which is called to resolve the destination topic and partition.
+By default, the dead-letter record is sent to a topic named `<originalTopic>.DLT` (the original topic name suffixed with `.DLT`) and to the same partition as the original record.
+If the returned `TopicPartition` has a negative partition, the partition is not set in the `ProducerRecord` and so the partition will be selected by Kafka.
+The following is an example of wiring a custom destination resolver.
+
+====
+[source, java]
+----
+DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
+        (r, e) -> {
+            if (e instanceof FooException) {
+                return new TopicPartition(r.topic() + ".Foo.failures", r.partition());
+            }
+            else {
+                return new TopicPartition(r.topic() + ".other.failures", r.partition());
+            }
+        });
+ErrorHandler errorHandler = new SeekToCurrentErrorHandler(recoverer, 3);
+----
+====
+
+The record sent to the dead-letter topic is enhanced with the following headers:
+
+* `KafkaHeaders.DLT_EXCEPTION_FQCN` - Exception class name.
+* `KafkaHeaders.DLT_EXCEPTION_STACKTRACE` - Exception stack trace.
+* `KafkaHeaders.DLT_EXCEPTION_MESSAGE` - Exception message.
+* `KafkaHeaders.DLT_ORIGINAL_TOPIC` - Original topic.
+* `KafkaHeaders.DLT_ORIGINAL_PARTITION` Original partition.
+* `KafkaHeaders.DLT_ORIGINAL_OFFSET` - Original offset.
+* `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP` - Original timestamp.
+* `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE` - Original timestamp type.
+
+
 
 [[kerberos]]
 ==== Kerberos

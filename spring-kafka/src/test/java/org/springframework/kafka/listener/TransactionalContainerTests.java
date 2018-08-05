@@ -42,7 +42,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -57,6 +56,8 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -68,12 +69,15 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.ChainedKafkaTransactionManager;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
@@ -99,8 +103,11 @@ public class TransactionalContainerTests {
 
 	private static String topic3 = "txTopic3";
 
+	private static String topic3DLT = "txTopic3.DLT";
+
 	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3)
+	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3,
+				topic3DLT)
 			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
 			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
 
@@ -477,9 +484,9 @@ public class TransactionalContainerTests {
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
-		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("maxAtt.");
-		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
 		final CountDownLatch latch = new CountDownLatch(1);
 		AtomicReference<String> data = new AtomicReference<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -497,8 +504,14 @@ public class TransactionalContainerTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
-		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = (r, t) -> {
-			recoverLatch.countDown();
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template) {
+
+			@Override
+			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+				super.accept(record, exception);
+				recoverLatch.countDown();
+			}
+
 		};
 		DefaultAfterRollbackProcessor<Integer, String> afterRollbackProcessor =
 				spy(new DefaultAfterRollbackProcessor<>(recoverer, 3));
@@ -513,7 +526,9 @@ public class TransactionalContainerTests {
 
 		template.setDefaultTopic(topic3);
 		template.executeInTransaction(t -> {
-			template.sendDefault(0, 0, "foo");
+			RecordHeaders headers = new RecordHeaders(new RecordHeader[] { new RecordHeader("baz", "qux".getBytes()) });
+			ProducerRecord<Object, Object> record = new ProducerRecord<>(topic3, 0, 0, "foo", headers);
+			template.send(record);
 			template.sendDefault(0, 0, "bar");
 			return null;
 		});
@@ -521,10 +536,28 @@ public class TransactionalContainerTests {
 		assertThat(data.get()).isEqualTo("bar");
 		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
-		logger.info("Stop testMaxAttempts");
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic3DLT);
+		ConsumerRecord<Integer, String> dltRecord = KafkaTestUtils.getSingleRecord(consumer, topic3DLT);
+		assertThat(dltRecord.value()).isEqualTo("foo");
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		Map<String, Object> map = new HashMap<>();
+		mapper.toHeaders(dltRecord.headers(), map);
+		MessageHeaders headers = new MessageHeaders(map);
+		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_FQCN, byte[].class))).contains("RuntimeException");
+		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_MESSAGE, byte[].class))
+				.isEqualTo("fail for max failures".getBytes());
+		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_OFFSET, byte[].class)[3]).isEqualTo((byte) 0);
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_PARTITION, byte[].class)[3]).isEqualTo((byte) 0);
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP, byte[].class)).isNotNull();
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE, byte[].class)).isNotNull();
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TOPIC, byte[].class)).isEqualTo(topic3.getBytes());
+		assertThat(headers.get("baz")).isEqualTo("qux".getBytes());
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(afterRollbackProcessor).clearThreadState();
+		logger.info("Stop testMaxAttempts");
 	}
 
 	@SuppressWarnings("serial")

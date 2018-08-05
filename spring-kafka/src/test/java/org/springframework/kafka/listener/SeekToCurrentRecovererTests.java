@@ -24,11 +24,12 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -49,8 +50,10 @@ public class SeekToCurrentRecovererTests {
 
 	private static String topic1 = "seekTopic1";
 
+	private static String topic1DLT = "seekTopic1.FOO";
+
 	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1);
+	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic1DLT);
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -66,8 +69,8 @@ public class SeekToCurrentRecovererTests {
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
-		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
 		final CountDownLatch latch = new CountDownLatch(1);
 		AtomicReference<String> data = new AtomicReference<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -82,11 +85,17 @@ public class SeekToCurrentRecovererTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testSeekMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
-		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = (r, t) -> {
-			recoverLatch.countDown();
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
+				(r, e) -> new TopicPartition(topic1DLT, r.partition())) {
+
+			@Override
+			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+				super.accept(record, exception);
+				recoverLatch.countDown();
+			}
+
 		};
-		SeekToCurrentErrorHandler errorHandler =
-				spy(new SeekToCurrentErrorHandler(recoverer, 3));
+		SeekToCurrentErrorHandler errorHandler = spy(new SeekToCurrentErrorHandler(recoverer, 3));
 		container.setErrorHandler(errorHandler);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
@@ -103,6 +112,10 @@ public class SeekToCurrentRecovererTests {
 		assertThat(data.get()).isEqualTo("bar");
 		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic1DLT);
+		ConsumerRecord<Integer, String> dltRecord = KafkaTestUtils.getSingleRecord(consumer, topic1DLT);
+		assertThat(dltRecord.value()).isEqualTo("foo");
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(errorHandler).clearThreadState();
