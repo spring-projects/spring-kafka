@@ -29,6 +29,8 @@ import org.springframework.core.ResolvableType;
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
+import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
@@ -97,29 +99,74 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
 	private boolean typeMapperExplicitlySet = false;
 
+	/**
+	 * Construct an instance with a default {@link ObjectMapper}.
+	 */
 	public JsonDeserializer() {
-		this((Class<T>) null);
+		this((Class<T>) null, true);
 	}
 
-	protected JsonDeserializer(ObjectMapper objectMapper) {
-		this(null, objectMapper);
+	/**
+	 * Construct an instance with the provided {@link ObjectMapper}.
+	 * @param objectMapper a custom object mapper.
+	 */
+	public JsonDeserializer(ObjectMapper objectMapper) {
+		this(null, objectMapper, true);
 	}
 
+	/**
+	 * Construct an instance with the provided target type, and a default
+	 * {@link ObjectMapper}.
+	 * @param targetType the target type to use if no type info headers are present.
+	 */
 	public JsonDeserializer(Class<T> targetType) {
-		this(targetType, new ObjectMapper());
+		this(targetType, true);
+	}
+
+	/**
+	 * Construct an instance with the provided target type, and
+	 * useHeadersIfPresent with a default {@link ObjectMapper}.
+	 * @param targetType the target type.
+	 * @param useHeadersIfPresent true to use headers if present and fall back to target
+	 * type if not.
+	 * @since 2.2
+	 */
+	public JsonDeserializer(Class<T> targetType, boolean useHeadersIfPresent) {
+		this(targetType, new ObjectMapper(), useHeadersIfPresent);
 		this.objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
 		this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 	}
 
-	@SuppressWarnings("unchecked")
+	/**
+	 * Construct an instance with the provided target type, and {@link ObjectMapper}.
+	 * @param targetType the target type to use if no type info headers are present.
+	 * @param objectMapper the mapper. type if not.
+	 */
 	public JsonDeserializer(Class<T> targetType, ObjectMapper objectMapper) {
+		this(targetType, objectMapper, true);
+	}
+
+	/**
+	 * Construct an instance with the provided target type, {@link ObjectMapper} and
+	 * useHeadersIfPresent.
+	 * @param targetType the target type.
+	 * @param objectMapper the mapper.
+	 * @param useHeadersIfPresent true to use headers if present and fall back to target
+	 * type if not.
+	 * @since 2.2
+	 */
+	@SuppressWarnings("unchecked")
+	public JsonDeserializer(@Nullable Class<T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent) {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
+		Assert.isTrue(targetType != null || useHeadersIfPresent,
+				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 		this.objectMapper = objectMapper;
 		if (targetType == null) {
 			targetType = (Class<T>) ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
 		}
 		this.targetType = targetType;
 		addTargetPackageToTrusted();
+		this.typeMapper.setTypePrecedence(useHeadersIfPresent ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
 	}
 
 	public Jackson2JavaTypeMapper getTypeMapper() {
@@ -228,19 +275,26 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		if (data == null) {
 			return null;
 		}
-		JavaType javaType = this.typeMapper.toJavaType(headers);
-		if (javaType == null) {
-			Assert.state(this.targetType != null, "No type information in headers and no default type provided");
-			return deserialize(topic, data);
+		ObjectReader reader = null;
+		if (this.typeMapper.getTypePrecedence().equals(TypePrecedence.TYPE_ID)) {
+			JavaType javaType = this.typeMapper.toJavaType(headers);
+			if (javaType != null) {
+				reader = this.objectMapper.readerFor(javaType);
+			}
 		}
-		else {
-			try {
-				return this.objectMapper.readerFor(javaType).readValue(data);
+		if (reader == null && this.targetType != null) {
+			if (this.reader == null) {
+				this.reader = this.objectMapper.readerFor(this.targetType);
 			}
-			catch (IOException e) {
-				throw new SerializationException("Can't deserialize data [" + Arrays.toString(data) +
-						"] from topic [" + topic + "]", e);
-			}
+			reader = this.reader;
+		}
+		Assert.state(reader != null, "No type information in headers and no default type provided");
+		try {
+			return reader.readValue(data);
+		}
+		catch (IOException e) {
+			throw new SerializationException("Can't deserialize data [" + Arrays.toString(data) +
+					"] from topic [" + topic + "]", e);
 		}
 	}
 
@@ -269,4 +323,5 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	public void close() {
 		// No-op
 	}
+
 }

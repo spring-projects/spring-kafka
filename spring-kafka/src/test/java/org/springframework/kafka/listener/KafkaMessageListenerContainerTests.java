@@ -59,6 +59,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -142,11 +143,13 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic20 = "testTopic20";
 
+	private static String topic21 = "testTopic21";
+
 
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3, topic4,
 			topic5, topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16,
-			topic17, topic18, topic19, topic20);
+			topic17, topic18, topic19, topic20, topic21);
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -1684,6 +1687,41 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(received.get(1).value().getClass()).isEqualTo(Bar1.class);
 		container.stop();
 		this.logger.info("Stop JSON3");
+	}
+
+	@Test
+	public void testJsonSerDeIgnoreTypeHeadersInbound() throws Exception {
+		this.logger.info("Start JSON4");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props,
+				new IntegerDeserializer(), new JsonDeserializer<>(Foo1.class, false));
+		ContainerProperties containerProps = new ContainerProperties(topic21);
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		final List<ConsumerRecord<Integer, Foo1>> received = new ArrayList<>();
+		containerProps.setMessageListener((MessageListener<Integer, Foo1>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("json: " + record);
+			received.add(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, Foo1> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testJson4");
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic21);
+		template.sendDefault(0, new Foo("bar"));
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get(0).value().getClass()).isEqualTo(Foo1.class);
+		container.stop();
+		this.logger.info("Stop JSON4");
 	}
 
 	@Test
