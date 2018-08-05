@@ -81,6 +81,12 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 */
 	public static final String TRUSTED_PACKAGES = "spring.json.trusted.packages";
 
+	/**
+	 * Kafka config property to add type mappings to the type mapper:
+	 * 'foo=com.Foo,bar=com.Bar'.
+	 */
+	public static final String TYPE_MAPPINGS = JsonSerializer.TYPE_MAPPINGS;
+
 	protected final ObjectMapper objectMapper;
 
 	protected Class<T> targetType;
@@ -195,6 +201,10 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 				this.typeMapper.addTrustedPackages(
 						StringUtils.commaDelimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES)));
 			}
+		}
+		if (configs.containsKey(TYPE_MAPPINGS)) {
+			((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(
+					JsonSerializer.createMappings((String) configs.get(JsonSerializer.TYPE_MAPPINGS)));
 		}
 	}
 

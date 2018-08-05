@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.serializer;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -28,6 +29,8 @@ import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -46,9 +49,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class JsonSerializer<T> implements ExtendedSerializer<T> {
 
 	/**
-	 * Kafka config property for to disable adding type headers.
+	 * Kafka config property for disabling adding type headers.
 	 */
 	public static final String ADD_TYPE_INFO_HEADERS = "spring.json.add.type.headers";
+
+	/**
+	 * Kafka config property to add type mappings to the type mapper:
+	 * 'foo=com.Foo,bar=com.Bar'.
+	 */
+	public static final String TYPE_MAPPINGS = "spring.json.type.mapping";
 
 	protected final ObjectMapper objectMapper;
 
@@ -126,6 +135,27 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 				throw new IllegalStateException(ADD_TYPE_INFO_HEADERS + " must be Boolean or String");
 			}
 		}
+		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet && this.typeMapper instanceof AbstractJavaTypeMapper) {
+			((AbstractJavaTypeMapper) this.typeMapper)
+					.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
+		}
+	}
+
+	public static Map<String, Class<?>> createMappings(String mappings) {
+		Map<String, Class<?>> mappingsMap = new HashMap<>();
+		String[] array = StringUtils.commaDelimitedListToStringArray(mappings);
+		for (String entry : array) {
+			String[] split = entry.split(":");
+			Assert.isTrue(split.length == 2, "Each comma-delimited mapping entry must have exactly one ':'");
+			try {
+				mappingsMap.put(split[0].trim(),
+						ClassUtils.forName(split[1].trim(), JsonSerializer.class.getClassLoader()));
+			}
+			catch (ClassNotFoundException | LinkageError e) {
+				throw new IllegalArgumentException(e);
+			}
+		}
+		return mappingsMap;
 	}
 
 	@Override

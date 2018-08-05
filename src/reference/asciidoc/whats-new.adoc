@@ -62,3 +62,9 @@ The `@EmbeddedKafka` annotation now populates an `EmbeddedKafkaBroker` bean inst
 This allows the use of `@EmbeddedKafka` in JUnit 5 tests.
 
 See <<testing>> for more information.
+
+==== JsonSerializer/Deserializer Enhancements
+
+You can now provide type mapping information using producer/consumer properties.
+
+See <<serdes>> for more information.
