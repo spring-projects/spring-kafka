@@ -30,7 +30,10 @@ import org.springframework.lang.Nullable;
 /**
  * Default implementation of {@link AfterRollbackProcessor}. Seeks all
  * topic/partitions so the records will be re-fetched, including the failed
- * record.
+ * record. Starting with version 2.2 after a configurable number of failures
+ * for the same topic/partition/offset, that record will be skipped after
+ * calling a {@link BiConsumer} recoverer. The default recoverer simply logs
+ * the failed record.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -74,7 +77,8 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * @param maxFailures the maxFailures.
 	 * @since 2.2
 	 */
-	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
+	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
+			int maxFailures) {
 		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, logger);
 	}
 
