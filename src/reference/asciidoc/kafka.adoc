@@ -1610,11 +1610,11 @@ Starting with _version 2.1_, type information can be conveyed in record `Headers
 In addition, the serializer/deserializer can be configured using Kafka properties.
 
 - `JsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`); set to `false` to disable this feature on the `JsonSerializer` (sets the `addTypeInfo` property).
-- `JsonSerializer.TYPE_MAPPINGS` (default `empty`); see below
+- `JsonSerializer.TYPE_MAPPINGS` (default `empty`); see below.
 - `JsonDeserializer.KEY_DEFAULT_TYPE`; fallback type for deserialization of keys if no header information is present.
 - `JsonDeserializer.VALUE_DEFAULT_TYPE`; fallback type for deserialization of values if no header information is present.
 - `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`); comma-delimited list of package patterns allowed for deserialization; `*` means deserialize all.
-- `JsonDeserializer.TYPE_MAPPINGS` (default `empty`); see below
+- `JsonDeserializer.TYPE_MAPPINGS` (default `empty`); see below.
 
 **Mapping Types**
 
@@ -1636,13 +1636,13 @@ consumerProps.put(JsonDeSerializer.TYPE_MAPPINGS, "foo:com.yourfoo.Foo, bar:com.
 
 Of course, the corresponding objects must be compatible.
 
-When using https://docs.spring.io/spring-boot/docs/2.0.4.RELEASE/reference/htmlsingle/#boot-features-kafka-extra-props[Spring Boot], these properties can be provided in the `application.properties` (or yaml) file:
+https://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-messaging.html#boot-features-kafka[Spring Boot], these properties can be provided in the `application.properties` (or yaml) file:
 
 ====
 [source]
 ----
 spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer
-spring.kafka.producer.properties.spring.json.type.mapping=foo:com.myfoo.Foo,bar=com.mybar.Bar
+spring.kafka.producer.properties.spring.json.type.mapping=foo:com.myfoo.Foo,bar:com.mybar.Bar
 ----
 ====
 
@@ -1670,7 +1670,7 @@ public ProducererFactory<Foo, Bar> kafkaProducerFactory(KafkaProperties properti
 
 Setters are also provided, as an alternative to using these constructors.
 
-Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers, using one of the overloaded constructors that have a boolean `useHeadersIfPresent` (which is `true` by default): 
+Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers, using one of the overloaded constructors that have a boolean `useHeadersIfPresent` (which is `true` by default):
 
 ====
 [source, java]

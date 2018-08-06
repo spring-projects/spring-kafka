@@ -135,13 +135,14 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 				throw new IllegalStateException(ADD_TYPE_INFO_HEADERS + " must be Boolean or String");
 			}
 		}
-		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet && this.typeMapper instanceof AbstractJavaTypeMapper) {
+		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
+				&& this.typeMapper instanceof AbstractJavaTypeMapper) {
 			((AbstractJavaTypeMapper) this.typeMapper)
 					.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
 		}
 	}
 
-	public static Map<String, Class<?>> createMappings(String mappings) {
+	protected static Map<String, Class<?>> createMappings(String mappings) {
 		Map<String, Class<?>> mappingsMap = new HashMap<>();
 		String[] array = StringUtils.commaDelimitedListToStringArray(mappings);
 		for (String entry : array) {
