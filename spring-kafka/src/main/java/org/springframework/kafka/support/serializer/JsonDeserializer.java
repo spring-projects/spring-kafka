@@ -164,9 +164,6 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 			if (this.targetType != null) {
 				this.reader = this.objectMapper.readerFor(this.targetType);
 			}
-			else {
-				this.reader = null;
-			}
 		}
 		else {
 			this.targetType = targetType;
@@ -215,11 +212,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 			if (isKey && configs.containsKey(KEY_DEFAULT_TYPE)) {
 				if (configs.get(KEY_DEFAULT_TYPE) instanceof Class) {
 					this.targetType = (Class<T>) configs.get(KEY_DEFAULT_TYPE);
-					this.reader = this.objectMapper.readerFor(this.targetType);
 				}
 				else if (configs.get(KEY_DEFAULT_TYPE) instanceof String) {
 					this.targetType = (Class<T>) ClassUtils.forName((String) configs.get(KEY_DEFAULT_TYPE), null);
-					this.reader = this.objectMapper.readerFor(this.targetType);
 				}
 				else {
 					throw new IllegalStateException(KEY_DEFAULT_TYPE + " must be Class or String");
@@ -229,12 +224,10 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 			else if (!isKey && configs.containsKey("spring.json.default.value.type")) {
 				if (configs.get("spring.json.default.value.type") instanceof Class) {
 					this.targetType = (Class<T>) configs.get("spring.json.default.value.type");
-					this.reader = this.objectMapper.readerFor(this.targetType);
 				}
 				else if (configs.get("spring.json.default.value.type") instanceof String) {
 					this.targetType = (Class<T>) ClassUtils
 						.forName((String) configs.get("spring.json.default.value.type"), null);
-					this.reader = this.objectMapper.readerFor(this.targetType);
 				}
 				else {
 					throw new IllegalStateException("spring.json.default.value.type must be Class or String");
@@ -252,6 +245,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 				else {
 					throw new IllegalStateException(VALUE_DEFAULT_TYPE + " must be Class or String");
 				}
+			}
+			if (this.targetType != null) {
+				this.reader = this.objectMapper.readerFor(this.targetType);
 			}
 			addTargetPackageToTrusted();
 		}
