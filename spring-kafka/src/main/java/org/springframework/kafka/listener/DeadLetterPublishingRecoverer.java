@@ -100,7 +100,7 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 	}
 
 	/**
-	 * Subclasses can override this method to customie the producer record to send to the DLQ.
+	 * Subclasses can override this method to customize the producer record to send to the DLQ.
 	 * The default implementation simply copies the key and value from the consumer record
 	 * and adds the headers. The timestamp is not set (the original timestamp is in one of
 	 * the headers).
