@@ -134,49 +134,49 @@ public abstract class KafkaHeaders {
 	public static final String REPLY_PARTITION = PREFIX + "replyPartition";
 
 	/**
-	 * Exception class name for messages sent to a dead-letter topic.
+	 * Exception class name for a record published sent to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_EXCEPTION_FQCN = PREFIX + "dlt-exception-fqcn";
 
 	/**
-	 * Exception stack trace for messages sent to a dead-letter topic.
+	 * Exception stack trace for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_EXCEPTION_STACKTRACE = PREFIX + "dlt-exception-stacktrace";
 
 	/**
-	 * Exception message for messages sent to a dead-letter topic.
+	 * Exception message for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_EXCEPTION_MESSAGE = PREFIX + "dlt-exception-message";
 
 	/**
-	 * Original topic for messages sent to a dead-letter topic.
+	 * Original topic for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_ORIGINAL_TOPIC = PREFIX + "dlt-original-topic";
 
 	/**
-	 * Original partition for messages sent to a dead-letter topic.
+	 * Original partition for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_ORIGINAL_PARTITION = PREFIX + "dlt-original-partition";
 
 	/**
-	 * Original offset for messages sent to a dead-letter topic.
+	 * Original offset for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_ORIGINAL_OFFSET = PREFIX + "dlt-original-offset";
 
 	/**
-	 * Original timestamp for messages sent to a dead-letter topic.
+	 * Original timestamp for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_ORIGINAL_TIMESTAMP = PREFIX + "dlt-original-timestamp";
 
 	/**
-	 * Original timestamp type for messages sent to a dead-letter topic.
+	 * Original timestamp type for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
 	public static final String DLT_ORIGINAL_TIMESTAMP_TYPE = PREFIX + "dlt-original-timestamp-type";

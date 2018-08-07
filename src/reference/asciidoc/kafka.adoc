@@ -2204,6 +2204,7 @@ The framework provides the `DeadLetterPublishingRecoverer` which will publish th
 The recoverer requires a `KafkaTemplate<Object, Object>` which is used to send the record.
 It also, optionally, can be configured with a `BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>` which is called to resolve the destination topic and partition.
 By default, the dead-letter record is sent to a topic named `<originalTopic>.DLT` (the original topic name suffixed with `.DLT`) and to the same partition as the original record.
+Therefore, when using the default resolver, the dead-letter topic must have at least as many partitions as the original topic.
 If the returned `TopicPartition` has a negative partition, the partition is not set in the `ProducerRecord` and so the partition will be selected by Kafka.
 The following is an example of wiring a custom destination resolver.
 

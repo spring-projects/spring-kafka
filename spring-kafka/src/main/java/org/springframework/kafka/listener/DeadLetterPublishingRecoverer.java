@@ -54,9 +54,10 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 	private final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver;
 
 	/**
-	 * Create an instance with the provided template and a default destinatio resolving
+	 * Create an instance with the provided template and a default destination resolving
 	 * function that returns a TopicPartition based on the original topic (appended with ".DLT")
-	 * from the failed record, and the same partition as the failed record.
+	 * from the failed record, and the same partition as the failed record. Therefore the
+	 * dead-letter topic must have at least as many partitions as the original topic.
 	 * @param template the {@link KafkaTemplate} to use for publishing.
 	 */
 	public DeadLetterPublishingRecoverer(KafkaTemplate<Object, Object> template) {
@@ -86,8 +87,7 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
 		RecordHeaders headers = new RecordHeaders(record.headers().toArray());
 		enhanceHeaders(headers, record, exception);
-		ProducerRecord<Object, Object> outRecord = new ProducerRecord<>(tp.topic(),
-				tp.partition() < 0 ? null : tp.partition(), record.key(), record.value(), headers);
+		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers);
 		if (this.transactional) {
 			this.template.executeInTransaction(t -> {
 				publish(outRecord, t);
@@ -97,6 +97,27 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		else {
 			publish(outRecord, this.template);
 		}
+	}
+
+	/**
+	 * Subclasses can override this method to customie the producer record to send to the DLQ.
+	 * The default implementation simply copies the key and value from the consumer record
+	 * and adds the headers. The timestamp is not set (the original timestamp is in one of
+	 * the headers).
+	 * IMPORTANT: if the partition in the {@link TopicPartition} is < 0, it must be set to null
+	 * in the {@link ProducerRecord}.
+	 * @param record the failed record
+	 * @param topicPartition the {@link TopicPartition} returned by the destination resolver.
+	 * @param headers the headers - original record headers plus DLT headers.
+	 * @return the producer record to send.
+	 * @see KafkaHeaders
+	 */
+	protected ProducerRecord<Object, Object> createProducerRecord(ConsumerRecord<?, ?> record,
+			TopicPartition topicPartition, RecordHeaders headers) {
+
+		return new ProducerRecord<>(topicPartition.topic(),
+				topicPartition.partition() < 0 ? null : topicPartition.partition(),
+				record.key(), record.value(), headers);
 	}
 
 	private void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> template) {
