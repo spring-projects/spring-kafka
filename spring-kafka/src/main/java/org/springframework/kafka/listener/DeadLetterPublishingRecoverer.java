@@ -100,13 +100,18 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 	}
 
 	private void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> template) {
-		template.send(outRecord).addCallback(result -> {
-			if (logger.isDebugEnabled()) {
-				logger.debug("Successful dead-letter publication: " + result);
-			}
-		}, ex -> {
-			logger.error("Dead-letter publication failed for: " + outRecord, ex);
-		});
+		try {
+			template.send(outRecord).addCallback(result -> {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Successful dead-letter publication: " + result);
+				}
+			}, ex -> {
+				logger.error("Dead-letter publication failed for: " + outRecord, ex);
+			});
+		}
+		catch (Exception e) {
+			logger.error("Dead-letter publication failed for: " + outRecord, e);
+		}
 	}
 
 	private void enhanceHeaders(RecordHeaders kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {
