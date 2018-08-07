@@ -59,6 +59,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -140,11 +141,15 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic19 = "testTopic19";
 
+	private static String topic20 = "testTopic20";
+
+	private static String topic21 = "testTopic21";
+
 
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3, topic4,
 			topic5, topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16,
-			topic17, topic18, topic19);
+			topic17, topic18, topic19, topic20, topic21);
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -1645,6 +1650,81 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
+	public void testJsonSerDeTypeMappings() throws Exception {
+		this.logger.info("Start JSON3");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+		props.put(JsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo1.class.getName() + " , bar:" + Bar1.class.getName());
+		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic20);
+
+		final CountDownLatch latch = new CountDownLatch(2);
+		final List<ConsumerRecord<Integer, Foo1>> received = new ArrayList<>();
+		containerProps.setMessageListener((MessageListener<Integer, Foo1>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("json: " + record);
+			received.add(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, Foo1> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testJson3");
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		senderProps.put(JsonSerializer.TYPE_MAPPINGS, "foo:" + Foo.class.getName() + ",bar:" + Bar.class.getName());
+		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic20);
+		template.sendDefault(0, new Foo("bar"));
+		template.sendDefault(0, new Bar("baz"));
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get(0).value().getClass()).isEqualTo(Foo1.class);
+		assertThat(received.get(1).value().getClass()).isEqualTo(Bar1.class);
+		container.stop();
+		this.logger.info("Stop JSON3");
+	}
+
+	@Test
+	public void testJsonSerDeIgnoreTypeHeadersInbound() throws Exception {
+		this.logger.info("Start JSON4");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props,
+				new IntegerDeserializer(), new JsonDeserializer<>(Foo1.class, false));
+		ContainerProperties containerProps = new ContainerProperties(topic21);
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		final List<ConsumerRecord<Integer, Foo1>> received = new ArrayList<>();
+		containerProps.setMessageListener((MessageListener<Integer, Foo1>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("json: " + record);
+			received.add(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, Foo1> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testJson4");
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic21);
+		template.sendDefault(0, new Foo("bar"));
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get(0).value().getClass()).isEqualTo(Foo1.class);
+		container.stop();
+		this.logger.info("Stop JSON4");
+	}
+
+	@Test
 	public void testRebalanceAfterFailedRecord() throws Exception {
 		logger.info("Start rebalance after failed record");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test18", "false", embeddedKafka);
@@ -2078,6 +2158,87 @@ public class KafkaMessageListenerContainerTests {
 		@Override
 		public String toString() {
 			return "Foo [bar=" + this.bar + "]";
+		}
+
+	}
+
+	public static class Foo1 {
+
+		private String bar;
+
+		public Foo1() {
+			super();
+		}
+
+		public Foo1(String bar) {
+			this.bar = bar;
+		}
+
+		public String getBar() {
+			return this.bar;
+		}
+
+		public void setBar(String bar) {
+			this.bar = bar;
+		}
+
+		@Override
+		public String toString() {
+			return "Foo1 [bar=" + this.bar + "]";
+		}
+
+	}
+
+	public static class Bar extends Foo {
+
+		private String baz;
+
+		public Bar() {
+			super();
+		}
+
+		public Bar(String baz) {
+			this.baz = baz;
+		}
+
+		private String getBaz() {
+			return this.baz;
+		}
+
+		private void setBaz(String baz) {
+			this.baz = baz;
+		}
+
+		@Override
+		public String toString() {
+			return "Bar [baz=" + this.baz + "]";
+		}
+
+	}
+
+	public static class Bar1 extends Foo1 {
+
+		private String baz;
+
+		public Bar1() {
+			super();
+		}
+
+		public Bar1(String baz) {
+			this.baz = baz;
+		}
+
+		private String getBaz() {
+			return this.baz;
+		}
+
+		private void setBaz(String baz) {
+			this.baz = baz;
+		}
+
+		@Override
+		public String toString() {
+			return "Bar1 [baz=" + this.baz + "]";
 		}
 
 	}

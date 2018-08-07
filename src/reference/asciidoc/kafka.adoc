@@ -1586,7 +1586,7 @@ props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
 props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 ----
 
-for more complex or particular cases, the `KafkaConsumer`, and therefore `KafkaProducer`, provides overloaded
+For more complex or particular cases, the `KafkaConsumer`, and therefore `KafkaProducer`, provides overloaded
 constructors to accept `(De)Serializer` instances for `keys` and/or `values`, respectively.
 
 Using this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (via constructors or setter methods) to inject custom `(De)Serializer` s to the target `Producer`/`Consumer`.
@@ -1610,9 +1610,42 @@ Starting with _version 2.1_, type information can be conveyed in record `Headers
 In addition, the serializer/deserializer can be configured using Kafka properties.
 
 - `JsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`); set to `false` to disable this feature on the `JsonSerializer` (sets the `addTypeInfo` property).
+- `JsonSerializer.TYPE_MAPPINGS` (default `empty`); see below.
 - `JsonDeserializer.KEY_DEFAULT_TYPE`; fallback type for deserialization of keys if no header information is present.
 - `JsonDeserializer.VALUE_DEFAULT_TYPE`; fallback type for deserialization of values if no header information is present.
 - `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`); comma-delimited list of package patterns allowed for deserialization; `*` means deserialize all.
+- `JsonDeserializer.TYPE_MAPPINGS` (default `empty`); see below.
+
+**Mapping Types**
+
+Starting with version 2.2, you can now provide type mappings using the properties in the above list; previously you had to customize the type mapper within the serializer, deserializer.
+Mappings consist of a comma-delimited list of `token:className` pairs; on outbound, the payload's class name is mapped to the corresponding token and, on inbound, the token in the type header is mapped to the corresponding class name.
+
+For example:
+
+====
+[source, java]
+----
+senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+senderProps.put(JsonSerializer.TYPE_MAPPINGS, "foo:com.myfoo.Foo, bar:com.mybar.bar");
+...
+consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+consumerProps.put(JsonDeSerializer.TYPE_MAPPINGS, "foo:com.yourfoo.Foo, bar:com.yourbar.bar");
+----
+====
+
+Of course, the corresponding objects must be compatible.
+
+https://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-messaging.html#boot-features-kafka[Spring Boot], these properties can be provided in the `application.properties` (or yaml) file:
+
+====
+[source]
+----
+spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer
+spring.kafka.producer.properties.spring.json.type.mapping=foo:com.myfoo.Foo,bar:com.mybar.Bar
+----
+====
+
 
 IMPORTANT: Only simple configuration can be performed with properties; for more advanced configuration (such as using a custom `ObjectMapper` in the serializer/deserializer), you should use the producer/consumer factory constructors that accept a pre-built serializer and deserializer. For example, with Spring Boot, to override the default factories:
 
@@ -1636,6 +1669,16 @@ public ProducererFactory<Foo, Bar> kafkaProducerFactory(KafkaProperties properti
 ----
 
 Setters are also provided, as an alternative to using these constructors.
+
+Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers, using one of the overloaded constructors that have a boolean `useHeadersIfPresent` (which is `true` by default):
+
+====
+[source, java]
+----
+DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props,
+        new IntegerDeserializer(), new JsonDeserializer<>(Foo1.class, false));
+----
+====
 
 ===== Spring Messaging Message Conversion
 
