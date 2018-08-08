@@ -46,10 +46,12 @@ This is an `AbstractFactoryBean` implementation to expose a `StreamsBuilder` sin
 [source, java]
 ----
 @Bean
-public FactoryBean<StreamsBuilderFactoryBean> myKStreamBuilder(StreamsConfig streamsConfig) {
+public FactoryBean<StreamsBuilderFactoryBean> myKStreamBuilder(Properties streamsConfig) {
     return new StreamsBuilderFactoryBean(streamsConfig);
 }
 ----
+
+IMPORTANT: Starting with version 2.2, the stream configuration is now provided as a simple `Properties` object, rather than a `StreamsConfig`.
 
 The `StreamsBuilderFactoryBean` also implements `SmartLifecycle` to manage lifecycle of an internal `KafkaStreams` instance.
 Similar to the Kafka Streams API, the `KStream` instances must be defined before starting the `KafkaStreams`, and that also applies for the Spring API for Kafka Streams.
@@ -79,7 +81,7 @@ You can autowire `StreamsBuilderFactoryBean` bean by type, but you should be sur
 [source,java]
 ----
 @Bean
-public StreamsBuilderFactoryBean myKStreamBuilder(StreamsConfig streamsConfig) {
+public StreamsBuilderFactoryBean myKStreamBuilder(Properties streamsConfig) {
     return new StreamsBuilderFactoryBean(streamsConfig);
 }
 ...
@@ -91,7 +93,7 @@ Or add `@Qualifier` for injection by name if you use interface bean definition:
 [source,java]
 ----
 @Bean
-public FactoryBean<StreamsBuilder> myKStreamBuilder(StreamsConfig streamsConfig) {
+public FactoryBean<StreamsBuilder> myKStreamBuilder(Properties streamsConfig) {
     return new StreamsBuilderFactoryBean(streamsConfig);
 }
 ...
@@ -115,12 +117,14 @@ IMPORTANT: Since Kafka Streams do not support headers, the `addTypeInfo` propert
 
 ==== Configuration
 
-To configure the Kafka Streams environment, the `StreamsBuilderFactoryBean` requires a `Map` of particular properties or a `StreamsConfig` instance.
+To configure the Kafka Streams environment, the `StreamsBuilderFactoryBean` requires a `Properties` instance.
 See Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs[documentation] for all possible options.
 
-To avoid boilerplate code for most cases, especially when you develop micro services, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which should be placed alongside with `@Configuration`.
-Only you need is to declare `StreamsConfig` bean with the `defaultKafkaStreamsConfig` name.
-A `StreamsBuilder` bean with the `defaultKafkaStreamsBuilder` name will be declare in the application context automatically.
+IMPORTANT: Starting with version 2.2, the stream configuration is now provided as a simple `Properties` object, rather than a `StreamsConfig`.
+
+To avoid boilerplate code for most cases, especially when you develop micro services, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which should be placed on a `@Configuration` class.
+All you need is to declare a `Properties` bean with the name `defaultKafkaStreamsConfig`.
+A `StreamsBuilder` bean, with the name `defaultKafkaStreamsBuilder`, will be declared in the application context automatically.
 Any additional `StreamsBuilderFactoryBean` beans can be declared and used as well.
 
 By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
@@ -138,13 +142,13 @@ Putting it all together:
 public static class KafkaStreamsConfiguration {
 
     @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-    public StreamsConfig kStreamsConfigs() {
-        Map<String, Object> props = new HashMap<>();
+    public Properties kStreamsConfigs() {
+        Properties props = new Properties<>();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
         props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
         props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         props.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG, WallclockTimestampExtractor.class.getName());
-        return new StreamsConfig(props);
+        return props;
     }
 
     @Bean
