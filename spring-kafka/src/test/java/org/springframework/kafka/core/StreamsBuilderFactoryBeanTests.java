@@ -22,7 +22,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Properties;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,6 +37,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
+import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -79,7 +81,7 @@ public class StreamsBuilderFactoryBeanTests {
 
 	@Configuration
 	@EnableKafkaStreams
-	public static class KafkaStreamsConfiguration {
+	public static class KafkaStreamsConfig {
 
 		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
@@ -90,12 +92,12 @@ public class StreamsBuilderFactoryBeanTests {
 		}
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-		public Properties kStreamsConfigs() {
-			Properties props = new Properties();
+		public KafkaStreamsConfiguration kStreamsConfigs() {
+			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
 			props.put(StreamsConfig.STATE_DIR_CONFIG, stateStoreDir.toString());
-			return props;
+			return new KafkaStreamsConfiguration(props);
 		}
 
 	}

@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.annotation;
 
-import java.util.Properties;
-
 import org.apache.kafka.streams.StreamsConfig;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -25,6 +23,7 @@ import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.core.StreamsBuilderFactoryBean;
 
 /**
@@ -57,8 +56,10 @@ public class KafkaStreamsDefaultConfiguration {
 
 	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
-			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME) ObjectProvider<Properties> streamsConfigProvider) {
-		Properties streamsConfig = streamsConfigProvider.getIfAvailable();
+			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+				ObjectProvider<KafkaStreamsConfiguration> streamsConfigProvider) {
+
+		KafkaStreamsConfiguration streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
 			return new StreamsBuilderFactoryBean(streamsConfig);
 		}

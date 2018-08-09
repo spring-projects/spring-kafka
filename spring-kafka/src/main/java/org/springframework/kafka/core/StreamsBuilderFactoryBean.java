@@ -31,6 +31,7 @@ import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -121,10 +122,10 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @param cleanupConfig the cleanup configuration.
 	 * @since 2.2
 	 */
-	public StreamsBuilderFactoryBean(Properties streamsConfig, CleanupConfig cleanupConfig) {
+	public StreamsBuilderFactoryBean(KafkaStreamsConfiguration streamsConfig, CleanupConfig cleanupConfig) {
 		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
 		Assert.notNull(cleanupConfig, "'cleanupConfig' must not be null");
-		this.properties = streamsConfig;
+		this.properties = streamsConfig.asProperties();
 		this.cleanupConfig = cleanupConfig;
 	}
 
@@ -143,7 +144,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @param streamsConfig the streams configuration.
 	 * @since 2.2
 	 */
-	public StreamsBuilderFactoryBean(Properties streamsConfig) {
+	public StreamsBuilderFactoryBean(KafkaStreamsConfiguration streamsConfig) {
 		this(streamsConfig, new CleanupConfig());
 	}
 

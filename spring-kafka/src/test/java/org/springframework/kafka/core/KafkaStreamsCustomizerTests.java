@@ -18,7 +18,8 @@ package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Properties;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
@@ -31,6 +32,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
+import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -64,24 +66,25 @@ public class KafkaStreamsCustomizerTests {
 	@Configuration
 	@EnableKafka
 	@EnableKafkaStreams
-	public static class KafkaStreamsConfiguration {
+	public static class KafkaStreamsConfig {
 
 		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 		public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder() {
-			StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kStreamsConfigs());
+			StreamsBuilderFactoryBean streamsBuilderFactoryBean =
+					new StreamsBuilderFactoryBean(kStreamsConfigs());
 			streamsBuilderFactoryBean.setKafkaStreamsCustomizer(customizer());
 			return streamsBuilderFactoryBean;
 		}
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-		public Properties kStreamsConfigs() {
-			Properties props = new Properties();
+		public KafkaStreamsConfiguration kStreamsConfigs() {
+			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
-			return props;
+			return new KafkaStreamsConfiguration(props);
 		}
 
 
