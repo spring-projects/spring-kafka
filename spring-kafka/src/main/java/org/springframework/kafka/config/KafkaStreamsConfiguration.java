@@ -26,8 +26,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.springframework.util.Assert;
 
 /**
- * Wrapper for {@link StreamsBuilder} properties; used to avoid auto-configuring
- * a generic {@link Properties} object in Boot.
+ * Wrapper for {@link StreamsBuilder} properties.
  *
  * @author Gary Russell
  * @since 2.2

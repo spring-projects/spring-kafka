@@ -94,7 +94,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	/**
 	 * Construct an instance with the supplied streams configuration.
 	 * @param streamsConfig the streams configuration.
+	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration)}
 	 */
+	@Deprecated
 	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig) {
 		this(streamsConfig, new CleanupConfig());
 	}
@@ -105,7 +107,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @param streamsConfig the streams configuration.
 	 * @param cleanupConfig the cleanup configuration.
 	 * @since 2.1.2.
-	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(Properties, CleanupConfig)}
+	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration, CleanupConfig)}
 	 */
 	@Deprecated
 	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig, CleanupConfig cleanupConfig) {
@@ -132,7 +134,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	/**
 	 * Construct an instance with the supplied streams configuration.
 	 * @param streamsConfig the streams configuration.
-	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(Properties)}.
+	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration)}.
 	 */
 	@Deprecated
 	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig) {
@@ -154,7 +156,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @param streamsConfig the streams configuration.
 	 * @param cleanupConfig the cleanup configuration.
 	 * @since 2.1.2.
-	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(Properties, CleanupConfig)}.
+	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration, CleanupConfig)}.
 	 */
 	@Deprecated
 	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig, CleanupConfig cleanupConfig) {
