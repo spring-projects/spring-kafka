@@ -119,12 +119,11 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 					Assertions.assertThat(senderResult.recordMetadata())
 						.extracting(RecordMetadata::topic, RecordMetadata::partition, RecordMetadata::timestamp)
 						.containsExactly(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP);
-				}
-				)
+				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().commit().block()))
+		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().acknowledge()))
 				.assertNext(receiverRecord -> {
 					Assertions.assertThat(receiverRecord.partition()).isEqualTo(DEFAULT_PARTITION);
 					Assertions.assertThat(receiverRecord.timestamp()).isEqualTo(DEFAULT_TIMESTAMP);
@@ -146,7 +145,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().commit().block()))
+		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().acknowledge()))
 				.assertNext(receiverRecord -> {
 					Assertions.assertThat(receiverRecord.partition()).isEqualTo(DEFAULT_PARTITION);
 					Assertions.assertThat(receiverRecord.timestamp()).isEqualTo(DEFAULT_TIMESTAMP);
@@ -170,7 +169,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
 		Flux<ReceiverRecord<Integer, String>> receiverRecordFlux = reactiveKafkaConsumerTemplate.receive()
-				.doOnNext(rr -> rr.receiverOffset().commit().block());
+				.doOnNext(rr -> rr.receiverOffset().acknowledge()).take(expectedTotalRecordsCount);
 
 		StepVerifier.create(receiverRecordFlux)
 				.recordWith(ArrayList::new)
@@ -195,7 +194,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 					Assertions.assertThat(lastRecord.isPresent()).isEqualTo(true);
 					lastRecord.ifPresent(last -> Assertions.assertThat(last.value()).endsWith(String.valueOf(recordsCountInGroup * (int) Math.pow(10, transactionGroupsCount))));
 				})
-				.thenCancel()
+				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
