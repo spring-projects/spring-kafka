@@ -99,7 +99,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	static {
 		clientVersion = AppInfoParser.getVersion();
-		if (clientVersion.startsWith("1.1.")) {
+		if (clientVersion.startsWith("1.1.") || clientVersion.startsWith("2.0.")) {
 			try {
 				testUtilsCreateBrokerConfigMethod = TestUtils.class.getDeclaredMethod("createBrokerConfig",
 						int.class, String.class, boolean.class, boolean.class, int.class,
