@@ -374,9 +374,9 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 	@Test
 	public void shouldReturnMetrics() {
-		Mono<? extends Map<MetricName, ? extends Metric>> metricsMono = reactiveKafkaProducerTemplate.metricsFromProducer();
+		Flux<Map.Entry<MetricName, ? extends Metric>> metricsMono = reactiveKafkaProducerTemplate.metricsFromProducer();
 
-		StepVerifier.create(metricsMono)
+		StepVerifier.create(metricsMono.collectList())
 				.assertNext(metrics -> Assertions.assertThat(metrics).isNotNull().isNotEmpty())
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
