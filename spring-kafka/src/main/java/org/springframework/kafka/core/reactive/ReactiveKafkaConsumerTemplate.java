@@ -122,14 +122,6 @@ public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsume
 		return partitions.flatMapIterable(Function.identity());
 	}
 
-	public Mono<? extends Map<MetricName, ? extends Metric>> metricsFromConsumer() {
-		return doOnConsumer(Consumer::metrics);
-	}
-
-	public Mono<Map<String, List<PartitionInfo>>> listTopics() {
-		return doOnConsumer(Consumer::listTopics);
-	}
-
 	public Flux<TopicPartition> paused() {
 		Mono<Set<TopicPartition>> paused = doOnConsumer(Consumer::paused);
 		return paused.flatMapIterable(Function.identity());
@@ -149,15 +141,23 @@ public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsume
 		});
 	}
 
-	public Mono<Map<TopicPartition, OffsetAndTimestamp>> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
-		return doOnConsumer(c -> c.offsetsForTimes(timestampsToSearch));
+	public Flux<Map.Entry<MetricName, ? extends Metric>> metricsFromConsumer() {
+		return doOnConsumer(Consumer::metrics).flatMapIterable(Map::entrySet);
 	}
 
-	public Mono<Map<TopicPartition, Long>> beginningOffsets(Collection<TopicPartition> partitions) {
-		return doOnConsumer(c -> c.beginningOffsets(partitions));
+	public Flux<Map.Entry<String, List<PartitionInfo>>> listTopics() {
+		return doOnConsumer(Consumer::listTopics).flatMapIterable(Map::entrySet);
 	}
 
-	public Mono<Map<TopicPartition, Long>> endOffsets(Collection<TopicPartition> partitions) {
-		return doOnConsumer(c -> c.endOffsets(partitions));
+	public Flux<Map.Entry<TopicPartition, OffsetAndTimestamp>> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
+		return doOnConsumer(c -> c.offsetsForTimes(timestampsToSearch)).flatMapIterable(Map::entrySet);
+	}
+
+	public Flux<Map.Entry<TopicPartition, Long>> beginningOffsets(Collection<TopicPartition> partitions) {
+		return doOnConsumer(c -> c.beginningOffsets(partitions)).flatMapIterable(Map::entrySet);
+	}
+
+	public Flux<Map.Entry<TopicPartition, Long>> endOffsets(Collection<TopicPartition> partitions) {
+		return doOnConsumer(c -> c.endOffsets(partitions)).flatMapIterable(Map::entrySet);
 	}
 }

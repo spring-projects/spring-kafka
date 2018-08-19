@@ -128,8 +128,8 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 		return partitionsInfo.flatMapIterable(Function.identity());
 	}
 
-	public Mono<? extends Map<MetricName, ? extends Metric>> metricsFromProducer() {
-		return doOnProducer(Producer::metrics);
+	public Flux<Map.Entry<MetricName, ? extends Metric>> metricsFromProducer() {
+		return doOnProducer(Producer::metrics).flatMapIterable(Map::entrySet);
 	}
 
 	@Override
