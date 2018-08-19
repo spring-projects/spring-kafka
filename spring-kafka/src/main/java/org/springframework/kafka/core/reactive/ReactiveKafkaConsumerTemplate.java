@@ -46,34 +46,29 @@ import reactor.kafka.sender.TransactionManager;
  *
  * @author Mark Norkin
  */
-public class ReactiveKafkaConsumerTemplate<K, V> implements ReactiveKafkaConsumerOperations<K, V> {
+public class ReactiveKafkaConsumerTemplate<K, V> {
 	private final KafkaReceiver<K, V> kafkaReceiver;
 
 	public ReactiveKafkaConsumerTemplate(ReceiverOptions<K, V> receiverOptions) {
 		this.kafkaReceiver = KafkaReceiver.create(receiverOptions);
 	}
 
-	@Override
 	public Flux<ReceiverRecord<K, V>> receive() {
 		return this.kafkaReceiver.receive();
 	}
 
-	@Override
 	public Flux<ConsumerRecord<K, V>> receiveAutoAck() {
 		return this.kafkaReceiver.receiveAutoAck().flatMap(Function.identity());
 	}
 
-	@Override
 	public Flux<ConsumerRecord<K, V>> receiveAtmostOnce() {
 		return this.kafkaReceiver.receiveAtmostOnce();
 	}
 
-	@Override
 	public Flux<Flux<ConsumerRecord<K, V>>> receiveExactlyOnce(TransactionManager transactionManager) {
 		return this.kafkaReceiver.receiveExactlyOnce(transactionManager);
 	}
 
-	@Override
 	public <T> Mono<T> doOnConsumer(Function<Consumer<K, V>, ? extends T> function) {
 		return this.kafkaReceiver.doOnConsumer(function);
 	}

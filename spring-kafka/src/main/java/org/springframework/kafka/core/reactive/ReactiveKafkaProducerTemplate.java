@@ -51,7 +51,7 @@ import reactor.kafka.sender.TransactionManager;
  *
  * @author Mark Norkin
  */
-public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProducerOperations<K, V>, AutoCloseable, DisposableBean {
+public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, DisposableBean {
 	private final KafkaSender<K, V> sender;
 	private final RecordMessageConverter messageConverter;
 
@@ -64,7 +64,6 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 		this.messageConverter = messageConverter;
 	}
 
-	@Override
 	public <T> Flux<SenderResult<T>> sendTransactionally(Publisher<? extends SenderRecord<K, V, T>> records) {
 		Flux<Flux<SenderResult<T>>> sendTransactionally = this.sender.sendTransactionally(Flux.just(records));
 		return sendTransactionally.flatMap(Function.identity());
@@ -111,7 +110,6 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 		return send(Mono.just(record)).single();
 	}
 
-	@Override
 	public <T> Flux<SenderResult<T>> send(Publisher<? extends SenderRecord<K, V, T>> records) {
 		return this.sender.send(records);
 	}
@@ -132,7 +130,6 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 		return doOnProducer(Producer::metrics).flatMapIterable(Map::entrySet);
 	}
 
-	@Override
 	public <T> Mono<T> doOnProducer(Function<Producer<K, V>, ? extends T> action) {
 		return this.sender.doOnProducer(action);
 	}
@@ -141,7 +138,6 @@ public class ReactiveKafkaProducerTemplate<K, V> implements ReactiveKafkaProduce
 		return transactionManager().sendOffsets(offsets, consumerId);
 	}
 
-	@Override
 	public TransactionManager transactionManager() {
 		return this.sender.transactionManager();
 	}
