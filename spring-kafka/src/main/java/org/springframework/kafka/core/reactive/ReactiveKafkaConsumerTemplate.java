@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.core.reactive;
 
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -90,16 +90,16 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		});
 	}
 
-	public Mono<Void> seekToBeginning(Collection<TopicPartition> partitions) {
+	public Mono<Void> seekToBeginning(TopicPartition... partitions) {
 		return doOnConsumer(consumer -> {
-			consumer.seekToBeginning(partitions);
+			consumer.seekToBeginning(Arrays.asList(partitions));
 			return null;
 		});
 	}
 
-	public Mono<Void> seekToEnd(Collection<TopicPartition> partitions) {
+	public Mono<Void> seekToEnd(TopicPartition... partitions) {
 		return doOnConsumer(consumer -> {
-			consumer.seekToEnd(partitions);
+			consumer.seekToEnd(Arrays.asList(partitions));
 			return null;
 		});
 	}
@@ -122,16 +122,16 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		return paused.flatMapIterable(Function.identity());
 	}
 
-	public Mono<Void> pause(Collection<TopicPartition> partitions) {
+	public Mono<Void> pause(TopicPartition... partitions) {
 		return doOnConsumer(c -> {
-			c.pause(partitions);
+			c.pause(Arrays.asList(partitions));
 			return null;
 		});
 	}
 
-	public Mono<Void> resume(Collection<TopicPartition> partitions) {
+	public Mono<Void> resume(TopicPartition... partitions) {
 		return doOnConsumer(c -> {
-			c.resume(partitions);
+			c.resume(Arrays.asList(partitions));
 			return null;
 		});
 	}
@@ -148,11 +148,11 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		return doOnConsumer(c -> c.offsetsForTimes(timestampsToSearch)).flatMapIterable(Map::entrySet);
 	}
 
-	public Flux<Map.Entry<TopicPartition, Long>> beginningOffsets(Collection<TopicPartition> partitions) {
-		return doOnConsumer(c -> c.beginningOffsets(partitions)).flatMapIterable(Map::entrySet);
+	public Flux<Map.Entry<TopicPartition, Long>> beginningOffsets(TopicPartition... partitions) {
+		return doOnConsumer(c -> c.beginningOffsets(Arrays.asList(partitions))).flatMapIterable(Map::entrySet);
 	}
 
-	public Flux<Map.Entry<TopicPartition, Long>> endOffsets(Collection<TopicPartition> partitions) {
-		return doOnConsumer(c -> c.endOffsets(partitions)).flatMapIterable(Map::entrySet);
+	public Flux<Map.Entry<TopicPartition, Long>> endOffsets(TopicPartition... partitions) {
+		return doOnConsumer(c -> c.endOffsets(Arrays.asList(partitions))).flatMapIterable(Map::entrySet);
 	}
 }
