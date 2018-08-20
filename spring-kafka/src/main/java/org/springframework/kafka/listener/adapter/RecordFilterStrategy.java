@@ -36,6 +36,6 @@ public interface RecordFilterStrategy<K, V> {
 	 * @param consumerRecord the record.
 	 * @return true to discard.
 	 */
-	boolean filter(ConsumerRecord<K, V> consumerRecord);
+	boolean filter(ConsumerRecord<? extends K, ? extends V> consumerRecord);
 
 }

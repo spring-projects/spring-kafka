@@ -1651,13 +1651,11 @@ public class EnableKafkaIntegrationTests {
 
 		private boolean called;
 
-		@Override
-		public boolean filter(ConsumerRecord<Integer, String> consumerRecord) {
-			called = true;
-			return false;
-		}
-
-	}
+        @Override
+        public boolean filter(ConsumerRecord<? extends Integer, ? extends String> consumerRecord) {
+            return false;
+        }
+    }
 
 	public static class FooConverter implements Converter<String, Foo> {
 
