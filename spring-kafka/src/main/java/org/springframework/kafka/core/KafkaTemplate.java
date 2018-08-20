@@ -274,28 +274,19 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		}
 
 		this.producers.set(producer);
-		T result = null;
 		try {
-			result = callback.doInOperations(this);
+			T result = callback.doInOperations(this);
+			producer.commitTransaction();
+			return result;
 		}
 		catch (Exception e) {
-			try {
-				producer.abortTransaction();
-			}
-			finally {
-				this.producers.remove();
-				closeProducer(producer, false);
-			}
+			producer.abortTransaction();
 			throw e;
-		}
-		try {
-			producer.commitTransaction();
 		}
 		finally {
 			this.producers.remove();
 			closeProducer(producer, false);
 		}
-		return result;
 	}
 
 	/**
