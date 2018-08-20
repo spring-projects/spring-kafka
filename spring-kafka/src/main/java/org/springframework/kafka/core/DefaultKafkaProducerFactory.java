@@ -24,6 +24,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
@@ -92,7 +93,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private String transactionIdPrefix;
 
-	private volatile boolean running;
+	private AtomicBoolean running = new AtomicBoolean(true);
 
 	/**
 	 * Construct a factory with the provided configuration.
@@ -193,28 +194,32 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	@Override
 	public void start() {
-		this.running = true;
+		this.running.compareAndSet(false, true);
 	}
 
 
 	@Override
 	public void stop() {
-		try {
-			destroy();
-		}
-		catch (Exception e) {
-			logger.error("Exception while closing producer", e);
+		if (this.running.compareAndSet(true, false)) {
+			try {
+				destroy();
+			}
+			catch (Exception e) {
+				logger.error("Exception while closing producer", e);
+			}
 		}
 	}
 
 
 	@Override
 	public boolean isRunning() {
-		return this.running;
+		return this.running.get();
 	}
 
 	@Override
 	public Producer<K, V> createProducer() {
+		if (!isRunning())
+			throw new IllegalStateException("ProducerFactory is not running");
 		if (this.transactionIdPrefix != null) {
 			return createTransactionalProducer();
 		}
