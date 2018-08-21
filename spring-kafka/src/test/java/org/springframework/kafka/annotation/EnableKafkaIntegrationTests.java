@@ -1656,7 +1656,7 @@ public class EnableKafkaIntegrationTests {
 			called = true;
 			return false;
 		}
-    }
+	}
 
 	public static class FooConverter implements Converter<String, Foo> {
 
