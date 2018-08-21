@@ -20,13 +20,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
 import org.reactivestreams.Publisher;
 
 import org.springframework.beans.factory.DisposableBean;
@@ -132,10 +130,6 @@ public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, Dispo
 
 	public <T> Mono<T> doOnProducer(Function<Producer<K, V>, ? extends T> action) {
 		return this.sender.doOnProducer(action);
-	}
-
-	public Mono<Void> sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerId) {
-		return transactionManager().sendOffsets(offsets, consumerId);
 	}
 
 	public TransactionManager transactionManager() {

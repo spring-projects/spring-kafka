@@ -34,7 +34,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Subscription;
 
@@ -49,12 +48,14 @@ import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
+import reactor.kafka.sender.TransactionManager;
 import reactor.test.StepVerifier;
 
 /**
  * @author Mark Norkin
  */
 public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
+	private static final String CONSUMER_GROUP_ID = "reactive_transaction_consumer_group";
 	private static final int DEFAULT_PARTITIONS_COUNT = 2;
 	private static final int DEFAULT_KEY = 42;
 	private static final String DEFAULT_VALUE = "foo_data";
@@ -71,7 +72,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 	@BeforeClass
 	public static void setUpBeforeClass() {
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("reactive_transaction_consumer_group", "false", embeddedKafka);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(CONSUMER_GROUP_ID, "false", embeddedKafka);
 		reactiveKafkaConsumerTemplate = new ReactiveKafkaConsumerTemplate<>(setupReceiverOptionsWithDefaultTopic(consumerProps));
 	}
 
@@ -206,11 +207,42 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				});
 	}
 
-	@Test//todo
-	@Ignore
+	@Test
 	public void shouldSendOffsetsToTransaction() {
-		Map<TopicPartition, OffsetAndMetadata> offsets = null;
-		String consumerId = null;
-		Mono<Void> sendOffsetsToTransaction = reactiveKafkaProducerTemplate.sendOffsetsToTransaction(offsets, consumerId);
+		ProducerRecord<Integer, String> producerRecord =
+			new ProducerRecord<>(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP, DEFAULT_KEY, DEFAULT_VALUE);
+
+		TransactionManager tm = reactiveKafkaProducerTemplate.transactionManager();
+
+		StepVerifier.create(reactiveKafkaProducerTemplate.sendTransactionally(SenderRecord.create(producerRecord, null)).then())
+			.expectComplete()
+			.verify(DEFAULT_VERIFY_TIMEOUT);
+
+		StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
+			.assertNext(rr -> {
+				SenderRecord<Integer, String, Object> transformed =
+					SenderRecord.create(rr.topic(), rr.partition(), rr.timestamp(), rr.key(), rr.value() + "xyz", null);
+				Mono<Void> sendOffsets = tm.begin()
+					.then(
+						reactiveKafkaProducerTemplate.send(transformed)
+							.map(SenderResult::recordMetadata)
+							.map(rm -> {
+								Map<TopicPartition, OffsetAndMetadata> offsets =
+									Collections.singletonMap(
+										new TopicPartition(rm.topic(), rm.partition()),
+										new OffsetAndMetadata(rm.offset() + 1));
+								return tm.sendOffsets(offsets, CONSUMER_GROUP_ID);
+							}))
+					.then(tm.commit()).then();
+				StepVerifier.create(sendOffsets)
+					.expectComplete()
+					.verify(DEFAULT_VERIFY_TIMEOUT);
+			})
+			.assertNext(rr -> {
+				Assertions.assertThat(rr.value()).startsWith(DEFAULT_VALUE + "xyz");
+				rr.receiverOffset().acknowledge();
+			})
+			.thenCancel()
+			.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 }
