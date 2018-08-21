@@ -42,26 +42,34 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.serialization.Serializer;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.context.Lifecycle;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * The {@link ProducerFactory} implementation for the {@code singleton} shared {@link Producer}
- * instance.
+ * The {@link ProducerFactory} implementation for a {@code singleton} shared
+ * {@link Producer} instance.
  * <p>
- * This implementation will produce a new {@link Producer} instance (if transactions are not enabled).
- * for provided {@link Map} {@code configs} and optional {@link Serializer} {@code keySerializer},
- * {@code valueSerializer} implementations on each {@link #createProducer()}
- * invocation.
+ * This implementation will return the same {@link Producer} instance (if transactions are
+ * not enabled) for the provided {@link Map} {@code configs} and optional {@link Serializer}
+ * {@code keySerializer}, {@code valueSerializer} implementations on each
+ * {@link #createProducer()} invocation.
  * <p>
- * The {@link Producer} instance is freed from the external {@link Producer#close()} invocation
- * with the internal wrapper. The real {@link Producer#close()} is called on the target
- * {@link Producer} during the {@link Lifecycle#stop()} or {@link DisposableBean#destroy()}.
+ * The {@link Producer} is wrapped and the underlying {@link KafkaProducer} instance is
+ * not actually closed when {@link Producer#close()} is invoked. The {@link KafkaProducer}
+ * is physically closed when {@link DisposableBean#destroy()} is invoked or when the
+ * application context publishes a {@link ContextStoppedEvent}. You can also invoke
+ * {@link #reset()}.
  * <p>
- * Setting {@link #setTransactionIdPrefix(String)} enables transactions; in which case, a cache
- * of producers is maintained; closing the producer returns it to the cache.
+ * Setting {@link #setTransactionIdPrefix(String)} enables transactions; in which case, a
+ * cache of producers is maintained; closing a producer returns it to the cache. The
+ * producers are closed and the cache is cleared when the factory is destroyed, the
+ * application context stopped, or the {@link #reset()} method is called.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -70,7 +78,8 @@ import org.springframework.util.Assert;
  * @author Murali Reddy
  * @author Nakul Mishra
  */
-public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, Lifecycle, DisposableBean {
+public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, ApplicationContextAware,
+		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
 	private static final int DEFAULT_PHYSICAL_CLOSE_TIMEOUT = 30;
 
@@ -92,7 +101,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private String transactionIdPrefix;
 
-	private volatile boolean running;
+	private ApplicationContext applicationContext;
 
 	/**
 	 * Construct a factory with the provided configuration.
@@ -114,6 +123,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		this.configs = new HashMap<>(configs);
 		this.keySerializer = keySerializer;
 		this.valueSerializer = valueSerializer;
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.applicationContext = applicationContext;
 	}
 
 	public void setKeySerializer(@Nullable Serializer<K> keySerializer) {
@@ -192,26 +206,53 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	@Override
-	public void start() {
-		this.running = true;
+	public void onApplicationEvent(ContextStoppedEvent event) {
+		if (event.getApplicationContext().equals(this.applicationContext)) {
+			reset();
+		}
 	}
 
+	/**
+	 * NoOp.
+	 * @deprecated {@link org.springframework.context.Lifecycle} is no longer implemented.
+	 */
+	@Deprecated
+	public void start() {
+		// NOSONAR
+	}
 
-	@Override
+	/**
+	 * NoOp.
+	 * @deprecated {@link org.springframework.context.Lifecycle} is no longer implemented;
+	 * use {@link #reset()} to close the {@link Producer}(s).
+	 */
+	@Deprecated
 	public void stop() {
+		reset();
+	}
+
+	/**
+	 * Close the {@link Producer}(s) and clear the cache of transactional
+	 * {@link Producer}(s).
+	 * @since 2.2
+	 */
+	public void reset() {
 		try {
 			destroy();
-			this.running = false;
 		}
 		catch (Exception e) {
 			logger.error("Exception while closing producer", e);
 		}
 	}
 
-
-	@Override
+	/**
+	 * NoOp.
+	 * @return always true.
+	 * @deprecated {@link org.springframework.context.Lifecycle} is no longer implemented.
+	 */
+	@Deprecated
 	public boolean isRunning() {
-		return this.running;
+		return true;
 	}
 
 	@Override
