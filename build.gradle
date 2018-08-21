@@ -85,13 +85,8 @@ subprojects { subproject ->
 		springRetryVersion = '1.2.4.RELEASE'
 		springVersion = '5.2.0.BUILD-SNAPSHOT'
 		springDataCommonsVersion = '2.2.0.BUILD-SNAPSHOT'
-        reactorKafkaVersion = '1.0.0.RELEASE'
-        reactorTestVersion = '3.1.0.RELEASE'
-		reactorKafkaVersion = '1.0.1.RELEASE'
-        reactorTestVersion = '3.1.8.RELEASE'
-		reactorCoreVersion = '3.2.0.M4'
-		reactorKafkaVersion = '1.0.1.RELEASE'
-		reactorTestVersion = '3.2.0.M4'
+        reactorVersion = '3.2.0.M4'
+        reactorKafkaVersion = '1.0.1.RELEASE'
 
 		idPrefix = 'kafka'
 
@@ -242,9 +237,9 @@ project ('spring-kafka') {
 		compile ("com.jayway.jsonpath:json-path:$jaywayJsonPathVersion", optional)
 
 		//Reactive
-		compile ("io.projectreactor:reactor-core:$reactorCoreVersion", optional)
+		compile ("io.projectreactor:reactor-core:$reactorVersion", optional)
 		compile ("io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion", optional)
-		testCompile ("io.projectreactor:reactor-test:$reactorTestVersion")
+		testCompile ("io.projectreactor:reactor-test:$reactorVersion")
 
 		testCompile project (":spring-kafka-test")
 		testCompile "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
