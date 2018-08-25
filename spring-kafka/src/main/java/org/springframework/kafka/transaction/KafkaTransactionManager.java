@@ -66,7 +66,7 @@ import org.springframework.util.Assert;
  */
 @SuppressWarnings("serial")
 public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionManager
-		implements ResourceTransactionManager, KafkaAwareTransactionManager<K, V> {
+		implements KafkaAwareTransactionManager<K, V> {
 
 	private final ProducerFactory<K, V> producerFactory;
 
@@ -93,6 +93,14 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		return this.producerFactory;
 	}
 
+	/**
+	 * Return the producer factory.
+	 * @return the producer factory.
+	 * @deprecated - in a future release {@link KafkaAwareTransactionManager} will
+	 * not be a sub interface of {@link ResourceTransactionManager}.
+	 * TODO: Remove in 3.0
+	 */
+	@Deprecated
 	@Override
 	public Object getResourceFactory() {
 		return getProducerFactory();

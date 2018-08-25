@@ -55,4 +55,18 @@ public class ChainedKafkaTransactionManager<K, V> extends ChainedTransactionMana
 		return this.kafkaTransactionManager.getProducerFactory();
 	}
 
+	/**
+	 * Return the producer factory.
+	 * @return the producer factory.
+	 * @deprecated - in a future release {@link KafkaAwareTransactionManager} will not be
+	 * a sub interface of
+	 * {@link org.springframework.transaction.support.ResourceTransactionManager}.
+	 * TODO: Remove in 3.0
+	 */
+	@Deprecated
+	@Override
+	public Object getResourceFactory() {
+		return getProducerFactory();
+	}
+
 }

@@ -17,9 +17,12 @@
 package org.springframework.kafka.transaction;
 
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.transaction.support.ResourceTransactionManager;
 
 /**
  * A transaction manager that can provide a {@link ProducerFactory}.
+ * Currently a sub-interface of {@link ResourceTransactionManager}
+ * for backwards compatibility.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -28,7 +31,7 @@ import org.springframework.kafka.core.ProducerFactory;
  * @since 2.1.3
  *
  */
-public interface KafkaAwareTransactionManager<K, V> {
+public interface KafkaAwareTransactionManager<K, V> extends ResourceTransactionManager {
 
 	/**
 	 * Get the producer factory.
