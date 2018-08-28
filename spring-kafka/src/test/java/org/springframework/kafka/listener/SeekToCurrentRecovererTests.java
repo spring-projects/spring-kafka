@@ -17,9 +17,14 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +38,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -119,6 +125,27 @@ public class SeekToCurrentRecovererTests {
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(errorHandler).clearThreadState();
+	}
+
+	@Test
+	public void seekToCurrentErrorHandlerRecovers() {
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler((r, e) -> { }, 2);
+		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
+		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		try {
+			eh.handle(new RuntimeException(), records, consumer, null);
+			fail("Expected exception");
+		}
+		catch (KafkaException e) {
+			// NOSONAR
+		}
+		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
+		verifyNoMoreInteractions(consumer);
+		eh.handle(new RuntimeException(), records, consumer, null);
+		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
+		verifyNoMoreInteractions(consumer);
 	}
 
 }

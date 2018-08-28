@@ -53,25 +53,39 @@ public final class SeekUtils {
 	 * @param recoverable true if skipping the first record is allowed.
 	 * @param skipper function to determine whether or not to skip seeking the first.
 	 * @param logger a {@link Log} for seek errors.
+	 * @return true if the failed record was skipped.
 	 */
-	public static void doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
+	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
 			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, Log logger) {
 		Map<TopicPartition, Long> partitions = new LinkedHashMap<>();
 		AtomicBoolean first = new AtomicBoolean(true);
+		AtomicBoolean skipped = new AtomicBoolean();
 		records.forEach(record ->  {
-			if (!recoverable || !first.get() || !skipper.test(record, exception)) {
-				partitions.computeIfAbsent(new TopicPartition(record.topic(), record.partition()), offset -> record.offset());
+			if (recoverable && first.get()) {
+				skipped.set(skipper.test(record, exception));
+				if (skipped.get() && logger.isDebugEnabled()) {
+					logger.debug("Skipping seek of: " + record);
+				}
+			}
+			if (!recoverable || !first.get() || !skipped.get()) {
+				partitions.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
+						offset -> record.offset());
 			}
 			first.set(false);
 		});
+		boolean tracing = logger.isTraceEnabled();
 		partitions.forEach((topicPartition, offset) -> {
 			try {
+				if (tracing) {
+					logger.trace("Seeking: " + topicPartition + " to: " + offset);
+				}
 				consumer.seek(topicPartition, offset);
 			}
 			catch (Exception e) {
 				logger.error("Failed to seek " + topicPartition + " to " + offset, e);
 			}
 		});
+		return skipped.get();
 	}
 
 }

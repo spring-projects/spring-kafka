@@ -78,8 +78,9 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	@Override
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
-		SeekUtils.doSeeks(records, consumer, thrownException, true, this.failureTracker::skip, logger);
-		throw new KafkaException("Seek to current after exception", thrownException);
+		if (!SeekUtils.doSeeks(records, consumer, thrownException, true, this.failureTracker::skip, logger)) {
+			throw new KafkaException("Seek to current after exception", thrownException);
+		}
 	}
 
 	@Override
