@@ -655,7 +655,25 @@ public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
 
 It also has a property `concurrency`, e.g. `container.setConcurrency(3)` will create 3 `KafkaMessageListenerContainer` s.
 
-For the first constructor, kafka will distribute the partitions across the consumers.
+For the first constructor, kafka will distribute the partitions across the consumers using its group management capabilities.
+
+[IMPORTANT]
+====
+When listening to multiple topics, the default partition distribution may not be what you expect.
+For example, if you have 3 topics with 5 partitions each and you want to use `concurrency=15` you will only see 5 active consumers, each assigned one partition from each topic, with the other 10 consumers being idle.
+This is because the default Kafka `PartitionAssignor` is the `RangeAssignor` (see its javadocs).
+For this scenario, you may want to consider using the `RoundRobinAssignor` instead, which will distribute the partitions across all of the consumers.
+Then, each consumer will be assigned one topic/partition.
+To change the `PartitionAssignor`, set the `partition.assignment.strategy` consumer property (`ConsumerConfigs.PARTITION_ASSIGNMENT_STRATEGY_CONFIG`) in the properties provided to the `DefaultKafkaConsumerFactory`.
+
+When using Spring Boot:
+
+[source]
+----
+spring.kafka.consumer.properties.partition.assignment.strategy=org.apache.kafka.clients.consumer.RoundRobinAssignor
+----
+====
+
 For the second constructor, the `ConcurrentMessageListenerContainer` distributes the `TopicPartition` s across the
 delegate `KafkaMessageListenerContainer` s.
 
