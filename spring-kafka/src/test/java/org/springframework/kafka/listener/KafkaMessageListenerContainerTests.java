@@ -1647,6 +1647,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(received.get().value()).isInstanceOf(Foo.class);
 		container.stop();
 		this.logger.info("Stop JSON2");
+		assertThat(received.get().headers().iterator().hasNext()).isFalse();
 	}
 
 	@Test

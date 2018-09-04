@@ -68,4 +68,13 @@ public interface Jackson2JavaTypeMapper extends ClassMapper {
 
 	void addTrustedPackages(String... packages);
 
+	/**
+	 * Remove the type information headers.
+	 * @param headers the headers.
+	 * @since 2.2
+	 */
+	default void removeHeaders(Headers headers) {
+		// NOSONAR
+	}
+
 }

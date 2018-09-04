@@ -89,6 +89,11 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 */
 	public static final String TYPE_MAPPINGS = JsonSerializer.TYPE_MAPPINGS;
 
+	/**
+	 * Kafka config property for removing type headers.
+	 */
+	public static final String REMOVE_TYPE_INFO_HEADERS = "spring.json.remove.type.headers";
+
 	protected final ObjectMapper objectMapper;
 
 	protected Class<T> targetType;
@@ -98,6 +103,8 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 
 	private boolean typeMapperExplicitlySet = false;
+
+	private boolean removeTypeHeaders = true;
 
 	/**
 	 * Construct an instance with a default {@link ObjectMapper}.
@@ -203,6 +210,16 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		}
 	}
 
+	/**
+	 * Set to false to retain type information headers after deserialization.
+	 * Default true.
+	 * @param removeTypeHeaders true to remove headers.
+	 * @since 2.1
+	 */
+	public void setRemoveTypeHeaders(boolean removeTypeHeaders) {
+		this.removeTypeHeaders = removeTypeHeaders;
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
@@ -263,6 +280,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 			((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(
 					JsonSerializer.createMappings((String) configs.get(JsonSerializer.TYPE_MAPPINGS)));
 		}
+		if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
+			this.removeTypeHeaders = Boolean.parseBoolean((String) configs.get(REMOVE_TYPE_INFO_HEADERS));
+		}
 	}
 
 	/**
@@ -291,6 +311,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 			if (javaType != null) {
 				reader = this.objectMapper.readerFor(javaType);
 			}
+		}
+		if (this.removeTypeHeaders) {
+			this.typeMapper.removeHeaders(headers);
 		}
 		if (reader == null) {
 			reader = this.reader;

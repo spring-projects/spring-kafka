@@ -1611,10 +1611,14 @@ In addition, the serializer/deserializer can be configured using Kafka propertie
 
 - `JsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`); set to `false` to disable this feature on the `JsonSerializer` (sets the `addTypeInfo` property).
 - `JsonSerializer.TYPE_MAPPINGS` (default `empty`); see below.
+- `JsonDeserializer.REMOVE_TYPE_INFO_HEADERS` (default `true`); set to `false` to retain headers set by the serializer.
 - `JsonDeserializer.KEY_DEFAULT_TYPE`; fallback type for deserialization of keys if no header information is present.
 - `JsonDeserializer.VALUE_DEFAULT_TYPE`; fallback type for deserialization of values if no header information is present.
 - `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`); comma-delimited list of package patterns allowed for deserialization; `*` means deserialize all.
 - `JsonDeserializer.TYPE_MAPPINGS` (default `empty`); see below.
+
+Starting with version 2.2, the type information headers (if added by the serializer) will be removed by the deserializer.
+You can revert to the previous behavior by setting the `removeTypeHeaders` property to false, either directly on the deserializer, or with the configuration property described above.
 
 **Mapping Types**
 
