@@ -214,7 +214,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * Set to false to retain type information headers after deserialization.
 	 * Default true.
 	 * @param removeTypeHeaders true to remove headers.
-	 * @since 2.1
+	 * @since 2.2
 	 */
 	public void setRemoveTypeHeaders(boolean removeTypeHeaders) {
 		this.removeTypeHeaders = removeTypeHeaders;
