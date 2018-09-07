@@ -79,3 +79,9 @@ See <<serdes>> for more information.
 The streams configuration bean must now be a simple `Properties` object instead of a `StreamsConfig`.
 
 See <<kafka-streams>> for more information.
+
+
+==== Transactional Id
+
+When a transaction is started by the listener container, the `transactional.id` is now the `transactionIdPrefix` appended with `<group.id>.<topic>.<partition>`.
+This is to allow proper fencing of zombies https://www.confluent.io/blog/transactions-apache-kafka/[as described here].

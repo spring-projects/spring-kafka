@@ -68,6 +68,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -393,6 +394,7 @@ public class TransactionalContainerTests {
 		verify(pf).createProducer();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRollbackRecord() throws Exception {
 		logger.info("Start testRollbackRecord");
@@ -413,6 +415,7 @@ public class TransactionalContainerTests {
 		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		final AtomicBoolean failed = new AtomicBoolean();
 		final CountDownLatch latch = new CountDownLatch(3);
+		final AtomicReference<String> transactionalId = new AtomicReference<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			latch.countDown();
 			if (failed.compareAndSet(false, true)) {
@@ -424,6 +427,9 @@ public class TransactionalContainerTests {
 			if (message.topic().equals(topic1)) {
 				template.send(topic2, "bar");
 				template.flush();
+				transactionalId.set(KafkaTestUtils.getPropertyValue(
+						ProducerFactoryUtils.getTransactionalResourceHolder(pf).getProducer(),
+						"delegate.transactionManager.transactionalId", String.class));
 			}
 		});
 
@@ -466,8 +472,10 @@ public class TransactionalContainerTests {
 		assertThat(records.count()).isEqualTo(0);
 		// depending on timing, the position might include the offset representing the commit in the log
 		assertThat(consumer.position(new TopicPartition(topic1, 0))).isGreaterThanOrEqualTo(1L);
+		assertThat(transactionalId.get()).startsWith("rr.group.txTopic");
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
 		consumer.close();
 	}
 
