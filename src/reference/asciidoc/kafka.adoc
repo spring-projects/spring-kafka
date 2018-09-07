@@ -196,7 +196,12 @@ Spring for Apache Kafka adds support in several ways.
 Transactions are enabled by providing the `DefaultKafkaProducerFactory` with a `transactionIdPrefix`.
 In that case, instead of managing a single shared `Producer`, the factory maintains a cache of transactional producers.
 When the user `close()` s a producer, it is returned to the cache for reuse instead of actually being closed.
-The `transactional.id` property of each producer is `transactionIdPrefix` + `n`, where `n` starts with `0` and is incremented for each new producer.
+The `transactional.id` property of each producer is `transactionIdPrefix` + `n`, where `n` starts with `0` and is incremented for each new producer, unless the transaction is started by a listener container with a record-based listener.
+In that case, the `transactional.id` is `<transactionIdPrefix>.<group.id>.<topic>.<partition>`; this is to properly support fencing zombies https://www.confluent.io/blog/transactions-apache-kafka/[as described here].
+This new behavior was added in versions 1.3.7, 2.0.6, 2.1.10, and 2.2.0.
+If you wish to revert to the previous behavior, set the `producerPerConsumerPartition` property on the `DefaultKafkaProducerFactory` to `false`.
+
+NOTE: While transactions are supported with batch listeners, zombie fencing cannot be supported because a batch may contain records from multiple topics/partitions.
 
 ====== KafkaTransactionManager
 

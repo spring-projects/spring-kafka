@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,6 +64,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -150,7 +152,8 @@ public class TransactionalContainerTests {
 			}
 		});
 		if (handleError) {
-			props.setErrorHandler((e, data) -> { });
+			props.setErrorHandler((e, data) -> {
+			});
 		}
 		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
 		container.setBeanName("commit");
@@ -367,6 +370,7 @@ public class TransactionalContainerTests {
 		verify(pf).createProducer();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRollbackRecord() throws Exception {
 		logger.info("Start testRollbackRecord");
@@ -387,6 +391,7 @@ public class TransactionalContainerTests {
 		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		final AtomicBoolean failed = new AtomicBoolean();
 		final CountDownLatch latch = new CountDownLatch(3);
+		final AtomicReference<String> transactionalId = new AtomicReference<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			latch.countDown();
 			if (failed.compareAndSet(false, true)) {
@@ -398,6 +403,9 @@ public class TransactionalContainerTests {
 			if (message.topic().equals(topic1)) {
 				template.send(topic2, "bar");
 				template.flush();
+				transactionalId.set(KafkaTestUtils.getPropertyValue(
+						ProducerFactoryUtils.getTransactionalResourceHolder(pf).getProducer(),
+						"delegate.transactionManager.transactionalId", String.class));
 			}
 		});
 
@@ -434,8 +442,11 @@ public class TransactionalContainerTests {
 		ConsumerRecords<Integer, String> records = consumer.poll(0);
 		assertThat(records.count()).isEqualTo(0);
 		assertThat(consumer.position(new TopicPartition(topic1, 0))).isEqualTo(1);
+		assertThat(transactionalId.get()).startsWith("rr.group.txTopic");
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
+		consumer.close();
 	}
 
 	@SuppressWarnings("serial")

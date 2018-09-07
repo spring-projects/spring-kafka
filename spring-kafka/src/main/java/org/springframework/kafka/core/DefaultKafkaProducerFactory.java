@@ -18,8 +18,10 @@ package org.springframework.kafka.core;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -44,6 +46,7 @@ import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
+import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.util.Assert;
 
 /**
@@ -80,6 +83,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final BlockingQueue<CloseSafeProducer<K, V>> cache = new LinkedBlockingQueue<>();
 
+	private final Map<String, Producer<K, V>> consumerProducers = new HashMap<>();
+
 	private volatile CloseSafeProducer<K, V> producer;
 
 	private Serializer<K> keySerializer;
@@ -92,6 +97,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private volatile boolean running;
 
+	private boolean producerPerConsumerPartition = true;
+
+	/**
+	 * Construct a factory with the provided configuration.
+	 * @param configs the configuration.
+	 */
 	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
 		this(configs, null, null);
 	}
@@ -132,6 +143,17 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
+	 * Set to false to revert to the previous behavior of a simple incrementing
+	 * trasactional.id suffix for each producer instead of maintaining a producer
+	 * for each group/topic/partition.
+	 * @param producerPerConsumerPartition false to revert.
+	 * @since 1.3.7
+	 */
+	public void setProducerPerConsumerPartition(boolean producerPerConsumerPartition) {
+		this.producerPerConsumerPartition = producerPerConsumerPartition;
+	}
+
+	/**
 	 * Return an unmodifiable reference to the configuration map for this factory.
 	 * Useful for cloning to make a similar factory.
 	 * @return the configs.
@@ -164,6 +186,13 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 			producer = this.cache.poll();
 		}
+		synchronized (this.consumerProducers) {
+			for (Entry<String, Producer<K, V>> entry : this.consumerProducers.entrySet()) {
+				((CloseSafeProducer<K, V>) entry.getValue()).delegate
+							.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
+			}
+			this.consumerProducers.clear();
+		}
 	}
 
 	@Override
@@ -192,7 +221,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	@Override
 	public Producer<K, V> createProducer() {
 		if (this.transactionIdPrefix != null) {
-			return createTransactionalProducer();
+			if (this.producerPerConsumerPartition) {
+				return createTransactionalProducerForPartition();
+			}
+			else {
+				return createTransactionalProducer();
+			}
 		}
 		if (this.producer == null) {
 			synchronized (this) {
@@ -213,6 +247,25 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
 	}
 
+	private Producer<K, V> createTransactionalProducerForPartition() {
+		String suffix = TransactionSupport.getTransactionIdSuffix();
+		if (suffix == null) {
+			return createTransactionalProducer();
+		}
+		else {
+			synchronized (this.consumerProducers) {
+				if (!this.consumerProducers.containsKey(suffix)) {
+					Producer<K, V> newProducer = doCreateTxProducer(suffix);
+					this.consumerProducers.put(suffix, newProducer);
+					return newProducer;
+				}
+				else {
+					return this.consumerProducers.get(suffix);
+				}
+			}
+		}
+	}
+
 	/**
 	 * Subclasses must return a producer from the {@link #getCache()} or a
 	 * new raw producer wrapped in a {@link CloseSafeProducer}.
@@ -222,16 +275,20 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	protected Producer<K, V> createTransactionalProducer() {
 		Producer<K, V> producer = this.cache.poll();
 		if (producer == null) {
-			Map<String, Object> configs = new HashMap<>(this.configs);
-			configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG,
-					this.transactionIdPrefix + this.transactionIdSuffix.getAndIncrement());
-			producer = new KafkaProducer<K, V>(configs, this.keySerializer, this.valueSerializer);
-			producer.initTransactions();
-			return new CloseSafeProducer<K, V>(producer, this.cache);
+			return doCreateTxProducer("" + this.transactionIdSuffix.getAndIncrement());
 		}
 		else {
 			return producer;
 		}
+	}
+
+	private Producer<K, V> doCreateTxProducer(String suffix) {
+		Producer<K, V> producer;
+		Map<String, Object> configs = new HashMap<>(this.configs);
+		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, this.transactionIdPrefix + suffix);
+		producer = new KafkaProducer<K, V>(configs, this.keySerializer, this.valueSerializer);
+		producer.initTransactions();
+		return new CloseSafeProducer<K, V>(producer, this.cache, this.consumerProducers);
 	}
 
 	protected BlockingQueue<CloseSafeProducer<K, V>> getCache() {
@@ -251,16 +308,24 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		private final BlockingQueue<CloseSafeProducer<K, V>> cache;
 
+		private final Map<String, Producer<K, V>> consumerProducers;
+
 		private volatile boolean txFailed;
 
 		CloseSafeProducer(Producer<K, V> delegate) {
-			this(delegate, null);
+			this(delegate, null, null);
 			Assert.isTrue(!(delegate instanceof CloseSafeProducer), "Cannot double-wrap a producer");
 		}
 
 		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache) {
+			this(delegate, cache, null);
+		}
+
+		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
+				Map<String, Producer<K, V>> consumerProducers) {
 			this.delegate = delegate;
 			this.cache = cache;
+			this.consumerProducers = consumerProducers;
 		}
 
 		@Override
@@ -340,6 +405,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 							+ "broker restarted during transaction");
 
 					this.delegate.close();
+					if (this.consumerProducers != null) {
+						removeConsumerProducer();
+					}
 				}
 				else {
 					synchronized (this) {
@@ -354,6 +422,18 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public void close(long timeout, TimeUnit unit) {
 			close();
+		}
+
+		private void removeConsumerProducer() {
+			synchronized (this.consumerProducers) {
+				Iterator<Entry<String, Producer<K, V>>> iterator = this.consumerProducers.entrySet().iterator();
+				while (iterator.hasNext()) {
+					if (iterator.next().getValue().equals(this)) {
+						iterator.remove();
+						break;
+					}
+				}
+			}
 		}
 
 		@Override

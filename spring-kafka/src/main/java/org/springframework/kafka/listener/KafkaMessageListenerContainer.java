@@ -59,6 +59,7 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
+import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.scheduling.TaskScheduler;
@@ -894,6 +895,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.logger.trace("Processing " + record);
 				}
 				try {
+					TransactionSupport.setTransactionIdSuffix(
+							this.consumerGroupId + "." + record.topic() + "." + record.partition());
 					this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 
 						@Override
@@ -919,6 +922,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						unprocessed.add(iterator.next());
 					}
 					getAfterRollbackProcessor().process(unprocessed, this.consumer);
+				}
+				finally {
+					TransactionSupport.clearTransactionIdSuffix();
 				}
 			}
 		}
