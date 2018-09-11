@@ -23,7 +23,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.springframework.context.annotation.Import;
-import org.springframework.kafka.core.StreamsBuilderFactoryBean;
+import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 
 /**
  * Enable default Kafka Streams components. To be used on

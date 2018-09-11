@@ -18,6 +18,8 @@ package org.springframework.kafka.core;
 
 import org.apache.kafka.streams.KafkaStreams;
 
+import org.springframework.kafka.config.StreamsBuilderFactoryBean;
+
 /**
  * Callback interface that can be used to configure {@link KafkaStreams} directly.
  *

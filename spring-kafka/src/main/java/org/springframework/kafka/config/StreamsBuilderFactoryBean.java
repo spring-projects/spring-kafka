@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka.config;
 
 import java.util.Map;
 import java.util.Properties;
@@ -31,7 +31,8 @@ import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.KafkaException;
-import org.springframework.kafka.config.KafkaStreamsConfiguration;
+import org.springframework.kafka.core.CleanupConfig;
+import org.springframework.kafka.core.KafkaStreamsCustomizer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 

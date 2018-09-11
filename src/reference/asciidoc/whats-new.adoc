@@ -78,6 +78,8 @@ See <<serdes>> for more information.
 
 The streams configuration bean must now be a simple `Properties` object instead of a `StreamsConfig`.
 
+The `StreamsBuilderFactoryBean` has been moved from package `...core` to `...config`.
+
 See <<kafka-streams>> for more information.
 
 
