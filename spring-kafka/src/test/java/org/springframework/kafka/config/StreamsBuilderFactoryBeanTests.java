@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,8 +37,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
-import org.springframework.kafka.config.KafkaStreamsConfiguration;
-import org.springframework.kafka.config.StreamsBuilderFactoryBean;
+import org.springframework.kafka.core.CleanupConfig;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;

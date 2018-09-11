@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka.config;
 
 import org.apache.kafka.streams.KafkaStreams;
-
-import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 
 /**
  * Callback interface that can be used to configure {@link KafkaStreams} directly.

@@ -32,7 +32,6 @@ import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.CleanupConfig;
-import org.springframework.kafka.core.KafkaStreamsCustomizer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
