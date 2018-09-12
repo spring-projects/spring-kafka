@@ -16,15 +16,13 @@
 
 package org.springframework.kafka.test.context;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.Before;
 import org.junit.Test;
+
 import org.springframework.core.annotation.AnnotationUtils;
 
-import static org.hamcrest.core.IsEqual.equalTo;
-import static org.hamcrest.core.IsNot.not;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertThat;
 
 
 /**
@@ -34,39 +32,39 @@ import static org.junit.Assert.assertThat;
 
 public class EmbeddedKafkaContextCustomizerTest {
 
-    private EmbeddedKafka annotationFromFirstClass;
-    private EmbeddedKafka annotationFromSecondClass;
+	private EmbeddedKafka annotationFromFirstClass;
+	private EmbeddedKafka annotationFromSecondClass;
 
 
-    @Before
-    public void beforeEachTest() {
-        annotationFromFirstClass = AnnotationUtils.findAnnotation(TestWithEmbeddedKafka.class, EmbeddedKafka.class);
-        annotationFromSecondClass = AnnotationUtils.findAnnotation(SecondTestWithEmbeddedKafka.class, EmbeddedKafka.class);
-    }
+	@Before
+	public void beforeEachTest() {
+		annotationFromFirstClass = AnnotationUtils.findAnnotation(TestWithEmbeddedKafka.class, EmbeddedKafka.class);
+		annotationFromSecondClass = AnnotationUtils.findAnnotation(SecondTestWithEmbeddedKafka.class, EmbeddedKafka.class);
+	}
 
 
-    @Test
-    public void testHashCode() {
-        assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode(), not(equalTo(0)));
-        assertEquals(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode(), new EmbeddedKafkaContextCustomizer(annotationFromSecondClass).hashCode());
-    }
+	@Test
+	public void testHashCode() {
+		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode()).isNotEqualTo(0);
+		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode()).isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass).hashCode());
+	}
 
 
-    @Test
-    public void testEquals() {
-        assertEquals(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass), new EmbeddedKafkaContextCustomizer(annotationFromSecondClass));
-        assertNotEquals(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass), new Object());
-    }
+	@Test
+	public void testEquals() {
+		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass)).isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass));
+		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass)).isNotEqualTo(new Object());
+	}
 
 
-    @EmbeddedKafka
-    private class TestWithEmbeddedKafka {
+	@EmbeddedKafka
+	private class TestWithEmbeddedKafka {
 
-    }
+	}
 
-    @EmbeddedKafka
-    private class SecondTestWithEmbeddedKafka {
+	@EmbeddedKafka
+	private class SecondTestWithEmbeddedKafka {
 
-    }
+	}
 
 }

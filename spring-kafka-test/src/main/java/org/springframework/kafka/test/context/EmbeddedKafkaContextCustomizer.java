@@ -107,20 +107,19 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 		((DefaultSingletonBeanRegistry) beanFactory).registerDisposableBean(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafka);
 	}
 
+	@Override
+	public int hashCode() {
+		return embeddedKafka.hashCode();
+	}
 
-    @Override
-    public int hashCode() {
-        return embeddedKafka.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
+	@Override
+	public boolean equals(Object obj) {
 		if (obj == null || obj.getClass() != getClass()) {
 			return false;
 		}
-		EmbeddedKafkaContextCustomizer customizer = (EmbeddedKafkaContextCustomizer)obj;
+		EmbeddedKafkaContextCustomizer customizer = (EmbeddedKafkaContextCustomizer) obj;
 		return embeddedKafka.equals(customizer.embeddedKafka);
-    }
+	}
 
 }
 
