@@ -40,6 +40,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Elliot Metsger
  * @author Zach Olauson
+ * @author Oleg Artyomov
  *
  * @since 1.3
  */
@@ -109,7 +110,7 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 
 	@Override
 	public int hashCode() {
-		return embeddedKafka.hashCode();
+		return this.embeddedKafka.hashCode();
 	}
 
 	@Override
@@ -118,7 +119,7 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 			return false;
 		}
 		EmbeddedKafkaContextCustomizer customizer = (EmbeddedKafkaContextCustomizer) obj;
-		return embeddedKafka.equals(customizer.embeddedKafka);
+		return this.embeddedKafka.equals(customizer.embeddedKafka);
 	}
 
 }

@@ -30,7 +30,7 @@ import org.springframework.core.annotation.AnnotationUtils;
  * @since 1.3
  */
 
-public class EmbeddedKafkaContextCustomizerTest {
+public class EmbeddedKafkaContextCustomizerTests {
 
 	private EmbeddedKafka annotationFromFirstClass;
 	private EmbeddedKafka annotationFromSecondClass;
