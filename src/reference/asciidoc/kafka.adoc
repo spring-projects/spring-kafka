@@ -246,6 +246,8 @@ public void sendToKafka(final MyOutputData data) {
 [[transactions]]
 ===== Transactions
 
+====== Overview
+
 The 0.11.0.0 client library added support for transactions.
 Spring for Apache Kafka adds support in several ways.
 
@@ -273,11 +275,13 @@ If a transaction is active, any `KafkaTemplate` operations performed within the 
 The manager will commit or rollback the transaction depending on success or failure.
 The `KafkaTemplate` must be configured to use the same `ProducerFactory` as the transaction manager.
 
-====== Transactional Listener Container
+====== Transactional Listener Container and Exactly Once Processing
 
-You can provide a listener container with a `KafkaTransactionManager` instance; when so configured, the container will start a transaction before invoking the listener.
+You can provide a listener container with a `KafkaAwareTransactionManager` instance; when so configured, the container will start a transaction before invoking the listener.
+Any `KafkaTemplate` operations performed by the listener will participate in the transaction.
 If the listener successfully processes the record (or records when using a `BatchMessageListener`), the container will send the offset(s) to the transaction using `producer.sendOffsetsToTransaction()`), before the transaction manager commits the transaction.
-If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back records will be retrieved on the next poll.
+If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back record(s) will be retrieved on the next poll.
+See <<after-rollback>> for more information and for handling records that repeatedly fail.
 
 ====== Transaction Synchronization
 
@@ -2195,7 +2199,7 @@ This is to cause the transaction to roll back (if transactions are enabled).
 [[after-rollback]]
 ===== After Rollback Processor
 
-When using transactions, if the listener container throws an exception (and an error handler, if present, throws an exception), the transaction is rolled back.
+When using transactions, if the listener throws an exception (and an error handler, if present, throws an exception), the transaction is rolled back.
 By default, any unprocessed records (including the failed record) will be re-fetched on the next poll.
 This is achieved by performing `seek` operations in the `DefaultAfterRollbackProcessor`.
 With a batch listener, the entire batch of records will be reprocessed (the container has no knowledge of which record in the batch failed).
