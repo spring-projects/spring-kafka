@@ -221,7 +221,7 @@ public class ContainerProperties {
 	private boolean missingTopicsFatal = true;
 
 	public ContainerProperties(String... topics) {
-		Assert.notEmpty(topics, "An array of topicPartitions must be provided");
+		Assert.notEmpty(topics, "An array of topics must be provided");
 		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
 		this.topicPattern = null;
 		this.topicPartitions = null;

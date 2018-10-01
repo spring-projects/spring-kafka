@@ -108,8 +108,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		else if (containerProperties.getTopicPattern() != null) {
 			this.containerProperties = new ContainerProperties(containerProperties.getTopicPattern());
 		}
-		else {
+		else if (containerProperties.getTopicPartitions() != null) {
 			this.containerProperties = new ContainerProperties(containerProperties.getTopicPartitions());
+		}
+		else {
+			throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
 		}
 
 		BeanUtils.copyProperties(containerProperties, this.containerProperties,

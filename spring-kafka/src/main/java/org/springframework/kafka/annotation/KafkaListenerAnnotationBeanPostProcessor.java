@@ -52,6 +52,7 @@ import org.springframework.beans.factory.config.Scope;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.GenericConverter;
@@ -319,7 +320,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 */
 	private Set<KafkaListener> findListenerAnnotations(Method method) {
 		Set<KafkaListener> listeners = new HashSet<KafkaListener>();
-		KafkaListener ann = AnnotationUtils.findAnnotation(method, KafkaListener.class);
+		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(method, KafkaListener.class);
 		if (ann != null) {
 			listeners.add(ann);
 		}
