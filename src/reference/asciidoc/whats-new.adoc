@@ -46,6 +46,10 @@ You can now override the `concurrency` and `autoStartup` properties of the liste
 
 See <<kafka-listener-annotation>> for more information.
 
+You can now use `@KafkaListener` as a meta-annotation on your own annotations.
+
+See <<kafka-listener-meta>> for more information.
+
 ==== Header Mapping Changes
 
 Headers of type `MimeType` and `MediaType` are now mapped as simple strings in the `RecordHeader` value.
