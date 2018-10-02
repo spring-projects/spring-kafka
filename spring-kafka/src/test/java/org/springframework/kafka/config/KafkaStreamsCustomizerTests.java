@@ -18,11 +18,16 @@ package org.springframework.kafka.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
+import org.apache.kafka.streams.processor.ProcessorContext;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,9 +62,17 @@ public class KafkaStreamsCustomizerTests {
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
 	@Test
-	public void testKafkaStreamsCustomizer() {
+	public void testKafkaStreamsCustomizer(@Autowired KafkaStreamsConfiguration configuration,
+			@Autowired KafkaStreamsConfig config) {
+
 		KafkaStreams.State state = this.streamsBuilderFactoryBean.getKafkaStreams().state();
 		assertThat(STATE_LISTENER.getCurrentState()).isEqualTo(state);
+		Properties properties = configuration.asProperties();
+		assertThat(properties.getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo(config.brokerAddresses);
+		assertThat(properties.getProperty(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG))
+				.endsWith("Foo");
+		assertThat(properties.getProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG))
+			.isEqualTo("1000");
 	}
 
 	@Configuration
@@ -82,7 +95,9 @@ public class KafkaStreamsCustomizerTests {
 		public KafkaStreamsConfiguration kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
-			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
+			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, Collections.singletonList(this.brokerAddresses));
+			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, Foo.class);
+			props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 1000);
 			return new KafkaStreamsConfiguration(props);
 		}
 
@@ -104,6 +119,21 @@ public class KafkaStreamsCustomizerTests {
 
 		KafkaStreams.State getCurrentState() {
 			return this.currentState;
+		}
+
+	}
+
+	public static class Foo implements DeserializationExceptionHandler {
+
+		@Override
+		public void configure(Map<String, ?> configs) {
+
+		}
+
+		@Override
+		public DeserializationHandlerResponse handle(ProcessorContext context, ConsumerRecord<byte[], byte[]> record,
+				Exception exception) {
+			return null;
 		}
 
 	}

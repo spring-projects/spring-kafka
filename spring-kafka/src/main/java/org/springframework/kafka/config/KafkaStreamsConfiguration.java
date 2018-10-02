@@ -23,6 +23,8 @@ import java.util.Properties;
 
 import org.apache.kafka.streams.StreamsBuilder;
 
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.util.Assert;
 
 /**
@@ -36,11 +38,32 @@ public class KafkaStreamsConfiguration {
 
 	private final Map<String, Object> configs;
 
+	private final DefaultConversionService conversionService = new DefaultConversionService();
+
 	private Properties properties;
 
 	public KafkaStreamsConfiguration(Map<String, Object> configs) {
 		Assert.notNull(configs, "Configuration map cannot be null");
 		this.configs = new HashMap<>(configs);
+		// Not lambdas so we retain type information
+		this.conversionService.addConverter(new Converter<Class<?>, String>() {
+
+			@Override
+			public String convert(Class<?> c) {
+				return c.getName();
+			}
+
+		});
+		this.conversionService.addConverter(new Converter<List<?>, String>() {
+
+			@Override
+			public String convert(List<?> l) {
+				String value = l.toString();
+				// trim [...] - revert to comma-delimited list
+				return value.substring(1, value.length() - 1);
+			}
+
+		});
 	}
 
 	/**
@@ -51,10 +74,12 @@ public class KafkaStreamsConfiguration {
 		if (this.properties == null) {
 			Properties properties = new Properties();
 			this.configs.forEach((k, v) -> {
-				String value = v.toString();
-				if (v instanceof List && value.length() > 1) {
-					// trim [...] - revert to comma-delimited list
-					value = value.substring(1, value.length() - 1);
+				String value;
+				if (this.conversionService.canConvert(v.getClass(), String.class)) {
+					value = this.conversionService.convert(v, String.class);
+				}
+				else {
+					value = v.toString();
 				}
 				properties.setProperty(k, value);
 			});
