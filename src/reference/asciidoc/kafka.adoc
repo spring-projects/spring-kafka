@@ -1975,6 +1975,7 @@ The `DefaultKafkaHeaderMapper` has a method `addToStringClasses()` where you can
 During inbound mapping, they will be mapped as `String`.
 By default, just `org.springframework.util.MimeType` and `org.springframework.http.MediaType` are mapped this way.
 
+[[tombstones]]
 ==== Null Payloads and Log Compaction 'Tombstone' Records
 
 When using https://kafka.apache.org/documentation/#compaction[Log Compaction], it is possible to send and receive messages with `null` payloads which identifies the deletion of a key.

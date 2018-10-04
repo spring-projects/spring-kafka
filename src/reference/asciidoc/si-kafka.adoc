@@ -459,6 +459,27 @@ public KafkaMessageDrivenChannelAdapter<String, String>
 }
 ----
 
+[[si-tombstones]]
+==== Null Payloads and Log Compaction 'Tombstone' Records
+
+Spring Messaging `Message<?>` objects cannot have `null` payloads; when using the Kafka endpoints, `null` payloads (also known as tombstone records) are represented by a payload of type `KafkaNull`.
+See <<tombstones>> for more information.
+
+Starting with version 3.1 of Spring Integration Kafka, such records can now be received by Spring Integration POJO methods with a true `null` value instead.
+Simply mark the parameter with `@Payload(required = false)`.
+
+====
+[source, java]
+----
+@ServiceActivator(inputChannel = "fromSomeKafkaInboundEndpoint")
+public void in(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key,
+               @Payload(required = false) Customer customer) {
+    // customer is null if a tombstone record
+    ...
+}
+----
+====
+
 ==== What's New in Spring Integration for Apache Kafka
 
 See the http://projects.spring.io/spring-kafka/[Spring for Apache Kafka Project Page] for a matrix of compatible `spring-kafka` and `kafka-clients` versions.
@@ -493,3 +514,8 @@ The 2.3.x branch introduced the following changes:
 * Update to Spring Integration 5.0 and Java 8
 * Moved Java DSL to main project
 * Added inbound and outbound gateways (3.0.2)
+
+===== 3.1.x
+
+* Update to `spring-kafka` 2.2.x and `kafka-clients` 2.0.0
+* Support tombstones in EIP POJO Methods
