@@ -52,7 +52,7 @@ public final class InvocationResult {
 
 	@Override
 	public String toString() {
-		return this.result.toString();
+		return "result=" + (this.result == null ? null : this.result.toString());
 	}
 
 }
