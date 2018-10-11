@@ -566,6 +566,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 				@Override
 				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+					if (ListenerConsumer.this.consumerPaused) {
+						ListenerConsumer.this.consumerPaused = false;
+						ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
+								+ "the container will pause again before polling, unless the container's "
+								+ "'paused' property is reset by a custom rebalance listener");
+					}
 					ListenerConsumer.this.assignedPartitions = partitions;
 					if (!ListenerConsumer.this.autoCommit) {
 						// Commit initial positions - this is generally redundant but
