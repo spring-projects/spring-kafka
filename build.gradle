@@ -71,6 +71,7 @@ subprojects { subproject ->
 		assertkVersion = '0.12'
 		googleJsr305Version = '3.0.2'
 		hamcrestVersion = '1.3'
+		hibernateValidationVersion = '6.0.12.Final'
 		jacksonVersion = '2.9.6'
 		jaywayJsonPathVersion = '2.4.0'
 		junit4Version = '4.12'
@@ -205,6 +206,7 @@ project ('spring-kafka') {
 		compile ("com.jayway.jsonpath:json-path:$jaywayJsonPathVersion", optional)
 
 		testCompile project (":spring-kafka-test")
+		testCompile "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
 	}
 }
 
