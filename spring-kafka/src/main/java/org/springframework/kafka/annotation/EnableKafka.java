@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +49,8 @@ import org.springframework.context.annotation.Import;
  * The {@code KafkaListenerContainerFactory} is responsible to create the listener
  * container for a particular endpoint. Typical implementations, as the
  * {@link org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
- * ConcurrentKafkaListenerContainerFactory} used in the sample above, provides the necessary
- * configuration options that are supported by the underlying
+ * ConcurrentKafkaListenerContainerFactory} used in the sample above, provides the
+ * necessary configuration options that are supported by the underlying
  * {@link org.springframework.kafka.listener.MessageListenerContainer
  * MessageListenerContainer}.
  *
@@ -113,8 +113,7 @@ import org.springframework.context.annotation.Import;
  * Annotated methods can use a flexible signature; in particular, it is possible to use
  * the {@link org.springframework.messaging.Message Message} abstraction and related
  * annotations, see {@link KafkaListener} Javadoc for more details. For instance, the
- * following would inject the content of the message and the kafka partition
- * header:
+ * following would inject the content of the message and the kafka partition header:
  *
  * <pre class="code">
  * &#064;KafkaListener(containerFactory = "myKafkaListenerContainerFactory", topics = "myTopic")
@@ -165,9 +164,10 @@ import org.springframework.context.annotation.Import;
  * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistry
  * KafkaListenerEndpointRegistry} in case you need more control on the way the containers
  * are created and managed. The example below also demonstrates how to customize the
- * {@link org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory} to use with a custom
- * {@link org.springframework.validation.Validator Validator} so that payloads annotated
- * with {@link org.springframework.validation.annotation.Validated Validated} are first
+ * {@link org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory}
+ * as well as how to supply a custom {@link org.springframework.validation.Validator
+ * Validator} so that payloads annotated with
+ * {@link org.springframework.validation.annotation.Validated Validated} are first
  * validated against a custom {@code Validator}.
  *
  * <pre class="code">
@@ -180,6 +180,7 @@ import org.springframework.context.annotation.Import;
  * 		public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
  * 			registrar.setEndpointRegistry(myKafkaListenerEndpointRegistry());
  * 			registrar.setMessageHandlerMethodFactory(myMessageHandlerMethodFactory);
+ * 			registrar.setValidator(new MyValidator());
  * 		}
  *
  * 		&#064;Bean
@@ -190,7 +191,7 @@ import org.springframework.context.annotation.Import;
  * 		&#064;Bean
  * 		public MessageHandlerMethodFactory myMessageHandlerMethodFactory() {
  * 			DefaultMessageHandlerMethodFactory factory = new DefaultMessageHandlerMethodFactory();
- * 			factory.setValidator(new MyValidator());
+ * 			// factory configuration
  * 			return factory;
  * 		}
  *

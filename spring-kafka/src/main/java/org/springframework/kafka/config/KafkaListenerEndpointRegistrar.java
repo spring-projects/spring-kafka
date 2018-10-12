@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ import java.util.List;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
+import org.springframework.validation.Validator;
 
 /**
  * Helper bean for registering {@link KafkaListenerEndpoint} with
@@ -51,6 +53,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	private BeanFactory beanFactory;
 
 	private boolean startImmediately;
+
+	private Validator validator;
 
 	/**
 	 * Set the {@link KafkaListenerEndpointRegistry} instance to use.
@@ -82,6 +86,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * @param kafkaHandlerMethodFactory the {@link MessageHandlerMethodFactory} instance.
 	 */
 	public void setMessageHandlerMethodFactory(MessageHandlerMethodFactory kafkaHandlerMethodFactory) {
+		Assert.isNull(this.validator,
+				"A validator cannot be provided with a custom message handler factory");
 		this.messageHandlerMethodFactory = kafkaHandlerMethodFactory;
 	}
 
@@ -126,6 +132,26 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 		this.beanFactory = beanFactory;
 	}
 
+	/**
+	 * Get the validator, if supplied.
+	 * @return the validator.
+	 * @since 2.2
+	 */
+	@Nullable
+	public Validator getValidator() {
+		return this.validator;
+	}
+
+	/**
+	 * Set the validator to use if the default message handler factory is used.
+	 * @param validator the validator.
+	 * @since 2.2
+	 */
+	public void setValidator(Validator validator) {
+		Assert.isNull(this.messageHandlerMethodFactory,
+				"A validator cannot be provided with a custom message handler factory");
+		this.validator = validator;
+	}
 
 	@Override
 	public void afterPropertiesSet() {

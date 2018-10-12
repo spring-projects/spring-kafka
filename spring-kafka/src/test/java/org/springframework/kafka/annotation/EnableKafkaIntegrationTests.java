@@ -36,6 +36,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import javax.validation.Valid;
+import javax.validation.ValidationException;
+import javax.validation.constraints.Max;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -57,6 +61,7 @@ import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -110,6 +115,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.validation.Errors;
+import org.springframework.validation.Validator;
 
 /**
  * @author Gary Russell
@@ -135,7 +142,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
-			"annotated34");
+			"annotated34", "annotated35");
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -508,6 +515,13 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
+	public void testValidation() throws Exception {
+		template.send("annotated35", 0, "{\"bar\":42}");
+		assertThat(this.listener.validationLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.validationException).isInstanceOf(ValidationException.class);
+	}
+
+	@Test
 	public void testReplyingListener() throws Exception {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplying");
@@ -686,7 +700,7 @@ public class EnableKafkaIntegrationTests {
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
-	public static class Config {
+	public static class Config implements KafkaListenerConfigurer {
 
 		private final CountDownLatch spyLatch = new CountDownLatch(2);
 
@@ -1043,6 +1057,15 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		public KafkaListenerErrorHandler validationErrorHandler(Listener listener) {
+			return (m, e) -> {
+				listener.validationException = (Exception) e.getCause();
+				listener.validationLatch.countDown();
+				return null;
+			};
+		}
+
+		@Bean
 		public KafkaListenerErrorHandler replyErrorHandler() {
 			return (m, e) -> ((String) m.getPayload()).toLowerCase();
 		}
@@ -1156,6 +1179,23 @@ public class EnableKafkaIntegrationTests {
 			return new FooConverter();
 		}
 
+		@Override
+		public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
+			registrar.setValidator(new Validator() {
+
+				@Override
+				public void validate(Object target, Errors errors) {
+					throw new ValidationException();
+				}
+
+				@Override
+				public boolean supports(Class<?> clazz) {
+					return ValidatedClass.class.isAssignableFrom(clazz);
+				}
+
+			});
+		}
+
 	}
 
 	@Component
@@ -1208,6 +1248,10 @@ public class EnableKafkaIntegrationTests {
 		private final CountDownLatch latch20 = new CountDownLatch(1);
 
 		private final CountDownLatch latch21 = new CountDownLatch(1);
+
+		private final CountDownLatch validationLatch = new CountDownLatch(1);
+
+		private Exception validationException;
 
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
 
@@ -1491,6 +1535,12 @@ public class EnableKafkaIntegrationTests {
 			this.latch21.countDown();
 		}
 
+		@KafkaListener(id = "validated", topics = "annotated35", errorHandler = "validationErrorHandler",
+				containerFactory = "kafkaJsonListenerContainerFactory")
+		public void validatedListener(@Payload @Valid ValidatedClass val) {
+			// NOSONAR
+		}
+
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
 			this.seekCallBack.set(callback);
@@ -1725,4 +1775,20 @@ public class EnableKafkaIntegrationTests {
 			return delegate.convert(source);
 		}
 	}
+
+	public static class ValidatedClass {
+
+		@Max(10)
+		private int bar;
+
+		public int getBar() {
+			return this.bar;
+		}
+
+		public void setBar(int bar) {
+			this.bar = bar;
+		}
+
+	}
+
 }

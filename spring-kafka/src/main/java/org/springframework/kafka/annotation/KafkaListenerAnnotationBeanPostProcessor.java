@@ -80,6 +80,7 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.validation.Validator;
 
 /**
  * Bean post-processor that registers methods annotated with {@link KafkaListener}
@@ -750,6 +751,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 		private MessageHandlerMethodFactory createDefaultMessageHandlerMethodFactory() {
 			DefaultMessageHandlerMethodFactory defaultFactory = new DefaultMessageHandlerMethodFactory();
+			Validator validator = KafkaListenerAnnotationBeanPostProcessor.this.registrar.getValidator();
+			if (validator != null) {
+				defaultFactory.setValidator(validator);
+			}
 			defaultFactory.setBeanFactory(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory);
 
 			ConfigurableBeanFactory cbf =
@@ -768,7 +773,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			// Type-based argument resolution
 			final GenericMessageConverter messageConverter = new GenericMessageConverter(this.defaultFormattingConversionService);
 			argumentResolvers.add(new MessageMethodArgumentResolver(messageConverter));
-			argumentResolvers.add(new PayloadArgumentResolver(messageConverter) {
+			argumentResolvers.add(new PayloadArgumentResolver(messageConverter, validator) {
 
 				@Override
 				protected boolean isEmptyPayload(Object payload) {

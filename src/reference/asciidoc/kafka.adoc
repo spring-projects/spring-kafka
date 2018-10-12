@@ -1141,6 +1141,93 @@ public void listen(...) { ... }
     registry.getListenerContainer("myContainer").start();
 ----
 
+[[kafka-validation]]
+===== @KafkaListener @Payload Validation
+
+Starting with version 2.2, it is now easier to add a `Validator` to validate `@KafkaListener` `@Payload` arguments.
+Previously, you had to configure a custom `DefaultMessageHandlerMethodFactory` and add it to the registrar.
+Now, you can simply add the validator to the registrar itself.
+
+====
+[source, java]
+----
+@Configuration
+@EnableKafka
+public class Config implements KafkaListenerConfigurer {
+
+    ...
+
+    @Override
+    public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
+      registrar.setValidator(new MyValidator());
+    }
+}
+----
+====
+
+NOTE: When using Spring Boot with the validation starter, a `LocalValidatorFactoryBean` is auto-configured:
+
+====
+[source, java]
+----
+@Configuration
+@EnableKafka
+public class Config implements KafkaListenerConfigurer {
+
+    @Autowired
+    private LocalValidatorFactoryBean validator;
+    ...
+
+    @Override
+    public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
+      registrar.setValidator(this.validator);
+    }
+}
+----
+====
+
+To validate:
+
+====
+[source, java]
+----
+public static class ValidatedClass {
+
+  @Max(10)
+  private int bar;
+
+  public int getBar() {
+    return this.bar;
+  }
+
+  public void setBar(int bar) {
+    this.bar = bar;
+  }
+
+}
+----
+====
+
+and
+
+====
+[source, java]
+----
+@KafkaListener(id="validated", topics = "annotated35", errorHandler = "validationErrorHandler",
+      containerFactory = "kafkaJsonListenerContainerFactory")
+public void validatedListener(@Payload @Valid ValidatedClass val) {
+    ...
+}
+
+@Bean
+public KafkaListenerErrorHandler validationErrorHandler() {
+    return (m, e) -> {
+        ...
+    };
+}
+----
+====
+
 [[rebalance-listeners]]
 ===== Rebalance Listeners
 

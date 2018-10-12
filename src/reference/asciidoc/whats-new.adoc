@@ -50,6 +50,9 @@ You can now use `@KafkaListener` as a meta-annotation on your own annotations.
 
 See <<kafka-listener-meta>> for more information.
 
+It is now easier to configure a `Validator` for `@Payload` validation.
+See <<kafka-validation>> for more information.
+
 ==== Header Mapping Changes
 
 Headers of type `MimeType` and `MediaType` are now mapped as simple strings in the `RecordHeader` value.
