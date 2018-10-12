@@ -219,10 +219,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		this.charset = charset;
 	}
 
-	private Charset getCharset() {
-		return this.charset;
-	}
-
 	@Override
 	public void afterSingletonsInstantiated() {
 		this.registrar.setBeanFactory(this.beanFactory);
