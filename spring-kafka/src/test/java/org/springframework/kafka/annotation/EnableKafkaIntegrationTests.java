@@ -46,6 +46,9 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -142,7 +145,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
-			"annotated34", "annotated35");
+			"annotated34", "annotated35", "annotated36");
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -166,6 +169,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	public KafkaTemplate<Integer, String> kafkaJsonTemplate;
+
+	@Autowired
+	public KafkaTemplate<byte[], String> bytesKeyTemplate;
 
 	@Autowired
 	public KafkaListenerEndpointRegistry registry;
@@ -697,6 +703,13 @@ public class EnableKafkaIntegrationTests {
 			.isInstanceOf(ChainedKafkaTransactionManager.class);
 	}
 
+	@Test
+	public void testKeyConversion() throws Exception {
+		this.bytesKeyTemplate.send("annotated36", "foo".getBytes(), "bar");
+		assertThat(this.listener.keyLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.convertedKey).isEqualTo("foo");
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -804,6 +817,14 @@ public class EnableKafkaIntegrationTests {
 			typeMapper.setTypePrecedence(TypePrecedence.TYPE_ID);
 			converter.setTypeMapper(typeMapper);
 			factory.setMessageConverter(converter);
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> bytesStringListenerContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<byte[], String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(bytesStringConsumerFactory());
 			return factory;
 		}
 
@@ -935,6 +956,13 @@ public class EnableKafkaIntegrationTests {
 			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
 		}
 
+		@Bean
+		public DefaultKafkaConsumerFactory<byte[], String> bytesStringConsumerFactory() {
+			Map<String, Object> configs = consumerConfigs();
+			configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+			return new DefaultKafkaConsumerFactory<>(configs);
+		}
+
 		private ConsumerFactory<Integer, String> configuredConsumerFactory(String clientAndGroupId) {
 			Map<String, Object> configs = consumerConfigs();
 			configs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
@@ -989,6 +1017,13 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		public ProducerFactory<byte[], String> bytesStringProducerFactory() {
+			Map<String, Object> configs = producerConfigs();
+			configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+			return new DefaultKafkaProducerFactory<>(configs);
+		}
+
+		@Bean
 		public Map<String, Object> producerConfigs() {
 			return KafkaTestUtils.producerProps(embeddedKafka);
 		}
@@ -996,6 +1031,11 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public KafkaTemplate<Integer, String> template() {
 			return new KafkaTemplate<>(producerFactory());
+		}
+
+		@Bean
+		public KafkaTemplate<byte[], String> bytesKeyTemplate() {
+			return new KafkaTemplate<>(bytesStringProducerFactory());
 		}
 
 		@Bean
@@ -1254,6 +1294,10 @@ public class EnableKafkaIntegrationTests {
 		private Exception validationException;
 
 		private final CountDownLatch eventLatch = new CountDownLatch(1);
+
+		private final CountDownLatch keyLatch = new CountDownLatch(1);
+
+		private String convertedKey;
 
 		private volatile Integer partition;
 
@@ -1523,6 +1567,12 @@ public class EnableKafkaIntegrationTests {
 				containerFactory = "withNoReplyTemplateContainerFactory")
 		public void ackWithAutoContainerListener(String payload, Acknowledgment ack) {
 			// empty
+		}
+
+		@KafkaListener(topics = "annotated36", containerFactory = "bytesStringListenerContainerFactory")
+		public void bytesKey(String in, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key) {
+			this.convertedKey = key;
+			this.keyLatch.countDown();
 		}
 
 		@KafkaListener(topics = "annotated29")

@@ -17,6 +17,8 @@
 package org.springframework.kafka.annotation;
 
 import java.lang.reflect.Method;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -152,6 +154,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private BeanExpressionContext expressionContext;
 
+	private Charset charset = StandardCharsets.UTF_8;
+
 	@Override
 	public int getOrder() {
 		return LOWEST_PRECEDENCE;
@@ -204,6 +208,20 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
+	/**
+	 * Set a charset to use when converting byte[] to String in method arguments.
+	 * Default UTF-8.
+	 * @param charset the charset.
+	 * @since 2.2
+	 */
+	public void setCharset(Charset charset) {
+		Assert.notNull(charset, "'charset' cannot be null");
+		this.charset = charset;
+	}
+
+	private Charset getCharset() {
+		return this.charset;
+	}
 
 	@Override
 	public void afterSingletonsInstantiated() {
@@ -729,7 +747,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 */
 	private class KafkaHandlerMethodFactoryAdapter implements MessageHandlerMethodFactory {
 
-		private final DefaultFormattingConversionService defaultFormattingConversionService = new DefaultFormattingConversionService();
+		private final DefaultFormattingConversionService defaultFormattingConversionService =
+				new DefaultFormattingConversionService();
 
 		private MessageHandlerMethodFactory messageHandlerMethodFactory;
 
@@ -762,6 +781,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 							(ConfigurableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory : null);
 
 
+			this.defaultFormattingConversionService.addConverter(
+					new BytesToStringConverter(KafkaListenerAnnotationBeanPostProcessor.this.charset));
+
 			defaultFactory.setConversionService(this.defaultFormattingConversionService);
 
 			List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
@@ -785,6 +807,22 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 			defaultFactory.afterPropertiesSet();
 			return defaultFactory;
+		}
+
+	}
+
+	private static class BytesToStringConverter implements Converter<byte[], String> {
+
+
+		private final Charset charset;
+
+		BytesToStringConverter(Charset charset) {
+			this.charset = charset;
+		}
+
+		@Override
+		public String convert(byte[] source) {
+			return new String(source, this.charset);
 		}
 
 	}
