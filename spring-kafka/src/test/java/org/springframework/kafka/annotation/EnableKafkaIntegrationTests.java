@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 import javax.validation.ValidationException;
-import javax.validation.constraints.Max;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -1778,7 +1777,6 @@ public class EnableKafkaIntegrationTests {
 
 	public static class ValidatedClass {
 
-		@Max(10)
 		private int bar;
 
 		public int getBar() {
