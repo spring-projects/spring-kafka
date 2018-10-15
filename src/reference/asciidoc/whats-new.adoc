@@ -43,6 +43,7 @@ See <<after-rollback>>, <<seek-to-current>> and <<dead-letters>> for more inform
 ==== @KafkaListener Changes
 
 You can now override the `concurrency` and `autoStartup` properties of the listener container factory by setting properties on the annotation.
+You can now add configuration to determine which headers (if any) are copied to a reply message.
 
 See <<kafka-listener-annotation>> for more information.
 

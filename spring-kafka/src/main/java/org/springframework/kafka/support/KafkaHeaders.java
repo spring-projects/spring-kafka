@@ -26,7 +26,15 @@ package org.springframework.kafka.support;
  */
 public abstract class KafkaHeaders {
 
-	private static final String PREFIX = "kafka_";
+	/**
+	 * The prefix for Kafka headers.
+	 */
+	public static final String PREFIX = "kafka_";
+
+	/**
+	 * The prefix for Kafka headers containing 'received' values.
+	 */
+	public static final String RECEIVED = PREFIX + "received";
 
 	/**
 	 * The header containing the topic when sending data to Kafka.
@@ -72,17 +80,17 @@ public abstract class KafkaHeaders {
 	/**
 	 * The header containing the topic from which the message was received.
 	 */
-	public static final String RECEIVED_TOPIC = PREFIX + "receivedTopic";
+	public static final String RECEIVED_TOPIC = RECEIVED + "Topic";
 
 	/**
 	 * The header containing the message key for the received message.
 	 */
-	public static final String RECEIVED_MESSAGE_KEY = PREFIX + "receivedMessageKey";
+	public static final String RECEIVED_MESSAGE_KEY = RECEIVED + "MessageKey";
 
 	/**
 	 * The header containing the topic partition for the received message.
 	 */
-	public static final String RECEIVED_PARTITION_ID = PREFIX + "receivedPartitionId";
+	public static final String RECEIVED_PARTITION_ID = RECEIVED + "PartitionId";
 
 	/**
 	 * The header for holding the {@link org.apache.kafka.common.record.TimestampType type} of timestamp.

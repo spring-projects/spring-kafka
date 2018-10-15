@@ -172,7 +172,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	/**
 	 * Set the name of the {@link KafkaListenerContainerFactory} to use by default.
-	 * <p>If none is specified, "KafkaListenerContainerFactory" is assumed to be defined.
+	 * <p>If none is specified, "kafkaListenerContainerFactory" is assumed to be defined.
 	 * @param containerFactoryBeanName the {@link KafkaListenerContainerFactory} bean name.
 	 */
 	public void setContainerFactoryBeanName(String containerFactoryBeanName) {

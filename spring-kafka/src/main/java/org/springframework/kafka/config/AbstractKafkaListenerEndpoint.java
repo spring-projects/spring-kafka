@@ -42,6 +42,7 @@ import org.springframework.kafka.listener.adapter.FilteringBatchMessageListenerA
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -104,6 +105,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private Integer concurrency;
 
 	private Boolean autoStartup;
+
+	private ReplyHeadersConfigurer replyHeadersConfigurer;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -374,6 +377,15 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.autoStartup = autoStartup;
 	}
 
+	/**
+	 * Set a configurer which will be invoked when creating a reply message.
+	 * @param replyHeadersConfigurer the configurer.
+	 * @since 2.2
+	 */
+	public void setReplyHeadersConfigurer(ReplyHeadersConfigurer replyHeadersConfigurer) {
+		this.replyHeadersConfigurer = replyHeadersConfigurer;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		boolean topicsEmpty = getTopics().isEmpty();
@@ -408,7 +420,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	@SuppressWarnings("unchecked")
 	private void setupMessageListener(MessageListenerContainer container, MessageConverter messageConverter) {
-		Object messageListener = createMessageListener(container, messageConverter);
+		MessagingMessageListenerAdapter<K, V> adapter = createMessageListener(container, messageConverter);
+		if (this.replyHeadersConfigurer != null) {
+			adapter.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
+		}
+		Object messageListener = adapter;
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
 			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,

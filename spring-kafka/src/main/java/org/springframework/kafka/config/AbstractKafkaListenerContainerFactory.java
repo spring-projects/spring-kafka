@@ -33,6 +33,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.retry.RecoveryCallback;
@@ -83,6 +84,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private KafkaTemplate<?, ?> replyTemplate;
 
 	private AfterRollbackProcessor<K, V> afterRollbackProcessor;
+
+	private ReplyHeadersConfigurer replyHeadersConfigurer;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -231,6 +234,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Set a configurer which will be invoked when creating a reply message.
+	 * @param replyHeadersConfigurer the configurer.
+	 * @since 2.2
+	 */
+	public void setReplyHeadersConfigurer(ReplyHeadersConfigurer replyHeadersConfigurer) {
+		this.replyHeadersConfigurer = replyHeadersConfigurer;
+	}
+
+	/**
 	 * Obtain the properties template for this factory - set properties as needed
 	 * and they will be copied to a final properties instance for the endpoint.
 	 * @return the properties.
@@ -269,6 +281,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			}
 			if (this.replyTemplate != null) {
 				aklEndpoint.setReplyTemplate(this.replyTemplate);
+			}
+			if (this.replyHeadersConfigurer != null) {
+				aklEndpoint.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
 			}
 		}
 

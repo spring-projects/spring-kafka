@@ -1333,6 +1333,53 @@ public class MultiListenerSendTo {
 }
 ----
 
+Starting with version 2.2, you can add a `ReplyHeadersConfigurer` to the listener container factory.
+This is consulted to determine which headers you want to set in the reply message.
+
+====
+[source, java]
+----
+@Bean
+public ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(cf());
+    factory.setReplyTemplate(template());
+    factory.setReplyHeadersConfigurer((k, v) -> k.equals("baz"));
+    return factory;
+}
+----
+====
+
+You can also add more headers if you wish
+
+====
+[source, java]
+----
+@Bean
+public ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(cf());
+    factory.setReplyTemplate(template());
+    factory.setReplyHeadersConfigurer(new ReplyHeadersConfigurer() {
+
+      @Override
+      public boolean shouldCopy(String headerName, Object headerValue) {
+        return false;
+      }
+
+      @Override
+      public Map<String, Object> additionalHeaders() {
+        return Collections.singletonMap("qux", "fiz");
+      }
+
+    });
+    return factory;
+}
+----
+====
+
 When using `@SendTo`, the `ConcurrentKafkaListenerContainerFactory` must be configured with a `KafkaTemplate` in its `replyTemplate` property, to perform the send.
 NOTE: unless you are using <<replying-template,request/reply semantics>> only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition and/or key:
 

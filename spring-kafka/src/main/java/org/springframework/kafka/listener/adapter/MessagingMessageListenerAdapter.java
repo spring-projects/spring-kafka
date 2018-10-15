@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -54,11 +55,13 @@ import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -107,6 +110,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private boolean hasAckParameter;
 
 	private boolean messageReturnType;
+
+	private ReplyHeadersConfigurer replyHeadersConfigurer;
 
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
@@ -212,6 +217,25 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	protected boolean isMessageList() {
 		return this.isMessageList;
+	}
+
+	/**
+	 * Return the reply configurer.
+	 * @return the configurer.
+	 * @since 2.2
+	 * @see #setReplyHeadersConfigurer(ReplyHeadersConfigurer)
+	 */
+	protected ReplyHeadersConfigurer getReplyHeadersConfigurer() {
+		return this.replyHeadersConfigurer;
+	}
+
+	/**
+	 * Set a configurer which will be invoked when creating a reply message.
+	 * @param replyHeadersConfigurer the configurer.
+	 * @since 2.2
+	 */
+	public void setReplyHeadersConfigurer(ReplyHeadersConfigurer replyHeadersConfigurer) {
+		this.replyHeadersConfigurer = replyHeadersConfigurer;
 	}
 
 	@Override
@@ -384,6 +408,24 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				if (sourceIsMessage) {
 					MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
 							.setHeader(KafkaHeaders.TOPIC, topic);
+					if (this.replyHeadersConfigurer != null) {
+						Map<String, Object> headersToCopy = ((Message<?>) source).getHeaders().entrySet().stream()
+							.filter(e -> {
+								String key = e.getKey();
+								return !key.equals(MessageHeaders.ID) && !key.equals(MessageHeaders.TIMESTAMP)
+										&& !key.equals(KafkaHeaders.CORRELATION_ID)
+										&& !key.startsWith(KafkaHeaders.RECEIVED);
+							})
+							.filter(e -> this.replyHeadersConfigurer.shouldCopy(e.getKey(), e.getValue()))
+							.collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
+						if (headersToCopy.size() > 0) {
+							builder.copyHeaders(headersToCopy);
+						}
+						headersToCopy = this.replyHeadersConfigurer.additionalHeaders();
+						if (!ObjectUtils.isEmpty(headersToCopy)) {
+							builder.copyHeaders(headersToCopy);
+						}
+					}
 					if (correlationId != null) {
 						builder.setHeader(KafkaHeaders.CORRELATION_ID, correlationId);
 					}

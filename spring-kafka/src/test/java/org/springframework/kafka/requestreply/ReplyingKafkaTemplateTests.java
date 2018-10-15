@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -30,7 +32,9 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -50,6 +54,8 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
+import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
+import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
@@ -102,11 +108,17 @@ public class ReplyingKafkaTemplateTests {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
 		try {
 			template.setReplyTimeout(30_000);
-			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, "foo");
+			Headers headers = new RecordHeaders();
+			headers.add("baz", "buz".getBytes());
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, null, null, null, "foo", headers);
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
 			assertThat(consumerRecord.value()).isEqualTo("FOO");
+			Map<String, Object> receivedHeaders = new HashMap<>();
+			new DefaultKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
+			assertThat(receivedHeaders).containsKey("baz");
+			assertThat(receivedHeaders).hasSize(2);
 		}
 		finally {
 			template.stop();
@@ -199,12 +211,19 @@ public class ReplyingKafkaTemplateTests {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(B_REPLY);
 		try {
 			template.setReplyTimeout(30_000);
-			ProducerRecord<Integer, String> record = new ProducerRecord<>(B_REQUEST, "qux");
+			Headers headers = new RecordHeaders();
+			headers.add("baz", "buz".getBytes());
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(B_REQUEST, null, null, null, "qux", headers);
 			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, B_REPLY.getBytes()));
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
 			assertThat(consumerRecord.value()).isEqualTo("qUX");
+			Map<String, Object> receivedHeaders = new HashMap<>();
+			new DefaultKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
+			assertThat(receivedHeaders).containsKey("qux");
+			assertThat(receivedHeaders).doesNotContainKey("baz");
+			assertThat(receivedHeaders).hasSize(2);
 		}
 		finally {
 			template.stop();
@@ -290,6 +309,7 @@ public class ReplyingKafkaTemplateTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf());
 			factory.setReplyTemplate(template());
+			factory.setReplyHeadersConfigurer((k, v) -> k.equals("baz"));
 			return factory;
 		}
 
@@ -302,6 +322,19 @@ public class ReplyingKafkaTemplateTests {
 			MessagingMessageConverter messageConverter = new MessagingMessageConverter();
 			messageConverter.setHeaderMapper(new SimpleKafkaHeaderMapper());
 			factory.setMessageConverter(messageConverter);
+			factory.setReplyHeadersConfigurer(new ReplyHeadersConfigurer() {
+
+				@Override
+				public boolean shouldCopy(String headerName, Object headerValue) {
+					return false;
+				}
+
+				@Override
+				public Map<String, Object> additionalHeaders() {
+					return Collections.singletonMap("qux", "fiz");
+				}
+
+			});
 			return factory;
 		}
 
