@@ -36,7 +36,7 @@ public interface ReplyHeadersConfigurer {
 	 * Return true if the header should be copied to the reply message.
 	 * {@link KafkaHeaders#CORRELATION_ID} will not be offered; it is always copied.
 	 * {@link MessageHeaders#ID} and {@link MessageHeaders#TIMESTAMP} are never copied.
-	 * {@code KafkaHeaders.RECEIVED_*} headers are never copied.
+	 * {@code KafkaHeaders.RECEIVED*} headers are never copied.
 	 * @param headerName the header name.
 	 * @param headerValue the header value.
 	 * @return true to copy.
@@ -45,6 +45,8 @@ public interface ReplyHeadersConfigurer {
 
 	/**
 	 * A map of additional headers to add to the reply message.
+	 * IMPORTANT: Any existing headers with the same name will be replaced by those
+	 * returned by this method.
 	 * @return the headers.
 	 */
 	@Nullable
