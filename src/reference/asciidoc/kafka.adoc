@@ -1517,12 +1517,12 @@ To configure this feature, set the `idleEventInterval` on the container:
 [source, java]
 ----
 @Bean
-public KafKaMessageListenerContainer(ConnectionFactory connectionFactory) {
+public KafkaMessageListenerContainer(ConsumerFactory<String, String> consumerFactory) {
     ContainerProperties containerProps = new ContainerProperties("topic1", "topic2");
     ...
     containerProps.setIdleEventInterval(60000L);
     ...
-    KafKaMessageListenerContainer<String, String> container = new KafKaMessageListenerContainer<>(...);
+    KafkaMessageListenerContainer<String, String> container = new KafKaMessageListenerContainer<>(...);
     return container;
 }
 ----

@@ -43,7 +43,7 @@ public final class ProducerFactoryUtils {
 
 	/**
 	 * Obtain a Producer that is synchronized with the current transaction, if any.
-	 * @param producerFactory the ConnectionFactory to obtain a Channel for
+	 * @param producerFactory the ProducerFactory to obtain a Channel for
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the resource holder.
@@ -106,12 +106,12 @@ public final class ProducerFactoryUtils {
 	}
 
 	private static <K, V> void bindResourceToTransaction(KafkaResourceHolder<K, V> resourceHolder,
-			ProducerFactory<K, V> connectionFactory) {
-		TransactionSynchronizationManager.bindResource(connectionFactory, resourceHolder);
+			ProducerFactory<K, V> producerFactory) {
+		TransactionSynchronizationManager.bindResource(producerFactory, resourceHolder);
 		resourceHolder.setSynchronizedWithTransaction(true);
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {
 			TransactionSynchronizationManager
-					.registerSynchronization(new KafkaResourceSynchronization<K, V>(resourceHolder, connectionFactory));
+					.registerSynchronization(new KafkaResourceSynchronization<K, V>(resourceHolder, producerFactory));
 		}
 	}
 

@@ -145,7 +145,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	/**
 	 * Set the group id to override the {@code group.id} property in the
-	 * connectionFactory.
+	 * ContainerFactory.
 	 * @param groupId the group id.
 	 * @since 1.3
 	 */

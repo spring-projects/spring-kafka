@@ -71,7 +71,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	private final ProducerFactory<K, V> producerFactory;
 
 	/**
-	 * Create a new KafkaTransactionManager, given a ConnectionFactory.
+	 * Create a new KafkaTransactionManager, given a ProducerFactory.
 	 * Transaction synchronization is turned off by default, as this manager might be used alongside a datastore-based
 	 * Spring transaction manager like DataSourceTransactionManager, which has stronger needs for synchronization. Only
 	 * one manager is allowed to drive synchronization at any point of time.
