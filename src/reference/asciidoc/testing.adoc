@@ -110,12 +110,13 @@ See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more
 ----
 public class MyTests {
 
-    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "foo", "bar");
+    @ClassRule
+    public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "foo", "bar");
 
     @Test
     public void test() {
         embeddedKafkaRule.getEmbeddedKafka()
-              .addTopics(new NewTopic("baz", 10, (short) 1), new NewTopic("qux", 5, (short) 1));
+              .addTopics(new NewTopic("baz", 10, (short) 1), new NewTopic("qux", 15, (short) 1));
         ...
   	}
 
