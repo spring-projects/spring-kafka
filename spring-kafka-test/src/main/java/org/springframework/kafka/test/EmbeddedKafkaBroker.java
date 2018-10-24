@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -87,6 +88,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public static final String SPRING_EMBEDDED_ZOOKEEPER_CONNECT = "spring.embedded.zookeeper.connect";
 
+	private static final int DEFAULT_ADMIN_TIMEOUT = 30;
+
 	private final int count;
 
 	private final boolean controlledShutdown;
@@ -106,6 +109,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	private String zkConnect;
 
 	private int[] kafkaPorts;
+
+	private int adminTimeout = DEFAULT_ADMIN_TIMEOUT;
 
 	public EmbeddedKafkaBroker(int count) {
 		this(count, false);
@@ -177,6 +182,15 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		return this;
 	}
 
+	/**
+	 * Set the timeout in seconds for admin operations (e.g. topic creation, close).
+	 * Default 30 seconds.
+	 * @param adminTimeout the timeout.
+	 */
+	public void setAdminTimeout(int adminTimeout) {
+		this.adminTimeout = adminTimeout;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		this.zookeeper = new EmbeddedZookeeper();
@@ -218,6 +232,41 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	/**
+	 * Add topics to the existing broker(s) using the configured number of partitions.
+	 * The broker(s) must be running.
+	 * @param topics the topics.
+	 */
+	public void addTopics(String... topics) {
+		Assert.notNull(this.zookeeper, "Broker must be started before this method can be called");
+		HashSet<String> set = new HashSet<>(Arrays.asList(topics));
+		createKafkaTopics(set);
+		this.topics.addAll(set);
+	}
+
+	/**
+	 * Add topics to the existing broker(s).
+ 	 * The broker(s) must be running.
+	 * @param topics the topics.
+	 * @since 2.2
+	 */
+	public void addTopics(NewTopic... topics) {
+		Assert.notNull(this.zookeeper, "Broker must be started before this method can be called");
+		doWithAdmin(admin -> {
+			createTopics(admin,
+				Arrays.stream(topics).
+					map(topic -> {
+						Assert.isTrue(this.topics.add(topic.name()), () -> "topic already exists: " + topic);
+						Assert.isTrue(topic.replicationFactor() <= this.count
+								&& (topic.replicasAssignments() == null
+									|| topic.replicasAssignments().size() <= this.count),
+								() -> "Embedded kafka does not support the requested replication factor: " + topic);
+						return topic;
+					})
+					.collect(Collectors.toList()));
+		});
+	}
+
+	/**
 	 * Create topics in the existing broker(s) using the configured number of partitions.
 	 * @param topics the topics.
 	 */
@@ -226,25 +275,18 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			List<NewTopic> newTopics = topics.stream()
 					.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
 					.collect(Collectors.toList());
-			CreateTopicsResult createTopics = admin.createTopics(newTopics);
-			try {
-				createTopics.all().get();
-			}
-			catch (Exception e) {
-				throw new KafkaException(e);
-			}
+			createTopics(admin, newTopics);
 		});
 	}
 
-
-	/**
-	 * Add topics to the existing broker(s) using the configured number of partitions.
-	 * @param topics the topics.
-	 */
-	public void addTopics(String... topics) {
-		HashSet<String> set = new HashSet<>(Arrays.asList(topics));
-		createKafkaTopics(set);
-		this.topics.addAll(set);
+	private void createTopics(AdminClient admin, List<NewTopic> newTopics) {
+		CreateTopicsResult createTopics = admin.createTopics(newTopics);
+		try {
+			createTopics.all().get(this.adminTimeout, TimeUnit.SECONDS);
+		}
+		catch (Exception e) {
+			throw new KafkaException(e);
+		}
 	}
 
 	/**
@@ -254,8 +296,15 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	public void doWithAdmin(java.util.function.Consumer<AdminClient> callback) {
 		Map<String, Object> adminConfigs = new HashMap<>();
 		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
-		try (AdminClient admin = AdminClient.create(adminConfigs)) {
+		AdminClient admin = null;
+		try {
+			admin = AdminClient.create(adminConfigs);
 			callback.accept(admin);
+		}
+		finally {
+			if (admin != null) {
+				admin.close(this.adminTimeout, TimeUnit.SECONDS);
+			}
 		}
 	}
 

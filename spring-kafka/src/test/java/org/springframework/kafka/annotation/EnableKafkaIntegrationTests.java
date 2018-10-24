@@ -17,6 +17,7 @@
 package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willAnswer;
@@ -40,6 +41,7 @@ import javax.validation.Valid;
 import javax.validation.ValidationException;
 import javax.validation.constraints.Max;
 
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -686,6 +688,18 @@ public class EnableKafkaIntegrationTests {
 		int count = embeddedKafka.getTopics().size();
 		embeddedKafka.addTopics("testAddingTopics");
 		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 1);
+		embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1));
+		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 2);
+		assertThatThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1)))
+			.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("exists");
+		assertThatThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions2", 10, (short) 2)))
+			.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("replication");
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testMultiReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		assertThat(consumer.partitionsFor("morePartitions")).hasSize(10);
+		consumer.close();
 	}
 
 	@Test

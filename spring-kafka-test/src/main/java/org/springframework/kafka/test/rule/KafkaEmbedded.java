@@ -132,15 +132,6 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	}
 
 	/**
-	 * Add topics to the existing broker(s) using the configured number of partitions.
-	 * @param topics the topics.
-	 * @since 2.1.6
-	 */
-	public void addTopics(String... topics) {
-		getEmbeddedKafka().addTopics(topics);
-	}
-
-	/**
 	 * Create an {@link AdminClient}; invoke the callback and reliably close the
 	 * admin.
 	 * @param callback the callback.

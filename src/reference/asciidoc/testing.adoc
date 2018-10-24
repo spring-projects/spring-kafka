@@ -103,41 +103,65 @@ Convenient constants `EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS` and `Em
 With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)` you can provide additional properties for the Kafka server(s).
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
 
+==== Configuring Topics
+
+====
+[source, java]
+----
+public class MyTests {
+
+    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "foo", "bar");
+
+    @Test
+    public void test() {
+        embeddedKafkaRule.getEmbeddedKafka()
+              .addTopics(new NewTopic("baz", 10, (short) 1), new NewTopic("qux", 5, (short) 1));
+        ...
+  	}
+
+}
+----
+====
+
+The above configuration will create topics `foo` and `bar` with 5 partitions, `baz` with 10 and `qux` with 15.
 
 ==== Using the Same Broker(s) for Multiple Test Classes
 
 There is no built-in support for this, but it can be achieved with something similar to the following:
 
+====
 [source, java]
 ----
 public final class EmbeddedKafkaHolder {
 
-	private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false);
+    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false);
 
-	private static boolean started;
+    private static boolean started;
 
-	public static EmbeddedKafkaRule getEmbeddedKafka() {
-		if (!started) {
-			try {
-				embeddedKafka.before();
-			}
-			catch (Exception e) {
-				throw new KafkaException(e);
-			}
-			started = true;
-		}
-		return embeddedKafka;
-	}
+    public static EmbeddedKafkaRule getEmbeddedKafka() {
+        if (!started) {
+            try {
+                embeddedKafka.before();
+            }
+            catch (Exception e) {
+                throw new KafkaException(e);
+            }
+            started = true;
+        }
+        return embeddedKafka;
+    }
 
-	private EmbeddedKafkaHolder() {
-		super();
-	}
+    private EmbeddedKafkaHolder() {
+        super();
+    }
 
 }
 ----
+====
 
 And then, in each test class:
 
+====
 [source, java]
 ----
 static {
@@ -146,6 +170,7 @@ static {
 
 private static EmbeddedKafkaRule embeddedKafka = EmbeddedKafkaHolder.getEmbeddedKafka();
 ----
+====
 
 IMPORTANT: This example provides no mechanism for shutting down the broker(s) when all tests are complete.
 This could be a problem if, say, you run your tests in a Gradle daemon.
@@ -333,8 +358,8 @@ public class KafkaTemplateTests {
         final BlockingQueue<ConsumerRecord<Integer, String>> records = new LinkedBlockingQueue<>();
         container.setupMessageListener(new MessageListener<Integer, String>() {
 
-        	@Override
-        	public void onMessage(ConsumerRecord<Integer, String> record) {
+            @Override
+            public void onMessage(ConsumerRecord<Integer, String> record) {
                 System.out.println(record);
                 records.add(record);
             }
