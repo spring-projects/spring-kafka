@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -38,6 +39,7 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.util.Assert;
 
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
@@ -53,7 +55,7 @@ import org.springframework.retry.support.RetryTemplate;
  * @see AbstractMessageListenerContainer
  */
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
-		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware {
+		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware, InitializingBean {
 
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null);
 
@@ -249,6 +251,20 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 */
 	public ContainerProperties getContainerProperties() {
 		return this.containerProperties;
+	}
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		if (this.errorHandler != null) {
+			if (Boolean.TRUE.equals(this.batchListener)) {
+				Assert.state(this.errorHandler instanceof BatchErrorHandler,
+						"The error handler must be a BatchErrorHandler, not " + this.errorHandler.getClass().getName());
+			}
+			else {
+				Assert.state(this.errorHandler instanceof ErrorHandler,
+						"The error handler must be an ErrorHandler, not " + this.errorHandler.getClass().getName());
+			}
+		}
 	}
 
 	@SuppressWarnings("unchecked")
