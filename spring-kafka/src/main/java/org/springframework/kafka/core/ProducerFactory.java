@@ -44,7 +44,7 @@ public interface ProducerFactory<K, V> {
 
 	/**
 	 * Remove the specified producer from the cache and close it.
-	 * @param transactionId the producer's transaction id suffix.
+	 * @param transactionIdSuffix the producer's transaction id suffix.
 	 * @since 1.3.8
 	 */
 	default void closeProducerFor(String transactionIdSuffix) {
