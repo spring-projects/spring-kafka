@@ -473,9 +473,9 @@ public class TransactionalContainerTests {
 		// depending on timing, the position might include the offset representing the commit in the log
 		assertThat(consumer.position(new TopicPartition(topic1, 0))).isGreaterThanOrEqualTo(1L);
 		assertThat(transactionalId.get()).startsWith("rr.group.txTopic");
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
 		consumer.close();
 	}
 

@@ -28,10 +28,27 @@ import org.apache.kafka.clients.producer.Producer;
  */
 public interface ProducerFactory<K, V> {
 
+	/**
+	 * Create a producer.
+	 * @return the producer.
+	 */
 	Producer<K, V> createProducer();
 
+	/**
+	 * Return true if the factory supports transactions.
+	 * @return true if transactional.
+	 */
 	default boolean transactionCapable() {
 		return false;
+	}
+
+	/**
+	 * Remove the specified producer from the cache and close it.
+	 * @param transactionId the producer's transaction id suffix.
+	 * @since 1.3.8
+	 */
+	default void closeProducerFor(String transactionIdSuffix) {
+		// NOSONAR
 	}
 
 }

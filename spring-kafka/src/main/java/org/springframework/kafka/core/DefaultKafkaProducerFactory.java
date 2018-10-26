@@ -95,7 +95,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final BlockingQueue<CloseSafeProducer<K, V>> cache = new LinkedBlockingQueue<>();
 
-	private final Map<String, Producer<K, V>> consumerProducers = new HashMap<>();
+	private final Map<String, CloseSafeProducer<K, V>> consumerProducers = new HashMap<>();
 
 	private volatile CloseSafeProducer<K, V> producer;
 
@@ -224,7 +224,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
-				(k, v) -> ((CloseSafeProducer<K, V>) v).delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS));
+				(k, v) -> v.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS));
 			this.consumerProducers.clear();
 		}
 	}
@@ -316,7 +316,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		else {
 			synchronized (this.consumerProducers) {
 				if (!this.consumerProducers.containsKey(suffix)) {
-					Producer<K, V> newProducer = doCreateTxProducer(suffix, this::removeConsumerProducer);
+					CloseSafeProducer<K, V> newProducer = doCreateTxProducer(suffix, this::removeConsumerProducer);
 					this.consumerProducers.put(suffix, newProducer);
 					return newProducer;
 				}
@@ -329,7 +329,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private void removeConsumerProducer(CloseSafeProducer<K, V> producer) {
 		synchronized (this.consumerProducers) {
-			Iterator<Entry<String, Producer<K, V>>> iterator = this.consumerProducers.entrySet().iterator();
+			Iterator<Entry<String, CloseSafeProducer<K, V>>> iterator = this.consumerProducers.entrySet().iterator();
 			while (iterator.hasNext()) {
 				if (iterator.next().getValue().equals(producer)) {
 					iterator.remove();
@@ -355,7 +355,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 	}
 
-	private Producer<K, V> doCreateTxProducer(String suffix, Consumer<CloseSafeProducer<K, V>> remover) {
+	private CloseSafeProducer<K, V> doCreateTxProducer(String suffix, Consumer<CloseSafeProducer<K, V>> remover) {
 		Producer<K, V> producer;
 		Map<String, Object> configs = new HashMap<>(this.configs);
 		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, this.transactionIdPrefix + suffix);
@@ -366,6 +366,18 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	protected BlockingQueue<CloseSafeProducer<K, V>> getCache() {
 		return this.cache;
+	}
+
+	@Override
+	public void closeProducerFor(String transactionIdSuffix) {
+		if (this.producerPerConsumerPartition) {
+			synchronized (this.consumerProducers) {
+				CloseSafeProducer<K, V> removed = this.consumerProducers.remove(transactionIdSuffix);
+				if (removed != null) {
+					removed.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
+				}
+			}
+		}
 	}
 
 	/**
