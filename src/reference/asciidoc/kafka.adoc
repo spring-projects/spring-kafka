@@ -1121,11 +1121,22 @@ Use a custom deserializer, the `JsonDeserializer` or the `(String|Bytes)JsonMess
 
 The listener containers created for `@KafkaListener` annotations are not beans in the application context.
 Instead, they are registered with an infrastructure bean of type `KafkaListenerEndpointRegistry`.
-This bean manages the containers' lifecycles; it will auto-start any containers that have `autoStartup` set to `true`.
+This bean is automatically declared by the framework and manages the containers' lifecycles; it will auto-start any containers that have `autoStartup` set to `true`.
 All containers created by all container factories must be in the same `phase` - see <<container-auto-startup>> for more information.
 You can manage the lifecycle programmatically using the registry; starting/stopping the registry will start/stop all the registered containers.
 Or, you can get a reference to an individual container using its `id` attribute; you can set `autoStartup` on the annotation, which will override the default setting configured into the container factory.
+Simply get a reference to the bean from the application context, such as auto wiring, to manage its registered containers:
 
+====
+[source, java]
+----
+@KafkaListener(id = "myContainer", topics = "myTopic", autoStartup = "false")
+public void listen(...) { ... }
+
+----
+====
+
+====
 [source, java]
 ----
 @Autowired
@@ -1133,13 +1144,11 @@ private KafkaListenerEndpointRegistry registry;
 
 ...
 
-@KafkaListener(id = "myContainer", topics = "myTopic", autoStartup = "false")
-public void listen(...) { ... }
+    this.registry.getListenerContainer("myContainer").start();
 
 ...
-
-    registry.getListenerContainer("myContainer").start();
 ----
+====
 
 [[kafka-validation]]
 ===== @KafkaListener @Payload Validation
