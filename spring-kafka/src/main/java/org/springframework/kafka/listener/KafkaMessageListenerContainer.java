@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
@@ -489,6 +490,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					getContainerProperties().getConsumerRebalanceListener().onPartitionsRevoked(partitions);
 					// Wait until now to commit, in case the user listener added acks
 					commitPendingAcks();
+					if (ListenerConsumer.this.kafkaTxManager != null) {
+						closeProducers(partitions);
+					}
 				}
 
 				@Override
@@ -679,6 +683,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					catch (WakeupException e) {
 						// No-op. Continue process
 					}
+				}
+				else {
+					closeProducers(getAssignedPartitions());
 				}
 			}
 			else {
@@ -895,8 +902,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.logger.trace("Processing " + record);
 				}
 				try {
-					TransactionSupport.setTransactionIdSuffix(
-							this.consumerGroupId + "." + record.topic() + "." + record.partition());
+					TransactionSupport
+							.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
 					this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 
 						@Override
@@ -1226,6 +1233,26 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		@Override
 		public void seekToEnd(String topic, int partition) {
 			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.END));
+		}
+
+		private void closeProducers(Collection<TopicPartition> partitions) {
+			if (this.kafkaTxManager.getProducerFactory() instanceof DefaultKafkaProducerFactory) {
+				DefaultKafkaProducerFactory<?, ?> producerFactory =
+						(DefaultKafkaProducerFactory<?, ?>) this.kafkaTxManager.getProducerFactory();
+				for (TopicPartition tp : partitions) {
+					try {
+						producerFactory.closeProducerFor(zombieFenceTxIdSuffix(tp.topic(), tp.partition()));
+					}
+					catch (Exception e) {
+						this.logger.error("Failed to close producer with transaction id suffix: "
+								+ zombieFenceTxIdSuffix(tp.topic(), tp.partition()), e);
+					}
+				}
+			}
+		}
+
+		private String zombieFenceTxIdSuffix(String topic, int partition) {
+			return this.consumerGroupId + "." + topic + "." + partition;
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {

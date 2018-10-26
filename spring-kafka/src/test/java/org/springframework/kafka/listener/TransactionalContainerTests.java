@@ -443,9 +443,9 @@ public class TransactionalContainerTests {
 		assertThat(records.count()).isEqualTo(0);
 		assertThat(consumer.position(new TopicPartition(topic1, 0))).isEqualTo(1);
 		assertThat(transactionalId.get()).startsWith("rr.group.txTopic");
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
 		consumer.close();
 	}
 

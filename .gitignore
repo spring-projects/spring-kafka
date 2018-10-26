@@ -11,3 +11,4 @@ bin
 build
 out
 target
+.DS_Store
