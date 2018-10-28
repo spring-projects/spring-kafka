@@ -1461,10 +1461,8 @@ http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chap
 The Spring for Apache Kafka project also provides some assistance by means of the `FilteringMessageListenerAdapter`
 class, which can wrap your `MessageListener`.
 This class takes an implementation of `RecordFilterStrategy` where you implement the `filter` method to signal
-that a message is a duplicate and should be discarded.
-
-A `FilteringAcknowledgingMessageListenerAdapter` is also provided for wrapping an `AcknowledgingMessageListener`.
-This has an additional property `ackDiscarded` which indicates whether the adapter should acknowledge the discarded record; it is `true` by default.
+that a message is a duplicate and should be discarded. This has an additional property `ackDiscarded` which indicates
+whether the adapter should acknowledge the discarded record; it is `false` by default.
 
 When using `@KafkaListener`, set the `RecordFilterStrategy` (and optionally `ackDiscarded`) on the container factory and the listener will be wrapped in the appropriate filtering adapter.
 
@@ -1489,7 +1487,7 @@ When using `@KafkaListener`, set the `RetryTemplate` (and optionally `recoveryCa
 The contents of the `RetryContext` passed into the `RecoveryCallback` will depend on the type of listener.
 The context will always have an attribute `record` which is the record for which the failure occurred.
 If your listener is acknowledging and/or consumer aware, additional attributes `acknowledgment` and/or `consumer` will be available.
-For convenience, the `RetryingAcknowledgingMessageListenerAdapter` provides static constants for these keys.
+For convenience, the `RetryingMessageListenerAdapter` provides static constants for these keys.
 See its javadocs for more information.
 
 A retry adapter is not provided for any of the batch <<message-listeners, message listeners>> because the framework has no knowledge of where, in a batch, the failure occurred.
