@@ -71,6 +71,7 @@ public class ErrorHandlingDeserializerTests {
 		assertThat(this.config.goodCount).isEqualTo(1);
 		assertThat(this.config.keyErrorCount).isEqualTo(1);
 		assertThat(this.config.valueErrorCount).isEqualTo(1);
+		assertThat(this.config.headers).isNotNull();
 	}
 
 	@Configuration
@@ -84,6 +85,8 @@ public class ErrorHandlingDeserializerTests {
 		private int keyErrorCount;
 
 		private int valueErrorCount;
+
+		private Headers headers;
 
 		@KafkaListener(topics = TOPIC)
 		public void listen(ConsumerRecord<String, String> record) {
@@ -105,6 +108,7 @@ public class ErrorHandlingDeserializerTests {
 			factory.setErrorHandler((t, r) -> {
 				if (r.value() instanceof DeserializationException) {
 					this.valueErrorCount++;
+					this.headers = ((DeserializationException) r.value()).getHeaders();
 				}
 				else if (r.key() instanceof DeserializationException) {
 					this.keyErrorCount++;

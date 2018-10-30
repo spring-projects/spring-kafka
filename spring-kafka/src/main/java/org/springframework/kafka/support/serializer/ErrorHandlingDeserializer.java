@@ -130,7 +130,7 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 		// We need this container to trick a generic type. It doesn't matter at runtime anyway.
 		AtomicReference<T> reference =
 				(AtomicReference<T>) new AtomicReference<>(
-						new DeserializationException("Failed to deserialize", data, this.isKey, e));
+						new DeserializationException("Failed to deserialize", headers, data, this.isKey, e));
 		return reference.get();
 	}
 
