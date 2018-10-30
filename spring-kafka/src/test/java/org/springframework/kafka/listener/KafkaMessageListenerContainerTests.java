@@ -59,7 +59,9 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.ExtendedDeserializer;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -84,6 +86,7 @@ import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapte
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -183,7 +186,7 @@ public class KafkaMessageListenerContainerTests {
 
 		assertThat(latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		// Stack traces are environment dependent - verified in eclipse
-//		assertThat(trace.get()[1].getMethodName()).contains("invokeRecordListener");
+		//		assertThat(trace.get()[1].getMethodName()).contains("invokeRecordListener");
 		container.stop();
 		final CountDownLatch latch2 = new CountDownLatch(1);
 		FilteringMessageListenerAdapter<Integer, String> filtering = new FilteringMessageListenerAdapter<>(m -> {
@@ -198,12 +201,12 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(0, 0, "foo");
 		assertThat(latch2.await(10, TimeUnit.SECONDS)).isTrue();
 		// verify that the container called the right method - avoiding the creation of an Acknowledgment
-//		assertThat(trace.get()[1].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (inner)
-//		assertThat(trace.get()[2].getMethodName()).contains("onMessage"); // bridge
-//		assertThat(trace.get()[3].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (outer)
-//		assertThat(trace.get()[4].getMethodName()).contains("onMessage"); // onMessage(d)
-//		assertThat(trace.get()[5].getMethodName()).contains("onMessage"); // bridge
-//		assertThat(trace.get()[6].getMethodName()).contains("invokeRecordListener");
+		//		assertThat(trace.get()[1].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (inner)
+		//		assertThat(trace.get()[2].getMethodName()).contains("onMessage"); // bridge
+		//		assertThat(trace.get()[3].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (outer)
+		//		assertThat(trace.get()[4].getMethodName()).contains("onMessage"); // onMessage(d)
+		//		assertThat(trace.get()[5].getMethodName()).contains("onMessage"); // bridge
+		//		assertThat(trace.get()[6].getMethodName()).contains("invokeRecordListener");
 		container.stop();
 
 		final CountDownLatch latch3 = new CountDownLatch(1);
@@ -219,14 +222,14 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(0, 0, "foo");
 		assertThat(latch3.await(10, TimeUnit.SECONDS)).isTrue();
 		// verify that the container called the 3 arg method directly
-//		int i = 0;
-//		if (trace.get()[1].getClassName().endsWith("AcknowledgingConsumerAwareMessageListener")) {
-//			// this frame does not appear in eclise, but does in gradle.\
-//			i++;
-//		}
-//		assertThat(trace.get()[i + 1].getMethodName()).contains("onMessage"); // onMessage(d, a, c)
-//		assertThat(trace.get()[i + 2].getMethodName()).contains("onMessage"); // bridge
-//		assertThat(trace.get()[i + 3].getMethodName()).contains("invokeRecordListener");
+		//		int i = 0;
+		//		if (trace.get()[1].getClassName().endsWith("AcknowledgingConsumerAwareMessageListener")) {
+		//			// this frame does not appear in eclise, but does in gradle.\
+		//			i++;
+		//		}
+		//		assertThat(trace.get()[i + 1].getMethodName()).contains("onMessage"); // onMessage(d, a, c)
+		//		assertThat(trace.get()[i + 2].getMethodName()).contains("onMessage"); // bridge
+		//		assertThat(trace.get()[i + 3].getMethodName()).contains("invokeRecordListener");
 		container.stop();
 		long t = System.currentTimeMillis();
 		container.stop();
@@ -457,7 +460,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setAckOnError(false);
-//		containerProps.setCommitLogLevel(LogIfLevelEnabled.Level.WARN);
+		//		containerProps.setCommitLogLevel(LogIfLevelEnabled.Level.WARN);
 
 		CountDownLatch stubbingComplete = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
@@ -525,7 +528,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAckMode(AckMode.RECORD);
 		final CountDownLatch latch = new CountDownLatch(2);
 		MessageListener<Integer, String> messageListener = spy(
-				new MessageListener<Integer, String>() {
+				new MessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
 
 					@Override
 					public void onMessage(ConsumerRecord<Integer, String> data) {
@@ -594,7 +597,7 @@ public class KafkaMessageListenerContainerTests {
 		final List<Acknowledgment> acks = new ArrayList<>();
 		final AtomicReference<Thread> consumerThread = new AtomicReference<>();
 		AcknowledgingMessageListener<Integer, String> messageListener = spy(
-				new AcknowledgingMessageListener<Integer, String>() {
+				new AcknowledgingMessageListener<Integer, String>() { // Mockito doesn't mock final classes
 
 					@Override
 					public void onMessage(ConsumerRecord<Integer, String> data, Acknowledgment acknowledgment) {
@@ -1694,8 +1697,12 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeIgnoreTypeHeadersInbound() throws Exception {
 		this.logger.info("Start JSON4");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+
+		ErrorHandlingDeserializer<Foo1> errorHandlingDeserializer =
+				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(Foo1.class, false));
+
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props,
-				new IntegerDeserializer(), new JsonDeserializer<>(Foo1.class, false));
+				new IntegerDeserializer(), errorHandlingDeserializer);
 		ContainerProperties containerProps = new ContainerProperties(topic21);
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -1919,11 +1926,11 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		ArgumentCaptor<Collection<TopicPartition>> captor = ArgumentCaptor.forClass(List.class);
 		verify(consumer).seekToBeginning(captor.capture());
-		assertThat(captor.getValue()
-				.equals(new HashSet<>(Arrays.asList(new TopicPartition("foo", 0), new TopicPartition("foo", 4)))));
+		assertThat(captor.getValue())
+				.isEqualTo(new HashSet<>(Arrays.asList(new TopicPartition("foo", 0), new TopicPartition("foo", 4))));
 		verify(consumer).seekToEnd(captor.capture());
-		assertThat(captor.getValue()
-				.equals(new HashSet<>(Arrays.asList(new TopicPartition("foo", 1), new TopicPartition("foo", 5)))));
+		assertThat(captor.getValue())
+				.isEqualTo(new HashSet<>(Arrays.asList(new TopicPartition("foo", 1), new TopicPartition("foo", 5))));
 		verify(consumer).seek(new TopicPartition("foo", 2), 0L);
 		verify(consumer).seek(new TopicPartition("foo", 3), Long.MAX_VALUE);
 		container.stop();
@@ -2084,7 +2091,8 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setGroupId("grp");
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
-		containerProps.setMessageListener((MessageListener) r -> { });
+		containerProps.setMessageListener((MessageListener) r -> {
+		});
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch ehl = new CountDownLatch(1);
@@ -2094,7 +2102,8 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(ehl.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
-		containerProps.setMessageListener((BatchMessageListener) r -> { });
+		containerProps.setMessageListener((BatchMessageListener) r -> {
+		});
 		container = new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch behl = new CountDownLatch(1);
 		container.setBatchErrorHandler((r, t) -> {
@@ -2114,7 +2123,8 @@ public class KafkaMessageListenerContainerTests {
 		return consumer;
 	}
 
-	private KafkaMessageListenerContainer<Integer, String> spyOnContainer(KafkaMessageListenerContainer<Integer, String> container,
+	private KafkaMessageListenerContainer<Integer, String> spyOnContainer(KafkaMessageListenerContainer<Integer,
+			String> container,
 			final CountDownLatch stubbingComplete) {
 		KafkaMessageListenerContainer<Integer, String> spy = spy(container);
 		willAnswer(i -> {
