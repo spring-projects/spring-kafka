@@ -105,7 +105,7 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 			return this.delegate.deserialize(topic, data);
 		}
 		catch (Exception e) {
-			return deserializationException(data, e);
+			return deserializationException(null, data, e);
 		}
 	}
 
@@ -115,7 +115,7 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 			return this.delegate.deserialize(topic, headers, data);
 		}
 		catch (Exception e) {
-			return deserializationException(data, e);
+			return deserializationException(headers, data, e);
 		}
 	}
 
@@ -125,7 +125,7 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private T deserializationException(byte[] data, Exception e) {
+	private T deserializationException(Headers headers, byte[] data, Exception e) {
 		// We need this container to trick a generic type. It doesn't matter at runtime anyway.
 		AtomicReference<T> reference =
 				(AtomicReference<T>) new AtomicReference<>(

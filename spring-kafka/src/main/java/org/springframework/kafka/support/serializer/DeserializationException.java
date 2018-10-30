@@ -16,27 +16,47 @@
 
 package org.springframework.kafka.support.serializer;
 
+import org.apache.kafka.common.header.Headers;
+
 import org.springframework.kafka.KafkaException;
+import org.springframework.lang.Nullable;
 
 /**
  * Exception returned in the consumer record value or key when a deserialization failure
  * occurs.
  *
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.2
  *
  */
 @SuppressWarnings("serial")
 public class DeserializationException extends KafkaException {
 
+	@Nullable
+	private final Headers headers;
+
 	private final byte[] data;
 
 	private final boolean isKey;
 
-	public DeserializationException(String message, byte[] data, boolean isKey, Throwable cause) { // NOSONAR array reference
+	public DeserializationException(String message, byte[] data, boolean isKey, Throwable cause) {
+		this(message, null, data, isKey, cause);
+	}
+
+	public DeserializationException(String message, @Nullable Headers headers, byte[] data, // NOSONAR array reference
+			boolean isKey, Throwable cause) {
+
 		super(message, cause);
+		this.headers = headers;
 		this.data = data; // NOSONAR array reference
 		this.isKey = isKey;
+	}
+
+	@Nullable
+	public Headers getHeaders() {
+		return this.headers;
 	}
 
 	public byte[] getData() {
