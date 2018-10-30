@@ -30,6 +30,8 @@ import org.springframework.util.ClassUtils;
  * Delegating key/value deserializer that catches exceptions, returning them
  * in the consumer record.
  *
+ * @param <T> class of the entity, representing messages
+ *
  * @author Gary Russell
  * @author Artem Bilan
  *
@@ -60,7 +62,6 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 				delegate instanceof ExtendedDeserializer
 						? (ExtendedDeserializer<T>) delegate
 						: ExtendedDeserializer.Wrapper.ensureExtended(delegate);
-		;
 	}
 
 	@SuppressWarnings("unchecked")
