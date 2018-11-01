@@ -1300,7 +1300,9 @@ The `#root` object for the evaluation has 3 properties:
   - request - the inbound `ConsumerRecord` (or `ConsumerRecords` object for a batch listener))
   - source - the `org.springframework.messaging.Message<?>` converted from the `request`.
   - result - the method return result.
-- `@SendTo` (no properties) - this is treated as `!{source.headers['kafka_replyTopic']}` (since version _2.1.3_).
+- `@SendTo` (no properties) - this is treated as `!{source.headers['kafka_replyTopic']}` (since version 2.1.3).
+
+Starting with versions 2.1.11, 2.2.1, property placeholders are resolved within `@SendTo` values.
 
 The result of the expression evaluation must be a `String` representing the topic name.
 
@@ -1312,7 +1314,7 @@ public String replyingListener(String in) {
     ...
 }
 
-@KafkaListener(topics = "annotated22")
+@KafkaListener(topics = "${some.property:annotated22}")
 @SendTo("#{myBean.replyTopic}") // config time SpEL
 public Collection<String> replyingBatchListener(List<String> in) {
     ...

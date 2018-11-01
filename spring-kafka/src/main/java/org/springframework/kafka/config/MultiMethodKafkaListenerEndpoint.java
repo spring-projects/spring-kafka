@@ -79,7 +79,7 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 			}
 		}
 		DelegatingInvocableHandler delegatingHandler = new DelegatingInvocableHandler(invocableHandlerMethods,
-				defaultHandler, getBean(), getResolver(), getBeanExpressionContext());
+				defaultHandler, getBean(), getResolver(), getBeanExpressionContext(), getBeanFactory());
 		return new HandlerAdapter(delegatingHandler);
 	}
 

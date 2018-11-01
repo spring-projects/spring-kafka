@@ -141,7 +141,8 @@ public class EnableKafkaIntegrationTests {
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true,
 			"annotated1", "annotated2", "annotated3",
-			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated9", "annotated10",
+			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated8reply",
+			"annotated9", "annotated10",
 			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
 			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
@@ -335,11 +336,19 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testMulti() throws Exception {
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplying");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated8reply");
 		template.send("annotated8", 0, 1, "foo");
 		template.send("annotated8", 0, 1, null);
 		template.flush();
 		assertThat(this.multiListener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.multiListener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
+		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated8reply");
+		assertThat(reply.value()).isEqualTo("OK");
+		consumer.close();
 	}
 
 	@Test
@@ -1538,7 +1547,7 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(id = "replyingListenerWithErrorHandler", topics = "annotated23",
 				errorHandler = "replyErrorHandler")
-		@SendTo("annotated23reply")
+		@SendTo("${foo:annotated23reply}")
 		public String replyingListenerWithErrorHandler(String in) {
 			throw new RuntimeException("return this");
 		}
@@ -1671,8 +1680,10 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaHandler
-		public void bar(@Payload(required = false) KafkaNull nul, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
+		@SendTo("#{'${foo:annotated8reply}'}")
+		public String bar(@Payload(required = false) KafkaNull nul, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
 			this.latch2.countDown();
+			return "OK";
 		}
 
 		public void foo(String bar) {

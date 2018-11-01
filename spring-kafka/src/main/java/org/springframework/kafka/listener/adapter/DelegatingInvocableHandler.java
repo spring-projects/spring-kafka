@@ -26,8 +26,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.Expression;
@@ -75,6 +77,8 @@ public class DelegatingInvocableHandler {
 
 	private final BeanExpressionContext beanExpressionContext;
 
+	private final ConfigurableListableBeanFactory beanFactory;
+
 	/**
 	 * Construct an instance with the supplied handlers for the bean.
 	 * @param handlers the handlers.
@@ -84,6 +88,7 @@ public class DelegatingInvocableHandler {
 	 */
 	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers, Object bean,
 			BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext) {
+
 		this(handlers, null, bean, beanExpressionResolver, beanExpressionContext);
 	}
 
@@ -99,11 +104,33 @@ public class DelegatingInvocableHandler {
 	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers,
 			@Nullable InvocableHandlerMethod defaultHandler,
 			Object bean, BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext) {
+
+		this(handlers, defaultHandler, bean, beanExpressionResolver, beanExpressionContext, null);
+	}
+
+	/**
+	 * Construct an instance with the supplied handlers for the bean.
+	 * @param handlers the handlers.
+	 * @param defaultHandler the default handler.
+	 * @param bean the bean.
+	 * @param beanExpressionResolver the resolver.
+	 * @param beanExpressionContext the context.
+	 * @param beanFactory the bean factory.
+	 * @since 2.1.11
+	 */
+	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers,
+			@Nullable InvocableHandlerMethod defaultHandler,
+			Object bean, BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext,
+			@Nullable BeanFactory beanFactory) {
+
 		this.handlers = new ArrayList<>(handlers);
 		this.defaultHandler = defaultHandler;
 		this.bean = bean;
 		this.resolver = beanExpressionResolver;
 		this.beanExpressionContext = beanExpressionContext;
+		this.beanFactory = beanFactory instanceof ConfigurableListableBeanFactory
+				? (ConfigurableListableBeanFactory) beanFactory
+				: null;
 	}
 
 	/**
@@ -173,7 +200,13 @@ public class DelegatingInvocableHandler {
 				throw new IllegalStateException("Invalid @" + SendTo.class.getSimpleName() + " annotation on '"
 						+ element + "' one destination must be set (got " + Arrays.toString(destinations) + ")");
 			}
-			replyTo = destinations.length == 1 ? resolve(destinations[0]) : null;
+			replyTo = destinations.length == 1 ? destinations[0] : null;
+			if (replyTo != null && this.beanFactory != null) {
+				replyTo = this.beanFactory.resolveEmbeddedValue(replyTo);
+				if (replyTo != null) {
+					replyTo = resolve(replyTo);
+				}
+			}
 		}
 		return replyTo;
 	}
