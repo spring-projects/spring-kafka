@@ -466,6 +466,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				this.delegate.commitTransaction();
 			}
 			catch (RuntimeException e) {
+				logger.error("Commit failed", e);
 				this.txFailed = true;
 				throw e;
 			}
@@ -477,6 +478,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				this.delegate.abortTransaction();
 			}
 			catch (RuntimeException e) {
+				logger.error("Abort failed", e);
 				this.txFailed = true;
 				throw e;
 			}
