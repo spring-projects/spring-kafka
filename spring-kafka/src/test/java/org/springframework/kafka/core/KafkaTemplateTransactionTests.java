@@ -78,7 +78,8 @@ public class KafkaTemplateTransactionTests {
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, STRING_KEY_TOPIC)
 			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
-			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
+			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1")
+			.brokerProperty(KafkaConfig.TransactionsAbortTimedOutTransactionCleanupIntervalMsProp(), "2000");
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -86,6 +87,7 @@ public class KafkaTemplateTransactionTests {
 	public void testLocalTransaction() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
+		senderProps.put(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 1000);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
 		pf.setTransactionIdPrefix("my.transaction.");
@@ -100,6 +102,12 @@ public class KafkaTemplateTransactionTests {
 		template.executeInTransaction(t -> {
 			t.sendDefault("foo", "bar");
 			t.sendDefault("baz", "qux");
+			try {
+				Thread.sleep(5000);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			return null;
 		});
 		ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer);

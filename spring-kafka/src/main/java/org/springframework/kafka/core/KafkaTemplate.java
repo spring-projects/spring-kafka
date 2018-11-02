@@ -274,15 +274,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		}
 
 		this.producers.set(producer);
-		boolean commitFailed = false;
+		boolean callbackSuccessful = false;
 		try {
 			T result = callback.doInOperations(this);
-			commitFailed = true;
+			callbackSuccessful = true;
 			producer.commitTransaction();
 			return result;
 		}
 		catch (Exception e) {
-			if (!commitFailed) {
+			if (!callbackSuccessful) {
 				producer.abortTransaction();
 			}
 			throw e;
