@@ -88,7 +88,7 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		RecordHeaders headers = new RecordHeaders(record.headers().toArray());
 		enhanceHeaders(headers, record, exception);
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers);
-		if (this.transactional) {
+		if (this.transactional && !this.template.inTransaction()) {
 			this.template.executeInTransaction(t -> {
 				publish(outRecord, t);
 				return null;
