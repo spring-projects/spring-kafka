@@ -35,14 +35,14 @@ import org.springframework.lang.Nullable;
 public class DeserializationException extends KafkaException {
 
 	@Nullable
-	private final Headers headers;
+	private Headers headers;
 
 	private final byte[] data;
 
 	private final boolean isKey;
 
 	public DeserializationException(String message, byte[] data, boolean isKey, Throwable cause) {
-		this(message, null, data, isKey, cause); // NOSONAR test coverage
+		this(message, null, data, isKey, cause);
 	}
 
 	public DeserializationException(String message, @Nullable Headers headers, byte[] data, // NOSONAR array reference
@@ -57,6 +57,10 @@ public class DeserializationException extends KafkaException {
 	@Nullable
 	public Headers getHeaders() {
 		return this.headers;
+	}
+
+	public void setHeaders(@Nullable Headers headers) {
+		this.headers = headers;
 	}
 
 	public byte[] getData() {

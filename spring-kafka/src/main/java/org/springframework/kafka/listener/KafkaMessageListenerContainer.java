@@ -16,6 +16,9 @@
 
 package org.springframework.kafka.listener;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -50,6 +53,9 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
@@ -70,6 +76,7 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.scheduling.TaskScheduler;
@@ -417,6 +424,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final Duration pollTimeout = Duration.ofMillis(this.containerProperties.getPollTimeout());
 
+		private final boolean checkNullKeyForExceptions;
+
+		private final boolean checkNullValueForExceptions;
+
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private volatile Collection<TopicPartition> assignedPartitions;
@@ -521,6 +532,18 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (this.containerProperties.isLogContainerConfig()) {
 				this.logger.info(this);
 			}
+			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
+			this.checkNullKeyForExceptions = checkDeserializer(props.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG));
+			this.checkNullValueForExceptions = checkDeserializer(
+					props.get(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG));
+		}
+
+		private boolean checkDeserializer(Object deser) {
+			return deser instanceof Class
+					? ((Class<?>) deser).equals(ErrorHandlingDeserializer2.class)
+					: deser instanceof String
+						? ((String) deser).equals(ErrorHandlingDeserializer2.class.getName())
+						: false;
 		}
 
 		protected void checkConsumer() {
@@ -1136,6 +1159,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				if (record.key() instanceof DeserializationException) {
 					throw (DeserializationException) record.key();
 				}
+				if (record.value() == null && this.checkNullValueForExceptions) {
+					checkDeser(record, ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+				}
+				if (record.key() == null && this.checkNullValueForExceptions) {
+					checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
+				}
 				switch (this.listenerType) {
 					case ACKNOWLEDGING_CONSUMER_AWARE:
 						this.listener.onMessage(record,
@@ -1195,6 +1224,27 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			return null;
+		}
+
+		public void checkDeser(final ConsumerRecord<K, V> record, String headerName) {
+			Header header = record.headers().lastHeader(headerName);
+			if (header != null) {
+				try {
+					DeserializationException ex = (DeserializationException) new ObjectInputStream(
+							new ByteArrayInputStream(header.value())).readObject();
+					Headers headers = new RecordHeaders();
+					record.headers().forEach(h -> {
+						if (!h.key().startsWith(ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX)) {
+							headers.add(h.key(), h.value());
+						}
+					});
+					ex.setHeaders(headers);
+					throw ex;
+				}
+				catch (IOException | ClassNotFoundException | ClassCastException e) {
+					this.logger.error("Failed to deserialize a deserialization exception", e);
+				}
+			}
 		}
 
 		public void ackCurrent(final ConsumerRecord<K, V> record, @SuppressWarnings("rawtypes") Producer producer) {

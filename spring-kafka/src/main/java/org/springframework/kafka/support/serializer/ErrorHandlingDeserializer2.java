@@ -16,10 +16,13 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.ExtendedDeserializer;
 
@@ -28,19 +31,32 @@ import org.springframework.util.ClassUtils;
 
 /**
  * Delegating key/value deserializer that catches exceptions, returning them
- * in the consumer record.
+ * in the headers as serialized java objects.
  *
  * @param <T> class of the entity, representing messages
  *
  * @author Gary Russell
  * @author Artem Bilan
- * @deprecated in favor of {@link ErrorHandlingDeserializer2}.
  *
  * @since 2.2
  *
  */
-@Deprecated
-public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
+public class ErrorHandlingDeserializer2<T> implements ExtendedDeserializer<T> {
+
+	/**
+	 * Header name for deserialization exceptions.
+	 */
+	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX = "springDeserializerException";
+
+	/**
+	 * Header name for deserialization exceptions.
+	 */
+	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Key";
+
+	/**
+	 * Heaader name for deserialization exceptions.
+	 */
+	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
 
 	/**
 	 * Property name for the delegate key deserializer.
@@ -56,10 +72,10 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 
 	private boolean isKey;
 
-	public ErrorHandlingDeserializer() {
+	public ErrorHandlingDeserializer2() {
 	}
 
-	public ErrorHandlingDeserializer(Deserializer<T> delegate) {
+	public ErrorHandlingDeserializer2(Deserializer<T> delegate) {
 		this.delegate = setupDelegate(delegate);
 	}
 
@@ -104,7 +120,7 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 			return this.delegate.deserialize(topic, data);
 		}
 		catch (Exception e) {
-			return deserializationException(null, data, e);
+			return null;
 		}
 	}
 
@@ -114,7 +130,8 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 			return this.delegate.deserialize(topic, headers, data);
 		}
 		catch (Exception e) {
-			return deserializationException(headers, data, e);
+			deserializationException(headers, data, e);
+			return null;
 		}
 	}
 
@@ -123,13 +140,27 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 		this.delegate.close();
 	}
 
-	@SuppressWarnings("unchecked")
-	private T deserializationException(Headers headers, byte[] data, Exception e) {
-		// We need this container to trick a generic type. It doesn't matter at runtime anyway.
-		AtomicReference<T> reference =
-				(AtomicReference<T>) new AtomicReference<>(
-						new DeserializationException("Failed to deserialize", headers, data, this.isKey, e));
-		return reference.get();
+	private void deserializationException(Headers headers, byte[] data, Exception e) {
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		DeserializationException exception = new DeserializationException("failed to deserialize", data, this.isKey, e);
+		try {
+			new ObjectOutputStream(stream).writeObject(exception);
+		}
+		catch (IOException ex) {
+			try {
+				exception = new DeserializationException("failed to deserialize",
+						data, this.isKey, new RuntimeException("Could not deserialize type "
+								+ e.getClass().getName() + " with message " + e.getMessage()
+								+ " failure: " + ex.getMessage()));
+				new ObjectOutputStream(stream).writeObject(exception);
+			}
+			catch (IOException ex2) {
+				throw new IllegalStateException("Could not serialize a DeserializationException", ex2);
+			}
+		}
+		headers.add(
+				new RecordHeader(this.isKey ? KEY_DESERIALIZER_EXCEPTION_HEADER : VALUE_DESERIALIZER_EXCEPTION_HEADER,
+						stream.toByteArray()));
 	}
 
 }

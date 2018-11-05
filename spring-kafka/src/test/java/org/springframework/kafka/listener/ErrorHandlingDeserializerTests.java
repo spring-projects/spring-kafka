@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +27,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.ExtendedDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -44,7 +48,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
@@ -77,11 +81,11 @@ public class ErrorHandlingDeserializerTests {
 	}
 
 	@Test
-	public void unitTests() {
-		ErrorHandlingDeserializer<String> ehd = new ErrorHandlingDeserializer<>(new StringDeserializer());
+	public void unitTests() throws Exception {
+		ErrorHandlingDeserializer2<String> ehd = new ErrorHandlingDeserializer2<>(new StringDeserializer());
 		assertThat(ehd.deserialize("topic", "foo".getBytes())).isEqualTo("foo");
 		ehd.close();
-		ehd = new ErrorHandlingDeserializer<>(new Deserializer<String>() {
+		ehd = new ErrorHandlingDeserializer2<>(new Deserializer<String>() {
 
 			@Override
 			public void configure(Map<String, ?> configs, boolean isKey) {
@@ -97,8 +101,11 @@ public class ErrorHandlingDeserializerTests {
 			}
 
 		});
-		Object result = ehd.deserialize("topic", "foo".getBytes());
-		assertThat(result).isInstanceOf(DeserializationException.class);
+		Headers headers = new RecordHeaders();
+		Object result = ehd.deserialize("topic", headers, "foo".getBytes());
+		assertThat(result).isNull();
+		Header deser = headers.lastHeader(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+		assertThat(new ObjectInputStream(new ByteArrayInputStream(deser.value())).readObject()).isInstanceOf(DeserializationException.class);
 		ehd.close();
 	}
 
@@ -122,7 +129,6 @@ public class ErrorHandlingDeserializerTests {
 			this.latch.countDown();
 		}
 
-
 		@Bean
 		public EmbeddedKafkaBroker embeddedKafka() {
 			return new EmbeddedKafkaBroker(1, true, 1, TOPIC);
@@ -134,11 +140,11 @@ public class ErrorHandlingDeserializerTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf());
 			factory.setErrorHandler((t, r) -> {
-				if (r.value() instanceof DeserializationException) {
+				if (r.value() == null && t instanceof DeserializationException) {
 					this.valueErrorCount++;
-					this.headers = ((DeserializationException) r.value()).getHeaders();
+					this.headers = ((DeserializationException) t).getHeaders();
 				}
-				else if (r.key() instanceof DeserializationException) {
+				else if (r.key() == null && t instanceof DeserializationException) {
 					this.keyErrorCount++;
 				}
 				this.latch.countDown();
@@ -150,10 +156,10 @@ public class ErrorHandlingDeserializerTests {
 		public ConsumerFactory<String, String> cf() {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(TOPIC, "false", embeddedKafka());
 			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
-			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
-			props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, FailSometimesDeserializer.class);
-			props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, FailSometimesDeserializer.class.getName());
+			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
+			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
+			props.put(ErrorHandlingDeserializer2.KEY_DESERIALIZER_CLASS, FailSometimesDeserializer.class);
+			props.put(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_CLASS, FailSometimesDeserializer.class.getName());
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 

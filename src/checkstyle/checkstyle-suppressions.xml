@@ -7,4 +7,5 @@
 	<suppress files="[\\/]test[\\/]" checks="RequireThis" />
 	<suppress files="[\\/]test[\\/]" checks="Javadoc*" />
 	<suppress files="KafkaMatchersTests" checks="RegexpSinglelineJava" />
+	<suppress files="DeserializationException" checks="MutableException" />
 </suppressions>
