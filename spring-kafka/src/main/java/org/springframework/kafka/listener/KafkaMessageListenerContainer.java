@@ -1162,7 +1162,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				if (record.value() == null && this.checkNullValueForExceptions) {
 					checkDeser(record, ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 				}
-				if (record.key() == null && this.checkNullValueForExceptions) {
+				if (record.key() == null && this.checkNullKeyForExceptions) {
 					checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
 				}
 				switch (this.listenerType) {
@@ -1232,12 +1232,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				try {
 					DeserializationException ex = (DeserializationException) new ObjectInputStream(
 							new ByteArrayInputStream(header.value())).readObject();
-					Headers headers = new RecordHeaders();
-					record.headers().forEach(h -> {
-						if (!h.key().startsWith(ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX)) {
-							headers.add(h.key(), h.value());
-						}
-					});
+					Headers headers = new RecordHeaders(Arrays.stream(record.headers().toArray())
+							.filter(h -> !h.key()
+									.startsWith(ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX))
+							.collect(Collectors.toList()));
 					ex.setHeaders(headers);
 					throw ex;
 				}

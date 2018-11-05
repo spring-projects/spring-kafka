@@ -1941,7 +1941,13 @@ To solve this problem, version 2.2 introduced the `ErrorHandlingDeserializer2`.
 This deserializer delegates to a real deserializer (key or value).
 If the delegate fails to deserialize the record content, the `ErrorHandlingDeserializer2` returns a `null` value and a `DeserializationException` in a header, containing the cause and raw bytes.
 When using a record-level `MessageListener`, if either the key or value contains a `DeserializationException` header, the container's `ErrorHandler` is called with the failed `ConsumerRecord`; the record is not passed to the listener.
-When using a `BatchMessageListener`, the failed record is passed to the application along with the remaining records in the batch, so it is the responsibility of the application listener to check whether the key or value in a particular record is `null` a `DeserializationException` can be found (as a serialized Java object) in headers; see the javadocs for the `ErrorHandlingDeserializer2` for more information.
+
+Alternatively, you can configure a `failedDeserializationFunction` which is a `BiConsumer<byte[], Headers, T>`.
+This function is invoked to create an instance of `T` which is passed to the listener, as normal.
+The raw record value and headers are provided to the function.
+The `DeserializationException` can be found (as a serialized Java object) in headers; see the javadocs for the `ErrorHandlingDeserializer2` for more information.
+
+When using a `BatchMessageListener`, you **must** provide a `failedDeserializationFunction`, otherwise, the batch of records will not be type safe.
 
 You can use the `DefaultKafkaConsumerFactory` constructor that takes key and value `Deserializer` objects and wire in appropriate `ErrorHandlingDeserializer2` configured with the proper delegates.
 Alternatively, you can use consumer configuration properties which are used by the `ErrorHandlingDeserializer` to instantiate the delegates.
@@ -1959,6 +1965,45 @@ props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.c
 props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.example.MyValue")
 props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.example")
 return new DefaultKafkaConsumerFactory<>(props);
+----
+
+The following is an example of using a `failedDeserializationFunction`.
+
+[source, java]
+----
+public class BadFoo extends Foo {
+
+  private final byte[] failedDecode;
+
+  public BadFoo(byte[] failedDecode) {
+    this.failedDecode = failedDecode;
+  }
+
+  public byte[] getFailedDecode() {
+    return this.failedDecode;
+  }
+
+}
+
+public class FailedFooProvider implements BiFunction<byte[], Headers, Foo> {
+
+  @Override
+  public Foo apply(byte[] t, Headers u) {
+    return new BadFoo(t);
+  }
+
+}
+----
+
+and config
+
+[source, java]
+----
+...
+consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
+consumerProps.put(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+consumerProps.put(ErrorHandlingDeserializer2.VALUE_FUNCTION, FailedFooProvider.class);
+...
 ----
 
 [[payload-conversion-with-batch]]

@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -59,6 +60,16 @@ public class ErrorHandlingDeserializer2<T> implements ExtendedDeserializer<T> {
 	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
 
 	/**
+	 * Supplier for a T when deserialization fails.
+	 */
+	public static final String KEY_FUNCTION = "spring.deserializer.key.function";
+
+	/**
+	 * Supplier for a T when deserialization fails.
+	 */
+	public static final String VALUE_FUNCTION = "spring.deserializer.value.function";
+
+	/**
 	 * Property name for the delegate key deserializer.
 	 */
 	public static final String KEY_DESERIALIZER_CLASS = "spring.deserializer.key.delegate.class";
@@ -72,38 +83,41 @@ public class ErrorHandlingDeserializer2<T> implements ExtendedDeserializer<T> {
 
 	private boolean isKey;
 
+	private BiFunction<byte[], Headers, T> failedDeserializationFunction;
+
 	public ErrorHandlingDeserializer2() {
+		super();
 	}
 
 	public ErrorHandlingDeserializer2(Deserializer<T> delegate) {
 		this.delegate = setupDelegate(delegate);
 	}
 
+	public void setFailedDeserializationFunction(BiFunction<byte[], Headers, T> failedDeserializationFunction) {
+		this.failedDeserializationFunction = failedDeserializationFunction;
+	}
+
+
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
-		if (isKey && configs.containsKey(KEY_DESERIALIZER_CLASS)) {
-			try {
-				Object value = configs.get(KEY_DESERIALIZER_CLASS);
-				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
-				this.delegate = setupDelegate(clazz.newInstance());
-			}
-			catch (ClassNotFoundException | LinkageError | InstantiationException | IllegalAccessException e) {
-				throw new IllegalStateException(e);
-			}
-		}
-		else if (!isKey && configs.containsKey(VALUE_DESERIALIZER_CLASS)) {
-			try {
-				Object value = configs.get(VALUE_DESERIALIZER_CLASS);
-				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
-				this.delegate = setupDelegate(clazz.newInstance());
-			}
-			catch (ClassNotFoundException | LinkageError | InstantiationException | IllegalAccessException e) {
-				throw new IllegalStateException(e);
-			}
-		}
+		setupDelegate(configs, isKey ? KEY_DESERIALIZER_CLASS : VALUE_DESERIALIZER_CLASS);
 		Assert.state(this.delegate != null, "No delegate deserializer configured");
 		this.delegate.configure(configs, isKey);
 		this.isKey = isKey;
+		setupFunction(configs, isKey ? KEY_FUNCTION : VALUE_FUNCTION);
+	}
+
+	public void setupDelegate(Map<String, ?> configs, String configKey) {
+		if (configs.containsKey(configKey)) {
+			try {
+				Object value = configs.get(configKey);
+				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
+				this.delegate = setupDelegate(clazz.newInstance());
+			}
+			catch (ClassNotFoundException | LinkageError | InstantiationException | IllegalAccessException e) {
+				throw new IllegalStateException(e);
+			}
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -114,13 +128,31 @@ public class ErrorHandlingDeserializer2<T> implements ExtendedDeserializer<T> {
 				: ExtendedDeserializer.Wrapper.ensureExtended((Deserializer<T>) delegate);
 	}
 
+	@SuppressWarnings("unchecked")
+	private void setupFunction(Map<String, ?> configs, String configKey) {
+		if (configs.containsKey(configKey)) {
+			try {
+				Object value = configs.get(configKey);
+				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
+				Assert.isTrue(BiFunction.class.isAssignableFrom(clazz), "'function' must be a 'BiFunction	', not a "
+						+ clazz.getName());
+				this.failedDeserializationFunction = (BiFunction<byte[], Headers, T>) clazz.newInstance();
+			}
+			catch (ClassNotFoundException | LinkageError | InstantiationException | IllegalAccessException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
 	@Override
 	public T deserialize(String topic, byte[] data) {
 		try {
 			return this.delegate.deserialize(topic, data);
 		}
 		catch (Exception e) {
-			return null;
+			return this.failedDeserializationFunction != null
+					? this.failedDeserializationFunction.apply(data, null)
+					: null;
 		}
 	}
 
@@ -131,7 +163,9 @@ public class ErrorHandlingDeserializer2<T> implements ExtendedDeserializer<T> {
 		}
 		catch (Exception e) {
 			deserializationException(headers, data, e);
-			return null;
+			return this.failedDeserializationFunction != null
+					? this.failedDeserializationFunction.apply(data, headers)
+					: null;
 		}
 	}
 
