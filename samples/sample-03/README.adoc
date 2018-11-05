@@ -1,0 +1,16 @@
+== Sample 3
+
+This sample demonstrates the use of transactions, including container-managed transactions on the consumer side.
+The listener receives a batch of messages and sends them to another topic, all within one transaction.
+
+Run the application and use curl to send some data:
+
+`$ curl -X POST http://localhost:8080/send/foos/a,b,c,d,e`
+
+Console:
+
+`2018-11-05 11:50:29.244  INFO 60437 --- [fooGroup2-0-C-1] com.example.Application                  : Received: [Foo2 [foo=a], Foo2 [foo=b], Foo2 [foo=c], Foo2 [foo=d], Foo2 [foo=e]]`
+`2018-11-05 11:50:29.247  INFO 60437 --- [fooGroup2-0-C-1] com.example.Application                  : Messages sent, hit enter to commit tx`
+
+`2018-11-05 11:50:33.045  INFO 60437 --- [fooGroup3-0-C-1] com.example.Application                  : Received: [A, B, C, D, E]`
+

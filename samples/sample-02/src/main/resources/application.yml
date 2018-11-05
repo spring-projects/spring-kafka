@@ -1,0 +1,6 @@
+spring:
+  kafka:
+    producer:
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: foo:com.common.Foo1,bar:com.common.Bar1
