@@ -28,9 +28,11 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -51,6 +53,7 @@ import org.mockito.InOrder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.transaction.ResourcelessTransactionManager;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -232,6 +235,58 @@ public class KafkaTemplateTransactionTests {
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.closed()).isTrue();
+	}
+
+	@Test
+	public void testExcecuteInTransactionNewInnerTx() {
+		@SuppressWarnings("unchecked")
+		Producer<Object, Object> producer1 = mock(Producer.class);
+		@SuppressWarnings("unchecked")
+		Producer<Object, Object> producer2 = mock(Producer.class);
+		producer1.initTransactions();
+		AtomicBoolean first = new AtomicBoolean(true);
+
+		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<Object, Object>(
+				Collections.emptyMap()) {
+
+			@Override
+			protected Producer<Object, Object> createTransactionalProducer() {
+				return first.getAndSet(false) ? producer1 : producer2;
+			}
+
+			@Override
+			Producer<Object, Object> createTransactionalProducerForPartition() {
+				return createTransactionalProducer();
+			}
+
+		};
+		pf.setTransactionIdPrefix("tx.");
+
+		KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+
+		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
+
+		try {
+			TransactionSupport.setTransactionIdSuffix("testExcecuteInTransactionNewInnerTx");
+			new TransactionTemplate(tm).execute(s -> {
+				return template.executeInTransaction(t -> {
+					template.sendDefault("foo", "bar");
+					return null;
+				});
+			});
+
+			InOrder inOrder = inOrder(producer1, producer2);
+			inOrder.verify(producer1).beginTransaction();
+			inOrder.verify(producer2).beginTransaction();
+			inOrder.verify(producer2).commitTransaction();
+			inOrder.verify(producer2).close();
+			inOrder.verify(producer1).commitTransaction();
+			inOrder.verify(producer1).close();
+		}
+		finally {
+			TransactionSupport.clearTransactionIdSuffix();
+		}
 	}
 
 	@Configuration

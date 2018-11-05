@@ -34,6 +34,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -61,6 +62,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	protected final Log logger = LogFactory.getLog(this.getClass()); //NOSONAR
 
 	private final ProducerFactory<K, V> producerFactory;
+
+	private final DefaultKafkaProducerFactory<K, V> defaultKafkaProducerFactory;
 
 	private final boolean autoFlush;
 
@@ -94,6 +97,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		this.producerFactory = producerFactory;
 		this.autoFlush = autoFlush;
 		this.transactional = producerFactory.transactionCapable();
+		if (producerFactory instanceof DefaultKafkaProducerFactory) {
+			this.defaultKafkaProducerFactory = (DefaultKafkaProducerFactory<K, V>) producerFactory;
+		}
+		else {
+			this.defaultKafkaProducerFactory = null;
+		}
 	}
 
 	/**
@@ -236,6 +245,16 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		Assert.state(this.transactional, "Producer factory does not support transactions");
 		Producer<K, V> producer = this.producers.get();
 		Assert.state(producer == null, "Nested calls to 'executeInTransaction' are not allowed");
+		String transactionIdSuffix;
+		if (this.defaultKafkaProducerFactory != null
+				&& this.defaultKafkaProducerFactory.isProducerPerConsumerPartition()) {
+			transactionIdSuffix = TransactionSupport.getTransactionIdSuffix();
+			TransactionSupport.clearTransactionIdSuffix();
+		}
+		else {
+			transactionIdSuffix = null;
+		}
+
 		producer = this.producerFactory.createProducer();
 
 		try {
@@ -265,6 +284,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			producer.commitTransaction();
 		}
 		finally {
+			if (transactionIdSuffix != null) {
+				TransactionSupport.setTransactionIdSuffix(transactionIdSuffix);
+			}
 			this.producers.remove();
 			closeProducer(producer, false);
 		}
