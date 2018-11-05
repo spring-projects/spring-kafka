@@ -51,4 +51,13 @@ public interface ProducerFactory<K, V> {
 		// NOSONAR
 	}
 
+	/**
+	 * Return the producerPerConsumerPartition.
+	 * @return the producerPerConsumerPartition.
+	 * @since 1.3.8
+	 */
+	default boolean isProducerPerConsumerPartition() {
+		return false;
+	}
+
 }

@@ -35,6 +35,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -263,6 +264,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		Assert.state(this.transactional, "Producer factory does not support transactions");
 		Producer<K, V> producer = this.producers.get();
 		Assert.state(producer == null, "Nested calls to 'executeInTransaction' are not allowed");
+		String transactionIdSuffix;
+		if (this.producerFactory.isProducerPerConsumerPartition()) {
+			transactionIdSuffix = TransactionSupport.getTransactionIdSuffix();
+			TransactionSupport.clearTransactionIdSuffix();
+		}
+		else {
+			transactionIdSuffix = null;
+		}
+
 		producer = this.producerFactory.createProducer();
 
 		try {
@@ -292,6 +302,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			throw e;
 		}
 		finally {
+			if (transactionIdSuffix != null) {
+				TransactionSupport.setTransactionIdSuffix(transactionIdSuffix);
+			}
 			this.producers.remove();
 			closeProducer(producer, false);
 		}

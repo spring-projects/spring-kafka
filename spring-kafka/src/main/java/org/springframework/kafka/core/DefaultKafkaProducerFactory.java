@@ -190,6 +190,16 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
+	 * Return the producerPerConsumerPartition.
+	 * @return the producerPerConsumerPartition.
+	 * @since 1.3.8
+	 */
+	@Override
+	public boolean isProducerPerConsumerPartition() {
+		return this.producerPerConsumerPartition;
+	}
+
+	/**
 	 * Return an unmodifiable reference to the configuration map for this factory.
 	 * Useful for cloning to make a similar factory.
 	 * @return the configs.
@@ -308,7 +318,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
 	}
 
-	private Producer<K, V> createTransactionalProducerForPartition() {
+	Producer<K, V> createTransactionalProducerForPartition() {
 		String suffix = TransactionSupport.getTransactionIdSuffix();
 		if (suffix == null) {
 			return createTransactionalProducer();
