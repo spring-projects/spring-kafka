@@ -284,9 +284,9 @@ public class KafkaTemplateTransactionTests {
 		@SuppressWarnings("unchecked")
 		ProducerFactory<Object, Object> pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
-		given(pf.createProducer()).willReturn(producer1);
+		given(pf.createProducer()).willReturn(producer1).willReturn(producer2);
 
-		KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
+		KafkaTemplate<Object, Object> template = spy(new KafkaTemplate<>(pf));
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 
 		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
@@ -302,6 +302,7 @@ public class KafkaTemplateTransactionTests {
 		verify(producer1).commitTransaction();
 		verify(producer1).close();
 		verify(producer2, never()).beginTransaction();
+		verify(template, never()).executeInTransaction(any());
 	}
 
 	@Test
