@@ -162,6 +162,12 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				container.setClientIdSuffix("-" + i);
 				container.setGenericErrorHandler(getGenericErrorHandler());
 				container.setAfterRollbackProcessor(getAfterRollbackProcessor());
+				container.setEmergencyStop(() -> {
+					stop(() -> {
+						// NOSONAR
+					});
+					publishContainerStoppedEvent();
+				});
 				container.start();
 				this.containers.add(container);
 			}

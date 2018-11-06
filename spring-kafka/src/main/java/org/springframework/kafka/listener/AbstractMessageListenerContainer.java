@@ -35,6 +35,7 @@ import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -317,6 +318,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				});
 				try {
 					latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS);
+					publishContainerStoppedEvent();
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
@@ -340,6 +342,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		synchronized (this.lifecycleMonitor) {
 			if (isRunning()) {
 				doStop(callback);
+				publishContainerStoppedEvent();
 			}
 		}
 	}
@@ -364,6 +367,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			}
 
 		};
+	}
+
+	protected void publishContainerStoppedEvent() {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ContainerStoppedEvent(this));
+		}
 	}
 
 }
