@@ -58,6 +58,7 @@ import org.springframework.util.Assert;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @see MethodKafkaListenerEndpoint
  */
@@ -359,7 +360,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @param concurrency the concurrency.
 	 * @since 2.2
 	 */
-	public void setConcurrency(int concurrency) {
+	public void setConcurrency(Integer concurrency) {
 		this.concurrency = concurrency;
 	}
 
