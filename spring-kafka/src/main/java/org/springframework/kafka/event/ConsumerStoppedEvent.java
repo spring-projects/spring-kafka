@@ -30,7 +30,7 @@ package org.springframework.kafka.event;
 public class ConsumerStoppedEvent extends KafkaEvent {
 
 	/**
-	 * Construct an instance with the provided source and partitions.
+	 * Construct an instance with the provided source.
 	 * @param source the container.
 	 */
 	public ConsumerStoppedEvent(Object source) {

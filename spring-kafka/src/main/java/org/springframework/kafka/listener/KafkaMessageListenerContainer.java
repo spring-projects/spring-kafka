@@ -124,7 +124,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private String clientIdSuffix;
 
-	private Runnable emergencyStop;
+	private Runnable emergencyStop = () -> stop(() -> {
+		// NOSONAR
+	});
 
 	/**
 	 * Construct an instance with the supplied configuration properties.
@@ -186,9 +188,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 * Set a {@link Runnable} to call whenever an {@link Error} occurs on a listener
 	 * thread.
 	 * @param emergencyStop the Runnable.
-	 * @since 2.1.11
+	 * @since 2.2.1
 	 */
 	public void setEmergencyStop(Runnable emergencyStop) {
+		Assert.notNull(emergencyStop, "'emergencyStop' cannot be null");
 		this.emergencyStop = emergencyStop;
 	}
 
@@ -817,11 +820,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					Runnable runnable = KafkaMessageListenerContainer.this.emergencyStop;
 					if (runnable != null) {
 						runnable.run();
-					}
-					else {
-						stop(() -> {
-							// NOSONAR
-						});
 					}
 					this.logger.error("Stopping container due to an Error", e);
 					wrapUp();
