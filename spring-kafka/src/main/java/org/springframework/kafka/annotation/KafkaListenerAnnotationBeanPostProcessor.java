@@ -517,10 +517,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			else if (resolved instanceof String) {
 				pattern = Pattern.compile((String) resolved);
 			}
-			else if (resolved == null) {
-				return null;
-			}
 			else {
+				if (resolved == null) {
+					return null;
+				}
 				throw new IllegalStateException(
 						"topicPattern must resolve to a Pattern or String, not " + resolved.getClass());
 			}
@@ -661,10 +661,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (resolved instanceof String) {
 			return (String) resolved;
 		}
-		else if (resolved == null) {
-			return null;
-		}
 		else {
+			if (resolved == null) {
+				return null;
+			}
 			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
 					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
 		}
@@ -678,10 +678,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else if (resolved instanceof Number) {
 			return ((Number) resolved).intValue();
 		}
-		else if (resolved == null) {
-			return null;
-		}
 		else {
+			if (resolved == null) {
+				return null;
+			}
 			throw new IllegalStateException(
 					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
 							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
@@ -697,10 +697,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			final String s = (String) resolved;
 			return Boolean.parseBoolean(s);
 		}
-		else if (resolved == null) {
-			return null;
-		}
 		else {
+			if (resolved == null) {
+				return null;
+			}
 			throw new IllegalStateException(
 					"The [" + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
 							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
