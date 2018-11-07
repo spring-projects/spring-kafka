@@ -517,10 +517,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			else if (resolved instanceof String) {
 				pattern = Pattern.compile((String) resolved);
 			}
-			else {
-				if (resolved == null) {
-					return null;
-				}
+			else if (resolved != null) {
 				throw new IllegalStateException(
 						"topicPattern must resolve to a Pattern or String, not " + resolved.getClass());
 			}
@@ -661,56 +658,49 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (resolved instanceof String) {
 			return (String) resolved;
 		}
-		else {
-			if (resolved == null) {
-				return null;
-			}
+		else if (resolved != null) {
 			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
 					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
 		}
+		return null;
 	}
 
 	private Integer resolveExpressionAsInteger(String value, String attribute) {
 		Object resolved = resolveExpression(value);
+		Integer result = null;
 		if (resolved instanceof String) {
-			return Integer.parseInt((String) resolved);
+			result = Integer.parseInt((String) resolved);
 		}
 		else if (resolved instanceof Number) {
-			return ((Number) resolved).intValue();
+			result =((Number) resolved).intValue();
 		}
-		else {
-			if (resolved == null) {
-				return null;
-			}
+		else  if (resolved != null) {
 			throw new IllegalStateException(
 					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
 							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
 		}
+		return result;
 	}
 
 	private Boolean resolveExpressionAsBoolean(String value, String attribute) {
 		Object resolved = resolveExpression(value);
+		Boolean result = null;
 		if (resolved instanceof Boolean) {
-			return (Boolean) resolved;
+			result = (Boolean) resolved;
 		}
 		else if (resolved instanceof String) {
-			final String s = (String) resolved;
-			return Boolean.parseBoolean(s);
+			result = Boolean.parseBoolean((String) resolved);
 		}
-		else {
-			if (resolved == null) {
-				return null;
-			}
+		else if (resolved != null) {
 			throw new IllegalStateException(
 					"The [" + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
 							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
 		}
+		return result;
 	}
 
 	private Object resolveExpression(String value) {
-		String resolvedValue = resolve(value);
-
-		return this.resolver.evaluate(resolvedValue, this.expressionContext);
+		return this.resolver.evaluate(resolve(value), this.expressionContext);
 	}
 
 	/**
