@@ -318,7 +318,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		}
 
 		public byte[] getHeaderValue() {
-			return this.headerValue;
+			return this.headerValue; // NOSONAR
 		}
 
 		public String getUntrustedType() {

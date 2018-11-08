@@ -139,7 +139,9 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	}
 
 	protected void invoke(Object records, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
-			Message<?> message) {
+			final Message<?> messageArg) {
+
+		Message<?> message = messageArg;
 		try {
 			Object result = invokeHandler(records, acknowledgment, message, consumer);
 			if (result != null) {

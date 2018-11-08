@@ -41,7 +41,7 @@ public final class CorrelationKey {
 	}
 
 	public byte[] getCorrelationId() {
-		return this.correlationId;
+		return this.correlationId; // NOSONAR
 	}
 
 	@Override

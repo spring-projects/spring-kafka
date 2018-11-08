@@ -23,6 +23,7 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -40,6 +41,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  * @author Marius Bogoevici
  * @author Elliot Kennedy
+ * @author Gary Russell
  *
  * @since 1.1.5
  */
@@ -62,7 +64,9 @@ public class JsonSerde<T> implements Serde<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public JsonSerde(Class<T> targetType, ObjectMapper objectMapper) {
+	public JsonSerde(@Nullable Class<T> targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
+		ObjectMapper objectMapper = objectMapperArg;
+		Class<T> targetType = targetTypeArg;
 		if (objectMapper == null) {
 			objectMapper = new ObjectMapper();
 			objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);

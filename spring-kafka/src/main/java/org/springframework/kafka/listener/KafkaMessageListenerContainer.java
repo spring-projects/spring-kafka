@@ -296,27 +296,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	@Override
 	protected void doStop(final Runnable callback) {
 		if (isRunning()) {
-			this.listenerConsumerFuture.addCallback(new ListenableFutureCallback<Object>() {
-
-				@Override
-				public void onFailure(Throwable e) {
-					KafkaMessageListenerContainer.this.logger.error("Error while stopping the container: ", e);
-					if (callback != null) {
-						callback.run();
-					}
-				}
-
-				@Override
-				public void onSuccess(Object result) {
-					if (KafkaMessageListenerContainer.this.logger.isDebugEnabled()) {
-						KafkaMessageListenerContainer.this.logger
-								.debug(KafkaMessageListenerContainer.this + " stopped normally");
-					}
-					if (callback != null) {
-						callback.run();
-					}
-				}
-			});
+			this.listenerConsumerFuture.addCallback(new StopCallback(callback));
 			setRunning(false);
 			this.listenerConsumer.consumer.wakeup();
 		}
@@ -472,7 +452,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							KafkaMessageListenerContainer.this.clientIdSuffix);
 			this.consumer = consumer;
 
-			ConsumerRebalanceListener rebalanceListener = createRebalanceListener(consumer);
+			ConsumerRebalanceListener rebalanceListener = new ListenerConsumerRebalanceListener();
 
 			if (KafkaMessageListenerContainer.this.topicPartitions == null) {
 				if (this.containerProperties.getTopicPattern() != null) {
@@ -577,96 +557,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		protected ErrorHandler determineErrorHandler(GenericErrorHandler<?> errHandler) {
 			return errHandler != null ? (ErrorHandler) errHandler
 					: this.transactionManager != null ? null : new LoggingErrorHandler();
-		}
-
-		public ConsumerRebalanceListener createRebalanceListener(final Consumer<K, V> consumer) {
-			return new ConsumerRebalanceListener() {
-
-				final ConsumerRebalanceListener userListener = getContainerProperties().getConsumerRebalanceListener();
-
-				final ConsumerAwareRebalanceListener consumerAwareListener =
-						userListener instanceof ConsumerAwareRebalanceListener
-								? (ConsumerAwareRebalanceListener) userListener : null;
-
-				@Override
-				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-					if (this.consumerAwareListener != null) {
-						this.consumerAwareListener.onPartitionsRevokedBeforeCommit(consumer, partitions);
-					}
-					else {
-						this.userListener.onPartitionsRevoked(partitions);
-					}
-					// Wait until now to commit, in case the user listener added acks
-					commitPendingAcks();
-					if (this.consumerAwareListener != null) {
-						this.consumerAwareListener.onPartitionsRevokedAfterCommit(consumer, partitions);
-					}
-					if (ListenerConsumer.this.kafkaTxManager != null) {
-						closeProducers(partitions);
-					}
-				}
-
-				@Override
-				public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-					if (ListenerConsumer.this.consumerPaused) {
-						ListenerConsumer.this.consumerPaused = false;
-						ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
-								+ "the container will pause again before polling, unless the container's "
-								+ "'paused' property is reset by a custom rebalance listener");
-					}
-					ListenerConsumer.this.assignedPartitions = partitions;
-					if (!ListenerConsumer.this.autoCommit) {
-						// Commit initial positions - this is generally redundant but
-						// it protects us from the case when another consumer starts
-						// and rebalance would cause it to reset at the end
-						// see https://github.com/spring-projects/spring-kafka/issues/110
-						Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-						for (TopicPartition partition : partitions) {
-							try {
-								offsets.put(partition, new OffsetAndMetadata(consumer.position(partition)));
-							}
-							catch (NoOffsetForPartitionException e) {
-								ListenerConsumer.this.fatalError = true;
-								ListenerConsumer.this.logger.error("No offset and no reset policy", e);
-								return;
-							}
-						}
-						ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsets);
-						if (ListenerConsumer.this.transactionTemplate != null &&
-								ListenerConsumer.this.kafkaTxManager != null) {
-							ListenerConsumer.this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
-
-								@SuppressWarnings({ "unchecked", "rawtypes" })
-								@Override
-								protected void doInTransactionWithoutResult(TransactionStatus status) {
-									((KafkaResourceHolder) TransactionSynchronizationManager
-											.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-											.getProducer().sendOffsetsToTransaction(offsets,
-											ListenerConsumer.this.consumerGroupId);
-								}
-
-							});
-						}
-						else if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
-							ListenerConsumer.this.consumer.commitSync(offsets);
-						}
-						else {
-							ListenerConsumer.this.consumer.commitAsync(offsets,
-									KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
-						}
-					}
-					if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
-						seekPartitions(partitions, false);
-					}
-					if (this.consumerAwareListener != null) {
-						this.consumerAwareListener.onPartitionsAssigned(consumer, partitions);
-					}
-					else {
-						this.userListener.onPartitionsAssigned(partitions);
-					}
-				}
-
-			};
 		}
 
 		private void seekPartitions(Collection<TopicPartition> partitions, boolean idle) {
@@ -1021,7 +911,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 * @throws Error an error.
 		 */
 		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records,
-				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) throws Error {
+				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) {
 			try {
 				if (this.wantsFullRecords) {
 					this.batchListener.onMessage(records,
@@ -1156,7 +1046,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		private void doInvokeWithRecords(final ConsumerRecords<K, V> records) throws Error {
+		private void doInvokeWithRecords(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
@@ -1179,7 +1069,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 */
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> record,
 				@SuppressWarnings("rawtypes") Producer producer,
-				Iterator<ConsumerRecord<K, V>> iterator) throws Error {
+				Iterator<ConsumerRecord<K, V>> iterator) {
 			try {
 				if (record.value() instanceof DeserializationException) {
 					throw (DeserializationException) record.value();
@@ -1594,6 +1484,101 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		}
 
+		private class ListenerConsumerRebalanceListener implements ConsumerRebalanceListener {
+
+			final ConsumerRebalanceListener userListener = getContainerProperties().getConsumerRebalanceListener();
+
+			final ConsumerAwareRebalanceListener consumerAwareListener =
+					this.userListener instanceof ConsumerAwareRebalanceListener
+							? (ConsumerAwareRebalanceListener) this.userListener : null;
+
+			ListenerConsumerRebalanceListener() {
+				super();
+			}
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				if (this.consumerAwareListener != null) {
+					this.consumerAwareListener.onPartitionsRevokedBeforeCommit(ListenerConsumer.this.consumer,
+							partitions);
+				}
+				else {
+					this.userListener.onPartitionsRevoked(partitions);
+				}
+				// Wait until now to commit, in case the user listener added acks
+				commitPendingAcks();
+				if (this.consumerAwareListener != null) {
+					this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
+							partitions);
+				}
+				if (ListenerConsumer.this.kafkaTxManager != null) {
+					closeProducers(partitions);
+				}
+			}
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				if (ListenerConsumer.this.consumerPaused) {
+					ListenerConsumer.this.consumerPaused = false;
+					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
+							+ "the container will pause again before polling, unless the container's "
+							+ "'paused' property is reset by a custom rebalance listener");
+				}
+				ListenerConsumer.this.assignedPartitions = partitions;
+				if (!ListenerConsumer.this.autoCommit) {
+					// Commit initial positions - this is generally redundant but
+					// it protects us from the case when another consumer starts
+					// and rebalance would cause it to reset at the end
+					// see https://github.com/spring-projects/spring-kafka/issues/110
+					Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+					for (TopicPartition partition : partitions) {
+						try {
+							offsets.put(partition,
+									new OffsetAndMetadata(ListenerConsumer.this.consumer.position(partition)));
+						}
+						catch (NoOffsetForPartitionException e) {
+							ListenerConsumer.this.fatalError = true;
+							ListenerConsumer.this.logger.error("No offset and no reset policy", e);
+							return;
+						}
+					}
+					ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsets);
+					if (ListenerConsumer.this.transactionTemplate != null &&
+							ListenerConsumer.this.kafkaTxManager != null) {
+						ListenerConsumer.this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+
+							@SuppressWarnings({ "unchecked", "rawtypes" })
+							@Override
+							protected void doInTransactionWithoutResult(TransactionStatus status) {
+								((KafkaResourceHolder) TransactionSynchronizationManager
+										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
+										.getProducer().sendOffsetsToTransaction(offsets,
+										ListenerConsumer.this.consumerGroupId);
+							}
+
+						});
+					}
+					else if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
+						ListenerConsumer.this.consumer.commitSync(offsets);
+					}
+					else {
+						ListenerConsumer.this.consumer.commitAsync(offsets,
+								KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
+					}
+				}
+				if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
+					seekPartitions(partitions, false);
+				}
+				if (this.consumerAwareListener != null) {
+					this.consumerAwareListener.onPartitionsAssigned(ListenerConsumer.this.consumer, partitions);
+				}
+				else {
+					this.userListener.onPartitionsAssigned(partitions);
+				}
+			}
+
+		}
+
 	}
 
 	private static final class LoggingCommitCallback implements OffsetCommitCallback {
@@ -1628,6 +1613,35 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			this.offset = offset;
 			this.relativeToCurrent = relativeToCurrent;
 			this.seekPosition = seekPosition;
+		}
+
+	}
+
+	private class StopCallback implements ListenableFutureCallback<Object> {
+
+		private final Runnable callback;
+
+		StopCallback(Runnable callback) {
+			this.callback = callback;
+		}
+
+		@Override
+		public void onFailure(Throwable e) {
+			KafkaMessageListenerContainer.this.logger.error("Error while stopping the container: ", e);
+			if (this.callback != null) {
+				this.callback.run();
+			}
+		}
+
+		@Override
+		public void onSuccess(Object result) {
+			if (KafkaMessageListenerContainer.this.logger.isDebugEnabled()) {
+				KafkaMessageListenerContainer.this.logger
+						.debug(KafkaMessageListenerContainer.this + " stopped normally");
+			}
+			if (this.callback != null) {
+				this.callback.run();
+			}
 		}
 
 	}

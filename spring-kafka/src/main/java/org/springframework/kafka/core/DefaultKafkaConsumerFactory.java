@@ -102,9 +102,10 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffix) {
+			@Nullable final String clientIdSuffixArg) {
 
 		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefix);
+		String clientIdSuffix = clientIdSuffixArg;
 		if (clientIdSuffix == null) {
 			clientIdSuffix = "";
 		}

@@ -390,7 +390,7 @@ public class ContainerProperties {
 	}
 
 	public String[] getTopics() {
-		return this.topics;
+		return this.topics; // NOSONAR
 	}
 
 	public Pattern getTopicPattern() {
@@ -398,7 +398,7 @@ public class ContainerProperties {
 	}
 
 	public TopicPartitionInitialOffset[] getTopicPartitions() {
-		return this.topicPartitions;
+		return this.topicPartitions; // NOSONAR
 	}
 
 	public AckMode getAckMode() {

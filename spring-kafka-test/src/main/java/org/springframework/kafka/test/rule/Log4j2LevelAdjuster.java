@@ -76,83 +76,7 @@ public final class Log4j2LevelAdjuster implements MethodRule {
 
 	@Override
 	public Statement apply(final Statement base, final FrameworkMethod method, Object target) {
-		return new Statement() {
-
-			@Override
-			public void evaluate() throws Throwable {
-				LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-				Configuration config = ctx.getConfiguration();
-
-				Map<Class<?>, Level> classLevels = new HashMap<>();
-				for (Class<?> cls : Log4j2LevelAdjuster.this.classes) {
-					String className = cls.getName();
-					LoggerConfig loggerConfig = config.getLoggerConfig(className);
-					LoggerConfig specificConfig = loggerConfig;
-
-					// We need a specific configuration for this logger,
-					// otherwise we would change the level of all other loggers
-					// having the original configuration as parent as well
-
-					if (!loggerConfig.getName().equals(className)) {
-						specificConfig = new LoggerConfig(className, Log4j2LevelAdjuster.this.level, true);
-						specificConfig.setParent(loggerConfig);
-						config.addLogger(className, specificConfig);
-					}
-
-					classLevels.put(cls, specificConfig.getLevel());
-					specificConfig.setLevel(Log4j2LevelAdjuster.this.level);
-				}
-
-				Map<String, Level> categoryLevels = new HashMap<>();
-				for (String category : Log4j2LevelAdjuster.this.categories) {
-					LoggerConfig loggerConfig = config.getLoggerConfig(category);
-					LoggerConfig specificConfig = loggerConfig;
-
-					// We need a specific configuration for this logger,
-					// otherwise we would change the level of all other loggers
-					// having the original configuration as parent as well
-
-					if (!loggerConfig.getName().equals(category)) {
-						specificConfig = new LoggerConfig(category, Log4j2LevelAdjuster.this.level, true);
-						specificConfig.setParent(loggerConfig);
-						config.addLogger(category, specificConfig);
-					}
-
-					categoryLevels.put(category, specificConfig.getLevel());
-					specificConfig.setLevel(Log4j2LevelAdjuster.this.level);
-				}
-
-				ctx.updateLoggers();
-
-				logger.debug("++++++++++++++++++++++++++++ "
-						+ "Overridden log level setting for: " + Arrays.toString(Log4j2LevelAdjuster.this.classes)
-						+ " and " + Arrays.toString(Log4j2LevelAdjuster.this.categories)
-						+ " for test " + method.getName());
-
-				try {
-					base.evaluate();
-				}
-				finally {
-					logger.debug("++++++++++++++++++++++++++++ "
-							+ "Restoring log level setting for: " + Arrays.toString(Log4j2LevelAdjuster.this.classes)
-							+ " and " + Arrays.toString(Log4j2LevelAdjuster.this.categories)
-							+ " for test " + method.getName());
-
-					for (Class<?> cls : Log4j2LevelAdjuster.this.classes) {
-						LoggerConfig loggerConfig = config.getLoggerConfig(cls.getName());
-						loggerConfig.setLevel(classLevels.get(cls));
-					}
-
-					for (String category : Log4j2LevelAdjuster.this.categories) {
-						LoggerConfig loggerConfig = config.getLoggerConfig(category);
-						loggerConfig.setLevel(categoryLevels.get(category));
-					}
-
-					ctx.updateLoggers();
-				}
-			}
-
-		};
+		return new AdjusterStatement(base, method);
 	}
 
 	/**
@@ -242,5 +166,93 @@ public final class Log4j2LevelAdjuster implements MethodRule {
 	public static Log4j2LevelAdjuster forLevel(Level level) {
 		return new Log4j2LevelAdjuster(level);
 	}
+
+	private class AdjusterStatement extends Statement {
+
+		private final Statement base;
+
+		private final FrameworkMethod method;
+
+		AdjusterStatement(Statement base, FrameworkMethod method) {
+			this.base = base;
+			this.method = method;
+		}
+
+		@Override
+		public void evaluate() throws Throwable {
+			LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+			Configuration config = ctx.getConfiguration();
+
+			Map<Class<?>, Level> classLevels = new HashMap<>();
+			for (Class<?> cls : Log4j2LevelAdjuster.this.classes) {
+				String className = cls.getName();
+				LoggerConfig loggerConfig = config.getLoggerConfig(className);
+				LoggerConfig specificConfig = loggerConfig;
+
+				// We need a specific configuration for this logger,
+				// otherwise we would change the level of all other loggers
+				// having the original configuration as parent as well
+
+				if (!loggerConfig.getName().equals(className)) {
+					specificConfig = new LoggerConfig(className, Log4j2LevelAdjuster.this.level, true);
+					specificConfig.setParent(loggerConfig);
+					config.addLogger(className, specificConfig);
+				}
+
+				classLevels.put(cls, specificConfig.getLevel());
+				specificConfig.setLevel(Log4j2LevelAdjuster.this.level);
+			}
+
+			Map<String, Level> categoryLevels = new HashMap<>();
+			for (String category : Log4j2LevelAdjuster.this.categories) {
+				LoggerConfig loggerConfig = config.getLoggerConfig(category);
+				LoggerConfig specificConfig = loggerConfig;
+
+				// We need a specific configuration for this logger,
+				// otherwise we would change the level of all other loggers
+				// having the original configuration as parent as well
+
+				if (!loggerConfig.getName().equals(category)) {
+					specificConfig = new LoggerConfig(category, Log4j2LevelAdjuster.this.level, true);
+					specificConfig.setParent(loggerConfig);
+					config.addLogger(category, specificConfig);
+				}
+
+				categoryLevels.put(category, specificConfig.getLevel());
+				specificConfig.setLevel(Log4j2LevelAdjuster.this.level);
+			}
+
+			ctx.updateLoggers();
+
+			logger.debug("++++++++++++++++++++++++++++ "
+					+ "Overridden log level setting for: " + Arrays.toString(Log4j2LevelAdjuster.this.classes)
+					+ " and " + Arrays.toString(Log4j2LevelAdjuster.this.categories)
+					+ " for test " + method.getName());
+
+			try {
+				base.evaluate();
+			}
+			finally {
+				logger.debug("++++++++++++++++++++++++++++ "
+						+ "Restoring log level setting for: " + Arrays.toString(Log4j2LevelAdjuster.this.classes)
+						+ " and " + Arrays.toString(Log4j2LevelAdjuster.this.categories)
+						+ " for test " + method.getName());
+
+				for (Class<?> cls : Log4j2LevelAdjuster.this.classes) {
+					LoggerConfig loggerConfig = config.getLoggerConfig(cls.getName());
+					loggerConfig.setLevel(classLevels.get(cls));
+				}
+
+				for (String category : Log4j2LevelAdjuster.this.categories) {
+					LoggerConfig loggerConfig = config.getLoggerConfig(category);
+					loggerConfig.setLevel(categoryLevels.get(category));
+				}
+
+				ctx.updateLoggers();
+			}
+		}
+
+	}
+
 
 }

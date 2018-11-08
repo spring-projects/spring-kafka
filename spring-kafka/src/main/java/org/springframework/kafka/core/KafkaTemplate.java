@@ -22,7 +22,6 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -369,37 +368,32 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			this.logger.trace("Sending: " + producerRecord);
 		}
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
-		producer.send(producerRecord, new Callback() {
-
-			@Override
-			public void onCompletion(RecordMetadata metadata, Exception exception) {
-				try {
-					if (exception == null) {
-						future.set(new SendResult<>(producerRecord, metadata));
-						if (KafkaTemplate.this.producerListener != null) {
-							KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
-						}
-						if (KafkaTemplate.this.logger.isTraceEnabled()) {
-							KafkaTemplate.this.logger.trace("Sent ok: " + producerRecord + ", metadata: " + metadata);
-						}
+		producer.send(producerRecord, (metadata, exception) -> {
+			try {
+				if (exception == null) {
+					future.set(new SendResult<>(producerRecord, metadata));
+					if (KafkaTemplate.this.producerListener != null) {
+						KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
 					}
-					else {
-						future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
-						if (KafkaTemplate.this.producerListener != null) {
-							KafkaTemplate.this.producerListener.onError(producerRecord, exception);
-						}
-						if (KafkaTemplate.this.logger.isDebugEnabled()) {
-							KafkaTemplate.this.logger.debug("Failed to send: " + producerRecord, exception);
-						}
+					if (KafkaTemplate.this.logger.isTraceEnabled()) {
+						KafkaTemplate.this.logger.trace("Sent ok: " + producerRecord + ", metadata: " + metadata);
 					}
 				}
-				finally {
-					if (!KafkaTemplate.this.transactional) {
-						closeProducer(producer, false);
+				else {
+					future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
+					if (KafkaTemplate.this.producerListener != null) {
+						KafkaTemplate.this.producerListener.onError(producerRecord, exception);
+					}
+					if (KafkaTemplate.this.logger.isDebugEnabled()) {
+						KafkaTemplate.this.logger.debug("Failed to send: " + producerRecord, exception);
 					}
 				}
 			}
-
+			finally {
+				if (!KafkaTemplate.this.transactional) {
+					closeProducer(producer, false);
+				}
+			}
 		});
 		if (this.autoFlush) {
 			flush();
