@@ -41,10 +41,12 @@ public final class InvocationResult {
 		this.messageReturnType = messageReturnType;
 	}
 
+	@Nullable
 	public Object getResult() {
 		return this.result;
 	}
 
+	@Nullable
 	public Expression getSendTo() {
 		return this.sendTo;
 	}
