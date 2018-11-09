@@ -63,6 +63,8 @@ import org.springframework.util.concurrent.ListenableFuture;
 public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements BatchMessageListener<K, R>,
 		InitializingBean, SmartLifecycle, DisposableBean, ReplyingKafkaOperations<K, V, R> {
 
+	private static final String WITH_CORRELATION_ID = " with correlationId: ";
+
 	private static final long DEFAULT_REPLY_TIMEOUT = 5000L;
 
 	private final GenericMessageListenerContainer<K, R> replyContainer;
@@ -232,7 +234,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		}
 		headers.add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
 		if (this.logger.isDebugEnabled()) {
-			this.logger.debug("Sending: " + record + " with correlationId: " + correlationId);
+			this.logger.debug("Sending: " + record + WITH_CORRELATION_ID + correlationId);
 		}
 		TemplateRequestReplyFuture<K, V, R> future = new TemplateRequestReplyFuture<>();
 		this.futures.put(correlationId, future);
@@ -247,7 +249,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
 			if (removed != null) {
 				if (this.logger.isWarnEnabled()) {
-					this.logger.warn("Reply timed out for: " + record + " with correlationId: " + correlationId);
+					this.logger.warn("Reply timed out for: " + record + WITH_CORRELATION_ID + correlationId);
 				}
 				removed.setException(new KafkaException("Reply timed out"));
 			}
@@ -307,7 +309,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 				else {
 					if (this.logger.isDebugEnabled()) {
-						this.logger.debug("Received: " + record + " with correlationId: " + correlationId);
+						this.logger.debug("Received: " + record + WITH_CORRELATION_ID + correlationId);
 					}
 					future.set(record);
 				}
@@ -316,7 +318,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
-		return "No pending reply: " + record + " with correlationId: "
+		return "No pending reply: " + record + WITH_CORRELATION_ID
 				+ correlationId + ", perhaps timed out, or using a shared reply topic";
 	}
 

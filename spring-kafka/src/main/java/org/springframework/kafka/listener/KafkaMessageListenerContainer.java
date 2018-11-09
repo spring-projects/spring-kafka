@@ -79,6 +79,7 @@ import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -361,6 +362,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private final class ListenerConsumer implements SchedulingAwareRunnable, ConsumerSeekCallback {
 
+		private static final String RAW_TYPES = "rawtypes";
+
 		private final Log logger = LogFactory.getLog(ListenerConsumer.class);
 
 		private final ContainerProperties containerProperties = getContainerProperties();
@@ -410,7 +413,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final PlatformTransactionManager transactionManager = this.containerProperties.getTransactionManager();
 
-		@SuppressWarnings("rawtypes")
+		@SuppressWarnings(RAW_TYPES)
 		private final KafkaAwareTransactionManager kafkaTxManager =
 				this.transactionManager instanceof KafkaAwareTransactionManager
 						? ((KafkaAwareTransactionManager) this.transactionManager) : null;
@@ -873,7 +876,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		@SuppressWarnings({ "rawtypes" })
+		@SuppressWarnings({ RAW_TYPES })
 		private void invokeBatchListenerInTx(final ConsumerRecords<K, V> records,
 				final List<ConsumerRecord<K, V>> recordList) {
 			try {
@@ -884,7 +887,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						Producer producer = null;
 						if (ListenerConsumer.this.kafkaTxManager != null) {
 							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())).getProducer();
+									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
+										.getProducer(); // NOSONAR nullable
 						}
 						RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
 						if (aborted != null) {
@@ -924,7 +928,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 * @throws Error an error.
 		 */
 		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records,
-				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings("rawtypes") Producer producer) {
+				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings(RAW_TYPES) Producer producer) {
+
 			try {
 				if (this.wantsFullRecords) {
 					this.batchListener.onMessage(records,
@@ -1016,7 +1021,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 * Invoke the listener with each record in a separate transaction.
 		 * @param records the records.
 		 */
-		@SuppressWarnings({ "rawtypes" })
+		@SuppressWarnings({ RAW_TYPES })
 		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
@@ -1034,7 +1039,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							Producer producer = null;
 							if (ListenerConsumer.this.kafkaTxManager != null) {
 								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())).getProducer();
+									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())) // NOSONAR
+										.getProducer();
 							}
 							RuntimeException aborted = doInvokeRecordListener(record, producer, iterator);
 							if (aborted != null) {
@@ -1081,8 +1087,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		 * @throws Error an error.
 		 */
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> record,
-				@SuppressWarnings("rawtypes") Producer producer,
+				@SuppressWarnings(RAW_TYPES) Producer producer,
 				Iterator<ConsumerRecord<K, V>> iterator) {
+
 			try {
 				if (record.value() instanceof DeserializationException) {
 					throw (DeserializationException) record.value();
@@ -1176,7 +1183,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		public void ackCurrent(final ConsumerRecord<K, V> record, @SuppressWarnings("rawtypes") Producer producer) {
+		public void ackCurrent(final ConsumerRecord<K, V> record, @SuppressWarnings(RAW_TYPES)
+				@Nullable Producer producer) {
+
 			if (this.isRecordAck) {
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 						Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
@@ -1207,7 +1216,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 		}
 
-		@SuppressWarnings({ "unchecked", "rawtypes" })
+		@SuppressWarnings({ "unchecked", RAW_TYPES })
 		private void sendOffsetsToTransaction(Producer producer) {
 			handleAcks();
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();

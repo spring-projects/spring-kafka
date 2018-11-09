@@ -52,6 +52,10 @@ import org.springframework.util.Assert;
  */
 public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder> implements SmartLifecycle {
 
+	private static final String STREAMS_CONFIG_MUST_NOT_BE_NULL = "'streamsConfig' must not be null";
+
+	private static final String CLEANUP_CONFIG_MUST_NOT_BE_NULL = "'cleanupConfig' must not be null";
+
 	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
 
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
@@ -111,8 +115,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	@Deprecated
 	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig, CleanupConfig cleanupConfig) {
-		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
-		Assert.notNull(cleanupConfig, "'cleanupConfig' must not be null");
+		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
+		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.streamsConfig = streamsConfig;
 		this.cleanupConfig = cleanupConfig;
 	}
@@ -125,8 +129,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @since 2.2
 	 */
 	public StreamsBuilderFactoryBean(KafkaStreamsConfiguration streamsConfig, CleanupConfig cleanupConfig) {
-		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
-		Assert.notNull(cleanupConfig, "'cleanupConfig' must not be null");
+		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
+		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.properties = streamsConfig.asProperties();
 		this.cleanupConfig = cleanupConfig;
 	}
@@ -160,8 +164,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	@Deprecated
 	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig, CleanupConfig cleanupConfig) {
-		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
-		Assert.notNull(cleanupConfig, "'cleanupConfig' must not be null");
+		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
+		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.streamsConfig = new StreamsConfig(streamsConfig);
 		this.cleanupConfig = cleanupConfig;
 	}
@@ -172,7 +176,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @since 2.1.3
 	 */
 	public void setStreamsConfig(StreamsConfig streamsConfig) {
-		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
+		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.isNull(this.properties, "Cannot have both streamsConfig and streams configuration properties");
 		this.streamsConfig = streamsConfig;
 	}
@@ -188,7 +192,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @since 2.2
 	 */
 	public void setStreamsConfiguration(Properties streamsConfig) {
-		Assert.notNull(streamsConfig, "'streamsConfig' must not be null");
+		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.isNull(this.streamsConfig, "Cannot have both streamsConfig and streams configuration properties");
 		this.properties = streamsConfig;
 	}
@@ -278,7 +282,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			try {
 				Assert.state(this.streamsConfig != null || this.properties != null,
 						"'streamsConfig' or streams configuration properties must not be null");
-				Topology topology = getObject().build();
+				Topology topology = getObject().build(); // NOSONAR
 				if (logger.isDebugEnabled()) {
 					logger.debug(topology.describe());
 				}

@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener.adapter;
 
 import org.springframework.expression.Expression;
+import org.springframework.lang.Nullable;
 
 /**
  * The result of a method invocation.
@@ -26,13 +27,15 @@ import org.springframework.expression.Expression;
  */
 public final class InvocationResult {
 
+	@Nullable
 	private final Object result;
 
+	@Nullable
 	private final Expression sendTo;
 
 	private final boolean messageReturnType;
 
-	public InvocationResult(Object result, Expression sendTo, boolean messageReturnType) {
+	public InvocationResult(@Nullable Object result, @Nullable Expression sendTo, boolean messageReturnType) {
 		this.result = result;
 		this.sendTo = sendTo;
 		this.messageReturnType = messageReturnType;

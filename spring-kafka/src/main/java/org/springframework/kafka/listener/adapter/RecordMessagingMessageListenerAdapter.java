@@ -91,7 +91,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 					}
 				}
 				catch (Exception ex) {
-					throw new ListenerExecutionFailedException(createMessagingErrorMessage(
+					throw new ListenerExecutionFailedException(createMessagingErrorMessage(// NOSONAR stack trace loss
 							"Listener error handler threw an exception for the incoming message",
 							message.getPayload()), ex);
 				}

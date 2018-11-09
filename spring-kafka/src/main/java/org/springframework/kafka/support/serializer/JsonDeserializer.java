@@ -329,7 +329,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	}
 
 	@Override
-	public T deserialize(String topic, byte[] data) {
+	public T deserialize(String topic, @Nullable byte[] data) {
 		if (data == null) {
 			return null;
 		}

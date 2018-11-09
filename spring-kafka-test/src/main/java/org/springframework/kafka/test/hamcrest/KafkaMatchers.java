@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,10 @@ import org.hamcrest.Matcher;
  *
  */
 public final class KafkaMatchers {
+
+	private static final String UNCHECKED = "unchecked";
+
+	private static final String IS_SPACE = "is ";
 
 	private KafkaMatchers() {
 		// private ctor
@@ -100,13 +104,13 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<K, Object> record = (ConsumerRecord<K, Object>) item;
 			boolean matches = record != null
 					&& ((record.key() == null && this.key == null)
 					|| record.key().equals(this.key));
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}
@@ -129,11 +133,11 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, V> record = (ConsumerRecord<Object, V>) item;
 			boolean matches = record != null && record.value().equals(this.payload);
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}
@@ -156,11 +160,11 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, Object> record = (ConsumerRecord<Object, Object>) item;
 			boolean matches = record != null && record.partition() == this.partition;
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}
@@ -180,14 +184,14 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, Object> record = (ConsumerRecord<Object, Object>) item;
 
 			boolean matches = record != null &&
 					(record.timestampType() == this.type && record.timestamp() == this.ts);
 
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}

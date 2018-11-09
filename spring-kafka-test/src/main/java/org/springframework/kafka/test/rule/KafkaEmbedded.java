@@ -22,8 +22,6 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 
@@ -51,8 +49,6 @@ import kafka.zk.EmbeddedZookeeper;
 @Deprecated
 public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, InitializingBean, DisposableBean {
 
-	private static final Log logger = LogFactory.getLog(KafkaEmbedded.class);
-
 	public static final String BEAN_NAME = "kafkaEmbedded";
 
 	public static final String SPRING_EMBEDDED_KAFKA_BROKERS = EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS;
@@ -60,8 +56,6 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	public static final String SPRING_EMBEDDED_ZOOKEEPER_CONNECT = EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT;
 
 	public static final long METADATA_PROPAGATION_TIMEOUT = 10000L;
-
-	private final boolean controlledShutdown;
 
 
 	public KafkaEmbedded(int count) {
@@ -87,7 +81,6 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	 */
 	public KafkaEmbedded(int count, boolean controlledShutdown, int partitions, String... topics) {
 		super(count, controlledShutdown, partitions, topics);
-		this.controlledShutdown = controlledShutdown;
 	}
 
 	/**

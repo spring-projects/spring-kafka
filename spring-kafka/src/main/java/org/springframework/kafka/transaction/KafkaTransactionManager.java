@@ -68,6 +68,8 @@ import org.springframework.util.Assert;
 public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionManager
 		implements KafkaAwareTransactionManager<K, V> {
 
+	private static final String UNCHECKED = "unchecked";
+
 	private final ProducerFactory<K, V> producerFactory;
 
 	/**
@@ -106,7 +108,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		return getProducerFactory();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	@Override
 	protected Object doGetTransaction() {
 		KafkaTransactionObject<K, V> txObject = new KafkaTransactionObject<K, V>();
@@ -117,7 +119,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	@Override
 	protected boolean isExistingTransaction(Object transaction) {
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		return (txObject.getResourceHolder() != null);
 	}
@@ -127,7 +129,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		if (definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT) {
 			throw new InvalidIsolationLevelException("Apache Kafka does not support an isolation level concept");
 		}
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		KafkaResourceHolder<K, V> resourceHolder = null;
 		try {
@@ -152,7 +154,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	@Override
 	protected Object doSuspend(Object transaction) {
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		txObject.setResourceHolder(null);
 		return TransactionSynchronizationManager.unbindResource(getProducerFactory());
@@ -160,14 +162,14 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	@Override
 	protected void doResume(Object transaction, Object suspendedResources) {
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaResourceHolder<K, V> producerHolder = (KafkaResourceHolder<K, V>) suspendedResources;
 		TransactionSynchronizationManager.bindResource(getProducerFactory(), producerHolder);
 	}
 
 	@Override
 	protected void doCommit(DefaultTransactionStatus status) {
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) status.getTransaction();
 		KafkaResourceHolder<K, V> resourceHolder = txObject.getResourceHolder();
 		resourceHolder.commit();
@@ -175,7 +177,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	@Override
 	protected void doRollback(DefaultTransactionStatus status) {
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) status.getTransaction();
 		KafkaResourceHolder<K, V> resourceHolder = txObject.getResourceHolder();
 		resourceHolder.rollback();
@@ -183,14 +185,14 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	@Override
 	protected void doSetRollbackOnly(DefaultTransactionStatus status) {
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) status.getTransaction();
 		txObject.getResourceHolder().setRollbackOnly();
 	}
 
 	@Override
 	protected void doCleanupAfterCompletion(Object transaction) {
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		TransactionSynchronizationManager.unbindResource(getProducerFactory());
 		txObject.getResourceHolder().close();

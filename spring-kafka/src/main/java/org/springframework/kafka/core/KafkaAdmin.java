@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -164,7 +164,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 					addTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
-				catch (Throwable e) {
+				catch (Throwable e) {  // NOSONAR errors thrown below
 					if (e instanceof Error) {
 						throw (Error) e;
 					}
@@ -237,7 +237,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 				}
 				catch (ExecutionException e) {
 					logger.error("Failed to create topics", e.getCause());
-					throw new KafkaException("Failed to create topics", e.getCause());
+					throw new KafkaException("Failed to create topics", e.getCause()); // NOSONAR
 				}
 			}
 			if (topicsToModify.size() > 0) {
@@ -255,7 +255,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 				catch (ExecutionException e) {
 					logger.error("Failed to create partitions", e.getCause());
 					if (!(e.getCause() instanceof UnsupportedVersionException)) {
-						throw new KafkaException("Failed to create partitions", e.getCause());
+						throw new KafkaException("Failed to create partitions", e.getCause()); // NOSONAR
 					}
 				}
 			}
