@@ -177,11 +177,7 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 			return null;
 		}
 		try {
-			byte[] result = null;
-			if (data != null) {
-				result = this.objectMapper.writeValueAsBytes(data);
-			}
-			return result;
+			return this.objectMapper.writeValueAsBytes(data);
 		}
 		catch (IOException ex) {
 			throw new SerializationException("Can't serialize data [" + data + "] for topic [" + topic + "]", ex);

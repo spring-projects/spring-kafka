@@ -1039,8 +1039,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							Producer producer = null;
 							if (ListenerConsumer.this.kafkaTxManager != null) {
 								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())) // NOSONAR
-										.getProducer();
+									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
+										.getProducer(); // NOSONAR
 							}
 							RuntimeException aborted = doInvokeRecordListener(record, producer, iterator);
 							if (aborted != null) {
@@ -1127,7 +1127,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			catch (RuntimeException e) {
 				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
-					ackCurrent(record, producer);
+					ackCurrent(record);
 				}
 				if (this.errorHandler == null) {
 					throw e;
@@ -1181,6 +1181,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					this.logger.error("Failed to deserialize a deserialization exception", e);
 				}
 			}
+		}
+
+		public void ackCurrent(final ConsumerRecord<K, V> record) {
+			ackCurrent(record, null);
 		}
 
 		public void ackCurrent(final ConsumerRecord<K, V> record, @SuppressWarnings(RAW_TYPES)
@@ -1574,8 +1578,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							protected void doInTransactionWithoutResult(TransactionStatus status) {
 								((KafkaResourceHolder) TransactionSynchronizationManager
 										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-										.getProducer().sendOffsetsToTransaction(offsets,
-										ListenerConsumer.this.consumerGroupId);
+										.getProducer().sendOffsetsToTransaction(offsets, // NOSONAR
+												ListenerConsumer.this.consumerGroupId);
 							}
 
 						});
