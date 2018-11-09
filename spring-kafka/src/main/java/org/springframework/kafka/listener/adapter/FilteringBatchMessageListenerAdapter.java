@@ -79,27 +79,37 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 				iterator.remove();
 			}
 		}
-		if (consumerRecords.size() > 0 || this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
-				|| this.delegateType.equals(ListenerType.CONSUMER_AWARE)
+		boolean consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
+						|| this.delegateType.equals(ListenerType.CONSUMER_AWARE);
+		/*
+		 *  An empty list goes to the listener if ackDiscarded is false and the listener can ack
+		 *  either through the acknowledgment
+		 */
+		if (consumerRecords.size() > 0 || consumerAware
 				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
-			switch (this.delegateType) {
-				case ACKNOWLEDGING_CONSUMER_AWARE:
-					this.delegate.onMessage(consumerRecords, acknowledgment, consumer);
-					break;
-				case ACKNOWLEDGING:
-					this.delegate.onMessage(consumerRecords, acknowledgment);
-					break;
-				case CONSUMER_AWARE:
-					this.delegate.onMessage(consumerRecords, consumer);
-					break;
-				case SIMPLE:
-					this.delegate.onMessage(consumerRecords);
-			}
+			invokeDelagate(consumerRecords, acknowledgment, consumer);
 		}
 		else {
 			if (this.ackDiscarded && acknowledgment != null) {
 				acknowledgment.acknowledge();
 			}
+		}
+	}
+
+	private void invokeDelagate(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
+		switch (this.delegateType) {
+			case ACKNOWLEDGING_CONSUMER_AWARE:
+				this.delegate.onMessage(consumerRecords, acknowledgment, consumer);
+				break;
+			case ACKNOWLEDGING:
+				this.delegate.onMessage(consumerRecords, acknowledgment);
+				break;
+			case CONSUMER_AWARE:
+				this.delegate.onMessage(consumerRecords, consumer);
+				break;
+			case SIMPLE:
+				this.delegate.onMessage(consumerRecords);
 		}
 	}
 

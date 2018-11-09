@@ -53,9 +53,9 @@ public class ContainerStoppingErrorHandler implements ContainerAwareErrorHandler
 		this.executor.execute(() -> container.stop());
 		// isRunning is false before the container.stop() waits for listener thread
 		int n = 0;
-		while (container.isRunning() && n++ < 100) {
+		while (container.isRunning() && n++ < 100) { // NOSONAR magic #
 			try {
-				Thread.sleep(100);
+				Thread.sleep(100); // NOSONAR magic #
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();

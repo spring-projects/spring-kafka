@@ -83,34 +83,22 @@ public final class LogIfLevelEnabled {
 	public void log(Supplier<Object> messageSupplier) {
 		switch (this.level) {
 			case FATAL:
-				if (this.logger.isFatalEnabled()) {
-					this.logger.fatal(messageSupplier.get());
-				}
+				fatal(messageSupplier, null);
 				break;
 			case ERROR:
-				if (this.logger.isErrorEnabled()) {
-					this.logger.error(messageSupplier.get());
-				}
+				error(messageSupplier, null);
 				break;
 			case WARN:
-				if (this.logger.isWarnEnabled()) {
-					this.logger.warn(messageSupplier.get());
-				}
+				warn(messageSupplier, null);
 				break;
 			case INFO:
-				if (this.logger.isInfoEnabled()) {
-					this.logger.info(messageSupplier.get());
-				}
+				info(messageSupplier, null);
 				break;
 			case DEBUG:
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug(messageSupplier.get());
-				}
+				debug(messageSupplier, null);
 				break;
 			case TRACE:
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace(messageSupplier.get());
-				}
+				trace(messageSupplier, null);
 				break;
 		}
 	}
@@ -118,35 +106,89 @@ public final class LogIfLevelEnabled {
 	public void log(Supplier<Object> messageSupplier, Throwable t) {
 		switch (this.level) {
 			case FATAL:
-				if (this.logger.isFatalEnabled()) {
-					this.logger.fatal(messageSupplier.get(), t);
-				}
+			fatal(messageSupplier, t);
 				break;
 			case ERROR:
-				if (this.logger.isErrorEnabled()) {
-					this.logger.error(messageSupplier.get(), t);
-				}
+			error(messageSupplier, t);
 				break;
 			case WARN:
-				if (this.logger.isWarnEnabled()) {
-					this.logger.warn(messageSupplier.get(), t);
-				}
+			warn(messageSupplier, t);
 				break;
 			case INFO:
-				if (this.logger.isInfoEnabled()) {
-					this.logger.info(messageSupplier.get(), t);
-				}
+			info(messageSupplier, t);
 				break;
 			case DEBUG:
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug(messageSupplier.get(), t);
-				}
+			debug(messageSupplier, t);
 				break;
 			case TRACE:
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace(messageSupplier.get(), t);
-				}
+			trace(messageSupplier, t);
 				break;
+		}
+	}
+
+	private void fatal(Supplier<Object> messageSupplier, Throwable t) {
+		if (this.logger.isFatalEnabled()) {
+			if (t != null) {
+				this.logger.fatal(messageSupplier.get(), t);
+			}
+			else {
+				this.logger.fatal(messageSupplier.get());
+			}
+		}
+	}
+
+	private void error(Supplier<Object> messageSupplier, Throwable t) {
+		if (this.logger.isErrorEnabled()) {
+			if (t != null) {
+				this.logger.error(messageSupplier.get(), t);
+			}
+			else {
+				this.logger.error(messageSupplier.get());
+			}
+		}
+	}
+
+	private void warn(Supplier<Object> messageSupplier, Throwable t) {
+		if (this.logger.isWarnEnabled()) {
+			if (t != null) {
+				this.logger.warn(messageSupplier.get(), t);
+			}
+			else {
+				this.logger.warn(messageSupplier.get());
+			}
+		}
+	}
+
+	private void info(Supplier<Object> messageSupplier, Throwable t) {
+		if (this.logger.isInfoEnabled()) {
+			if (t != null) {
+				this.logger.info(messageSupplier.get(), t);
+			}
+			else {
+				this.logger.info(messageSupplier.get());
+			}
+		}
+	}
+
+	private void debug(Supplier<Object> messageSupplier, Throwable t) {
+		if (this.logger.isDebugEnabled()) {
+			if (t != null) {
+				this.logger.debug(messageSupplier.get(), t);
+			}
+			else {
+				this.logger.debug(messageSupplier.get());
+			}
+		}
+	}
+
+	private void trace(Supplier<Object> messageSupplier, Throwable t) {
+		if (this.logger.isTraceEnabled()) {
+			if (t != null) {
+				this.logger.trace(messageSupplier.get(), t);
+			}
+			else {
+				this.logger.trace(messageSupplier.get());
+			}
 		}
 	}
 

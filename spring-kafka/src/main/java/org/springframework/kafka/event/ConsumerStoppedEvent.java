@@ -26,8 +26,9 @@ package org.springframework.kafka.event;
  * @since 2.2
  *
  */
-@SuppressWarnings("serial")
 public class ConsumerStoppedEvent extends KafkaEvent {
+
+	private static final long serialVersionUID = 1L;
 
 	/**
 	 * Construct an instance with the provided source.

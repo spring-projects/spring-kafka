@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ public final class ContainerTestUtils {
 		int n = 0;
 		int count = 0;
 		Method getAssignedPartitions = null;
-		while (n++ < 600 && count < partitions) {
+		while (n++ < 600 && count < partitions) { // NOSONAR magic #
 			count = 0;
 			for (Object aContainer : containers) {
 				if (getAssignedPartitions == null) {
@@ -68,7 +68,7 @@ public final class ContainerTestUtils {
 				}
 			}
 			if (count < partitions) {
-				Thread.sleep(100);
+				Thread.sleep(100); // NOSONAR magic #
 			}
 		}
 		assertThat(count).isEqualTo(partitions);
@@ -79,14 +79,14 @@ public final class ContainerTestUtils {
 		int n = 0;
 		int count = 0;
 		Method getAssignedPartitions = getAssignedPartitionsMethod(container.getClass());
-		while (n++ < 600 && count < partitions) {
+		while (n++ < 600 && count < partitions) { // NOSONAR magic #
 			count = 0;
 			Collection<?> assignedPartitions = (Collection<?>) getAssignedPartitions.invoke(container);
 			if (assignedPartitions != null) {
 				count = assignedPartitions.size();
 			}
 			if (count < partitions) {
-				Thread.sleep(100);
+				Thread.sleep(100); // NOSONAR magic #
 			}
 		}
 		assertThat(count).isEqualTo(partitions);

@@ -114,6 +114,8 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  */
 public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
+	private static final int DEFAULT_ACK_TIME = 5000;
+
 	private final AbstractMessageListenerContainer<K, V> container;
 
 	private final TopicPartitionInitialOffset[] topicPartitions;
@@ -267,7 +269,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			if ((ackMode.equals(AckMode.TIME) || ackMode.equals(AckMode.COUNT_TIME))
 					&& containerProperties.getAckTime() == 0) {
-				containerProperties.setAckTime(5000);
+				containerProperties.setAckTime(DEFAULT_ACK_TIME);
 			}
 		}
 
@@ -538,7 +540,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.taskScheduler = threadPoolTaskScheduler;
 			}
 			this.monitorTask = this.taskScheduler.scheduleAtFixedRate(() -> checkConsumer(),
-					this.containerProperties.getMonitorInterval() * 1000);
+					this.containerProperties.getMonitorInterval() * 1000); // NOSONAR magic #
 			if (this.containerProperties.isLogContainerConfig()) {
 				this.logger.info(this);
 			}

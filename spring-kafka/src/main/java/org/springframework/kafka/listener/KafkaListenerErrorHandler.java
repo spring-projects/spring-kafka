@@ -44,7 +44,7 @@ public interface KafkaListenerErrorHandler {
 	 * {@code @SendTo} annotation.
 	 * @throws Exception an exception which may be the original or different.
 	 */
-	Object handleError(Message<?> message, ListenerExecutionFailedException exception) throws Exception;
+	Object handleError(Message<?> message, ListenerExecutionFailedException exception);
 
 	/**
 	 * Handle the error.
@@ -57,7 +57,7 @@ public interface KafkaListenerErrorHandler {
 	 * @throws Exception an exception which may be the original or different.
 	 */
 	default Object handleError(Message<?> message, ListenerExecutionFailedException exception,
-			Consumer<?, ?> consumer) throws Exception {
+			Consumer<?, ?> consumer) {
 
 		return handleError(message, exception);
 	}

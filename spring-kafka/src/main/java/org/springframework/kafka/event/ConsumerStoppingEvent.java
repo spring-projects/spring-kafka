@@ -31,10 +31,11 @@ import org.apache.kafka.common.TopicPartition;
  * @since 2.2
  *
  */
-@SuppressWarnings("serial")
 public class ConsumerStoppingEvent extends KafkaEvent {
 
-	private final Consumer<?, ?> consumer;
+	private static final long serialVersionUID = 1L;
+
+	private transient Consumer<?, ?> consumer;
 
 	private final Collection<TopicPartition> partitions;
 

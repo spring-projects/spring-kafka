@@ -81,16 +81,20 @@ public class FilteringMessageListenerAdapter<K, V>
 			}
 		}
 		else {
-			switch (this.delegateType) {
-				case ACKNOWLEDGING_CONSUMER_AWARE:
-				case ACKNOWLEDGING:
-					if (this.ackDiscarded && acknowledgment != null) {
-						acknowledgment.acknowledge();
-					}
-					break;
-				case CONSUMER_AWARE:
-				case SIMPLE:
-			}
+			ackFilteredIfNecessary(acknowledgment);
+		}
+	}
+
+	private void ackFilteredIfNecessary(Acknowledgment acknowledgment) {
+		switch (this.delegateType) {
+			case ACKNOWLEDGING_CONSUMER_AWARE:
+			case ACKNOWLEDGING:
+				if (this.ackDiscarded && acknowledgment != null) {
+					acknowledgment.acknowledge();
+				}
+				break;
+			case CONSUMER_AWARE:
+			case SIMPLE:
 		}
 	}
 

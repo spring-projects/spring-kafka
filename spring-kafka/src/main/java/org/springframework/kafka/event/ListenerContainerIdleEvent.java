@@ -31,8 +31,9 @@ import org.apache.kafka.common.TopicPartition;
  * @author Gary Russell
  *
  */
-@SuppressWarnings("serial")
 public class ListenerContainerIdleEvent extends KafkaEvent {
+
+	private static final long serialVersionUID = 1L;
 
 	private final long idleTime;
 
@@ -126,7 +127,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	@Override
 	public String toString() {
 		return "ListenerContainerIdleEvent [idleTime="
-				+ ((float) this.idleTime / 1000) + "s, listenerId=" + this.listenerId
+				+ ((float) this.idleTime / 1000) + "s, listenerId=" + this.listenerId // NOSONAR magic #
 				+ ", container=" + getSource()
 				+ ", paused=" + this.paused
 				+ ", topicPartitions=" + this.topicPartitions + "]";

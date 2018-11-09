@@ -108,7 +108,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		}
 		else if (properties.getTopicPartitions() != null && properties.getTopicPartitions().length == 1) {
 			replyTopic = properties.getTopicPartitions()[0].topic();
-			ByteBuffer buffer = ByteBuffer.allocate(4);
+			ByteBuffer buffer = ByteBuffer.allocate(4); // NOSONAR magic #
 			buffer.putInt(properties.getTopicPartitions()[0].partition());
 			replyPartition = buffer.array();
 		}
@@ -272,7 +272,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 */
 	protected CorrelationKey createCorrelationId(ProducerRecord<K, V> record) {
 		UUID uuid = UUID.randomUUID();
-		byte[] bytes = new byte[16];
+		byte[] bytes = new byte[16]; // NOSONAR magic #
 		ByteBuffer bb = ByteBuffer.wrap(bytes);
 		bb.putLong(uuid.getMostSignificantBits());
 		bb.putLong(uuid.getLeastSignificantBits());

@@ -27,8 +27,9 @@ import org.apache.kafka.common.TopicPartition;
  * @since 2.1.5
  *
  */
-@SuppressWarnings("serial")
 public class ConsumerPausedEvent extends KafkaEvent {
+
+	private static final long serialVersionUID = 1L;
 
 	private final Collection<TopicPartition> partitions;
 

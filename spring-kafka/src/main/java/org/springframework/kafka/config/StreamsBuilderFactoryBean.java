@@ -76,7 +76,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private boolean autoStartup = true;
 
-	private int phase = Integer.MAX_VALUE - 1000;
+	private int phase = Integer.MAX_VALUE - 1000; // NOSONAR magic #
 
 	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 

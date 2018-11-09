@@ -32,8 +32,9 @@ import org.apache.kafka.common.TopicPartition;
  * @since 1.3.1
  *
  */
-@SuppressWarnings("serial")
 public class NonResponsiveConsumerEvent extends KafkaEvent {
+
+	private static final long serialVersionUID = 1L;
 
 	private final long timeSinceLastPoll;
 
@@ -88,7 +89,7 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 	@Override
 	public String toString() {
 		return "NonResponsiveConsumerEvent [timeSinceLastPoll="
-				+ ((float) this.timeSinceLastPoll / 1000) + "s, listenerId=" + this.listenerId
+				+ ((float) this.timeSinceLastPoll / 1000) + "s, listenerId=" + this.listenerId // NOSONAR magic #
 				+ ", container=" + getSource()
 				+ ", topicPartitions=" + this.topicPartitions + "]";
 	}

@@ -549,13 +549,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private boolean validParametersForBatch(int parameterCount, boolean hasAck, boolean hasConsumer) {
 		if (hasAck) {
-			return parameterCount == 2 || (hasConsumer && parameterCount == 3);
+			return parameterCount == 2 || (hasConsumer && parameterCount == 3); // NOSONAR magic #
 		}
 		else if (hasConsumer) {
-			return parameterCount == 2;
+			return parameterCount == 2; // NOSONAR magic #
 		}
 		else {
-			return parameterCount == 1;
+			return parameterCount == 1; // NOSONAR magic #
 		}
 	}
 

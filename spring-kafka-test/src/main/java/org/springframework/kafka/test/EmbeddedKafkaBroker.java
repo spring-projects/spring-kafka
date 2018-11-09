@@ -195,8 +195,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	@Override
 	public void afterPropertiesSet() {
 		this.zookeeper = new EmbeddedZookeeper();
-		int zkConnectionTimeout = 6000;
-		int zkSessionTimeout = 6000;
+		int zkConnectionTimeout = 6000; // NOSONAR magic #
+		int zkSessionTimeout = 6000; // NOSONAR magic #
 
 		this.zkConnect = "127.0.0.1:" + this.zookeeper.port();
 		this.zookeeperClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
@@ -394,12 +394,13 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 		// retry restarting repeatedly, first attempts may fail
 
-		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(10, Collections.singletonMap(Exception.class, true));
+		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(10, // NOSONAR magic #
+				Collections.singletonMap(Exception.class, true));
 
 		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(100);
-		backOffPolicy.setMaxInterval(1000);
-		backOffPolicy.setMultiplier(2);
+		backOffPolicy.setInitialInterval(100); // NOSONAR magic #
+		backOffPolicy.setMaxInterval(1000); // NOSONAR magic #
+		backOffPolicy.setMultiplier(2); // NOSONAR magic #
 
 		RetryTemplate retryTemplate = new RetryTemplate();
 		retryTemplate.setRetryPolicy(retryPolicy);
@@ -469,8 +470,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		});
 		ConsumerRecords<?, ?> records = null;
 		int n = 0;
-		while (!assigned.get() && n++ < 600) {
-			records = consumer.poll(Duration.ofMillis(100)); // force assignment
+		while (!assigned.get() && n++ < 600) { // NOSONAR magic #
+			records = consumer.poll(Duration.ofMillis(100)); // force assignment NOSONAR magic #
 		}
 		if (records != null && records.count() > 0) {
 			final ConsumerRecords<?, ?> theRecords = records;

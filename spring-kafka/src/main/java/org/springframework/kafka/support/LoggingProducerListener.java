@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,16 @@ import org.springframework.util.ObjectUtils;
  */
 public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 
+	/**
+	 * Default max content logged.
+	 */
+	public static final int DEFAULT_MAX_CONTENT_LOGGED = 100;
+
 	private static final Log log = LogFactory.getLog(LoggingProducerListener.class);
 
 	private boolean includeContents = true;
 
-	private int maxContentLogged = 100;
+	private int maxContentLogged = DEFAULT_MAX_CONTENT_LOGGED;
 
 	/**
 	 * Whether the log message should include the contents (key and payload).
@@ -50,6 +55,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 	/**
 	 * The maximum amount of data to be logged for either key or password. As message sizes may vary and
 	 * become fairly large, this allows limiting the amount of data sent to logs.
+	 * Default {@value #DEFAULT_MAX_CONTENT_LOGGED}.
 	 *
 	 * @param maxContentLogged the maximum amount of data being logged.
 	 */

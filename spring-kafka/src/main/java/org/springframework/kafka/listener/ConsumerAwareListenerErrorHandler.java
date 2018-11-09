@@ -32,7 +32,7 @@ import org.springframework.messaging.Message;
 public interface ConsumerAwareListenerErrorHandler extends KafkaListenerErrorHandler {
 
 	@Override
-	default Object handleError(Message<?> message, ListenerExecutionFailedException exception) throws Exception {
+	default Object handleError(Message<?> message, ListenerExecutionFailedException exception) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 
