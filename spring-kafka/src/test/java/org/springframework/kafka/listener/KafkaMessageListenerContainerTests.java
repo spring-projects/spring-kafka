@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -78,6 +79,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
@@ -173,6 +175,16 @@ public class KafkaMessageListenerContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("delegate");
+		AtomicReference<List<TopicPartitionInitialOffset>> offsets = new AtomicReference<>();
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerStoppingEvent) {
+				ConsumerStoppingEvent event = (ConsumerStoppingEvent) e;
+				offsets.set(event.getPartitions().stream()
+						.map(p -> new TopicPartitionInitialOffset(p.topic(), p.partition(),
+								event.getConsumer().position(p, Duration.ofMillis(10_000))))
+						.collect(Collectors.toList()));
+			}
+		});
 		container.start();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -186,6 +198,16 @@ public class KafkaMessageListenerContainerTests {
 		// Stack traces are environment dependent - verified in eclipse
 		//		assertThat(trace.get()[1].getMethodName()).contains("invokeRecordListener");
 		container.stop();
+		List<TopicPartitionInitialOffset> list = offsets.get();
+		assertThat(list).isNotNull();
+		list.forEach(tpio -> {
+				if (tpio.partition() == 0) {
+					assertThat(tpio.initialOffset()).isEqualTo(1);
+				}
+				else {
+					assertThat(tpio.initialOffset()).isEqualTo(0);
+				}
+		});
 		final CountDownLatch latch2 = new CountDownLatch(1);
 		FilteringMessageListenerAdapter<Integer, String> filtering = new FilteringMessageListenerAdapter<>(m -> {
 			trace.set(new RuntimeException().getStackTrace());
@@ -206,7 +228,6 @@ public class KafkaMessageListenerContainerTests {
 		//		assertThat(trace.get()[5].getMethodName()).contains("onMessage"); // bridge
 		//		assertThat(trace.get()[6].getMethodName()).contains("invokeRecordListener");
 		container.stop();
-
 		final CountDownLatch latch3 = new CountDownLatch(1);
 		filtering = new FilteringMessageListenerAdapter<>(
 				(AcknowledgingConsumerAwareMessageListener<Integer, String>) (d, a, c) -> {
@@ -2210,10 +2231,12 @@ public class KafkaMessageListenerContainerTests {
 			this.baz = baz;
 		}
 
+		@SuppressWarnings("unused")
 		private String getBaz() {
 			return this.baz;
 		}
 
+		@SuppressWarnings("unused")
 		private void setBaz(String baz) {
 			this.baz = baz;
 		}
@@ -2237,10 +2260,12 @@ public class KafkaMessageListenerContainerTests {
 			this.baz = baz;
 		}
 
+		@SuppressWarnings("unused")
 		private String getBaz() {
 			return this.baz;
 		}
 
+		@SuppressWarnings("unused")
 		private void setBaz(String baz) {
 			this.baz = baz;
 		}

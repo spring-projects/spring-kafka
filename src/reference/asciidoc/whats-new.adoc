@@ -40,6 +40,9 @@ They can be configured to publish failed records to a dead-letter topic.
 
 See <<after-rollback>>, <<seek-to-current>> and <<dead-letters>> for more information.
 
+The `ConsumerStoppingEvent` has been added.
+See <<events>> for more information.
+
 ==== @KafkaListener Changes
 
 You can now override the `concurrency` and `autoStartup` properties of the listener container factory by setting properties on the annotation.

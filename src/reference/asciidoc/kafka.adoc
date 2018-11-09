@@ -1777,6 +1777,23 @@ ConsumerResumedEvent [partitions=[pause.resume.topic-1, pause.resume.topic-0]]
 bar
 ----
 
+[[events]]
+==== Events
+
+The following events are published by listener containers and their consumers:
+
+* `ContainerIdleEvent` - when no messages have been received in `idleInterval` (if configured)
+* `NonResponsiveConsumerEvent` - when the consumer appears to be blocked in the `poll` method
+* `ConsumerPausedEvent` - issued by each consumer when the container is paused
+* `ConsumerResumedEvent` - issued by each consumer when the container is resumed
+* `ConsumerStoppingEvent` - issued by each consumer just before stopping
+* `ConsumerStoppedEvent` - issued after the consumer is closed; see <<thread-safety>>
+* `ContainerStoppedEvent` - when all consumers have terminated
+
+IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
+If you change the multicaster to use an async executor, you must not invoke any `Consumer` methods when the event contains a reference to the consumer.
+
+
 [[serdes]]
 ==== Serialization/Deserialization and Message Conversion
 

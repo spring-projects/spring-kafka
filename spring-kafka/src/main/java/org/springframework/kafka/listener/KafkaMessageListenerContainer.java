@@ -66,6 +66,7 @@ import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
@@ -331,6 +332,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 	}
 
+	private void publishConsumerStoppingEvent(Consumer<?, ?> consumer) {
+		try {
+			if (getApplicationEventPublisher() != null) {
+				getApplicationEventPublisher().publishEvent(
+						new ConsumerStoppingEvent(this, consumer, getAssignedPartitions()));
+			}
+		}
+		catch (Exception e) {
+			this.logger.error("Failed to publish consumer stopping event", e);
+		}
+	}
 	private void publishConsumerStoppedEvent() {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this));
@@ -721,6 +733,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		public void wrapUp() {
 			ProducerFactoryUtils.clearConsumerGroupId();
+			publishConsumerStoppingEvent(this.consumer);
 			if (!this.fatalError) {
 				if (this.kafkaTxManager == null) {
 					commitPendingAcks();
