@@ -78,8 +78,8 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 	}
 
 	@Override
-	public Boolean getAutoStartup() {
-		return null;
+	public Boolean getAutoStartup() { // NOSONAR
+		return null; // NOSONAR null check by caller
 	}
 
 	@Override

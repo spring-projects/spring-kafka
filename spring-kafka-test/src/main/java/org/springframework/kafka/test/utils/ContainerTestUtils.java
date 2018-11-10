@@ -18,6 +18,7 @@ package org.springframework.kafka.test.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
@@ -44,10 +45,8 @@ public final class ContainerTestUtils {
 	 * Wait until the container has the required number of assigned partitions.
 	 * @param container the container.
 	 * @param partitions the number of partitions.
-	 * @throws Exception an exception.
 	 */
-	public static void waitForAssignment(Object container, int partitions)
-			throws Exception {
+	public static void waitForAssignment(Object container, int partitions) {
 		if (container.getClass().getSimpleName().contains("KafkaMessageListenerContainer")) {
 			waitForSingleContainerAssignment(container, partitions);
 			return;
@@ -62,31 +61,52 @@ public final class ContainerTestUtils {
 				if (getAssignedPartitions == null) {
 					getAssignedPartitions = getAssignedPartitionsMethod(aContainer.getClass());
 				}
-				Collection<?> assignedPartitions = (Collection<?>) getAssignedPartitions.invoke(aContainer);
+				Collection<?> assignedPartitions;
+				try {
+					assignedPartitions = (Collection<?>) getAssignedPartitions.invoke(aContainer);
+				}
+				catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					throw new ContainerTestUtilsException("Failed to invoke container method", e);
+				}
 				if (assignedPartitions != null) {
 					count += assignedPartitions.size();
 				}
 			}
 			if (count < partitions) {
-				Thread.sleep(100); // NOSONAR magic #
+				try {
+					Thread.sleep(100); // NOSONAR magic #
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
 			}
 		}
 		assertThat(count).isEqualTo(partitions);
 	}
 
-	private static void waitForSingleContainerAssignment(Object container, int partitions)
-			throws Exception {
+	private static void waitForSingleContainerAssignment(Object container, int partitions) {
 		int n = 0;
 		int count = 0;
 		Method getAssignedPartitions = getAssignedPartitionsMethod(container.getClass());
 		while (n++ < 600 && count < partitions) { // NOSONAR magic #
 			count = 0;
-			Collection<?> assignedPartitions = (Collection<?>) getAssignedPartitions.invoke(container);
+			Collection<?> assignedPartitions;
+			try {
+				assignedPartitions = (Collection<?>) getAssignedPartitions.invoke(container);
+			}
+			catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e1) {
+				throw new ContainerTestUtilsException("Failed to invoke container method", e1);
+			}
 			if (assignedPartitions != null) {
 				count = assignedPartitions.size();
 			}
 			if (count < partitions) {
-				Thread.sleep(100); // NOSONAR magic #
+				try {
+					Thread.sleep(100); // NOSONAR magic #
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
 			}
 		}
 		assertThat(count).isEqualTo(partitions);
@@ -109,6 +129,16 @@ public final class ContainerTestUtils {
 		});
 		assertThat(theMethod.get()).isNotNull();
 		return theMethod.get();
+	}
+
+	private static class ContainerTestUtilsException extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		ContainerTestUtilsException(String message, Throwable cause) {
+			super(message, cause);
+		}
+
 	}
 
 }

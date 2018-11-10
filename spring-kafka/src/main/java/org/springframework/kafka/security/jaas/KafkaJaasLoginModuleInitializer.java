@@ -156,7 +156,7 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 	}
 
 	@Override
-	public void destroy() throws Exception {
+	public void destroy() {
 		if (this.ignoreJavaLoginConfigParamSystemProperty) {
 			System.clearProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM);
 		}

@@ -124,8 +124,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private volatile ListenableFuture<?> listenerConsumerFuture;
 
-	private GenericMessageListener<?> listener;
-
 	private String clientIdSuffix;
 
 	private Runnable emergencyStop = () -> stop(() -> {
@@ -281,16 +279,16 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			containerProperties.setConsumerTaskExecutor(consumerExecutor);
 		}
 		Assert.state(messageListener instanceof GenericMessageListener, "Listener must be a GenericListener");
-		this.listener = (GenericMessageListener<?>) messageListener;
-		ListenerType listenerType = ListenerUtils.determineListenerType(this.listener);
-		if (this.listener instanceof DelegatingMessageListener) {
-			Object delegating = this.listener;
+		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
+		ListenerType listenerType = ListenerUtils.determineListenerType(listener);
+		if (listener instanceof DelegatingMessageListener) {
+			Object delegating = listener;
 			while (delegating instanceof DelegatingMessageListener) {
 				delegating = ((DelegatingMessageListener<?>) delegating).getDelegate();
 			}
 			listenerType = ListenerUtils.determineListenerType(delegating);
 		}
-		this.listenerConsumer = new ListenerConsumer(this.listener, listenerType);
+		this.listenerConsumer = new ListenerConsumer(listener, listenerType);
 		setRunning(true);
 		this.listenerConsumerFuture = containerProperties
 				.getConsumerTaskExecutor()
@@ -396,14 +394,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private final boolean isManualAck = this.containerProperties.getAckMode().equals(AckMode.MANUAL);
 
+		private final boolean isCountAck = this.containerProperties.getAckMode().equals(AckMode.COUNT)
+				|| this.containerProperties.getAckMode().equals(AckMode.COUNT_TIME);
+
+		private final boolean isTimeOnlyAck = this.containerProperties.getAckMode().equals(AckMode.TIME);
+
 		private final boolean isManualImmediateAck =
 				this.containerProperties.getAckMode().equals(AckMode.MANUAL_IMMEDIATE);
 
 		private final boolean isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
 
 		private final boolean isRecordAck = this.containerProperties.getAckMode().equals(AckMode.RECORD);
-
-		private final boolean isBatchAck = this.containerProperties.getAckMode().equals(AckMode.BATCH);
 
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
@@ -1239,10 +1240,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				if (!this.isManualAck) {
 					updatePendingOffsets();
 				}
-				boolean countExceeded = this.count >= this.containerProperties.getAckCount();
-				if (this.isManualAck || this.isBatchAck || this.isRecordAck
-						|| (ackMode.equals(AckMode.COUNT) && countExceeded)) {
-					if (this.logger.isDebugEnabled() && ackMode.equals(AckMode.COUNT)) {
+				boolean countExceeded = this.isCountAck && this.count >= this.containerProperties.getAckCount();
+				if ((!this.isTimeOnlyAck && !this.isCountAck) || countExceeded) {
+					if (this.logger.isDebugEnabled() && isCountAck) {
 						this.logger.debug("Committing in AckMode.COUNT because count " + this.count
 								+ " exceeds configured limit of " + this.containerProperties.getAckCount());
 					}
@@ -1514,9 +1514,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private class ListenerConsumerRebalanceListener implements ConsumerRebalanceListener {
 
-			final ConsumerRebalanceListener userListener = getContainerProperties().getConsumerRebalanceListener();
+			private final ConsumerRebalanceListener userListener = getContainerProperties()
+					.getConsumerRebalanceListener();
 
-			final ConsumerAwareRebalanceListener consumerAwareListener =
+			private final ConsumerAwareRebalanceListener consumerAwareListener =
 					this.userListener instanceof ConsumerAwareRebalanceListener
 							? (ConsumerAwareRebalanceListener) this.userListener : null;
 

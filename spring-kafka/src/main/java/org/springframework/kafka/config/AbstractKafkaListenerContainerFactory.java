@@ -254,7 +254,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	@Override
-	public void afterPropertiesSet() throws Exception {
+	public void afterPropertiesSet() {
 		if (this.errorHandler != null) {
 			if (Boolean.TRUE.equals(this.batchListener)) {
 				Assert.state(this.errorHandler instanceof BatchErrorHandler,

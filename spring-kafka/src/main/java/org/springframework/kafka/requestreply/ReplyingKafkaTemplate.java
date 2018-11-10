@@ -43,11 +43,9 @@ import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
-import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * A KafkaTemplate that implements request/reply semantics.
@@ -178,7 +176,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	@Override
-	public void afterPropertiesSet() throws Exception {
+	public void afterPropertiesSet() {
 		if (!this.schedulerSet) {
 			((ThreadPoolTaskScheduler) this.scheduler).initialize();
 		}
@@ -258,7 +256,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	@Override
-	public void destroy() throws Exception {
+	public void destroy() {
 		if (!this.schedulerSet) {
 			((ThreadPoolTaskScheduler) this.scheduler).destroy();
 		}
@@ -328,17 +326,12 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * @param <K> the key type.
 	 * @param <V> the outbound data type.
 	 * @param <R> the reply data type.
-	 *
+	 * TODO: Remove this in 2.3 - adds no value to the super class
 	 */
 	public static class TemplateRequestReplyFuture<K, V, R> extends RequestReplyFuture<K, V, R> {
 
 		TemplateRequestReplyFuture() {
 			super();
-		}
-
-		@Override
-		protected void setSendFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
-			super.setSendFuture(sendFuture);
 		}
 
 	}

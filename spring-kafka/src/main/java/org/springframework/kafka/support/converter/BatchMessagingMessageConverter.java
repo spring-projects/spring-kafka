@@ -60,7 +60,7 @@ import org.springframework.messaging.support.MessageBuilder;
  */
 public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
-	protected final Log logger = LogFactory.getLog(getClass());
+	protected final Log logger = LogFactory.getLog(getClass()); // NOSONAR
 
 	private final RecordMessageConverter recordConverter;
 

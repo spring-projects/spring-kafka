@@ -424,9 +424,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	/**
 	 * Subscribe a consumer to all the embedded topics.
 	 * @param consumer the consumer.
-	 * @throws Exception an exception.
 	 */
-	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) throws Exception {
+	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) {
 		consumeFromEmbeddedTopics(consumer, this.topics.toArray(new String[0]));
 	}
 
@@ -434,9 +433,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * Subscribe a consumer to one of the embedded topics.
 	 * @param consumer the consumer.
 	 * @param topic the topic.
-	 * @throws Exception an exception.
 	 */
-	public void consumeFromAnEmbeddedTopic(Consumer<?, ?> consumer, String topic) throws Exception {
+	public void consumeFromAnEmbeddedTopic(Consumer<?, ?> consumer, String topic) {
 		consumeFromEmbeddedTopics(consumer, topic);
 	}
 
@@ -444,9 +442,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * Subscribe a consumer to one or more of the embedded topics.
 	 * @param consumer the consumer.
 	 * @param topics the topics.
-	 * @throws Exception an exception.
 	 */
-	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) throws Exception {
+	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) {
 		HashSet<String> diff = new HashSet<>(Arrays.asList(topics));
 		diff.removeAll(new HashSet<>(this.topics));
 		assertThat(this.topics)

@@ -56,7 +56,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 			new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.NATIVE_HEADERS),
 			new SimplePatternBasedHeaderMatcher("!" + KafkaHeaders.TOPIC));
 
-	protected final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>(NEVER_MAPPED);
+	protected final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>(NEVER_MAPPED); // NOSONAR
 
 	public AbstractKafkaHeaderMapper(String... patterns) {
 		Assert.notNull(patterns, "'patterns' must not be null");
@@ -101,7 +101,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 */
 	protected static class SimplePatternBasedHeaderMatcher {
 
-		private static final Log logger = LogFactory.getLog(SimplePatternBasedHeaderMatcher.class);
+		private static final Log logger = LogFactory.getLog(SimplePatternBasedHeaderMatcher.class); // NOSONAR
 
 		private final String pattern;
 

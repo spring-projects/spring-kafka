@@ -158,18 +158,21 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 				if (!this.initializingContext || this.fatalIfBrokerNotAvailable) {
 					throw new IllegalStateException("Could not create admin", e);
 				}
+				else {
+					logger.error("Could not create admin", e);
+				}
 			}
 			if (adminClient != null) {
 				try {
 					addTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
-				catch (Throwable e) {  // NOSONAR errors thrown below
-					if (e instanceof Error) {
-						throw (Error) e;
-					}
+				catch (Exception e) {
 					if (!this.initializingContext || this.fatalIfBrokerNotAvailable) {
 						throw new IllegalStateException("Could not configure topics", e);
+					}
+					else {
+						logger.error("Could not configure topics", e);
 					}
 				}
 				finally {
@@ -182,7 +185,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 		return false;
 	}
 
-	private void addTopicsIfNeeded(AdminClient adminClient, Collection<NewTopic> topics) throws Throwable {
+	private void addTopicsIfNeeded(AdminClient adminClient, Collection<NewTopic> topics) {
 		if (topics.size() > 0) {
 			Map<String, NewTopic> topicNameToTopic = new HashMap<>();
 			topics.forEach(t -> topicNameToTopic.compute(t.name(), (k, v) -> v = t));

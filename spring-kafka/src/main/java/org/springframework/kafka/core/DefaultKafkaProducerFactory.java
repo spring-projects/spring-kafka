@@ -508,8 +508,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				}
 				else {
 					synchronized (this) {
-						if (!this.cache.contains(this)) {
-							this.cache.offer(this);
+						if (!this.cache.contains(this)
+								&& !this.cache.offer(this)) {
+							this.delegate.close();
 						}
 					}
 				}

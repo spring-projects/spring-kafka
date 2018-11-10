@@ -54,7 +54,7 @@ import org.springframework.util.Assert;
  */
 public class MessagingMessageConverter implements RecordMessageConverter {
 
-	protected final Log logger = LogFactory.getLog(getClass());
+	protected final Log logger = LogFactory.getLog(getClass()); // NOSONAR
 
 	private boolean generateMessageId = false;
 

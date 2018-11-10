@@ -31,7 +31,7 @@ import org.springframework.util.Assert;
  */
 public final class CorrelationKey {
 
-	final private byte[] correlationId;
+	private final byte[] correlationId;
 
 	private volatile Integer hashCode;
 

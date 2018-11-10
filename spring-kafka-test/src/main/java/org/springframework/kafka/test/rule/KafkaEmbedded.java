@@ -119,7 +119,7 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	}
 
 	@Override
-	public void afterPropertiesSet() throws Exception {
+	public void afterPropertiesSet() {
 		before();
 	}
 
@@ -224,9 +224,8 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	/**
 	 * Subscribe a consumer to all the embedded topics.
 	 * @param consumer the consumer.
-	 * @throws Exception an exception.
 	 */
-	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) throws Exception {
+	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer) {
 		getEmbeddedKafka().consumeFromAllEmbeddedTopics(consumer);
 	}
 
@@ -234,9 +233,8 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	 * Subscribe a consumer to one of the embedded topics.
 	 * @param consumer the consumer.
 	 * @param topic the topic.
-	 * @throws Exception an exception.
 	 */
-	public void consumeFromAnEmbeddedTopic(Consumer<?, ?> consumer, String topic) throws Exception {
+	public void consumeFromAnEmbeddedTopic(Consumer<?, ?> consumer, String topic) {
 		consumeFromEmbeddedTopics(consumer, topic);
 	}
 
@@ -244,9 +242,8 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 	 * Subscribe a consumer to one or more of the embedded topics.
 	 * @param consumer the consumer.
 	 * @param topics the topics.
-	 * @throws Exception an exception.
 	 */
-	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) throws Exception {
+	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) {
 		getEmbeddedKafka().consumeFromEmbeddedTopics(consumer, topics);
 	}
 

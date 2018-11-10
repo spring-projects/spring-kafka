@@ -288,7 +288,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	protected boolean trusted(String requestedType) {
 		if (!this.trustedPackages.isEmpty()) {
-			int lastDot = requestedType.lastIndexOf(".");
+			int lastDot = requestedType.lastIndexOf('.');
 			if (lastDot < 0) {
 				return false;
 			}

@@ -81,7 +81,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 				handleResult(result, record, message);
 			}
 		}
-		catch (ListenerExecutionFailedException e) {
+		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
 			if (this.errorHandler != null) {
 				try {
 					Object result = this.errorHandler.handleError(message, e, consumer);

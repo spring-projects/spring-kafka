@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -51,6 +53,8 @@ import org.springframework.util.Assert;
  * @since 1.1.4
  */
 public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder> implements SmartLifecycle {
+
+	private static final Log logger = LogFactory.getLog(StreamsBuilderFactoryBean.class); // NOSONAR
 
 	private static final String STREAMS_CONFIG_MUST_NOT_BE_NULL = "'streamsConfig' must not be null";
 
@@ -246,7 +250,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	@Override
-	protected StreamsBuilder createInstance() throws Exception {
+	protected StreamsBuilder createInstance() {
 		if (this.autoStartup) {
 			Assert.state(this.streamsConfig != null || this.properties != null,
 					"'streamsConfig' or streams configuration properties must not be null");
@@ -323,7 +327,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				}
 			}
 			catch (Exception e) {
-				e.printStackTrace();
+				logger.error("Failed to stop streams", e);
 			}
 			finally {
 				this.running = false;

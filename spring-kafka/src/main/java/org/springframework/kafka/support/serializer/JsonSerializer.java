@@ -60,11 +60,11 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	 */
 	public static final String TYPE_MAPPINGS = "spring.json.type.mapping";
 
-	protected final ObjectMapper objectMapper;
+	protected final ObjectMapper objectMapper; // NOSONAR
 
-	protected boolean addTypeInfo = true;
+	protected boolean addTypeInfo = true; // NOSONAR
 
-	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
 	private boolean typeMapperExplicitlySet = false;
 
@@ -113,11 +113,9 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	 * @since 2.1.3
 	 */
 	public void setUseTypeMapperForKey(boolean isKey) {
-		if (!this.typeMapperExplicitlySet) {
-			if (this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
-				AbstractJavaTypeMapper typeMapper = (AbstractJavaTypeMapper) this.getTypeMapper();
-				typeMapper.setUseForKey(isKey);
-			}
+		if (!this.typeMapperExplicitlySet
+				&& this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
+			((AbstractJavaTypeMapper) this.getTypeMapper()).setUseForKey(isKey);
 		}
 	}
 

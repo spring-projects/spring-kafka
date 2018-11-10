@@ -148,7 +148,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 				handleResult(result, records, message);
 			}
 		}
-		catch (ListenerExecutionFailedException e) {
+		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
 			if (this.errorHandler != null) {
 				try {
 					if (message.equals(NULL_MESSAGE)) {

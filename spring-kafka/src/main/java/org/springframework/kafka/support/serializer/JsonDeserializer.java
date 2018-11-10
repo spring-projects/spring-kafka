@@ -54,24 +54,28 @@ import com.fasterxml.jackson.databind.ObjectReader;
  */
 public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
+	private static final String DEPRECATED_KEY_DEFAULT_TYPE = "spring.json.key.default.type";
+
+	private static final String DEPRECATED_DEFAULT_VALUE_TYPE = "spring.json.default.value.type";
+
 	/**
 	 * Kafka config property for the default key type if no header.
 	 * @deprecated in favor of {@link #KEY_DEFAULT_TYPE}
 	 */
 	@Deprecated
-	public static final String DEFAULT_KEY_TYPE = "spring.json.key.default.type";
+	public static final String DEFAULT_KEY_TYPE = DEPRECATED_KEY_DEFAULT_TYPE;
 
 	/**
 	 * Kafka config property for the default value type if no header.
 	 * @deprecated in favor of {@link #VALUE_DEFAULT_TYPE}
 	 */
 	@Deprecated
-	public static final String DEFAULT_VALUE_TYPE = "spring.json.default.value.type";
+	public static final String DEFAULT_VALUE_TYPE = DEPRECATED_DEFAULT_VALUE_TYPE;
 
 	/**
 	 * Kafka config property for the default key type if no header.
 	 */
-	public static final String KEY_DEFAULT_TYPE = "spring.json.key.default.type";
+	public static final String KEY_DEFAULT_TYPE = DEPRECATED_KEY_DEFAULT_TYPE;
 
 	/**
 	 * Kafka config property for the default value type if no header.
@@ -94,13 +98,13 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 */
 	public static final String REMOVE_TYPE_INFO_HEADERS = "spring.json.remove.type.headers";
 
-	protected final ObjectMapper objectMapper;
+	protected final ObjectMapper objectMapper; // NOSONAR
 
-	protected Class<T> targetType;
+	protected Class<T> targetType; // NOSONAR
+
+	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
 	private volatile ObjectReader reader;
-
-	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 
 	private boolean typeMapperExplicitlySet = false;
 
@@ -202,11 +206,9 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * @since 2.1.3
 	 */
 	public void setUseTypeMapperForKey(boolean isKey) {
-		if (!this.typeMapperExplicitlySet) {
-			if (this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
-				AbstractJavaTypeMapper typeMapper = (AbstractJavaTypeMapper) this.getTypeMapper();
-				typeMapper.setUseForKey(isKey);
-			}
+		if (!this.typeMapperExplicitlySet
+				&& this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
+			((AbstractJavaTypeMapper) this.getTypeMapper()).setUseForKey(isKey);
 		}
 	}
 
@@ -237,13 +239,13 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 				}
 			}
 			// TODO don't forget to remove these code after DEFAULT_VALUE_TYPE being removed.
-			else if (!isKey && configs.containsKey("spring.json.default.value.type")) {
-				if (configs.get("spring.json.default.value.type") instanceof Class) {
-					this.targetType = (Class<T>) configs.get("spring.json.default.value.type");
+			else if (!isKey && configs.containsKey(DEPRECATED_DEFAULT_VALUE_TYPE)) {
+				if (configs.get(DEPRECATED_DEFAULT_VALUE_TYPE) instanceof Class) {
+					this.targetType = (Class<T>) configs.get(DEPRECATED_DEFAULT_VALUE_TYPE);
 				}
-				else if (configs.get("spring.json.default.value.type") instanceof String) {
+				else if (configs.get(DEPRECATED_DEFAULT_VALUE_TYPE) instanceof String) {
 					this.targetType = (Class<T>) ClassUtils
-						.forName((String) configs.get("spring.json.default.value.type"), null);
+						.forName((String) configs.get(DEPRECATED_DEFAULT_VALUE_TYPE), null);
 				}
 				else {
 					throw new IllegalStateException("spring.json.default.value.type must be Class or String");
@@ -269,11 +271,10 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		catch (ClassNotFoundException | LinkageError e) {
 			throw new IllegalStateException(e);
 		}
-		if (configs.containsKey(TRUSTED_PACKAGES)) {
-			if (configs.get(TRUSTED_PACKAGES) instanceof String) {
-				this.typeMapper.addTrustedPackages(
-						StringUtils.commaDelimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES)));
-			}
+		if (configs.containsKey(TRUSTED_PACKAGES)
+				&& configs.get(TRUSTED_PACKAGES) instanceof String) {
+			this.typeMapper.addTrustedPackages(
+					StringUtils.commaDelimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES)));
 		}
 		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
 				&& this.typeMapper instanceof AbstractJavaTypeMapper) {

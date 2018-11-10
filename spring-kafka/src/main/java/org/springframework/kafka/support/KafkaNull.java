@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package org.springframework.kafka.support;
  * This class represents NULL Kafka payload.
  *
  * @author Dariusz Szablinski
+ * @author Gary Russell
  * @since 1.0.3
  */
 public final class KafkaNull {
@@ -27,7 +28,7 @@ public final class KafkaNull {
 	/**
 	 * Instance of KafkaNull.
 	 */
-	public final static KafkaNull INSTANCE = new KafkaNull();
+	public static final KafkaNull INSTANCE = new KafkaNull();
 
 	private KafkaNull() {
 	}

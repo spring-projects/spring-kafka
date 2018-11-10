@@ -69,14 +69,16 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 			StringBuffer logOutput = new StringBuffer();
 			logOutput.append("Exception thrown when sending a message");
 			if (this.includeContents) {
-				logOutput.append(" with key='"
-						+ toDisplayString(ObjectUtils.nullSafeToString(key), this.maxContentLogged) + "'");
-				logOutput.append(" and payload='"
-						+ toDisplayString(ObjectUtils.nullSafeToString(value), this.maxContentLogged) + "'");
+				logOutput.append(" with key='")
+					.append(toDisplayString(ObjectUtils.nullSafeToString(key), this.maxContentLogged))
+					.append("'")
+					.append(" and payload='")
+					.append(toDisplayString(ObjectUtils.nullSafeToString(value), this.maxContentLogged))
+					.append("'");
 			}
-			logOutput.append(" to topic " + topic);
+			logOutput.append(" to topic ").append(topic);
 			if (partition != null) {
-				logOutput.append(" and partition " + partition);
+				logOutput.append(" and partition ").append(partition);
 			}
 			logOutput.append(":");
 			logger.error(logOutput, exception);

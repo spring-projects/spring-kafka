@@ -43,7 +43,7 @@ public abstract class AbstractDelegatingMessageListenerAdapter<T>
 
 	protected final T delegate; //NOSONAR
 
-	protected final ListenerType delegateType;
+	protected final ListenerType delegateType; // NOSONAR
 
 	private final ConsumerSeekAware seekAware;
 
