@@ -39,15 +39,15 @@ public class ChainedKafkaTransactionManager<K, V> extends ChainedTransactionMana
 	@SuppressWarnings("unchecked")
 	public ChainedKafkaTransactionManager(PlatformTransactionManager... transactionManagers) {
 		super(transactionManagers);
-		KafkaAwareTransactionManager<K, V> kafkaTransactionManager = null;
+		KafkaAwareTransactionManager<K, V> uniqueKafkaTransactionManager = null;
 		for (PlatformTransactionManager tm : transactionManagers) {
 			if (tm instanceof KafkaAwareTransactionManager) {
-				Assert.isNull(kafkaTransactionManager, "Only one KafkaAwareTransactionManager is allowed");
-				kafkaTransactionManager = (KafkaTransactionManager<K, V>) tm;
+				Assert.isNull(uniqueKafkaTransactionManager, "Only one KafkaAwareTransactionManager is allowed");
+				uniqueKafkaTransactionManager = (KafkaTransactionManager<K, V>) tm;
 			}
 		}
-		Assert.notNull(kafkaTransactionManager, "Exactly one KafkaAwareTransactionManager is required");
-		this.kafkaTransactionManager = kafkaTransactionManager;
+		Assert.notNull(uniqueKafkaTransactionManager, "Exactly one KafkaAwareTransactionManager is required");
+		this.kafkaTransactionManager = uniqueKafkaTransactionManager;
 	}
 
 	@Override

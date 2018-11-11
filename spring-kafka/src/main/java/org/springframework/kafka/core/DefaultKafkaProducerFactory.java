@@ -217,20 +217,20 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	@SuppressWarnings("resource")
 	@Override
 	public void destroy() throws Exception { //NOSONAR
-		CloseSafeProducer<K, V> producer = this.producer;
+		CloseSafeProducer<K, V> producerToClose = this.producer;
 		this.producer = null;
-		if (producer != null) {
-			producer.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
+		if (producerToClose != null) {
+			producerToClose.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
 		}
-		producer = this.cache.poll();
-		while (producer != null) {
+		producerToClose = this.cache.poll();
+		while (producerToClose != null) {
 			try {
-				producer.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
+				producerToClose.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
 			}
 			catch (Exception e) {
 				logger.error("Exception while closing producer", e);
 			}
-			producer = this.cache.poll();
+			producerToClose = this.cache.poll();
 		}
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
@@ -356,22 +356,22 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @since 1.3
 	 */
 	protected Producer<K, V> createTransactionalProducer() {
-		Producer<K, V> producer = this.cache.poll();
-		if (producer == null) {
+		Producer<K, V> cachedProducer = this.cache.poll();
+		if (cachedProducer == null) {
 			return doCreateTxProducer("" + this.transactionIdSuffix.getAndIncrement(), null);
 		}
 		else {
-			return producer;
+			return cachedProducer;
 		}
 	}
 
 	private CloseSafeProducer<K, V> doCreateTxProducer(String suffix, Consumer<CloseSafeProducer<K, V>> remover) {
-		Producer<K, V> producer;
-		Map<String, Object> configs = new HashMap<>(this.configs);
-		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, this.transactionIdPrefix + suffix);
-		producer = new KafkaProducer<K, V>(configs, this.keySerializer, this.valueSerializer);
-		producer.initTransactions();
-		return new CloseSafeProducer<K, V>(producer, this.cache, remover);
+		Producer<K, V> newProducer;
+		Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
+		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, this.transactionIdPrefix + suffix);
+		newProducer = new KafkaProducer<K, V>(newProducerConfigs, this.keySerializer, this.valueSerializer);
+		newProducer.initTransactions();
+		return new CloseSafeProducer<K, V>(newProducer, this.cache, remover);
 	}
 
 	protected BlockingQueue<CloseSafeProducer<K, V>> getCache() {

@@ -99,18 +99,18 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.replyContainer = replyContainer;
 		this.replyContainer.setupMessageListener(this);
 		ContainerProperties properties = this.replyContainer.getContainerProperties();
-		String replyTopic = null;
-		byte[] replyPartition = null;
+		String tempReplyTopic = null;
+		byte[] tempReplyPartition = null;
 		if (properties.getTopics() != null && properties.getTopics().length == 1) {
-			replyTopic = properties.getTopics()[0];
+			tempReplyTopic = properties.getTopics()[0];
 		}
 		else if (properties.getTopicPartitions() != null && properties.getTopicPartitions().length == 1) {
-			replyTopic = properties.getTopicPartitions()[0].topic();
+			tempReplyTopic = properties.getTopicPartitions()[0].topic();
 			ByteBuffer buffer = ByteBuffer.allocate(4); // NOSONAR magic #
 			buffer.putInt(properties.getTopicPartitions()[0].partition());
-			replyPartition = buffer.array();
+			tempReplyPartition = buffer.array();
 		}
-		if (replyTopic == null) {
+		if (tempReplyTopic == null) {
 			this.replyTopic = null;
 			this.replyPartition = null;
 			this.logger.debug("Could not determine container's reply topic/partition; senders must populate "
@@ -118,8 +118,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 					+ KafkaHeaders.REPLY_PARTITION + " header");
 		}
 		else {
-			this.replyTopic = replyTopic.getBytes(StandardCharsets.UTF_8);
-			this.replyPartition = replyPartition;
+			this.replyTopic = tempReplyTopic.getBytes(StandardCharsets.UTF_8);
+			this.replyPartition = tempReplyPartition;
 		}
 	}
 

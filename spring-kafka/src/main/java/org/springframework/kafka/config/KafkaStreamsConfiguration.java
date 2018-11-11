@@ -70,7 +70,7 @@ public class KafkaStreamsConfiguration {
 	 */
 	public Properties asProperties() {
 		if (this.properties == null) {
-			Properties properties = new Properties();
+			Properties props = new Properties();
 			this.configs.forEach((k, v) -> {
 				String value;
 				if (this.conversionService.canConvert(v.getClass(), String.class)) {
@@ -79,9 +79,9 @@ public class KafkaStreamsConfiguration {
 				else {
 					value = v.toString();
 				}
-				properties.setProperty(k, value);
+				props.setProperty(k, value);
 			});
-			this.properties = properties;
+			this.properties = props;
 		}
 		return this.properties;
 	}

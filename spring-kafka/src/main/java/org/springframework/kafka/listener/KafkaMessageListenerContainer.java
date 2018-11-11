@@ -215,13 +215,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 */
 	@Override
 	public Collection<TopicPartition> getAssignedPartitions() {
-		ListenerConsumer listenerConsumer = this.listenerConsumer;
-		if (listenerConsumer != null) {
-			if (listenerConsumer.definedPartitions != null) {
-				return Collections.unmodifiableCollection(listenerConsumer.definedPartitions.keySet());
+		ListenerConsumer partitionsListenerConsumer = this.listenerConsumer;
+		if (partitionsListenerConsumer != null) {
+			if (partitionsListenerConsumer.definedPartitions != null) {
+				return Collections.unmodifiableCollection(partitionsListenerConsumer.definedPartitions.keySet());
 			}
-			else if (listenerConsumer.assignedPartitions != null) {
-				return Collections.unmodifiableCollection(listenerConsumer.assignedPartitions);
+			else if (partitionsListenerConsumer.assignedPartitions != null) {
+				return Collections.unmodifiableCollection(partitionsListenerConsumer.assignedPartitions);
 			}
 			else {
 				return null;
@@ -239,9 +239,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
-		ListenerConsumer listenerConsumer = this.listenerConsumer;
-		if (listenerConsumer != null) {
-			Map<MetricName, ? extends Metric> metrics = listenerConsumer.consumer.metrics();
+		ListenerConsumer listenerConsumerForMetrics = this.listenerConsumer;
+		if (listenerConsumerForMetrics != null) {
+			Map<MetricName, ? extends Metric> metrics = listenerConsumerForMetrics.consumer.metrics();
 			Iterator<MetricName> metricIterator = metrics.keySet().iterator();
 			if (metricIterator.hasNext()) {
 				String clientId = metricIterator.next().tags().get("client-id");
@@ -478,14 +478,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
 					"Consumer cannot be configured for auto commit for ackMode " + this.containerProperties.getAckMode());
-			final Consumer<K, V> consumer =
+			this.consumer =
 					KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
 							this.consumerGroupId,
 							this.containerProperties.getClientId(),
 							KafkaMessageListenerContainer.this.clientIdSuffix);
-			this.consumer = consumer;
 
-			subscribeOrAssignTopics(consumer);
+			subscribeOrAssignTopics(this.consumer);
 			GenericErrorHandler<?> errHandler = KafkaMessageListenerContainer.this.getGenericErrorHandler();
 			this.genericListener = listener;
 			if (listener instanceof BatchMessageListener) {
@@ -557,10 +556,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			}
 			else {
-				List<TopicPartitionInitialOffset> topicPartitions =
+				List<TopicPartitionInitialOffset> topicPartitionsToAssign =
 						Arrays.asList(KafkaMessageListenerContainer.this.topicPartitions);
-				this.definedPartitions = new HashMap<>(topicPartitions.size());
-				for (TopicPartitionInitialOffset topicPartition : topicPartitions) {
+				this.definedPartitions = new HashMap<>(topicPartitionsToAssign.size());
+				for (TopicPartitionInitialOffset topicPartition : topicPartitionsToAssign) {
 					this.definedPartitions.put(topicPartition.topicPartition(),
 							new OffsetMetadata(topicPartition.initialOffset(), topicPartition.isRelativeToCurrent(),
 									topicPartition.getPosition()));
@@ -1629,10 +1628,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					// it protects us from the case when another consumer starts
 					// and rebalance would cause it to reset at the end
 					// see https://github.com/spring-projects/spring-kafka/issues/110
-					Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+					Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
 					for (TopicPartition partition : partitions) {
 						try {
-							offsets.put(partition,
+							offsetsToCommit.put(partition,
 									new OffsetAndMetadata(ListenerConsumer.this.consumer.position(partition)));
 						}
 						catch (NoOffsetForPartitionException e) {
@@ -1641,7 +1640,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							return;
 						}
 					}
-					ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsets);
+					ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsetsToCommit);
 					if (ListenerConsumer.this.transactionTemplate != null &&
 							ListenerConsumer.this.kafkaTxManager != null) {
 						ListenerConsumer.this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
@@ -1651,17 +1650,17 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							protected void doInTransactionWithoutResult(TransactionStatus status) {
 								((KafkaResourceHolder) TransactionSynchronizationManager
 										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-										.getProducer().sendOffsetsToTransaction(offsets, // NOSONAR
+										.getProducer().sendOffsetsToTransaction(offsetsToCommit, // NOSONAR
 												ListenerConsumer.this.consumerGroupId);
 							}
 
 						});
 					}
 					else if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
-						ListenerConsumer.this.consumer.commitSync(offsets);
+						ListenerConsumer.this.consumer.commitSync(offsetsToCommit);
 					}
 					else {
-						ListenerConsumer.this.consumer.commitAsync(offsets,
+						ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,
 								KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
 					}
 				}

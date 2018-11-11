@@ -297,22 +297,22 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		if (data == null) {
 			return null;
 		}
-		ObjectReader reader = null;
+		ObjectReader deserReader = null;
 		if (this.typeMapper.getTypePrecedence().equals(TypePrecedence.TYPE_ID)) {
 			JavaType javaType = this.typeMapper.toJavaType(headers);
 			if (javaType != null) {
-				reader = this.objectMapper.readerFor(javaType);
+				deserReader = this.objectMapper.readerFor(javaType);
 			}
 		}
 		if (this.removeTypeHeaders) {
 			this.typeMapper.removeHeaders(headers);
 		}
-		if (reader == null) {
-			reader = this.reader;
+		if (deserReader == null) {
+			deserReader = this.reader;
 		}
-		Assert.state(reader != null, "No type information in headers and no default type provided");
+		Assert.state(deserReader != null, "No type information in headers and no default type provided");
 		try {
-			return reader.readValue(data);
+			return deserReader.readValue(data);
 		}
 		catch (IOException e) {
 			throw new SerializationException("Can't deserialize data [" + Arrays.toString(data) +

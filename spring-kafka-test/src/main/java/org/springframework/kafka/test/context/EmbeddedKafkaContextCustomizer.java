@@ -65,7 +65,7 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 						.map(environment::resolvePlaceholders)
 						.toArray(String[]::new);
 
-		EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(this.embeddedKafka.count(),
+		EmbeddedKafkaBroker embeddedKafkaBroker = new EmbeddedKafkaBroker(this.embeddedKafka.count(),
 				this.embeddedKafka.controlledShutdown(),
 				this.embeddedKafka.partitions(),
 				topics);
@@ -101,11 +101,11 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 			}
 		}
 
-		embeddedKafka.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
+		embeddedKafkaBroker.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
 
-		beanFactory.initializeBean(embeddedKafka, EmbeddedKafkaBroker.BEAN_NAME);
-		beanFactory.registerSingleton(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafka);
-		((DefaultSingletonBeanRegistry) beanFactory).registerDisposableBean(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafka);
+		beanFactory.initializeBean(embeddedKafkaBroker, EmbeddedKafkaBroker.BEAN_NAME);
+		beanFactory.registerSingleton(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafkaBroker);
+		((DefaultSingletonBeanRegistry) beanFactory).registerDisposableBean(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafkaBroker);
 	}
 
 	@Override

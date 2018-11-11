@@ -138,7 +138,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
-	private String containerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
+	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
 
 	private BeanFactory beanFactory;
 
@@ -174,8 +174,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * <p>If none is specified, "kafkaListenerContainerFactory" is assumed to be defined.
 	 * @param containerFactoryBeanName the {@link KafkaListenerContainerFactory} bean name.
 	 */
-	public void setContainerFactoryBeanName(String containerFactoryBeanName) {
-		this.containerFactoryBeanName = containerFactoryBeanName;
+	public void setDefaultContainerFactoryBeanName(String containerFactoryBeanName) {
+		this.defaultContainerFactoryBeanName = containerFactoryBeanName;
 	}
 
 	/**
@@ -241,8 +241,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			this.registrar.setEndpointRegistry(this.endpointRegistry);
 		}
 
-		if (this.containerFactoryBeanName != null) {
-			this.registrar.setContainerFactoryBeanName(this.containerFactoryBeanName);
+		if (this.defaultContainerFactoryBeanName != null) {
+			this.registrar.setContainerFactoryBeanName(this.defaultContainerFactoryBeanName);
 		}
 
 		// Set the custom handler method factory once resolved by the configurer

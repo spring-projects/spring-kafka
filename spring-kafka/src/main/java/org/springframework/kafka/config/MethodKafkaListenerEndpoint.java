@@ -107,21 +107,21 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	}
 
 	private String getReplyTopic() {
-		Method method = getMethod();
-		if (method != null) {
-			SendTo ann = AnnotationUtils.getAnnotation(method, SendTo.class);
+		Method replyingMethod = getMethod();
+		if (replyingMethod != null) {
+			SendTo ann = AnnotationUtils.getAnnotation(replyingMethod, SendTo.class);
 			if (ann != null) {
-				if (method.getReturnType().equals(void.class)
+				if (replyingMethod.getReturnType().equals(void.class)
 					&& this.logger.isWarnEnabled()) {
 						this.logger.warn("Method "
-								+ method
+								+ replyingMethod
 								+ " has a void return type; @SendTo is ignored" +
 								(this.errorHandler == null ? "" : " unless the error handler returns a result"));
 				}
 				String[] destinations = ann.value();
 				if (destinations.length > 1) {
 					throw new IllegalStateException("Invalid @" + SendTo.class.getSimpleName() + " annotation on '"
-							+ method + "' one destination must be set (got " + Arrays.toString(destinations) + ")");
+							+ replyingMethod + "' one destination must be set (got " + Arrays.toString(destinations) + ")");
 				}
 				String topic = destinations.length == 1 ? destinations[0] : "";
 				if (getBeanFactory() instanceof ConfigurableListableBeanFactory) {
