@@ -243,6 +243,11 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			this.futures.remove(correlationId);
 			throw new KafkaException("Send failed", e);
 		}
+		scheduleTimeout(record, correlationId);
+		return future;
+	}
+
+	private void scheduleTimeout(ProducerRecord<K, V> record, CorrelationKey correlationId) {
 		this.scheduler.schedule(() -> {
 			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
 			if (removed != null) {
@@ -252,7 +257,6 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				removed.setException(new KafkaException("Reply timed out"));
 			}
 		}, Instant.now().plusMillis(this.replyTimeout));
-		return future;
 	}
 
 	@Override

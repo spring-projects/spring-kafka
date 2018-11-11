@@ -194,73 +194,87 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 							.map(NewTopic::name)
 							.collect(Collectors.toList()));
 			List<NewTopic> topicsToAdd = new ArrayList<>();
-			Map<String, NewPartitions> topicsToModify = new HashMap<>();
-			topicInfo.values().forEach((n, f) -> {
-				NewTopic topic = topicNameToTopic.get(n);
-				try {
-					TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
-					if (topic.numPartitions() < topicDescription.partitions().size()) {
-						if (logger.isInfoEnabled()) {
-							logger.info(String.format(
-								"Topic '%s' exists but has a different partition count: %d not %d", n,
-								topicDescription.partitions().size(), topic.numPartitions()));
-						}
-					}
-					else if (topic.numPartitions() > topicDescription.partitions().size()) {
-						if (logger.isInfoEnabled()) {
-							logger.info(String.format(
-								"Topic '%s' exists but has a different partition count: %d not %d, increasing "
-								+ "if the broker supports it", n,
-								topicDescription.partitions().size(), topic.numPartitions()));
-						}
-						topicsToModify.put(n, NewPartitions.increaseTo(topic.numPartitions()));
-					}
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
-				catch (TimeoutException e) {
-					throw new KafkaException("Timed out waiting to get existing topics", e);
-				}
-				catch (ExecutionException e) {
-					topicsToAdd.add(topic);
-				}
-			});
+			Map<String, NewPartitions> topicsToModify = checkPartitions(topicNameToTopic, topicInfo, topicsToAdd);
 			if (topicsToAdd.size() > 0) {
-				CreateTopicsResult topicResults = adminClient.createTopics(topicsToAdd);
-				try {
-					topicResults.all().get(this.operationTimeout, TimeUnit.SECONDS);
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					logger.error("Interrupted while waiting for topic creation results", e);
-				}
-				catch (TimeoutException e) {
-					throw new KafkaException("Timed out waiting for create topics results", e);
-				}
-				catch (ExecutionException e) {
-					logger.error("Failed to create topics", e.getCause());
-					throw new KafkaException("Failed to create topics", e.getCause()); // NOSONAR
-				}
+				addTopics(adminClient, topicsToAdd);
 			}
 			if (topicsToModify.size() > 0) {
-				CreatePartitionsResult partitionsResult = adminClient.createPartitions(topicsToModify);
-				try {
-					partitionsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					logger.error("Interrupted while waiting for partition creation results", e);
-				}
-				catch (TimeoutException e) {
-					throw new KafkaException("Timed out waiting for create partitions results", e);
-				}
-				catch (ExecutionException e) {
-					logger.error("Failed to create partitions", e.getCause());
-					if (!(e.getCause() instanceof UnsupportedVersionException)) {
-						throw new KafkaException("Failed to create partitions", e.getCause()); // NOSONAR
+				modifyTopics(adminClient, topicsToModify);
+			}
+		}
+	}
+
+	private Map<String, NewPartitions> checkPartitions(Map<String, NewTopic> topicNameToTopic,
+			DescribeTopicsResult topicInfo, List<NewTopic> topicsToAdd) {
+		Map<String, NewPartitions> topicsToModify = new HashMap<>();
+		topicInfo.values().forEach((n, f) -> {
+			NewTopic topic = topicNameToTopic.get(n);
+			try {
+				TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
+				if (topic.numPartitions() < topicDescription.partitions().size()) {
+					if (logger.isInfoEnabled()) {
+						logger.info(String.format(
+							"Topic '%s' exists but has a different partition count: %d not %d", n,
+							topicDescription.partitions().size(), topic.numPartitions()));
 					}
 				}
+				else if (topic.numPartitions() > topicDescription.partitions().size()) {
+					if (logger.isInfoEnabled()) {
+						logger.info(String.format(
+							"Topic '%s' exists but has a different partition count: %d not %d, increasing "
+							+ "if the broker supports it", n,
+							topicDescription.partitions().size(), topic.numPartitions()));
+					}
+					topicsToModify.put(n, NewPartitions.increaseTo(topic.numPartitions()));
+				}
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			catch (TimeoutException e) {
+				throw new KafkaException("Timed out waiting to get existing topics", e);
+			}
+			catch (ExecutionException e) {
+				topicsToAdd.add(topic);
+			}
+		});
+		return topicsToModify;
+	}
+
+	private void addTopics(AdminClient adminClient, List<NewTopic> topicsToAdd) {
+		CreateTopicsResult topicResults = adminClient.createTopics(topicsToAdd);
+		try {
+			topicResults.all().get(this.operationTimeout, TimeUnit.SECONDS);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			logger.error("Interrupted while waiting for topic creation results", e);
+		}
+		catch (TimeoutException e) {
+			throw new KafkaException("Timed out waiting for create topics results", e);
+		}
+		catch (ExecutionException e) {
+			logger.error("Failed to create topics", e.getCause());
+			throw new KafkaException("Failed to create topics", e.getCause()); // NOSONAR
+		}
+	}
+
+	private void modifyTopics(AdminClient adminClient, Map<String, NewPartitions> topicsToModify) {
+		CreatePartitionsResult partitionsResult = adminClient.createPartitions(topicsToModify);
+		try {
+			partitionsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			logger.error("Interrupted while waiting for partition creation results", e);
+		}
+		catch (TimeoutException e) {
+			throw new KafkaException("Timed out waiting for create partitions results", e);
+		}
+		catch (ExecutionException e) {
+			logger.error("Failed to create partitions", e.getCause());
+			if (!(e.getCause() instanceof UnsupportedVersionException)) {
+				throw new KafkaException("Failed to create partitions", e.getCause()); // NOSONAR
 			}
 		}
 	}

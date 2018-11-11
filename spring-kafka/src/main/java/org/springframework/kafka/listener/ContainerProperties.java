@@ -594,10 +594,7 @@ public class ContainerProperties {
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
-				+ (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
-				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
-				+ (this.topicPartitions != null
-						? ", topicPartitions=" + Arrays.toString(this.topicPartitions) : "")
+				+ renderTopics()
 				+ ", ackMode=" + this.ackMode
 				+ ", ackCount=" + this.ackCount
 				+ ", ackTime=" + this.ackTime
@@ -621,6 +618,13 @@ public class ContainerProperties {
 				+ ", noPollThreshold=" + this.noPollThreshold
 				+ (StringUtils.hasText(this.clientId) ? ", clientId=" + this.clientId : "")
 				+ "]";
+	}
+
+	private String renderTopics() {
+		return (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
+				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
+				+ (this.topicPartitions != null
+						? ", topicPartitions=" + Arrays.toString(this.topicPartitions) : "");
 	}
 
 }

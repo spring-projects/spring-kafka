@@ -30,6 +30,7 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -235,21 +236,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void toHeaders(Headers source, final Map<String, Object> headers) {
-		Map<String, String> types = null;
-		Iterator<Header> iterator = source.iterator();
-		while (iterator.hasNext()) {
-			Header next = iterator.next();
-			if (next.key().equals(JSON_TYPES)) {
-				try {
-					types = getObjectMapper().readValue(next.value(), HashMap.class);
-				}
-				catch (IOException e) {
-					logger.error("Could not decode json types: " + new String(next.value()), e);
-				}
-				break;
-			}
-		}
-		final Map<String, String> jsonTypes = types;
+		final Map<String, String> jsonTypes = decodeJsonTypes(source);
 		source.forEach(h -> {
 			if (!(h.key().equals(JSON_TYPES))) {
 				if (jsonTypes != null && jsonTypes.containsKey(h.key())) {
@@ -284,6 +271,26 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				}
 			}
 		});
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	private Map<String, String> decodeJsonTypes(Headers source) {
+		Map<String, String> types = null;
+		Iterator<Header> iterator = source.iterator();
+		while (iterator.hasNext()) {
+			Header next = iterator.next();
+			if (next.key().equals(JSON_TYPES)) {
+				try {
+					types = getObjectMapper().readValue(next.value(), Map.class);
+				}
+				catch (IOException e) {
+					logger.error("Could not decode json types: " + new String(next.value()), e);
+				}
+				break;
+			}
+		}
+		return types;
 	}
 
 	protected boolean trusted(String requestedType) {

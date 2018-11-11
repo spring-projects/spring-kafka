@@ -542,54 +542,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		for (PartitionOffset partitionOffset : partitionOffsets) {
-			Object partitionValue = resolveExpression(partitionOffset.partition());
-			Integer partition;
-			if (partitionValue instanceof String) {
-				Assert.state(StringUtils.hasText((String) partitionValue),
-						"partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
-				partition = Integer.valueOf((String) partitionValue);
-			}
-			else if (partitionValue instanceof Integer) {
-				partition = (Integer) partitionValue;
-			}
-			else {
-				throw new IllegalArgumentException(String.format(
-						"@PartitionOffset for topic '%s' can't resolve '%s' as an Integer or String, resolved to '%s'",
-						topic, partitionOffset.partition(), partitionValue.getClass()));
-			}
-
-			Object initialOffsetValue = resolveExpression(partitionOffset.initialOffset());
-			Long initialOffset;
-			if (initialOffsetValue instanceof String) {
-				Assert.state(StringUtils.hasText((String) initialOffsetValue),
-						"'initialOffset' in @PartitionOffset for topic '" + topic + "' cannot be empty");
-				initialOffset = Long.valueOf((String) initialOffsetValue);
-			}
-			else if (initialOffsetValue instanceof Long) {
-				initialOffset = (Long) initialOffsetValue;
-			}
-			else {
-				throw new IllegalArgumentException(String.format(
-						"@PartitionOffset for topic '%s' can't resolve '%s' as a Long or String, resolved to '%s'",
-						topic, partitionOffset.initialOffset(), initialOffsetValue.getClass()));
-			}
-
-			Object relativeToCurrentValue = resolveExpression(partitionOffset.relativeToCurrent());
-			Boolean relativeToCurrent;
-			if (relativeToCurrentValue instanceof String) {
-				relativeToCurrent = Boolean.valueOf((String) relativeToCurrentValue);
-			}
-			else if (relativeToCurrentValue instanceof Boolean) {
-				relativeToCurrent = (Boolean) relativeToCurrentValue;
-			}
-			else {
-				throw new IllegalArgumentException(String.format(
-						"@PartitionOffset for topic '%s' can't resolve '%s' as a Boolean or String, resolved to '%s'",
-						topic, partitionOffset.relativeToCurrent(), relativeToCurrentValue.getClass()));
-			}
-
 			TopicPartitionInitialOffset topicPartitionOffset =
-					new TopicPartitionInitialOffset((String) topic, partition, initialOffset, relativeToCurrent);
+					new TopicPartitionInitialOffset((String) topic,
+							resolvePartition(topic, partitionOffset),
+							resolveInitialOffset(topic, partitionOffset),
+							isRelative(topic, partitionOffset));
 			if (!result.contains(topicPartitionOffset)) {
 				result.add(topicPartitionOffset);
 			}
@@ -600,6 +557,61 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 		}
 		return result;
+	}
+
+	private Integer resolvePartition(Object topic, PartitionOffset partitionOffset) {
+		Object partitionValue = resolveExpression(partitionOffset.partition());
+		Integer partition;
+		if (partitionValue instanceof String) {
+			Assert.state(StringUtils.hasText((String) partitionValue),
+					"partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
+			partition = Integer.valueOf((String) partitionValue);
+		}
+		else if (partitionValue instanceof Integer) {
+			partition = (Integer) partitionValue;
+		}
+		else {
+			throw new IllegalArgumentException(String.format(
+					"@PartitionOffset for topic '%s' can't resolve '%s' as an Integer or String, resolved to '%s'",
+					topic, partitionOffset.partition(), partitionValue.getClass()));
+		}
+		return partition;
+	}
+
+	private Long resolveInitialOffset(Object topic, PartitionOffset partitionOffset) {
+		Object initialOffsetValue = resolveExpression(partitionOffset.initialOffset());
+		Long initialOffset;
+		if (initialOffsetValue instanceof String) {
+			Assert.state(StringUtils.hasText((String) initialOffsetValue),
+					"'initialOffset' in @PartitionOffset for topic '" + topic + "' cannot be empty");
+			initialOffset = Long.valueOf((String) initialOffsetValue);
+		}
+		else if (initialOffsetValue instanceof Long) {
+			initialOffset = (Long) initialOffsetValue;
+		}
+		else {
+			throw new IllegalArgumentException(String.format(
+					"@PartitionOffset for topic '%s' can't resolve '%s' as a Long or String, resolved to '%s'",
+					topic, partitionOffset.initialOffset(), initialOffsetValue.getClass()));
+		}
+		return initialOffset;
+	}
+
+	private boolean isRelative(Object topic, PartitionOffset partitionOffset) {
+		Object relativeToCurrentValue = resolveExpression(partitionOffset.relativeToCurrent());
+		Boolean relativeToCurrent;
+		if (relativeToCurrentValue instanceof String) {
+			relativeToCurrent = Boolean.valueOf((String) relativeToCurrentValue);
+		}
+		else if (relativeToCurrentValue instanceof Boolean) {
+			relativeToCurrent = (Boolean) relativeToCurrentValue;
+		}
+		else {
+			throw new IllegalArgumentException(String.format(
+					"@PartitionOffset for topic '%s' can't resolve '%s' as a Boolean or String, resolved to '%s'",
+					topic, partitionOffset.relativeToCurrent(), relativeToCurrentValue.getClass()));
+		}
+		return relativeToCurrent;
 	}
 
 	@SuppressWarnings("unchecked")

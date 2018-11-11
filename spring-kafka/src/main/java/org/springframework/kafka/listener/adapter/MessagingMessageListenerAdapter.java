@@ -115,7 +115,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
-		this.inferredType = determineInferredType(method);
+		this.inferredType = determineInferredType(method); // NOSONAR = intentionally not final
 	}
 
 	/**
@@ -399,44 +399,53 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				});
 			}
 			else {
-				byte[] correlationId = null;
-				boolean sourceIsMessage = source instanceof Message;
-				if (sourceIsMessage
-						&& ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID) != null) {
-					correlationId = ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
-				}
-				if (sourceIsMessage) {
-					MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
-							.setHeader(KafkaHeaders.TOPIC, topic);
-					if (this.replyHeadersConfigurer != null) {
-						Map<String, Object> headersToCopy = ((Message<?>) source).getHeaders().entrySet().stream()
-							.filter(e -> {
-								String key = e.getKey();
-								return !key.equals(MessageHeaders.ID) && !key.equals(MessageHeaders.TIMESTAMP)
-										&& !key.equals(KafkaHeaders.CORRELATION_ID)
-										&& !key.startsWith(KafkaHeaders.RECEIVED);
-							})
-							.filter(e -> this.replyHeadersConfigurer.shouldCopy(e.getKey(), e.getValue()))
-							.collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
-						if (headersToCopy.size() > 0) {
-							builder.copyHeaders(headersToCopy);
-						}
-						headersToCopy = this.replyHeadersConfigurer.additionalHeaders();
-						if (!ObjectUtils.isEmpty(headersToCopy)) {
-							builder.copyHeaders(headersToCopy);
-						}
-					}
-					if (correlationId != null) {
-						builder.setHeader(KafkaHeaders.CORRELATION_ID, correlationId);
-					}
-					setPartition(builder, ((Message<?>) source));
-					this.replyTemplate.send(builder.build());
-				}
-				else {
-					this.replyTemplate.send(topic, result);
-				}
+				sendSingleResult(result, topic, source);
 			}
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void sendSingleResult(Object result, String topic, @Nullable Object source) {
+		byte[] correlationId = null;
+		boolean sourceIsMessage = source instanceof Message;
+		if (sourceIsMessage
+				&& ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID) != null) {
+			correlationId = ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
+		}
+		if (sourceIsMessage) {
+			sendReplyForMessageSource(result, topic, source, correlationId);
+		}
+		else {
+			this.replyTemplate.send(topic, result);
+		}
+	}
+
+	private void sendReplyForMessageSource(Object result, String topic, Object source, byte[] correlationId) {
+		MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
+				.setHeader(KafkaHeaders.TOPIC, topic);
+		if (this.replyHeadersConfigurer != null) {
+			Map<String, Object> headersToCopy = ((Message<?>) source).getHeaders().entrySet().stream()
+				.filter(e -> {
+					String key = e.getKey();
+					return !key.equals(MessageHeaders.ID) && !key.equals(MessageHeaders.TIMESTAMP)
+							&& !key.equals(KafkaHeaders.CORRELATION_ID)
+							&& !key.startsWith(KafkaHeaders.RECEIVED);
+				})
+				.filter(e -> this.replyHeadersConfigurer.shouldCopy(e.getKey(), e.getValue()))
+				.collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
+			if (headersToCopy.size() > 0) {
+				builder.copyHeaders(headersToCopy);
+			}
+			headersToCopy = this.replyHeadersConfigurer.additionalHeaders();
+			if (!ObjectUtils.isEmpty(headersToCopy)) {
+				builder.copyHeaders(headersToCopy);
+			}
+		}
+		if (correlationId != null) {
+			builder.setHeader(KafkaHeaders.CORRELATION_ID, correlationId);
+		}
+		setPartition(builder, ((Message<?>) source));
+		this.replyTemplate.send(builder.build());
 	}
 
 	private void setPartition(MessageBuilder<Object> builder, Message<?> source) {
@@ -459,7 +468,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param method the method.
 	 * @return the type.
 	 */
-	protected Type determineInferredType(Method method) {
+	protected Type determineInferredType(Method method) { // NOSONAR complexity
 		if (method == null) {
 			return null;
 		}

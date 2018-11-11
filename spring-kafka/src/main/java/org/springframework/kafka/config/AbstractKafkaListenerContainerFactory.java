@@ -276,31 +276,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			instance.setBeanName(endpoint.getId());
 		}
 		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
-			AbstractKafkaListenerEndpoint<K, V> aklEndpoint = (AbstractKafkaListenerEndpoint<K, V>) endpoint;
-			if (this.recordFilterStrategy != null) {
-				aklEndpoint.setRecordFilterStrategy(this.recordFilterStrategy);
-			}
-			if (this.ackDiscarded != null) {
-				aklEndpoint.setAckDiscarded(this.ackDiscarded);
-			}
-			if (this.retryTemplate != null) {
-				aklEndpoint.setRetryTemplate(this.retryTemplate);
-			}
-			if (this.recoveryCallback != null) {
-				aklEndpoint.setRecoveryCallback(this.recoveryCallback);
-			}
-			if (this.statefulRetry != null) {
-				aklEndpoint.setStatefulRetry(this.statefulRetry);
-			}
-			if (this.batchListener != null) {
-				aklEndpoint.setBatchListener(this.batchListener);
-			}
-			if (this.replyTemplate != null) {
-				aklEndpoint.setReplyTemplate(this.replyTemplate);
-			}
-			if (this.replyHeadersConfigurer != null) {
-				aklEndpoint.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
-			}
+			configureEndpoint((AbstractKafkaListenerEndpoint<K, V>) endpoint);
 		}
 
 		endpoint.setupListenerContainer(instance, this.messageConverter);
@@ -309,6 +285,33 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		instance.getContainerProperties().setClientId(endpoint.getClientIdPrefix());
 
 		return instance;
+	}
+
+	private void configureEndpoint(AbstractKafkaListenerEndpoint<K, V> aklEndpoint) {
+		if (this.recordFilterStrategy != null) {
+			aklEndpoint.setRecordFilterStrategy(this.recordFilterStrategy);
+		}
+		if (this.ackDiscarded != null) {
+			aklEndpoint.setAckDiscarded(this.ackDiscarded);
+		}
+		if (this.retryTemplate != null) {
+			aklEndpoint.setRetryTemplate(this.retryTemplate);
+		}
+		if (this.recoveryCallback != null) {
+			aklEndpoint.setRecoveryCallback(this.recoveryCallback);
+		}
+		if (this.statefulRetry != null) {
+			aklEndpoint.setStatefulRetry(this.statefulRetry);
+		}
+		if (this.batchListener != null) {
+			aklEndpoint.setBatchListener(this.batchListener);
+		}
+		if (this.replyTemplate != null) {
+			aklEndpoint.setReplyTemplate(this.replyTemplate);
+		}
+		if (this.replyHeadersConfigurer != null) {
+			aklEndpoint.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
+		}
 	}
 
 	/**

@@ -54,7 +54,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
  */
 public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
-	private static final String DEPRECATED_KEY_DEFAULT_TYPE = "spring.json.key.default.type";
+	private static final String KEY_DEFAULT_TYPE_STRING = "spring.json.key.default.type";
 
 	private static final String DEPRECATED_DEFAULT_VALUE_TYPE = "spring.json.default.value.type";
 
@@ -63,7 +63,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * @deprecated in favor of {@link #KEY_DEFAULT_TYPE}
 	 */
 	@Deprecated
-	public static final String DEFAULT_KEY_TYPE = DEPRECATED_KEY_DEFAULT_TYPE;
+	public static final String DEFAULT_KEY_TYPE = KEY_DEFAULT_TYPE_STRING;
 
 	/**
 	 * Kafka config property for the default value type if no header.
@@ -75,7 +75,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	/**
 	 * Kafka config property for the default key type if no header.
 	 */
-	public static final String KEY_DEFAULT_TYPE = DEPRECATED_KEY_DEFAULT_TYPE;
+	public static final String KEY_DEFAULT_TYPE = KEY_DEFAULT_TYPE_STRING;
 
 	/**
 	 * Kafka config property for the default value type if no header.
@@ -222,55 +222,10 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		this.removeTypeHeaders = removeTypeHeaders;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		setUseTypeMapperForKey(isKey);
-		try {
-			if (isKey && configs.containsKey(KEY_DEFAULT_TYPE)) {
-				if (configs.get(KEY_DEFAULT_TYPE) instanceof Class) {
-					this.targetType = (Class<T>) configs.get(KEY_DEFAULT_TYPE);
-				}
-				else if (configs.get(KEY_DEFAULT_TYPE) instanceof String) {
-					this.targetType = (Class<T>) ClassUtils.forName((String) configs.get(KEY_DEFAULT_TYPE), null);
-				}
-				else {
-					throw new IllegalStateException(KEY_DEFAULT_TYPE + " must be Class or String");
-				}
-			}
-			// TODO don't forget to remove these code after DEFAULT_VALUE_TYPE being removed.
-			else if (!isKey && configs.containsKey(DEPRECATED_DEFAULT_VALUE_TYPE)) {
-				if (configs.get(DEPRECATED_DEFAULT_VALUE_TYPE) instanceof Class) {
-					this.targetType = (Class<T>) configs.get(DEPRECATED_DEFAULT_VALUE_TYPE);
-				}
-				else if (configs.get(DEPRECATED_DEFAULT_VALUE_TYPE) instanceof String) {
-					this.targetType = (Class<T>) ClassUtils
-						.forName((String) configs.get(DEPRECATED_DEFAULT_VALUE_TYPE), null);
-				}
-				else {
-					throw new IllegalStateException("spring.json.default.value.type must be Class or String");
-				}
-			}
-			else if (!isKey && configs.containsKey(VALUE_DEFAULT_TYPE)) {
-				if (configs.get(VALUE_DEFAULT_TYPE) instanceof Class) {
-					this.targetType = (Class<T>) configs.get(VALUE_DEFAULT_TYPE);
-				}
-				else if (configs.get(VALUE_DEFAULT_TYPE) instanceof String) {
-					this.targetType = (Class<T>) ClassUtils.forName((String) configs.get(VALUE_DEFAULT_TYPE), null);
-				}
-				else {
-					throw new IllegalStateException(VALUE_DEFAULT_TYPE + " must be Class or String");
-				}
-			}
-
-			if (this.targetType != null) {
-				this.reader = this.objectMapper.readerFor(this.targetType);
-			}
-			addTargetPackageToTrusted();
-		}
-		catch (ClassNotFoundException | LinkageError e) {
-			throw new IllegalStateException(e);
-		}
+		setupTarget(configs, isKey);
 		if (configs.containsKey(TRUSTED_PACKAGES)
 				&& configs.get(TRUSTED_PACKAGES) instanceof String) {
 			this.typeMapper.addTrustedPackages(
@@ -283,6 +238,42 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		}
 		if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
 			this.removeTypeHeaders = Boolean.parseBoolean((String) configs.get(REMOVE_TYPE_INFO_HEADERS));
+		}
+	}
+
+	private void setupTarget(Map<String, ?> configs, boolean isKey) {
+		try {
+			if (isKey && configs.containsKey(KEY_DEFAULT_TYPE)) {
+				setupTargetType(configs, KEY_DEFAULT_TYPE);
+			}
+			// TODO don't forget to remove these code after DEFAULT_VALUE_TYPE being removed.
+			else if (!isKey && configs.containsKey(DEPRECATED_DEFAULT_VALUE_TYPE)) {
+				setupTargetType(configs, DEPRECATED_DEFAULT_VALUE_TYPE);
+			}
+			else if (!isKey && configs.containsKey(VALUE_DEFAULT_TYPE)) {
+				setupTargetType(configs, VALUE_DEFAULT_TYPE);
+			}
+
+			if (this.targetType != null) {
+				this.reader = this.objectMapper.readerFor(this.targetType);
+			}
+			addTargetPackageToTrusted();
+		}
+		catch (ClassNotFoundException | LinkageError e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void setupTargetType(Map<String, ?> configs, String key) throws ClassNotFoundException, LinkageError {
+		if (configs.get(key) instanceof Class) {
+			this.targetType = (Class<T>) configs.get(key);
+		}
+		else if (configs.get(key) instanceof String) {
+			this.targetType = (Class<T>) ClassUtils.forName((String) configs.get(key), null);
+		}
+		else {
+			throw new IllegalStateException(key + " must be Class or String");
 		}
 	}
 
