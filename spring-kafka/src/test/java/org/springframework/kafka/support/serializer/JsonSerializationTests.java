@@ -30,7 +30,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.Before;
 import org.junit.Test;
-
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 
@@ -47,13 +46,19 @@ public class JsonSerializationTests {
 
 	private StringDeserializer stringReader;
 
-	private JsonSerializer<DummyEntity> jsonWriter;
+	private JsonSerializer<Object> jsonWriter;
 
 	private JsonDeserializer<DummyEntity> jsonReader;
 
+    private JsonDeserializer<DummyEntity[]> jsonArrayReader;
+
 	private JsonDeserializer<DummyEntity> dummyEntityJsonDeserializer;
 
+    private JsonDeserializer<DummyEntity[]> dummyEntityArrayJsonDeserializer;
+
 	private DummyEntity entity;
+
+    private DummyEntity[] entityArray;
 
 	private String topic;
 
@@ -66,20 +71,25 @@ public class JsonSerializationTests {
 		List<String> list = Arrays.asList("dummy1", "dummy2");
 		entity.complexStruct = new HashMap<>();
 		entity.complexStruct.put((short) 4, list);
+		entityArray = new DummyEntity[] { entity };
 
 		topic = "topic-name";
 
 		jsonReader = new JsonDeserializer<DummyEntity>() { };
 		jsonReader.configure(new HashMap<String, Object>(), false);
 		jsonReader.close(); // does nothing, so may be called any time, or not called at all
+		jsonArrayReader = new JsonDeserializer<DummyEntity[]>() { };
+		jsonArrayReader.configure(new HashMap<String, Object>(), false);
+		jsonArrayReader.close(); // does nothing, so may be called any time, or not called at all
 		jsonWriter = new JsonSerializer<>();
 		jsonWriter.configure(new HashMap<String, Object>(), false);
 		jsonWriter.close(); // does nothing, so may be called any time, or not called at all
-		stringReader = new StringDeserializer();
+        stringReader = new StringDeserializer();
 		stringReader.configure(new HashMap<String, Object>(), false);
 		stringWriter = new StringSerializer();
 		stringWriter.configure(new HashMap<String, Object>(), false);
 		dummyEntityJsonDeserializer = new DummyEntityJsonDeserializer();
+		dummyEntityArrayJsonDeserializer = new DummyEntityArrayJsonDeserializer();
 	}
 
 	/*
@@ -94,6 +104,19 @@ public class JsonSerializationTests {
 		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity.class.getName().getBytes());
 		assertThat(dummyEntityJsonDeserializer.deserialize(topic, headers, jsonWriter.serialize(topic, entity))).isEqualTo(entity);
 	}
+
+    /*
+     * 1. Serialize test entity array to byte array.
+     * 2. Deserialize it back from the created byte array.
+     * 3. Check the result with the source entity array.
+     */
+    @Test
+    public void testDeserializeSerializedEntityArrayEquals() {
+        assertThat(jsonArrayReader.deserialize(topic, jsonWriter.serialize(topic, entityArray))).isEqualTo(entityArray);
+        Headers headers = new RecordHeaders();
+        headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity[].class.getName().getBytes());
+        assertThat(dummyEntityArrayJsonDeserializer.deserialize(topic, headers, jsonWriter.serialize(topic, entityArray))).isEqualTo(entityArray);
+    }
 
 	/*
 	 * 1. Serialize "dummy" String to byte array.
@@ -150,5 +173,9 @@ public class JsonSerializationTests {
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {
 
 	}
+
+    static class DummyEntityArrayJsonDeserializer extends JsonDeserializer<DummyEntity[]> {
+
+    }
 
 }
