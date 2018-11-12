@@ -40,6 +40,7 @@ import com.fasterxml.jackson.core.JsonParseException;
  * @author Igor Stepanov
  * @author Artem Bilan
  * @author Yanming Zhou
+ * @author Torsten Schleede
  */
 public class JsonSerializationTests {
 
