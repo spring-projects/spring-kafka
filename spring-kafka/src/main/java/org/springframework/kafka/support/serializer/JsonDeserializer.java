@@ -295,18 +295,18 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	}
 
 	private void addTargetPackageToTrusted() {
-        String targetPackageName = getTargetPackageName();
-        if (targetPackageName != null) {
-            addTrustedPackages(targetPackageName);
-        }
+		String targetPackageName = getTargetPackageName();
+		if (targetPackageName != null) {
+			addTrustedPackages(targetPackageName);
+		}
 	}
 
-    private String getTargetPackageName() {
-        if (this.targetType != null) {
-            return ClassUtils.getPackageName(this.targetType).replaceFirst("\\[L", "");
-        }
-        return null;
-    }
+	private String getTargetPackageName() {
+		if (this.targetType != null) {
+			return ClassUtils.getPackageName(this.targetType).replaceFirst("\\[L", "");
+		}
+		return null;
+	}
 
 	@Override
 	public T deserialize(String topic, Headers headers, byte[] data) {
