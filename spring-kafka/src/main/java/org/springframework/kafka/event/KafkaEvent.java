@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.event;
 
 import org.springframework.context.ApplicationEvent;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 
 
 /**
@@ -25,11 +26,24 @@ import org.springframework.context.ApplicationEvent;
  * @author Gary Russell
  *
  */
-@SuppressWarnings("serial")
 public abstract class KafkaEvent extends ApplicationEvent {
 
+	private static final long serialVersionUID = 1L;
+
+	private final AbstractMessageListenerContainer<?, ?> container;
+
+	@Deprecated
 	public KafkaEvent(Object source) {
+		this(source, null); // NOSONAR
+	}
+
+	public KafkaEvent(Object source, AbstractMessageListenerContainer<?, ?> container) {
 		super(source);
+		this.container = container;
+	}
+
+	public AbstractMessageListenerContainer<?, ?> getContainer() {
+		return this.container;
 	}
 
 }

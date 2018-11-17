@@ -371,8 +371,17 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected void publishContainerStoppedEvent() {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ContainerStoppedEvent(this));
+			getApplicationEventPublisher().publishEvent(new ContainerStoppedEvent(this, parentOrThis()));
 		}
+	}
+
+	/**
+	 * Ruturn this or a parent container if this has a parent.
+	 * @return the parent or this.
+	 * @since 2.2.1
+	 */
+	protected AbstractMessageListenerContainer<?, ?> parentOrThis() {
+		return this;
 	}
 
 }

@@ -23,9 +23,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +54,8 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.ContainerStoppedEvent;
+import org.springframework.kafka.event.KafkaEvent;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
@@ -96,6 +100,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testAutoCommit() throws Exception {
 		this.logger.info("Start auto");
@@ -116,6 +121,14 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setConcurrency(2);
 		container.setBeanName("testAuto");
+		List<KafkaEvent> events = new ArrayList<>();
+		CountDownLatch stopLatch = new CountDownLatch(3);
+		container.setApplicationEventPublisher(e -> {
+			events.add((KafkaEvent) e);
+			if (e instanceof ContainerStoppedEvent) {
+				stopLatch.countDown();
+			}
+		});
 		container.start();
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -134,7 +147,6 @@ public class ConcurrentMessageListenerContainerTests {
 		for (String threadName : listenerThreadNames) {
 			assertThat(threadName).contains("-C-");
 		}
-		@SuppressWarnings("unchecked")
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
 		assertThat(containers).hasSize(2);
@@ -143,7 +155,23 @@ public class ConcurrentMessageListenerContainerTests {
 					.size()).isEqualTo(0);
 		}
 		assertThat(container.metrics()).isNotNull();
+		Set<KafkaMessageListenerContainer<Integer, String>> children = new HashSet<>(containers);
 		container.stop();
+		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		events.forEach(e -> {
+			assertThat(e.getContainer()).isSameAs(container);
+			if (e instanceof ContainerStoppedEvent) {
+				if (e.getSource().equals(container)) {
+					assertThat(e.getContainer()).isSameAs(container);
+				}
+				else {
+					assertThat(children).contains((KafkaMessageListenerContainer<Integer, String>) e.getSource());
+				}
+			}
+			else {
+				assertThat(children).contains((KafkaMessageListenerContainer<Integer, String>) e.getSource());
+			}
+		});
 		this.logger.info("Stop auto");
 	}
 

@@ -420,6 +420,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private void sendReplyForMessageSource(Object result, String topic, Object source, byte[] correlationId) {
 		MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
 				.setHeader(KafkaHeaders.TOPIC, topic);

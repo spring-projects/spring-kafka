@@ -24,6 +24,8 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+
 /**
  * An event that is emitted when a consumer is not responding to
  * the poll; a possible indication that the broker is down.
@@ -44,9 +46,28 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 
 	private transient Consumer<?, ?> consumer;
 
+	@Deprecated
 	public NonResponsiveConsumerEvent(Object source, long timeSinceLastPoll, String id,
 			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
-		super(source);
+
+		this(source, null, timeSinceLastPoll, id, topicPartitions, consumer); // NOSONAR
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param source the container instance that generated the event.
+	 * @param container the container or the parent container if the container is a child.
+	 * @param timeSinceLastPoll the time since the last poll.
+	 * @param id the container id.
+	 * @param topicPartitions the topic partitions.
+	 * @param consumer the consumer.
+	 * @since 2.2.1
+	 */
+	public NonResponsiveConsumerEvent(Object source, AbstractMessageListenerContainer<?, ?> container,
+			long timeSinceLastPoll, String id,
+			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
+
+		super(source, container);
 		this.timeSinceLastPoll = timeSinceLastPoll;
 		this.listenerId = id;
 		this.topicPartitions = topicPartitions == null ? null : new ArrayList<>(topicPartitions);

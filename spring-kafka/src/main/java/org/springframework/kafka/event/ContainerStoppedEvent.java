@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.event;
 
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+
 /**
  * An event published when a container is stopped.
  *
@@ -31,8 +33,19 @@ public class ContainerStoppedEvent extends KafkaEvent {
 	 * Construct an instance with the provided source.
 	 * @param source the container.
 	 */
+	@Deprecated
 	public ContainerStoppedEvent(Object source) {
-		super(source);
+		this(source, null); // NOSONAR
+	}
+
+	/**
+	 * Construct an instance with the provided source and container.
+	 * @param source the container instance that generated the event.
+	 * @param container the container or the parent container if the container is a child.
+	 * @since 2.2.1
+	 */
+	public ContainerStoppedEvent(Object source, AbstractMessageListenerContainer<?, ?> container) {
+		super(source, container);
 	}
 
 	@Override

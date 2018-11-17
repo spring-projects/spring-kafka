@@ -21,6 +21,8 @@ import java.util.Collection;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+
 /**
  * An event published when a consumer is stopped. While it is best practice to use
  * stateless listeners, you can consume this event to clean up any thread-based resources
@@ -45,8 +47,22 @@ public class ConsumerStoppingEvent extends KafkaEvent {
 	 * @param consumer the consumer.
 	 * @param partitions the partitions.
 	 */
+	@Deprecated
 	public ConsumerStoppingEvent(Object source, Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		super(source);
+		this(source, null, consumer, partitions); // NOSONAR
+	}
+
+	/**
+	 * Construct an instance with the provided source, consumer and partitions.
+	 * @param source the container instance that generated the event.
+	 * @param container the container or the parent container if the container is a child.
+	 * @param consumer the consumer.
+	 * @param partitions the partitions.
+	 * @since 2.2.1
+	 */
+	public ConsumerStoppingEvent(Object source, AbstractMessageListenerContainer<?, ?> container,
+			Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		super(source, container);
 		this.consumer = consumer;
 		this.partitions = partitions;
 	}

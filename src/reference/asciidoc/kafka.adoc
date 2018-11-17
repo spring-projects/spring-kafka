@@ -1570,15 +1570,7 @@ It's important to understand that the application listener will get events for a
 check the listener id if you want to take specific action based on which container is idle.
 You can also use the `@EventListener` `condition` for this purpose.
 
-The events have 5 properties:
-
-- `source` - the listener container instance
-- `id` - the listener id (or container bean name)
-- `idleTime` - the time the container had been idle when the event was published
-- `topicPartitions` - the topics/partitions that the container was assigned at the time the event was generated
-- `consumer` - a reference to the kafka `Consumer` object; for example, if the consumer was previously `pause()` d, it can be `resume()` d when the event is received.
-
-Starting with _version 2.1.5_, the idle event has a boolean property `paused` which indicates whether the consumer is currently paused; see <<pause-resume>> for more information.
+See <<events>> for information about event properties.
 
 The event is normally published on the consumer thread, so it is safe to interact with the `Consumer` object.
 
@@ -1716,7 +1708,7 @@ When a container is paused, it continues to `poll()` the consumer, avoiding a re
 Starting with _version 2.1.5_, you can call `isPauseRequested()` to see if `pause()` has been called.
 However, the consumers might not have actually paused yet; `isConsumerPaused()` will return true if all `Consumer` s have actually paused.
 
-In addition, also since _2.1.5_, `ConsumerPausedEvent` s and `ConsumerResumedEvent` s are published with the container as the `source` property and the `TopicPatition` s involved in the `partitions` s property.
+In addition, also since _2.1.5_, `ConsumerPausedEvent` s and `ConsumerResumedEvent` s are published with the container as the `source` property and the `TopicPartition` s involved in the `partitions` s property.
 
 This simple Spring Boot application demonstrates using the container registry to get a reference to a `@KafkaListener` method's container and pausing/resuming its consumers, as well as receiving the corresponding events.
 
@@ -1793,6 +1785,39 @@ The following events are published by listener containers and their consumers:
 IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
 If you change the multicaster to use an async executor, you must not invoke any `Consumer` methods when the event contains a reference to the consumer.
 
+The `ContainerIdleEvent` has 6 properties:
+
+- `source` - the listener container instance that published the event.
+- `container` - the listener container or the parent listener container if the source container is a child.
+- `id` - the listener id (or container bean name).
+- `idleTime` - the time the container had been idle when the event was published.
+- `topicPartitions` - the topics/partitions that the container was assigned at the time the event was generated.
+- `consumer` - a reference to the kafka `Consumer` object; for example, if the consumer was previously `pause()` d, it can be `resume()` d when the event is received.
+- `paused` if the container is currently paused; see <<pause-resume>> for more information.
+
+The `NonResponsiveConsumerEvent` has the following properties:
+
+- `source` - the listener container instance that published the event.
+- `container` - the listener container or the parent listener container if the source container is a child.
+- `id` - the listener id (or container bean name).
+- `timeSinceLastPoll` - the time just before the container last called `poll()`.
+- `topicPartitions` - the topics/partitions that the container was assigned at the time the event was generated.
+- `consumer` - a reference to the kafka `Consumer` object; for example, if the consumer was previously `pause()` d, it can be `resume()` d when the event is received.
+- `paused` if the container is currently paused; see <<pause-resume>> for more information.
+
+The `ConsumerPausedEvent`, `ConsumerResumedEvent` and `ConsumerStopping` events have the following properties:
+
+- `source` - the listener container instance that published the event.
+- `container` - the listener container or the parent listener container if the source container is a child.
+- `partitions` - the `TopicPartition` s involved.
+
+The `ConsumerStoppedEvent` and `ContainerStoppedEvent` have the following properties:
+
+- `source` - the listener container instance that published the event.
+- `container` - the listener container or the parent listener container if the source container is a child.
+
+The `ContainerStoppedEvent` is published by all containers (regardless of whether it is a child or parent).
+For a parent container, the source and container properties are identical.
 
 [[serdes]]
 ==== Serialization/Deserialization and Message Conversion

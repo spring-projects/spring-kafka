@@ -315,29 +315,29 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 	private void publishIdleContainerEvent(long idleTime, Consumer<?, ?> consumer, boolean paused) {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(
-					this, idleTime, getBeanName(), getAssignedPartitions(), consumer, paused));
+			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(this,
+					this.container, idleTime, getBeanName(), getAssignedPartitions(), consumer, paused));
 		}
 	}
 
 	private void publishNonResponsiveConsumerEvent(long timeSinceLastPoll, Consumer<?, ?> consumer) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(
-					new NonResponsiveConsumerEvent(this, timeSinceLastPoll,
+					new NonResponsiveConsumerEvent(this, this.container, timeSinceLastPoll,
 							getBeanName(), getAssignedPartitions(), consumer));
 		}
 	}
 
 	private void publishConsumerPausedEvent(Collection<TopicPartition> partitions) {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerPausedEvent(this,
+			getApplicationEventPublisher().publishEvent(new ConsumerPausedEvent(this, this.container,
 					Collections.unmodifiableCollection(partitions)));
 		}
 	}
 
 	private void publishConsumerResumedEvent(Collection<TopicPartition> partitions) {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerResumedEvent(this,
+			getApplicationEventPublisher().publishEvent(new ConsumerResumedEvent(this, this.container,
 					Collections.unmodifiableCollection(partitions)));
 		}
 	}
@@ -346,7 +346,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		try {
 			if (getApplicationEventPublisher() != null) {
 				getApplicationEventPublisher().publishEvent(
-						new ConsumerStoppingEvent(this, consumer, getAssignedPartitions()));
+						new ConsumerStoppingEvent(this, this.container, consumer, getAssignedPartitions()));
 			}
 		}
 		catch (Exception e) {
@@ -355,8 +355,13 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	}
 	private void publishConsumerStoppedEvent() {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this));
+			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.container));
 		}
+	}
+
+	@Override
+	protected AbstractMessageListenerContainer<?, ?> parentOrThis() {
+		return this.container;
 	}
 
 	@Override
