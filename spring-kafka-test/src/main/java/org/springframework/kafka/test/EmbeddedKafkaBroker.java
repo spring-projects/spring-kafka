@@ -88,6 +88,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public static final String SPRING_EMBEDDED_ZOOKEEPER_CONNECT = "spring.embedded.zookeeper.connect";
 
+	/**
+	 * Set the value of this property to a property name that should be set to the list of
+	 * embedded broker addresses instead of {@value #SPRING_EMBEDDED_KAFKA_BROKERS}.
+	 */
+	public static final String BROKER_LIST_PROPERTY = "spring.embedded.kafka.brokers.property";
+
 	private static final int DEFAULT_ADMIN_TIMEOUT = 30;
 
 	private final int count;
@@ -111,6 +117,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	private int[] kafkaPorts;
 
 	private int adminTimeout = DEFAULT_ADMIN_TIMEOUT;
+
+	private String brokerListProperty;
 
 	public EmbeddedKafkaBroker(int count) {
 		this(count, false);
@@ -219,7 +227,11 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			}
 		}
 		createKafkaTopics(this.topics);
-		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
+		this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
+		if (this.brokerListProperty == null) {
+			this.brokerListProperty = SPRING_EMBEDDED_KAFKA_BROKERS;
+		}
+		System.setProperty(this.brokerListProperty, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 	}
 
@@ -307,7 +319,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	@Override
 	public void destroy() {
-		System.getProperties().remove(SPRING_EMBEDDED_KAFKA_BROKERS);
+		System.getProperties().remove(brokerListProperty);
 		System.getProperties().remove(SPRING_EMBEDDED_ZOOKEEPER_CONNECT);
 		for (KafkaServer kafkaServer : this.kafkaServers) {
 			try {

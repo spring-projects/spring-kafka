@@ -5,8 +5,6 @@
 
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
-NOTE: See <<deps-for-11x>> if you wish to use the 1.1.x `kafka-clients` jar with _version 2.1.x_.
-
 ==== JUnit
 
 `o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties:
@@ -118,7 +116,7 @@ public class MyTests {
         embeddedKafkaRule.getEmbeddedKafka()
               .addTopics(new NewTopic("baz", 10, (short) 1), new NewTopic("qux", 15, (short) 1));
         ...
-  	}
+      }
 
 }
 ----
@@ -243,6 +241,85 @@ Property placeholders are resolved for the `brokerPropertiesLocation` URL and fo
 Properties defined by `brokerProperties` override properties found in `brokerPropertiesLocation`.
 
 The `@EmbeddedKafka` annotation can be used with JUnit 4 or JUnit 5.
+
+==== Embedded Broker in `@SpringBootTest` s
+
+https://start.spring.io/[Spring Initializr] now automatically adds the `spring-kafka-test` dependency in test scope to the project configuration.
+
+IMPORTANT: If your application is using the Kafka binder in `spring-cloud-stream`, if you want to use an embedded broker for tests, you must remove the `spring-cloud-stream-test-support` dependency because it replaces the real binder with a test binder for test casess.
+If you wish some tests to use the test binder and some to use the embedded broker, tests using the real binder need to disable the test binder by excluding the binder auto configuration in the test class.
+
+====
+[source, java]
+----
+@RunWith(SpringRunner.class)
+@SpringBootTest(properties = "spring.autoconfigure.exclude="
+    + "org.springframework.cloud.stream.test.binder.TestSupportBinderAutoConfiguration")
+public class MyApplicationTests {
+    ...
+}
+----
+====
+
+There are several ways to use an embedded broker in a Spring Boot application test.
+
+===== JUnit4 Class Rule
+
+====
+[source, java]
+----
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class MyApplicationTests {
+
+    @ClassRule
+    public static EmbeddedKafkaRule broker = new EmbeddedKafkaRule(1,
+        false, "someTopic");
+
+    @BeforeClass
+    public static void setup() {
+        System.setProperty("spring.kafka.bootstrap-servers",
+                    broker.getEmbeddedKafka().getBrokersAsString());
+    }
+
+    @Autowired
+    private KafkaTemplate<String, String> template;
+
+    @Test
+    public void test() {
+        ...
+    }
+
+}
+----
+====
+
+===== `@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean
+
+====
+[source, java]
+----
+@RunWith(SpringRunner.class)
+@EmbeddedKafka(topics = "someTopic")
+public class MyApplicationTests {
+
+    static {
+        System.setProperty(EmbeddedKafkaBroker.BROKER_LIST_PROPERTY,
+                "spring.kafka.bootstrap-servers");
+    }
+
+    @Autowired
+    private KafkaTemplate<String, String> template;
+
+    @Test
+    public void test() {
+        ...
+    }
+
+}
+----
+====
+
 
 ==== Hamcrest Matchers
 
