@@ -1471,6 +1471,8 @@ When using `@KafkaListener`, set the `RecordFilterStrategy` (and optionally `ack
 
 In addition, a `FilteringBatchMessageListenerAdapter` is provided, for when using a batch <<message-listeners, message listener>>.
 
+IMPORTANT: The `FilteringBatchMessageListenerAdapter` is ignored if your `@KafkaListener` receives a `ConsumerRecords<?, ?>` instead of `List<ConsumerRecord<?, ?>` because `ConsumerRecords` is immutable.
+
 [[retrying-deliveries]]
 ===== Retrying Deliveries
 
