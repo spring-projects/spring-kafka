@@ -214,6 +214,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 	 * either explicitly or by Kafka; may be null if not assigned yet.
 	 */
 	@Override
+	@Nullable
 	public Collection<TopicPartition> getAssignedPartitions() {
 		ListenerConsumer partitionsListenerConsumer = this.listenerConsumer;
 		if (partitionsListenerConsumer != null) {
@@ -1517,17 +1518,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 					+ "]";
 		}
 
-		private void closeProducers(Collection<TopicPartition> partitions) {
-			ProducerFactory<?, ?> producerFactory = this.kafkaTxManager.getProducerFactory();
-			partitions.forEach(tp -> {
-				try {
-					producerFactory.closeProducerFor(zombieFenceTxIdSuffix(tp.topic(), tp.partition()));
-				}
-				catch (Exception e) {
-					this.logger.error("Failed to close producer with transaction id suffix: "
-							+ zombieFenceTxIdSuffix(tp.topic(), tp.partition()), e);
-				}
-			});
+		private void closeProducers(@Nullable Collection<TopicPartition> partitions) {
+			if (partitions != null) {
+				ProducerFactory<?, ?> producerFactory = this.kafkaTxManager.getProducerFactory();
+				partitions.forEach(tp -> {
+					try {
+						producerFactory.closeProducerFor(zombieFenceTxIdSuffix(tp.topic(), tp.partition()));
+					}
+					catch (Exception e) {
+						this.logger.error("Failed to close producer with transaction id suffix: "
+								+ zombieFenceTxIdSuffix(tp.topic(), tp.partition()), e);
+					}
+				});
+			}
 		}
 
 		private String zombieFenceTxIdSuffix(String topic, int partition) {
