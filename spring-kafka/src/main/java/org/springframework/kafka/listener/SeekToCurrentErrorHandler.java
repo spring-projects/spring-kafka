@@ -54,6 +54,16 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	}
 
 	/**
+	 * Construct an instance with the default recoverer which simply logs the record after
+	 * 'maxFailures' have occurred for a topic/partition/offset.
+	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
+	 * @since 2.2.1
+	 */
+	public SeekToCurrentErrorHandler(int maxFailures) {
+		this(null, maxFailures);
+	}
+
+	/**
 	 * Construct an instance with the provided recoverer which will be called after
 	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
 	 * topic/partition/offset.
@@ -68,7 +78,7 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	 * Construct an instance with the provided recoverer which will be called after
 	 * maxFailures have occurred for a topic/partition/offset.
 	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
-	 * @param maxFailures the maxFailures.
+	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
 	 * @since 2.2
 	 */
 	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {

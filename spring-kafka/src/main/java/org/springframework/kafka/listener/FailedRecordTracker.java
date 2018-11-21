@@ -56,7 +56,7 @@ class FailedRecordTracker {
 			return false;
 		}
 		else {
-			if (failedRecord.incrementAndGet() >= this.maxFailures) {
+			if (this.maxFailures >= 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
 				this.recoverer.accept(record, exception);
 				return true;
 			}

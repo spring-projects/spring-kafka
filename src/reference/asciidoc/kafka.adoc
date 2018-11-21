@@ -2436,6 +2436,7 @@ If the `AckMode` was `BATCH`, the container commits the offsets for the first 2 
 Starting with version 2.2, the `SeekToCurrentErrorHandler` can now recover (skip) a record that keeps failing.
 By default, after 10 failures, the failed record will be logged (ERROR).
 You can configure the handler with a custom recoverer (`BiConsumer`) and/or max failures.
+Setting the `maxFailures` property to a negative number will cause infinite retries.
 
 ====
 [source, java]
@@ -2482,6 +2483,7 @@ For example, with a record-based listener, you might want to keep track of the f
 Starting with version 2.2, the `DefaultAfterRollbackProcessor` can now recover (skip) a record that keeps failing.
 By default, after 10 failures, the failed record will be logged (ERROR).
 You can configure the processor with a custom recoverer (`BiConsumer`) and/or max failures.
+Setting the `maxFailures` property to a negative number will cause infinite retries.
 
 ====
 [source, java]

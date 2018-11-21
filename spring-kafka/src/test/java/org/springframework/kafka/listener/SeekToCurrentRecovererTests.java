@@ -18,8 +18,12 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -29,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -129,7 +134,9 @@ public class SeekToCurrentRecovererTests {
 
 	@Test
 	public void seekToCurrentErrorHandlerRecovers() {
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler((r, e) -> { }, 2);
+		@SuppressWarnings("unchecked")
+		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, 2);
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
@@ -146,6 +153,30 @@ public class SeekToCurrentRecovererTests {
 		eh.handle(new RuntimeException(), records, consumer, null);
 		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
 		verifyNoMoreInteractions(consumer);
+		verify(recoverer).accept(eq(records.get(0)), any());
+	}
+
+	@Test
+	public void testNeverRecover() {
+		@SuppressWarnings("unchecked")
+		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, -1);
+		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
+		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		for (int i = 0; i < 20; i++) {
+			try {
+				eh.handle(new RuntimeException(), records, consumer, null);
+				fail("Expected exception");
+			}
+			catch (KafkaException e) {
+				// NOSONAR
+			}
+		}
+		verify(consumer, times(20)).seek(new TopicPartition("foo", 0),  0L);
+		verifyNoMoreInteractions(consumer);
+		verify(recoverer, never()).accept(any(), any());
 	}
 
 }
