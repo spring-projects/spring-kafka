@@ -20,8 +20,6 @@ import java.util.Collection;
 
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-
 /**
  * An event published when a consumer is resumed.
  *
@@ -52,7 +50,7 @@ public class ConsumerResumedEvent extends KafkaEvent {
 	 * @param partitions the partitions.
 	 * @since 2.2.1
 	 */
-	public ConsumerResumedEvent(Object source, AbstractMessageListenerContainer<?, ?> container,
+	public ConsumerResumedEvent(Object source, Object container,
 			Collection<TopicPartition> partitions) {
 		super(source, container);
 		this.partitions = partitions;

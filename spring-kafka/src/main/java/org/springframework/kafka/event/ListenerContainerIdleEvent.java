@@ -24,8 +24,6 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-
 /**
  * An event that is emitted when a container is idle if the container
  * is configured to do so.
@@ -91,7 +89,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	 * @param paused true if the consumer is paused.
 	 * @since 2.2.1
 	 */
-	public ListenerContainerIdleEvent(Object source, AbstractMessageListenerContainer<?, ?> container,
+	public ListenerContainerIdleEvent(Object source, Object container,
 			long idleTime, String id,
 			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer, boolean paused) {
 

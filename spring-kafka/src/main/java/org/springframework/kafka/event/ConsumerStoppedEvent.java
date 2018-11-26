@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.event;
 
-import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-
 /**
  * An event published when a consumer is stopped. While it is best practice to use
  * stateless listeners, you can consume this event to clean up any thread-based resources
@@ -47,7 +45,7 @@ public class ConsumerStoppedEvent extends KafkaEvent {
 	 * @param container the container or the parent container if the container is a child.
 	 * @since 2.2.1
 	 */
-	public ConsumerStoppedEvent(Object source, AbstractMessageListenerContainer<?, ?> container) {
+	public ConsumerStoppedEvent(Object source, Object container) {
 		super(source, container);
 	}
 

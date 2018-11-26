@@ -159,10 +159,10 @@ public class ConcurrentMessageListenerContainerTests {
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		events.forEach(e -> {
-			assertThat(e.getContainer()).isSameAs(container);
+			assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
 			if (e instanceof ContainerStoppedEvent) {
 				if (e.getSource().equals(container)) {
-					assertThat(e.getContainer()).isSameAs(container);
+					assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
 				}
 				else {
 					assertThat(children).contains((KafkaMessageListenerContainer<Integer, String>) e.getSource());
