@@ -34,9 +34,16 @@ import org.springframework.lang.Nullable;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.MimeType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.deser.std.StdNodeBasedDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * Default header mapper for Apache Kafka.
@@ -46,6 +53,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Header types are added to a special header {@link #JSON_TYPES}.
  *
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 1.3
  *
  */
@@ -54,7 +63,8 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	private static final List<String> DEFAULT_TRUSTED_PACKAGES =
 			Arrays.asList(
 					"java.util",
-					"java.lang"
+					"java.lang",
+					"org.springframework.util"
 			);
 
 	private static final List<String> DEFAULT_TO_STRING_CLASSES =
@@ -136,6 +146,8 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
+		Module module = new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer());
+		this.objectMapper.registerModule(module);
 	}
 
 	/**
@@ -257,7 +269,8 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 							headers.put(h.key(), getObjectMapper().readValue(h.value(), type));
 						}
 						catch (IOException e) {
-							logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h.key(),
+							logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h
+											.key(),
 									e);
 							headers.put(h.key(), h.value());
 						}
@@ -308,6 +321,34 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			return false;
 		}
 		return true;
+	}
+
+
+	/**
+	 * The {@link StdNodeBasedDeserializer} extension for {@link MimeType} deserialization.
+	 * It is presented here for backward compatibility when older producers send {@link MimeType}
+	 * headers as serialization version.
+	 */
+	private class MimeTypeJsonDeserializer extends StdNodeBasedDeserializer<MimeType> {
+
+		private static final long serialVersionUID = 1L;
+
+		MimeTypeJsonDeserializer() {
+			super(MimeType.class);
+		}
+
+		@Override
+		public MimeType convert(JsonNode root, DeserializationContext ctxt) throws IOException {
+			JsonNode type = root.get("type");
+			JsonNode subType = root.get("subtype");
+			JsonNode parameters = root.get("parameters");
+			Map<String, String> params =
+					DefaultKafkaHeaderMapper.this.objectMapper.readValue(parameters.traverse(),
+							TypeFactory.defaultInstance()
+									.constructMapType(HashMap.class, String.class, String.class));
+			return new MimeType(type.asText(), subType.asText(), params);
+		}
+
 	}
 
 	/**
