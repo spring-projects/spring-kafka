@@ -389,19 +389,22 @@ public class KRequestingApplication {
     }
 
     @Bean
-    public ReplyingKafkaTemplate<String, String, String> kafkaTemplate(
+    public ReplyingKafkaTemplate<String, String, String> replyingTemplate(
             ProducerFactory<String, String> pf,
-            KafkaMessageListenerContainer<String, String> replyContainer) {
+            ConcurrentMessageListenerContainer<Long, String> repliesContainer) {
 
-        return new ReplyingKafkaTemplate<>(pf, replyContainer);
+        return new ReplyingKafkaTemplate<>(pf, repliesContainer);
     }
 
     @Bean
-    public KafkaMessageListenerContainer<String, String> replyContainer(
-            ConsumerFactory<String, String> cf) {
+    public ConcurrentMessageListenerContainer<String, String> repliesContainer(
+            ConcurrentKafkaListenerContainerFactory<String, String> containerFactory) {
 
-        ContainerProperties containerProperties = new ContainerProperties("kReplies");
-        return new KafkaMessageListenerContainer<>(cf, containerProperties);
+        ConcurrentMessageListenerContainer<String, String> repliesContainer =
+                containerFactory.createContainer("replies");
+        repliesContainer.getContainerProperties().setGroupId("repliesGroup");
+        repliesContainer.setAutoStartup(false);
+        return repliesContainer;
     }
 
     @Bean
@@ -416,6 +419,8 @@ public class KRequestingApplication {
 
 }
 ----
+
+Note that we can use Boot's auto configured container factory to create the reply container.
 
 The template sets a header `KafkaHeaders.CORRELATION_ID` which must be echoed back by the server side.
 
