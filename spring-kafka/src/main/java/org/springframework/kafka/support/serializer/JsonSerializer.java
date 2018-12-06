@@ -113,9 +113,9 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	 * @since 2.1.3
 	 */
 	public void setUseTypeMapperForKey(boolean isKey) {
-		if (!this.typeMapperExplicitlySet
-				&& this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
-			((AbstractJavaTypeMapper) this.getTypeMapper()).setUseForKey(isKey);
+		if (!this.typeMapperExplicitlySet && getTypeMapper() instanceof AbstractJavaTypeMapper) {
+			((AbstractJavaTypeMapper) getTypeMapper())
+					.setUseForKey(isKey);
 		}
 	}
 
@@ -149,7 +149,7 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 			Assert.isTrue(split.length == 2, "Each comma-delimited mapping entry must have exactly one ':'");
 			try {
 				mappingsMap.put(split[0].trim(),
-						ClassUtils.forName(split[1].trim(), JsonSerializer.class.getClassLoader()));
+						ClassUtils.forName(split[1].trim(), ClassUtils.getDefaultClassLoader()));
 			}
 			catch (ClassNotFoundException | LinkageError e) {
 				throw new IllegalArgumentException(e);
@@ -159,6 +159,7 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	}
 
 	@Override
+	@Nullable
 	public byte[] serialize(String topic, Headers headers, @Nullable T data) {
 		if (data == null) {
 			return null;
@@ -170,7 +171,8 @@ public class JsonSerializer<T> implements ExtendedSerializer<T> {
 	}
 
 	@Override
-	public byte[] serialize(String topic, T data) {
+	@Nullable
+	public byte[] serialize(String topic, @Nullable T data) {
 		if (data == null) {
 			return null;
 		}
