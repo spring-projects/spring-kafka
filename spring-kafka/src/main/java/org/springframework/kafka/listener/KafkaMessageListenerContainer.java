@@ -1656,14 +1656,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							ListenerConsumer.this.kafkaTxManager != null) {
 						try {
 							offsetsToCommit.forEach((partition, offsetAndMetadata) -> {
+								TransactionSupport.setTransactionIdSuffix(
+										zombieFenceTxIdSuffix(partition.topic(), partition.partition()));
 								ListenerConsumer.this.transactionTemplate
 										.execute(new TransactionCallbackWithoutResult() {
 
 									@SuppressWarnings({ "unchecked", RAWTYPES })
 									@Override
 									protected void doInTransactionWithoutResult(TransactionStatus status) {
-										TransactionSupport.setTransactionIdSuffix(
-												zombieFenceTxIdSuffix(partition.topic(), partition.partition()));
 										((KafkaResourceHolder) TransactionSynchronizationManager
 												.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
 												.getProducer().sendOffsetsToTransaction(
