@@ -1664,11 +1664,15 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 									@SuppressWarnings({ "unchecked", RAWTYPES })
 									@Override
 									protected void doInTransactionWithoutResult(TransactionStatus status) {
-										((KafkaResourceHolder) TransactionSynchronizationManager
-												.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-												.getProducer().sendOffsetsToTransaction(// NODSONAR never null
-														Collections.singletonMap(partition, offsetAndMetadata),
-														ListenerConsumer.this.consumerGroupId);
+										KafkaResourceHolder holder =
+											(KafkaResourceHolder) TransactionSynchronizationManager
+												.getResource(
+													ListenerConsumer.this.kafkaTxManager.getProducerFactory());
+										if (holder != null) {
+											holder.getProducer().sendOffsetsToTransaction(
+													Collections.singletonMap(partition, offsetAndMetadata),
+													ListenerConsumer.this.consumerGroupId);
+										}
 									}
 
 								});
