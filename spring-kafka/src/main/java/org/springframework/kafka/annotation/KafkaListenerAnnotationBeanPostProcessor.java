@@ -352,7 +352,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Method defaultMethod = null;
 		for (Method method : multiMethods) {
 			Method checked = checkProxy(method, bean);
-			if (AnnotationUtils.findAnnotation(method, KafkaHandler.class).isDefault()) { // NOSONAR never null
+			KafkaHandler annotation = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
+			if (annotation != null && annotation.isDefault()) {
 				final Method toAssert = defaultMethod;
 				Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
 						+ toAssert.toString() + " and " + method.toString());
@@ -363,7 +364,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (KafkaListener classLevelListener : classLevelListeners) {
 			MultiMethodKafkaListenerEndpoint<K, V> endpoint =
 					new MultiMethodKafkaListenerEndpoint<>(checkedMethods, defaultMethod, bean);
-			endpoint.setBeanFactory(this.beanFactory);
 			processListener(endpoint, classLevelListener, bean, bean.getClass(), beanName);
 		}
 	}
@@ -372,11 +372,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Method methodToUse = checkProxy(method, bean);
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
 		endpoint.setMethod(methodToUse);
-		endpoint.setBeanFactory(this.beanFactory);
-		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
-		if (StringUtils.hasText(errorHandlerBeanName)) {
-			endpoint.setErrorHandler(this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
-		}
 		processListener(endpoint, kafkaListener, bean, methodToUse, beanName);
 	}
 
@@ -459,6 +454,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 		}
 
+		endpoint.setBeanFactory(this.beanFactory);
+		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
+		if (StringUtils.hasText(errorHandlerBeanName)) {
+			endpoint.setErrorHandler(this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
+		}
 		this.registrar.registerEndpoint(endpoint, factory);
 		if (StringUtils.hasText(beanRef)) {
 			this.listenerScope.removeListener(beanRef);
