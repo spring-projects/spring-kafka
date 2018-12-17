@@ -95,6 +95,7 @@ public @interface KafkaListener {
 	 * <p>Note: When provided, this value will override the group id property
 	 * in the consumer factory configuration, unless {@link #idIsGroup()}
 	 * is set to false.
+	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
 	 * @return the {@code id} for the container managing for this endpoint.
 	 * @see org.springframework.kafka.config.KafkaListenerEndpointRegistry#getListenerContainer(String)
 	 */
@@ -111,7 +112,7 @@ public @interface KafkaListener {
 	/**
 	 * The topics for this listener.
 	 * The entries can be 'topic name', 'property-placeholder keys' or 'expressions'.
-	 * Expression must be resolved to the topic name.
+	 * An expression must be resolved to the topic name.
 	 * Mutually exclusive with {@link #topicPattern()} and {@link #topicPartitions()}.
 	 * @return the topic names or expressions (SpEL) to listen to.
 	 */
@@ -120,7 +121,7 @@ public @interface KafkaListener {
 	/**
 	 * The topic pattern for this listener.
 	 * The entries can be 'topic name', 'property-placeholder keys' or 'expressions'.
-	 * Expression must be resolved to the topic pattern.
+	 * An expression must be resolved to the topic pattern.
 	 * Mutually exclusive with {@link #topics()} and {@link #topicPartitions()}.
 	 * @return the topic pattern or expression (SpEL).
 	 */
@@ -138,13 +139,14 @@ public @interface KafkaListener {
 	 * with this value as its name, of type {@code Collection<MessageListenerContainer>}.
 	 * This allows, for example, iteration over the collection to start/stop a subset
 	 * of containers.
+	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
 	 * @return the bean name for the group.
 	 */
 	String containerGroup() default "";
 
 	/**
-	 * Set an {@link org.springframework.kafka.listener.KafkaListenerErrorHandler} to
-	 * invoke if the listener method throws an exception.
+	 * Set an {@link org.springframework.kafka.listener.KafkaListenerErrorHandler} bean
+	 * name to invoke if the listener method throws an exception.
 	 * @return the error handler.
 	 * @since 1.3
 	 */
@@ -153,6 +155,7 @@ public @interface KafkaListener {
 	/**
 	 * Override the {@code group.id} property for the consumer factory with this value
 	 * for this listener only.
+	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
 	 * @return the group id.
 	 * @since 1.3
 	 */
@@ -171,6 +174,7 @@ public @interface KafkaListener {
 	 * When provided, overrides the client id property in the consumer factory
 	 * configuration. A suffix ('-n') is added for each container instance to ensure
 	 * uniqueness when concurrency is used.
+	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
 	 * @return the client id prefix.
 	 * @since 2.1.1
 	 */
@@ -192,6 +196,7 @@ public @interface KafkaListener {
 	 * Override the container factory's {@code concurrency} setting for this listener. May
 	 * be a property placeholder or SpEL expression that evaluates to a {@link Number}, in
 	 * which case {@link Number#intValue()} is used to obtain the value.
+	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
 	 * @return the concurrency.
 	 * @since 2.2
 	 */
@@ -202,6 +207,7 @@ public @interface KafkaListener {
 	 * be a property placeholder or SpEL expression that evaluates to a {@link Boolean} or
 	 * a {@link String}, in which case the {@link Boolean#parseBoolean(String)} is used to
 	 * obtain the value.
+	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
 	 * @return true to auto start, false to not auto start.
 	 * @since 2.2
 	 */

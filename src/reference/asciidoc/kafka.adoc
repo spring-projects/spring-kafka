@@ -755,6 +755,13 @@ The `- 100` leaves room for later phases to enable components to be auto-started
 [[kafka-listener-annotation]]
 ===== @KafkaListener Annotation
 
+====== Introduction
+
+The `@KafkaListener` annotation is used to designate a bean method as a listener for a listener container; the bean is wrapped in a `MessagingMessageListenerAdapter` configured with various features, such as converters to convert the data, if necessary, to match the method paramters.
+
+Most attributes on the annotation can be configured with SpEL using `#{...}` and/or property placeholders `${...}`.
+Refer to the javadocs for more information.
+
 [[record-listener]]
 ====== Record Listeners
 
