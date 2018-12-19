@@ -264,7 +264,21 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					}
 					if (trusted) {
 						try {
-							headers.put(h.key(), getObjectMapper().readValue(h.value(), type));
+							Object value = getObjectMapper().readValue(h.value(), type);
+							if (type.equals(NonTrustedHeaderType.class)) {
+								// Upstream NTHT propagated; may be trusted here...
+								NonTrustedHeaderType nth = (NonTrustedHeaderType) value;
+								if (trusted(nth.getUntrustedType())) {
+									try {
+										type = ClassUtils.forName(nth.getUntrustedType(), null);
+										value = getObjectMapper().readValue(nth.getHeaderValue(), type);
+									}
+									catch (Exception e) {
+										logger.error("Could not decode header: " + nth, e);
+									}
+								}
+							}
+							headers.put(h.key(), value);
 						}
 						catch (IOException e) {
 							logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h
@@ -305,6 +319,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	protected boolean trusted(String requestedType) {
+		if (requestedType.equals(NonTrustedHeaderType.class.getName())) {
+			return true;
+		}
 		if (!this.trustedPackages.isEmpty()) {
 			int lastDot = requestedType.lastIndexOf('.');
 			if (lastDot < 0) {
@@ -354,17 +371,30 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 */
 	public static class NonTrustedHeaderType {
 
-		private final byte[] headerValue;
+		private byte[] headerValue;
 
-		private final String untrustedType;
+		private String untrustedType;
+
+		public NonTrustedHeaderType() {
+			super();
+		}
 
 		NonTrustedHeaderType(byte[] headerValue, String untrustedType) { // NOSONAR
 			this.headerValue = headerValue; // NOSONAR
 			this.untrustedType = untrustedType;
 		}
 
+
+		public void setHeaderValue(byte[] headerValue) {
+			this.headerValue = headerValue; // NOSONAR array reference
+		}
+
 		public byte[] getHeaderValue() {
 			return this.headerValue; // NOSONAR
+		}
+
+		public void setUntrustedType(String untrustedType) {
+			this.untrustedType = untrustedType;
 		}
 
 		public String getUntrustedType() {

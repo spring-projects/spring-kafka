@@ -33,6 +33,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.ExecutorSubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
@@ -44,7 +45,7 @@ import org.springframework.util.MimeTypeUtils;
 public class DefaultKafkaHeaderMapperTests {
 
 	@Test
-	public void test() {
+	public void testTrustedAndNot() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		mapper.addToStringClasses(Bar.class.getName());
 		MimeType utf8Text = new MimeType(MimeTypeUtils.TEXT_PLAIN, Charset.forName("UTF-8"));
@@ -52,6 +53,7 @@ public class DefaultKafkaHeaderMapperTests {
 				.setHeader("foo", "bar".getBytes())
 				.setHeader("baz", "qux")
 				.setHeader("fix", new Foo())
+				.setHeader("linkedMVMap", new LinkedMultiValueMap<>())
 				.setHeader(MessageHeaders.REPLY_CHANNEL, new ExecutorSubscribableChannel())
 				.setHeader(MessageHeaders.ERROR_CHANNEL, "errors")
 				.setHeader(MessageHeaders.CONTENT_TYPE, utf8Text)
@@ -60,13 +62,14 @@ public class DefaultKafkaHeaderMapperTests {
 				.build();
 		RecordHeaders recordHeaders = new RecordHeaders();
 		mapper.fromHeaders(message.getHeaders(), recordHeaders);
-		assertThat(recordHeaders.toArray().length).isEqualTo(8); // 7 + json_types
+		assertThat(recordHeaders.toArray().length).isEqualTo(9); // 8 + json_types
 		Map<String, Object> headers = new HashMap<>();
 		mapper.toHeaders(recordHeaders, headers);
 		assertThat(headers.get("foo")).isInstanceOf(byte[].class);
 		assertThat(new String((byte[]) headers.get("foo"))).isEqualTo("bar");
 		assertThat(headers.get("baz")).isEqualTo("qux");
 		assertThat(headers.get("fix")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(headers.get("linkedMVMap")).isInstanceOf(LinkedMultiValueMap.class);
 		assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isEqualTo(utf8Text.toString());
 		assertThat(headers.get("simpleContentType")).isEqualTo(MimeTypeUtils.TEXT_PLAIN.toString());
 		assertThat(headers.get(MessageHeaders.REPLY_CHANNEL)).isNull();
@@ -75,7 +78,8 @@ public class DefaultKafkaHeaderMapperTests {
 		NonTrustedHeaderType ntht = (NonTrustedHeaderType) headers.get("fix");
 		assertThat(ntht.getHeaderValue()).isNotNull();
 		assertThat(ntht.getUntrustedType()).isEqualTo(Foo.class.getName());
-		assertThat(headers).hasSize(7);
+		assertThat(headers).hasSize(8);
+
 		mapper.addTrustedPackages(getClass().getPackage().getName());
 		headers = new HashMap<>();
 		mapper.toHeaders(recordHeaders, headers);
@@ -83,7 +87,39 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(new String((byte[]) headers.get("foo"))).isEqualTo("bar");
 		assertThat(headers.get("baz")).isEqualTo("qux");
 		assertThat(headers.get("fix")).isEqualTo(new Foo());
-		assertThat(headers).hasSize(7);
+		assertThat(headers).hasSize(8);
+	}
+
+	@Test
+	public void testReserializedNonTrusted() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		Message<String> message = MessageBuilder.withPayload("foo")
+				.setHeader("fix", new Foo())
+				.build();
+		RecordHeaders recordHeaders = new RecordHeaders();
+		mapper.fromHeaders(message.getHeaders(), recordHeaders);
+		assertThat(recordHeaders.toArray().length).isEqualTo(2); // 1 + json_types
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("fix")).isInstanceOf(NonTrustedHeaderType.class);
+		NonTrustedHeaderType ntht = (NonTrustedHeaderType) headers.get("fix");
+		assertThat(ntht.getHeaderValue()).isNotNull();
+		assertThat(ntht.getUntrustedType()).isEqualTo(Foo.class.getName());
+		assertThat(headers).hasSize(1);
+
+		recordHeaders = new RecordHeaders();
+		mapper.fromHeaders(new MessageHeaders(headers), recordHeaders);
+		headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("fix")).isInstanceOf(NonTrustedHeaderType.class);
+		ntht = (NonTrustedHeaderType) headers.get("fix");
+		assertThat(ntht.getHeaderValue()).isNotNull();
+		assertThat(ntht.getUntrustedType()).isEqualTo(Foo.class.getName());
+
+		mapper.addTrustedPackages(getClass().getPackage().getName());
+		headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("fix")).isInstanceOf(Foo.class);
 	}
 
 	@Test
