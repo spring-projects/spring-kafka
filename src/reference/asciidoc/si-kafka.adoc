@@ -94,6 +94,7 @@ public MessageHandler handler() throws Exception {
             new KafkaProducerMessageHandler<>(kafkaTemplate());
     handler.setTopicExpression(new LiteralExpression("someTopic"));
     handler.setMessageKeyExpression(new LiteralExpression("someKey"));
+    handler.setSuccessChannel(successes());
     handler.setFailureChannel(failures());
     return handler;
 }
@@ -156,13 +157,11 @@ private KafkaProducerMessageHandlerSpec<Integer, String, ?> kafkaMessageHandler(
 }
 ----
 
-If a `send-failure-channel` is provided, if a send failure is received (sync or async), an `ErrorMessage` is sent to the channel.
+If a `send-failure-channel` (`sendFailureChannel`) is provided, if a send failure is received (sync or async), an `ErrorMessage` is sent to the channel.
 The payload is a `KafkaSendFailureException` with properties `failedMessage`, `record` (the `ProducerRecord`) and `cause`.
 The `DefaultErrorMessageStrategy` can be overridden via the `error-message-strategy` property.
 
-If a `send-success-channel` is provided, a message with a payload of type `org.apache.kafka.clients.producer.RecordMetadata` will be sent after a successful send.
-When using Java configuration, use `setOutputChannel` for this purpose.
-
+If a `send-success-channel` (`sendSuccessChannel`) is provided, a message with a payload of type `org.apache.kafka.clients.producer.RecordMetadata` will be sent after a successful send.
 
 [[si-inbound]]
 ==== Message Driven Channel Adapter
