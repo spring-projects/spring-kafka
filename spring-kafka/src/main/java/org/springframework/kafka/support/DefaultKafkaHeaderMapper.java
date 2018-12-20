@@ -210,6 +210,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@Override
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		final Map<String, String> jsonHeaders = new HashMap<>();
+		final ObjectMapper headerObjectMapper = getObjectMapper();
 		headers.forEach((k, v) -> {
 			if (matches(k, v)) {
 				if (v instanceof byte[]) {
@@ -223,7 +224,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 							value = v.toString();
 							className = "java.lang.String";
 						}
-						target.add(new RecordHeader(k, getObjectMapper().writeValueAsBytes(value)));
+						target.add(new RecordHeader(k, headerObjectMapper.writeValueAsBytes(value)));
 						jsonHeaders.put(k, className);
 					}
 					catch (Exception e) {
@@ -236,7 +237,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		});
 		if (jsonHeaders.size() > 0) {
 			try {
-				target.add(new RecordHeader(JSON_TYPES, getObjectMapper().writeValueAsBytes(jsonHeaders)));
+				target.add(new RecordHeader(JSON_TYPES, headerObjectMapper.writeValueAsBytes(jsonHeaders)));
 			}
 			catch (IllegalStateException | JsonProcessingException e) {
 				logger.error("Could not add json types header", e);
@@ -247,6 +248,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@Override
 	public void toHeaders(Headers source, final Map<String, Object> headers) {
 		final Map<String, String> jsonTypes = decodeJsonTypes(source);
+		final ObjectMapper headerObjectMapper = getObjectMapper();
 		source.forEach(h -> {
 			if (!(h.key().equals(JSON_TYPES))) {
 				if (jsonTypes != null && jsonTypes.containsKey(h.key())) {
@@ -264,14 +266,14 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					}
 					if (trusted) {
 						try {
-							Object value = getObjectMapper().readValue(h.value(), type);
+							Object value = headerObjectMapper.readValue(h.value(), type);
 							if (type.equals(NonTrustedHeaderType.class)) {
 								// Upstream NTHT propagated; may be trusted here...
 								NonTrustedHeaderType nth = (NonTrustedHeaderType) value;
 								if (trusted(nth.getUntrustedType())) {
 									try {
 										type = ClassUtils.forName(nth.getUntrustedType(), null);
-										value = getObjectMapper().readValue(nth.getHeaderValue(), type);
+										value = headerObjectMapper.readValue(nth.getHeaderValue(), type);
 									}
 									catch (Exception e) {
 										logger.error("Could not decode header: " + nth, e);
@@ -303,11 +305,12 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	private Map<String, String> decodeJsonTypes(Headers source) {
 		Map<String, String> types = null;
 		Iterator<Header> iterator = source.iterator();
+		ObjectMapper headerObjectMapper = getObjectMapper();
 		while (iterator.hasNext()) {
 			Header next = iterator.next();
 			if (next.key().equals(JSON_TYPES)) {
 				try {
-					types = getObjectMapper().readValue(next.value(), Map.class);
+					types = headerObjectMapper.readValue(next.value(), Map.class);
 				}
 				catch (IOException e) {
 					logger.error("Could not decode json types: " + new String(next.value()), e);
