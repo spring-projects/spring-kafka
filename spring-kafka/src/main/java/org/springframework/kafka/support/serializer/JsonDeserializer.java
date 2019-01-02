@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.support.serializer;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -144,9 +145,10 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * @since 2.2
 	 */
 	public JsonDeserializer(Class<T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, new ObjectMapper(), useHeadersIfPresent);
-		this.objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
-		this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		this(targetType, new ObjectMapper(), useHeadersIfPresent, om -> {
+			om.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
+			om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		});
 	}
 
 	/**
@@ -167,8 +169,14 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	@SuppressWarnings("unchecked")
 	public JsonDeserializer(@Nullable Class<T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent) {
+		this(targetType, objectMapper, useHeadersIfPresent, om -> { });
+	}
+
+	@SuppressWarnings("unchecked")
+	private JsonDeserializer(@Nullable Class<T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent,
+			Consumer<ObjectMapper> configurer) {
+
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
 		this.objectMapper = objectMapper;
 		this.targetType = targetType;
@@ -178,6 +186,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 
+		configurer.accept(this.objectMapper);
 		if (this.targetType != null) {
 			this.reader = this.objectMapper.readerFor(this.targetType);
 		}
