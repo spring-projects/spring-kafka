@@ -95,8 +95,6 @@ public class RemainingRecordsErrorHandlerTests {
 				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(2L)));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(1L)));
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		inOrder.verifyNoMoreInteractions();
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents).containsExactly("foo", "bar", "baz", "qux");
 		assertThat(this.config.remaining).containsExactly("qux", "fiz", "buz");
