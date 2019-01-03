@@ -1,0 +1,85 @@
+buildscript {
+    ext {
+        kotlinVersion = "1.3.10"
+        springBootVersion = "2.1.1.RELEASE"
+        arrow_version = "0.8.1"
+    }
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
+        classpath("org.jetbrains.kotlin:kotlin-allopen:${kotlinVersion}")
+        classpath("org.jetbrains.kotlin:kotlin-noarg:${kotlinVersion}")
+        classpath("io.spring.gradle:dependency-management-plugin:1.0.2.RELEASE")
+    }
+}
+
+apply plugin: "kotlin"
+apply plugin: "kotlin-spring"
+apply plugin: "org.springframework.boot"
+apply plugin: "io.spring.dependency-management"
+apply plugin: "kotlin-allopen"
+apply plugin: "kotlin-noarg"
+apply plugin: "kotlin-jpa"
+
+
+group "com.remusrd"
+version "0.0.1-SNAPSHOT"
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url 'http://repo.spring.io/milestone' }
+}
+noArg{
+    annotation("com.remusrd.notesample.domain.annotation.NoArg")
+}
+allOpen{
+    annotation("com.remusrd.notesample.domain.annotation.Open")
+}
+
+dependencies {
+    // Kotlin
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation "org.jetbrains.kotlin:kotlin-reflect"
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin"
+    implementation "io.arrow-kt:arrow-core:$arrow_version"
+    implementation "io.arrow-kt:arrow-data:$arrow_version"
+
+    // Spring Boot
+    implementation "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa:$springBootVersion"
+    implementation "org.springframework.kafka:spring-kafka"
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.7"
+
+    // BBDD
+    implementation "mysql:mysql-connector-java:8.0.13"
+    implementation "com.h2database:h2:1.4.197"
+
+
+    // Test
+    testImplementation "junit:junit:4.12"
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+    }
+}
+
+compileKotlin {
+    kotlinOptions {
+        freeCompilerArgs = ["-Xjsr305=strict"]
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        freeCompilerArgs = ["-Xjsr305=strict"]
+        jvmTarget = "1.8"
+    }
+}

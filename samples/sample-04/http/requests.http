@@ -1,0 +1,14 @@
+###
+
+POST localhost:8080/notes
+Content-Type: application/json
+{
+  "author": "Richard",
+  "content": "hola"
+}
+
+###
+
+GET localhost:8080/notes
+
+###
