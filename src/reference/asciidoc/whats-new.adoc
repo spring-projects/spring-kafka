@@ -81,7 +81,9 @@ You can now provide type mapping information using producer/consumer properties.
 
 New constructors are available on the deserializer to allow overriding the type header information with the supplied target type.
 
-The JsonDeserializer will now remove any type information headers by default.
+The `JsonDeserializer` will now remove any type information headers by default.
+
+The `JsonDeserializer` can now be configured to ignore type information headers using a kafka property (since 2.2.3).
 
 See <<serdes>> for more information.
 

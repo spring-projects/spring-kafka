@@ -96,9 +96,15 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	public static final String TYPE_MAPPINGS = JsonSerializer.TYPE_MAPPINGS;
 
 	/**
-	 * Kafka config property for removing type headers.
+	 * Kafka config property for removing type headers (default true).
 	 */
 	public static final String REMOVE_TYPE_INFO_HEADERS = "spring.json.remove.type.headers";
+
+	/**
+	 * Kafka config property for using type headers (default true).
+	 * @since 2.2.3
+	 */
+	public static final String USE_TYPE_INFO_HEADERS = "spring.json.use.type.headers";
 
 	protected final ObjectMapper objectMapper; // NOSONAR
 
@@ -235,6 +241,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		setUseTypeMapperForKey(isKey);
+		setUpTypePrecedence(configs);
 		setupTarget(configs, isKey);
 		if (configs.containsKey(TRUSTED_PACKAGES)
 				&& configs.get(TRUSTED_PACKAGES) instanceof String) {
@@ -244,10 +251,20 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
 				&& this.typeMapper instanceof AbstractJavaTypeMapper) {
 			((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(
-					JsonSerializer.createMappings((String) configs.get(JsonSerializer.TYPE_MAPPINGS)));
+					JsonSerializer.createMappings(configs.get(JsonSerializer.TYPE_MAPPINGS).toString()));
 		}
 		if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
-			this.removeTypeHeaders = Boolean.parseBoolean((String) configs.get(REMOVE_TYPE_INFO_HEADERS));
+			this.removeTypeHeaders = Boolean.parseBoolean(configs.get(REMOVE_TYPE_INFO_HEADERS).toString());
+		}
+	}
+
+	private void setUpTypePrecedence(Map<String, ?> configs) {
+		if (!this.typeMapperExplicitlySet) {
+			boolean useTypeHeaders = true;
+			if (configs.containsKey(USE_TYPE_INFO_HEADERS)) {
+				useTypeHeaders = Boolean.parseBoolean(configs.get(USE_TYPE_INFO_HEADERS).toString());
+			}
+			this.typeMapper.setTypePrecedence(useTypeHeaders ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
 		}
 	}
 

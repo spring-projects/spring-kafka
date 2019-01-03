@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -32,7 +33,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
+import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
+import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import com.fasterxml.jackson.core.JsonParseException;
 
@@ -41,6 +45,7 @@ import com.fasterxml.jackson.core.JsonParseException;
  * @author Artem Bilan
  * @author Yanming Zhou
  * @author Torsten Schleede
+ * @author Gary Russell
  */
 public class JsonSerializationTests {
 
@@ -178,6 +183,24 @@ public class JsonSerializationTests {
 		assertThat(deser.deserialize(topic, "{\"intValue\":1,\"extra\":2}".getBytes()))
 				.isInstanceOf(DummyEntity.class);
 		deser.close();
+	}
+
+	@Test
+	public void testDeserTypeHeadersConfig() {
+		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
+		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
+			.isEqualTo(TypePrecedence.INFERRED);
+		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
+		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
+			.isEqualTo(TypePrecedence.TYPE_ID);
+		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
+		this.jsonReader.configure(Collections.emptyMap(), false);
+		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
+			.isEqualTo(TypePrecedence.TYPE_ID);
+		this.jsonReader.setTypeMapper(new DefaultJackson2JavaTypeMapper());
+		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
+		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
+			.isEqualTo(TypePrecedence.INFERRED);
 	}
 
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {
