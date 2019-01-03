@@ -188,9 +188,6 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 			headers.remove(getClassIdFieldName());
 			headers.remove(getContentClassIdFieldName());
 			headers.remove(getKeyClassIdFieldName());
-			headers.remove(KEY_DEFAULT_CLASSID_FIELD_NAME);
-			headers.remove(KEY_DEFAULT_CONTENT_CLASSID_FIELD_NAME);
-			headers.remove(KEY_DEFAULT_KEY_CLASSID_FIELD_NAME);
 		}
 		catch (Exception e) { // NOSONAR
 			// NOSONAR

@@ -1638,9 +1638,10 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeHeaderSimpleType() throws Exception {
 		this.logger.info("Start JSON2");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
+		DefaultKafkaConsumerFactory<Bar, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -1651,7 +1652,7 @@ public class KafkaMessageListenerContainerTests {
 			latch.countDown();
 		});
 
-		KafkaMessageListenerContainer<Integer, Foo> container =
+		KafkaMessageListenerContainer<Bar, Foo> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testJson2");
 		container.start();
@@ -1659,13 +1660,15 @@ public class KafkaMessageListenerContainerTests {
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
+		ProducerFactory<Bar, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Bar, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic2);
-		template.sendDefault(0, new Foo("bar"));
+		template.sendDefault(new Bar("foo"), new Foo("bar"));
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get().key()).isInstanceOf(Bar.class);
 		assertThat(received.get().value()).isInstanceOf(Foo.class);
 		container.stop();
 		this.logger.info("Stop JSON2");
