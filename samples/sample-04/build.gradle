@@ -50,8 +50,8 @@ dependencies {
     implementation "io.arrow-kt:arrow-data:$arrow_version"
 
     // Spring Boot
-    implementation "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
-    implementation "org.springframework.boot:spring-boot-starter-data-jpa:$springBootVersion"
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
     implementation "org.springframework.kafka:spring-kafka"
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.7"
 
@@ -61,7 +61,6 @@ dependencies {
 
 
     // Test
-    testImplementation "junit:junit:4.12"
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
