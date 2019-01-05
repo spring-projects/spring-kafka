@@ -1,4 +1,4 @@
-package com.remusrd.notesample.domain
+package com.example.notesample.domain
 
 import java.time.LocalDateTime
 import javax.persistence.*

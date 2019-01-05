@@ -1,8 +1,8 @@
-package com.remusrd.notesample.domain.event
+package com.example.notesample.domain.event
 
-import com.remusrd.notesample.domain.Note
-import com.remusrd.notesample.domain.annotation.NoArg
-import com.remusrd.notesample.domain.annotation.Open
+import com.example.notesample.domain.Note
+import com.example.notesample.domain.annotation.NoArg
+import com.example.notesample.domain.annotation.Open
 
 @NoArg
 @Open

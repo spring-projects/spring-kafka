@@ -1,4 +1,4 @@
-package com.remusrd.notesample
+package com.example.notesample
 
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication

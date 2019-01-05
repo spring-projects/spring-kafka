@@ -1,7 +1,7 @@
-package com.remusrd.notesample.controller
+package com.example.notesample.controller
 
-import com.remusrd.notesample.domain.Note
-import com.remusrd.notesample.service.NoteService
+import com.example.notesample.domain.Note
+import com.example.notesample.service.NoteService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import arrow.core.Option

@@ -1,8 +1,8 @@
-package com.remusrd.notesample.service
+package com.example.notesample.service
 
-import com.remusrd.notesample.data.NoteRepository
-import com.remusrd.notesample.domain.Note
-import com.remusrd.notesample.domain.event.NoteEvent
+import com.example.notesample.data.NoteRepository
+import com.example.notesample.domain.Note
+import com.example.notesample.domain.event.NoteEvent
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
