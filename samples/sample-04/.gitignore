@@ -1,29 +1,25 @@
-# Created by .ignore support plugin (hsz.mobi)
-*.class
-*.log
-*.ctxt
-.mtj.tmp/
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-hs_err_pid*
-.gradle
-/build/
-gradle-app.setting
-!gradle-wrapper.jar
-.gradletasknamecache
-cmake-build-*/
-.idea/**/mongoSettings.xml
-*.iws
-out/
-.idea_modules/
-.idea/replstate.xml
-com_crashlytics_export_strings.xml
-crashlytics.properties
-crashlytics-build.properties
-fabric.properties
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
 .idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/build/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/

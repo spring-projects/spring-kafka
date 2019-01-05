@@ -1,10 +1,14 @@
 == Sample 4
 
-This sample uses a custom kafka serializer and deserializer in order to consume and send events using the jdk8 LocalDatetime
-and Kotlin data classes.
+This sample uses a custom kafka serializer and deserializer in order to consume and send events using the jdk8 Date classes and Kotlin data classes.
 
-You can do POST's and GET's from the localhost:8080/notes endpoint, there is a sample request at http with a valid body for
-the POST operation.
+Docker containers needed are in `samples/sample-04/docker`.
 
-The POST's will send a kafka message to the "notes" topic, it is not consumed by this application but it could be consumed
-easily with the deserializer configuration in the KafkaConfig class.
+You can do POST's and GET's to the `localhost:8080/notes endpoint.`
+
+There is a sample request at http with a valid body for the POST operation.
+
+The POST's will send a kafka message to the "notes" topic.
+
+It is not consumed by this application but it could be consumed easily with the deserializer configuration in the KafkaConfig class.
+
