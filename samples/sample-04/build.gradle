@@ -11,7 +11,7 @@ buildscript {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
         classpath("org.jetbrains.kotlin:kotlin-allopen:${kotlinVersion}")
         classpath("org.jetbrains.kotlin:kotlin-noarg:${kotlinVersion}")
-        classpath("io.spring.gradle:dependency-management-plugin:1.0.2.RELEASE")
+        classpath("io.spring.gradle:dependency-management-plugin:v1.0.6.RELEASE")
     }
 }
 
