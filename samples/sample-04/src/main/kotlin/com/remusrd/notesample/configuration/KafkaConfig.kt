@@ -19,12 +19,6 @@ class KafkaConfig {
 
 
     @Bean
-    fun kafkaTemplate(): KafkaTemplate<Any, Any> {
-        return KafkaTemplate<Any, Any>(defaultKafkaProducerFactory())
-    }
-
-
-    @Bean
     fun defaultKafkaConsumerFactory(): ConsumerFactory<Any, Any> {
         val objectMapper = jackson2ObjectMapperBuilder.build() as ObjectMapper
         val jsonDeserializer = JsonDeserializer<Any>(objectMapper)
