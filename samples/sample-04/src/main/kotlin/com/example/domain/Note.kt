@@ -1,4 +1,4 @@
-package com.example.notesample.domain
+package com.example.domain
 
 import java.time.LocalDateTime
 import javax.persistence.*

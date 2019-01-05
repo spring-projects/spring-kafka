@@ -1,6 +1,6 @@
-package com.example.notesample.data
+package com.example.data
 
-import com.example.notesample.domain.Note
+import com.example.domain.Note
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface NoteRepository: JpaRepository<Note,Long>{

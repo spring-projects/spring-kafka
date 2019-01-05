@@ -1,4 +1,4 @@
-package com.example.notesample.configuration
+package com.example.configuration
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
@@ -6,7 +6,10 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
-import org.springframework.kafka.core.*
+import org.springframework.kafka.core.ConsumerFactory
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory
+import org.springframework.kafka.core.DefaultKafkaProducerFactory
+import org.springframework.kafka.core.ProducerFactory
 import org.springframework.kafka.support.serializer.JsonDeserializer
 import org.springframework.kafka.support.serializer.JsonSerializer
 
@@ -24,9 +27,9 @@ class KafkaConfig {
         val jsonDeserializer = JsonDeserializer<Any>(objectMapper)
         jsonDeserializer.configure(kafkaProperties.buildConsumerProperties(), false)
         val kafkaConsumerFactory = DefaultKafkaConsumerFactory<Any, Any>(
-            kafkaProperties.buildConsumerProperties(),
-            jsonDeserializer,
-            jsonDeserializer
+                kafkaProperties.buildConsumerProperties(),
+                jsonDeserializer,
+                jsonDeserializer
         )
         kafkaConsumerFactory.setValueDeserializer(jsonDeserializer)
         return kafkaConsumerFactory
@@ -37,12 +40,12 @@ class KafkaConfig {
         val jsonSerializer = JsonSerializer<Any>(jackson2ObjectMapperBuilder.build())
         jsonSerializer.configure(kafkaProperties.buildProducerProperties(), false)
         val factory = DefaultKafkaProducerFactory<Any, Any>(
-            kafkaProperties.buildProducerProperties(),
-            jsonSerializer,
-            jsonSerializer
+                kafkaProperties.buildProducerProperties(),
+                jsonSerializer,
+                jsonSerializer
         )
         val transactionIdPrefix = kafkaProperties.producer
-            .transactionIdPrefix
+                .transactionIdPrefix
         if (transactionIdPrefix != null) {
             factory.setTransactionIdPrefix(transactionIdPrefix)
         }

@@ -1,8 +1,8 @@
-package com.example.notesample.domain.event
+package com.example.domain.event
 
-import com.example.notesample.domain.Note
-import com.example.notesample.domain.annotation.NoArg
-import com.example.notesample.domain.annotation.Open
+import com.example.domain.Note
+import com.example.domain.annotation.NoArg
+import com.example.domain.annotation.Open
 
 @NoArg
 @Open

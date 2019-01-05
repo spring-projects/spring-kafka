@@ -1,15 +1,15 @@
-package com.example.notesample.service
+package com.example.service
 
-import com.example.notesample.data.NoteRepository
-import com.example.notesample.domain.Note
-import com.example.notesample.domain.event.NoteEvent
+import arrow.core.Option
+import arrow.core.getOrElse
+import arrow.data.NonEmptyList
+import com.example.data.NoteRepository
+import com.example.domain.Note
+import com.example.domain.event.NoteEvent
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import arrow.core.Option
-import arrow.core.getOrElse
-import arrow.data.NonEmptyList
 
 @Service
 @Transactional

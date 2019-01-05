@@ -1,5 +1,5 @@
-package com.example.notesample.domain.annotation
+package com.example.domain.annotation
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class NoArg
+annotation class Open

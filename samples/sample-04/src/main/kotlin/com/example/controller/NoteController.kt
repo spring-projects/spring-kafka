@@ -1,10 +1,10 @@
-package com.example.notesample.controller
+package com.example.controller
 
-import com.example.notesample.domain.Note
-import com.example.notesample.service.NoteService
+import arrow.core.Option
+import com.example.domain.Note
+import com.example.service.NoteService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
-import arrow.core.Option
 
 @RestController
 @RequestMapping("/notes")
