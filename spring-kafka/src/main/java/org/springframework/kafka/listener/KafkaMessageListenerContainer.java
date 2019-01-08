@@ -546,9 +546,21 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.logger.info(this);
 			}
 			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
-			this.checkNullKeyForExceptions = checkDeserializer(props.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG));
+			this.checkNullKeyForExceptions = checkDeserializer(
+					findDeserializerClass(props, ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG));
 			this.checkNullValueForExceptions = checkDeserializer(
-					props.get(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG));
+					findDeserializerClass(props, ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG));
+		}
+
+		private Object findDeserializerClass(Map<String, Object> props, String config) {
+			Object deserializerClass = KafkaMessageListenerContainer.this.consumerFactory.getKeyDeserializer();
+			if (deserializerClass == null) {
+				deserializerClass = props.get(config);
+			}
+			else {
+				deserializerClass = deserializerClass.getClass();
+			}
+			return deserializerClass;
 		}
 
 		private void subscribeOrAssignTopics(final Consumer<K, V> consumer) {
@@ -576,7 +588,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private boolean checkDeserializer(Object deser) {
 			return deser instanceof Class
-					? ((Class<?>) deser).equals(ErrorHandlingDeserializer2.class)
+					? ErrorHandlingDeserializer2.class.isAssignableFrom((Class<?>) deser)
 					: deser instanceof String
 						? ((String) deser).equals(ErrorHandlingDeserializer2.class.getName())
 						: false;

@@ -97,6 +97,31 @@ public class ErrorHandlingDeserializer2<T> implements ExtendedDeserializer<T> {
 		this.failedDeserializationFunction = failedDeserializationFunction;
 	}
 
+	public boolean isKey() {
+		return this.isKey;
+	}
+
+	/**
+	 * Set to true if this deserializer is to be used as a key deserializer when
+	 * configuring outside of Kafka.
+	 * @param isKey true for a key deserializer, false otherwise.
+	 * @since 2.2.3
+	 */
+	public void setKey(boolean isKey) {
+		this.isKey = isKey;
+	}
+
+	/**
+	 * Set to true if this deserializer is to be used as a key deserializer when
+	 * configuring outside of Kafka.
+	 * @param isKey true for a key deserializer, false otherwise.
+	 * @return this
+	 * @since 2.2.3
+	 */
+	public ErrorHandlingDeserializer2<T> keyDeserializer(boolean isKey) {
+		this.isKey = isKey;
+		return this;
+	}
 
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
