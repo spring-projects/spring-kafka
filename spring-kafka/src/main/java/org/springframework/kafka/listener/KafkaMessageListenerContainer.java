@@ -553,14 +553,14 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 		}
 
 		private Object findDeserializerClass(Map<String, Object> props, String config) {
-			Object deserializerClass = KafkaMessageListenerContainer.this.consumerFactory.getKeyDeserializer();
-			if (deserializerClass == null) {
-				deserializerClass = props.get(config);
+			Object configuredDeserializer = KafkaMessageListenerContainer.this.consumerFactory.getKeyDeserializer();
+			if (configuredDeserializer == null) {
+				configuredDeserializer = props.get(config);
 			}
 			else {
-				deserializerClass = deserializerClass.getClass();
+				configuredDeserializer = configuredDeserializer.getClass();
 			}
-			return deserializerClass;
+			return configuredDeserializer;
 		}
 
 		private void subscribeOrAssignTopics(final Consumer<K, V> consumer) {
