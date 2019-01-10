@@ -138,7 +138,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * {@link ObjectMapper}.
 	 * @param targetType the target type to use if no type info headers are present.
 	 */
-	public JsonDeserializer(Class<T> targetType) {
+	public JsonDeserializer(Class<? super T> targetType) {
 		this(targetType, true);
 	}
 
@@ -150,7 +150,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	public JsonDeserializer(Class<T> targetType, boolean useHeadersIfPresent) {
+	public JsonDeserializer(Class<? super T> targetType, boolean useHeadersIfPresent) {
 		this(targetType, new ObjectMapper(), useHeadersIfPresent, om -> {
 			om.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
 			om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -162,7 +162,7 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * @param targetType the target type to use if no type info headers are present.
 	 * @param objectMapper the mapper. type if not.
 	 */
-	public JsonDeserializer(Class<T> targetType, ObjectMapper objectMapper) {
+	public JsonDeserializer(Class<? super T> targetType, ObjectMapper objectMapper) {
 		this(targetType, objectMapper, true);
 	}
 
@@ -175,17 +175,17 @@ public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	public JsonDeserializer(@Nullable Class<T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent) {
+	public JsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent) {
 		this(targetType, objectMapper, useHeadersIfPresent, om -> { });
 	}
 
 	@SuppressWarnings("unchecked")
-	private JsonDeserializer(@Nullable Class<T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent,
+	private JsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent,
 			Consumer<ObjectMapper> configurer) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
 		this.objectMapper = objectMapper;
-		this.targetType = targetType;
+		this.targetType = (Class<T>) targetType;
 		if (this.targetType == null) {
 			this.targetType = (Class<T>) ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
 		}

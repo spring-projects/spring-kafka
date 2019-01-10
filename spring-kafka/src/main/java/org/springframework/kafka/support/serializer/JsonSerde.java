@@ -55,7 +55,7 @@ public class JsonSerde<T> implements Serde<T> {
 		this((ObjectMapper) null);
 	}
 
-	public JsonSerde(Class<T> targetType) {
+	public JsonSerde(Class<? super T> targetType) {
 		this(targetType, null);
 	}
 
@@ -64,9 +64,9 @@ public class JsonSerde<T> implements Serde<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public JsonSerde(@Nullable Class<T> targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
+	public JsonSerde(@Nullable Class<? super T> targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
 		ObjectMapper objectMapper = objectMapperArg;
-		Class<T> targetType = targetTypeArg;
+		Class<T> targetType = (Class<T>) targetTypeArg;
 		if (objectMapper == null) {
 			objectMapper = new ObjectMapper();
 			objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
