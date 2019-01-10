@@ -546,16 +546,18 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.logger.info(this);
 			}
 			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
-			this.checkNullKeyForExceptions = checkDeserializer(
-					findDeserializerClass(props, ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG));
-			this.checkNullValueForExceptions = checkDeserializer(
-					findDeserializerClass(props, ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG));
+			this.checkNullKeyForExceptions = checkDeserializer(findDeserializerClass(props, false));
+			this.checkNullValueForExceptions = checkDeserializer(findDeserializerClass(props, true));
 		}
 
-		private Object findDeserializerClass(Map<String, Object> props, String config) {
-			Object configuredDeserializer = KafkaMessageListenerContainer.this.consumerFactory.getKeyDeserializer();
+		private Object findDeserializerClass(Map<String, Object> props, boolean isValue) {
+			Object configuredDeserializer = isValue
+					? KafkaMessageListenerContainer.this.consumerFactory.getValueDeserializer()
+					: KafkaMessageListenerContainer.this.consumerFactory.getKeyDeserializer();
 			if (configuredDeserializer == null) {
-				return props.get(config);
+				return props.get(isValue
+						? ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
+						: ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
 			}
 			else {
 				return configuredDeserializer.getClass();
