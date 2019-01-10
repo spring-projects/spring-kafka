@@ -46,6 +46,7 @@ import com.fasterxml.jackson.core.JsonParseException;
  * @author Yanming Zhou
  * @author Torsten Schleede
  * @author Gary Russell
+ * @author Ivan Ponomarev
  */
 public class JsonSerializationTests {
 
@@ -83,18 +84,18 @@ public class JsonSerializationTests {
 		topic = "topic-name";
 
 		jsonReader = new JsonDeserializer<DummyEntity>() { };
-		jsonReader.configure(new HashMap<String, Object>(), false);
+		jsonReader.configure(new HashMap<>(), false);
 		jsonReader.close(); // does nothing, so may be called any time, or not called at all
 		jsonArrayReader = new JsonDeserializer<DummyEntity[]>() { };
-		jsonArrayReader.configure(new HashMap<String, Object>(), false);
+		jsonArrayReader.configure(new HashMap<>(), false);
 		jsonArrayReader.close(); // does nothing, so may be called any time, or not called at all
 		jsonWriter = new JsonSerializer<>();
-		jsonWriter.configure(new HashMap<String, Object>(), false);
+		jsonWriter.configure(new HashMap<>(), false);
 		jsonWriter.close(); // does nothing, so may be called any time, or not called at all
 		stringReader = new StringDeserializer();
-		stringReader.configure(new HashMap<String, Object>(), false);
+		stringReader.configure(new HashMap<>(), false);
 		stringWriter = new StringSerializer();
-		stringWriter.configure(new HashMap<String, Object>(), false);
+		stringWriter.configure(new HashMap<>(), false);
 		dummyEntityJsonDeserializer = new DummyEntityJsonDeserializer();
 		dummyEntityArrayJsonDeserializer = new DummyEntityArrayJsonDeserializer();
 	}
@@ -201,6 +202,14 @@ public class JsonSerializationTests {
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.INFERRED);
+	}
+
+	@Test
+	public void testDeserializerTypeInference(){
+		JsonSerializer<List<String>> ser = new JsonSerializer<>();
+		JsonDeserializer<List<String>> de = new JsonDeserializer<>(List.class);
+		List<String> dummy = Arrays.asList("foo", "bar", "baz");
+		assertThat(de.deserialize(topic, ser.serialize(topic, dummy))).isEqualTo(dummy);
 	}
 
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {

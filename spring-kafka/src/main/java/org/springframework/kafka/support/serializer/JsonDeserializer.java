@@ -53,6 +53,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
  * @author Yanming Zhou
  * @author Elliot Kennedy
  * @author Torsten Schleede
+ * @author Ivan Ponomarev
  */
 public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
 
