@@ -205,7 +205,7 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	public void testDeserializerTypeInference(){
+	public void testDeserializerTypeInference() {
 		JsonSerializer<List<String>> ser = new JsonSerializer<>();
 		JsonDeserializer<List<String>> de = new JsonDeserializer<>(List.class);
 		List<String> dummy = Arrays.asList("foo", "bar", "baz");
