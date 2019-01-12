@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.ZooKeeperServer;
 import org.springframework.kafka.test.core.BrokerAddress;
 
 import kafka.server.KafkaServer;
@@ -156,7 +157,7 @@ public class KafkaEmbedded extends EmbeddedKafkaRule implements KafkaRule, Initi
 		return getEmbeddedKafka().getKafkaServer(id);
 	}
 
-	public EmbeddedZookeeper getZookeeper() {
+	public ZooKeeperServer getZookeeper() {
 		return getEmbeddedKafka().getZookeeper();
 	}
 

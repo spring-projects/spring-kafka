@@ -60,10 +60,7 @@ import kafka.common.KafkaException;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
 import kafka.server.NotRunning;
-import kafka.utils.CoreUtils;
-import kafka.utils.TestUtils;
-import kafka.utils.ZKStringSerializer$;
-import kafka.zk.EmbeddedZookeeper;
+import kafka.utils.*;
 
 /**
  * An embedded Kafka Broker(s) and Zookeeper manager.
@@ -75,12 +72,11 @@ import kafka.zk.EmbeddedZookeeper;
  * @author Kamill Sokol
  * @author Elliot Kennedy
  * @author Nakul Mishra
+ * @author Dmitrii Apanasevich
  *
  * @since 2.2
  */
 public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
-
-	private static final Log logger = LogFactory.getLog(EmbeddedKafkaBroker.class); // NOSONAR
 
 	public static final String BEAN_NAME = "embeddedKafka";
 
@@ -94,7 +90,13 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 */
 	public static final String BROKER_LIST_PROPERTY = "spring.embedded.kafka.brokers.property";
 
-	private static final int DEFAULT_ADMIN_TIMEOUT = 30;
+  private static final String HOST = "127.0.0.1";
+
+  private static final String KAFKA_PREFIX = "kafka-";
+
+  private static final Log logger = LogFactory.getLog(EmbeddedKafkaBroker.class); // NOSONAR
+
+  private static final int DEFAULT_ADMIN_TIMEOUT = 30;
 
 	private final int count;
 
@@ -108,7 +110,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private final Map<String, Object> brokerProperties = new HashMap<>();
 
-	private EmbeddedZookeeper zookeeper;
+	private ZooKeeperServer zookeeper;
 
 	private ZkClient zookeeperClient;
 
@@ -202,11 +204,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	@Override
 	public void afterPropertiesSet() {
-		this.zookeeper = new EmbeddedZookeeper();
+		this.zookeeper = new ZooKeeperServer(HOST);
+		this.zookeeper.startup();
 		int zkConnectionTimeout = 6000; // NOSONAR magic #
 		int zkSessionTimeout = 6000; // NOSONAR magic #
 
-		this.zkConnect = "127.0.0.1:" + this.zookeeper.port();
+		this.zkConnect = this.zookeeper.zkAddress();
 		this.zookeeperClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
 				ZKStringSerializer$.MODULE$);
 		this.kafkaServers.clear();
@@ -217,6 +220,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			brokerConfigProperties.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
 			brokerConfigProperties.setProperty(KafkaConfig.ReplicaHighWatermarkCheckpointIntervalMsProp(),
 					String.valueOf(Long.MAX_VALUE));
+			brokerConfigProperties.setProperty(KafkaConfig.LogDirsProp(),
+					org.apache.kafka.test.TestUtils.tempDirectory(KAFKA_PREFIX).getPath());
 			if (this.brokerProperties != null) {
 				this.brokerProperties.forEach(brokerConfigProperties::put);
 			}
@@ -329,26 +334,20 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				}
 			}
 			catch (Exception e) {
-				// do nothing
-			}
-			try {
-				CoreUtils.delete(kafkaServer.config().logDirs());
-			}
-			catch (Exception e) {
-				// do nothing
+        logger.error("Couldn't shutdown kafka broker", e);
 			}
 		}
 		try {
 			this.zookeeperClient.close();
 		}
 		catch (ZkInterruptedException e) {
-			// do nothing
+      logger.error("Couldn't zookeeper client", e);
 		}
 		try {
 			this.zookeeper.shutdown();
 		}
 		catch (Exception e) {
-			// do nothing
+      logger.error("Couldn't zookeeper", e);
 		}
 	}
 
@@ -364,7 +363,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		return this.kafkaServers.get(id);
 	}
 
-	public EmbeddedZookeeper getZookeeper() {
+	public ZooKeeperServer getZookeeper() {
 		return this.zookeeper;
 	}
 
@@ -378,13 +377,13 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public BrokerAddress getBrokerAddress(int i) {
 		KafkaServer kafkaServer = this.kafkaServers.get(i);
-		return new BrokerAddress("127.0.0.1", kafkaServer.config().port());
+		return new BrokerAddress(HOST, kafkaServer.config().port());
 	}
 
 	public BrokerAddress[] getBrokerAddresses() {
 		List<BrokerAddress> addresses = new ArrayList<BrokerAddress>();
 		for (int i = 0; i < this.kafkaPorts.length; i++) {
-			addresses.add(new BrokerAddress("127.0.0.1", this.kafkaPorts[i]));
+			addresses.add(new BrokerAddress(HOST, this.kafkaPorts[i]));
 		}
 		return addresses.toArray(new BrokerAddress[addresses.size()]);
 	}
