@@ -16,15 +16,15 @@
 
 package org.springframework.kafka.test;
 
+import java.net.ServerSocket;
+import java.util.Properties;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.test.TestUtils;
 import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
-
-import java.net.ServerSocket;
-import java.util.Properties;
 
 /**
  * A zookeeper server to use with unit tests.
@@ -33,68 +33,70 @@ import java.util.Properties;
  */
 public final class ZooKeeperServer {
 
-  private static final String ZOO_CLIENT_PORT_PROPERTY = "clientPort";
+	private static final String ZOO_CLIENT_PORT_PROPERTY = "clientPort";
 
-  private static final String ZOO_DATA_DIR_PROPERTY = "dataDir";
+	private static final String ZOO_DATA_DIR_PROPERTY = "dataDir";
 
-  private static final String ZOO_PREFIX = "zoo-";
+	private static final String ZOO_PREFIX = "zoo-";
 
-  private static final Log logger = LogFactory.getLog(ZooKeeperServer.class);
+	private static final Log logger = LogFactory.getLog(ZooKeeperServer.class);
 
-  private final ZooKeeperShutdownable zookeeper;
+	private final ZooKeeperShutdownable zookeeper;
 
-  private final ServerConfig serverConfig;
+	private final ServerConfig serverConfig;
 
-  private final String host;
+	private final String host;
 
-  public ZooKeeperServer(String host) {
-    final QuorumPeerConfig quorumPeerConfig = new QuorumPeerConfig();
-    try (final ServerSocket socket = new ServerSocket(0)) {
-      socket.setReuseAddress(true);
-      final int port = socket.getLocalPort();
-      final Properties zooKeeperConfig = new Properties();
-      zooKeeperConfig.setProperty(ZOO_DATA_DIR_PROPERTY, TestUtils.tempDirectory(ZOO_PREFIX).getPath());
-      zooKeeperConfig.setProperty(ZOO_CLIENT_PORT_PROPERTY, String.valueOf(port));
-      quorumPeerConfig.parseProperties(zooKeeperConfig);
-    } catch (Throwable t) {
-      logger.error("Couldn't start zookeeper", t);
-      org.junit.Assert.fail(t.getMessage());
-    }
-    this.host = host;
-    this.serverConfig = new ServerConfig();
-    serverConfig.readFrom(quorumPeerConfig);
+	public ZooKeeperServer(String host) {
+		final QuorumPeerConfig quorumPeerConfig = new QuorumPeerConfig();
+		try (ServerSocket socket = new ServerSocket(0)) {
+			socket.setReuseAddress(true);
+			final int port = socket.getLocalPort();
+			final Properties zooKeeperConfig = new Properties();
+			zooKeeperConfig.setProperty(ZOO_DATA_DIR_PROPERTY, TestUtils.tempDirectory(ZOO_PREFIX).getPath());
+			zooKeeperConfig.setProperty(ZOO_CLIENT_PORT_PROPERTY, String.valueOf(port));
+			quorumPeerConfig.parseProperties(zooKeeperConfig);
+		}
+		catch (Throwable t) {
+			logger.error("Couldn't start zookeeper", t);
+			org.junit.Assert.fail(t.getMessage());
+		}
+		this.host = host;
+		this.serverConfig = new ServerConfig();
+		serverConfig.readFrom(quorumPeerConfig);
 
-    this.zookeeper = new ZooKeeperShutdownable();
-  }
+		this.zookeeper = new ZooKeeperShutdownable();
+	}
 
-  public void startup() {
-    new Thread(() -> {
-      try {
-        zookeeper.runFromConfig(serverConfig);
-      } catch (Throwable t) {
-        logger.error("Couldn't start zookeeper", t);
-        org.junit.Assert.fail(t.getMessage());
-      }
-    }).start();
-  }
+	public void startup() {
+		new Thread(() -> {
+			try {
+				zookeeper.runFromConfig(serverConfig);
+			}
+			catch (Throwable t) {
+				logger.error("Couldn't start zookeeper", t);
+				org.junit.Assert.fail(t.getMessage());
+			}
+		}).start();
+	}
 
-  public void shutdown() {
-    this.zookeeper.shutdown();
-  }
+	public void shutdown() {
+		this.zookeeper.shutdown();
+	}
 
-  public String zkAddress() {
-    return host + ':' + serverConfig.getClientPortAddress().getPort();
-  }
+	public String zkAddress() {
+		return host + ':' + serverConfig.getClientPortAddress().getPort();
+	}
 
-  /**
-   * A wrapper around ZooKeeperServerMain to have an ability to shutdown it.
-   *
-   * @author Dmitrii Apanasevich
-   */
-  private static final class ZooKeeperShutdownable extends ZooKeeperServerMain {
-    @Override
-    public void shutdown() {
-      super.shutdown();
-    }
-  }
+	/**
+	 * A wrapper around ZooKeeperServerMain to have an ability to shutdown it.
+	 *
+	 * @author Dmitrii Apanasevich
+	 */
+	private static final class ZooKeeperShutdownable extends ZooKeeperServerMain {
+		@Override
+		public void shutdown() {
+			super.shutdown();
+		}
+	}
 }

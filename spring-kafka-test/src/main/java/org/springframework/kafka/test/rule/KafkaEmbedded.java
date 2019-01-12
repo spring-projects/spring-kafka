@@ -32,7 +32,6 @@ import org.springframework.kafka.test.ZooKeeperServer;
 import org.springframework.kafka.test.core.BrokerAddress;
 
 import kafka.server.KafkaServer;
-import kafka.zk.EmbeddedZookeeper;
 
 /**
  * The {@link KafkaRule} implementation for the embedded Kafka Broker and Zookeeper.

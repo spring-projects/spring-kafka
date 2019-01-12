@@ -60,7 +60,8 @@ import kafka.common.KafkaException;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
 import kafka.server.NotRunning;
-import kafka.utils.*;
+import kafka.utils.TestUtils;
+import kafka.utils.ZKStringSerializer$;
 
 /**
  * An embedded Kafka Broker(s) and Zookeeper manager.
@@ -90,13 +91,13 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 */
 	public static final String BROKER_LIST_PROPERTY = "spring.embedded.kafka.brokers.property";
 
-  private static final String HOST = "127.0.0.1";
+	private static final String HOST = "127.0.0.1";
 
-  private static final String KAFKA_PREFIX = "kafka-";
+	private static final String KAFKA_PREFIX = "kafka-";
 
-  private static final Log logger = LogFactory.getLog(EmbeddedKafkaBroker.class); // NOSONAR
+	private static final Log logger = LogFactory.getLog(EmbeddedKafkaBroker.class); // NOSONAR
 
-  private static final int DEFAULT_ADMIN_TIMEOUT = 30;
+	private static final int DEFAULT_ADMIN_TIMEOUT = 30;
 
 	private final int count;
 
@@ -334,20 +335,20 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				}
 			}
 			catch (Exception e) {
-        logger.error("Couldn't shutdown kafka broker", e);
+				logger.error("Couldn't shutdown kafka broker", e);
 			}
 		}
 		try {
 			this.zookeeperClient.close();
 		}
 		catch (ZkInterruptedException e) {
-      logger.error("Couldn't zookeeper client", e);
+			logger.error("Couldn't shutdown zookeeper client", e);
 		}
 		try {
 			this.zookeeper.shutdown();
 		}
 		catch (Exception e) {
-      logger.error("Couldn't zookeeper", e);
+			logger.error("Couldn't shutdown zookeeper", e);
 		}
 	}
 
