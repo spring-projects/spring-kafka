@@ -87,6 +87,6 @@ Spring Kafka is released under the terms of the Apache Software License Version 
 
 # Code of Conduct
 
-This project adheres to the Contributor Covenant link:CODE_OF_CONDUCT.adoc[code of conduct].
+This project adheres to the Contributor Covenant [code of conduct](./CODE_OF_CONDUCT.adoc).
 By participating, you  are expected to uphold this code. Please report unacceptable behavior to
 spring-code-of-conduct@pivotal.io.
