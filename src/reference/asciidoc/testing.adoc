@@ -224,8 +224,9 @@ public class KafkaStreamsTests {
 
 }
 ----
+Starting with _version 2.2.4_ the `@EmbeddedKafka` annotation can also be used to specify the kafka ports property.
 
-The `topics`, `brokerProperties`, and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
+The `topics`, `brokerProperties` and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
 [source, java]
 ----
 @TestPropertySource(locations = "classpath:/test.properties")
