@@ -70,6 +70,8 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 				this.embeddedKafka.partitions(),
 				topics);
 
+		embeddedKafkaBroker.kafkaPorts(this.embeddedKafka.ports());
+		
 		Properties properties = new Properties();
 
 		for (String pair : this.embeddedKafka.brokerProperties()) {

@@ -80,6 +80,11 @@ public @interface EmbeddedKafka {
 	 * @return passed into {@code kafka.utils.TestUtils.createBrokerConfig()}.
 	 */
 	boolean controlledShutdown() default false;
+	
+	/**
+	 * @return ports for brokers.
+	 */
+	int[] ports() default {0};
 
 	/**
 	 * @return partitions per topic
