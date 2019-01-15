@@ -35,6 +35,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 /**
  * @author Oleg Artyomov
  * @author Sergio Lourenco
+ * @author Artem Bilan
  *
  * @since 1.3
  */

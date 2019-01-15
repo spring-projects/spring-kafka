@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2018 the original author or authors.
+ * Copyright 2014-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -268,7 +268,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		return this.replyTemplate;
 	}
 
-	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
+	protected RecordFilterStrategy<? super K, ? super V> getRecordFilterStrategy() {
 		return this.recordFilterStrategy;
 	}
 
@@ -286,8 +286,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy)
-	 * recordFilterStrategy} is in use.
+	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy)} is in use.
 	 * @param ackDiscarded the ackDiscarded.
 	 */
 	public void setAckDiscarded(boolean ackDiscarded) {
@@ -311,8 +310,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)
-	 * retryTemplate}.
+	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)}.
 	 * @param recoveryCallback the callback.
 	 */
 	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
@@ -429,9 +427,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		Object messageListener = adapter;
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
-			messageListener =
-					new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-							this.retryTemplate, this.recoveryCallback, this.statefulRetry);
+			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
 		}
 		if (this.recordFilterStrategy != null) {
 			if (this.batchListener) {
@@ -442,16 +439,13 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 					}
 				}
 				else {
-					messageListener =
-							new FilteringBatchMessageListenerAdapter<>(
-									(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy,
-									this.ackDiscarded);
+					messageListener = new FilteringBatchMessageListenerAdapter<>(
+						(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy, this.ackDiscarded);
 				}
 			}
 			else {
-				messageListener =
-						new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-								this.recordFilterStrategy, this.ackDiscarded);
+				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+						this.recordFilterStrategy, this.ackDiscarded);
 			}
 		}
 		container.setupMessageListener(messageListener);

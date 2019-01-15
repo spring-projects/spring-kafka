@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	public ConcurrentMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
+
 		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 	}
