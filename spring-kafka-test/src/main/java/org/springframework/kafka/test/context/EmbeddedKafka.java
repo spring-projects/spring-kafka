@@ -81,7 +81,7 @@ public @interface EmbeddedKafka {
 	 * @return passed into {@code kafka.utils.TestUtils.createBrokerConfig()}.
 	 */
 	boolean controlledShutdown() default false;
-	
+
 	/**
 	 * Set explicit ports on which the kafka brokers will listen. Useful when running an
 	 * embedded broker that you want to access from other processes.
