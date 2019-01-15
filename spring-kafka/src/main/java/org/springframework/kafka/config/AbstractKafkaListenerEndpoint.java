@@ -276,8 +276,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Set a {@link RecordFilterStrategy} implementation.
 	 * @param recordFilterStrategy the strategy implementation.
 	 */
-	public void setRecordFilterStrategy(RecordFilterStrategy<K, V> recordFilterStrategy) {
-		this.recordFilterStrategy = recordFilterStrategy;
+	@SuppressWarnings("unchecked")
+	public void setRecordFilterStrategy(RecordFilterStrategy<? super K, ? super V> recordFilterStrategy) {
+		this.recordFilterStrategy = (RecordFilterStrategy<K, V>) recordFilterStrategy;
 	}
 
 	protected boolean isAckDiscarded() {
@@ -428,8 +429,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		Object messageListener = adapter;
 		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
-			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
+			messageListener =
+					new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+							this.retryTemplate, this.recoveryCallback, this.statefulRetry);
 		}
 		if (this.recordFilterStrategy != null) {
 			if (this.batchListener) {
@@ -440,13 +442,16 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 					}
 				}
 				else {
-					messageListener = new FilteringBatchMessageListenerAdapter<>(
-						(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy, this.ackDiscarded);
+					messageListener =
+							new FilteringBatchMessageListenerAdapter<>(
+									(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy,
+									this.ackDiscarded);
 				}
 			}
 			else {
-				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-						this.recordFilterStrategy, this.ackDiscarded);
+				messageListener =
+						new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+								this.recordFilterStrategy, this.ackDiscarded);
 			}
 		}
 		container.setupMessageListener(messageListener);

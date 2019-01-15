@@ -65,7 +65,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
 	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+	public ConcurrentMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
 		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
@@ -100,7 +100,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		return this.containers.stream()
 				.map(KafkaMessageListenerContainer::getAssignedPartitions)
 				.filter(Objects::nonNull)
-				.flatMap(assignedPartitions -> assignedPartitions.stream())
+				.flatMap(Collection::stream)
 				.collect(Collectors.toList());
 	}
 
@@ -135,8 +135,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
 			TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
-			if (topicPartitions != null
-					&& this.concurrency > topicPartitions.length) {
+			if (topicPartitions != null && this.concurrency > topicPartitions.length) {
 				this.logger.warn("When specific partitions are provided, the concurrency must be less than or "
 						+ "equal to the number of partitions; reduced from " + this.concurrency + " to "
 						+ topicPartitions.length);
@@ -147,8 +146,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container;
 				if (topicPartitions == null) {
-					container = new KafkaMessageListenerContainer<>(this, this.consumerFactory,
-							containerProperties);
+					container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, containerProperties);
 				}
 				else {
 					container = new KafkaMessageListenerContainer<>(this, this.consumerFactory,
@@ -213,15 +211,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				if (container.isRunning()) {
-					container.stop(new Runnable() {
-
-						@Override
-						public void run() {
-							if (count.decrementAndGet() <= 0) {
-								callback.run();
-							}
+					container.stop(() -> {
+						if (count.decrementAndGet() <= 0) {
+							callback.run();
 						}
-
 					});
 				}
 			}
@@ -232,13 +225,13 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	public void pause() {
 		super.pause();
-		this.containers.forEach(c -> c.pause());
+		this.containers.forEach(AbstractMessageListenerContainer::pause);
 	}
 
 	@Override
 	public void resume() {
 		super.resume();
-		this.containers.forEach(c -> c.resume());
+		this.containers.forEach(AbstractMessageListenerContainer::resume);
 	}
 
 	@Override

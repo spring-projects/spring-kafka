@@ -32,40 +32,45 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 
-
 /**
  * @author Oleg Artyomov
  * @author Sergio Lourenco
+ *
  * @since 1.3
  */
 public class EmbeddedKafkaContextCustomizerTests {
 
 	private EmbeddedKafka annotationFromFirstClass;
+
 	private EmbeddedKafka annotationFromSecondClass;
 
 	@Before
 	public void beforeEachTest() {
 		annotationFromFirstClass = AnnotationUtils.findAnnotation(TestWithEmbeddedKafka.class, EmbeddedKafka.class);
-		annotationFromSecondClass = AnnotationUtils.findAnnotation(SecondTestWithEmbeddedKafka.class, EmbeddedKafka.class);
+		annotationFromSecondClass =
+				AnnotationUtils.findAnnotation(SecondTestWithEmbeddedKafka.class, EmbeddedKafka.class);
 	}
 
 
 	@Test
 	public void testHashCode() {
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode()).isNotEqualTo(0);
-		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode()).isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass).hashCode());
+		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode())
+				.isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass).hashCode());
 	}
 
 
 	@Test
 	public void testEquals() {
-		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass)).isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass));
+		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass))
+				.isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass));
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass)).isNotEqualTo(new Object());
 	}
 
 	@Test
 	public void testPorts() {
-		EmbeddedKafka annotationWithPorts = AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaPorts.class, EmbeddedKafka.class);
+		EmbeddedKafka annotationWithPorts =
+				AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaPorts.class, EmbeddedKafka.class);
 		EmbeddedKafkaContextCustomizer customizer = new EmbeddedKafkaContextCustomizer(annotationWithPorts);
 		ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
 		BeanFactoryStub factoryStub = new BeanFactoryStub();
@@ -73,7 +78,8 @@ public class EmbeddedKafkaContextCustomizerTests {
 		given(context.getEnvironment()).willReturn(mock(ConfigurableEnvironment.class));
 		customizer.customizeContext(context, null);
 
-		assertThat(factoryStub.getBroker().getBrokersAsString()).isEqualTo("127.0.0.1:" + annotationWithPorts.ports()[0]);
+		assertThat(factoryStub.getBroker().getBrokersAsString())
+				.isEqualTo("127.0.0.1:" + annotationWithPorts.ports()[0]);
 	}
 
 
@@ -92,7 +98,9 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 	}
 
+	@SuppressWarnings("serial")
 	private class BeanFactoryStub extends DefaultListableBeanFactory {
+
 		private Object bean;
 
 		public EmbeddedKafkaBroker getBroker() {
@@ -114,5 +122,7 @@ public class EmbeddedKafkaContextCustomizerTests {
 		public void registerDisposableBean(String beanName, DisposableBean bean) {
 
 		}
+
 	}
+
 }

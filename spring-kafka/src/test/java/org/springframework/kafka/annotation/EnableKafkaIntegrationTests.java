@@ -183,7 +183,7 @@ public class EnableKafkaIntegrationTests {
 	private RecordPassAllFilter recordFilter;
 
 	@Autowired
-	private DefaultKafkaConsumerFactory<Integer, String> consumerFactory;
+	private DefaultKafkaConsumerFactory<Integer, CharSequence> consumerFactory;
 
 	@Autowired
 	private AtomicReference<Consumer<?, ?>> consumerRef;
@@ -873,7 +873,7 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			ConsumerFactory spiedCf = mock(ConsumerFactory.class);
 			willAnswer(i -> {
-				Consumer<Integer, String> spy =
+				Consumer<Integer, CharSequence> spy =
 						spy(consumerFactory().createConsumer(i.getArgument(0), i.getArgument(1),
 								i.getArgument(2)));
 				willAnswer(invocation -> {
@@ -978,7 +978,7 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
-		public DefaultKafkaConsumerFactory<Integer, String> consumerFactory() {
+		public DefaultKafkaConsumerFactory<Integer, CharSequence> consumerFactory() {
 			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
 		}
 
@@ -1840,12 +1840,12 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	public static class RecordPassAllFilter implements RecordFilterStrategy<Integer, String> {
+	public static class RecordPassAllFilter implements RecordFilterStrategy<Integer, CharSequence> {
 
 		private boolean called;
 
 		@Override
-		public boolean filter(ConsumerRecord<Integer, String> consumerRecord) {
+		public boolean filter(ConsumerRecord<Integer, CharSequence> consumerRecord) {
 			called = true;
 			return false;
 		}

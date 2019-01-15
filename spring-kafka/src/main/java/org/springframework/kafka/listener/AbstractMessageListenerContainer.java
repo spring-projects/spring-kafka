@@ -36,6 +36,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -76,7 +77,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private int phase = DEFAULT_PHASE;
 
-	private AfterRollbackProcessor<K, V> afterRollbackProcessor = new DefaultAfterRollbackProcessor<>();
+	private AfterRollbackProcessor<? super K, ? super V> afterRollbackProcessor =
+			new DefaultAfterRollbackProcessor<>();
 
 	private volatile boolean running = false;
 
@@ -98,11 +100,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @param consumerFactory the factory.
 	 * @param containerProperties the properties.
 	 */
-	protected AbstractMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+	@SuppressWarnings("unchecked")
+	protected AbstractMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
 
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
-		this.consumerFactory = consumerFactory;
+		this.consumerFactory = (ConsumerFactory<K, V>) consumerFactory;
 		if (containerProperties.getTopics() != null) {
 			this.containerProperties = new ContainerProperties(containerProperties.getTopics());
 		}
@@ -221,7 +224,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.phase;
 	}
 
-	protected AfterRollbackProcessor<K, V> getAfterRollbackProcessor() {
+	protected AfterRollbackProcessor<? super K, ? super V> getAfterRollbackProcessor() {
 		return this.afterRollbackProcessor;
 	}
 
@@ -232,7 +235,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @param afterRollbackProcessor the processor.
 	 * @since 1.3.5
 	 */
-	public void setAfterRollbackProcessor(AfterRollbackProcessor<K, V> afterRollbackProcessor) {
+	public void setAfterRollbackProcessor(AfterRollbackProcessor<? super K, ? super V> afterRollbackProcessor) {
 		Assert.notNull(afterRollbackProcessor, "'afterRollbackProcessor' cannot be null");
 		this.afterRollbackProcessor = afterRollbackProcessor;
 	}
@@ -262,13 +265,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected void checkTopics() {
 		if (this.containerProperties.isMissingTopicsFatal() && this.containerProperties.getTopicPattern() == null) {
-			try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(this.containerProperties.getGroupId(),
-					this.containerProperties.getClientId(), null)) {
+			try (Consumer<K, V> consumer =
+					this.consumerFactory.createConsumer(this.containerProperties.getGroupId(),
+							this.containerProperties.getClientId(), null)) {
 				if (consumer != null) {
 					String[] topics = this.containerProperties.getTopics();
 					if (topics == null) {
 						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
-								.map(tp -> tp.topic())
+								.map(TopicPartitionInitialOffset::topic)
 								.toArray(String[]::new);
 					}
 					List<String> missing = new ArrayList<>();
@@ -293,12 +297,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			if (this.consumerFactory != null) { // we always have one for standard containers
 				Object groupIdConfig = this.consumerFactory.getConfigurationProperties()
 						.get(ConsumerConfig.GROUP_ID_CONFIG);
-				hasGroupIdConsumerConfig = groupIdConfig != null && groupIdConfig instanceof String
-						&& StringUtils.hasText((String) groupIdConfig);
+				hasGroupIdConsumerConfig =
+						groupIdConfig instanceof String && StringUtils.hasText((String) groupIdConfig);
 			}
 			Assert.state(hasGroupIdConsumerConfig || StringUtils.hasText(this.containerProperties.getGroupId()),
 					"No group.id found in consumer config, container properties, or @KafkaListener annotation; "
-					+ "a group.id is required when group management is used.");
+							+ "a group.id is required when group management is used.");
 		}
 	}
 
@@ -309,13 +313,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		synchronized (this.lifecycleMonitor) {
 			if (isRunning()) {
 				final CountDownLatch latch = new CountDownLatch(1);
-				doStop(new Runnable() {
-
-					@Override
-					public void run() {
-						latch.countDown();
-					}
-				});
+				doStop(latch::countDown);
 				try {
 					latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
 					publishContainerStoppedEvent();
@@ -370,13 +368,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	protected void publishContainerStoppedEvent() {
-		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ContainerStoppedEvent(this, parentOrThis()));
+		ApplicationEventPublisher applicationEventPublisher = getApplicationEventPublisher();
+		if (applicationEventPublisher != null) {
+			applicationEventPublisher.publishEvent(new ContainerStoppedEvent(this, parentOrThis()));
 		}
 	}
 
 	/**
-	 * Ruturn this or a parent container if this has a parent.
+	 * Return this or a parent container if this has a parent.
 	 * @return the parent or this.
 	 * @since 2.2.1
 	 */
