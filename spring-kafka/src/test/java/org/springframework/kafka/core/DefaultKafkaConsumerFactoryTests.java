@@ -45,9 +45,7 @@ import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * @author Gary Russell
- * 
  * @since 1.0.6
- *
  */
 @EmbeddedKafka(topics = { "txCache1", "txCache2", "txCacheSendFromListener" },
 		brokerProperties = {
@@ -153,7 +151,7 @@ public class DefaultKafkaConsumerFactoryTests {
 			pfTx.destroy();
 		}
 	}
-	
+
 	@Configuration
 	public static class Config {
 
