@@ -55,7 +55,7 @@ import org.springframework.core.annotation.AliasFor;
  * @author Gary Russell
  * @author Sergio Lourenco
  *
- * @since 2.24
+ * @since 1.3
  *
  * @see org.springframework.kafka.test.EmbeddedKafkaBroker
  */
@@ -83,7 +83,11 @@ public @interface EmbeddedKafka {
 	boolean controlledShutdown() default false;
 	
 	/**
+	 * Set explicit ports on which the kafka brokers will listen. Useful when running an
+	 * embedded broker that you want to access from other processes.
+	 * A port must be provided for each instance, which means the number of ports must match the value of the count attribute.
 	 * @return ports for brokers.
+	 * @since 2.2.4
 	 */
 	int[] ports() default {0};
 

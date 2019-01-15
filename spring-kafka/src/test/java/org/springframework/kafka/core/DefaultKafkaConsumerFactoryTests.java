@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,16 +45,14 @@ import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * @author Gary Russell
- * @author Sergio Lourenco
  * 
- * @since 2.2.4
+ * @since 1.0.6
  *
  */
 @EmbeddedKafka(topics = { "txCache1", "txCache2", "txCacheSendFromListener" },
 		brokerProperties = {
 				"transaction.state.log.replication.factor=1",
-				"transaction.state.log.min.isr=1"},
-		ports= {8085}
+				"transaction.state.log.min.isr=1"}
 )
 @SpringJUnitConfig
 @DirtiesContext
@@ -156,15 +154,6 @@ public class DefaultKafkaConsumerFactoryTests {
 		}
 	}
 	
-	@Test
-	public void testKafkaEmbedded() {
-		assertThat(embeddedKafka.getBrokersAsString()).isEqualTo("127.0.0.1:" + 8085);
-		assertThat(embeddedKafka.getBrokersAsString())
-				.isEqualTo(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS));
-		assertThat(embeddedKafka.getZookeeperConnectionString())
-				.isEqualTo(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT));
-	}
-
 	@Configuration
 	public static class Config {
 

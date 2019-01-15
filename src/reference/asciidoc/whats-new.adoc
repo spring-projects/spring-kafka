@@ -72,7 +72,7 @@ See <<headers>> for more information.
 The `KafkaEmbedded` class and its `KafkaRule` interface have need deprecated in favor of the `EmbeddedKafkaBroker` and its JUnit 4 `EmbeddedKafkaRule` wrapper.
 The `@EmbeddedKafka` annotation now populates an `EmbeddedKafkaBroker` bean instead of the deprecated `KafkaEmbedded`.
 This allows the use of `@EmbeddedKafka` in JUnit 5 tests.
-The `@EmbeddedKafka` annotation now has the attribute `ports` to specify the port which will populate the `EmbeddedKafkaBroker` (since 2.2.4).
+The `@EmbeddedKafka` annotation now has the attribute `ports` to specify the port which will populate the `EmbeddedKafkaBroker`.
 
 See <<testing>> for more information.
 
