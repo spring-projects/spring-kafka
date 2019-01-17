@@ -157,7 +157,7 @@ private KafkaProducerMessageHandlerSpec<Integer, String, ?> kafkaMessageHandler(
 }
 ----
 
-If a `send-failure-channel` (`sendFailureChannel`) is provided, if a send failure is received (sync or async), an `ErrorMessage` is sent to the channel.
+If a `send-failure-channel` (`sendFailureChannel`) is provided and a send failure is received (sync or async), an `ErrorMessage` is sent to the channel.
 The payload is a `KafkaSendFailureException` with properties `failedMessage`, `record` (the `ProducerRecord`) and `cause`.
 The `DefaultErrorMessageStrategy` can be overridden via the `error-message-strategy` property.
 
