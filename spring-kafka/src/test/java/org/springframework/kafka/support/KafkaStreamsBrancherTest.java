@@ -36,23 +36,23 @@ class KafkaStreamsBrancherTest {
 		Mockito.when(input.branch(Mockito.eq(p1), Mockito.eq(p2), Mockito.any()))
 				.thenReturn(result);
 		AtomicInteger invocations = new AtomicInteger(0);
-		new KafkaStreamBrancher()
-				.addBranch(
+		Assertions.assertSame(input, new KafkaStreamBrancher()
+				.branch(
 						p1,
 						ks -> {
 							Assertions.assertSame(result[0], ks);
 							Assertions.assertEquals(0, invocations.getAndIncrement());
 						})
-				.addDefaultBranch(ks -> {
+				.defaultBranch(ks -> {
 					Assertions.assertSame(result[2], ks);
 					Assertions.assertEquals(2, invocations.getAndIncrement());
 				})
-				.addBranch(p2,
+				.branch(p2,
 						ks -> {
 							Assertions.assertSame(result[1], ks);
 							Assertions.assertEquals(1, invocations.getAndIncrement());
 						})
-				.onTopOf(input);
+				.onTopOf(input));
 
 		Assertions.assertEquals(3, invocations.get());
 	}

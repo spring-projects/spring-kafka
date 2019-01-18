@@ -32,10 +32,10 @@ import org.apache.kafka.streams.kstream.Predicate;
  * <pre>
  * {@code
  * new KafkaStreamsBrancher<String, String>()
- *    .addBranch((key, value) -> value.contains("A"), ks->ks.to("A"))
- *    .addBranch((key, value) -> value.contains("B"), ks->ks.to("B"))
+ *    .branch((key, value) -> value.contains("A"), ks->ks.to("A"))
+ *    .branch((key, value) -> value.contains("B"), ks->ks.to("B"))
  *    //default branch should not necessarily be defined in the end
- *    .addDefaultBranch(ks->ks.to("C"))
+ *    .defaultBranch(ks->ks.to("C"))
  *    .onTopOf(builder.stream("source"))
  * }
  * </pre>
@@ -58,7 +58,7 @@ public final class KafkaStreamBrancher<K, V> {
 	 * @param consumer  The consumer of this branch's {@code KStream}
 	 * @return {@code this}
 	 */
-	public KafkaStreamBrancher<K, V> addBranch(Predicate<? super K, ? super V> predicate,
+	public KafkaStreamBrancher<K, V> branch(Predicate<? super K, ? super V> predicate,
 											Consumer<? super KStream<K, V>> consumer) {
 		this.predicateList.add(Objects.requireNonNull(predicate));
 		this.consumerList.add(Objects.requireNonNull(consumer));
@@ -66,14 +66,14 @@ public final class KafkaStreamBrancher<K, V> {
 	}
 
 	/**
-	 * Defines a default branch. To this stream will be directed all the messages that
-	 * were not dispatched to other branches. This method should not necessarily be called in the end
+	 * Defines a default branch. All the messages that were not dispatched to other branches will be directed
+	 * to this stream. This method should not necessarily be called in the end
 	 * of chain.
 	 *
 	 * @param consumer The consumer of this branch's {@code KStream}
 	 * @return {@code this}
 	 */
-	public KafkaStreamBrancher<K, V> addDefaultBranch(Consumer<? super KStream<K, V>> consumer) {
+	public KafkaStreamBrancher<K, V> defaultBranch(Consumer<? super KStream<K, V>> consumer) {
 		this.defaultConsumer = Objects.requireNonNull(consumer);
 		return this;
 	}
@@ -82,8 +82,9 @@ public final class KafkaStreamBrancher<K, V> {
 	 * Terminating method that builds branches on top of given {@code KStream}.
 	 *
 	 * @param stream {@code KStream} to split
+	 * @return the provided stream
 	 */
-	public void onTopOf(KStream<K, V> stream) {
+	public KStream<K, V> onTopOf(KStream<K, V> stream) {
 		if (this.defaultConsumer != null) {
 			this.predicateList.add((k, v) -> true);
 			this.consumerList.add(this.defaultConsumer);
@@ -94,5 +95,6 @@ public final class KafkaStreamBrancher<K, V> {
 		for (int i = 0; i < this.consumerList.size(); i++) {
 			this.consumerList.get(i).accept(result[i]);
 		}
+		return stream;
 	}
 }

@@ -115,6 +115,37 @@ stream.through(Serdes.Integer(), new JsonSerde<>(Foo.class), "foos");
 
 IMPORTANT: Since Kafka Streams do not support headers, the `addTypeInfo` property on the `JsonSerializer` is ignored.
 
+==== KafkaStreamsBrancher
+
+`KafkaStreamBrancher` class introduces more convenient way to build conditional branches on top of `KStream`.
+
+Instead of
+
+[source,java]
+----
+KStream<String, String>[] branches = builder.stream("source").branch( 
+      (key, value) -> value.contains("A"),
+      (key, value) -> value.contains("B"),
+      (key, value) -> true
+     );
+branches[0].to("A");
+branches[1].to("B");
+branches[2].to("C");
+----
+
+we can use
+
+[source,java]
+----
+new KafkaStreamsBrancher<String, String>()
+   .branch((key, value) -> value.contains("A"), ks -> ks.to("A"))
+   .branch((key, value) -> value.contains("B"), ks -> ks.to("B"))
+   //default branch should not necessarily be defined in the end of the chain!
+   .defaultBranch(ks -> ks.to("C"))
+   .onTopOf(builder.stream("source"));
+   //onTopOf method returns the provided stream so we can continue with method chaining
+----
+
 [[streams-config]]
 ==== Configuration
 
