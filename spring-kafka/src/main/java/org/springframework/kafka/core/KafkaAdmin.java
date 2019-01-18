@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@ import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.common.errors.InvalidPartitionsException;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnsupportedVersionException;
 
 import org.springframework.beans.BeansException;
@@ -206,6 +208,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 
 	private Map<String, NewPartitions> checkPartitions(Map<String, NewTopic> topicNameToTopic,
 			DescribeTopicsResult topicInfo, List<NewTopic> topicsToAdd) {
+
 		Map<String, NewPartitions> topicsToModify = new HashMap<>();
 		topicInfo.values().forEach((n, f) -> {
 			NewTopic topic = topicNameToTopic.get(n);
@@ -254,8 +257,13 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			throw new KafkaException("Timed out waiting for create topics results", e);
 		}
 		catch (ExecutionException e) {
-			logger.error("Failed to create topics", e.getCause());
-			throw new KafkaException("Failed to create topics", e.getCause()); // NOSONAR
+			if (e.getCause() instanceof TopicExistsException) { // Possible race with another app instance
+				logger.debug("Failed to create topics", e.getCause());
+			}
+			else {
+				logger.error("Failed to create topics", e.getCause());
+				throw new KafkaException("Failed to create topics", e.getCause()); // NOSONAR
+			}
 		}
 	}
 
@@ -272,9 +280,14 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			throw new KafkaException("Timed out waiting for create partitions results", e);
 		}
 		catch (ExecutionException e) {
-			logger.error("Failed to create partitions", e.getCause());
-			if (!(e.getCause() instanceof UnsupportedVersionException)) {
-				throw new KafkaException("Failed to create partitions", e.getCause()); // NOSONAR
+			if (e.getCause() instanceof InvalidPartitionsException) { // Possible race with another app instance
+				logger.debug("Failed to create partitions", e.getCause());
+			}
+			else {
+				logger.error("Failed to create partitions", e.getCause());
+				if (!(e.getCause() instanceof UnsupportedVersionException)) {
+					throw new KafkaException("Failed to create partitions", e.getCause()); // NOSONAR
+				}
 			}
 		}
 	}

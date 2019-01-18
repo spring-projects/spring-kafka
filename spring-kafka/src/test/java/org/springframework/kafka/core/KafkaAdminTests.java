@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,18 @@ package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.junit.Test;
@@ -38,6 +42,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -70,6 +75,28 @@ public class KafkaAdminTests {
 		Map<String, TopicDescription> results = topics.all().get();
 		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 3));
 		adminClient.close(10, TimeUnit.SECONDS);
+	}
+
+	@Test
+	public void alreadyExists() throws Exception {
+		AtomicReference<Method> addTopics = new AtomicReference<>();
+		AtomicReference<Method> modifyTopics = new AtomicReference<>();
+		ReflectionUtils.doWithMethods(KafkaAdmin.class, m -> {
+			m.setAccessible(true);
+			if (m.getName().equals("addTopics")) {
+				addTopics.set(m);
+			}
+			else if (m.getName().equals("modifyTopics")) {
+				modifyTopics.set(m);
+			}
+		}, m -> {
+			return m.getName().endsWith("Topics");
+		});
+		try (AdminClient adminClient = AdminClient.create(this.admin.getConfig())) {
+			addTopics.get().invoke(this.admin, adminClient, Collections.singletonList(this.topic1));
+			modifyTopics.get().invoke(this.admin, adminClient, Collections.singletonMap(
+					this.topic1.name(), NewPartitions.increaseTo(this.topic1.numPartitions())));
+		}
 	}
 
 	@Configuration
