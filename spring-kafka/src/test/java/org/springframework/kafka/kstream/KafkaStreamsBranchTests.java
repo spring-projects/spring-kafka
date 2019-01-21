@@ -48,6 +48,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.KafkaStreamBrancher;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -154,19 +155,14 @@ public class KafkaStreamsBranchTests {
 		}
 
 		@Bean
-		@SuppressWarnings("unchecked")
 		public KStream<String, String> trueFalseStream(StreamsBuilder streamsBuilder) {
-			KStream<String, String> trueFalseStream = streamsBuilder
-					.stream(TRUE_FALSE_INPUT_TOPIC, Consumed.with(Serdes.String(), Serdes.String()));
-
-			KStream<String, String>[] branches =
-					trueFalseStream.branch((key, value) -> String.valueOf(true).equals(value),
-							(key, value) -> String.valueOf(false).equals(value));
-
-			branches[0].to(TRUE_TOPIC, Produced.with(Serdes.String(), Serdes.String()));
-			branches[1].to(FALSE_TOPIC, Produced.with(Serdes.String(), Serdes.String()));
-
-			return trueFalseStream;
+			return new KafkaStreamBrancher<String, String>()
+					.branch((key, value) -> String.valueOf(true).equals(value),
+							ks -> ks.to(TRUE_TOPIC, Produced.with(Serdes.String(), Serdes.String())))
+					.branch((key, value) -> String.valueOf(false).equals(value),
+							ks -> ks.to(FALSE_TOPIC, Produced.with(Serdes.String(), Serdes.String())))
+					.onTopOf(streamsBuilder
+							.stream(TRUE_FALSE_INPUT_TOPIC, Consumed.with(Serdes.String(), Serdes.String())));
 		}
 
 	}
