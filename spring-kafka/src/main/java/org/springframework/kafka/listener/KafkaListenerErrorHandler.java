@@ -21,7 +21,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.springframework.messaging.Message;
 
 /**
- * An error handler which is called when a {code @KafkaListener} method
+ * An error handler which is called when a {@code @KafkaListener} method
  * throws an exception. This is invoked higher up the stack than the
  * listener container's error handler. For methods annotated with
  * {@code @SendTo}, the error handler can return a result.
