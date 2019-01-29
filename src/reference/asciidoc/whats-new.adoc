@@ -38,6 +38,8 @@ See <<batch-listeners>> for more information.
 The `DefaultAfterRollbackProcessor` and `SeekToCurrentErrorHandler` can now recover (skip) records that keep failing, and will do so after 10 failures, by default.
 They can be configured to publish failed records to a dead-letter topic.
 
+Starting with version 2.2.4, the consumer's group id can be used while selecting the dead letter topic name.
+
 See <<after-rollback>>, <<seek-to-current>> and <<dead-letters>> for more information.
 
 The `ConsumerStoppingEvent` has been added.

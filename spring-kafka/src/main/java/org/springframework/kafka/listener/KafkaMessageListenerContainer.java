@@ -1243,6 +1243,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				@SuppressWarnings(RAWTYPES) @Nullable Producer producer,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException e) {
 
+			Exception toHandle = e;
+			if (toHandle instanceof ListenerExecutionFailedException) {
+				toHandle = new ListenerExecutionFailedException(toHandle.getMessage(), this.consumerGroupId,
+						toHandle.getCause());
+			}
+			else {
+				/*
+				 * TODO: in 2.3, wrap all exceptions (e.g. thrown by user implementations
+				 * of MessageListener) in LEFE with groupId. @KafkaListeners always throw
+				 * LEFE.
+				 */
+			}
 			if (this.errorHandler instanceof RemainingRecordsErrorHandler) {
 				if (producer == null) {
 					processCommits();
@@ -1252,11 +1264,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				while (iterator.hasNext()) {
 					records.add(iterator.next());
 				}
-				((RemainingRecordsErrorHandler) this.errorHandler).handle(e, records, this.consumer,
+				((RemainingRecordsErrorHandler) this.errorHandler).handle(toHandle, records, this.consumer,
 						KafkaMessageListenerContainer.this.container);
 			}
 			else {
-				this.errorHandler.handle(e, record, this.consumer);
+				this.errorHandler.handle(toHandle, record, this.consumer);
 			}
 			if (producer != null) {
 				ackCurrent(record, producer);

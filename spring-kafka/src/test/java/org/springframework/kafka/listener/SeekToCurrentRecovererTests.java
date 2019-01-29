@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,6 @@ public class SeekToCurrentRecovererTests {
 	public void testMaxFailures() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("seekTestMaxFailures", "false", embeddedKafka);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
@@ -87,7 +86,7 @@ public class SeekToCurrentRecovererTests {
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			data.set(message.value());
 			if (message.offset() == 0) {
-				throw new RuntimeException("fail for max failures");
+				throw new ListenerExecutionFailedException("fail for max failures");
 			}
 			latch.countDown();
 		});
@@ -96,12 +95,16 @@ public class SeekToCurrentRecovererTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testSeekMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
+		final AtomicReference<String> failedGroupId = new AtomicReference<>();
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
 				(r, e) -> new TopicPartition(topic1DLT, r.partition())) {
 
 			@Override
 			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
 				super.accept(record, exception);
+				if (exception instanceof ListenerExecutionFailedException) {
+					failedGroupId.set(((ListenerExecutionFailedException) exception).getGroupId());
+				}
 				recoverLatch.countDown();
 			}
 
@@ -122,6 +125,7 @@ public class SeekToCurrentRecovererTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(data.get()).isEqualTo("bar");
 		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(failedGroupId.get()).isEqualTo("seekTestMaxFailures");
 		container.stop();
 		Consumer<Integer, String> consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic1DLT);

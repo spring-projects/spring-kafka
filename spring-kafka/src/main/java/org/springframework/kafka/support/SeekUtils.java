@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ public final class SeekUtils {
 	 */
 	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
 			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, Log logger) {
+
 		Map<TopicPartition, Long> partitions = new LinkedHashMap<>();
 		AtomicBoolean first = new AtomicBoolean(true);
 		AtomicBoolean skipped = new AtomicBoolean();

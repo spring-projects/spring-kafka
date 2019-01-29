@@ -692,6 +692,9 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated32", 0, 1, "foobar");
 		assertThat(this.config.listen16ErrorLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.listen16Exception).isNotNull();
+		assertThat(this.config.listen16Exception).isInstanceOf(ListenerExecutionFailedException.class);
+		assertThat(((ListenerExecutionFailedException) this.config.listen16Exception).getGroupId())
+				.isEqualTo("converter.explicitGroupId");
 		assertThat(this.config.listen16Message).isEqualTo("foobar");
 	}
 
