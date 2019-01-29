@@ -59,10 +59,12 @@ public class ListenerExecutionFailedException extends KafkaException {
 	}
 
 	/**
-	 * Return the consumer group.id of the container that threw this exception.
-	 * @return the group id.
+	 * Return the consumer group.id property of the container that threw this exception.
+	 * @return the group id; may be null, but not when the exception is passed to an error
+	 * handler by a listener container.
 	 * @since 2.2.4
 	 */
+	@Nullable
 	public String getGroupId() {
 		return this.groupId;
 	}
