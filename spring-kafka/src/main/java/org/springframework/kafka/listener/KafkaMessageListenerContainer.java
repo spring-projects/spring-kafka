@@ -1077,10 +1077,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				@SuppressWarnings(RAW_TYPES) @Nullable Producer producer, RuntimeException e) {
 
 			if (this.batchErrorHandler instanceof ContainerAwareBatchErrorHandler) {
-				this.batchErrorHandler.handle(e, records, this.consumer, KafkaMessageListenerContainer.this.container);
+				this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
+						KafkaMessageListenerContainer.this.container);
 			}
 			else {
-				this.batchErrorHandler.handle(e, records, this.consumer);
+				this.batchErrorHandler.handle(decorateException(e), records, this.consumer);
 			}
 			// if the handler handled the error (no exception), go ahead and commit
 			if (producer != null) {
@@ -1243,6 +1244,27 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				@SuppressWarnings(RAWTYPES) @Nullable Producer producer,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException e) {
 
+			if (this.errorHandler instanceof RemainingRecordsErrorHandler) {
+				if (producer == null) {
+					processCommits();
+				}
+				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+				records.add(record);
+				while (iterator.hasNext()) {
+					records.add(iterator.next());
+				}
+				((RemainingRecordsErrorHandler) this.errorHandler).handle(decorateException(e), records, this.consumer,
+						KafkaMessageListenerContainer.this.container);
+			}
+			else {
+				this.errorHandler.handle(decorateException(e), record, this.consumer);
+			}
+			if (producer != null) {
+				ackCurrent(record, producer);
+			}
+		}
+
+		private Exception decorateException(RuntimeException e) {
 			Exception toHandle = e;
 			if (toHandle instanceof ListenerExecutionFailedException) {
 				toHandle = new ListenerExecutionFailedException(toHandle.getMessage(), this.consumerGroupId,
@@ -1255,24 +1277,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				 * LEFE.
 				 */
 			}
-			if (this.errorHandler instanceof RemainingRecordsErrorHandler) {
-				if (producer == null) {
-					processCommits();
-				}
-				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-				records.add(record);
-				while (iterator.hasNext()) {
-					records.add(iterator.next());
-				}
-				((RemainingRecordsErrorHandler) this.errorHandler).handle(toHandle, records, this.consumer,
-						KafkaMessageListenerContainer.this.container);
-			}
-			else {
-				this.errorHandler.handle(toHandle, record, this.consumer);
-			}
-			if (producer != null) {
-				ackCurrent(record, producer);
-			}
+			return toHandle;
 		}
 
 		public void checkDeser(final ConsumerRecord<K, V> record, String headerName) {

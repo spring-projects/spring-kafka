@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,6 +112,8 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		offsets.put(new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
 		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
 		inOrder.verify(this.producer).commitTransaction();
+		assertThat(this.config.ehException).isInstanceOf(ListenerExecutionFailedException.class);
+		assertThat(((ListenerExecutionFailedException) this.config.ehException).getGroupId()).isEqualTo(CONTAINER_ID);
 	}
 
 	@Configuration
@@ -125,6 +127,8 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
 
 		private final AtomicBoolean fail = new AtomicBoolean(true);
+
+		private volatile Exception ehException;
 
 		@KafkaListener(id = CONTAINER_ID, topics = "foo")
 		public void foo(List<String> in) {
@@ -195,7 +199,17 @@ public class SeekToCurrentBatchErrorHandlerTests {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
 			factory.getContainerProperties().setAckOnError(false);
-			factory.setBatchErrorHandler(new SeekToCurrentBatchErrorHandler());
+			factory.setBatchErrorHandler(new SeekToCurrentBatchErrorHandler() {
+
+				@Override
+				public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+						MessageListenerContainer container) {
+
+					Config.this.ehException = thrownException;
+					super.handle(thrownException, data, consumer, container);
+				}
+
+			});
 			factory.setBatchListener(true);
 			factory.getContainerProperties().setTransactionManager(tm());
 			return factory;
