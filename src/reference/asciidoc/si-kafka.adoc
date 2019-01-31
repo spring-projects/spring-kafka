@@ -15,8 +15,7 @@ It provides the following components:
 
 The Outbound channel adapter is used to publish messages from a Spring Integration channel to Kafka topics.
 The channel is defined in the application context and then wired into the application that sends messages to Kafka.
-Sender applications can publish to Kafka by using Spring Integration messages, which are internally converted
-to Kafka messages by the outbound channel adapter, as follows:
+Sender applications can publish to Kafka by using Spring Integration messages, which are internally converted to Kafka messages by the outbound channel adapter, as follows:
 
 * The payload of the Spring Integration message is used to populate the payload of the Kafka message.
 * By default, the `kafka_messageKey` header of the Spring Integration message is used to populate the key of the Kafka message.
@@ -24,17 +23,14 @@ to Kafka messages by the outbound channel adapter, as follows:
 You can customize the target topic and partition for publishing the message through the `kafka_topic`
 and `kafka_partitionId` headers, respectively.
 
-In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, and
-target partition by applying SpEL expressions on the outbound message. To that end, it supports three mutually exclusive
-pairs of attributes:
+In addition, the `<int-kafka:outbound-channel-adapter>` provides the ability to extract the key, target topic, and target partition by applying SpEL expressions on the outbound message.
+To that end, it supports three mutually exclusive pairs of attributes:
 
 * `topic` and `topic-expression`
 * `message-key` and `message-key-expression`
 * `partition-id` and `partition-id-expression`
 
-These let you specify `topic`, `message-key`, and `partition-id`,
-respectively, as static values on the adapter or to dynamically evaluate their values at runtime against
-the request message.
+These let you specify `topic`, `message-key`, and `partition-id`, respectively, as static values on the adapter or to dynamically evaluate their values at runtime against the request message.
 
 IMPORTANT: The `KafkaHeaders` interface (provided by `spring-kafka`) contains constants used for interacting with
 headers.

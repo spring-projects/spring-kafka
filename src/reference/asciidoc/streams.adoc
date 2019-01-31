@@ -179,7 +179,7 @@ See the Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs
 
 IMPORTANT: Starting with version 2.2, the stream configuration is now provided as a `KafkaStreamsConfiguration` object, rather than as a `StreamsConfig`.
 
-To avoid boilerplate code for most cases, especially when you develop micro-services, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which you should placed on a `@Configuration` class.
+To avoid boilerplate code for most cases, especially when you develop microservices, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which you should placed on a `@Configuration` class.
 All you need is to declare a `KafkaStreamsConfiguration` bean named `defaultKafkaStreamsConfig`.
 A `StreamsBuilder` bean, named `defaultKafkaStreamsBuilder`, is automatically declared in the application context.
 You can declare and use any additional `StreamsBuilderFactoryBean` beans as well.

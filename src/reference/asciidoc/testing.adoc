@@ -513,7 +513,8 @@ public class KafkaTemplateTests {
 ----
 ====
 
-The preceding example uses the Hamcrest matchers. With `AssertJ`, the final part looks like the following code:
+The preceding example uses the Hamcrest matchers.
+With `AssertJ`, the final part looks like the following code:
 
 ====
 [source, java]
