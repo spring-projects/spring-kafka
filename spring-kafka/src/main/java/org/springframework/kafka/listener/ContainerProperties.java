@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -220,6 +220,10 @@ public class ContainerProperties {
 
 	private boolean missingTopicsFatal = true;
 
+	/**
+	 * Create properties for a container that will subscribe to the specified topics.
+	 * @param topics the topics.
+	 */
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topics must be provided");
 		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
@@ -227,12 +231,26 @@ public class ContainerProperties {
 		this.topicPartitions = null;
 	}
 
+	/**
+	 * Create properties for a container that will subscribe to topics matching the
+	 * specified pattern. The framework will create a container that subscribes to all
+	 * topics matching the specified pattern to get dynamically assigned partitions. The
+	 * pattern matching will be performed periodically against topics existing at the time
+	 * of check.
+	 * @param topicPattern the pattern.
+	 * @see org.apache.kafka.clients.CommonClientConfigs#METADATA_MAX_AGE_CONFIG
+	 */
 	public ContainerProperties(Pattern topicPattern) {
 		this.topics = null;
 		this.topicPattern = topicPattern;
 		this.topicPartitions = null;
 	}
 
+	/**
+	 * Create properties for a container that will assign itself the provided topic
+	 * partitions.
+	 * @param topicPartitions the topic partitions.
+	 */
 	public ContainerProperties(TopicPartitionInitialOffset... topicPartitions) {
 		this.topics = null;
 		this.topicPattern = null;

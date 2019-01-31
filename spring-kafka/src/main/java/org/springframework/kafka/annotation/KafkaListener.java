@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,22 +113,29 @@ public @interface KafkaListener {
 	 * The topics for this listener.
 	 * The entries can be 'topic name', 'property-placeholder keys' or 'expressions'.
 	 * An expression must be resolved to the topic name.
+	 * <p>
 	 * Mutually exclusive with {@link #topicPattern()} and {@link #topicPartitions()}.
 	 * @return the topic names or expressions (SpEL) to listen to.
 	 */
 	String[] topics() default {};
 
 	/**
-	 * The topic pattern for this listener.
-	 * The entries can be 'topic name', 'property-placeholder keys' or 'expressions'.
-	 * An expression must be resolved to the topic pattern.
+	 * The topic pattern for this listener. The entries can be 'topic pattern', a
+	 * 'property-placeholder key' or an 'expression'. The framework will create a
+	 * container that subscribes to all topics matching the specified pattern to get
+	 * dynamically assigned partitions. The pattern matching will be performed
+	 * periodically against topics existing at the time of check. An expression must
+	 * be resolved to the topic pattern (String or Pattern result types are supported).
+	 * <p>
 	 * Mutually exclusive with {@link #topics()} and {@link #topicPartitions()}.
 	 * @return the topic pattern or expression (SpEL).
+	 * @see org.apache.kafka.clients.CommonClientConfigs#METADATA_MAX_AGE_CONFIG
 	 */
 	String topicPattern() default "";
 
 	/**
 	 * The topicPartitions for this listener.
+	 * <p>
 	 * Mutually exclusive with {@link #topicPattern()} and {@link #topics()}.
 	 * @return the topic names or expressions (SpEL) to listen to.
 	 */
