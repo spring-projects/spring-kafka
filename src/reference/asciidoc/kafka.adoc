@@ -2816,12 +2816,12 @@ The framework provides the `DeadLetterPublishingRecoverer`, which publishes the 
 The recoverer requires a `KafkaTemplate<Object, Object>`, which is used to send the record.
 You can also, optionally, configure it with a `BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>`, which is called to resolve the destination topic and partition.
 By default, the dead-letter record is sent to a topic named `<originalTopic>.DLT` (the original topic name suffixed with `.DLT`) and to the same partition as the original record.
-Therefore, when using the default resolver, the dead-letter topic must have at least as many partitions as the original topic.
-If the returned `TopicPartition` has a negative partition, the partition is not set in the `ProducerRecord` and so the partition will be selected by Kafka.
-Starting with version 2.2.4, any `ListenerExcutionFailedException` (e.g. thrown when an exception is detected in a `@KafkaListener` method) will be enhanced with the `groupId` property.
-This will allow the destination resolver to use this in addition to the information in the `ConsumerRecord` to select the dead letter topic.
+Therefore, when you use the default resolver, the dead-letter topic must have at least as many partitions as the original topic.
+If the returned `TopicPartition` has a negative partition, the partition is not set in the `ProducerRecord`, so the partition is selected by Kafka.
+Starting with version 2.2.4, any `ListenerExecutionFailedException` (thrown, for example, when an exception is detected in a `@KafkaListener` method) is enhanced with the `groupId` property.
+This allows the destination resolver to use this, in addition to the information in the `ConsumerRecord` to select the dead letter topic.
 
-The following is an example of wiring a custom destination resolver.
+The following example shows how to wire a custom destination resolver:
 
 ====
 [source, java]
