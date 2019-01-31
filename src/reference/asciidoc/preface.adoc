@@ -1,4 +1,4 @@
 [[preface]]
 The Spring for Apache Kafka project applies core Spring concepts to the development of Kafka-based messaging solutions.
-We provide a "template" as a high-level abstraction for sending messages.
+We provide a "`template`" as a high-level abstraction for sending messages.
 We also provide support for Message-driven POJOs.

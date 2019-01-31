@@ -1,41 +1,40 @@
-=== What's new in 2.2 Since 2.1
+=== What's New in 2.2 Since 2.1
+
+This section covers the changes made from version 2.1 to version 2.2.
 
 ==== Kafka Client Version
 
 This version requires the 2.0.0 `kafka-clients` or higher.
 
-==== Class/Package Changes
+==== Class and Package Changes
 
-The class `ContainerProperties` has been moved from `org.springframework.kafka.listener.config` to `org.springframework.kafka.listener`.
+The `ContainerProperties` class has been moved from `org.springframework.kafka.listener.config` to `org.springframework.kafka.listener`.
 
-The enum `AckMode` has been moved from `AbstractMessageListenerContainer` to `ContainerProperties`.
+The `AckMode` enum has been moved from `AbstractMessageListenerContainer` to `ContainerProperties`.
 
-`setBatchErrorHandler()` and `setErrorHandler()` methods have been moved from `ContainerProperties` to `AbstractMessageListenerContainer` (and `AbstractKafkaListenerContainerFactory`).
+The `setBatchErrorHandler()` and `setErrorHandler()` methods have been moved from `ContainerProperties` to both `AbstractMessageListenerContainer` and `AbstractKafkaListenerContainerFactory`.
 
-==== After rollback processing
+==== After Rollback Processing
 
-A new `AfterRollbackProcessor` strategy is provided - see <<after-rollback>> for more information.
+A new `AfterRollbackProcessor` strategy is provided. See <<after-rollback>> for more information.
 
-==== ConcurrentKafkaListenerContainerFactory changes
+==== `ConcurrentKafkaListenerContainerFactory` Changes
 
-The `ConcurrentKafkaListenerContainerFactory` can now be used to create/configure any `ConcurrentMessageListenerContainer`, not just those for `@KafkaListener` annotations.
+You can now use the `ConcurrentKafkaListenerContainerFactory` to create and configure any `ConcurrentMessageListenerContainer`, not only those for `@KafkaListener` annotations.
 See <<container-factory>> for more information.
 
 ==== Listener Container Changes
 
-A new container property `missingTopicsFatal` has been added.
-
+A new container property (`missingTopicsFatal`) has been added.
 See <<kafka-container>> for more information.
 
 A `ConsumerStoppedEvent` is now emitted when a consumer terminates.
-
 See <<thread-safety>> for more information.
 
 Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` object instead of a `List<ConsumerRecord<?, ?>`.
-
 See <<batch-listeners>> for more information.
 
-The `DefaultAfterRollbackProcessor` and `SeekToCurrentErrorHandler` can now recover (skip) records that keep failing, and will do so after 10 failures, by default.
+The `DefaultAfterRollbackProcessor` and `SeekToCurrentErrorHandler` can now recover (skip) records that keep failing, and, by default, does so after 10 failures.
 They can be configured to publish failed records to a dead-letter topic.
 
 Starting with version 2.2.4, the consumer's group id can be used while selecting the dead letter topic name.
@@ -49,11 +48,9 @@ See <<events>> for more information.
 
 You can now override the `concurrency` and `autoStartup` properties of the listener container factory by setting properties on the annotation.
 You can now add configuration to determine which headers (if any) are copied to a reply message.
-
 See <<kafka-listener-annotation>> for more information.
 
 You can now use `@KafkaListener` as a meta-annotation on your own annotations.
-
 See <<kafka-listener-meta>> for more information.
 
 It is now easier to configure a `Validator` for `@Payload` validation.
@@ -62,37 +59,35 @@ See <<kafka-validation>> for more information.
 ==== Header Mapping Changes
 
 Headers of type `MimeType` and `MediaType` are now mapped as simple strings in the `RecordHeader` value.
-Previously, they were mapped as JSON and only `MimeType` was decoded, `MediaType` could not be decoded.
+Previously, they were mapped as JSON and only `MimeType` was decoded. `MediaType` could not be decoded.
 They are now simple strings for interoperability.
 
-Also, the `DefaultKafkaHeaderMapper` has a new method `addToStringClasses` allowing the specification of types that should be mapped using `toString()` instead of JSON.
-
+Also, the `DefaultKafkaHeaderMapper` has a new `addToStringClasses` method, allowing the specification of types that should be mapped by using `toString()` instead of JSON.
 See <<headers>> for more information.
 
 ==== Embedded Kafka Changes
 
-The `KafkaEmbedded` class and its `KafkaRule` interface have need deprecated in favor of the `EmbeddedKafkaBroker` and its JUnit 4 `EmbeddedKafkaRule` wrapper.
+The `KafkaEmbedded` class and its `KafkaRule` interface have been deprecated in favor of the `EmbeddedKafkaBroker` and its JUnit 4 `EmbeddedKafkaRule` wrapper.
 The `@EmbeddedKafka` annotation now populates an `EmbeddedKafkaBroker` bean instead of the deprecated `KafkaEmbedded`.
-This allows the use of `@EmbeddedKafka` in JUnit 5 tests.
-The `@EmbeddedKafka` annotation now has the attribute `ports` to specify the port which will populate the `EmbeddedKafkaBroker`.
-
+This change allows the use of `@EmbeddedKafka` in JUnit 5 tests.
+The `@EmbeddedKafka` annotation now has the attribute `ports` to specify the port that populates the `EmbeddedKafkaBroker`.
 See <<testing>> for more information.
 
 ==== JsonSerializer/Deserializer Enhancements
 
-You can now provide type mapping information using producer/consumer properties.
+You can now provide type mapping information by using producer and consumer properties.
 
 New constructors are available on the deserializer to allow overriding the type header information with the supplied target type.
 
-The `JsonDeserializer` will now remove any type information headers by default.
+The `JsonDeserializer` now removes any type information headers by default.
 
-The `JsonDeserializer` can now be configured to ignore type information headers using a kafka property (since 2.2.3).
+You can now configure the `JsonDeserializer` to ignore type information headers by using a Kafka property (since 2.2.3).
 
 See <<serdes>> for more information.
 
 ==== Kafka Streams Changes
 
-The streams configuration bean must now be a `KafkaStreamsConfiguration` object instead of a `StreamsConfig`.
+The streams configuration bean must now be a `KafkaStreamsConfiguration` object instead of a `StreamsConfig` object.
 
 The `StreamsBuilderFactoryBean` has been moved from package `...core` to `...config`.
 
@@ -101,7 +96,7 @@ The `KafkaStreamBrancher` has been introduced for better end-user experience whe
 See <<kafka-streams>> and <<streams-config>> for more information.
 
 
-==== Transactional Id
+==== Transactional ID
 
 When a transaction is started by the listener container, the `transactional.id` is now the `transactionIdPrefix` appended with `<group.id>.<topic>.<partition>`.
-This is to allow proper fencing of zombies https://www.confluent.io/blog/transactions-apache-kafka/[as described here].
+This change allows proper fencing of zombies, https://www.confluent.io/blog/transactions-apache-kafka/[as described here].

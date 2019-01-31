@@ -1,8 +1,9 @@
 [[deps-for-21x]]
 == Override Dependencies to use the 2.1.x kafka-clients with an Embedded Broker
 
-When using `spring-kafka-test` (version 2.2.x) with the 2.1.x `kafka-clients` jar, you will need to override certain transitive dependencies as follows:
+When you use `spring-kafka-test` (version 2.2.x) with the 2.1.x `kafka-clients` jar, you need to override certain transitive dependencies, as follows:
 
+====
 [source, xml]
 ----
 <dependency>
@@ -46,6 +47,7 @@ When using `spring-kafka-test` (version 2.2.x) with the 2.1.x `kafka-clients` ja
     <scope>test</scope>
 </dependency>
 ----
+====
 
 [appendix]
 [[history]]

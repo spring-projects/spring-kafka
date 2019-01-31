@@ -5,59 +5,65 @@
 
 This version requires the 1.0.0 `kafka-clients` or higher.
 
-NOTE: The 1.1.x client is supported, with _version 2.1.5_, but you will need to override dependencies as described in <<deps-for-11x>>.
-The 1.1.x client will be supported natively in _version 2.2_.
+NOTE: The 1.1.x client is supported with version 2.1.5, but you need to override dependencies as described in <<deps-for-11x>>.
+
+// TODO: No topic marked deps-for-11x exists in any of the files in the directory that contains this file.
+
+The 1.1.x client is supported natively in version 2.2.
 
 ==== JSON Improvements
 
-The `StringJsonMessageConverter` and `JsonSerializer` now add type information in `Headers`, allowing the converter and `JsonDeserializer` to create specific types on reception, based on the message itself rather than a fixed configured type.
+The `StringJsonMessageConverter` and `JsonSerializer` now add type information in `Headers`, letting the converter and `JsonDeserializer` create specific types on reception, based on the message itself rather than a fixed configured type.
 See <<serdes>> for more information.
 
 
 ==== Container Stopping Error Handlers
 
-Container Error handlers are now provided for both record and batch listeners that treat any exceptions thrown by the listener as fatal; they stop the container.
+Container error handlers are now provided for both record and batch listeners that treat any exceptions thrown by the listener as fatal/
+They stop the container.
 See <<annotation-error-handling>> for more information.
 
-==== Pausing/Resuming Containers
+==== Pausing and Resuming Containers
 
-The listener containers now have `pause()` and `resume()` methods (since _version 2.1.3_).
+The listener containers now have `pause()` and `resume()` methods (since version 2.1.3).
 See <<pause-resume>> for more information.
 
 ==== Stateful Retry
 
-Starting with _version 2.1.3_, stateful retry can be configured; see <<stateful-retry>> for more information.
+Starting with version 2.1.3, you can configure stateful retry.
+See <<stateful-retry>> for more information.
 
 ==== Client ID
 
-Starting with _version 2.1.1_, it is now possible to set the `client.id` prefix on `@KafkaListener`.
-Previously, to customize the client id, you would need a separate consumer factory (and container factory) per listener.
-The prefix is suffixed with `-n` to provide unique client ids when using concurrency.
+Starting with version 2.1.1, you can now set the `client.id` prefix on `@KafkaListener`.
+Previously, to customize the client ID, you needed a separate consumer factory (and container factory) per listener.
+The prefix is suffixed with `-n` to provide unique client IDs when you use concurrency.
 
 
 ==== Logging Offset Commits
 
-By default, logging of topic offset commits is performed with the DEBUG logging level.
-Starting with _version 2.1.2_, there is a new property in `ContainerProperties` called `commitLogLevel` which allows you to specify the log level for these messages.
+By default, logging of topic offset commits is performed with the `DEBUG` logging level.
+Starting with version 2.1.2, a new property in `ContainerProperties` called `commitLogLevel` lets you specify the log level for these messages.
 See <<kafka-container>> for more information.
 
 ==== Default @KafkaHandler
 
-Starting with _version 2.1.3_, one of the `@KafkaHandler` s on a class-level `@KafkaListener` can be designated as the default.
+Starting with version 2.1.3, you can designate one of the `@KafkaHandler` annotations on a class-level `@KafkaListener` as the default.
 See <<class-level-kafkalistener>> for more information.
 
 ==== ReplyingKafkaTemplate
 
-Starting with _version 2.1.3_, a subclass of `KafkaTemplate` is provided to support request/reply semantics.
+Starting with version 2.1.3, a subclass of `KafkaTemplate` is provided to support request/reply semantics.
 See <<replying-template>> for more information.
 
 ==== ChainedKafkaTransactionManager
 
-_version 2.1.3_ introduced the `ChainedKafkaTransactionManager` see <<chained-transaction-manager>> for more information.
+Version 2.1.3 introduced the `ChainedKafkaTransactionManager`.
+See <<chained-transaction-manager>> for more information.
 
 ==== Migration Guide from 2.0
 
-https://github.com/spring-projects/spring-kafka/wiki/Spring-for-Apache-Kafka-2.0-to-2.1-Migration-Guide[2.0 to 2.1 Migration].
+See the https://github.com/spring-projects/spring-kafka/wiki/Spring-for-Apache-Kafka-2.0-to-2.1-Migration-Guide[2.0 to 2.1 Migration] guide.
 
 === Changes Between 1.3 and 2.0
 
@@ -65,9 +71,9 @@ https://github.com/spring-projects/spring-kafka/wiki/Spring-for-Apache-Kafka-2.0
 
 The Spring for Apache Kafka project now requires Spring Framework 5.0 and Java 8.
 
-==== @KafkaListener Changes
+==== `@KafkaListener` Changes
 
-You can now annotate `@KafkaListener` methods (and classes, and `@KafkaHandler` methods) with `@SendTo`.
+You can now annotate `@KafkaListener` methods (and classes and `@KafkaHandler` methods) with `@SendTo`.
 If the method returns a result, it is forwarded to the specified topic.
 See <<annotation-send-to>> for more information.
 
@@ -76,7 +82,7 @@ See <<annotation-send-to>> for more information.
 Message listeners can now be aware of the `Consumer` object.
 See <<message-listeners>> for more information.
 
-==== ConsumerAwareRebalanceListener
+==== Using `ConsumerAwareRebalanceListener`
 
 Rebalance listeners can now access the `Consumer` object during rebalance notifications.
 See <<rebalance-listeners>> for more information.
@@ -85,40 +91,42 @@ See <<rebalance-listeners>> for more information.
 
 ==== Support for Transactions
 
-The 0.11.0.0 client library added support for transactions; the `KafkaTransactionManager` and other support for transactions has been added.
+The 0.11.0.0 client library added support for transactions.
+The `KafkaTransactionManager` and other support for transactions have been added.
 See <<transactions>> for more information.
 
 ==== Support for Headers
 
-The 0.11.0.0 client library added support for message headers; these can now be mapped to/from `spring-messaging` `MessageHeaders`.
+The 0.11.0.0 client library added support for message headers.
+These can now be mapped to and from `spring-messaging` `MessageHeaders`.
 See <<headers>> for more information.
 
 ==== Creating Topics
 
-The 0.11.0.0 client library provides an `AdminClient` which can be used to create topics.
-The `KafkaAdmin` uses this client to automatically add topics defined as `@Bean` s.
+The 0.11.0.0 client library provides an `AdminClient`, which you can use to create topics.
+The `KafkaAdmin` uses this client to automatically add topics defined as `@Bean` instances.
 
 
-==== Support for Kafka timestamps
+==== Support for Kafka Timestamps
 
-`KafkaTemplate` now supports API to add records with timestamps.
+`KafkaTemplate` now supports an API to add records with timestamps.
 New `KafkaHeaders` have been introduced regarding `timestamp` support.
-Also new `KafkaConditions.timestamp()` and `KafkaMatchers.hasTimestamp()` testing utilities have been added.
-See <<kafka-template>>, <<kafka-listener-annotation>> and <<testing>> for more details.
+Also, new `KafkaConditions.timestamp()` and `KafkaMatchers.hasTimestamp()` testing utilities have been added.
+See <<kafka-template>>, <<kafka-listener-annotation>>, and <<testing>> for more details.
 
-==== @KafkaListener Changes
+==== `@KafkaListener` Changes
 
 You can now configure a `KafkaListenerErrorHandler` to handle exceptions.
 See <<annotation-error-handling>> for more information.
 
 By default, the `@KafkaListener` `id` property is now used as the `group.id` property, overriding the property configured in the consumer factory (if present).
 Further, you can explicitly configure the `groupId` on the annotation.
-Previously, you would have needed a separate container factory (and consumer factory) to use different `group.id` s for listeners.
+Previously, you would have needed a separate container factory (and consumer factory) to use different `group.id` values for listeners.
 To restore the previous behavior of using the factory configured `group.id`, set the `idIsGroup` property on the annotation to `false`.
 
-==== @EmbeddedKafka Annotation
+==== `@EmbeddedKafka` Annotation
 
-For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` as a bean.
+For convenience, a test class-level `@EmbeddedKafka` annotation is provided, to register `KafkaEmbedded` as a bean.
 See <<testing>> for more information.
 
 ==== Kerberos Configuration
@@ -143,7 +151,7 @@ Listeners can be configured to receive the entire batch of messages returned by 
 
 ==== Null Payloads
 
-Null payloads are used to "delete" keys when using log compaction.
+Null payloads are used to "`delete`" keys when you use log compaction.
 
 ==== Initial Offset
 
@@ -151,7 +159,7 @@ When explicitly assigning partitions, you can now configure the initial offset r
 
 ==== Seek
 
-You can now seek the position of each topic/partition.
-This can be used to set the initial position during initialization when group management is in use and Kafka assigns the partitions.
-You can also seek when an idle container is detected, or at any arbitrary point in your application's execution.
+You can now seek the position of each topic or partition.
+You can use this to set the initial position during initialization when group management is in use and Kafka assigns the partitions.
+You can also seek when an idle container is detected or at any arbitrary point in your application's execution.
 See <<seek>> for more information.

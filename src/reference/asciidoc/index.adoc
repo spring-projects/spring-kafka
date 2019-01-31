@@ -1,7 +1,5 @@
 [[spring-kafka-reference]]
-
 = Spring for Apache Kafka
-
 :toc:
 
 == Preface
@@ -18,11 +16,9 @@ include::./whats-new.adoc[]
 == Introduction
 
 This first part of the reference documentation is a high-level overview of Spring for Apache Kafka and the underlying
-concepts and some code snippets that will get you up and running as quickly as possible.
+concepts and some code snippets that can help you get up and running as quickly as possible.
 
 include::quick-tour.adoc[]
-
-// include::whats-new.adoc[]
 
 == Reference
 
@@ -37,7 +33,7 @@ include::testing.adoc[]
 
 == Spring Integration
 
-This part of the reference shows how to use the `spring-integration-kafka` module of Spring Integration.
+This part of the reference guide shows how to use the `spring-integration-kafka` module of Spring Integration.
 
 include::si-kafka.adoc[]
 
@@ -45,7 +41,7 @@ include::si-kafka.adoc[]
 
 == Other Resources
 
-In addition to this reference documentation, there exist a number of other resources that may help you learn about
+In addition to this reference documentation, we recommend a number of other resources that may help you learn about
 Spring and Apache Kafka.
 
 - https://kafka.apache.org/[Apache Kafka Project Home Page]
