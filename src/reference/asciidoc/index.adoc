@@ -1,8 +1,18 @@
 [[spring-kafka-reference]]
-
 = Spring for Apache Kafka
+:toc: left
+:toclevels: 4
+:numbered:
+:icons: font
+:hide-uri-scheme:
+Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant
 
-:toc:
+(C) 2016 - 2019 by Pivotal Software, Inc.
+
+Copies of this document may be made for your own use and for distribution to others, provided that you do not charge any fee for such copies and further
+provided that each copy contains this Copyright Notice, whether distributed in print or electronically.
+
+*{project-version}*
 
 == Preface
 
