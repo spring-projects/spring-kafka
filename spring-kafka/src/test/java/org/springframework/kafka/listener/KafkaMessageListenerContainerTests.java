@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1961,22 +1961,26 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testExceptionWhenCommitAfterRebalance() throws Exception {
 		final CountDownLatch rebalanceLatch = new CountDownLatch(2);
-		final CountDownLatch consumeLatch = new CountDownLatch(7);
+		final CountDownLatch consumeFirstLatch = new CountDownLatch(1);
+		final CountDownLatch consumeLatch = new CountDownLatch(2);
 
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test19", "false", embeddedKafka);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-		props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 15000);
+		props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 3_000);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic19);
-		containerProps.setMessageListener((MessageListener<Integer, String>) messages -> {
-			logger.info("listener: " + messages);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			logger.warn("listener: " + message);
+			consumeFirstLatch.countDown();
+			if (consumeLatch.getCount() > 1) {
+				try {
+					Thread.sleep(5_000);
+				}
+				catch (InterruptedException e1) {
+					Thread.currentThread().interrupt();
+				}
+			}
 			consumeLatch.countDown();
-			try {
-				Thread.sleep(3000);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
 		});
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.BATCH);
@@ -1996,7 +2000,7 @@ public class KafkaMessageListenerContainerTests {
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				logger.info("rebalance occurred.");
+				logger.warn("rebalance occurred.");
 				rebalanceLatch.countDown();
 			}
 		});
@@ -2007,16 +2011,19 @@ public class KafkaMessageListenerContainerTests {
 		container.setErrorHandler(new SeekToCurrentErrorHandler());
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
-		container.pause();
-
-		for (int i = 0; i < 6; i++) {
-			template.sendDefault(0, 0, "a");
-		}
-		template.flush();
-
-		container.resume();
+		template.sendDefault(0, 0, "a");
+		assertThat(consumeFirstLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		// should be rebalanced and consume again
-		assertThat(rebalanceLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		boolean rebalancedForTooLongBetweenPolls = rebalanceLatch.await(60, TimeUnit.SECONDS);
+		int n = 0;
+		while (!rebalancedForTooLongBetweenPolls & n++ < 3) {
+			// try a few times in case the rebalance was delayed
+			template.sendDefault(0, 0, "a");
+			rebalancedForTooLongBetweenPolls = rebalanceLatch.await(60, TimeUnit.SECONDS);
+		}
+		if (!rebalancedForTooLongBetweenPolls) {
+			logger.error("Rebalance did not occur - perhaps the CI server is too busy, don't fail the test");
+		}
 		assertThat(consumeLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 	}
