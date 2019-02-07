@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
@@ -252,6 +253,9 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.listen4Consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
 						.getPropertyValue(this.registry.getListenerContainer("qux"), "containers", List.class).get(0),
 				"listenerConsumer.consumer"));
+		assertThat(
+				KafkaTestUtils.getPropertyValue(this.listener.listen4Consumer, "fetcher.maxPollRecords", Integer.class))
+						.isEqualTo(100);
 		assertThat(this.quxGroup).hasSize(1);
 		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
 		List<?> containers = KafkaTestUtils.getPropertyValue(manualContainer, "containers", List.class);
@@ -878,7 +882,7 @@ public class EnableKafkaIntegrationTests {
 			willAnswer(i -> {
 				Consumer<Integer, CharSequence> spy =
 						spy(consumerFactory().createConsumer(i.getArgument(0), i.getArgument(1),
-								i.getArgument(2)));
+								i.getArgument(2), i.getArgument(3)));
 				willAnswer(invocation -> {
 
 					try {
@@ -890,7 +894,7 @@ public class EnableKafkaIntegrationTests {
 
 				}).given(spy).commitSync(anyMap());
 				return spy;
-			}).given(spiedCf).createConsumer(anyString(), anyString(), anyString());
+			}).given(spiedCf).createConsumer(anyString(), anyString(), anyString(), isNull());
 			factory.setConsumerFactory(spiedCf);
 			factory.setBatchListener(true);
 			factory.setRecordFilterStrategy(recordFilter());
@@ -1413,7 +1417,10 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory",
-				containerGroup = "qux#{'Group'}")
+				containerGroup = "qux#{'Group'}", properties = {
+						"max.poll.interval.ms:#{'${poll.interval:60000}'}",
+						ConsumerConfig.MAX_POLL_RECORDS_CONFIG + "=#{'${poll.recs:100}'}"
+				})
 		public void listen4(@Payload String foo, Acknowledgment ack, Consumer<?, ?> consumer) {
 			this.ack = ack;
 			this.ack.acknowledge();

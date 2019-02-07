@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ public class TestOOMError {
 	public void testOOMCMLC() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), eq("-0"))).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), eq("-0"), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -93,7 +93,7 @@ public class TestOOMError {
 	public void testOOMKMLC() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),

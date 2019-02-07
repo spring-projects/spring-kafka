@@ -57,6 +57,9 @@ See <<kafka-listener-meta>> for more information.
 It is now easier to configure a `Validator` for `@Payload` validation.
 See <<kafka-validation>> for more information.
 
+You can now specify kafka consumer properties directly on the annotation; these will override any properties with the same name defined in the consumer factory (since version 2.2.4).
+See <<annotation-properties>> for more information.
+
 ==== Header Mapping Changes
 
 Headers of type `MimeType` and `MediaType` are now mapped as simple strings in the `RecordHeader` value.

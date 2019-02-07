@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2018 the original author or authors.
+ * Copyright 2014-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.annotation;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -438,6 +441,19 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		String autoStartup = kafkaListener.autoStartup();
 		if (StringUtils.hasText(autoStartup)) {
 			endpoint.setAutoStartup(resolveExpressionAsBoolean(autoStartup, "autoStartup"));
+		}
+		String[] propertyStrings = kafkaListener.properties();
+		if (propertyStrings.length > 0) {
+			Properties properties = new Properties();
+			for (String property : propertyStrings) {
+				try {
+					properties.load(new StringReader(resolveExpressionAsString(property, "property")));
+				}
+				catch (IOException e) {
+					this.logger.error("Failed to load property " + property + ", continuing...", e);
+				}
+			}
+			endpoint.setConsumerProperties(properties);
 		}
 
 		KafkaListenerContainerFactory<?> factory = null;

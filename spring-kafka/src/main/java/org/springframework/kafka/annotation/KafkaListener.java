@@ -220,4 +220,25 @@ public @interface KafkaListener {
 	 */
 	String autoStartup() default "";
 
+	/**
+	 * Kafka consumer properties; they will supersede any properties with the same name
+	 * defined in the consumer factory (if the consumer factory supports property overrides).
+	 * <h3>Supported Syntax</h3>
+	 * <p>The supported syntax for key-value pairs is the same as the
+	 * syntax defined for entries in a Java
+	 * {@linkplain java.util.Properties#load(java.io.Reader) properties file}:
+	 * <ul>
+	 * <li>{@code key=value}</li>
+	 * <li>{@code key:value}</li>
+	 * <li>{@code key value}</li>
+	 * </ul>
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @return the properties.
+	 * @since 2.2.4
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #groupId()
+	 * @see #clientIdPrefix()
+	 */
+	String[] properties() default {};
+
 }

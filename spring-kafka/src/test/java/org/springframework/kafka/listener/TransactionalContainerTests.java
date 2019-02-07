@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,7 +154,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
@@ -237,7 +237,7 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).seek(any(), anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -304,7 +304,7 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).seek(any(), anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -368,7 +368,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
 		Producer producer = mock(Producer.class);
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);

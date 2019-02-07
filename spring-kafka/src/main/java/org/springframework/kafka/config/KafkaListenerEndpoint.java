@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,13 @@
 package org.springframework.kafka.config;
 
 import java.util.Collection;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.lang.Nullable;
 
 /**
  * Model for a Kafka listener endpoint. Can be used against a
@@ -96,6 +98,22 @@ public interface KafkaListenerEndpoint {
 	 * @since 2.2
 	 */
 	Boolean getAutoStartup();
+
+	/**
+	 * Get the consumer properties that will be merged with the consumer properties
+	 * provided by the consumer factory; properties here will supersede any with the same
+	 * name(s) in the consumer factory.
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @return the properties.
+	 * @since 2.1.4
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #getGroupId()
+	 * @see #getClientIdPrefix()
+	 */
+	@Nullable
+	default Properties getConsumerProperties() {
+		return null;
+	}
 
 	/**
 	 * Setup the specified message listener container with the model

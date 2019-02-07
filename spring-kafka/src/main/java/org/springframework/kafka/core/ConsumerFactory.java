@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -70,8 +71,6 @@ public interface ConsumerFactory<K, V> {
 	 * Create a consumer with an explicit group id; in addition, the
 	 * client id suffix is appended to the clientIdPrefix which overrides the
 	 * {@code client.id} property, if present.
-	 * If a factory does not implement this method, {@link #createConsumer(String, String)}
-	 * is invoked, ignoring the prefix.
 	 * @param groupId the group id.
 	 * @param clientIdPrefix the prefix.
 	 * @param clientIdSuffix the suffix.
@@ -80,6 +79,24 @@ public interface ConsumerFactory<K, V> {
 	 */
 	Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
 			@Nullable String clientIdSuffix);
+
+	/**
+	 * Create a consumer with an explicit group id; in addition, the
+	 * client id suffix is appended to the clientIdPrefix which overrides the
+	 * {@code client.id} property, if present. In addition, consumer properties can
+	 * be overridden if the factory implementation supports it.
+	 * @param groupId the group id.
+	 * @param clientIdPrefix the prefix.
+	 * @param clientIdSuffix the suffix.
+	 * @param properties the properties to override.
+	 * @return the consumer.
+	 * @since 2.2.4
+	 */
+	default Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable String clientIdSuffix, @Nullable Properties properties) {
+
+		return createConsumer(groupId, clientIdPrefix, clientIdSuffix);
+	}
 
 	/**
 	 * Return true if consumers created by this factory use auto commit.

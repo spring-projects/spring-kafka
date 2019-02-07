@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -26,6 +27,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
@@ -219,6 +221,8 @@ public class ContainerProperties {
 	private LogIfLevelEnabled.Level commitLogLevel = LogIfLevelEnabled.Level.DEBUG;
 
 	private boolean missingTopicsFatal = true;
+
+	private Properties consumerProperties;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -607,6 +611,37 @@ public class ContainerProperties {
 	 */
 	public void setMissingTopicsFatal(boolean missingTopicsFatal) {
 		this.missingTopicsFatal = missingTopicsFatal;
+	}
+
+	/**
+	 * Get the consumer properties that will be merged with the consumer properties
+	 * provided by the consumer factory; properties here will supersede any with the same
+	 * name(s) in the consumer factory.
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @return the properties.
+	 * @since 2.1.4
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #setGroupId(String)
+	 * @see #setClientId(String)
+	 */
+	@Nullable
+	public Properties getConsumerProperties() {
+		return this.consumerProperties;
+	}
+
+	/**
+	 * Set the consumer properties that will be merged with the consumer properties
+	 * provided by the consumer factory; properties here will supersede any with the same
+	 * name(s) in the consumer factory.
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @param consumerProperties the properties.
+	 * @since 2.1.4
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #setGroupId(String)
+	 * @see #setClientId(String)
+	 */
+	public void setConsumerProperties(Properties consumerProperties) {
+		this.consumerProperties = consumerProperties;
 	}
 
 	@Override

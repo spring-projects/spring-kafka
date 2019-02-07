@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
@@ -46,6 +47,7 @@ import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
@@ -108,6 +110,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private Boolean autoStartup;
 
 	private ReplyHeadersConfigurer replyHeadersConfigurer;
+
+	private Properties consumerProperties;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -384,6 +388,27 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setReplyHeadersConfigurer(ReplyHeadersConfigurer replyHeadersConfigurer) {
 		this.replyHeadersConfigurer = replyHeadersConfigurer;
+	}
+
+	@Override
+	@Nullable
+	public Properties getConsumerProperties() {
+		return this.consumerProperties;
+	}
+
+	/**
+	 * Set the consumer properties that will be merged with the consumer properties
+	 * provided by the consumer factory; properties here will supersede any with the same
+	 * name(s) in the consumer factory.
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @param consumerProperties the properties.
+	 * @since 2.1.4
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #setGroupId(String)
+	 * @see #setClientIdPrefix(String)
+	 */
+	public void setConsumerProperties(Properties consumerProperties) {
+		this.consumerProperties = consumerProperties;
 	}
 
 	@Override

@@ -40,6 +40,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -530,7 +531,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testRecordAckMock() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -597,7 +598,7 @@ public class KafkaMessageListenerContainerTests {
 	private void testRecordAckMockForeignThreadGuts(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -660,7 +661,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testNonResponsiveConsumerEvent() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq(""), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq(""), isNull(), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -700,7 +701,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testNonResponsiveConsumerEventNotIssuedWithActiveConsumer() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq(""), isNull())).willReturn(consumer);
+		given(cf.createConsumer(isNull(), eq(""), isNull(), isNull())).willReturn(consumer);
 		ConsumerRecords records = new ConsumerRecords(Collections.emptyMap());
 		CountDownLatch latch = new CountDownLatch(20);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
@@ -1210,7 +1211,7 @@ public class KafkaMessageListenerContainerTests {
 
 			@Override
 			public Consumer<Integer, String> createConsumer(String groupId, String clientIdPrefix,
-					String clientIdSuffix) {
+					String clientIdSuffix, Properties properties) {
 				return new KafkaConsumer<Integer, String>(props) {
 
 					@Override
@@ -1854,7 +1855,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testPauseResume() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -1921,7 +1922,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInitialSeek() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		final CountDownLatch latch = new CountDownLatch(1);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
@@ -2033,7 +2034,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testAckModeCount() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
 		TopicPartition topicPartition = new TopicPartition("foo", 0);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records1 = new HashMap<>();
 		records1.put(topicPartition, Arrays.asList(
@@ -2099,7 +2100,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testCommitErrorHandlerCalled() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),

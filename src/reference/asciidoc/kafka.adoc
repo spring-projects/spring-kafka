@@ -1103,6 +1103,7 @@ public void pollResults(ConsumerRecords<?, ?> records) {
 IMPORTANT: If the container factory has a `RecordFilterStrategy` configured, it is ignored for `ConsumerRecords<?, ?>` listeners, with a `WARN` log message emitted.
 Records can only be filtered with a batch listener if the `<List<?>>` form of listener is used.
 
+[[annotation-properties]]
 ====== Annotation Properties
 
 Starting with version 2.0, the `id` property (if present) is used as the Kafka consumer `group.id` property, overriding the configured property in the consumer factory, if present.
@@ -1175,6 +1176,20 @@ The following example shows how to do so:
 ----
 @KafkaListener(beanRef = "__x", topics = "#{__x.topic}",
     groupId = "#{__x.topic}.group")
+----
+====
+
+Starting with version 2.2.4, you can specify Kafka consumer properties directly on the annotation, these will override any properties with the same name configured in the consumer factory. You **cannot** specify the `group.id` and `client.id` properties this way; they will be ignored; use the `groupId` and `clientIdPrefix` annotation properties for those.
+
+The properties are specified as individual strings with the normal Java `Properties` file format: `foo:bar`, `foo=bar`, or `foo bar`.
+
+====
+[source, java]
+----
+@KafkaListener(topics = "myTopic", groupId="group", properties= {
+    "max.poll.interval.ms:60000",
+    ConsumerConfig.MAX_POLL_RECORDS_CONFIG + "=100"
+})
 ----
 ====
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -98,11 +99,25 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	public Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
 			@Nullable String clientIdSuffix) {
 
-		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffix);
+		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffix, null);
+	}
+
+	@Override
+	public Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable final String clientIdSuffixArg, @Nullable Properties properties) {
+
+		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+	}
+
+	@Deprecated
+	protected KafkaConsumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable final String clientIdSuffixArg) {
+
+		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, null);
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable final String clientIdSuffixArg) {
+			@Nullable final String clientIdSuffixArg, @Nullable Properties properties) {
 
 		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefix);
 		String clientIdSuffix = clientIdSuffixArg;
@@ -111,7 +126,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		}
 		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
 				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
-		if (groupId == null && !shouldModifyClientId) {
+		if (groupId == null && properties == null && !shouldModifyClientId) {
 			return createKafkaConsumer(this.configs);
 		}
 		else {
@@ -123,6 +138,13 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 				modifiedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG,
 						(overrideClientIdPrefix ? clientIdPrefix
 								: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
+			}
+			if (properties != null) {
+				properties.forEach((k, v) -> {
+					if (!k.equals(ConsumerConfig.CLIENT_ID_CONFIG) && !k.equals(ConsumerConfig.GROUP_ID_CONFIG)) {
+						modifiedConfigs.put((String) k, v);
+					}
+				});
 			}
 			return createKafkaConsumer(modifiedConfigs);
 		}

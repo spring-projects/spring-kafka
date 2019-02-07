@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -132,7 +132,7 @@ public class ContainerStoppingErrorHandlerBatchModeTests {
 		public ConsumerFactory consumerFactory() {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0")).willReturn(consumer);
+			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", null)).willReturn(consumer);
 			return consumerFactory;
 		}
 

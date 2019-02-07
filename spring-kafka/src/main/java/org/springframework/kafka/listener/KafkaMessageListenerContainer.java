@@ -497,7 +497,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 					KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
 							this.consumerGroupId,
 							this.containerProperties.getClientId(),
-							KafkaMessageListenerContainer.this.clientIdSuffix);
+							KafkaMessageListenerContainer.this.clientIdSuffix,
+							this.containerProperties.getConsumerProperties());
 
 			if (this.transactionManager != null) {
 				this.transactionTemplate = new TransactionTemplate(this.transactionManager);
