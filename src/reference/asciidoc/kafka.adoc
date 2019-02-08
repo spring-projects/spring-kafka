@@ -735,7 +735,7 @@ Aside from the logs, there was no indication that there was a problem.
 To restore the previous behavior, you canset the property to `false`.
 
 [[using-ConcurrentMessageListenerContainer]]
-====== Using`ConcurrentMessageListenerContainer`
+====== Using `ConcurrentMessageListenerContainer`
 
 The single constructor is similar to the first `KafkaListenerContainer` constructor.
 The following listing shows the constructor's signature:
