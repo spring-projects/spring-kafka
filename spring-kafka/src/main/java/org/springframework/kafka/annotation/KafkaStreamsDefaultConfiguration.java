@@ -64,7 +64,8 @@ public class KafkaStreamsDefaultConfiguration {
 		else {
 			throw new UnsatisfiedDependencyException(KafkaStreamsDefaultConfiguration.class.getName(),
 					DEFAULT_STREAMS_BUILDER_BEAN_NAME, "streamsConfig", "There is no '" +
-					DEFAULT_STREAMS_CONFIG_BEAN_NAME + "' Properties bean in the application context.\n" +
+					DEFAULT_STREAMS_CONFIG_BEAN_NAME + "' " + KafkaStreamsConfiguration.class.getName() +
+					" bean in the application context.\n" +
 					"Consider declaring one or don't use @EnableKafkaStreams.");
 		}
 	}

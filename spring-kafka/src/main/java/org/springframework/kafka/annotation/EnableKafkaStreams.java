@@ -35,7 +35,7 @@ import org.springframework.context.annotation.Import;
  * public class AppConfig {
  *
  * 	&#064;Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
- *  public StreamsConfig kStreamsConfigs() {
+ *  public KafkaStreamsConfiguration kStreamsConfigs() {
  *     ...
  *  }
  * 	// other &#064;Bean definitions
