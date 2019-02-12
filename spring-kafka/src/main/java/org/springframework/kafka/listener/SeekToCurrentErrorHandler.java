@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.Log;
@@ -126,17 +127,18 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 		else if (this.commitRecovered) {
 			if (container.getContainerProperties().getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
 				ConsumerRecord<?, ?> record = records.get(0);
+				Map<TopicPartition, OffsetAndMetadata> offsetToCommit = Collections.singletonMap(
+						new TopicPartition(record.topic(), record.partition()),
+						new OffsetAndMetadata(record.offset() + 1));
 				if (container.getContainerProperties().isSyncCommits()) {
-					consumer.commitSync(Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-							new OffsetAndMetadata(record.offset() + 1)));
+					consumer.commitSync(offsetToCommit);
 				}
 				else {
 					OffsetCommitCallback commitCallback = container.getContainerProperties().getCommitCallback();
 					if (commitCallback == null) {
 						commitCallback = LOGGING_COMMIT_CALLBACK;
 					}
-					consumer.commitAsync(Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-							new OffsetAndMetadata(record.offset() + 1)), commitCallback);
+					consumer.commitAsync(offsetToCommit, commitCallback);
 				}
 			}
 			else {
