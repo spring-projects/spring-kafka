@@ -2770,6 +2770,8 @@ SeekToCurrentErrorHandler errorHandler =
 ----
 ====
 
+Starting with version 2.2.4, when the container is configured with `AckMode.MANUAL_IMMEDIATE`, the error handler can be configured to commit the offset of recovered records; set the `commitRecovered` property to `true`.
+
 See also <<dead-letters>>.
 
 When using transactions, similar functionality is provided by the `DefaultAfterRollbackProcessor`.

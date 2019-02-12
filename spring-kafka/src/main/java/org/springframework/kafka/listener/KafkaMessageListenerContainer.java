@@ -1741,26 +1741,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 
 	}
 
-	private static final class LoggingCommitCallback implements OffsetCommitCallback {
-
-		private static final Log logger = LogFactory.getLog(LoggingCommitCallback.class); // NOSONAR
-
-		LoggingCommitCallback() {
-			super();
-		}
-
-		@Override
-		public void onComplete(Map<TopicPartition, OffsetAndMetadata> offsets, Exception exception) {
-			if (exception != null) {
-				logger.error("Commit failed for " + offsets, exception);
-			}
-			else if (logger.isDebugEnabled()) {
-				logger.debug("Commits for " + offsets + " completed");
-			}
-		}
-
-	}
-
 	private static final class OffsetMetadata {
 
 		private final Long offset;

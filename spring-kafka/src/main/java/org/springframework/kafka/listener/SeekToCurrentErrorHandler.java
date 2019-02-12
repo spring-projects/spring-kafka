@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -23,8 +24,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
 
@@ -39,9 +44,13 @@ import org.springframework.lang.Nullable;
  */
 public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 
-	private static final Log logger = LogFactory.getLog(SeekToCurrentErrorHandler.class); // NOSONAR
+	protected static final Log LOGGER = LogFactory.getLog(SeekToCurrentErrorHandler.class); // NOSONAR visibility
+
+	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 
 	private final FailedRecordTracker failureTracker;
+
+	private boolean commitRecovered;
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
@@ -82,15 +91,57 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	 * @since 2.2
 	 */
 	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
-		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, logger);
+		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, LOGGER);
+	}
+
+	/**
+	 * Whether the offset for a recovered record should be committed.
+	 * @return true to commit recovered record offsets.
+	 * @since 2.2.4
+	 */
+	protected boolean isCommitRecovered() {
+		return this.commitRecovered;
+	}
+
+	/**
+	 * Set to true to commit the offset for a recovered record. The container
+	 * must be configured with {@link AckMode#MANUAL_IMMEDIATE}. Whether or not
+	 * the commit is sync or async depends on the container's syncCommits
+	 * property.
+	 * @param commitRecovered true to commit.
+	 * @since 2.2.4
+	 * @see #setOffsetCommitCallback(OffsetCommitCallback)
+	 */
+	public void setCommitRecovered(boolean commitRecovered) {
+		this.commitRecovered = commitRecovered;
 	}
 
 	@Override
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
-		if (!SeekUtils.doSeeks(records, consumer, thrownException, true, this.failureTracker::skip, logger)) {
+		if (!SeekUtils.doSeeks(records, consumer, thrownException, true, this.failureTracker::skip, LOGGER)) {
 			throw new KafkaException("Seek to current after exception", thrownException);
+		}
+		else if (this.commitRecovered) {
+			if (container.getContainerProperties().getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
+				ConsumerRecord<?, ?> record = records.get(0);
+				if (container.getContainerProperties().isSyncCommits()) {
+					consumer.commitSync(Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
+							new OffsetAndMetadata(record.offset() + 1)));
+				}
+				else {
+					OffsetCommitCallback commitCallback = container.getContainerProperties().getCommitCallback();
+					if (commitCallback == null) {
+						commitCallback = LOGGING_COMMIT_CALLBACK;
+					}
+					consumer.commitAsync(Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
+							new OffsetAndMetadata(record.offset() + 1)), commitCallback);
+				}
+			}
+			else {
+				LOGGER.warn("'commitRecovered' ignored, container AckMode must be MANUAL_IMMEDIATE");
+			}
 		}
 	}
 

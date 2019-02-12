@@ -194,9 +194,7 @@ public class ContainerProperties {
 
 	/**
 	 * Whether or not to call consumer.commitSync() or commitAsync() when the
-	 * container is responsible for commits. Default true. See
-	 * https://github.com/spring-projects/spring-kafka/issues/62 At the time of
-	 * writing, async commits are not entirely reliable.
+	 * container is responsible for commits. Default true.
 	 */
 	private boolean syncCommits = true;
 

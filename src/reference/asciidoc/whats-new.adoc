@@ -45,6 +45,9 @@ See <<after-rollback>>, <<seek-to-current>>, and <<dead-letters>> for more infor
 The `ConsumerStoppingEvent` has been added.
 See <<events>> for more information.
 
+The `SeekToCurrentErrorHandler` can now be configured to commit the offset of a recovered record when the container is configured with `AckMode.MANUAL_IMMEDIATE` (since 2.2.4).
+See <<seek-to-current>> for more information.
+
 ==== @KafkaListener Changes
 
 You can now override the `concurrency` and `autoStartup` properties of the listener container factory by setting properties on the annotation.

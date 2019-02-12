@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -38,6 +40,8 @@ import java.util.function.BiConsumer;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.ClassRule;
@@ -48,6 +52,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -156,6 +161,58 @@ public class SeekToCurrentRecovererTests {
 		verifyNoMoreInteractions(consumer);
 		eh.handle(new RuntimeException(), records, consumer, null);
 		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
+		verifyNoMoreInteractions(consumer);
+		verify(recoverer).accept(eq(records.get(0)), any());
+	}
+
+	@Test
+	public void seekToCurrentErrorHandlerRecoversManualAcksAsync() {
+		seekToCurrentErrorHandlerRecoversManualAcks(false);
+	}
+
+	@Test
+	public void seekToCurrentErrorHandlerRecoversManualAcksSync() {
+		seekToCurrentErrorHandlerRecoversManualAcks(true);
+	}
+
+	private void seekToCurrentErrorHandlerRecoversManualAcks(boolean syncCommits) {
+		@SuppressWarnings("unchecked")
+		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, 2);
+		eh.setCommitRecovered(true);
+		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
+		records.add(new ConsumerRecord<>("foo", 1, 0, null, "bar"));
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		ContainerProperties properties = new ContainerProperties("foo");
+		properties.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		properties.setSyncCommits(syncCommits);
+		OffsetCommitCallback commitCallback = (offsets, ex) -> { };
+		properties.setCommitCallback(commitCallback);
+		given(container.getContainerProperties()).willReturn(properties);
+		try {
+			eh.handle(new RuntimeException(), records, consumer, container);
+			fail("Expected exception");
+		}
+		catch (KafkaException e) {
+			// NOSONAR
+		}
+		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer).seek(new TopicPartition("foo", 1),  0L);
+		verifyNoMoreInteractions(consumer);
+		eh.handle(new RuntimeException(), records, consumer, container);
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 1),  0L);
+		if (syncCommits) {
+			verify(consumer)
+					.commitSync(Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)));
+		}
+		else {
+			verify(consumer)
+					.commitAsync(
+							Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)),
+							commitCallback);
+		}
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer).accept(eq(records.get(0)), any());
 	}
