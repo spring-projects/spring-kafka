@@ -122,7 +122,7 @@ public interface ConsumerFactory<K, V> {
 	 */
 	@Nullable
 	default Deserializer<K> getKeyDeserializer() {
-		throw new UnsupportedOperationException("'getKeyDeserializer()' is not supported");
+		return null;
 	}
 
 	/**
@@ -133,7 +133,7 @@ public interface ConsumerFactory<K, V> {
 	 */
 	@Nullable
 	default Deserializer<V> getValueDeserializer() {
-		throw new UnsupportedOperationException("'getKeyDeserializer()' is not supported");
+		return null;
 	}
 
 }
