@@ -155,11 +155,11 @@ public class ErrorHandlingDeserializerTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
 			factory.setErrorHandler((t, r) -> {
-				if (r.value() == null && t instanceof DeserializationException) {
+				if (r.value() == null && t.getCause() instanceof DeserializationException) {
 					this.valueErrorCount.incrementAndGet();
-					this.headers = ((DeserializationException) t).getHeaders();
+					this.headers = ((DeserializationException) t.getCause()).getHeaders();
 				}
-				else if (r.key() == null && t instanceof DeserializationException) {
+				else if (r.key() == null && t.getCause() instanceof DeserializationException) {
 					this.keyErrorCount.incrementAndGet();
 				}
 				this.latch.countDown();

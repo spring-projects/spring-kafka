@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.config;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -60,7 +61,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private static final String CLEANUP_CONFIG_MUST_NOT_BE_NULL = "'cleanupConfig' must not be null";
 
-	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
+	private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
 
@@ -82,7 +83,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private int phase = Integer.MAX_VALUE - 1000; // NOSONAR magic #
 
-	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
+	private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
 	private KafkaStreams kafkaStreams;
 
@@ -241,7 +242,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @see KafkaStreams#close(long, TimeUnit)
 	 */
 	public void setCloseTimeout(int closeTimeout) {
-		this.closeTimeout = closeTimeout; // NOSONAR (sync)
+		this.closeTimeout = Duration.ofSeconds(closeTimeout); // NOSONAR (sync)
 	}
 
 	@Override
@@ -319,7 +320,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		if (this.running) {
 			try {
 				if (this.kafkaStreams != null) {
-					this.kafkaStreams.close(this.closeTimeout, TimeUnit.SECONDS);
+					this.kafkaStreams.close(this.closeTimeout);
 					if (this.cleanupConfig.cleanupOnStop()) {
 						this.kafkaStreams.cleanUp();
 					}
