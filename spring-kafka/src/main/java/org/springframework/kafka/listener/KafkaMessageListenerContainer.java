@@ -112,7 +112,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Yang Qiju
  * @author Tom van den Berge
  */
-public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
+public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> {
 
 	private static final int DEFAULT_ACK_TIME = 5000;
@@ -1271,13 +1271,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				toHandle = new ListenerExecutionFailedException(toHandle.getMessage(), this.consumerGroupId,
 						toHandle.getCause());
 			}
-//			else {
-//				/*
-//				 * TODO: in 2.3, wrap all exceptions (e.g. thrown by user implementations
-//				 * of MessageListener) in LEFE with groupId. @KafkaListeners always throw
-//				 * LEFE.
-//				 */
-//			}
+			else {
+				toHandle = new ListenerExecutionFailedException("Listener failed", this.consumerGroupId, toHandle);
+			}
 			return toHandle;
 		}
 
