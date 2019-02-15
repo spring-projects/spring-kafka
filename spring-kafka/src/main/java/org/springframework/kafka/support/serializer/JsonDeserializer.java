@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.serialization.ExtendedDeserializer;
+import org.apache.kafka.common.serialization.Deserializer;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
@@ -55,7 +55,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
  * @author Torsten Schleede
  * @author Ivan Ponomarev
  */
-public class JsonDeserializer<T> implements ExtendedDeserializer<T> {
+public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private static final String KEY_DEFAULT_TYPE_STRING = "spring.json.key.default.type";
 

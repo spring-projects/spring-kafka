@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.kstream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -202,7 +203,7 @@ public class KafkaStreamsTests {
 					}))
 					.mapValues(Foo::getName)
 					.groupByKey()
-					.windowedBy(TimeWindows.of(1000))
+					.windowedBy(TimeWindows.of(Duration.ofMillis(1000)))
 					.reduce((value1, value2) -> value1 + value2, Materialized.as("windowStore"))
 					.toStream()
 					.map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))

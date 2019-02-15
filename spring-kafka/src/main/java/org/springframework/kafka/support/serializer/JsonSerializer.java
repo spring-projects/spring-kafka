@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import java.util.Map;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.serialization.ExtendedSerializer;
+import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
@@ -47,7 +47,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author Gary Russell
  * @author Elliot Kennedy
  */
-public class JsonSerializer<T> implements ExtendedSerializer<T> {
+public class JsonSerializer<T> implements Serializer<T> {
 
 	/**
 	 * Kafka config property for disabling adding type headers.

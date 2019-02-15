@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.ExtendedDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
@@ -208,7 +207,7 @@ public class ErrorHandlingDeserializerTests {
 
 	}
 
-	public static class FailSometimesDeserializer implements ExtendedDeserializer<String> {
+	public static class FailSometimesDeserializer implements Deserializer<String> {
 
 		@Override
 		public void configure(Map<String, ?> configs, boolean isKey) {

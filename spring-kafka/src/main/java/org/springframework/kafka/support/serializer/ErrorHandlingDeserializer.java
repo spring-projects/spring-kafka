@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.ExtendedDeserializer;
 
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -40,7 +39,7 @@ import org.springframework.util.ClassUtils;
  *
  */
 @Deprecated
-public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
+public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 
 	/**
 	 * Property name for the delegate key deserializer.
@@ -52,7 +51,7 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 	 */
 	public static final String VALUE_DESERIALIZER_CLASS = "spring.deserializer.value.delegate.class";
 
-	private ExtendedDeserializer<T> delegate;
+	private Deserializer<T> delegate;
 
 	private boolean isKey;
 
@@ -91,11 +90,9 @@ public class ErrorHandlingDeserializer<T> implements ExtendedDeserializer<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private ExtendedDeserializer<T> setupDelegate(Object delegate) {
+	private Deserializer<T> setupDelegate(Object delegate) {
 		Assert.isInstanceOf(Deserializer.class, delegate, "'delegate' must be a 'Deserializer', not a ");
-		return delegate instanceof ExtendedDeserializer
-				? (ExtendedDeserializer<T>) delegate
-				: ExtendedDeserializer.Wrapper.ensureExtended((Deserializer<T>) delegate);
+		return (Deserializer<T>) delegate;
 	}
 
 	@Override
