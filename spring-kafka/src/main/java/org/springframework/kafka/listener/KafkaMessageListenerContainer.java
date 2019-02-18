@@ -277,7 +277,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 		Assert.state(messageListener instanceof GenericMessageListener, "Listener must be a GenericListener");
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
-		ListenerType listenerType = deteremineListenerType(listener);
+		ListenerType listenerType = determineListenerType(listener);
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType);
 		setRunning(true);
 		this.listenerConsumerFuture = containerProperties
@@ -298,7 +298,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
-	private ListenerType deteremineListenerType(GenericMessageListener<?> listener) {
+	private ListenerType determineListenerType(GenericMessageListener<?> listener) {
 		ListenerType listenerType = ListenerUtils.determineListenerType(listener);
 		if (listener instanceof DelegatingMessageListener) {
 			Object delegating = listener;
@@ -693,7 +693,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			this.count = 0;
 			this.last = System.currentTimeMillis();
-			initAsignedPartitions();
+			initAssignedPartitions();
 			while (isRunning()) {
 				try {
 					pollAndInvoke();
@@ -722,7 +722,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			wrapUp();
 		}
 
-		private void initAsignedPartitions() {
+		private void initAssignedPartitions() {
 			if (isRunning() && this.definedPartitions != null) {
 				try {
 					initPartitionsIfNeeded();

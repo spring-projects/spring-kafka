@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		 */
 		if (consumerRecords.size() > 0 || consumerAware
 				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
-			invokeDelagate(consumerRecords, acknowledgment, consumer);
+			invokeDelegate(consumerRecords, acknowledgment, consumer);
 		}
 		else {
 			if (this.ackDiscarded && acknowledgment != null) {
@@ -96,7 +96,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		}
 	}
 
-	private void invokeDelagate(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
+	private void invokeDelegate(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
 		switch (this.delegateType) {
 			case ACKNOWLEDGING_CONSUMER_AWARE:

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -180,7 +180,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	/**
 	 * Set to false to revert to the previous behavior of a simple incrementing
-	 * trasactional.id suffix for each producer instead of maintaining a producer
+	 * transactional.id suffix for each producer instead of maintaining a producer
 	 * for each group/topic/partition.
 	 * @param producerPerConsumerPartition false to revert.
 	 * @since 1.3.7

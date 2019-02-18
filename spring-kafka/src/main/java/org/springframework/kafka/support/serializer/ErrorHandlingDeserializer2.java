@@ -54,7 +54,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Key";
 
 	/**
-	 * Heaader name for deserialization exceptions.
+	 * Header name for deserialization exceptions.
 	 */
 	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
 
