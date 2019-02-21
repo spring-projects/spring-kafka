@@ -1917,6 +1917,152 @@ Note that `SimpleThreadScope` does not destroy beans that have a destruction int
 IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
 If you change the multicaster to use an async executor, thread cleanup is not effective.
 
+[[interceptors]]
+==== Wiring Spring Beans into Producer/Consumer Interceptors
+
+Apache Kafka provides a mechanism to add interceptors to producers and consumers.
+These objects are managed by Kafka, not Spring, and so normal Spring dependency injection won't work for wiring in dependent Spring Beans.
+However, you can manually wire in those dependencies using the interceptor `config()` method.
+The following Spring Boot application shows how to do this by overriding boot's default factories to add some dependent bean into the configuration properties.
+
+====
+[source, java]
+----
+@SpringBootApplication
+public class Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+	}
+
+	@Bean
+	public ConsumerFactory<?, ?> kafkaConsumerFactory(KafkaProperties properties, SomeBean someBean) {
+		Map<String, Object> consumerProperties = properties.buildConsumerProperties();
+		consumerProperties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, MyConsumerInterceptor.class.getName());
+		consumerProperties.put("some.bean", someBean);
+		return new DefaultKafkaConsumerFactory<>(consumerProperties);
+	}
+
+	@Bean
+	public ProducerFactory<?, ?> kafkaProducerFactory(KafkaProperties properties, SomeBean someBean) {
+		Map<String, Object> producerProperties = properties.buildProducerProperties();
+		producerProperties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MyProducerInterceptor.class.getName());
+		producerProperties.put("some.bean", someBean);
+		DefaultKafkaProducerFactory<?, ?> factory = new DefaultKafkaProducerFactory<>(producerProperties);
+		String transactionIdPrefix = properties.getProducer()
+				.getTransactionIdPrefix();
+		if (transactionIdPrefix != null) {
+			factory.setTransactionIdPrefix(transactionIdPrefix);
+		}
+		return factory;
+	}
+
+	@Bean
+	public SomeBean someBean() {
+		return new SomeBean();
+	}
+
+	@KafkaListener(id = "kgk897", topics = "kgh897")
+	public void listen(String in) {
+		System.out.println("Received " + in);
+	}
+
+	@Bean
+	public ApplicationRunner runner(KafkaTemplate<String, String> template) {
+		return args -> template.send("kgh897", "test");
+	}
+
+	@Bean
+	public NewTopic topic() {
+		return new NewTopic("kgh897", 1, (short) 1);
+	}
+
+}
+----
+====
+
+====
+[source, java]
+----
+public class SomeBean {
+
+	public void someMethod(String what) {
+		System.out.println(what + " in my foo bean");
+	}
+
+}
+----
+====
+====
+[source, java]
+----
+public class MyProducerInterceptor implements ProducerInterceptor<String, String> {
+
+	private SomeBean bean;
+
+	@Override
+	public void configure(Map<String, ?> configs) {
+		this.bean = (SomeBean) configs.get("some.bean");
+	}
+
+	@Override
+	public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
+		this.bean.someMethod("producer interceptor");
+		return record;
+	}
+
+	@Override
+	public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+	}
+
+	@Override
+	public void close() {
+	}
+
+}
+----
+====
+====
+[source, java]
+----
+public class MyConsumerInterceptor implements ConsumerInterceptor<String, String> {
+
+	private SomeBean bean;
+
+	@Override
+	public void configure(Map<String, ?> configs) {
+		this.bean = (SomeBean) configs.get("some.bean");
+	}
+
+	@Override
+	public ConsumerRecords<String, String> onConsume(ConsumerRecords<String, String> records) {
+		this.bean.someMethod("consumer interceptor");
+		return records;
+	}
+
+	@Override
+	public void onCommit(Map<TopicPartition, OffsetAndMetadata> offsets) {
+	}
+
+	@Override
+	public void close() {
+	}
+
+}
+----
+====
+
+Result:
+
+====
+[source]
+----
+producer interceptor in my foo bean
+consumer interceptor in my foo bean
+Received test
+----
+====
+
 [[pause-resume]]
 ==== Pausing and Resuming Listener Containers
 
