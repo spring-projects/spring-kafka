@@ -186,6 +186,7 @@ public class KafkaMessageListenerContainerTests {
 						.collect(Collectors.toList()));
 			}
 		});
+		assertThat(container.getGroupId()).isEqualTo("delegate");
 		container.start();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -270,9 +271,11 @@ public class KafkaMessageListenerContainerTests {
 			trace.set(new RuntimeException().getStackTrace());
 			latch1.countDown();
 		});
+		containerProps.setGroupId("delegateGroup");
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("delegate");
+		assertThat(container.getGroupId()).isEqualTo("delegateGroup");
 		container.start();
 
 		int n = 0;

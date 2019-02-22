@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.SmartLifecycle;
+import org.springframework.lang.Nullable;
 
 /**
  * Internal abstraction used by the framework representing a message
@@ -112,6 +113,27 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	 */
 	default void setAutoStartup(boolean autoStartup) {
 		// empty
+	}
+
+	/**
+	 * Return the {@code group.id} property for this container whether specifically set on the
+	 * container or via a consumer property on the consumer factory.
+	 * @return the group id.
+	 * @since 2.2.5
+	 */
+	default String getGroupId() {
+		throw new UnsupportedOperationException("This container does not support retrieving the group id");
+	}
+
+	/**
+	 * The 'id' attribute of a {@code @KafkaListener} or the bean name for spring-managed
+	 * containers.
+	 * @return the id or bean name.
+	 * @since 2.2.5
+	 */
+	@Nullable
+	default String getListenerId() {
+		throw new UnsupportedOperationException("This container does not support retrieving the listener id");
 	}
 
 }

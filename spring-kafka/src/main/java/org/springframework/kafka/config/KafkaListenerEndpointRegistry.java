@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,9 +112,26 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	/**
 	 * Return the managed {@link MessageListenerContainer} instance(s).
 	 * @return the managed {@link MessageListenerContainer} instance(s).
+	 * @see #getAllListenerContainers()
 	 */
 	public Collection<MessageListenerContainer> getListenerContainers() {
 		return Collections.unmodifiableCollection(this.listenerContainers.values());
+	}
+
+	/**
+	 * Return all {@link MessageListenerContainer} instances including those managed by
+	 * this registry and those declared as beans in the application context.
+	 * Prototype-scoped containers will be included. Lazy beans that have not yet been
+	 * created will not be initialized by a call to this method.
+	 * @return the {@link MessageListenerContainer} instance(s).
+	 * @since 2.2.5
+	 * @see #getListenerContainers()
+	 */
+	public Collection<MessageListenerContainer> getAllListenerContainers() {
+		List<MessageListenerContainer> containers = new ArrayList<>();
+		containers.addAll(getListenerContainers());
+		containers.addAll(this.applicationContext.getBeansOfType(MessageListenerContainer.class, true, false).values());
+		return containers;
 	}
 
 	/**

@@ -37,6 +37,7 @@ import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -243,6 +244,21 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Override
 	public ContainerProperties getContainerProperties() {
 		return this.containerProperties;
+	}
+
+	@Override
+	public String getGroupId() {
+		return this.containerProperties.getGroupId() == null
+				? (String) this.consumerFactory
+						.getConfigurationProperties()
+						.get(ConsumerConfig.GROUP_ID_CONFIG)
+				: this.containerProperties.getGroupId();
+	}
+
+	@Override
+	@Nullable
+	public String getListenerId() {
+		return this.beanName; // the container factory sets the bean name to the id attribute
 	}
 
 	@Override

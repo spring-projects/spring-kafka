@@ -1320,6 +1320,11 @@ private KafkaListenerEndpointRegistry registry;
 ----
 ====
 
+The registry only maintains the life cycle of containers it manages; containers declared as beans are not managed by the registry and can be obtained from the application context.
+A collection of managed containers can be obtained by calling the registry's `getListenerContainers()` method.
+Version 2.2.5 added a convenience method `getAllListenerContainers()`, which returns a collection of all containers, including those managed by the registry and those declared as beans.
+The collection returned will include any prototype beans that have been initialized, but it will not initialize any lazy bean declarations.
+
 [[kafka-validation]]
 ===== `@KafkaListener` `@Payload` Validation
 

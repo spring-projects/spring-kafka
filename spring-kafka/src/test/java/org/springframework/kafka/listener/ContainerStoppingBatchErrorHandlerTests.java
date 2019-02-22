@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +97,16 @@ public class ContainerStoppingBatchErrorHandlerTests {
 		inOrder.verify(this.consumer).unsubscribe();
 		inOrder.verify(this.consumer).close();
 		inOrder.verifyNoMoreInteractions();
+		assertThat(this.registry.getListenerContainers()).hasSize(1);
+		Collection<MessageListenerContainer> containers = this.registry.getAllListenerContainers();
+		assertThat(containers).hasSize(2);
+		Iterator<MessageListenerContainer> iterator = containers.iterator();
+		MessageListenerContainer one = iterator.next();
+		MessageListenerContainer two = iterator.next();
+		assertThat(one).isNotSameAs(two);
+		assertThat(two).isSameAs(this.config.springManagedContainer());
+		assertThat(one.getListenerId()).isEqualTo(CONTAINER_ID);
+		assertThat(two.getListenerId()).isEqualTo("springManagedContainer");
 	}
 
 	@Configuration
@@ -178,7 +189,7 @@ public class ContainerStoppingBatchErrorHandlerTests {
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
+		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
 			factory.getContainerProperties().setAckOnError(false);
@@ -203,6 +214,13 @@ public class ContainerStoppingBatchErrorHandlerTests {
 			return factory;
 		}
 
+		@Bean
+		public ConcurrentMessageListenerContainer<String, String> springManagedContainer() {
+			ConcurrentMessageListenerContainer<String, String> container = kafkaListenerContainerFactory()
+					.createContainer("springManaged");
+			container.setAutoStartup(false);
+			return container;
+		}
 	}
 
 }

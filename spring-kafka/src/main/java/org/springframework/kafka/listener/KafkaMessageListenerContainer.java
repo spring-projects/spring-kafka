@@ -448,10 +448,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final TransactionTemplate transactionTemplate;
 
-		private final String consumerGroupId = this.containerProperties.getGroupId() == null
-				? (String) KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
-				.get(ConsumerConfig.GROUP_ID_CONFIG)
-				: this.containerProperties.getGroupId();
+		private final String consumerGroupId = getGroupId();
 
 		private final TaskScheduler taskScheduler;
 
