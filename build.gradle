@@ -159,7 +159,7 @@ subprojects { subproject ->
 						def matcher = line =~ /Copyright (20\d\d)-?(20\d\d)?/
 						if (matcher.count) {
 							def beginningYear = matcher[0][1]
-							if (now != beginningYear || now != matcher[0][2]) {
+							if (now != beginningYear && now != matcher[0][2]) {
 								def years = "$beginningYear-$now"
 								def sourceCode = file.text
 								sourceCode = sourceCode.replaceFirst(/20\d\d(-20\d\d)?/, years)

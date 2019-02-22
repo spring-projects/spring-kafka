@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -31,6 +32,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -134,7 +136,7 @@ public class ContainerStoppingBatchErrorHandlerTests {
 		public ConsumerFactory consumerFactory() {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", null)).willReturn(consumer);
+			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", new Properties())).willReturn(consumer);
 			return consumerFactory;
 		}
 
@@ -179,7 +181,7 @@ public class ContainerStoppingBatchErrorHandlerTests {
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;
-			}).given(consumer).commitSync(any(Map.class));
+			}).given(consumer).commitSync(anyMap(), any());
 			willAnswer(i -> {
 				this.closeLatch.countDown();
 				return null;

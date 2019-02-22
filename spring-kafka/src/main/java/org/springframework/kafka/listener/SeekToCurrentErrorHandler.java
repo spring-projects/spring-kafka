@@ -130,7 +130,7 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 						new TopicPartition(record.topic(), record.partition()),
 						new OffsetAndMetadata(record.offset() + 1));
 				if (container.getContainerProperties().isSyncCommits()) {
-					consumer.commitSync(offsetToCommit);
+					consumer.commitSync(offsetToCommit, container.getContainerProperties().getSyncCommitTimeout());
 				}
 				else {
 					OffsetCommitCallback commitCallback = container.getContainerProperties().getCommitCallback();

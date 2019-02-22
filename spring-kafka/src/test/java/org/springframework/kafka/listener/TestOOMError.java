@@ -54,7 +54,7 @@ public class TestOOMError {
 	public void testOOMCMLC() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), eq("-0"), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), eq("-0"), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -93,7 +93,7 @@ public class TestOOMError {
 	public void testOOMKMLC() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),

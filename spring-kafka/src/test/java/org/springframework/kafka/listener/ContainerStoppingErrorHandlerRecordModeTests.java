@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -96,11 +98,14 @@ public class ContainerStoppingErrorHandlerRecordModeTests {
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).commitSync(
-				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)));
+				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)),
+				Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).commitSync(
-				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(2L)));
+				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(2L)),
+				Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).commitSync(
-				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(1L)));
+				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(1L)),
+				Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).wakeup();
 		inOrder.verify(this.consumer).unsubscribe();
 		inOrder.verify(this.consumer).close();
@@ -142,7 +147,7 @@ public class ContainerStoppingErrorHandlerRecordModeTests {
 		public ConsumerFactory consumerFactory() {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", null)).willReturn(consumer);
+			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", new Properties())).willReturn(consumer);
 			return consumerFactory;
 		}
 
@@ -187,7 +192,7 @@ public class ContainerStoppingErrorHandlerRecordModeTests {
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;
-			}).given(consumer).commitSync(any(Map.class));
+			}).given(consumer).commitSync(anyMap(), any());
 			willAnswer(i -> {
 				this.closeLatch.countDown();
 				return null;

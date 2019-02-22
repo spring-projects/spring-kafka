@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -143,7 +144,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		public ConsumerFactory consumerFactory() {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", null)).willReturn(consumer);
+			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", new Properties())).willReturn(consumer);
 			return consumerFactory;
 		}
 

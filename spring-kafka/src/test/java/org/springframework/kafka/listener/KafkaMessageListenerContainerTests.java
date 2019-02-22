@@ -465,10 +465,10 @@ public class KafkaMessageListenerContainerTests {
 		// Verify that commitSync is called when paused
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		// Verify that just the initial commit is processed before stop
-		verify(consumer, times(1)).commitSync(anyMap());
+		verify(consumer, times(1)).commitSync(anyMap(), any());
 		container.stop();
 		// Verify that a commit has been made on stop
-		verify(consumer, times(2)).commitSync(anyMap());
+		verify(consumer, times(2)).commitSync(anyMap(), any());
 	}
 
 	@Test
@@ -507,7 +507,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete.countDown();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -534,7 +534,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testRecordAckMock() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -569,7 +569,7 @@ public class KafkaMessageListenerContainerTests {
 					commitLatch.countDown();
 					return null;
 				}
-		).given(consumer).commitSync(any(Map.class));
+		).given(consumer).commitSync(anyMap(), any());
 
 		containerProps.setMessageListener(messageListener);
 		containerProps.setClientId("clientId");
@@ -581,9 +581,9 @@ public class KafkaMessageListenerContainerTests {
 		InOrder inOrder = inOrder(messageListener, consumer);
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
-		inOrder.verify(consumer).commitSync(any(Map.class));
+		inOrder.verify(consumer).commitSync(anyMap(), any());
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
-		inOrder.verify(consumer).commitSync(any(Map.class));
+		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
 	}
 
@@ -601,7 +601,7 @@ public class KafkaMessageListenerContainerTests {
 	private void testRecordAckMockForeignThreadGuts(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -641,7 +641,7 @@ public class KafkaMessageListenerContainerTests {
 					commitLatch.countDown();
 					return null;
 				}
-		).given(consumer).commitSync(any(Map.class));
+		).given(consumer).commitSync(anyMap(), any());
 
 		containerProps.setMessageListener(messageListener);
 		containerProps.setClientId("clientId");
@@ -654,7 +654,7 @@ public class KafkaMessageListenerContainerTests {
 		InOrder inOrder = inOrder(messageListener, consumer);
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(messageListener, times(2)).onMessage(any(ConsumerRecord.class), any(Acknowledgment.class));
-		inOrder.verify(consumer).commitSync(any(Map.class));
+		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
 		assertThat(commitThread.get()).isSameAs(consumerThread.get());
 	}
@@ -664,7 +664,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testNonResponsiveConsumerEvent() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq(""), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq(""), isNull(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -704,7 +704,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testNonResponsiveConsumerEventNotIssuedWithActiveConsumer() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(isNull(), eq(""), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(isNull(), eq(""), isNull(), any())).willReturn(consumer);
 		ConsumerRecords records = new ConsumerRecords(Collections.emptyMap());
 		CountDownLatch latch = new CountDownLatch(20);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
@@ -777,7 +777,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -846,7 +846,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -928,7 +928,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete.countDown();
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
@@ -989,7 +989,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete.countDown();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -1260,7 +1260,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(container1))
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete1.countDown();
 
 		TopicPartitionInitialOffset topic1Partition1 = new TopicPartitionInitialOffset(topic13, 1, 0L);
@@ -1289,7 +1289,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(container2))
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete2.countDown();
 
 		assertThat(initialConsumersLatch.await(20, TimeUnit.SECONDS)).isTrue();
@@ -1348,7 +1348,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete3.countDown();
 
 		listenerConsumerStartLatch.countDown();
@@ -1392,7 +1392,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete4.countDown();
 
 		assertThat(latch4.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1437,7 +1437,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete5.countDown();
 
 		assertThat(latch5.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1484,7 +1484,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(spyOnConsumer(resettingContainer))
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete6.countDown();
 
 		assertThat(latch6.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1577,7 +1577,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}).given(containerConsumer)
-				.commitSync(anyMap());
+				.commitSync(anyMap(), any());
 		stubbingComplete1.countDown();
 		ContainerTestUtils.waitForAssignment(container1, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -1820,7 +1820,7 @@ public class KafkaMessageListenerContainerTests {
 				}
 			}
 
-		}).given(containerConsumer).commitSync(anyMap());
+		}).given(containerConsumer).commitSync(anyMap(), any());
 		stubbingComplete1.countDown();
 		ContainerTestUtils.waitForAssignment(container1, embeddedKafka.getPartitionsPerTopic());
 
@@ -1863,7 +1863,10 @@ public class KafkaMessageListenerContainerTests {
 	public void testPauseResume() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -1879,7 +1882,7 @@ public class KafkaMessageListenerContainerTests {
 		willAnswer(i -> {
 			commitLatch.countDown();
 			return null;
-		}).given(consumer).commitSync(any(Map.class));
+		}).given(consumer).commitSync(anyMap(), any());
 		given(consumer.assignment()).willReturn(records.keySet());
 		final CountDownLatch pauseLatch = new CountDownLatch(2);
 		willAnswer(i -> {
@@ -1900,6 +1903,10 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
 		containerProps.setMessageListener((MessageListener) r -> { });
+		Properties consumerProps = new Properties();
+		consumerProps.setProperty(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "42000");
+		containerProps.setConsumerProperties(consumerProps);
+		containerProps.setSyncCommitTimeout(Duration.ofSeconds(41)); // wins
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		CountDownLatch stopLatch = new CountDownLatch(1);
@@ -1916,7 +1923,7 @@ public class KafkaMessageListenerContainerTests {
 		});
 		container.start();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		verify(consumer, times(2)).commitSync(any(Map.class));
+		verify(consumer, times(2)).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
 		container.pause();
 		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.resume();
@@ -1930,7 +1937,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInitialSeek() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		final CountDownLatch latch = new CountDownLatch(1);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
@@ -2042,7 +2049,10 @@ public class KafkaMessageListenerContainerTests {
 	public void testAckModeCount() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
 		TopicPartition topicPartition = new TopicPartition("foo", 0);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records1 = new HashMap<>();
 		records1.put(topicPartition, Arrays.asList(
@@ -2080,7 +2090,7 @@ public class KafkaMessageListenerContainerTests {
 		willAnswer(i -> {
 			commitLatch.countDown();
 			return null;
-		}).given(consumer).commitSync(any(Map.class));
+		}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(42)));
 		given(consumer.assignment()).willReturn(records1.keySet());
 		TopicPartitionInitialOffset[] topicPartitionOffset = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset("foo", 0) };
@@ -2093,13 +2103,18 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener((MessageListener) r -> {
 			recordCount.incrementAndGet();
 		});
+		Properties consumerProps = new Properties();
+		consumerProps.setProperty(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "42000"); // wins
+		containerProps.setConsumerProperties(consumerProps);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(recordCount.get()).isEqualTo(7);
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(4L)));
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(7L)));
+		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(4L)),
+				Duration.ofSeconds(42));
+		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(7L)),
+				Duration.ofSeconds(42));
 		container.stop();
 	}
 
@@ -2108,7 +2123,10 @@ public class KafkaMessageListenerContainerTests {
 	public void testCommitErrorHandlerCalled() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), isNull())).willReturn(consumer);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -2122,7 +2140,7 @@ public class KafkaMessageListenerContainerTests {
 		});
 		willAnswer(i -> {
 			throw new RuntimeException("Commit failed");
-		}).given(consumer).commitSync(any(Map.class));
+		}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
 		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
 				new TopicPartitionInitialOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
@@ -2162,8 +2180,8 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	private KafkaMessageListenerContainer<Integer, String> spyOnContainer(KafkaMessageListenerContainer<Integer,
-			String> container,
-			final CountDownLatch stubbingComplete) {
+			String> container, final CountDownLatch stubbingComplete) {
+
 		KafkaMessageListenerContainer<Integer, String> spy = spy(container);
 		willAnswer(i -> {
 			if (stubbingComplete.getCount() > 0 && Thread.currentThread().getName().endsWith("-C-1")) {

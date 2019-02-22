@@ -28,6 +28,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -188,6 +189,7 @@ public class SeekToCurrentRecovererTests {
 		ContainerProperties properties = new ContainerProperties("foo");
 		properties.setAckMode(AckMode.MANUAL_IMMEDIATE);
 		properties.setSyncCommits(syncCommits);
+		properties.setSyncCommitTimeout(Duration.ofSeconds(42));
 		OffsetCommitCallback commitCallback = (offsets, ex) -> { };
 		properties.setCommitCallback(commitCallback);
 		given(container.getContainerProperties()).willReturn(properties);
@@ -205,7 +207,8 @@ public class SeekToCurrentRecovererTests {
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 1),  0L);
 		if (syncCommits) {
 			verify(consumer)
-					.commitSync(Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)));
+					.commitSync(Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)),
+							Duration.ofSeconds(42));
 		}
 		else {
 			verify(consumer)

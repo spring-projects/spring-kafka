@@ -18,9 +18,9 @@ package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
@@ -892,9 +892,9 @@ public class EnableKafkaIntegrationTests {
 						spyLatch.countDown();
 					}
 
-				}).given(spy).commitSync(anyMap());
+				}).given(spy).commitSync(anyMap(), any());
 				return spy;
-			}).given(spiedCf).createConsumer(anyString(), anyString(), anyString(), isNull());
+			}).given(spiedCf).createConsumer(anyString(), anyString(), anyString(), any());
 			factory.setConsumerFactory(spiedCf);
 			factory.setBatchListener(true);
 			factory.setRecordFilterStrategy(recordFilter());

@@ -817,6 +817,8 @@ NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `Acknowledg
 See <<message-listeners, Message Listeners>>.
 
 Depending on the `syncCommits` container property, the `commitSync()` or `commitAsync()` method on the consumer is used.
+`syncCommits` is `true` by default; also see `setSyncCommitTimeout`.
+See `setCommitCallback` to get the results of asynchronous commits; the default callback is the `LoggingCommitCallback` which logs errors (and successes at debug level).
 
 The `Acknowledgment` has the following method:
 

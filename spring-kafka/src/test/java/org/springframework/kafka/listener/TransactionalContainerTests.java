@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -154,7 +155,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
@@ -237,7 +238,7 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).seek(any(), anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -273,7 +274,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).close();
 		verify(consumer).seek(topicPartition0, 0);
 		verify(consumer).seek(topicPartition1, 0);
-		verify(consumer, never()).commitSync(anyMap());
+		verify(consumer, never()).commitSync(anyMap(), any());
 		container.stop();
 		verify(pf, times(1)).createProducer();
 	}
@@ -304,7 +305,7 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).seek(any(), anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -340,7 +341,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).close();
 		verify(consumer).seek(topicPartition0, 0);
 		verify(consumer).seek(topicPartition1, 0);
-		verify(consumer, never()).commitSync(anyMap());
+		verify(consumer, never()).commitSync(anyMap(), any());
 		container.stop();
 		verify(pf, times(1)).createProducer();
 	}
@@ -368,7 +369,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, null);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
 		Producer producer = mock(Producer.class);
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);

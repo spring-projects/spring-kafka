@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Properties;
@@ -198,6 +199,8 @@ public class ContainerProperties {
 	 */
 	private boolean syncCommits = true;
 
+	private Duration syncCommitTimeout;
+
 	private boolean ackOnError = true;
 
 	private Long idleEventInterval;
@@ -220,7 +223,7 @@ public class ContainerProperties {
 
 	private boolean missingTopicsFatal = true;
 
-	private Properties consumerProperties;
+	private Properties consumerProperties = new Properties();
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -359,9 +362,29 @@ public class ContainerProperties {
 	 * https://github.com/spring-projects/spring-kafka/issues/62 At the time of
 	 * writing, async commits are not entirely reliable.
 	 * @param syncCommits true to use commitSync().
+	 * @see #setSyncCommitTimeout(Duration)
 	 */
 	public void setSyncCommits(boolean syncCommits) {
 		this.syncCommits = syncCommits;
+	}
+
+	/**
+	 * Set the timeout for commitSync operations (if {@link #isSyncCommits()}. Overrides
+	 * the default api timeout property. In order of precedence:
+	 * <ul>
+	 * <li>this property</li>
+	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in
+	 * {@link #setConsumerProperties(Properties)}</li>
+	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in the consumer factory
+	 * properties</li>
+	 * <li>60 seconds</li>
+	 * </ul>
+	 * @param syncCommitTimeout the timeout.
+	 * @since 2.3
+	 * @see #setSyncCommits(boolean)
+	 */
+	public void setSyncCommitTimeout(@Nullable Duration syncCommitTimeout) {
+		this.syncCommitTimeout = syncCommitTimeout;
 	}
 
 	/**
@@ -459,6 +482,10 @@ public class ContainerProperties {
 
 	public boolean isSyncCommits() {
 		return this.syncCommits;
+	}
+
+	public Duration getSyncCommitTimeout() {
+		return this.syncCommitTimeout;
 	}
 
 	public Long getIdleEventInterval() {
@@ -639,6 +666,7 @@ public class ContainerProperties {
 	 * @see #setClientId(String)
 	 */
 	public void setConsumerProperties(Properties consumerProperties) {
+		Assert.notNull(consumerProperties, "'consumerProperties' cannot be null");
 		this.consumerProperties = consumerProperties;
 	}
 
@@ -652,18 +680,22 @@ public class ContainerProperties {
 				+ ", messageListener=" + this.messageListener
 				+ ", pollTimeout=" + this.pollTimeout
 				+ (this.consumerTaskExecutor != null
-						? ", consumerTaskExecutor=" + this.consumerTaskExecutor : "")
+						? ", consumerTaskExecutor=" + this.consumerTaskExecutor
+						: "")
 				+ ", shutdownTimeout=" + this.shutdownTimeout
 				+ (this.consumerRebalanceListener != null
-						? ", consumerRebalanceListener=" + this.consumerRebalanceListener : "")
+						? ", consumerRebalanceListener=" + this.consumerRebalanceListener
+						: "")
 				+ (this.commitCallback != null ? ", commitCallback=" + this.commitCallback : "")
 				+ ", syncCommits=" + this.syncCommits
+				+ (this.syncCommitTimeout != null ? ", syncCommitTimeout=" + this.syncCommitTimeout : "")
 				+ ", ackOnError=" + this.ackOnError
 				+ ", idleEventInterval="
-						+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
+				+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
 				+ (this.groupId != null ? ", groupId=" + this.groupId : "")
 				+ (this.transactionManager != null
-						? ", transactionManager=" + this.transactionManager : "")
+						? ", transactionManager=" + this.transactionManager
+						: "")
 				+ ", monitorInterval=" + this.monitorInterval
 				+ (this.scheduler != null ? ", scheduler=" + this.scheduler : "")
 				+ ", noPollThreshold=" + this.noPollThreshold
@@ -675,7 +707,8 @@ public class ContainerProperties {
 		return (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
 				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
 				+ (this.topicPartitions != null
-						? ", topicPartitions=" + Arrays.toString(this.topicPartitions) : "");
+						? ", topicPartitions=" + Arrays.toString(this.topicPartitions)
+						: "");
 	}
 
 }

@@ -463,6 +463,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean checkNullValueForExceptions;
 
+		private final boolean syncCommits = this.containerProperties.isSyncCommits();
+
+		private final Duration syncCommitTimeout;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private volatile Collection<TopicPartition> assignedPartitions;
@@ -557,6 +561,34 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
 			this.checkNullKeyForExceptions = checkDeserializer(findDeserializerClass(props, false));
 			this.checkNullValueForExceptions = checkDeserializer(findDeserializerClass(props, true));
+			this.syncCommitTimeout = determineSyncCommitTimeout();
+			if (this.containerProperties.getSyncCommitTimeout() == null) {
+				this.containerProperties.setSyncCommitTimeout(this.syncCommitTimeout);
+			}
+		}
+
+		private Duration determineSyncCommitTimeout() {
+			if (this.containerProperties.getSyncCommitTimeout() != null) {
+				return this.containerProperties.getSyncCommitTimeout();
+			}
+			else {
+				Object timeout = this.containerProperties.getConsumerProperties()
+						.get(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG);
+				if (timeout == null) {
+					timeout = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
+							.get(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG);
+				}
+				if (timeout instanceof Number) {
+					return Duration.ofMillis(((Number) timeout).longValue());
+				}
+				else if (timeout instanceof String) {
+					return Duration.ofMillis(Long.parseLong((String) timeout));
+				}
+				else {
+					return Duration.ofSeconds(60);
+				}
+			}
+
 		}
 
 		private Object findDeserializerClass(Map<String, Object> props, boolean isValue) {
@@ -915,8 +947,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					new TopicPartition(record.topic(), record.partition()),
 					new OffsetAndMetadata(record.offset() + 1));
 			this.commitLogger.log(() -> "Committing: " + commits);
-			if (this.containerProperties.isSyncCommits()) {
-				this.consumer.commitSync(commits);
+			if (this.syncCommits) {
+				this.consumer.commitSync(commits, this.syncCommitTimeout);
 			}
 			else {
 				this.consumer.commitAsync(commits, this.commitCallback);
@@ -1306,8 +1338,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								new OffsetAndMetadata(record.offset() + 1));
 				if (producer == null) {
 					this.commitLogger.log(() -> "Committing: " + offsetsToCommit);
-					if (this.containerProperties.isSyncCommits()) {
-						this.consumer.commitSync(offsetsToCommit);
+					if (this.syncCommits) {
+						this.consumer.commitSync(offsetsToCommit, this.syncCommitTimeout);
 					}
 					else {
 						this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
@@ -1488,8 +1520,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!commits.isEmpty()) {
 				this.commitLogger.log(() -> "Committing: " + commits);
 				try {
-					if (this.containerProperties.isSyncCommits()) {
-						this.consumer.commitSync(commits);
+					if (this.syncCommits) {
+						this.consumer.commitSync(commits, this.syncCommitTimeout);
 					}
 					else {
 						this.consumer.commitAsync(commits, this.commitCallback);
@@ -1711,12 +1743,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							TransactionSupport.clearTransactionIdSuffix();
 						}
 					}
-					else if (KafkaMessageListenerContainer.this.getContainerProperties().isSyncCommits()) {
-						ListenerConsumer.this.consumer.commitSync(offsetsToCommit);
-					}
 					else {
-						ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,
-								KafkaMessageListenerContainer.this.getContainerProperties().getCommitCallback());
+						ContainerProperties containerProps = KafkaMessageListenerContainer.this.getContainerProperties();
+						if (containerProps.isSyncCommits()) {
+							ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
+									containerProps.getSyncCommitTimeout());
+						}
+						else {
+							ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,
+									containerProps.getCommitCallback());
+						}
 					}
 				}
 				if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {

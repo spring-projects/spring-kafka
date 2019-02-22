@@ -23,6 +23,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 
 import java.util.Collections;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -54,7 +55,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 			Thread.sleep(100);
 			return new ConsumerRecords<>(Collections.emptyMap());
 		}).given(consumer).poll(any());
-		given(consumerFactory.createConsumer("grp", "", "-0", null)).willReturn(consumer);
+		given(consumerFactory.createConsumer("grp", "", "-0", new Properties())).willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) record -> { });
