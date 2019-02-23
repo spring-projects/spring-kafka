@@ -126,7 +126,9 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		}
 		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
 				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
-		if (groupId == null && properties == null && !shouldModifyClientId) {
+		if (groupId == null
+				&& (properties == null || properties.stringPropertyNames().size() == 0)
+				&& !shouldModifyClientId) {
 			return createKafkaConsumer(this.configs);
 		}
 		else {
@@ -149,11 +151,11 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 							: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
 		}
 		if (properties != null) {
-			properties.forEach((k, v) -> {
-				if (!k.equals(ConsumerConfig.CLIENT_ID_CONFIG) && !k.equals(ConsumerConfig.GROUP_ID_CONFIG)) {
-					modifiedConfigs.put((String) k, v);
-				}
-			});
+			properties.stringPropertyNames()
+				.stream()
+				.filter(name -> !name.equals(ConsumerConfig.CLIENT_ID_CONFIG)
+							&& !name.equals(ConsumerConfig.GROUP_ID_CONFIG))
+				.forEach(name -> modifiedConfigs.put(name, properties.getProperty(name)));
 		}
 		return createKafkaConsumer(modifiedConfigs);
 	}

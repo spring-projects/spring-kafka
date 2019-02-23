@@ -282,7 +282,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		if (this.containerProperties.isMissingTopicsFatal() && this.containerProperties.getTopicPattern() == null) {
 			try (Consumer<K, V> consumer =
 					this.consumerFactory.createConsumer(this.containerProperties.getGroupId(),
-							this.containerProperties.getClientId(), null)) {
+							this.containerProperties.getClientId(), null,
+							this.containerProperties.getConsumerProperties())) {
 				if (consumer != null) {
 					String[] topics = this.containerProperties.getTopics();
 					if (topics == null) {

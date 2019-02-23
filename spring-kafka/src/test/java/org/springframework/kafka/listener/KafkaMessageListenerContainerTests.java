@@ -1213,8 +1213,8 @@ public class KafkaMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
 
 			@Override
-			public Consumer<Integer, String> createConsumer(String groupId, String clientIdPrefix,
-					String clientIdSuffix, Properties properties) {
+			protected KafkaConsumer<Integer, String> createKafkaConsumer(Map<String, Object> configs) {
+				assertThat(configs).containsKey(ConsumerConfig.MAX_POLL_RECORDS_CONFIG);
 				return new KafkaConsumer<Integer, String>(props) {
 
 					@Override
@@ -1238,6 +1238,10 @@ public class KafkaMessageListenerContainerTests {
 			logger.info("defined part: " + message);
 			latch1.countDown();
 		});
+		Properties defaultProperties = new Properties();
+		defaultProperties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "42");
+		Properties consumerProperties = new Properties(defaultProperties);
+		container1Props.setConsumerProperties(consumerProperties);
 		CountDownLatch stubbingComplete1 = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container1 = spyOnContainer(
 				new KafkaMessageListenerContainer<>(cf, container1Props), stubbingComplete1);
@@ -1266,6 +1270,7 @@ public class KafkaMessageListenerContainerTests {
 			logger.info("defined part: " + message);
 			latch2.countDown();
 		});
+		container2Props.setConsumerProperties(consumerProperties);
 		CountDownLatch stubbingComplete2 = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container2 = spyOnContainer(
 				new KafkaMessageListenerContainer<>(cf, container2Props), stubbingComplete2);

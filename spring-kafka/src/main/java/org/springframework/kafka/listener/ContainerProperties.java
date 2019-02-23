@@ -617,7 +617,7 @@ public class ContainerProperties {
 	 * name(s) in the consumer factory.
 	 * {@code group.id} and {@code client.id} are ignored.
 	 * @return the properties.
-	 * @since 2.1.4
+	 * @since 2.2.4
 	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
 	 * @see #setGroupId(String)
 	 * @see #setClientId(String)
@@ -633,7 +633,7 @@ public class ContainerProperties {
 	 * name(s) in the consumer factory.
 	 * {@code group.id} and {@code client.id} are ignored.
 	 * @param consumerProperties the properties.
-	 * @since 2.1.4
+	 * @since 2.2.4
 	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
 	 * @see #setGroupId(String)
 	 * @see #setClientId(String)
