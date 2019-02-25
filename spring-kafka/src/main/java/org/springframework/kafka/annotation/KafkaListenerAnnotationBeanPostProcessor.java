@@ -56,6 +56,7 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.Scope;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
+import org.springframework.core.MethodParameter;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -73,6 +74,7 @@ import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.HeaderMethodArgumentResolver;
@@ -831,6 +833,24 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					new GenericMessageConverter(this.defaultFormattingConversionService);
 			argumentResolvers.add(new MessageMethodArgumentResolver(messageConverter));
 			argumentResolvers.add(new PayloadArgumentResolver(messageConverter, validator) {
+
+
+				@Override
+				public Object resolveArgument(MethodParameter parameter, Message<?> message) throws Exception {
+					Object resolved = super.resolveArgument(parameter, message);
+					/*
+					 * Replace KafkaNull list elements with null.
+					 */
+					if (resolved instanceof List) {
+						List<?> list = ((List<?>) resolved);
+						for (int i = 0; i < list.size(); i++) {
+							if (list.get(i) instanceof KafkaNull) {
+								list.set(i, null);
+							}
+						}
+					}
+					return resolved;
+				}
 
 				@Override
 				protected boolean isEmptyPayload(Object payload) {
