@@ -1028,8 +1028,8 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testSeekAutoCommitDefault() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
-		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test true by default
-		testSeekGuts(props, topic15, true);
+		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test false by default
+		testSeekGuts(props, topic15, false);
 	}
 
 	@Test

@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
@@ -43,6 +44,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -105,7 +107,18 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testAutoCommit() throws Exception {
 		this.logger.info("Start auto");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		AtomicReference<Properties> overrides = new AtomicReference<>();
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
+
+			@Override
+			protected KafkaConsumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+					String clientIdSuffixArg, Properties properties) {
+
+				overrides.set(properties);
+				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+			}
+
+		};
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setLogContainerConfig(true);
 
@@ -172,14 +185,26 @@ public class ConcurrentMessageListenerContainerTests {
 				assertThat(children).contains((KafkaMessageListenerContainer<Integer, String>) e.getSource());
 			}
 		});
+		assertThat(overrides.get().getProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)).isNull();
 		this.logger.info("Stop auto");
 	}
 
 	@Test
 	public void testAutoCommitWithRebalanceListener() throws Exception {
 		this.logger.info("Start auto");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test10", "true", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test10", "false", embeddedKafka);
+		AtomicReference<Properties> overrides = new AtomicReference<>();
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
+
+			@Override
+			protected KafkaConsumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+					String clientIdSuffixArg, Properties properties) {
+
+				overrides.set(properties);
+				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+			}
+
+		};
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -189,6 +214,9 @@ public class ConcurrentMessageListenerContainerTests {
 			listenerThreadNames.add(Thread.currentThread().getName());
 			latch.countDown();
 		});
+		Properties consumerProperties = new Properties();
+		consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+		containerProps.setConsumerProperties(consumerProperties);
 		final CountDownLatch rebalancePartitionsAssignedLatch = new CountDownLatch(2);
 		final CountDownLatch rebalancePartitionsRevokedLatch = new CountDownLatch(2);
 		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
@@ -231,6 +259,7 @@ public class ConcurrentMessageListenerContainerTests {
 			assertThat(threadName).contains("-C-");
 		}
 		container.stop();
+		assertThat(overrides.get().getProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)).isEqualTo("true");
 		this.logger.info("Stop auto");
 	}
 
@@ -238,7 +267,19 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testAfterListenCommit() throws Exception {
 		this.logger.info("Start manual");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test2", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
+		AtomicReference<Properties> overrides = new AtomicReference<>();
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
+
+			@Override
+			protected KafkaConsumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+					String clientIdSuffixArg, Properties properties) {
+
+				overrides.set(properties);
+				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+			}
+
+		};
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -267,6 +308,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		this.logger.info("Stop manual");
+		assertThat(overrides.get().getProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)).isEqualTo("false");
 	}
 
 	@Test
@@ -456,6 +498,7 @@ public class ConcurrentMessageListenerContainerTests {
 	public void testListenerException() throws Exception {
 		this.logger.info("Start exception");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic6);
 		containerProps.setAckCount(23);
@@ -467,6 +510,9 @@ public class ConcurrentMessageListenerContainerTests {
 			latch.countDown();
 			throw new RuntimeException("intended");
 		});
+		Properties consumerProperties = new Properties();
+		consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+		containerProps.setConsumerProperties(consumerProperties);
 
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);

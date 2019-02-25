@@ -820,6 +820,9 @@ Depending on the `syncCommits` container property, the `commitSync()` or `commit
 `syncCommits` is `true` by default; also see `setSyncCommitTimeout`.
 See `setCommitCallback` to get the results of asynchronous commits; the default callback is the `LoggingCommitCallback` which logs errors (and successes at debug level).
 
+Because the listener container has it's own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
+Starting with version 2.3, it unconditionally sets it to false unless specifically set in the consumer factory or the container's consumer property overrides.
+
 The `Acknowledgment` has the following method:
 
 ====

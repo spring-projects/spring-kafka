@@ -23,6 +23,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -32,7 +33,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,6 +57,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -140,9 +141,10 @@ public class SeekToCurrentOnErrorBatchModeTests {
 		@SuppressWarnings({ "rawtypes" })
 		@Bean
 		public ConsumerFactory consumerFactory() {
-			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+			ConsumerFactory consumerFactory = mock(ConsumerFactory.class, withSettings().verboseLogging());
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer("grp", "", "-0", new Properties())).willReturn(consumer);
+			given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+				.willReturn(consumer);
 			return consumerFactory;
 		}
 

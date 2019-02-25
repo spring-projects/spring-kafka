@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -49,6 +50,8 @@ import org.springframework.util.Assert;
 public final class KafkaTestUtils {
 
 	private static final Log logger = LogFactory.getLog(KafkaTestUtils.class); // NOSONAR
+
+	private static Properties defaults;
 
 	private KafkaTestUtils() {
 		// private ctor
@@ -249,4 +252,18 @@ public final class KafkaTestUtils {
 		return (T) value;
 	}
 
+	/**
+	 * Return a {@link Properties} object equal to the default consumer property overrides.
+	 * Useful when matching arguments in Mockito tests.
+	 * @return the default properties.
+	 * @since 2.2.5
+	 */
+	public static Properties defaultPropertyOverrides() {
+		if (defaults == null) {
+			Properties props = new Properties();
+			props.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+			defaults = props;
+		}
+		return defaults;
+	}
 }

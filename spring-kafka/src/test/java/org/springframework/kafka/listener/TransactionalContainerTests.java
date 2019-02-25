@@ -40,7 +40,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -155,7 +154,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
+		willReturn(consumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
@@ -238,7 +237,7 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).seek(any(), anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
+		willReturn(consumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -305,7 +304,7 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).seek(any(), anyLong());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
+		willReturn(consumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
 		Producer producer = mock(Producer.class);
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
@@ -369,7 +368,7 @@ public class TransactionalContainerTests {
 			}
 		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
-		willReturn(consumer).given(cf).createConsumer("group", "", null, new Properties());
+		willReturn(consumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
 		Producer producer = mock(Producer.class);
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
