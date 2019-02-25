@@ -563,6 +563,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.checkNullValueForExceptions = checkDeserializer(findDeserializerClass(props, true));
 			this.syncCommitTimeout = determineSyncCommitTimeout();
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
+				// update the property so we can use it directly from code elsewhere
 				this.containerProperties.setSyncCommitTimeout(this.syncCommitTimeout);
 			}
 		}
@@ -578,13 +579,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					timeout = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
 							.get(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG);
 				}
-				if (timeout instanceof Number) {
+				if (timeout instanceof Duration) {
+					return (Duration) timeout;
+				}
+				else if (timeout instanceof Number) {
 					return Duration.ofMillis(((Number) timeout).longValue());
 				}
 				else if (timeout instanceof String) {
 					return Duration.ofMillis(Long.parseLong((String) timeout));
 				}
 				else {
+					if (timeout != null) {
+						if (this.logger.isWarnEnabled()) {
+							this.logger.warn("Unexpected type: " + timeout.getClass().getName() + " in property '"
+								+ ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
+								+ "'; defaulting to 60 seconds for sync commit timeouts");
+						}
+					}
 					return Duration.ofSeconds(60);
 				}
 			}
