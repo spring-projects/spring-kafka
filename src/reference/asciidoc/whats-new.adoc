@@ -7,7 +7,7 @@ This section covers the changes made from version 2.2 to version 2.3.
 
 This version requires the 2.1.0 `kafka-clients` or higher.
 
-==== Listener Contaienr Changes
+==== Listener Container Changes
 
 Previously, error handlers received `ListenerExectionFailedException` (with the actual listener exception as the `cause`) when the listener was invoked using a listener adapter (such as `@KafkaListener` s).
 Exceptions thrown by native `GenericMessageListener` s were passed to the error handler unchanged.
@@ -15,3 +15,8 @@ Now a `ListenerExecutionFailedException` is always the argument (with the actual
 
 Because the listener container has it's own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
 It now sets it to false automatically unless specifically set in the consumer factory or the container's consumer property overrides.
+
+==== TopicBuilder
+
+A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` `@Bean` s for automatic topic provisioning.
+See <<configuring-topics>> for more information.

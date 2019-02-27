@@ -32,6 +32,7 @@ import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.common.config.TopicConfig;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -39,6 +40,7 @@ import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -62,6 +64,19 @@ public class KafkaAdminTests {
 
 	@Autowired
 	private NewTopic topic2;
+
+	@Test
+	public void testTopicConfigs() {
+		assertThat(topic1.configs()).containsEntry(
+				TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT);
+		assertThat(topic2.replicasAssignments())
+			.isEqualTo(Collections.singletonMap(0, Collections.singletonList(0)));
+		assertThat(topic2.configs()).containsEntry(
+				TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd");
+		assertThat(TopicBuilder.name("foo")
+					.replicas(3)
+					.build().replicationFactor()).isEqualTo((short) 3);
+	}
 
 	@Test
 	public void testAddTopics() throws Exception {
@@ -117,12 +132,19 @@ public class KafkaAdminTests {
 
 		@Bean
 		public NewTopic topic1() {
-			return new NewTopic("foo", 1, (short) 1);
+			return TopicBuilder.name("foo")
+					.partitions(2)
+					.replicas(1)
+					.compact()
+					.build();
 		}
 
 		@Bean
 		public NewTopic topic2() {
-			return new NewTopic("bar", 1, (short) 1);
+			return TopicBuilder.name("bar")
+					.replicasAssignments(Collections.singletonMap(0, Collections.singletonList(0)))
+					.config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
+					.build();
 		}
 
 	}

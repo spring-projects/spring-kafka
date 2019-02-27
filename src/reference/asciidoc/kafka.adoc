@@ -4,10 +4,12 @@
 This section offers detailed explanations of the various concerns that impact using Spring for Apache Kafka.
 For a quick but less detailed introduction, see <<quick-tour>>.
 
+[[configuring-topics]]
 ==== Configuring Topics
 
 If you define a `KafkaAdmin` bean in your application context, it can automatically add topics to the broker.
 To do so, you can add a `NewTopic` `@Bean` for each topic to the application context.
+Version 2.3 introduced a new class `TopicBuilder` to make creation of such beans more convenient.
 The following example shows how to do so:
 
 ====
@@ -23,15 +25,25 @@ public KafkaAdmin admin() {
 
 @Bean
 public NewTopic topic1() {
-    return new NewTopic("thing1", 10, (short) 2);
+    return TopicBuilder.name("thing1")
+            .partitions(10)
+            .replicas(3)
+            .compact()
+            .build();
 }
 
 @Bean
 public NewTopic topic2() {
-    return new NewTopic("thing2", 10, (short) 2);
+    return TopicBuilder.name("thing2")
+            .partitions(10)
+            .replicas(3)
+            .config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
+            .build();
 }
 ----
 ====
+
+IMPORTANT: When using Spring Boot, a `KafkaAdmin` bean is automatically registered so you only need the `NewTopic` `@Bean` s.
 
 By default, if the broker is not available, a message is logged, but the context continues to load.
 You can programmatically invoke the admin's `initialize()` method to try again later.
@@ -40,7 +52,7 @@ The context then fails to initialize.
 
 NOTE: If the broker supports it (1.0.0 or higher), the admin increases the number of partitions if it is found that an existing topic has fewer partitions than the `NewTopic.numPartitions`.
 
-For more advanced features, such as assigning partitions to replicas, you can use the `AdminClient` directly.
+For more advanced features, you can use the `AdminClient` directly.
 The following example shows how to do so:
 
 ====
@@ -462,12 +474,18 @@ public class KRequestingApplication {
 
     @Bean
     public NewTopic kRequests() {
-        return new NewTopic("kRequests", 10, (short) 2);
+        return TopicBuilder.name("kRequests")
+            .partitions(10)
+            .replicas(2)
+            .build();
     }
 
     @Bean
     public NewTopic kReplies() {
-        return new NewTopic("kReplies", 10, (short) 2);
+        return TopicBuilder.name("kReplies")
+            .partitions(10)
+            .replicas(2)
+            .build();
     }
 
 }
@@ -499,7 +517,10 @@ public class KReplyingApplication {
 
     @Bean
     public NewTopic kRequests() {
-        return new NewTopic("kRequests", 10, (short) 2);
+        return TopicBuilder.name("kRequests")
+            .partitions(10)
+            .replicas(2)
+            .build();
     }
 
     @Bean // not required if Jackson is on the classpath
@@ -1941,51 +1962,54 @@ The following Spring Boot application shows how to do this by overriding boot's 
 @SpringBootApplication
 public class Application {
 
-	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
 
-	@Bean
-	public ConsumerFactory<?, ?> kafkaConsumerFactory(KafkaProperties properties, SomeBean someBean) {
-		Map<String, Object> consumerProperties = properties.buildConsumerProperties();
-		consumerProperties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, MyConsumerInterceptor.class.getName());
-		consumerProperties.put("some.bean", someBean);
-		return new DefaultKafkaConsumerFactory<>(consumerProperties);
-	}
+    @Bean
+    public ConsumerFactory<?, ?> kafkaConsumerFactory(KafkaProperties properties, SomeBean someBean) {
+        Map<String, Object> consumerProperties = properties.buildConsumerProperties();
+        consumerProperties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, MyConsumerInterceptor.class.getName());
+        consumerProperties.put("some.bean", someBean);
+        return new DefaultKafkaConsumerFactory<>(consumerProperties);
+    }
 
-	@Bean
-	public ProducerFactory<?, ?> kafkaProducerFactory(KafkaProperties properties, SomeBean someBean) {
-		Map<String, Object> producerProperties = properties.buildProducerProperties();
-		producerProperties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MyProducerInterceptor.class.getName());
-		producerProperties.put("some.bean", someBean);
-		DefaultKafkaProducerFactory<?, ?> factory = new DefaultKafkaProducerFactory<>(producerProperties);
-		String transactionIdPrefix = properties.getProducer()
-				.getTransactionIdPrefix();
-		if (transactionIdPrefix != null) {
-			factory.setTransactionIdPrefix(transactionIdPrefix);
-		}
-		return factory;
-	}
+    @Bean
+    public ProducerFactory<?, ?> kafkaProducerFactory(KafkaProperties properties, SomeBean someBean) {
+        Map<String, Object> producerProperties = properties.buildProducerProperties();
+        producerProperties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MyProducerInterceptor.class.getName());
+        producerProperties.put("some.bean", someBean);
+        DefaultKafkaProducerFactory<?, ?> factory = new DefaultKafkaProducerFactory<>(producerProperties);
+        String transactionIdPrefix = properties.getProducer()
+                .getTransactionIdPrefix();
+        if (transactionIdPrefix != null) {
+            factory.setTransactionIdPrefix(transactionIdPrefix);
+        }
+        return factory;
+    }
 
-	@Bean
-	public SomeBean someBean() {
-		return new SomeBean();
-	}
+    @Bean
+    public SomeBean someBean() {
+        return new SomeBean();
+    }
 
-	@KafkaListener(id = "kgk897", topics = "kgh897")
-	public void listen(String in) {
-		System.out.println("Received " + in);
-	}
+    @KafkaListener(id = "kgk897", topics = "kgh897")
+    public void listen(String in) {
+        System.out.println("Received " + in);
+    }
 
-	@Bean
-	public ApplicationRunner runner(KafkaTemplate<String, String> template) {
-		return args -> template.send("kgh897", "test");
-	}
+    @Bean
+    public ApplicationRunner runner(KafkaTemplate<String, String> template) {
+        return args -> template.send("kgh897", "test");
+    }
 
-	@Bean
-	public NewTopic topic() {
-		return new NewTopic("kgh897", 1, (short) 1);
-	}
+    @Bean
+    public NewTopic kRequests() {
+        return TopicBuilder.name("kgh897")
+            .partitions(1)
+            .replicas(1)
+            .build();
+    }
 
 }
 ----
@@ -1996,9 +2020,9 @@ public class Application {
 ----
 public class SomeBean {
 
-	public void someMethod(String what) {
-		System.out.println(what + " in my foo bean");
-	}
+    public void someMethod(String what) {
+        System.out.println(what + " in my foo bean");
+    }
 
 }
 ----
@@ -2008,26 +2032,26 @@ public class SomeBean {
 ----
 public class MyProducerInterceptor implements ProducerInterceptor<String, String> {
 
-	private SomeBean bean;
+    private SomeBean bean;
 
-	@Override
-	public void configure(Map<String, ?> configs) {
-		this.bean = (SomeBean) configs.get("some.bean");
-	}
+    @Override
+    public void configure(Map<String, ?> configs) {
+        this.bean = (SomeBean) configs.get("some.bean");
+    }
 
-	@Override
-	public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
-		this.bean.someMethod("producer interceptor");
-		return record;
-	}
+    @Override
+    public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
+        this.bean.someMethod("producer interceptor");
+        return record;
+    }
 
-	@Override
-	public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
-	}
+    @Override
+    public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+    }
 
-	@Override
-	public void close() {
-	}
+    @Override
+    public void close() {
+    }
 
 }
 ----
@@ -2037,26 +2061,26 @@ public class MyProducerInterceptor implements ProducerInterceptor<String, String
 ----
 public class MyConsumerInterceptor implements ConsumerInterceptor<String, String> {
 
-	private SomeBean bean;
+    private SomeBean bean;
 
-	@Override
-	public void configure(Map<String, ?> configs) {
-		this.bean = (SomeBean) configs.get("some.bean");
-	}
+    @Override
+    public void configure(Map<String, ?> configs) {
+        this.bean = (SomeBean) configs.get("some.bean");
+    }
 
-	@Override
-	public ConsumerRecords<String, String> onConsume(ConsumerRecords<String, String> records) {
-		this.bean.someMethod("consumer interceptor");
-		return records;
-	}
+    @Override
+    public ConsumerRecords<String, String> onConsume(ConsumerRecords<String, String> records) {
+        this.bean.someMethod("consumer interceptor");
+        return records;
+    }
 
-	@Override
-	public void onCommit(Map<TopicPartition, OffsetAndMetadata> offsets) {
-	}
+    @Override
+    public void onCommit(Map<TopicPartition, OffsetAndMetadata> offsets) {
+    }
 
-	@Override
-	public void close() {
-	}
+    @Override
+    public void close() {
+    }
 
 }
 ----
@@ -2131,7 +2155,10 @@ public class Application implements ApplicationListener<KafkaEvent> {
 
     @Bean
     public NewTopic topic() {
-        return new NewTopic("pause.resume.topic", 2, (short) 1);
+        return TopicBuilder.name("pause.resume.topic")
+            .partitions(2)
+            .replicas(1)
+            .build();
     }
 
 }
