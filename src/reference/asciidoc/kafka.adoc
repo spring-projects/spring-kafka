@@ -2960,6 +2960,35 @@ See also <<dead-letters>>.
 When using transactions, similar functionality is provided by the `DefaultAfterRollbackProcessor`.
 See <<after-rollback>>.
 
+Starting with version 2.3, the `SeekToCurrentErrorHandler` considers certain exceptions to be fatal, and retries are skipped for such exceptions; the recoverer is invoked on the first failure.
+The exceptions that are considered fatal, by default, are:
+
+* `DeserializationException`
+* `MessageConversionException`
+* `MethodArgumentResolutionException`
+* `NoSuchMethodException`
+* `ClassCastException`
+
+since these exceptions are unlikely to be resolved on a retried delivery.
+
+You can add more exception types to the not-retryable category, or completely replace the `BinaryExceptionClassifier` with your own configured classifier.
+See the Javadocs for `SeekToCurrentErrorHandler` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
+
+Here is an example that adds `IllegalArgumentException` to the not-retryable exceptions:
+
+====
+[source, java]
+----
+@Bean
+public SeekToCurrentErrorHandler errorHandler(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
+    SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler(recoverer);
+    handler.addNotRetryableException(IllegalArgumentException.class);
+    return handler;
+}
+----
+====
+
+
 The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch, so the whole batch is replayed.
 This error handler does not support recovery, because the framework cannot know which message in the batch is failing.
 
