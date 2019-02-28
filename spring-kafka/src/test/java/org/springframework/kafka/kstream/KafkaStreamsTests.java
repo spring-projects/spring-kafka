@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -56,6 +57,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
+import org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -113,6 +115,9 @@ public class KafkaStreamsTests {
 	@Value("${streaming.topic.two}")
 	private String streamingTopic2;
 
+	@Autowired
+	private AtomicBoolean stateChangeCalled;
+
 	@Test
 	public void testKStreams() throws Exception {
 		assertThat(this.embeddedKafka.getKafkaServer(0).config().autoCreateTopicsEnable()).isFalse();
@@ -150,6 +155,7 @@ public class KafkaStreamsTests {
 		StreamThread[] threads = KafkaTestUtils.getPropertyValue(kafkaStreams, "threads", StreamThread[].class);
 		assertThat(threads).isNotEmpty();
 		assertThat(threads[0].getUncaughtExceptionHandler()).isSameAs(exceptionHandler);
+		assertThat(this.stateChangeCalled.get()).isTrue();
 	}
 
 	@Configuration
@@ -191,6 +197,18 @@ public class KafkaStreamsTests {
 					WallclockTimestampExtractor.class.getName());
 			props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100");
 			return new KafkaStreamsConfiguration(props);
+		}
+
+		@Bean
+		public AtomicBoolean stateChangeCalled() {
+			return new AtomicBoolean();
+		}
+
+		@Bean
+		public StreamsBuilderFactoryBeanCustomizer customizer() {
+			return fb -> fb.setStateListener((newState, oldState) -> {
+				stateChangeCalled().set(true);
+			});
 		}
 
 		@Bean

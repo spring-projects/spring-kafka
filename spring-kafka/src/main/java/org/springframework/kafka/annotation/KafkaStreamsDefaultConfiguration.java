@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
+import org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer;
 
 /**
  * {@code @Configuration} class that registers a {@link StreamsBuilderFactoryBean}
@@ -55,11 +56,17 @@ public class KafkaStreamsDefaultConfiguration {
 	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
 			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-				ObjectProvider<KafkaStreamsConfiguration> streamsConfigProvider) {
+				ObjectProvider<KafkaStreamsConfiguration> streamsConfigProvider,
+				ObjectProvider<StreamsBuilderFactoryBeanCustomizer> customizerProvider) {
 
 		KafkaStreamsConfiguration streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
-			return new StreamsBuilderFactoryBean(streamsConfig);
+			StreamsBuilderFactoryBean fb = new StreamsBuilderFactoryBean(streamsConfig);
+			StreamsBuilderFactoryBeanCustomizer customizer = customizerProvider.getIfUnique();
+			if (customizer != null) {
+				customizer.configure(fb);
+			}
+			return fb;
 		}
 		else {
 			throw new UnsatisfiedDependencyException(KafkaStreamsDefaultConfiguration.class.getName(),

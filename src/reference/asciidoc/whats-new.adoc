@@ -20,3 +20,8 @@ It now sets it to false automatically unless specifically set in the consumer fa
 
 A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` `@Bean` s for automatic topic provisioning.
 See <<configuring-topics>> for more information.
+
+==== Kafka Streams Changes
+
+You can now perform additional configuration of the `StreamsBuilderFactoryBean` created by `@EnableKafkaStreams`.
+See <<streams-config, Streams Configuration>> for more information.

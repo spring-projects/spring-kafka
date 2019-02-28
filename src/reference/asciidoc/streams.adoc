@@ -179,10 +179,12 @@ See the Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs
 
 IMPORTANT: Starting with version 2.2, the stream configuration is now provided as a `KafkaStreamsConfiguration` object, rather than as a `StreamsConfig`.
 
-To avoid boilerplate code for most cases, especially when you develop microservices, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which you should placed on a `@Configuration` class.
+To avoid boilerplate code for most cases, especially when you develop microservices, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which you should place on a `@Configuration` class.
 All you need is to declare a `KafkaStreamsConfiguration` bean named `defaultKafkaStreamsConfig`.
-A `StreamsBuilder` bean, named `defaultKafkaStreamsBuilder`, is automatically declared in the application context.
+A `StreamsBuilderFactoryBean` bean, named `defaultKafkaStreamsBuilder`, is automatically declared in the application context.
 You can declare and use any additional `StreamsBuilderFactoryBean` beans as well.
+Starting with version 2.3, you can perform additional customization of that bean, by providing a bean that implements `StreamsBuilderFactoryBeanCustomizer`.
+There must only be one such bean, or one must be marked `@Primary`.
 
 By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
 Starting with version 2.1.2, the factory bean has additional constructors, taking a `CleanupConfig` object that has properties to let you control whether the `cleanUp()` method is called during `start()` or `stop()` or neither.
@@ -207,6 +209,13 @@ public static class KafkaStreamsConfig {
         props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         props.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG, WallclockTimestampExtractor.class.getName());
         return new KafkaStreamsConfiguration(props);
+    }
+
+    @Bean
+    public StreamsBuilderFactoryBeanCustomizer customizer() {
+        return fb -> fb.setStateListener((newState, oldState) -> {
+            System.out.println("State transition from " + oldState + " to " + newState);
+        });
     }
 
     @Bean
