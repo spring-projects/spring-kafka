@@ -18,15 +18,19 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.serializer.DeserializationException;
@@ -42,19 +46,25 @@ public class SeekToCurrentErrorHandlerTests {
 	public void testClassifier() {
 		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
 		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler((r, t) -> recovered.set(r));
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
-		List<ConsumerRecord<?, ?>> records = Collections.singletonList(record);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 0, 1L, "foo", "bar");
+		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
 		IllegalStateException illegalState = new IllegalStateException();
+		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handle(illegalState, records,
-					mock(Consumer.class), mock(MessageListenerContainer.class)))
+					consumer, mock(MessageListenerContainer.class)))
 				.withCause(illegalState);
 		handler.handle(new DeserializationException("intended", null, false, illegalState), records,
-				mock(Consumer.class), mock(MessageListenerContainer.class));
-		assertThat(recovered.get()).isSameAs(record);
+				consumer, mock(MessageListenerContainer.class));
+		assertThat(recovered.get()).isSameAs(record1);
 		handler.addNotRetryableException(IllegalStateException.class);
 		recovered.set(null);
-		handler.handle(illegalState, records, mock(Consumer.class), mock(MessageListenerContainer.class));
-		assertThat(recovered.get()).isSameAs(record);
+		handler.handle(illegalState, records, consumer, mock(MessageListenerContainer.class));
+		assertThat(recovered.get()).isSameAs(record1);
+		InOrder inOrder = inOrder(consumer);
+		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // not recovered so seek
+		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 0), 1L); // 2x recovered seek next
+		inOrder.verifyNoMoreInteractions();
 	}
 
 }

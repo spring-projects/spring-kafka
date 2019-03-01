@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -52,6 +53,8 @@ import org.springframework.util.Assert;
  *
  */
 public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
+
+	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
 
 	protected static final Log LOGGER = LogFactory.getLog(SeekToCurrentErrorHandler.class); // NOSONAR visibility
 
@@ -101,9 +104,7 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
 	 * @since 2.2
 	 */
-	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
-			int maxFailures) {
-
+	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
 		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, LOGGER);
 		this.classifier = configureDefaultClassifier();
 	}
@@ -213,10 +214,8 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
-		if (!this.classifier.classify(thrownException)) {
-			this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
-		}
-		else if (!SeekUtils.doSeeks(records, consumer, thrownException, true, this.failureTracker::skip, LOGGER)) {
+		if (!SeekUtils.doSeeks(records, consumer, thrownException, true, getSkipPredicate(records, thrownException),
+				LOGGER)) {
 			throw new KafkaException("Seek to current after exception", thrownException);
 		}
 		if (this.commitRecovered) {
@@ -239,6 +238,16 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 			else {
 				LOGGER.warn("'commitRecovered' ignored, container AckMode must be MANUAL_IMMEDIATE");
 			}
+		}
+	}
+
+	private BiPredicate<ConsumerRecord<?, ?>, Exception> getSkipPredicate(List<ConsumerRecord<?, ?>> records, Exception thrownException) {
+		if (this.classifier.classify(thrownException)) {
+			return this.failureTracker::skip;
+		}
+		else {
+			this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
+			return ALWAYS_SKIP_PREDICATE;
 		}
 	}
 
