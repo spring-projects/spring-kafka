@@ -31,6 +31,8 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.util.Assert;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.KafkaReceiver;
@@ -50,6 +52,7 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 	private final KafkaReceiver<K, V> kafkaReceiver;
 
 	public ReactiveKafkaConsumerTemplate(ReceiverOptions<K, V> receiverOptions) {
+		Assert.notNull(receiverOptions, "Receiver options can not be null");
 		this.kafkaReceiver = KafkaReceiver.create(receiverOptions);
 	}
 

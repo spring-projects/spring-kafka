@@ -32,6 +32,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -58,6 +59,8 @@ public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, Dispo
 	}
 
 	public ReactiveKafkaProducerTemplate(SenderOptions<K, V> senderOptions, RecordMessageConverter messageConverter) {
+		Assert.notNull(senderOptions, "Sender options can not be null");
+		Assert.notNull(messageConverter, "Message converter can not be null");
 		this.sender = KafkaSender.create(senderOptions);
 		this.messageConverter = messageConverter;
 	}

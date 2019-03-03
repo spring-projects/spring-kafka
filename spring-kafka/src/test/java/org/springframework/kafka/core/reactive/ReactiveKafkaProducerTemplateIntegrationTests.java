@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,7 +117,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
 						.extracting(RecordMetadata::topic)
-						.containsExactly(REACTIVE_INT_KEY_TOPIC);
+						.isEqualTo(REACTIVE_INT_KEY_TOPIC);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -136,7 +136,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
 						.extracting(RecordMetadata::topic)
-						.containsExactly(REACTIVE_INT_KEY_TOPIC);
+						.isEqualTo(REACTIVE_INT_KEY_TOPIC);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -279,7 +279,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.assertNext(senderResult -> {
 					Assertions.assertThat(senderResult.recordMetadata())
 						.extracting(RecordMetadata::topic)
-						.containsExactly(REACTIVE_INT_KEY_TOPIC);
+						.isEqualTo(REACTIVE_INT_KEY_TOPIC);
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
