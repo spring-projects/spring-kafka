@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.TransactionManager;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 /**
  * Reactive kafka consumer operations implementation.
@@ -139,23 +141,33 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		});
 	}
 
-	public Flux<Map.Entry<MetricName, ? extends Metric>> metricsFromConsumer() {
-		return doOnConsumer(Consumer::metrics).flatMapIterable(Map::entrySet);
+	public Flux<Tuple2<MetricName, ? extends Metric>> metricsFromConsumer() {
+		return doOnConsumer(Consumer::metrics)
+				.flatMapIterable(Map::entrySet)
+				.map(m -> Tuples.of(m.getKey(), m.getValue()));
 	}
 
-	public Flux<Map.Entry<String, List<PartitionInfo>>> listTopics() {
-		return doOnConsumer(Consumer::listTopics).flatMapIterable(Map::entrySet);
+	public Flux<Tuple2<String, List<PartitionInfo>>> listTopics() {
+		return doOnConsumer(Consumer::listTopics)
+				.flatMapIterable(Map::entrySet)
+				.map(topicAndParitionInfo -> Tuples.of(topicAndParitionInfo.getKey(), topicAndParitionInfo.getValue()));
 	}
 
-	public Flux<Map.Entry<TopicPartition, OffsetAndTimestamp>> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
-		return doOnConsumer(c -> c.offsetsForTimes(timestampsToSearch)).flatMapIterable(Map::entrySet);
+	public Flux<Tuple2<TopicPartition, OffsetAndTimestamp>> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
+		return doOnConsumer(c -> c.offsetsForTimes(timestampsToSearch))
+				.flatMapIterable(Map::entrySet)
+				.map(partitionAndOffset -> Tuples.of(partitionAndOffset.getKey(), partitionAndOffset.getValue()));
 	}
 
-	public Flux<Map.Entry<TopicPartition, Long>> beginningOffsets(TopicPartition... partitions) {
-		return doOnConsumer(c -> c.beginningOffsets(Arrays.asList(partitions))).flatMapIterable(Map::entrySet);
+	public Flux<Tuple2<TopicPartition, Long>> beginningOffsets(TopicPartition... partitions) {
+		return doOnConsumer(c -> c.beginningOffsets(Arrays.asList(partitions)))
+				.flatMapIterable(Map::entrySet)
+				.map(partitionsOffsets -> Tuples.of(partitionsOffsets.getKey(), partitionsOffsets.getValue()));
 	}
 
-	public Flux<Map.Entry<TopicPartition, Long>> endOffsets(TopicPartition... partitions) {
-		return doOnConsumer(c -> c.endOffsets(Arrays.asList(partitions))).flatMapIterable(Map::entrySet);
+	public Flux<Tuple2<TopicPartition, Long>> endOffsets(TopicPartition... partitions) {
+		return doOnConsumer(c -> c.endOffsets(Arrays.asList(partitions)))
+				.flatMapIterable(Map::entrySet)
+				.map(partitionsOffsets -> Tuples.of(partitionsOffsets.getKey(), partitionsOffsets.getValue()));
 	}
 }

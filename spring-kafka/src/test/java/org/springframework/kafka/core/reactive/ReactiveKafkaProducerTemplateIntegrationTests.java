@@ -61,6 +61,7 @@ import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 import reactor.test.StepVerifier;
+import reactor.util.function.Tuple2;
 
 /**
  * @author Mark Norkin
@@ -374,7 +375,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 	@Test
 	public void shouldReturnMetrics() {
-		Flux<Map.Entry<MetricName, ? extends Metric>> metricsMono = reactiveKafkaProducerTemplate.metricsFromProducer();
+		Flux<Tuple2<MetricName, ? extends Metric>> metricsMono = reactiveKafkaProducerTemplate.metricsFromProducer();
 
 		StepVerifier.create(metricsMono.collectList())
 				.assertNext(metrics -> Assertions.assertThat(metrics).isNotNull().isNotEmpty())

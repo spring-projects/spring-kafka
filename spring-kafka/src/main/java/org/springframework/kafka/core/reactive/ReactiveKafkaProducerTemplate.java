@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 import reactor.kafka.sender.TransactionManager;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 /**
  * Reactive kafka producer operations implementation.
@@ -127,8 +129,10 @@ public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, Dispo
 		return partitionsInfo.flatMapIterable(Function.identity());
 	}
 
-	public Flux<Map.Entry<MetricName, ? extends Metric>> metricsFromProducer() {
-		return doOnProducer(Producer::metrics).flatMapIterable(Map::entrySet);
+	public Flux<Tuple2<MetricName, ? extends Metric>> metricsFromProducer() {
+		return doOnProducer(Producer::metrics)
+				.flatMapIterable(Map::entrySet)
+				.map(m -> Tuples.of(m.getKey(), m.getValue()));
 	}
 
 	public <T> Mono<T> doOnProducer(Function<Producer<K, V>, ? extends T> action) {
