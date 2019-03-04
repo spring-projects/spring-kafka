@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -45,6 +46,8 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.Serializer;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -54,6 +57,8 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -79,7 +84,8 @@ public class SeekToCurrentRecovererTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("seekTestMaxFailures", "false", embeddedKafka);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props, null,
+				new ErrorHandlingDeserializer2<>(new JsonDeserializer<>(String.class)));
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setPollTimeout(10_000);
 
@@ -87,6 +93,10 @@ public class SeekToCurrentRecovererTests {
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
+		Serializer<?> byteArraySerializer = new ByteArraySerializer();
+		@SuppressWarnings("unchecked")
+		DefaultKafkaProducerFactory<Object, Object> dltPf =
+				new DefaultKafkaProducerFactory<Object, Object>(senderProps, null, (Serializer<Object>) byteArraySerializer);
 		final CountDownLatch latch = new CountDownLatch(1);
 		AtomicReference<String> data = new AtomicReference<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -102,8 +112,12 @@ public class SeekToCurrentRecovererTests {
 		container.setBeanName("testSeekMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
 		final AtomicReference<String> failedGroupId = new AtomicReference<>();
-		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
-				(r, e) -> new TopicPartition(topic1DLT, r.partition())) {
+		Map<Class<?>, KafkaTemplate<?, ?>> templates = new LinkedHashMap<>();
+		templates.put(String.class, template);
+		templates.put(byte[].class, new KafkaTemplate<>(dltPf));
+		DeadLetterPublishingRecoverer recoverer =
+				new DeadLetterPublishingRecoverer(templates,
+						(r, e) -> new TopicPartition(topic1DLT, r.partition())) {
 
 			@Override
 			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
@@ -126,19 +140,28 @@ public class SeekToCurrentRecovererTests {
 		container.start();
 
 		template.setDefaultTopic(topic1);
-		template.sendDefault(0, 0, "foo");
-		template.sendDefault(0, 0, "bar");
+		template.sendDefault(0, 0, "\"foo\"");
+		template.sendDefault(0, 0, "\"bar\"");
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(data.get()).isEqualTo("bar");
 		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(failedGroupId.get()).isEqualTo("seekTestMaxFailures");
-		container.stop();
-		Consumer<Integer, String> consumer = cf.createConsumer();
+
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "seekTestMaxFailures.dlt");
+		DefaultKafkaConsumerFactory<Integer, String> dltcf = new DefaultKafkaConsumerFactory<>(props);
+		Consumer<Integer, String> consumer = dltcf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic1DLT);
 		ConsumerRecord<Integer, String> dltRecord = KafkaTestUtils.getSingleRecord(consumer, topic1DLT);
 		assertThat(dltRecord.value()).isEqualTo("foo");
+		template.sendDefault(0, 0, "junkJson");
+		dltRecord = KafkaTestUtils.getSingleRecord(consumer, topic1DLT);
+		assertThat(dltRecord.value()).isEqualTo("junkJson");
+		container.stop();
 		pf.destroy();
+		dltPf.destroy();
+		consumer.close();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(errorHandler, times(4)).handle(any(), any(), any(), any());
 		verify(errorHandler).clearThreadState();
 	}
 
@@ -155,7 +178,7 @@ public class SeekToCurrentRecovererTests {
 			eh.handle(new RuntimeException(), records, consumer, null);
 			fail("Expected exception");
 		}
-		catch (KafkaException e) {
+		catch (@SuppressWarnings("unused") KafkaException e) {
 			// NOSONAR
 		}
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
@@ -197,7 +220,7 @@ public class SeekToCurrentRecovererTests {
 			eh.handle(new RuntimeException(), records, consumer, container);
 			fail("Expected exception");
 		}
-		catch (KafkaException e) {
+		catch (@SuppressWarnings("unused") KafkaException e) {
 			// NOSONAR
 		}
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
@@ -234,7 +257,7 @@ public class SeekToCurrentRecovererTests {
 				eh.handle(new RuntimeException(), records, consumer, null);
 				fail("Expected exception");
 			}
-			catch (KafkaException e) {
+			catch (@SuppressWarnings("unused") KafkaException e) {
 				// NOSONAR
 			}
 		}

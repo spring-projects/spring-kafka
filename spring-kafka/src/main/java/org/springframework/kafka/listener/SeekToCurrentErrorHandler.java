@@ -241,7 +241,9 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 		}
 	}
 
-	private BiPredicate<ConsumerRecord<?, ?>, Exception> getSkipPredicate(List<ConsumerRecord<?, ?>> records, Exception thrownException) {
+	private BiPredicate<ConsumerRecord<?, ?>, Exception> getSkipPredicate(List<ConsumerRecord<?, ?>> records,
+			Exception thrownException) {
+
 		if (this.classifier.classify(thrownException)) {
 			return this.failureTracker::skip;
 		}
@@ -263,7 +265,9 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 		classified.put(MethodArgumentResolutionException.class, false);
 		classified.put(NoSuchMethodException.class, false);
 		classified.put(ClassCastException.class, false);
-		return new ExtendedBinaryExceptionClassifier(classified, true);
+		ExtendedBinaryExceptionClassifier defaultClassifier = new ExtendedBinaryExceptionClassifier(classified, true);
+		defaultClassifier.setTraverseCauses(true);
+		return defaultClassifier;
 	}
 
 	/**

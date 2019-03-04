@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,21 @@
 
 package org.springframework.kafka.listener;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
+import org.apache.commons.logging.Log;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -53,6 +68,38 @@ public final class ListenerUtils {
 			throw new IllegalArgumentException("Unsupported listener type: " + listener.getClass().getName());
 		}
 		return listenerType;
+	}
+
+	/**
+	 * Extract a {@link DeserializationException} from the supplied header name, if
+	 * present.
+	 * @param record the consumer record.
+	 * @param headerName the header name.
+	 * @param logger the logger for logging errors.
+	 * @return the exception or null.
+	 * @since 2.3
+	 */
+	@Nullable
+	public static DeserializationException getExceptionFromHeader(final ConsumerRecord<?, ?> record,
+			String headerName, Log logger) {
+
+		Header header = record.headers().lastHeader(headerName);
+		if (header != null) {
+			try {
+				DeserializationException ex = (DeserializationException) new ObjectInputStream(
+						new ByteArrayInputStream(header.value())).readObject();
+				Headers headers = new RecordHeaders(Arrays.stream(record.headers().toArray())
+						.filter(h -> !h.key()
+								.startsWith(ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX))
+						.collect(Collectors.toList()));
+				ex.setHeaders(headers);
+				return ex;
+			}
+			catch (IOException | ClassNotFoundException | ClassCastException e) {
+				logger.error("Failed to deserialize a deserialization exception", e);
+			}
+		}
+		return null;
 	}
 
 }

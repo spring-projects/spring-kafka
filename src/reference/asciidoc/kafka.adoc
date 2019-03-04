@@ -3084,6 +3084,28 @@ The record sent to the dead-letter topic is enhanced with the following headers:
 * `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE`: The original timestamp type.
 
 
+Starting with version 2.3, when used in conjunction with an `ErrorHandlingDeserializer2`, the publisher will restore the record `value()`, in the dead-letter producer record, to the original value that failed to be deserialized.
+Previously, the `value()` was null and user code had to decode the `DeserializationException` from the message headers.
+In addition, you can provide multiple `KafkaTemplate` s to the publisher; this might be needed, for example, if you want to publish the `byte[]` from a `DeserializationException`, as well as values using a different serializer from records that were deserialized successfully.
+Here is an example of configuring the publisher with `KafkaTemplate` s that use a `String` and `byte[]` serializer:
+
+====
+[source, java]
+----
+@Bean
+public DeadLetterPublishingRecoverer publisher(KafkaTemplate<?, ?> stringTemplate,
+        KafkaTemplate<?, ?> bytesTemplate) {
+
+    Map<Class<?>, KafkaTemplate<?, ?>> templates = new LinkedHashMap<>();
+    templates.put(String.class, stringTemplate);
+    templates.put(byte[].class, bytesTemplate);
+    return new DeadLetterPublishingRecoverer(templates);
+}
+----
+====
+
+The publisher uses the map keys to locate a template that is suitable for the `value()` about to be published.
+A `LinkedHashMap` is recommended so that the keys are examined in order.
 
 [[kerberos]]
 ==== Kerberos

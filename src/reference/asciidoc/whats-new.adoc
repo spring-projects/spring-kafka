@@ -21,6 +21,10 @@ It now sets it to false automatically unless specifically set in the consumer fa
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.
 See <<seek-to-current>> for more information.
 
+The `DeadLetterPublishingRecoverer`, when used in conjunction with an `ErrorHandlingDeserializer2`, now sets the payload of the message sent to the dead-letter topic, to the original value that could not be deserialized.
+Previously, it was `null` and user code needed to extract the `DeserializationException` from the message headers.
+See <<dead-letters>> for more information.
+
 ==== TopicBuilder
 
 A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` `@Bean` s for automatic topic provisioning.

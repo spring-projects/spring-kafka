@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -54,9 +51,6 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
@@ -1341,21 +1335,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		public void checkDeser(final ConsumerRecord<K, V> record, String headerName) {
-			Header header = record.headers().lastHeader(headerName);
-			if (header != null) {
-				try {
-					DeserializationException ex = (DeserializationException) new ObjectInputStream(
-							new ByteArrayInputStream(header.value())).readObject();
-					Headers headers = new RecordHeaders(Arrays.stream(record.headers().toArray())
-							.filter(h -> !h.key()
-									.startsWith(ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX))
-							.collect(Collectors.toList()));
-					ex.setHeaders(headers);
-					throw ex;
-				}
-				catch (IOException | ClassNotFoundException | ClassCastException e) {
-					this.logger.error("Failed to deserialize a deserialization exception", e);
-				}
+			DeserializationException exception = ListenerUtils.getExceptionFromHeader(record, headerName, this.logger);
+			if (exception != null) {
+				throw exception;
 			}
 		}
 

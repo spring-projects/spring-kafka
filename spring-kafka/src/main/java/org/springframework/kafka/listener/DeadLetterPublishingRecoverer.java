@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
@@ -34,7 +37,11 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 
 /**
  * A {@link BiConsumer} that publishes a failed record to a dead-letter topic.
@@ -47,7 +54,12 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 
 	private static final Log logger = LogFactory.getLog(DeadLetterPublishingRecoverer.class); // NOSONAR
 
+	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
+		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
+
 	private final KafkaTemplate<Object, Object> template;
+
+	private final Map<Class<?>, KafkaTemplate<?, ?>> templates;
 
 	private final boolean transactional;
 
@@ -60,25 +72,65 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 	 * dead-letter topic must have at least as many partitions as the original topic.
 	 * @param template the {@link KafkaTemplate} to use for publishing.
 	 */
-	public DeadLetterPublishingRecoverer(KafkaTemplate<Object, Object> template) {
-		this(template, (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition()));
+	public DeadLetterPublishingRecoverer(KafkaTemplate<? extends Object, ? extends Object> template) {
+		this(template, DEFAULT_DESTINATION_RESOLVER);
 	}
 
 	/**
 	 * Create an instance with the provided template and destination resolving function,
 	 * that receives the failed consumer record and the exception and returns a
-	 * {@link TopicPartition}. If the partition in the {@link TopicPartition} is less than 0, no
-	 * partition is set when publishing to the topic.
+	 * {@link TopicPartition}. If the partition in the {@link TopicPartition} is less than
+	 * 0, no partition is set when publishing to the topic.
 	 * @param template the {@link KafkaTemplate} to use for publishing.
 	 * @param destinationResolver the resolving function.
 	 */
-	public DeadLetterPublishingRecoverer(KafkaTemplate<Object, Object> template,
+	public DeadLetterPublishingRecoverer(KafkaTemplate<? extends Object, ? extends Object> template,
+			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+		this(Collections.singletonMap(Object.class, template), destinationResolver);
+	}
+
+	/**
+	 * Create an instance with the provided templates and a default destination resolving
+	 * function that returns a TopicPartition based on the original topic (appended with
+	 * ".DLT") from the failed record, and the same partition as the failed record.
+	 * Therefore the dead-letter topic must have at least as many partitions as the
+	 * original topic. The templates map keys are classes and the value the corresponding
+	 * template to use for objects (producer record values) of that type. A
+	 * {@link java.util.LinkedHashMap} is recommended when there is more than one
+	 * template, to ensure the map is traversed in order.
+	 * @param templates the {@link KafkaTemplate}s to use for publishing.
+	 */
+	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaTemplate<? extends Object, ? extends Object>> templates) {
+		this(templates, DEFAULT_DESTINATION_RESOLVER);
+	}
+
+	/**
+	 * Create an instance with the provided templates and destination resolving function,
+	 * that receives the failed consumer record and the exception and returns a
+	 * {@link TopicPartition}. If the partition in the {@link TopicPartition} is less than
+	 * 0, no partition is set when publishing to the topic. The templates map keys are
+	 * classes and the value the corresponding template to use for objects (producer
+	 * record values) of that type. A {@link java.util.LinkedHashMap} is recommended when
+	 * there is more than one template, to ensure the map is traversed in order.
+	 * @param templates the {@link KafkaTemplate}s to use for publishing.
+	 * @param destinationResolver the resolving function.
+	 */
+	@SuppressWarnings("unchecked")
+	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaTemplate<? extends Object, ? extends Object>> templates,
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 
-		Assert.notNull(template, "The template cannot be null");
+		Assert.isTrue(!ObjectUtils.isEmpty(templates), "At least one template is required");
 		Assert.notNull(destinationResolver, "The destinationResolver cannot be null");
-		this.template = template;
-		this.transactional = template.isTransactional();
+		this.template = templates.size() == 1 ? (KafkaTemplate<Object, Object>) templates.values().iterator().next() : null;
+		this.templates = templates;
+		this.transactional = templates.values().iterator().next().isTransactional();
+		Boolean tx = this.transactional;
+		Assert.isTrue(!templates.values()
+			.stream()
+			.map(t -> t.isTransactional())
+			.filter(t -> !t.equals(tx))
+			.findFirst()
+			.isPresent(), "All templates must have the same setting for transactional");
 		this.destinationResolver = destinationResolver;
 	}
 
@@ -87,42 +139,72 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
 		RecordHeaders headers = new RecordHeaders(record.headers().toArray());
 		enhanceHeaders(headers, record, exception);
-		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers);
-		if (this.transactional && !this.template.inTransaction()) {
-			this.template.executeInTransaction(t -> {
+		DeserializationException deserEx = ListenerUtils.getExceptionFromHeader(record,
+				ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER, logger);
+		if (deserEx == null) {
+			deserEx = ListenerUtils.getExceptionFromHeader(record,
+					ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER, logger);
+		}
+		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
+				deserEx == null ? null : deserEx.getData());
+		KafkaTemplate<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
+		if (this.transactional && !kafkaTemplate.inTransaction()) {
+			kafkaTemplate.executeInTransaction(t -> {
 				publish(outRecord, t);
 				return null;
 			});
 		}
 		else {
-			publish(outRecord, this.template);
+			publish(outRecord, kafkaTemplate);
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	private KafkaTemplate<Object, Object> findTemplateForValue(Object value) {
+		if (this.template != null) {
+			return this.template;
+		}
+		Optional<Class<?>> key = this.templates.keySet()
+			.stream()
+			.filter((k) -> k.isAssignableFrom(value.getClass()))
+			.findFirst();
+		if (key.isPresent()) {
+			return (KafkaTemplate<Object, Object>) this.templates.get(key.get());
+		}
+		if (logger.isWarnEnabled()) {
+			logger.warn("Failed to find a template for " + value.getClass() + " attemting to use the last entry");
+		}
+		return (KafkaTemplate<Object, Object>) this.templates.values()
+				.stream()
+				.reduce((first,  second) -> second)
+				.get();
+	}
+
 	/**
-	 * Subclasses can override this method to customize the producer record to send to the DLQ.
-	 * The default implementation simply copies the key and value from the consumer record
-	 * and adds the headers. The timestamp is not set (the original timestamp is in one of
-	 * the headers).
-	 * IMPORTANT: if the partition in the {@link TopicPartition} is less than 0, it must be set to null
-	 * in the {@link ProducerRecord}.
+	 * Subclasses can override this method to customize the producer record to send to the
+	 * DLQ. The default implementation simply copies the key and value from the consumer
+	 * record and adds the headers. The timestamp is not set (the original timestamp is in
+	 * one of the headers). IMPORTANT: if the partition in the {@link TopicPartition} is
+	 * less than 0, it must be set to null in the {@link ProducerRecord}.
 	 * @param record the failed record
-	 * @param topicPartition the {@link TopicPartition} returned by the destination resolver.
+	 * @param topicPartition the {@link TopicPartition} returned by the destination
+	 * resolver.
 	 * @param headers the headers - original record headers plus DLT headers.
+	 * @param value the value to use instead of the consumer record value.
 	 * @return the producer record to send.
 	 * @see KafkaHeaders
 	 */
 	protected ProducerRecord<Object, Object> createProducerRecord(ConsumerRecord<?, ?> record,
-			TopicPartition topicPartition, RecordHeaders headers) {
+			TopicPartition topicPartition, RecordHeaders headers, @Nullable byte[] value) {
 
 		return new ProducerRecord<>(topicPartition.topic(),
 				topicPartition.partition() < 0 ? null : topicPartition.partition(),
-				record.key(), record.value(), headers);
+				record.key(), value == null ? record.value() : value, headers);
 	}
 
-	private void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> template) {
+	private void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
 		try {
-			template.send(outRecord).addCallback(result -> {
+			kafkaTemplate.send(outRecord).addCallback(result -> {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Successful dead-letter publication: " + result);
 				}
