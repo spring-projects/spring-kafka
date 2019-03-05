@@ -49,6 +49,7 @@ import reactor.util.function.Tuples;
  * @param <V> the value type.
  *
  * @author Mark Norkin
+ * @since 2.3.0
  */
 public class ReactiveKafkaConsumerTemplate<K, V> {
 	private final KafkaReceiver<K, V> kafkaReceiver;

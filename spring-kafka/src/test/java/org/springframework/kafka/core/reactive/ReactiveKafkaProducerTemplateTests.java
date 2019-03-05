@@ -25,6 +25,7 @@ import reactor.kafka.sender.SenderOptions;
 
 /**
  * @author Mark Norkin
+ * @since 2.3.0
  */
 public class ReactiveKafkaProducerTemplateTests {
 	@Rule

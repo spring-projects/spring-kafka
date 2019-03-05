@@ -22,6 +22,7 @@ import org.junit.rules.ExpectedException;
 
 /**
  * @author Mark Norkin
+ * @since 2.3.0
  */
 public class ReactiveKafkaConsumerTemplateTests {
 	@Rule

@@ -65,6 +65,7 @@ import reactor.util.function.Tuple2;
 
 /**
  * @author Mark Norkin
+ * @since 2.3.0
  */
 public class ReactiveKafkaProducerTemplateIntegrationTests {
 	private static final int DEFAULT_PARTITIONS_COUNT = 2;

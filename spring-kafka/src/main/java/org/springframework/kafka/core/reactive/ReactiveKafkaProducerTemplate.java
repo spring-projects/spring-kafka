@@ -51,6 +51,7 @@ import reactor.util.function.Tuples;
  * @param <V> the value type.
  *
  * @author Mark Norkin
+ * @since 2.3.0
  */
 public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, DisposableBean {
 	private final KafkaSender<K, V> sender;
