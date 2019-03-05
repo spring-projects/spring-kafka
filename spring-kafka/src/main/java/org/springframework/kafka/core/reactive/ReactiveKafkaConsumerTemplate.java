@@ -71,6 +71,38 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		return this.kafkaReceiver.receiveAtmostOnce();
 	}
 
+	/**
+	 * Returns a {@link Flux} of consumer record batches that may be used for exactly once
+	 * delivery semantics. A new transaction is started for each inner Flux and it is the
+	 * responsibility of the consuming application to commit or abort the transaction
+	 * using {@link TransactionManager#commit()} or {@link TransactionManager#abort()}
+	 * after processing the Flux. The next batch of consumer records will be delivered only
+	 * after the previous flux terminates. Offsets of records dispatched on each inner Flux
+	 * are committed using the provided <code>transactionManager</code> within the transaction
+	 * started for that Flux.
+	 * <p>
+	 * Example usage:
+	 * <pre>
+	 * {@code
+	 * KafkaSender<Integer, Person> sender = sender(senderOptions());
+	 * ReceiverOptions<Integer, Person> receiverOptions = receiverOptions(Collections.singleton(sourceTopic));
+	 * KafkaReceiver<Integer, Person> receiver = KafkaReceiver.create(receiverOptions);
+	 * receiver.receiveExactlyOnce(sender.transactionManager())
+	 * 	 .concatMap(f -> sendAndCommit(f))
+	 *	 .onErrorResume(e -> sender.transactionManager().abort().then(Mono.error(e)))
+	 *	 .doOnCancel(() -> close());
+	 *
+	 * Flux<SenderResult<Integer>> sendAndCommit(Flux<ConsumerRecord<Integer, Person>> flux) {
+	 * 	return sender.send(flux.map(r -> SenderRecord.<Integer, Person, Integer>create(transform(r.value()), r.key())))
+	 *			.concatWith(sender.transactionManager().commit());
+	 * }
+	 * }
+	 * </pre>
+	 *
+	 * @param transactionManager Transaction manager used to begin new transaction for each
+	 *        inner Flux and commit offsets within that transaction
+	 * @return Flux of consumer record batches processed within a transaction
+	 */
 	public Flux<Flux<ConsumerRecord<K, V>>> receiveExactlyOnce(TransactionManager transactionManager) {
 		return this.kafkaReceiver.receiveExactlyOnce(transactionManager);
 	}
