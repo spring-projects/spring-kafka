@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -494,6 +495,7 @@ public class TransactionalContainerTests {
 		consumer.close();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testMaxFailures() throws Exception {
 		logger.info("Start testMaxFailures");
@@ -520,14 +522,15 @@ public class TransactionalContainerTests {
 			latch.countDown();
 		});
 
-		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@SuppressWarnings({ "rawtypes" })
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
 		containerProps.setTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
-		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template) {
+		final KafkaTemplate<Object, Object> dlTemplate = spy(new KafkaTemplate<>(pf));
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
 
 			@Override
 			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
@@ -536,8 +539,10 @@ public class TransactionalContainerTests {
 			}
 
 		};
-		DefaultAfterRollbackProcessor<Integer, String> afterRollbackProcessor =
+		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
 				spy(new DefaultAfterRollbackProcessor<>(recoverer, 3));
+		afterRollbackProcessor.setProcessInTransaction(true);
+		afterRollbackProcessor.setKafkaTemplate(dlTemplate);
 		container.setAfterRollbackProcessor(afterRollbackProcessor);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
@@ -579,7 +584,12 @@ public class TransactionalContainerTests {
 		assertThat(headers.get("baz")).isEqualTo("qux".getBytes());
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(afterRollbackProcessor, times(3)).isProcessInTransaction();
+		verify(afterRollbackProcessor, times(3)).process(any(), any(), any(), anyBoolean());
 		verify(afterRollbackProcessor).clearThreadState();
+		verify(dlTemplate).send(any(ProducerRecord.class));
+		verify(dlTemplate).sendOffsetsToTransaction(
+				Collections.singletonMap(new TopicPartition(topic3, 0), new OffsetAndMetadata(1L)));
 		logger.info("Stop testMaxAttempts");
 	}
 

@@ -3041,6 +3041,10 @@ In such cases, the application listener must handle a record that keeps failing.
 
 See also <<dead-letters>>.
 
+Starting with version 2.2.5, the `DefaultAfterRollbackProcessor` can be invoked in a new transaction (started after the failed transaction rolls back).
+Then, if you are using the `DeadLetterPublishingRecoverer` to publish a failed record, the processor will send the recovered record's offset in the original topic/partition to the transaction.
+To enable this feature, set the `processInTransaction` and `kafkaTemplate` properties on the `DefaultAfterRollbackProcessor`.
+
 [[dead-letters]]
 ===== Publishing Dead-letter Records
 

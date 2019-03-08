@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -23,7 +24,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
 
@@ -48,6 +52,10 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	private static final Log logger = LogFactory.getLog(DefaultAfterRollbackProcessor.class); // NOSONAR
 
 	private final FailedRecordTracker failureTracker;
+
+	private boolean processInTransaction;
+
+	private KafkaTemplate<K, V> kafkaTemplate;
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
@@ -96,8 +104,42 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	@Override
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
 			boolean recoverable) {
-		SeekUtils.doSeeks(((List) records),
-				consumer, exception, recoverable, this.failureTracker::skip, logger);
+
+		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable, this.failureTracker::skip, logger)
+				&& this.kafkaTemplate != null && this.kafkaTemplate.isTransactional()) {
+			ConsumerRecord<K, V> skipped = records.get(0);
+			this.kafkaTemplate.sendOffsetsToTransaction(
+					Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
+							new OffsetAndMetadata(skipped.offset() + 1)));
+		}
+	}
+
+	@Override
+	public boolean isProcessInTransaction() {
+		return this.processInTransaction;
+	}
+
+	/**
+	 * Set to true to run the {@link #process(List, Consumer, Exception, boolean)}
+	 * method in a transaction. Requires a {@link KafkaTemplate}.
+	 * @param processInTransaction true to process in a transaction.
+	 * @since 2.2.5
+	 * @see #process(List, Consumer, Exception, boolean)
+	 * @see #setKafkaTemplate(KafkaTemplate)
+	 */
+	public void setProcessInTransaction(boolean processInTransaction) {
+		this.processInTransaction = processInTransaction;
+	}
+
+	/**
+	 * Set a {@link KafkaTemplate} to use to send the offset of a recovered record
+	 * to a transaction.
+	 * @param kafkaTemplate the template
+	 * @since 2.2.5
+	 * @see #setProcessInTransaction(boolean)
+	 */
+	public void setKafkaTemplate(KafkaTemplate<K, V> kafkaTemplate) {
+		this.kafkaTemplate = kafkaTemplate;
 	}
 
 	@Override

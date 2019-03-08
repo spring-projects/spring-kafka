@@ -202,7 +202,13 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 				record.key(), value == null ? record.value() : value, headers);
 	}
 
-	private void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
+	/**
+	 * Override this if you want more than just logging of the send result.
+	 * @param outRecord the record to send.
+	 * @param kafkaTemplate the template.
+	 * @since 2.2.5
+	 */
+	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
 		try {
 			kafkaTemplate.send(outRecord).addCallback(result -> {
 				if (logger.isDebugEnabled()) {
