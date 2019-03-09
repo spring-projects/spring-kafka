@@ -49,19 +49,28 @@ class FailedRecordTracker {
 	}
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
+		if (this.maxFailures <= 1) {
+			this.recoverer.accept(record, exception);
+			return true;
+		}
 		FailedRecord failedRecord = this.failures.get();
-		if (failedRecord == null || !failedRecord.getTopic().equals(record.topic())
-				|| failedRecord.getPartition() != record.partition() || failedRecord.getOffset() != record.offset()) {
+		if (failedRecord == null || newFailure(record, failedRecord)) {
 			this.failures.set(new FailedRecord(record.topic(), record.partition(), record.offset()));
 			return false;
 		}
 		else {
-			if (this.maxFailures >= 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
+			if (this.maxFailures > 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
 				this.recoverer.accept(record, exception);
 				return true;
 			}
 			return false;
 		}
+	}
+
+	private boolean newFailure(ConsumerRecord<?, ?> record, FailedRecord failedRecord) {
+		return !failedRecord.getTopic().equals(record.topic())
+				|| failedRecord.getPartition() != record.partition()
+				|| failedRecord.getOffset() != record.offset();
 	}
 
 	void clearThreadState() {
