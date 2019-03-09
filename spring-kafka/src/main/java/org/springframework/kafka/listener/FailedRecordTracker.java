@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.time.temporal.ValueRange;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.Log;
@@ -38,6 +39,8 @@ class FailedRecordTracker {
 
 	private final int maxFailures;
 
+	private final boolean noRetries;
+
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures, Log logger) {
 		if (recoverer == null) {
 			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: " + r, t);
@@ -46,23 +49,24 @@ class FailedRecordTracker {
 			this.recoverer = recoverer;
 		}
 		this.maxFailures = maxFailures;
+		this.noRetries = ValueRange.of(0, 1).isValidIntValue(maxFailures);
 	}
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
-		if (this.maxFailures <= 1) {
+		if (this.noRetries) {
 			this.recoverer.accept(record, exception);
 			return true;
 		}
 		FailedRecord failedRecord = this.failures.get();
-		if (failedRecord == null || newFailure(record, failedRecord)) {
+		if (this.maxFailures > 0 && (failedRecord == null || newFailure(record, failedRecord))) {
 			this.failures.set(new FailedRecord(record.topic(), record.partition(), record.offset()));
 			return false;
 		}
-		else {
-			if (this.maxFailures > 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
+		else if (this.maxFailures > 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
 				this.recoverer.accept(record, exception);
 				return true;
-			}
+		}
+		else {
 			return false;
 		}
 	}
