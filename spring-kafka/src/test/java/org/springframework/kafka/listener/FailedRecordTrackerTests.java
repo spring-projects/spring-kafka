@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
  * @since 2.2.5
  *
  */
-public class FailrdRecordTrackerTests {
+public class FailedRecordTrackerTests {
 
 	@Test
 	public void testNoRetries() {
