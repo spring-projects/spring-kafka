@@ -541,7 +541,7 @@ public class TransactionalContainerTests {
 		};
 		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
 				spy(new DefaultAfterRollbackProcessor<>(recoverer, 3));
-		afterRollbackProcessor.setProcessInTransaction(true);
+		afterRollbackProcessor.setCommitRecovered(true);
 		afterRollbackProcessor.setKafkaTemplate(dlTemplate);
 		container.setAfterRollbackProcessor(afterRollbackProcessor);
 		final CountDownLatch stopLatch = new CountDownLatch(1);

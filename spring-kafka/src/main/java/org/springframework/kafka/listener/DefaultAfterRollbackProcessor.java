@@ -53,7 +53,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 
 	private final FailedRecordTracker failureTracker;
 
-	private boolean processInTransaction;
+	private boolean commitRecovered;
 
 	private KafkaTemplate<K, V> kafkaTemplate;
 
@@ -116,19 +116,22 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 
 	@Override
 	public boolean isProcessInTransaction() {
-		return this.processInTransaction;
+		return this.commitRecovered;
 	}
 
 	/**
-	 * Set to true to run the {@link #process(List, Consumer, Exception, boolean)}
-	 * method in a transaction. Requires a {@link KafkaTemplate}.
-	 * @param processInTransaction true to process in a transaction.
+	 * Set to true to and the container will run the
+	 * {@link #process(List, Consumer, Exception, boolean)} method in a transaction and,
+	 * if a record is skipped and recovered, we will send its offset to the transaction.
+	 * Requires a {@link KafkaTemplate}.
+	 * @param commitRecovered true to process in a transaction.
 	 * @since 2.2.5
+	 * @see #isProcessInTransaction()
 	 * @see #process(List, Consumer, Exception, boolean)
 	 * @see #setKafkaTemplate(KafkaTemplate)
 	 */
-	public void setProcessInTransaction(boolean processInTransaction) {
-		this.processInTransaction = processInTransaction;
+	public void setCommitRecovered(boolean commitRecovered) {
+		this.commitRecovered = commitRecovered;
 	}
 
 	/**
@@ -136,7 +139,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * to a transaction.
 	 * @param kafkaTemplate the template
 	 * @since 2.2.5
-	 * @see #setProcessInTransaction(boolean)
+	 * @see #setCommitRecovered(boolean)
 	 */
 	public void setKafkaTemplate(KafkaTemplate<K, V> kafkaTemplate) {
 		this.kafkaTemplate = kafkaTemplate;
