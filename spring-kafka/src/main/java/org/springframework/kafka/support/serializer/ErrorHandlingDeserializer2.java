@@ -199,16 +199,17 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 	private void deserializationException(Headers headers, byte[] data, Exception e) {
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
 		DeserializationException exception = new DeserializationException("failed to deserialize", data, this.isKey, e);
-		try {
-			new ObjectOutputStream(stream).writeObject(exception);
+		try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
+			oos.writeObject(exception);
 		}
 		catch (IOException ex) {
-			try {
+			stream = new ByteArrayOutputStream();
+			try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
 				exception = new DeserializationException("failed to deserialize",
 						data, this.isKey, new RuntimeException("Could not deserialize type "
 								+ e.getClass().getName() + " with message " + e.getMessage()
 								+ " failure: " + ex.getMessage()));
-				new ObjectOutputStream(stream).writeObject(exception);
+				oos.writeObject(exception);
 			}
 			catch (IOException ex2) {
 				throw new IllegalStateException("Could not serialize a DeserializationException", ex2); // NOSONAR
