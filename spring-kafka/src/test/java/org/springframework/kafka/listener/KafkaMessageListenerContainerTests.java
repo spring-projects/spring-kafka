@@ -17,12 +17,15 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -47,6 +50,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -94,6 +98,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
  * Tests for the listener container.
@@ -149,11 +154,15 @@ public class KafkaMessageListenerContainerTests {
 
 	private static String topic21 = "testTopic21";
 
+	private static String topic22 = "testTopic22";
+
+	private static String topic23 = "testTopic23";
+
 
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3, topic4,
 			topic5, topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16,
-			topic17, topic18, topic19, topic20, topic21);
+			topic17, topic18, topic19, topic20, topic21, topic22, topic23);
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -173,6 +182,10 @@ public class KafkaMessageListenerContainerTests {
 			trace.set(new RuntimeException().getStackTrace());
 			latch1.countDown();
 		});
+		ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+		scheduler.setPoolSize(10);
+		scheduler.initialize();
+		containerProps.setConsumerTaskExecutor(scheduler);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("delegate");
@@ -257,6 +270,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(System.currentTimeMillis() - t).isLessThan(5000L);
 
 		pf.destroy();
+		scheduler.shutdown();
 	}
 
 	@Test
@@ -1061,6 +1075,11 @@ public class KafkaMessageListenerContainerTests {
 			@Override
 			public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 				idleLatch.countDown();
+				assignments.forEach((tp, off) -> {
+					callback.seekToBeginning(tp.topic(), tp.partition());
+					callback.seekToEnd(tp.topic(), tp.partition());
+					callback.seek(tp.topic(), tp.partition(), off);
+				});
 			}
 
 		}
@@ -1609,6 +1628,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeConfiguredType() throws Exception {
 		this.logger.info("Start JSON1");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Foo.class);
 		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -1632,7 +1652,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 		senderProps.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
-		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
 		template.sendDefault(0, new Foo("bar"));
@@ -1640,6 +1660,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(received.get().value()).isInstanceOf(Foo.class);
 		container.stop();
+		pf.destroy();
 		this.logger.info("Stop JSON1");
 	}
 
@@ -1650,6 +1671,7 @@ public class KafkaMessageListenerContainerTests {
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Bar, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 
@@ -1671,7 +1693,8 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		ProducerFactory<Bar, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaProducerFactory<Bar, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Bar, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic2);
 		template.sendDefault(new Bar("foo"), new Foo("bar"));
@@ -1680,6 +1703,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(received.get().key()).isInstanceOf(Bar.class);
 		assertThat(received.get().value()).isInstanceOf(Foo.class);
 		container.stop();
+		pf.destroy();
 		this.logger.info("Stop JSON2");
 		assertThat(received.get().headers().iterator().hasNext()).isFalse();
 	}
@@ -1691,6 +1715,7 @@ public class KafkaMessageListenerContainerTests {
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 		props.put(JsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo1.class.getName() + " , bar:" + Bar1.class.getName());
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic20);
 
@@ -1712,7 +1737,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 		senderProps.put(JsonSerializer.TYPE_MAPPINGS, "foo:" + Foo.class.getName() + ",bar:" + Bar.class.getName());
-		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic20);
 		template.sendDefault(0, new Foo("bar"));
@@ -1721,6 +1746,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(received.get(0).value().getClass()).isEqualTo(Foo1.class);
 		assertThat(received.get(1).value().getClass()).isEqualTo(Bar1.class);
 		container.stop();
+		pf.destroy();
 		this.logger.info("Stop JSON3");
 	}
 
@@ -1728,6 +1754,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeIgnoreTypeHeadersInbound() throws Exception {
 		this.logger.info("Start JSON4");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 		ErrorHandlingDeserializer2<Foo1> errorHandlingDeserializer =
 				new ErrorHandlingDeserializer2<>(new JsonDeserializer<>(Foo1.class, false));
@@ -1753,14 +1780,154 @@ public class KafkaMessageListenerContainerTests {
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		ProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic21);
 		template.sendDefault(0, new Foo("bar"));
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(received.get(0).value().getClass()).isEqualTo(Foo1.class);
 		container.stop();
+		pf.destroy();
 		this.logger.info("Stop JSON4");
+	}
+
+	@Test
+	public void testStaticAssign() throws Exception {
+		this.logger.info("Start static");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionInitialOffset[] {
+				new TopicPartitionInitialOffset(topic22, 0),
+				new TopicPartitionInitialOffset(topic22, 1)
+		});
+		final CountDownLatch latch = new CountDownLatch(1);
+		final List<ConsumerRecord<Integer, String>> received = new ArrayList<>();
+		containerProps.setMessageListener((MessageListener<Integer, String>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("static: " + record);
+			received.add(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testStatic");
+		Log consumerLogger = mock(Log.class);
+		given(consumerLogger.isDebugEnabled()).willReturn(true);
+		given(consumerLogger.isTraceEnabled()).willReturn(true);
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		new DirectFieldAccessor(container).setPropertyValue("listenerConsumer.logger", consumerLogger);
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic22);
+		template.sendDefault(0, "bar");
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get(0).value()).isEqualTo("bar");
+		container.stop();
+		pf.destroy();
+		this.logger.info("Stop static");
+		ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+		verify(consumerLogger, atLeastOnce()).trace(captor.capture());
+		assertThat(captor.getAllValues()).contains("[testTopic22-0@0]");
+	}
+
+	@Test
+	public void testPatternAssign() throws Exception {
+		this.logger.info("Start pattern");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testpattern", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(Pattern.compile(topic23 + ".*"));
+		final CountDownLatch latch = new CountDownLatch(1);
+		final List<ConsumerRecord<Integer, String>> received = new ArrayList<>();
+		containerProps.setMessageListener((MessageListener<Integer, String>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("pattern: " + record);
+			received.add(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testpattern");
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic23);
+		template.sendDefault(0, "bar");
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get(0).value()).isEqualTo("bar");
+		container.stop();
+		pf.destroy();
+		this.logger.info("Stop pattern");
+	}
+
+	@Test
+	public void testBadListenerType() {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		badContainer.setupMessageListener((GenericMessageListener<String>) data -> {
+		});
+		assertThatIllegalArgumentException().isThrownBy(() -> badContainer.start())
+			.withMessageContaining("Listener must be");
+
+	}
+
+	@Test
+	public void testBadAckMode() {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "true", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setAckMode(AckMode.MANUAL);
+		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		badContainer.setupMessageListener((MessageListener<String, String>) m -> {
+		});
+		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
+			.withMessageContaining("Consumer cannot be configured for auto commit for ackMode");
+
+	}
+
+	@Test
+	public void testBadErrorHandler() {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		badContainer.setBatchErrorHandler(new BatchLoggingErrorHandler());
+		badContainer.setupMessageListener((MessageListener<String, String>) m -> {
+		});
+		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
+			.withMessageContaining("Error handler is not compatible with the message listener");
+
+	}
+
+	@Test
+	public void testBadBatchErrorHandler() {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		badContainer.setErrorHandler(new LoggingErrorHandler());
+		badContainer.setupMessageListener((BatchMessageListener<String, String>) m -> {
+		});
+		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
+			.withMessageContaining("Error handler is not compatible with the message listener");
+
 	}
 
 	@Test
