@@ -1878,10 +1878,17 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties("foo");
 		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
+		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
+			.withMessageContaining("implementation must be provided");
 		badContainer.setupMessageListener((GenericMessageListener<String>) data -> {
 		});
+		assertThat(badContainer.getAssignedPartitions()).isNull();
+		badContainer.pause();
+		assertThat(badContainer.isContainerPaused()).isFalse();
+		assertThat(badContainer.metrics()).isEqualTo(Collections.emptyMap());
 		assertThatIllegalArgumentException().isThrownBy(() -> badContainer.start())
 			.withMessageContaining("Listener must be");
+		assertThat(badContainer.toString()).contains("none assigned");
 
 	}
 
@@ -2091,8 +2098,11 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(consumer, times(2)).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
+		assertThat(container.isContainerPaused()).isFalse();
 		container.pause();
+		assertThat(container.isPaused()).isTrue();
 		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isContainerPaused()).isTrue();
 		container.resume();
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();

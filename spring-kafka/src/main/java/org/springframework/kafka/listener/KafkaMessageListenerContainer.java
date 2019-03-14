@@ -239,7 +239,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	@Override
 	public boolean isContainerPaused() {
-		return isPaused() && this.listenerConsumer.consumerPaused;
+		return isPaused() && this.listenerConsumer != null && this.listenerConsumer.consumerPaused;
 	}
 
 	@Override
@@ -268,13 +268,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		checkAckMode(containerProperties);
 
 		Object messageListener = containerProperties.getMessageListener();
-		Assert.state(messageListener != null, "A MessageListener is required");
 		if (containerProperties.getConsumerTaskExecutor() == null) {
 			SimpleAsyncTaskExecutor consumerExecutor = new SimpleAsyncTaskExecutor(
 					(getBeanName() == null ? "" : getBeanName()) + "-C-");
 			containerProperties.setConsumerTaskExecutor(consumerExecutor);
 		}
-		Assert.state(messageListener instanceof GenericMessageListener, "Listener must be a GenericListener");
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		ListenerType listenerType = determineListenerType(listener);
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType);
@@ -482,7 +480,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean taskSchedulerExplicitlySet;
 
-		private boolean consumerPaused;
+		volatile boolean consumerPaused;
 
 		private long lastReceive = System.currentTimeMillis();
 

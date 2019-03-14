@@ -271,7 +271,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		checkGroupId();
 		synchronized (this.lifecycleMonitor) {
 			if (!isRunning()) {
-				Assert.isTrue(this.containerProperties.getMessageListener() instanceof GenericMessageListener,
+				Assert.state(this.containerProperties.getMessageListener() instanceof GenericMessageListener,
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				doStart();
 			}
