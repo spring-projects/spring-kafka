@@ -39,7 +39,7 @@ allprojects {
 		if (version.endsWith('BUILD-SNAPSHOT') || project.hasProperty('platformVersion')) {
 			maven { url 'https://repo.spring.io/libs-snapshot' }
 		}
-//		maven { url 'http://repo.spring.io/libs-staging-local' }
+//		maven { url 'https://repo.spring.io/libs-staging-local' }
 	}
 
 }
