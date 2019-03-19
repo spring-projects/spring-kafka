@@ -265,11 +265,11 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	public void addTopics(NewTopic... topics) {
 		Assert.notNull(this.zookeeper, "Broker must be started before this method can be called");
 		for (NewTopic topic : topics) {
-			Assert.isTrue(this.topics.add(topic.name()), () -> "topic already exists: " + topic);
+			Assert.isTrue(this.topics.add(topic.name()), "topic already exists: " + topic);
 			Assert.isTrue(topic.replicationFactor() <= this.count
 							&& (topic.replicasAssignments() == null
 							|| topic.replicasAssignments().size() <= this.count),
-					() -> "Embedded kafka does not support the requested replication factor: " + topic);
+					"Embedded kafka does not support the requested replication factor: " + topic);
 		}
 
 		doWithAdmin(admin -> createTopics(admin, Arrays.asList(topics)));

@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -256,7 +257,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 				removed.setException(new KafkaException("Reply timed out"));
 			}
-		}, Instant.now().plusMillis(this.replyTimeout));
+		}, new Date(Instant.now().plusMillis(this.replyTimeout).toEpochMilli()));
 	}
 
 	@Override

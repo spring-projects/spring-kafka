@@ -271,12 +271,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (this.errorHandler != null) {
 			if (Boolean.TRUE.equals(this.batchListener)) {
 				Assert.state(this.errorHandler instanceof BatchErrorHandler,
-						() -> "The error handler must be a BatchErrorHandler, not " +
+						"The error handler must be a BatchErrorHandler, not " +
 								this.errorHandler.getClass().getName());
 			}
 			else {
 				Assert.state(this.errorHandler instanceof ErrorHandler,
-						() -> "The error handler must be an ErrorHandler, not " +
+						"The error handler must be an ErrorHandler, not " +
 								this.errorHandler.getClass().getName());
 			}
 		}

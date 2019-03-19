@@ -360,7 +360,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			KafkaHandler annotation = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
 			if (annotation != null && annotation.isDefault()) {
 				final Method toAssert = defaultMethod;
-				Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
+				Assert.state(toAssert == null, "Only one @KafkaHandler can be marked 'isDefault', found: "
 						+ toAssert.toString() + " and " + method.toString());
 				defaultMethod = checked;
 			}

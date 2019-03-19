@@ -490,7 +490,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Assert.state(!this.isAnyManualAck || !this.autoCommit,
-					() -> "Consumer cannot be configured for auto commit for ackMode "
+					"Consumer cannot be configured for auto commit for ackMode "
 							+ this.containerProperties.getAckMode());
 			this.consumer =
 					KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
