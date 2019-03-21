@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -183,11 +183,11 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * If any of the supplied packages is {@code "*"}, all packages are trusted.
 	 * If a class for a non-trusted package is encountered, the header is returned to the
 	 * application with value of type {@link NonTrustedHeaderType}.
-	 * @param trustedPackages the packages to trust.
+	 * @param packagesToTrust the packages to trust.
 	 */
-	public void addTrustedPackages(String... trustedPackages) {
-		if (trustedPackages != null) {
-			for (String whiteList : trustedPackages) {
+	public void addTrustedPackages(String... packagesToTrust) {
+		if (packagesToTrust != null) {
+			for (String whiteList : packagesToTrust) {
 				if ("*".equals(whiteList)) {
 					this.trustedPackages.clear();
 					break;
@@ -213,25 +213,26 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		final Map<String, String> jsonHeaders = new HashMap<>();
 		final ObjectMapper headerObjectMapper = getObjectMapper();
-		headers.forEach((k, v) -> {
-			if (matches(k, v)) {
-				if (v instanceof byte[]) {
-					target.add(new RecordHeader(k, (byte[]) v));
+		headers.forEach((key, val) -> {
+			if (matches(key, val)) {
+				Object valueToAdd = headerValueToAddOut(key, val);
+				if (valueToAdd instanceof byte[]) {
+					target.add(new RecordHeader(key, (byte[]) valueToAdd));
 				}
 				else {
 					try {
-						Object value = v;
-						String className = v.getClass().getName();
+						Object value = valueToAdd;
+						String className = valueToAdd.getClass().getName();
 						if (this.toStringClasses.contains(className)) {
-							value = v.toString();
+							value = valueToAdd.toString();
 							className = "java.lang.String";
 						}
-						target.add(new RecordHeader(k, headerObjectMapper.writeValueAsBytes(value)));
-						jsonHeaders.put(k, className);
+						target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(value)));
+						jsonHeaders.put(key, className);
 					}
-					catch (Exception e) {
+					catch (@SuppressWarnings("unused") Exception e) {
 						if (logger.isDebugEnabled()) {
-							logger.debug("Could not map " + k + " with type " + v.getClass().getName());
+							logger.debug("Could not map " + key + " with type " + valueToAdd.getClass().getName());
 						}
 					}
 				}
@@ -250,11 +251,11 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@Override
 	public void toHeaders(Headers source, final Map<String, Object> headers) {
 		final Map<String, String> jsonTypes = decodeJsonTypes(source);
-		source.forEach(h -> {
-			if (!(h.key().equals(JSON_TYPES))) {
-				if (jsonTypes != null && jsonTypes.containsKey(h.key())) {
+		source.forEach(header -> {
+			if (!(header.key().equals(JSON_TYPES))) {
+				if (jsonTypes != null && jsonTypes.containsKey(header.key())) {
 					Class<?> type = Object.class;
-					String requestedType = jsonTypes.get(h.key());
+					String requestedType = jsonTypes.get(header.key());
 					boolean trusted = false;
 					try {
 						trusted = trusted(requestedType);
@@ -263,26 +264,26 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 						}
 					}
 					catch (Exception e) {
-						logger.error("Could not load class for header: " + h.key(), e);
+						logger.error("Could not load class for header: " + header.key(), e);
 					}
 					if (trusted) {
 						try {
-							Object value = decodeValue(h, type);
-							headers.put(h.key(), value);
+							Object value = decodeValue(header, type);
+							headers.put(header.key(), value);
 						}
 						catch (IOException e) {
-							logger.error("Could not decode json type: " + new String(h.value()) + " for key: " + h
+							logger.error("Could not decode json type: " + new String(header.value()) + " for key: " + header
 											.key(),
 									e);
-							headers.put(h.key(), h.value());
+							headers.put(header.key(), header.value());
 						}
 					}
 					else {
-						headers.put(h.key(), new NonTrustedHeaderType(h.value(), requestedType));
+						headers.put(header.key(), new NonTrustedHeaderType(header.value(), requestedType));
 					}
 				}
 				else {
-					headers.put(h.key(), h.value());
+					headers.put(header.key(), headertValueToAddIn(header));
 				}
 			}
 		});
@@ -419,7 +420,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				return "NonTrustedHeaderType [headerValue=" + new String(this.headerValue, StandardCharsets.UTF_8)
 						+ ", untrustedType=" + this.untrustedType + "]";
 			}
-			catch (Exception e) {
+			catch (@SuppressWarnings("unused") Exception e) {
 				return "NonTrustedHeaderType [headerValue=" + Arrays.toString(this.headerValue) + ", untrustedType="
 						+ this.untrustedType + "]";
 			}

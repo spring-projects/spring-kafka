@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ import org.springframework.messaging.MessageHeaders;
 /**
  * A simple header mapper that maps headers directly; for outbound,
  * only byte[] headers are mapped; for inbound, headers are mapped
- * unchanged, as byte[].
+ * unchanged, as byte[]. Strings can also be mapped to/from byte.
+ * See {@link #setRawMappedHaeaders(Map)}.
  * Most headers in {@link KafkaHeaders} are not mapped on outbound messages.
  * The exceptions are correlation and reply headers for request/reply
  *
@@ -64,16 +65,17 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	@Override
 	public void fromHeaders(MessageHeaders headers, Headers target) {
-		headers.forEach((k, v) -> {
-			if (v instanceof byte[] && matches(k, v)) {
-				target.add(new RecordHeader(k, (byte[]) v));
+		headers.forEach((key, value) -> {
+			Object valueToAdd = headerValueToAddOut(key, value);
+			if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
+				target.add(new RecordHeader(key, (byte[]) valueToAdd));
 			}
 		});
 	}
 
 	@Override
 	public void toHeaders(Headers source, Map<String, Object> target) {
-		source.forEach(header -> target.put(header.key(), header.value()));
+		source.forEach(header -> target.put(header.key(), headertValueToAddIn(header)));
 	}
 
 }

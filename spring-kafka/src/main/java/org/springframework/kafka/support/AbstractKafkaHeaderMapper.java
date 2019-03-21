@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,23 @@
 
 package org.springframework.kafka.support;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.common.header.Header;
 
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.PatternMatchUtils;
 
 /**
@@ -58,10 +65,59 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	protected final List<SimplePatternBasedHeaderMatcher> matchers = new ArrayList<>(NEVER_MAPPED); // NOSONAR
 
+	private final Map<String, Boolean> rawMappedtHeaders = new HashMap<>();
+
+	private boolean mapAllStringsOut;
+
+	private Charset charset = StandardCharsets.UTF_8;
+
 	public AbstractKafkaHeaderMapper(String... patterns) {
 		Assert.notNull(patterns, "'patterns' must not be null");
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
+		}
+	}
+
+	/**
+	 * Set to true to map all {@code String} valued outbound headers to {@code byte[]}.
+	 * To map to a {@code String} for inbound, there must be an entry in the rawMappedHeaders map.
+	 * @param mapAllStringsOut true to map all strings.
+	 * @since 2.5.1
+	 * @see #setRawMappedHaeaders(Map)
+	 */
+	public void setMapAllStringsOut(boolean mapAllStringsOut) {
+		this.mapAllStringsOut = mapAllStringsOut;
+	}
+
+	protected Charset getCharset() {
+		return this.charset;
+	}
+
+	/**
+	 * Set the charset to use when mapping String-valued headers to/from byte[]. Default UTF-8.
+	 * @param charset the charset.
+	 * @since 2.2.5
+	 * @see #setRawMappedHaeaders(Map)
+	 */
+	public void setCharset(Charset charset) {
+		Assert.notNull(charset, "'charset' cannot be null");
+		this.charset = charset;
+	}
+
+	/**
+	 * Set the headers to not perform any conversion on (except {@code String} to
+	 * {@code byte[]} for outbound). Inbound headers that match will be mapped as
+	 * {@code byte[]} unless the corresponding boolean in the map value is true,
+	 * in which case it will be mapped as a String.
+	 * @param rawMappedHeaders the header names to not convert and
+	 * @since 2.2.5
+	 * @see #setCharset(Charset)
+	 * @see #setMapAllStringsOut(boolean)
+	 */
+	public void setRawMappedHaeaders(Map<String, Boolean> rawMappedHeaders) {
+		if (!ObjectUtils.isEmpty(rawMappedHeaders)) {
+			this.rawMappedtHeaders.clear();
+			this.rawMappedtHeaders.putAll(rawMappedHeaders);
 		}
 	}
 
@@ -92,6 +148,57 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		}
 		return false;
 	}
+
+	/**
+	 * Check if the value is a String and convert to byte[], if so configured.
+	 * @param key the header name.
+	 * @param value the headet value.
+	 * @return the value to add.
+	 * @since 2.2.5
+	 */
+	protected Object headerValueToAddOut(String key, Object value) {
+		Object valueToAdd = mapRawOut(key, value);
+		if (valueToAdd == null) {
+			valueToAdd = value;
+		}
+		return valueToAdd;
+	}
+
+	@Nullable
+	private byte[] mapRawOut(String header, Object value) {
+		if (this.mapAllStringsOut || this.rawMappedtHeaders.containsKey(header)) {
+			if (value instanceof byte[]) {
+				return (byte[]) value;
+			}
+			else if (value instanceof String) {
+				return ((String) value).getBytes(this.charset);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Check if the header value should be mapped to a String, if so configured.
+	 * @param header the header.
+	 * @return the value to add.
+	 */
+	protected Object headertValueToAddIn(Header header) {
+		Object mapped = mapRawIn(header.key(), header.value());
+		if (mapped == null) {
+			mapped = header.value();
+		}
+		return mapped;
+	}
+
+	@Nullable
+	private String mapRawIn(String header, byte[] value) {
+		Boolean asString = this.rawMappedtHeaders.get(header);
+		if (Boolean.TRUE.equals(asString)) {
+			return new String(value, this.charset);
+		}
+		return null;
+	}
+
 
 	/**
 	 * A pattern-based header matcher that matches if the specified

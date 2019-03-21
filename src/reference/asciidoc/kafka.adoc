@@ -2660,6 +2660,46 @@ You can trust other (or all) packages by adding trusted packages with the `addTr
 If you receive messages from untrusted sources, you may wish to add only those packages you trust.
 To trust all packages, you can use `mapper.addTrustedPackages("*")`.
 
+Starting with version 2.2.5, you can specify that certain string-valued headers should not be mapped using JSON, but to/from a raw `byte[]`.
+This is useful when communicating with systems that are not aware of the mapper's JSON format.
+The `AbstractKafkaHeaderMapper` has new properties `mapAllStringsOut` when set to true, all string-valued headers will be used to
+`byte[]` using the `charset` property (default `UTF-8`).
+In addition, there is a property `rawMappedHeaders`, which is a map of `header name : boolean`; if the map contains a header and the header contains a `String` value, it will be mapped as a raw `byte[]` using the charset.
+This map is also used to map raw incoming `byte[]` headers to `String` using the charset, if, and only if the boolean in the map value is `true`.
+If the boolean is false, or the header name is not in the map with a `true` value, the incoming header is simply the raw unmapped header.
+The following test case illustrates this mechanism.
+
+====
+[source, java]
+----
+@Test
+public void testSpecificStringConvert() {
+    DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+    Map<String, Boolean> rawMappedHeaders = new HashMap<>();
+    rawMappedHeaders.put("thisOnesAString", true);
+    rawMappedHeaders.put("thisOnesBytes", false);
+    mapper.setRawMappedHaeaders(rawMappedHeaders);
+    Map<String, Object> headersMap = new HashMap<>();
+    headersMap.put("thisOnesAString", "thing1");
+    headersMap.put("thisOnesBytes", "thing2");
+    headersMap.put("alwaysRaw", "thing3".getBytes());
+    MessageHeaders headers = new MessageHeaders(headersMap);
+    Headers target = new RecordHeaders();
+    mapper.fromHeaders(headers, target);
+    assertThat(target).containsExactlyInAnyOrder(
+            new RecordHeader("thisOnesAString", "thing1".getBytes()),
+            new RecordHeader("thisOnesBytes", "thing2".getBytes()),
+            new RecordHeader("alwaysRaw", "thing3".getBytes()));
+    headersMap.clear();
+    mapper.toHeaders(target, headersMap);
+    assertThat(headersMap).contains(
+            entry("thisOnesAString", "thing1"),
+            entry("thisOnesBytes", "thing2".getBytes()),
+            entry("alwaysRaw", "thing3".getBytes()));
+}
+----
+====
+
 By default, the `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the class path.
 
 With the batch converter, the converted headers are available in the `KafkaHeaders.BATCH_CONVERTED_HEADERS` as a `List<Map<String, Object>>` where the map in a position of the list corresponds to the data position in the payload.

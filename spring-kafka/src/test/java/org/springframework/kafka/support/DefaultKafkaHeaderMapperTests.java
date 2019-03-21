@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -24,6 +25,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
 
@@ -144,6 +147,85 @@ public class DefaultKafkaHeaderMapperTests {
 		fooHeader = receivedHeaders.get("foo");
 		assertThat(fooHeader).isInstanceOf(MimeType.class);
 		assertThat(fooHeader).isEqualTo(MimeType.valueOf("application/json"));
+	}
+
+	@Test
+	public void testSpecificStringConvert() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
+		rawMappedHeaders.put("thisOnesAString", true);
+		rawMappedHeaders.put("thisOnesBytes", false);
+		mapper.setRawMappedHaeaders(rawMappedHeaders);
+		Map<String, Object> headersMap = new HashMap<>();
+		headersMap.put("thisOnesAString", "foo");
+		headersMap.put("thisOnesBytes", "bar");
+		headersMap.put("alwaysRaw", "baz".getBytes());
+		MessageHeaders headers = new MessageHeaders(headersMap);
+		Headers target = new RecordHeaders();
+		mapper.fromHeaders(headers, target);
+		assertThat(target).containsExactlyInAnyOrder(
+				new RecordHeader("thisOnesAString", "foo".getBytes()),
+				new RecordHeader("thisOnesBytes", "bar".getBytes()),
+				new RecordHeader("alwaysRaw", "baz".getBytes()));
+		headersMap.clear();
+		mapper.toHeaders(target, headersMap);
+		assertThat(headersMap).contains(
+				entry("thisOnesAString", "foo"),
+				entry("thisOnesBytes", "bar".getBytes()),
+				entry("alwaysRaw", "baz".getBytes()));
+	}
+
+	@Test
+	public void testJsonStringConvert() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
+		rawMappedHeaders.put("thisOnesBytes", false);
+		mapper.setRawMappedHaeaders(rawMappedHeaders);
+		Map<String, Object> headersMap = new HashMap<>();
+		headersMap.put("thisOnesAString", "foo");
+		headersMap.put("thisOnesBytes", "bar");
+		headersMap.put("alwaysRaw", "baz".getBytes());
+		MessageHeaders headers = new MessageHeaders(headersMap);
+		Headers target = new RecordHeaders();
+		mapper.fromHeaders(headers, target);
+		assertThat(target).containsExactlyInAnyOrder(
+				new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
+						"{\"thisOnesAString\":\"java.lang.String\"}".getBytes()),
+				new RecordHeader("thisOnesAString", "\"foo\"".getBytes()),
+				new RecordHeader("alwaysRaw", "baz".getBytes()),
+				new RecordHeader("thisOnesBytes", "bar".getBytes()));
+		headersMap.clear();
+		mapper.toHeaders(target, headersMap);
+		assertThat(headersMap).contains(
+				entry("thisOnesAString", "foo"),
+				entry("thisOnesBytes", "bar".getBytes()),
+				entry("alwaysRaw", "baz".getBytes()));
+	}
+
+	@Test
+	public void testAlwaysStringConvert() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		mapper.setMapAllStringsOut(true);
+		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
+		rawMappedHeaders.put("thisOnesBytes", false);
+		mapper.setRawMappedHaeaders(rawMappedHeaders);
+		Map<String, Object> headersMap = new HashMap<>();
+		headersMap.put("thisOnesAString", "foo");
+		headersMap.put("thisOnesBytes", "bar");
+		headersMap.put("alwaysRaw", "baz".getBytes());
+		MessageHeaders headers = new MessageHeaders(headersMap);
+		Headers target = new RecordHeaders();
+		mapper.fromHeaders(headers, target);
+		assertThat(target).containsExactlyInAnyOrder(
+				new RecordHeader("thisOnesAString", "foo".getBytes()),
+				new RecordHeader("thisOnesBytes", "bar".getBytes()),
+				new RecordHeader("alwaysRaw", "baz".getBytes()));
+		headersMap.clear();
+		mapper.toHeaders(target, headersMap);
+		assertThat(headersMap).contains(
+				entry("thisOnesAString", "foo".getBytes()),
+				entry("thisOnesBytes", "bar".getBytes()),
+				entry("alwaysRaw", "baz".getBytes()));
 	}
 
 	public static final class Foo {
