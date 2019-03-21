@@ -31,7 +31,7 @@ import org.springframework.messaging.MessageHeaders;
 
 /**
  * @author Gary Russell
- * @since 2.1.5
+ * @since 2.2.5
  *
  */
 public class SimpleKafkaHeaderMapperTests {

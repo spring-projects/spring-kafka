@@ -82,7 +82,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * Set to true to map all {@code String} valued outbound headers to {@code byte[]}.
 	 * To map to a {@code String} for inbound, there must be an entry in the rawMappedHeaders map.
 	 * @param mapAllStringsOut true to map all strings.
-	 * @since 2.5.1
+	 * @since 2.2.5
 	 * @see #setRawMappedHaeaders(Map)
 	 */
 	public void setMapAllStringsOut(boolean mapAllStringsOut) {

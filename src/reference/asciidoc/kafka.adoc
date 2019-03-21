@@ -2660,13 +2660,14 @@ You can trust other (or all) packages by adding trusted packages with the `addTr
 If you receive messages from untrusted sources, you may wish to add only those packages you trust.
 To trust all packages, you can use `mapper.addTrustedPackages("*")`.
 
+NOTE: Mapping `String` header values in a raw form is useful when communicating with systems that are not aware of the mapper's JSON format.
+
 Starting with version 2.2.5, you can specify that certain string-valued headers should not be mapped using JSON, but to/from a raw `byte[]`.
-This is useful when communicating with systems that are not aware of the mapper's JSON format.
-The `AbstractKafkaHeaderMapper` has new properties `mapAllStringsOut` when set to true, all string-valued headers will be used to
-`byte[]` using the `charset` property (default `UTF-8`).
-In addition, there is a property `rawMappedHeaders`, which is a map of `header name : boolean`; if the map contains a header and the header contains a `String` value, it will be mapped as a raw `byte[]` using the charset.
-This map is also used to map raw incoming `byte[]` headers to `String` using the charset, if, and only if the boolean in the map value is `true`.
-If the boolean is false, or the header name is not in the map with a `true` value, the incoming header is simply the raw unmapped header.
+The `AbstractKafkaHeaderMapper` has new properties; `mapAllStringsOut` when set to true, all string-valued headers will be converted to `byte[]` using the `charset` property (default `UTF-8`).
+In addition, there is a property `rawMappedHeaders`, which is a map of `header name : boolean`; if the map contains a header name, and the header contains a `String` value, it will be mapped as a raw `byte[]` using the charset.
+This map is also used to map raw incoming `byte[]` headers to `String` using the charset if, and only if, the boolean in the map value is `true`.
+If the boolean is `false`, or the header name is not in the map with a `true` value, the incoming header is simply mapped as the raw unmapped header.
+
 The following test case illustrates this mechanism.
 
 ====
