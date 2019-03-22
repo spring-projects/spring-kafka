@@ -350,7 +350,9 @@ public class ContainerProperties {
 	/**
 	 * Set the commit callback; by default a simple logging callback is used to log
 	 * success at DEBUG level and failures at ERROR level.
+	 * Used when {@link #setSyncCommits(boolean) syncCommits} is false.
 	 * @param commitCallback the callback.
+	 * @see #setSyncCommits(boolean)
 	 */
 	public void setCommitCallback(OffsetCommitCallback commitCallback) {
 		this.commitCallback = commitCallback;
@@ -358,11 +360,11 @@ public class ContainerProperties {
 
 	/**
 	 * Set whether or not to call consumer.commitSync() or commitAsync() when the
-	 * container is responsible for commits. Default true. See
-	 * https://github.com/spring-projects/spring-kafka/issues/62 At the time of
-	 * writing, async commits are not entirely reliable.
+	 * container is responsible for commits. Default true.
 	 * @param syncCommits true to use commitSync().
 	 * @see #setSyncCommitTimeout(Duration)
+	 * @see #setCommitCallback(OffsetCommitCallback)
+	 * @see #setCommitLogLevel(org.springframework.kafka.support.LogIfLevelEnabled.Level)
 	 */
 	public void setSyncCommits(boolean syncCommits) {
 		this.syncCommits = syncCommits;
