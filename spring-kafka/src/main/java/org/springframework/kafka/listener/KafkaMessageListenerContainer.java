@@ -893,7 +893,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.errorHandler != null) {
 				this.errorHandler.clearThreadState();
 			}
-			this.logger.info("Consumer stopped");
+			if (this.logger.isInfoEnabled()) {
+				this.logger.info(getGroupId() + ": Consumer stopped");
+			}
 			publishConsumerStoppedEvent();
 		}
 

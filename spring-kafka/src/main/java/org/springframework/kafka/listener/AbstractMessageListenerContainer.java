@@ -372,12 +372,18 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				AbstractMessageListenerContainer.this.logger.info("partitions revoked: " + partitions);
+				Log logger2 = AbstractMessageListenerContainer.this.logger;
+				if (logger2.isInfoEnabled()) {
+					logger2.info(getGroupId() + ": partitions revoked: " + partitions);
+				}
 			}
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				AbstractMessageListenerContainer.this.logger.info("partitions assigned: " + partitions);
+				Log logger2 = AbstractMessageListenerContainer.this.logger;
+				if (logger2.isInfoEnabled()) {
+					logger2.info(getGroupId() + ": partitions assigned: " + partitions);
+				}
 			}
 
 		};
