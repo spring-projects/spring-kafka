@@ -56,7 +56,6 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
@@ -66,6 +65,7 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
@@ -743,9 +743,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.genericListener instanceof ConsumerSeekAware) {
 				((ConsumerSeekAware) this.genericListener).registerSeekCallback(this);
 			}
-			if (this.transactionManager != null) {
-				ProducerFactoryUtils.setConsumerGroupId(this.consumerGroupId);
-			}
+			KafkaUtils.setConsumerGroupId(this.consumerGroupId);
 			this.count = 0;
 			this.last = System.currentTimeMillis();
 			initAssignedPartitions();
@@ -864,7 +862,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		public void wrapUp() {
-			ProducerFactoryUtils.clearConsumerGroupId();
+			KafkaUtils.clearConsumerGroupId();
 			publishConsumerStoppingEvent(this.consumer);
 			if (!this.fatalError) {
 				if (this.kafkaTxManager == null) {

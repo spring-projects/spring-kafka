@@ -18,6 +18,7 @@ package org.springframework.kafka.core;
 
 import org.apache.kafka.clients.producer.Producer;
 
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.transaction.support.ResourceHolderSynchronization;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -34,8 +35,6 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  */
 public final class ProducerFactoryUtils {
-
-	private static ThreadLocal<String> groupIds = new ThreadLocal<>();
 
 	private ProducerFactoryUtils() {
 		super();
@@ -82,27 +81,33 @@ public final class ProducerFactoryUtils {
 	/**
 	 * Set the group id for the consumer bound to this thread.
 	 * @param groupId the group id.
+	 * @deprecated in favor of {@link KafkaUtils#setConsumerGroupId(String)}.
 	 * @since 1.3
 	 */
+	@Deprecated
 	public static void setConsumerGroupId(String groupId) {
-		groupIds.set(groupId);
+		KafkaUtils.setConsumerGroupId(groupId);
 	}
 
 	/**
 	 * Get the group id for the consumer bound to this thread.
 	 * @return the group id.
+	 * @deprecated in favor of {@link KafkaUtils#getConsumerGroupId()}.
 	 * @since 1.3
 	 */
+	@Deprecated
 	public static String getConsumerGroupId() {
-		return groupIds.get();
+		return KafkaUtils.getConsumerGroupId();
 	}
 
 	/**
 	 * Clear the group id for the consumer bound to this thread.
+	 * @deprecated in favor of {@link KafkaUtils#clearConsumerGroupId()}.
 	 * @since 1.3
 	 */
+	@Deprecated
 	public static void clearConsumerGroupId() {
-		groupIds.remove();
+		KafkaUtils.clearConsumerGroupId();
 	}
 
 	private static <K, V> void bindResourceToTransaction(KafkaResourceHolder<K, V> resourceHolder,
@@ -151,8 +156,8 @@ public final class ProducerFactoryUtils {
 		}
 
 		@Override
-		protected void releaseResource(KafkaResourceHolder<K, V> resourceHolder, Object resourceKey) {
-			ProducerFactoryUtils.releaseResources(resourceHolder);
+		protected void releaseResource(KafkaResourceHolder<K, V> holder, Object resourceKey) {
+			ProducerFactoryUtils.releaseResources(holder);
 		}
 
 	}

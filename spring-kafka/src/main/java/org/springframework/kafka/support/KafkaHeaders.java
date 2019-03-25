@@ -189,4 +189,10 @@ public abstract class KafkaHeaders {
 	 */
 	public static final String DLT_ORIGINAL_TIMESTAMP_TYPE = PREFIX + "dlt-original-timestamp-type";
 
+	/**
+	 * For inbound messages, the container's {@code group.id} consumer property.
+	 * @since 2.3
+	 */
+	public static final String GROUP_ID = PREFIX + "groupId";
+
 }

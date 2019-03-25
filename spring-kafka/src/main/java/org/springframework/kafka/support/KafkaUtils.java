@@ -33,6 +33,8 @@ import org.springframework.messaging.Message;
  */
 public final class KafkaUtils {
 
+	private static ThreadLocal<String> groupIds = new ThreadLocal<>();
+
 	/**
 	 * Return true if the method return type is {@link Message} or
 	 * {@code Collection<Message<?>>}.
@@ -61,6 +63,32 @@ public final class KafkaUtils {
 		}
 		return false;
 
+	}
+
+	/**
+	 * Set the group id for the consumer bound to this thread.
+	 * @param groupId the group id.
+	 * @since 2.3
+	 */
+	public static void setConsumerGroupId(String groupId) {
+		KafkaUtils.groupIds.set(groupId);
+	}
+
+	/**
+	 * Get the group id for the consumer bound to this thread.
+	 * @return the group id.
+	 * @since 2.3
+	 */
+	public static String getConsumerGroupId() {
+		return KafkaUtils.groupIds.get();
+	}
+
+	/**
+	 * Clear the group id for the consumer bound to this thread.
+	 * @since 2.3
+	 */
+	public static void clearConsumerGroupId() {
+		KafkaUtils.groupIds.remove();
 	}
 
 	private KafkaUtils() {

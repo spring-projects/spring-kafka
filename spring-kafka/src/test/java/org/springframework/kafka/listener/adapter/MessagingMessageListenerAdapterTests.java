@@ -55,10 +55,10 @@ public class MessagingMessageListenerAdapterTests {
 		RecordMessageConverter converter = mock(RecordMessageConverter.class);
 		ConsumerRecord<String, String> cr = new ConsumerRecord<>("foo", 1, 1L, null, null);
 		Acknowledgment ack = mock(Acknowledgment.class);
-		willReturn(new GenericMessage<>("foo")).given(converter).toMessage(cr, ack, null, String.class);
+		willReturn(new GenericMessage<>("foo")).given(converter).toMessage(cr, ack, null, String.class, null);
 		adapter.setMessageConverter(converter);
 		adapter.onMessage(cr, ack);
-		verify(converter).toMessage(cr, ack, null, String.class);
+		verify(converter).toMessage(cr, ack, null, String.class, null);
 	}
 
 }

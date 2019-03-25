@@ -41,10 +41,11 @@ public interface BatchMessageConverter extends MessageConverter {
 	 * @param acknowledgment the acknowledgment.
 	 * @param consumer the consumer.
 	 * @param payloadType the required payload type.
+	 * @param groupId the {@code group.id} consumer property.
 	 * @return the message.
 	 */
 	Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
-			Type payloadType);
+			Type payloadType, String groupId);
 
 	/**
 	 * Convert a message to a producer record.

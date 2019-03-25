@@ -31,6 +31,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
@@ -329,7 +330,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	@Override
 	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets) {
-		sendOffsetsToTransaction(offsets, ProducerFactoryUtils.getConsumerGroupId());
+		sendOffsetsToTransaction(offsets, KafkaUtils.getConsumerGroupId());
 	}
 
 	@Override

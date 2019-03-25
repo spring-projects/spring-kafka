@@ -446,6 +446,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			endpoint.setAutoStartup(resolveExpressionAsBoolean(autoStartup, "autoStartup"));
 		}
 		resolveKafkaProperties(endpoint, kafkaListener.properties());
+		if (StringUtils.hasText(kafkaListener.exposeGroupId())) {
+			endpoint.setExposeGroupId(resolveExpressionAsBoolean(kafkaListener.exposeGroupId(), "exposeGroupId"));
+		}
 
 		KafkaListenerContainerFactory<?> factory = null;
 		String containerFactoryBeanName = resolve(kafkaListener.containerFactory());

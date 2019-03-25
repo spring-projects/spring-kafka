@@ -215,6 +215,7 @@ public class EnableKafkaIntegrationTests {
 		template.flush();
 		assertThat(this.listener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.globalErrorThrowable).isNotNull();
+		assertThat(this.listener.receivedGroupId).isNull();
 
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
@@ -222,6 +223,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.key).isEqualTo(123);
 		assertThat(this.listener.partition).isNotNull();
 		assertThat(this.listener.topic).isEqualTo("annotated2");
+		assertThat(this.listener.receivedGroupId).isEqualTo("bar");
 
 		template.send("annotated3", 0, "foo");
 		template.flush();
@@ -442,6 +444,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(list.get(0)).isInstanceOf(String.class);
 		assertThat(this.recordFilter.called).isTrue();
 		assertThat(this.config.listen10Exception).isNotNull();
+		assertThat(this.listener.receivedGroupId).isEqualTo("list1");
 
 		assertThat(this.config.spyLatch.await(30, TimeUnit.SECONDS)).isTrue();
 	}
@@ -1375,6 +1378,8 @@ public class EnableKafkaIntegrationTests {
 
 		private volatile ConsumerRecords<?, ?> consumerRecords;
 
+		private volatile String receivedGroupId;
+
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
 		public void manualStart(String foo) {
@@ -1383,21 +1388,24 @@ public class EnableKafkaIntegrationTests {
 		private final AtomicBoolean reposition1 = new AtomicBoolean();
 
 		@KafkaListener(id = "foo", topics = "#{'${topicOne:annotated1,foo}'.split(',')}")
-		public void listen1(String foo) {
+		public void listen1(String foo, @Header(value = KafkaHeaders.GROUP_ID, required = false) String groupId) {
+			this.receivedGroupId = groupId;
 			if (this.reposition1.compareAndSet(false, true)) {
 				throw new RuntimeException("reposition");
 			}
 			this.latch1.countDown();
 		}
 
-		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}")
+		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}", exposeGroupId = "${always:true}")
 		public void listen2(@Payload String foo,
+				@Header(KafkaHeaders.GROUP_ID) String groupId,
 				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
 			this.key = key;
 			this.partition = partition;
 			this.topic = topic;
+			this.receivedGroupId = groupId;
 			this.latch2.countDown();
 			if (this.latch2.getCount() > 0) {
 				this.seekCallBack.get().seek(topic, partition, 0);
@@ -1484,12 +1492,13 @@ public class EnableKafkaIntegrationTests {
 		private final AtomicBoolean reposition10 = new AtomicBoolean();
 
 		@KafkaListener(id = "list1", topics = "annotated14", containerFactory = "batchSpyFactory",
-				errorHandler = "listen10ErrorHandler")
-		public void listen10(List<String> list) {
+				errorHandler = "listen10ErrorHandler", exposeGroupId = "true")
+		public void listen10(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
 			if (this.reposition10.compareAndSet(false, true)) {
 				throw new RuntimeException("reposition");
 			}
 			this.payload = list;
+			this.receivedGroupId = groupId;
 			this.latch10.countDown();
 		}
 

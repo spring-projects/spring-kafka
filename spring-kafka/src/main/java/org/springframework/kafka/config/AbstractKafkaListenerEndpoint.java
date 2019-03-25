@@ -113,6 +113,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private Properties consumerProperties;
 
+	private Boolean exposeGroupId;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -409,6 +411,20 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setConsumerProperties(Properties consumerProperties) {
 		this.consumerProperties = consumerProperties;
+	}
+
+	@Override
+	public Boolean getExposeGroupId() {
+		return this.exposeGroupId;
+	}
+
+	/**
+	 * Set to true to expose the {@code group.id} property in a header.
+	 * @param exposeGroupId true to expose.
+	 * @since 2.3
+	 */
+	public void setExposeGroupId(Boolean exposeGroupId) {
+		this.exposeGroupId = exposeGroupId;
 	}
 
 	@Override

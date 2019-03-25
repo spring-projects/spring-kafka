@@ -57,6 +57,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
@@ -112,6 +113,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private boolean messageReturnType;
 
 	private ReplyHeadersConfigurer replyHeadersConfigurer;
+
+	private boolean exposeGroupId;
 
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
@@ -238,6 +241,14 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		this.replyHeadersConfigurer = replyHeadersConfigurer;
 	}
 
+	public boolean isExposeGroupId() {
+		return this.exposeGroupId;
+	}
+
+	public void setExposeGroupId(boolean exposeGroupId) {
+		this.exposeGroupId = exposeGroupId;
+	}
+
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
 		if (this.bean instanceof ConsumerSeekAware) {
@@ -261,7 +272,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
-		return getMessageConverter().toMessage(record, acknowledgment, consumer, getType());
+		return getMessageConverter().toMessage(record, acknowledgment, consumer, getType(),
+				this.exposeGroupId ? KafkaUtils.getConsumerGroupId() : null);
 	}
 
 	/**
@@ -475,7 +487,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 
 		Type genericParameterType = null;
-		boolean hasConsumerParameter = false;
+		int allowedBatchParameters = 1;
 
 		for (int i = 0; i < method.getParameterCount(); i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
@@ -529,23 +541,33 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 			else if (methodParameter.getGenericParameterType().equals(Acknowledgment.class)) {
 				this.hasAckParameter = true;
+				allowedBatchParameters++;
+			}
+			else if (methodParameter.hasParameterAnnotation(Header.class)) {
+				Header header = methodParameter.getParameterAnnotation(Header.class);
+				if (header.value().equals(KafkaHeaders.GROUP_ID)) {
+					allowedBatchParameters++;
+				}
 			}
 			else {
 				if (methodParameter.getGenericParameterType().equals(Consumer.class)) {
-					hasConsumerParameter = true;
+					allowedBatchParameters++;
 				}
 				else {
 					Type parameterType = methodParameter.getGenericParameterType();
-					hasConsumerParameter = parameterType instanceof ParameterizedType
-							&& ((ParameterizedType) parameterType).getRawType().equals(Consumer.class);
+					if (parameterType instanceof ParameterizedType
+							&& ((ParameterizedType) parameterType).getRawType().equals(Consumer.class)) {
+						allowedBatchParameters++;
+					}
 				}
 			}
 		}
-		boolean validParametersForBatch = validParametersForBatch(method.getGenericParameterTypes().length,
-				this.hasAckParameter, hasConsumerParameter);
+		boolean validParametersForBatch = method.getGenericParameterTypes().length <= allowedBatchParameters;
+
 		if (!validParametersForBatch) {
 			String stateMessage = "A parameter of type '%s' must be the only parameter "
-					+ "(except for an optional 'Acknowledgment' and/or 'Consumer')";
+					+ "(except for an optional 'Acknowledgment' and/or 'Consumer' "
+					+ "and/or '@Header(KafkaHeaders.GROUP_ID) String groupId'";
 			Assert.state(!this.isConsumerRecords,
 					() -> String.format(stateMessage, "ConsumerRecords"));
 			Assert.state(!this.isConsumerRecordList,
@@ -555,18 +577,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		this.messageReturnType = KafkaUtils.returnTypeMessageOrCollectionOf(method);
 		return genericParameterType;
-	}
-
-	private boolean validParametersForBatch(int parameterCount, boolean hasAck, boolean hasConsumer) {
-		if (hasAck) {
-			return parameterCount == 2 || (hasConsumer && parameterCount == 3); // NOSONAR magic #
-		}
-		else if (hasConsumer) {
-			return parameterCount == 2; // NOSONAR magic #
-		}
-		else {
-			return parameterCount == 1; // NOSONAR magic #
-		}
 	}
 
 	/*

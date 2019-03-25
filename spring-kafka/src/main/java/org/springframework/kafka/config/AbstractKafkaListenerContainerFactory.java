@@ -39,6 +39,7 @@ import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
+import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.retry.RecoveryCallback;
@@ -286,10 +287,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	@Override
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
 		C instance = createContainerInstance(endpoint);
-
-		if (endpoint.getId() != null) {
-			instance.setBeanName(endpoint.getId());
-		}
+		JavaUtils.INSTANCE
+			.acceptIfNotNull(endpoint.getId(), instance::setBeanName);
 		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
 			configureEndpoint((AbstractKafkaListenerEndpoint<K, V>) endpoint);
 		}
@@ -301,30 +300,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	private void configureEndpoint(AbstractKafkaListenerEndpoint<K, V> aklEndpoint) {
-		if (this.recordFilterStrategy != null) {
-			aklEndpoint.setRecordFilterStrategy(this.recordFilterStrategy);
-		}
-		if (this.ackDiscarded != null) {
-			aklEndpoint.setAckDiscarded(this.ackDiscarded);
-		}
-		if (this.retryTemplate != null) {
-			aklEndpoint.setRetryTemplate(this.retryTemplate);
-		}
-		if (this.recoveryCallback != null) {
-			aklEndpoint.setRecoveryCallback(this.recoveryCallback);
-		}
-		if (this.statefulRetry != null) {
-			aklEndpoint.setStatefulRetry(this.statefulRetry);
-		}
-		if (this.batchListener != null) {
-			aklEndpoint.setBatchListener(this.batchListener);
-		}
-		if (this.replyTemplate != null) {
-			aklEndpoint.setReplyTemplate(this.replyTemplate);
-		}
-		if (this.replyHeadersConfigurer != null) {
-			aklEndpoint.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
-		}
+		JavaUtils.INSTANCE
+			.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::setRecordFilterStrategy)
+			.acceptIfNotNull(this.ackDiscarded, aklEndpoint::setAckDiscarded)
+			.acceptIfNotNull(this.retryTemplate, aklEndpoint::setRetryTemplate)
+			.acceptIfNotNull(this.recoveryCallback, aklEndpoint::setRecoveryCallback)
+			.acceptIfNotNull(this.statefulRetry, aklEndpoint::setStatefulRetry)
+			.acceptIfNotNull(this.batchListener, aklEndpoint::setBatchListener)
+			.acceptIfNotNull(this.replyTemplate, aklEndpoint::setReplyTemplate)
+			.acceptIfNotNull(this.replyHeadersConfigurer, aklEndpoint::setReplyHeadersConfigurer);
 	}
 
 	/**
@@ -345,35 +329,26 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
 				"messageListener", "ackCount", "ackTime");
-		if (this.afterRollbackProcessor != null) {
-			instance.setAfterRollbackProcessor(this.afterRollbackProcessor);
-		}
-		if (this.containerProperties.getAckCount() > 0) {
-			properties.setAckCount(this.containerProperties.getAckCount());
-		}
-		if (this.containerProperties.getAckTime() > 0) {
-			properties.setAckTime(this.containerProperties.getAckTime());
-		}
-		if (this.errorHandler != null) {
-			instance.setGenericErrorHandler(this.errorHandler);
-		}
+		JavaUtils.INSTANCE
+			.acceptIfNotNull(this.afterRollbackProcessor, instance::setAfterRollbackProcessor)
+			.acceptIfCondition(this.containerProperties.getAckCount() > 0, this.containerProperties.getAckCount(),
+					properties::setAckCount)
+			.acceptIfCondition(this.containerProperties.getAckTime() > 0, this.containerProperties.getAckTime(),
+					properties::setAckTime)
+			.acceptIfNotNull(this.errorHandler, instance::setGenericErrorHandler);
 		if (endpoint.getAutoStartup() != null) {
 			instance.setAutoStartup(endpoint.getAutoStartup());
 		}
 		else if (this.autoStartup != null) {
 			instance.setAutoStartup(this.autoStartup);
 		}
-		if (this.phase != null) {
-			instance.setPhase(this.phase);
-		}
-		if (this.applicationEventPublisher != null) {
-			instance.setApplicationEventPublisher(this.applicationEventPublisher);
-		}
-		instance.getContainerProperties().setGroupId(endpoint.getGroupId());
-		instance.getContainerProperties().setClientId(endpoint.getClientIdPrefix());
-		if (endpoint.getConsumerProperties() != null) {
-			instance.getContainerProperties().setConsumerProperties(endpoint.getConsumerProperties());
-		}
+		JavaUtils.INSTANCE
+			.acceptIfNotNull(this.phase, instance::setPhase)
+			.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
+			.acceptIfNotNull(endpoint.getGroupId(), instance.getContainerProperties()::setGroupId)
+			.acceptIfNotNull(endpoint.getClientIdPrefix(), instance.getContainerProperties()::setClientId)
+				.acceptIfNotNull(endpoint.getConsumerProperties(),
+						instance.getContainerProperties()::setConsumerProperties);
 	}
 
 	@Override

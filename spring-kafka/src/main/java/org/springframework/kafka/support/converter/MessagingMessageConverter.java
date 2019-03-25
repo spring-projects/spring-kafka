@@ -100,7 +100,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	@Override
 	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
-			Type type) {
+			Type type, String groupId) {
+
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
@@ -129,6 +130,9 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		}
 		if (consumer != null) {
 			rawHeaders.put(KafkaHeaders.CONSUMER, consumer);
+		}
+		if (groupId != null) {
+			rawHeaders.put(KafkaHeaders.GROUP_ID, groupId);
 		}
 
 		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);

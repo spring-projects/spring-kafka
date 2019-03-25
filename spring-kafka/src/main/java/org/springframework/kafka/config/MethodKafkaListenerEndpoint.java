@@ -30,6 +30,7 @@ import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerA
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
+import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -147,19 +148,20 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	@Override
 	protected MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			MessageConverter messageConverter) {
+
 		Assert.state(this.messageHandlerMethodFactory != null,
 				"Could not create message listener - MessageHandlerMethodFactory not set");
 		MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance(messageConverter);
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
-		String replyTopic = getReplyTopic();
-		if (replyTopic != null) {
-			Assert.state(getMethod().getReturnType().equals(void.class)
-					|| getReplyTemplate() != null, "a KafkaTemplate is required to support replies");
-			messageListener.setReplyTopic(replyTopic);
-		}
-		if (getReplyTemplate() != null) {
-			messageListener.setReplyTemplate(getReplyTemplate());
-		}
+		JavaUtils.INSTANCE
+			.acceptIfNotNull(getReplyTopic(), replyTopic -> {
+				Assert.state(getMethod().getReturnType().equals(void.class)
+						|| getReplyTemplate() != null, "a KafkaTemplate is required to support replies");
+				messageListener.setReplyTopic(replyTopic);
+			})
+			.acceptIfNotNull(getReplyTemplate(), messageListener::setReplyTemplate)
+			.acceptIfNotNull(getExposeGroupId(), messageListener::setExposeGroupId);
+
 		return messageListener;
 	}
 

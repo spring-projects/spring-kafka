@@ -231,7 +231,7 @@ public class KafkaTemplateTests {
 
 		Acknowledgment ack = mock(Acknowledgment.class);
 		Consumer<?, ?> mockConsumer = mock(Consumer.class);
-		Message<?> recordToMessage = messageConverter.toMessage(r2, ack, mockConsumer, String.class);
+		Message<?> recordToMessage = messageConverter.toMessage(r2, ack, mockConsumer, String.class, "test.group.id");
 
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048615L);

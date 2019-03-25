@@ -241,4 +241,13 @@ public @interface KafkaListener {
 	 */
 	String[] properties() default {};
 
+	/**
+	 * When set to true, enable the listener code to access the consumer's {@link code
+	 * group.id} property using a {@code @Header(KafkaHeaders.GROUP_ID} String groupId)
+	 * method parameter. Useful if you use the same listener code in multiple containers.
+	 * @return true to provide the header.
+	 * @since 2.3
+	 */
+	String exposeGroupId() default "false";
+
 }

@@ -23,6 +23,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 
 /**
@@ -39,10 +40,12 @@ public interface RecordMessageConverter extends MessageConverter {
 	 * @param acknowledgment the acknowledgment.
 	 * @param consumer the consumer
 	 * @param payloadType the required payload type.
+	 * @param groupId the {@code group.id} consumer property.
 	 * @return the message.
+	 * @since 2.3
 	 */
 	Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
-			Type payloadType);
+			Type payloadType, @Nullable String groupId);
 
 	/**
 	 * Convert a message to a producer record.

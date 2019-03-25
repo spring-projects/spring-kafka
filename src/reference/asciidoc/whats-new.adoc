@@ -17,6 +17,10 @@ Because the listener container has it's own mechanism for committing offsets, it
 It now sets it to false automatically unless specifically set in the consumer factory or the container's consumer property overrides.
 
 The `ackOnError` property is now `false` by default.
+See <<seek-to-current>> for more information.
+
+It is now possible to obtain the consumer's `group.id` property in the listener method.
+See <<listener-group-id>> for more information.
 
 ==== ErrorHandler Changes
 

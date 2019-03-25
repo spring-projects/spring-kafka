@@ -33,6 +33,9 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -51,19 +54,24 @@ public class BatchMessagingMessageListenerAdapterTests {
 		BatchMessagingMessageListenerAdapter<String, String> adapter =
 				(BatchMessagingMessageListenerAdapter<String, String>) registry
 					.getListenerContainer("foo").getContainerProperties().getMessageListener();
+		KafkaUtils.setConsumerGroupId("test.group");
 		adapter.onMessage(Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, null, null)), null, null);
 		assertThat(foo.value).isNull();
+		assertThat(foo.group).isEqualTo("test.group");
 	}
 
 	public static class Foo {
 
-		public String value = "someValue";
+		public volatile String value = "someValue";
 
-		@KafkaListener(id = "foo", topics = "foo", autoStartup = "false")
-		public void listen(List<String> list) {
+		public volatile String group;
+
+		@KafkaListener(id = "foo", topics = "foo", autoStartup = "false", exposeGroupId = "true")
+		public void listen(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
 			list.forEach(s -> {
 				this.value = s;
 			});
+			this.group = groupId;
 		}
 
 	}

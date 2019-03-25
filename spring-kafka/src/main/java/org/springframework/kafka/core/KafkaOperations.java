@@ -186,7 +186,8 @@ public interface KafkaOperations<K, V> {
 
 	/**
 	 * When running in a transaction, send the consumer offset(s) to the transaction. The
-	 * group id is obtained from {@link ProducerFactoryUtils#getConsumerGroupId()}. It is
+	 * group id is obtained from
+	 * {@link org.springframework.kafka.support.KafkaUtils#getConsumerGroupId()}. It is
 	 * not necessary to call this method if the operations are invoked on a listener
 	 * container thread (and the listener container is configured with a
 	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}) since

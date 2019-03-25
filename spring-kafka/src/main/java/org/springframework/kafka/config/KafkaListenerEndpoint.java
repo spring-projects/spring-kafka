@@ -116,6 +116,14 @@ public interface KafkaListenerEndpoint {
 	}
 
 	/**
+	 * Whether or not to expose the {@code group.id} as a header.
+	 * @return true to expose.
+	 * @since 2.3
+	 */
+	@Nullable
+	Boolean getExposeGroupId();
+
+	/**
 	 * Setup the specified message listener container with the model
 	 * defined by this endpoint.
 	 * <p>This endpoint must provide the requested missing option(s) of

@@ -124,7 +124,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	@Override
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer, Type type) {
+			Consumer<?, ?> consumer, Type type, String groupId) {
+
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
@@ -156,6 +157,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		}
 		if (consumer != null) {
 			rawHeaders.put(KafkaHeaders.CONSUMER, consumer);
+		}
+		if (groupId != null) {
+			rawHeaders.put(KafkaHeaders.GROUP_ID, groupId);
 		}
 
 		boolean logged = false;
@@ -214,7 +218,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 */
 	protected Object convert(ConsumerRecord<?, ?> record, Type type) {
 		return this.recordConverter
-			.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
+			.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0], null).getPayload();
 	}
 
 	/**
