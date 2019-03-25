@@ -2926,7 +2926,7 @@ void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?
 
 Similar to the `@KafkaListener` error handlers, you can reset the offsets as needed, based on the data that failed.
 
-NOTE: Unlike the listener-level error handlers, however, you should set the `ackOnError` container property to false when making adjustments.
+NOTE: Unlike the listener-level error handlers, however, you should set the `ackOnError` container property to `false` (default) when making adjustments.
 Otherwise, any pending acks are applied after your repositioning.
 
 [[seek-to-current]]
@@ -2951,9 +2951,12 @@ public interface RemainingRecordsErrorHandler extends ConsumerAwareErrorHandler 
 This interface lets implementations seek all unprocessed topics and partitions so that the current record (and the others remaining) are retrieved by the next poll.
 `SeekToCurrentErrorHandler` does exactly this.
 
+IMPORTANT: `ackOnError` must be `false` (which is the default).
+Otherwise, if the container is stopped after the seek, but before the record is reprocessed, the record will be skipped when the container is restarted.
+
 The container commits any pending offset commits before calling the error handler.
 
-To configure the listener container with this handler, add it to the `ContainerProperties`.
+To configure the listener container with this handler, add it to the container factory.
 
 For example, with the `@KafkaListener` container factory, you can add `SeekToCurrentErrorHandler` as follows:
 

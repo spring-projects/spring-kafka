@@ -16,6 +16,8 @@ Now a `ListenerExecutionFailedException` is always the argument (with the actual
 Because the listener container has it's own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
 It now sets it to false automatically unless specifically set in the consumer factory or the container's consumer property overrides.
 
+The `ackOnError` property is now `false` by default.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.

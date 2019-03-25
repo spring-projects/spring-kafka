@@ -201,7 +201,7 @@ public class ContainerProperties {
 
 	private Duration syncCommitTimeout;
 
-	private boolean ackOnError = true;
+	private boolean ackOnError = false;
 
 	private Long idleEventInterval;
 
@@ -402,21 +402,21 @@ public class ContainerProperties {
 	 * Set whether or not the container should commit offsets (ack messages) where the
 	 * listener throws exceptions. This works in conjunction with {@link #ackMode} and is
 	 * effective only when the kafka property {@code enable.auto.commit} is {@code false};
-	 * it is not applicable to manual ack modes. When this property is set to {@code true}
-	 * (the default), all messages handled will have their offset committed. When set to
-	 * {@code false}, offsets will be committed only for successfully handled messages.
-	 * Manual acks will always be applied. Bear in mind that, if the next message is
-	 * successfully handled, its offset will be committed, effectively committing the
-	 * offset of the failed message anyway, so this option has limited applicability.
-	 * Perhaps useful for a component that starts throwing exceptions consistently;
-	 * allowing it to resume when restarted from the last successfully processed message.
+	 * it is not applicable to manual ack modes. When this property is set to
+	 * {@code true}, all messages handled will have their offset committed. When set to
+	 * {@code false} (the default), offsets will be committed only for successfully
+	 * handled messages. Manual acks will always be applied. Bear in mind that, if the
+	 * next message is successfully handled, its offset will be committed, effectively
+	 * committing the offset of the failed message anyway, so this option has limited
+	 * applicability, unless you are using a {@code SeekToCurrentBatchErrorHandler} which
+	 * will seek the current record so that it is reprocessed.
 	 * <p>
 	 * Does not apply when transactions are used - in that case, whether or not the
 	 * offsets are sent to the transaction depends on whether the transaction is committed
-	 * or rolled back. If a listener throws an exception, the transaction will normally
-	 * be rolled back unless an error handler is provided that handles the error and
-	 * exits normally; in which case the offsets are sent to the transaction and the
-	 * transaction is committed.
+	 * or rolled back. If a listener throws an exception, the transaction will normally be
+	 * rolled back unless an error handler is provided that handles the error and exits
+	 * normally; in which case the offsets are sent to the transaction and the transaction
+	 * is committed.
 	 * @param ackOnError whether the container should acknowledge messages that throw
 	 * exceptions.
 	 */
