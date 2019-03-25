@@ -94,7 +94,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 */
 	public static final String BROKER_LIST_PROPERTY = "spring.embedded.kafka.brokers.property";
 
-	private static final int DEFAULT_ADMIN_TIMEOUT = 30;
+	private static final Duration DEFAULT_ADMIN_TIMEOUT = Duration.ofSeconds(10);
 
 	private final int count;
 
@@ -116,7 +116,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private int[] kafkaPorts;
 
-	private int adminTimeout = DEFAULT_ADMIN_TIMEOUT;
+	private Duration adminTimeout = DEFAULT_ADMIN_TIMEOUT;
 
 	private String brokerListProperty;
 
@@ -157,12 +157,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	/**
 	 * Specify the properties to configure Kafka Broker before start, e.g.
 	 * {@code auto.create.topics.enable}, {@code transaction.state.log.replication.factor} etc.
-	 * @param brokerProperties the properties to use for configuring Kafka Broker(s).
+	 * @param properties the properties to use for configuring Kafka Broker(s).
 	 * @return this for chaining configuration.
 	 * @see KafkaConfig
 	 */
-	public EmbeddedKafkaBroker brokerProperties(Map<String, String> brokerProperties) {
-		this.brokerProperties.putAll(brokerProperties);
+	public EmbeddedKafkaBroker brokerProperties(Map<String, String> properties) {
+		this.brokerProperties.putAll(properties);
 		return this;
 	}
 
@@ -180,13 +180,13 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	/**
 	 * Set explicit ports on which the kafka brokers will listen. Useful when running an
 	 * embedded broker that you want to access from other processes.
-	 * @param kafkaPorts the ports.
+	 * @param ports the ports.
 	 * @return the {@link EmbeddedKafkaBroker}.
 	 */
-	public EmbeddedKafkaBroker kafkaPorts(int... kafkaPorts) {
-		Assert.isTrue(kafkaPorts.length == this.count, "A port must be provided for each instance ["
-				+ this.count + "], provided: " + Arrays.toString(kafkaPorts) + ", use 0 for a random port");
-		this.kafkaPorts = kafkaPorts;
+	public EmbeddedKafkaBroker kafkaPorts(int... ports) {
+		Assert.isTrue(ports.length == this.count, "A port must be provided for each instance ["
+				+ this.count + "], provided: " + Arrays.toString(ports) + ", use 0 for a random port");
+		this.kafkaPorts = ports;
 		return this;
 	}
 
@@ -197,7 +197,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * @since 2.2
 	 */
 	public void setAdminTimeout(int adminTimeout) {
-		this.adminTimeout = adminTimeout;
+		this.adminTimeout = Duration.ofSeconds(adminTimeout);
 	}
 
 	@Override
@@ -247,11 +247,11 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	/**
 	 * Add topics to the existing broker(s) using the configured number of partitions.
 	 * The broker(s) must be running.
-	 * @param topics the topics.
+	 * @param topicsToAdd the topics.
 	 */
-	public void addTopics(String... topics) {
+	public void addTopics(String... topicsToAdd) {
 		Assert.notNull(this.zookeeper, "Broker must be started before this method can be called");
-		HashSet<String> set = new HashSet<>(Arrays.asList(topics));
+		HashSet<String> set = new HashSet<>(Arrays.asList(topicsToAdd));
 		createKafkaTopics(set);
 		this.topics.addAll(set);
 	}
@@ -259,12 +259,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	/**
 	 * Add topics to the existing broker(s).
 	 * The broker(s) must be running.
-	 * @param topics the topics.
+	 * @param topicsToAdd the topics.
 	 * @since 2.2
 	 */
-	public void addTopics(NewTopic... topics) {
+	public void addTopics(NewTopic... topicsToAdd) {
 		Assert.notNull(this.zookeeper, "Broker must be started before this method can be called");
-		for (NewTopic topic : topics) {
+		for (NewTopic topic : topicsToAdd) {
 			Assert.isTrue(this.topics.add(topic.name()), () -> "topic already exists: " + topic);
 			Assert.isTrue(topic.replicationFactor() <= this.count
 							&& (topic.replicasAssignments() == null
@@ -272,17 +272,17 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 					() -> "Embedded kafka does not support the requested replication factor: " + topic);
 		}
 
-		doWithAdmin(admin -> createTopics(admin, Arrays.asList(topics)));
+		doWithAdmin(admin -> createTopics(admin, Arrays.asList(topicsToAdd)));
 	}
 
 	/**
 	 * Create topics in the existing broker(s) using the configured number of partitions.
-	 * @param topics the topics.
+	 * @param topicsToCreate the topics.
 	 */
-	private void createKafkaTopics(Set<String> topics) {
+	private void createKafkaTopics(Set<String> topicsToCreate) {
 		doWithAdmin(admin -> {
 			createTopics(admin,
-					topics.stream()
+					topicsToCreate.stream()
 							.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
 							.collect(Collectors.toList()));
 		});
@@ -291,7 +291,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	private void createTopics(AdminClient admin, List<NewTopic> newTopics) {
 		CreateTopicsResult createTopics = admin.createTopics(newTopics);
 		try {
-			createTopics.all().get(this.adminTimeout, TimeUnit.SECONDS);
+			createTopics.all().get(this.adminTimeout.getSeconds(), TimeUnit.SECONDS);
 		}
 		catch (Exception e) {
 			throw new KafkaException(e);
@@ -312,7 +312,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		finally {
 			if (admin != null) {
-				admin.close(this.adminTimeout, TimeUnit.SECONDS);
+				admin.close(this.adminTimeout);
 			}
 		}
 	}
@@ -453,16 +453,16 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	/**
 	 * Subscribe a consumer to one or more of the embedded topics.
 	 * @param consumer the consumer.
-	 * @param topics the topics.
+	 * @param topicsToConsume the topics.
 	 */
-	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) {
-		HashSet<String> diff = new HashSet<>(Arrays.asList(topics));
+	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topicsToConsume) {
+		HashSet<String> diff = new HashSet<>(Arrays.asList(topicsToConsume));
 		diff.removeAll(new HashSet<>(this.topics));
 		assertThat(this.topics)
 				.as("topic(s):'" + diff + "' are not in embedded topic list")
-				.containsAll(new HashSet<>(Arrays.asList(topics)));
+				.containsAll(new HashSet<>(Arrays.asList(topicsToConsume)));
 		final AtomicBoolean assigned = new AtomicBoolean();
-		consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
+		consumer.subscribe(Arrays.asList(topicsToConsume), new ConsumerRebalanceListener() {
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {

@@ -68,6 +68,7 @@ public class StreamsBuilderFactoryBeanTests {
 
 	@Test
 	public void testCleanupStreams() throws IOException {
+		Files.createDirectory(Paths.get(stateStoreDir.toString(), APPLICATION_ID));
 		Path stateStore = Files.createDirectory(Paths.get(stateStoreDir.toString(), APPLICATION_ID, "0_0"));
 		assertThat(stateStore).exists();
 		streamsBuilderFactoryBean.stop();

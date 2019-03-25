@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -85,7 +86,7 @@ import org.springframework.util.Assert;
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, ApplicationContextAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
-	private static final int DEFAULT_PHYSICAL_CLOSE_TIMEOUT = 30;
+	private static final Duration DEFAULT_PHYSICAL_CLOSE_TIMEOUT = Duration.ofSeconds(30);
 
 	private static final Log logger = LogFactory.getLog(DefaultKafkaProducerFactory.class); // NOSONAR
 
@@ -103,7 +104,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private Serializer<V> valueSerializer;
 
-	private int physicalCloseTimeout = DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
+	private Duration physicalCloseTimeout = DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
 
 	private String transactionIdPrefix;
 
@@ -153,7 +154,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @since 1.0.7
 	 */
 	public void setPhysicalCloseTimeout(int physicalCloseTimeout) {
-		this.physicalCloseTimeout = physicalCloseTimeout;
+		this.physicalCloseTimeout = Duration.ofSeconds(physicalCloseTimeout);
 	}
 
 	/**
@@ -216,16 +217,16 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	@SuppressWarnings("resource")
 	@Override
-	public void destroy() throws Exception { //NOSONAR
+	public void destroy() {
 		CloseSafeProducer<K, V> producerToClose = this.producer;
 		this.producer = null;
 		if (producerToClose != null) {
-			producerToClose.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
+			producerToClose.delegate.close(this.physicalCloseTimeout);
 		}
 		producerToClose = this.cache.poll();
 		while (producerToClose != null) {
 			try {
-				producerToClose.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
+				producerToClose.delegate.close(this.physicalCloseTimeout);
 			}
 			catch (Exception e) {
 				logger.error("Exception while closing producer", e);
@@ -234,7 +235,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
-				(k, v) -> v.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS));
+				(k, v) -> v.delegate.close(this.physicalCloseTimeout));
 			this.consumerProducers.clear();
 		}
 	}
@@ -337,11 +338,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 	}
 
-	private void removeConsumerProducer(CloseSafeProducer<K, V> producer) {
+	private void removeConsumerProducer(CloseSafeProducer<K, V> producerToRemove) {
 		synchronized (this.consumerProducers) {
 			Iterator<Entry<String, CloseSafeProducer<K, V>>> iterator = this.consumerProducers.entrySet().iterator();
 			while (iterator.hasNext()) {
-				if (iterator.next().getValue().equals(producer)) {
+				if (iterator.next().getValue().equals(producerToRemove)) {
 					iterator.remove();
 					break;
 				}
@@ -380,12 +381,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	@Override
-	public void closeProducerFor(String transactionIdSuffix) {
+	public void closeProducerFor(String suffix) {
 		if (this.producerPerConsumerPartition) {
 			synchronized (this.consumerProducers) {
-				CloseSafeProducer<K, V> removed = this.consumerProducers.remove(transactionIdSuffix);
+				CloseSafeProducer<K, V> removed = this.consumerProducers.remove(suffix);
 				if (removed != null) {
-					removed.delegate.close(this.physicalCloseTimeout, TimeUnit.SECONDS);
+					removed.delegate.close(this.physicalCloseTimeout);
 				}
 			}
 		}
@@ -524,22 +525,29 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public void close() {
-			close(0, null);
+			close(null);
 		}
 
 		@Override
+		@SuppressWarnings("deprecation")
+		@Deprecated
 		public void close(long timeout, @Nullable TimeUnit unit) {
+			close(Duration.ofMillis(unit.toMillis(timeout)));
+		}
+
+		@Override
+		public void close(Duration timeout) {
 			if (this.cache != null) {
 				if (this.txFailed) {
 					if (logger.isWarnEnabled()) {
 						logger.warn("Error during transactional operation; producer removed from cache; possible cause: "
 							+ "broker restarted during transaction: " + this);
 					}
-					if (unit == null) {
+					if (timeout == null) {
 						this.delegate.close();
 					}
 					else {
-						this.delegate.close(timeout, unit);
+						this.delegate.close(timeout);
 					}
 					if (this.removeConsumerProducer != null) {
 						this.removeConsumerProducer.accept(this);
@@ -550,11 +558,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 						synchronized (this) {
 							if (!this.cache.contains(this)
 									&& !this.cache.offer(this)) {
-								if (unit == null) {
+								if (timeout == null) {
 									this.delegate.close();
 								}
 								else {
-									this.delegate.close(timeout, unit);
+									this.delegate.close(timeout);
 								}
 							}
 						}

@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,17 +57,17 @@ import org.springframework.kafka.KafkaException;
  */
 public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSingleton {
 
-	private static final int DEFAULT_CLOSE_TIMEOUT = 10;
+	private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
 	private static final int DEFAULT_OPERATION_TIMEOUT = 30;
 
-	private final static Log logger = LogFactory.getLog(KafkaAdmin.class); // NOSONAR
+	private final static Log LOGGER = LogFactory.getLog(KafkaAdmin.class);
 
 	private final Map<String, Object> config;
 
 	private ApplicationContext applicationContext;
 
-	private int closeTimeout = DEFAULT_CLOSE_TIMEOUT;
+	private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
 	private int operationTimeout = DEFAULT_OPERATION_TIMEOUT;
 
@@ -95,7 +96,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	 * @param closeTimeout the timeout.
 	 */
 	public void setCloseTimeout(int closeTimeout) {
-		this.closeTimeout = closeTimeout;
+		this.closeTimeout = Duration.ofSeconds(closeTimeout);
 	}
 
 	/**
@@ -161,7 +162,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 					throw new IllegalStateException("Could not create admin", e);
 				}
 				else {
-					logger.error("Could not create admin", e);
+					LOGGER.error("Could not create admin", e);
 				}
 			}
 			if (adminClient != null) {
@@ -174,12 +175,12 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 						throw new IllegalStateException("Could not configure topics", e);
 					}
 					else {
-						logger.error("Could not configure topics", e);
+						LOGGER.error("Could not configure topics", e);
 					}
 				}
 				finally {
 					this.initializingContext = false;
-					adminClient.close(this.closeTimeout, TimeUnit.SECONDS);
+					adminClient.close(this.closeTimeout);
 				}
 			}
 		}
@@ -190,7 +191,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	private void addTopicsIfNeeded(AdminClient adminClient, Collection<NewTopic> topics) {
 		if (topics.size() > 0) {
 			Map<String, NewTopic> topicNameToTopic = new HashMap<>();
-			topics.forEach(t -> topicNameToTopic.compute(t.name(), (k, v) -> v = t));
+			topics.forEach(t -> topicNameToTopic.compute(t.name(), (k, v) -> t));
 			DescribeTopicsResult topicInfo = adminClient
 					.describeTopics(topics.stream()
 							.map(NewTopic::name)
@@ -215,15 +216,15 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			try {
 				TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
 				if (topic.numPartitions() < topicDescription.partitions().size()) {
-					if (logger.isInfoEnabled()) {
-						logger.info(String.format(
+					if (LOGGER.isInfoEnabled()) {
+						LOGGER.info(String.format(
 							"Topic '%s' exists but has a different partition count: %d not %d", n,
 							topicDescription.partitions().size(), topic.numPartitions()));
 					}
 				}
 				else if (topic.numPartitions() > topicDescription.partitions().size()) {
-					if (logger.isInfoEnabled()) {
-						logger.info(String.format(
+					if (LOGGER.isInfoEnabled()) {
+						LOGGER.info(String.format(
 							"Topic '%s' exists but has a different partition count: %d not %d, increasing "
 							+ "if the broker supports it", n,
 							topicDescription.partitions().size(), topic.numPartitions()));
@@ -231,13 +232,13 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 					topicsToModify.put(n, NewPartitions.increaseTo(topic.numPartitions()));
 				}
 			}
-			catch (InterruptedException e) {
+			catch (@SuppressWarnings("unused") InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
 			catch (TimeoutException e) {
 				throw new KafkaException("Timed out waiting to get existing topics", e);
 			}
-			catch (ExecutionException e) {
+			catch (@SuppressWarnings("unused") ExecutionException e) {
 				topicsToAdd.add(topic);
 			}
 		});
@@ -251,17 +252,17 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			logger.error("Interrupted while waiting for topic creation results", e);
+			LOGGER.error("Interrupted while waiting for topic creation results", e);
 		}
 		catch (TimeoutException e) {
 			throw new KafkaException("Timed out waiting for create topics results", e);
 		}
 		catch (ExecutionException e) {
 			if (e.getCause() instanceof TopicExistsException) { // Possible race with another app instance
-				logger.debug("Failed to create topics", e.getCause());
+				LOGGER.debug("Failed to create topics", e.getCause());
 			}
 			else {
-				logger.error("Failed to create topics", e.getCause());
+				LOGGER.error("Failed to create topics", e.getCause());
 				throw new KafkaException("Failed to create topics", e.getCause()); // NOSONAR
 			}
 		}
@@ -274,17 +275,17 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			logger.error("Interrupted while waiting for partition creation results", e);
+			LOGGER.error("Interrupted while waiting for partition creation results", e);
 		}
 		catch (TimeoutException e) {
 			throw new KafkaException("Timed out waiting for create partitions results", e);
 		}
 		catch (ExecutionException e) {
 			if (e.getCause() instanceof InvalidPartitionsException) { // Possible race with another app instance
-				logger.debug("Failed to create partitions", e.getCause());
+				LOGGER.debug("Failed to create partitions", e.getCause());
 			}
 			else {
-				logger.error("Failed to create partitions", e.getCause());
+				LOGGER.error("Failed to create partitions", e.getCause());
 				if (!(e.getCause() instanceof UnsupportedVersionException)) {
 					throw new KafkaException("Failed to create partitions", e.getCause()); // NOSONAR
 				}

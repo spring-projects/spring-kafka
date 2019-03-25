@@ -19,11 +19,11 @@ package org.springframework.kafka.core;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.admin.AdminClient;
@@ -89,7 +89,7 @@ public class KafkaAdminTests {
 		topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
 		Map<String, TopicDescription> results = topics.all().get();
 		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 3));
-		adminClient.close(10, TimeUnit.SECONDS);
+		adminClient.close(Duration.ofSeconds(10));
 	}
 
 	@Test

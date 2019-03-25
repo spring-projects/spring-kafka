@@ -78,7 +78,7 @@ subprojects { subproject ->
 		junit4Version = '4.12'
 		junitJupiterVersion = '5.4.0'
 		junitPlatformVersion = '1.4.0'
-		kafkaVersion = '2.1.1'
+		kafkaVersion = '2.2.0'
 		log4jVersion = '2.11.2'
 		mockitoVersion = '2.24.0'
 		scalaVersion = '2.11'
