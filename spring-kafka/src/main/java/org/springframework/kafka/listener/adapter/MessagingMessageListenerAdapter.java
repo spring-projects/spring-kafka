@@ -114,8 +114,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private ReplyHeadersConfigurer replyHeadersConfigurer;
 
-	private boolean exposeGroupId;
-
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
 		this.inferredType = determineInferredType(method); // NOSONAR = intentionally not final
@@ -241,14 +239,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		this.replyHeadersConfigurer = replyHeadersConfigurer;
 	}
 
-	public boolean isExposeGroupId() {
-		return this.exposeGroupId;
-	}
-
-	public void setExposeGroupId(boolean exposeGroupId) {
-		this.exposeGroupId = exposeGroupId;
-	}
-
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
 		if (this.bean instanceof ConsumerSeekAware) {
@@ -272,8 +262,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
-		return getMessageConverter().toMessage(record, acknowledgment, consumer, getType(),
-				this.exposeGroupId ? KafkaUtils.getConsumerGroupId() : null);
+		return getMessageConverter().toMessage(record, acknowledgment, consumer, getType());
 	}
 
 	/**

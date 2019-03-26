@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,8 +48,17 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	protected final Log LOGGER = LogFactory.getLog(getClass()); // NOSONAR
 
-	private static final List<HeaderMatcher> NEVER_MAPPED = Collections.singletonList(
-			new NeverMatchHeaderMatcher(Arrays.stream(new String[] {
+	private final List<HeaderMatcher> matchers = new ArrayList<>();
+
+	private final Map<String, Boolean> rawMappedtHeaders = new HashMap<>();
+
+	private boolean mapAllStringsOut;
+
+	private Charset charset = StandardCharsets.UTF_8;
+
+	public AbstractKafkaHeaderMapper(String... patterns) {
+		Assert.notNull(patterns, "'patterns' must not be null");
+		this.matchers.add(new NeverMatchHeaderMatcher(
 				KafkaHeaders.ACKNOWLEDGMENT,
 				KafkaHeaders.CONSUMER,
 				KafkaHeaders.MESSAGE_KEY,
@@ -66,19 +74,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 				KafkaHeaders.BATCH_CONVERTED_HEADERS,
 				KafkaHeaders.NATIVE_HEADERS,
 				KafkaHeaders.TOPIC,
-				KafkaHeaders.GROUP_ID
-			}).collect(Collectors.toSet())));
-
-	private final List<HeaderMatcher> matchers = new ArrayList<>(NEVER_MAPPED);
-
-	private final Map<String, Boolean> rawMappedtHeaders = new HashMap<>();
-
-	private boolean mapAllStringsOut;
-
-	private Charset charset = StandardCharsets.UTF_8;
-
-	public AbstractKafkaHeaderMapper(String... patterns) {
-		Assert.notNull(patterns, "'patterns' must not be null");
+				KafkaHeaders.GROUP_ID));
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
 		}
@@ -235,8 +231,9 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 		private final Set<String> neverMatchHeaders;
 
-		protected NeverMatchHeaderMatcher(Set<String> neverMatchHeaders) {
-			this.neverMatchHeaders = neverMatchHeaders;
+		protected NeverMatchHeaderMatcher(String... headers) {
+			this.neverMatchHeaders = Arrays.stream(headers)
+					.collect(Collectors.toSet());
 		}
 
 		@Override

@@ -159,8 +159,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 						|| getReplyTemplate() != null, "a KafkaTemplate is required to support replies");
 				messageListener.setReplyTopic(replyTopic);
 			})
-			.acceptIfNotNull(getReplyTemplate(), messageListener::setReplyTemplate)
-			.acceptIfNotNull(getExposeGroupId(), messageListener::setExposeGroupId);
+			.acceptIfNotNull(getReplyTemplate(), messageListener::setReplyTemplate);
 
 		return messageListener;
 	}

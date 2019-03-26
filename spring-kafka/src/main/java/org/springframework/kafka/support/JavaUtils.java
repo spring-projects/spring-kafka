@@ -78,7 +78,6 @@ public final class JavaUtils {
 	 * @param value the value.
 	 * @param consumer the consumer.
 	 * @return this.
-	 * @since 5.2
 	 */
 	public JavaUtils acceptIfHasText(String value, Consumer<String> consumer) {
 		if (StringUtils.hasText(value)) {
@@ -93,7 +92,6 @@ public final class JavaUtils {
 	 * @param consumer the consumer.
 	 * @param <T> the value type.
 	 * @return this.
-	 * @since 5.2
 	 */
 	public <T> JavaUtils acceptIfNotEmpty(List<T> value, Consumer<List<T>> consumer) {
 		if (!CollectionUtils.isEmpty(value)) {
@@ -108,7 +106,6 @@ public final class JavaUtils {
 	 * @param consumer the consumer.
 	 * @param <T> the value type.
 	 * @return this.
-	 * @since 5.2
 	 */
 	public <T> JavaUtils acceptIfNotEmpty(T[] value, Consumer<T[]> consumer) {
 		if (!ObjectUtils.isEmpty(value)) {
@@ -127,7 +124,6 @@ public final class JavaUtils {
 	 * @param <T1> the first argument type.
 	 * @param <T2> the second argument type.
 	 * @return this.
-	 * @since 5.2
 	 */
 	public <T1, T2> JavaUtils acceptIfCondition(boolean condition, T1 t1, T2 t2, BiConsumer<T1, T2> consumer) {
 		if (condition) {
@@ -145,7 +141,6 @@ public final class JavaUtils {
 	 * @param <T1> the first argument type.
 	 * @param <T2> the second argument type.
 	 * @return this.
-	 * @since 5.2
 	 */
 	public <T1, T2> JavaUtils acceptIfNotNull(T1 t1, T2 t2, BiConsumer<T1, T2> consumer) {
 		if (t2 != null) {
@@ -162,7 +157,6 @@ public final class JavaUtils {
 	 * @param <T> the first argument type.
 	 * @param consumer the consumer.
 	 * @return this.
-	 * @since 5.2
 	 */
 	public <T> JavaUtils acceptIfHasText(T t1, String value, BiConsumer<T, String> consumer) {
 		if (StringUtils.hasText(value)) {
@@ -170,6 +164,5 @@ public final class JavaUtils {
 		}
 		return this;
 	}
-
 
 }

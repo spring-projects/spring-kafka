@@ -55,6 +55,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.CompositeProducerListener;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
@@ -231,7 +232,8 @@ public class KafkaTemplateTests {
 
 		Acknowledgment ack = mock(Acknowledgment.class);
 		Consumer<?, ?> mockConsumer = mock(Consumer.class);
-		Message<?> recordToMessage = messageConverter.toMessage(r2, ack, mockConsumer, String.class, "test.group.id");
+		KafkaUtils.setConsumerGroupId("test.group.id");
+		Message<?> recordToMessage = messageConverter.toMessage(r2, ack, mockConsumer, String.class);
 
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.TIMESTAMP_TYPE)).isEqualTo("CREATE_TIME");
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.RECEIVED_TIMESTAMP)).isEqualTo(1487694048615L);
@@ -240,7 +242,8 @@ public class KafkaTemplateTests {
 		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.CONSUMER)).isSameAs(mockConsumer);
 		assertThat(recordToMessage.getHeaders().get("foo")).isEqualTo("bar");
 		assertThat(recordToMessage.getPayload()).isEqualTo("foo-message-2");
-
+		assertThat(recordToMessage.getHeaders().get(KafkaHeaders.GROUP_ID)).isEqualTo("test.group.id");
+		KafkaUtils.clearConsumerGroupId();
 		pf.destroy();
 	}
 

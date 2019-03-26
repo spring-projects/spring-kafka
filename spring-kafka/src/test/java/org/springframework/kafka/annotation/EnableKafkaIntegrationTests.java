@@ -215,7 +215,7 @@ public class EnableKafkaIntegrationTests {
 		template.flush();
 		assertThat(this.listener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.globalErrorThrowable).isNotNull();
-		assertThat(this.listener.receivedGroupId).isNull();
+		assertThat(this.listener.receivedGroupId).isEqualTo("foo");
 
 		template.send("annotated2", 0, 123, "foo");
 		template.flush();
@@ -1396,7 +1396,7 @@ public class EnableKafkaIntegrationTests {
 			this.latch1.countDown();
 		}
 
-		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}", exposeGroupId = "${always:true}")
+		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}")
 		public void listen2(@Payload String foo,
 				@Header(KafkaHeaders.GROUP_ID) String groupId,
 				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
@@ -1492,7 +1492,7 @@ public class EnableKafkaIntegrationTests {
 		private final AtomicBoolean reposition10 = new AtomicBoolean();
 
 		@KafkaListener(id = "list1", topics = "annotated14", containerFactory = "batchSpyFactory",
-				errorHandler = "listen10ErrorHandler", exposeGroupId = "true")
+				errorHandler = "listen10ErrorHandler")
 		public void listen10(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
 			if (this.reposition10.compareAndSet(false, true)) {
 				throw new RuntimeException("reposition");

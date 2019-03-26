@@ -124,8 +124,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	@Override
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer, Type type, String groupId) {
-
+			Consumer<?, ?> consumer, Type type) {
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
@@ -139,28 +138,14 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		List<Long> timestamps = new ArrayList<>();
 		List<Map<String, Object>> convertedHeaders = new ArrayList<>();
 		List<Headers> natives = new ArrayList<>();
-		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, keys);
-		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topics);
-		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, partitions);
-		rawHeaders.put(KafkaHeaders.OFFSET, offsets);
-		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampTypes);
-		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamps);
 		if (this.headerMapper != null) {
 			rawHeaders.put(KafkaHeaders.BATCH_CONVERTED_HEADERS, convertedHeaders);
 		}
 		else {
 			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, natives);
 		}
-
-		if (acknowledgment != null) {
-			rawHeaders.put(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment);
-		}
-		if (consumer != null) {
-			rawHeaders.put(KafkaHeaders.CONSUMER, consumer);
-		}
-		if (groupId != null) {
-			rawHeaders.put(KafkaHeaders.GROUP_ID, groupId);
-		}
+		commonHeaders(acknowledgment, consumer, rawHeaders, keys, topics, partitions, offsets, timestampTypes,
+				timestamps);
 
 		boolean logged = false;
 		for (ConsumerRecord<?, ?> record : records) {
@@ -218,7 +203,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 */
 	protected Object convert(ConsumerRecord<?, ?> record, Type type) {
 		return this.recordConverter
-			.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0], null).getPayload();
+			.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
 	}
 
 	/**

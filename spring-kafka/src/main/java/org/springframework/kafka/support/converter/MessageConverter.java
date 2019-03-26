@@ -16,6 +16,16 @@
 
 package org.springframework.kafka.support.converter;
 
+import java.util.Map;
+
+import org.apache.kafka.clients.consumer.Consumer;
+
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.JavaUtils;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.lang.Nullable;
+
 /**
  * A top level interface for message converters.
  *
@@ -24,5 +34,27 @@ package org.springframework.kafka.support.converter;
  *
  */
 public interface MessageConverter {
+
+	@Nullable
+	static String getGroupid() {
+		String groupId = KafkaUtils.getConsumerGroupId();
+		return groupId == null ? null : groupId;
+	}
+
+	default void commonHeaders(Acknowledgment acknowledgment, Consumer<?, ?> consumer, Map<String, Object> rawHeaders,
+			Object theKey, Object topic, Object partition, Object offset, Object timestampType, Object timestamp) {
+
+		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, theKey);
+		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topic);
+		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, partition);
+		rawHeaders.put(KafkaHeaders.OFFSET, offset);
+		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampType);
+		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamp);
+		JavaUtils.INSTANCE
+			.acceptIfNotNull(KafkaHeaders.GROUP_ID, MessageConverter.getGroupid(),
+					(key, val) -> rawHeaders.put(key, val))
+			.acceptIfNotNull(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment, (key, val) -> rawHeaders.put(key, val))
+			.acceptIfNotNull(KafkaHeaders.CONSUMER, consumer, (key, val) -> rawHeaders.put(key, val));
+	}
 
 }

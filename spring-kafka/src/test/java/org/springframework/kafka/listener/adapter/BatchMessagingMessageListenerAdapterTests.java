@@ -66,7 +66,7 @@ public class BatchMessagingMessageListenerAdapterTests {
 
 		public volatile String group;
 
-		@KafkaListener(id = "foo", topics = "foo", autoStartup = "false", exposeGroupId = "true")
+		@KafkaListener(id = "foo", topics = "foo", autoStartup = "false")
 		public void listen(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
 			list.forEach(s -> {
 				this.value = s;

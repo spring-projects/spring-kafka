@@ -29,7 +29,6 @@ import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaNull;
-import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.messaging.Message;
@@ -174,8 +173,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected Message<?> toMessagingMessage(List records, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
-		return getBatchMessageConverter().toMessage(records, acknowledgment, consumer, getType(),
-			isExposeGroupId() ? KafkaUtils.getConsumerGroupId() : null);
+		return getBatchMessageConverter().toMessage(records, acknowledgment, consumer, getType());
 	}
 
 }

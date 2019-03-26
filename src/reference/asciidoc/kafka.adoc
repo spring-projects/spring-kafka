@@ -1225,7 +1225,7 @@ The properties are specified as individual strings with the normal Java `Propert
 When running the same listener code in multiple containers, it may be useful to be able to determine which container (identified by its `group.id` consumer property) that a record came from.
 
 You can call `KafkaUtils.getConsumerGroupId()` on the listener thread to do this.
-Alternatively, you can set the `exposeGroupId` property on the annotation and then access the group id in a method parameter.
+Alternatively, you can access the group id in a method parameter.
 
 ====
 [source, java]

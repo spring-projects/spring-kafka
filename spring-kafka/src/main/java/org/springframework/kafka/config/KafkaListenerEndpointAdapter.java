@@ -83,11 +83,6 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 	}
 
 	@Override
-	public Boolean getExposeGroupId() {
-		return Boolean.FALSE;
-	}
-
-	@Override
 	public void setupListenerContainer(MessageListenerContainer listenerContainer,
 			MessageConverter messageConverter) {
 	}
