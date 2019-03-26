@@ -1656,7 +1656,7 @@ See <<annotation-error-handling>> for more information.
 In certain scenarios, such as rebalancing, a message that has already been processed may be redelivered.
 The framework cannot know whether such a message has been processed or not.
 That is an application-level function.
-This is known as the http://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html[Idempotent Receiver] pattern and Spring Integration provides an http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver[implementation of it].
+This is known as the https://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html[Idempotent Receiver] pattern and Spring Integration provides an https://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver[implementation of it].
 
 The Spring for Apache Kafka project also provides some assistance by means of the `FilteringMessageListenerAdapter` class, which can wrap your `MessageListener`.
 This class takes an implementation of `RecordFilterStrategy` in which you implement the `filter` method to signal that a message is a duplicate and should be discarded.

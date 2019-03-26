@@ -80,7 +80,7 @@ public KStream<?, ?> kStream(StreamsBuilder kStreamBuilder) {
 ----
 ====
 
-If you would like to control the lifecycle manually (for example, stopping and starting by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly by using the factory bean (`&`) http://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-factory-extension-factorybean[prefix].
+If you would like to control the lifecycle manually (for example, stopping and starting by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly by using the factory bean (`&`) https://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-factory-extension-factorybean[prefix].
 Since `StreamsBuilderFactoryBean` use its internal `KafkaStreams` instance, it is safe to stop and restart it again.
 A new `KafkaStreams` is created on each `start()`.
 You might also consider using different `StreamsBuilderFactoryBean` instances, if you would like to control the lifecycles for `KStream` instances separately.
