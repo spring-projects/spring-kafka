@@ -49,7 +49,7 @@ In addition to this reference documentation, there exist a number of other resou
 Spring and Apache Kafka.
 
 - https://kafka.apache.org/[Apache Kafka Project Home Page]
-- http://projects.spring.io/spring-kafka/[Spring for Apache Kafka Home Page]
+- https://projects.spring.io/spring-kafka/[Spring for Apache Kafka Home Page]
 - https://github.com/spring-projects/spring-kafka[Spring for Apache Kafka GitHub Repository]
 - https://github.com/spring-projects/spring-integration-kafka[Spring Integration Kafka Extension GitHub Repository]
 

@@ -737,9 +737,9 @@ public void listen(...) { ... }
 In certain scenarios, such as rebalancing, a message may be redelivered that has already been processed.
 The framework cannot know whether such a message has been processed or not, that is an application-level
 function.
-This is known as the http://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html[Idempotent
+This is known as the https://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html[Idempotent
 Receiver] pattern and Spring Integration provides an
-http://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver[implementation thereof].
+https://docs.spring.io/spring-integration/reference/html/messaging-endpoints-chapter.html#idempotent-receiver[implementation thereof].
 
 The Spring for Apache Kafka project also provides some assistance by means of the `FilteringMessageListenerAdapter`
 class, which can wrap your `MessageListener`.

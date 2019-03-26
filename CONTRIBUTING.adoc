@@ -35,7 +35,7 @@ Signing the CLA does not grant anyone commit rights to the main repository, but 
 
 1. Go to https://github.com/spring-projects/spring-kafka[https://github.com/spring-projects/spring-kafka]
 2. Hit the "fork" button and choose your own GitHub account as the target
-3. For more detail see http://help.github.com/fork-a-repo/[Fork A Repo].
+3. For more detail see https://help.github.com/fork-a-repo/[Fork A Repo].
 
 == Setup your Local Development Environment
 
@@ -56,7 +56,7 @@ _you should see branches on origin as well as upstream, including 'master' and '
   - For example, to create and switch to a new branch for issue GH-123: `git checkout -b GH-123`
 * You might be working on several different topic branches at any given time, but when at a stopping point for one of those branches, commit (a local operation).
 * Please follow the "Commit Guidelines" described in
-http://git-scm.com/book/en/Distributed-Git-Contributing-to-a-Project[this chapter of Pro Git].
+https://git-scm.com/book/en/Distributed-Git-Contributing-to-a-Project[this chapter of Pro Git].
 * Then to begin working on another issue (say GH-101): `git checkout GH-101`. The _-b_ flag is not needed if that
 branch already exists in your local repository.
 * When ready to resolve an issue or to collaborate with others, you can push your branch to origin (your fork),
@@ -74,7 +74,7 @@ add a comment about something that should be modified, or he might reject the pu
 **This is the responsibility of any contributor.**
 If your pull request cannot be applied cleanly, the project lead will most likely add a comment requesting that you make
 it merge-able.
-For a full explanation, see http://git-scm.com/book/en/Git-Branching-Rebasing[the Pro Git section on rebasing].
+For a full explanation, see https://git-scm.com/book/en/Git-Branching-Rebasing[the Pro Git section on rebasing].
 As stated there: _"> Often, you’ll do this to make sure your commits apply cleanly on a remote branch — perhaps in a
 project to which you’re trying to contribute but that you don’t maintain."_
 
@@ -91,11 +91,11 @@ and merging that into the branch you are in currently)
     - Then: `git pull upstream master`
     - Switch back to the topic branch: `git checkout GH-123` (no -b needed since the branch already exists)
     - Rebase the topic branch to minimize the distance between it and your recently synched master branch: `git rebase master`
-(Again, for more detail see http://git-scm.com/book/en/Git-Branching-Rebasing[the Pro Git section on rebasing]).
+(Again, for more detail see https://git-scm.com/book/en/Git-Branching-Rebasing[the Pro Git section on rebasing]).
 * **Note** You cannot rebase if you have already pushed your branch to your remote because you'd be rewriting history
 (see **'The Perils of Rebasing'** in the article).
 If you rebase by mistake, you can undo it as discussed
-http://stackoverflow.com/questions/134882/undoing-a-git-rebase[in this StackOverflow discussion].
+https://stackoverflow.com/questions/134882/undoing-a-git-rebase[in this StackOverflow discussion].
 Once you have published your branch, you need to merge in the master rather than rebasing.
 * Now, if you issue a pull request, it is much more likely to be merged without conflicts.
 Most likely, any pull request that would produce conflicts will be deferred until the issuer of that pull request makes
