@@ -23,11 +23,10 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -69,9 +68,7 @@ public class JsonSerde<T> implements Serde<T> {
 		ObjectMapper objectMapper = objectMapperArg;
 		Class<T> targetType = (Class<T>) targetTypeArg;
 		if (objectMapper == null) {
-			objectMapper = new ObjectMapper();
-			objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
-			objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+			objectMapper = JacksonUtils.enhancedObjectMapper();
 		}
 		this.jsonSerializer = new JsonSerializer<>(objectMapper);
 		if (targetType == null) {

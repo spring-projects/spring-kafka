@@ -28,6 +28,7 @@ import org.springframework.data.projection.MethodInterceptorFactory;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.web.JsonProjectingMethodInterceptorFactory;
+import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
@@ -40,6 +41,7 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
  * {@link ProjectionFactory} to bind incoming messages to projection interfaces.
  *
  * @author Oliver Gierke
+ * @author Artem Bilan
  *
  * @since 2.1.1
  */
@@ -48,6 +50,15 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 	private final ProjectionFactory projectionFactory;
 
 	private final MessagingMessageConverter delegate;
+
+	/**
+	 * Creates a new {@link ProjectingMessageConverter} using a
+	 * {@link JacksonUtils#enhancedObjectMapper()} by default.
+	 * @since 2.3
+	 */
+	public ProjectingMessageConverter() {
+		this(JacksonUtils.enhancedObjectMapper());
+	}
 
 	/**
 	 * Creates a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
@@ -100,11 +111,11 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 		Assert.notNull(source, "Source must not be null");
 
 		if (source instanceof String) {
-			return String.class.cast(source).getBytes(StandardCharsets.UTF_8);
+			return ((String) source).getBytes(StandardCharsets.UTF_8);
 		}
 
 		if (source instanceof byte[]) {
-			return byte[].class.cast(source);
+			return (byte[]) source;
 		}
 
 		throw new ConversionException(String.format("Unsupported payload type '%s'. Expected 'String' or 'byte[]'",

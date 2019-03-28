@@ -24,15 +24,14 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.utils.Bytes;
 
+import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
@@ -53,9 +52,7 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 	private Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 
 	public StringJsonMessageConverter() {
-		this(new ObjectMapper());
-		this.objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
-		this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		this(JacksonUtils.enhancedObjectMapper());
 	}
 
 	public StringJsonMessageConverter(ObjectMapper objectMapper) {
@@ -112,8 +109,8 @@ public class StringJsonMessageConverter extends MessagingMessageConverter {
 		}
 
 		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED)
-			? TypeFactory.defaultInstance().constructType(type)
-			: this.typeMapper.toJavaType(record.headers());
+				? TypeFactory.defaultInstance().constructType(type)
+				: this.typeMapper.toJavaType(record.headers());
 		if (javaType == null) { // no headers
 			javaType = TypeFactory.defaultInstance().constructType(type);
 		}

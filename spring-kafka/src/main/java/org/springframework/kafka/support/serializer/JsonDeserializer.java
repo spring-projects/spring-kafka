@@ -19,13 +19,13 @@ package org.springframework.kafka.support.serializer;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
@@ -35,9 +35,7 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 
@@ -152,10 +150,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @since 2.2
 	 */
 	public JsonDeserializer(Class<? super T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, new ObjectMapper(), useHeadersIfPresent, om -> {
-			om.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
-			om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-		});
+		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
 	}
 
 	/**
@@ -176,13 +171,9 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	public JsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent) {
-		this(targetType, objectMapper, useHeadersIfPresent, om -> { });
-	}
-
 	@SuppressWarnings("unchecked")
-	private JsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper, boolean useHeadersIfPresent,
-			Consumer<ObjectMapper> configurer) {
+	public JsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper,
+			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
 		this.objectMapper = objectMapper;
@@ -193,7 +184,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 
-		configurer.accept(this.objectMapper);
 		if (this.targetType != null) {
 			this.reader = this.objectMapper.readerFor(this.targetType);
 		}

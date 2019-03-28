@@ -24,6 +24,7 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
 
+import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
@@ -32,8 +33,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -69,9 +68,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 	private boolean typeMapperExplicitlySet = false;
 
 	public JsonSerializer() {
-		this(new ObjectMapper());
-		this.objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
-		this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		this(JacksonUtils.enhancedObjectMapper());
 	}
 
 	public JsonSerializer(ObjectMapper objectMapper) {

@@ -2299,8 +2299,11 @@ JsonDeserializer<Thing> thingDeserializer = new JsonDeserializer<>(Thing.class);
 ====
 
 You can customize both `JsonSerializer` and `JsonDeserializer` with an `ObjectMapper`.
-You can also extend them to implement some particular configuration logic in the
-`configure(Map<String, ?> configs, boolean isKey)` method.
+You can also extend them to implement some particular configuration logic in the `configure(Map<String, ?> configs, boolean isKey)` method.
+
+Starting with version 2.3, all the JSON-aware components are configured by default with a `JacksonUtils.enhancedObjectMapper()` instance, which comes with the `MapperFeature.DEFAULT_VIEW_INCLUSION` and `DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES` features disabled.
+Also such an instance is supplied with well-known modules for custom data types, such a Java time and Kotlin support.
+See `JacksonUtils.enhancedObjectMapper()` JavaDocs for more information.
 
 Starting with version 2.1, you can convey type information in record `Headers`, allowing the handling of multiple types.
 In addition, you can configure the serializer and deserializer by using the following Kafka properties:

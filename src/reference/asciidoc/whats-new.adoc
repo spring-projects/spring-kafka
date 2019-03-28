@@ -2,14 +2,14 @@
 
 This section covers the changes made from version 2.2 to version 2.3.
 
-[[kafka-client-2.1]]
+[[kafka-client-2.2]]
 ==== Kafka Client Version
 
 This version requires the 2.2.0 `kafka-clients` or higher.
 
 ==== Listener Container Changes
 
-Previously, error handlers received `ListenerExectionFailedException` (with the actual listener exception as the `cause`) when the listener was invoked using a listener adapter (such as `@KafkaListener` s).
+Previously, error handlers received `ListenerExecutionFailedException` (with the actual listener exception as the `cause`) when the listener was invoked using a listener adapter (such as `@KafkaListener` s).
 Exceptions thrown by native `GenericMessageListener` s were passed to the error handler unchanged.
 Now a `ListenerExecutionFailedException` is always the argument (with the actual listener exception as the `cause`), which provides access to the container's `group.id` property.
 
@@ -40,3 +40,8 @@ See <<configuring-topics>> for more information.
 
 You can now perform additional configuration of the `StreamsBuilderFactoryBean` created by `@EnableKafkaStreams`.
 See <<streams-config, Streams Configuration>> for more information.
+
+==== JSON Components Changes
+
+Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.
+See its JavaDocs and <<serdes>> for more information.

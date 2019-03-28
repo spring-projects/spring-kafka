@@ -94,7 +94,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
 	 */
 	public DefaultKafkaHeaderMapper() {
-		this(new ObjectMapper());
+		this(JacksonUtils.enhancedObjectMapper());
 	}
 
 	/**
