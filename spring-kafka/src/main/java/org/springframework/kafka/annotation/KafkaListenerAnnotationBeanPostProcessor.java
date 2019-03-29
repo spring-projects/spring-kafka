@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.aop.framework.Advised;
@@ -62,6 +61,7 @@ import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.GenericConverter;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.format.Formatter;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.format.support.DefaultFormattingConversionService;
@@ -138,7 +138,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final Set<Class<?>> nonAnnotatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
 
-	private final Log logger = LogFactory.getLog(getClass());
+	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
 	private final ListenerScope listenerScope = new ListenerScope();
 
@@ -290,9 +290,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 			if (annotatedMethods.isEmpty()) {
 				this.nonAnnotatedClasses.add(bean.getClass());
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("No @KafkaListener annotations found on bean type: " + bean.getClass());
-				}
+				this.logger.trace(() -> "No @KafkaListener annotations found on bean type: " + bean.getClass());
 			}
 			else {
 				// Non-empty set of methods
@@ -302,10 +300,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						processKafkaListener(listener, method, bean, beanName);
 					}
 				}
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug(annotatedMethods.size() + " @KafkaListener methods processed on bean '"
+				this.logger.debug(() -> annotatedMethods.size() + " @KafkaListener methods processed on bean '"
 							+ beanName + "': " + annotatedMethods);
-				}
 			}
 			if (hasClassLevelListeners) {
 				processMultiMethodListeners(classLevelListeners, multiMethods, bean, beanName);
@@ -476,7 +472,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						properties.load(new StringReader(value));
 					}
 					catch (IOException e) {
-						this.logger.error("Failed to load property " + property + ", continuing...", e);
+						this.logger.error(e, () -> "Failed to load property " + property + ", continuing...");
 					}
 				}
 			}

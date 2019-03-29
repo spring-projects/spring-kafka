@@ -229,9 +229,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 						jsonHeaders.put(key, className);
 					}
 					catch (Exception e) {
-						if (logger.isDebugEnabled()) {
-							logger.debug("Could not map " + key + " with type " + valueToAdd.getClass().getName(), e);
-						}
+						logger.debug(e, () -> "Could not map " + key + " with type " + valueToAdd.getClass().getName());
 					}
 				}
 			}
@@ -241,7 +239,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				target.add(new RecordHeader(JSON_TYPES, headerObjectMapper.writeValueAsBytes(jsonHeaders)));
 			}
 			catch (IllegalStateException | JsonProcessingException e) {
-				logger.error("Could not add json types header", e);
+				logger.error(e, "Could not add json types header");
 			}
 		}
 	}
@@ -262,7 +260,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 						}
 					}
 					catch (Exception e) {
-						logger.error("Could not load class for header: " + header.key(), e);
+						logger.error(e, () -> "Could not load class for header: " + header.key());
 					}
 					if (trusted) {
 						try {
@@ -270,8 +268,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 							headers.put(header.key(), value);
 						}
 						catch (IOException e) {
-							logger.error("Could not decode json type: " + new String(header.value()) + " for key: " +
-									header.key(), e);
+							logger.error(e, () ->
+								"Could not decode json type: " + new String(header.value()) + " for key: "
+								+ header.key());
 							headers.put(header.key(), header.value());
 						}
 					}
@@ -298,7 +297,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 							ClassUtils.forName(nth.getUntrustedType(), null));
 				}
 				catch (Exception e) {
-					logger.error("Could not decode header: " + nth, e);
+					logger.error(e, () -> "Could not decode header: " + nth);
 				}
 			}
 		}
@@ -318,7 +317,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					types = headerObjectMapper.readValue(next.value(), Map.class);
 				}
 				catch (IOException e) {
-					logger.error("Could not decode json types: " + new String(next.value()), e);
+					logger.error(e, () -> "Could not decode json types: " + new String(next.value()));
 				}
 				break;
 			}

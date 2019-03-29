@@ -72,9 +72,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	@Override
 	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		Message<?> message = toMessagingMessage(record, acknowledgment, consumer);
-		if (logger.isDebugEnabled()) {
-			logger.debug("Processing [" + message + "]");
-		}
+		logger.debug(() -> "Processing [" + message + "]");
 		try {
 			Object result = invokeHandler(record, acknowledgment, message, consumer);
 			if (result != null) {

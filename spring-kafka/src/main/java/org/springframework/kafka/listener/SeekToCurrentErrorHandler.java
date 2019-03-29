@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -32,6 +31,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.classify.BinaryExceptionClassifier;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.SeekUtils;
@@ -56,7 +56,8 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 
 	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
 
-	protected static final Log LOGGER = LogFactory.getLog(SeekToCurrentErrorHandler.class); // NOSONAR visibility
+	protected static final LogAccessor LOGGER =
+			new LogAccessor(LogFactory.getLog(SeekToCurrentErrorHandler.class)); // NOSONAR visibility
 
 	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 
@@ -236,7 +237,8 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 				}
 			}
 			else {
-				LOGGER.warn("'commitRecovered' ignored, container AckMode must be MANUAL_IMMEDIATE");
+				LOGGER.warn(() -> "'commitRecovered' ignored, container AckMode must be MANUAL_IMMEDIATE, not "
+						+ container.getContainerProperties().getAckMode());
 			}
 		}
 	}

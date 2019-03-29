@@ -19,7 +19,6 @@ package org.springframework.kafka.core;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
@@ -30,6 +29,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LoggingProducerListener;
@@ -62,7 +62,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
-	protected final Log logger = LogFactory.getLog(this.getClass()); //NOSONAR
+	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass())); //NOSONAR
 
 	private final ProducerFactory<K, V> producerFactory;
 
@@ -370,17 +370,13 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 						+ "run in a transaction started by a listener container when consuming a record");
 		}
 		final Producer<K, V> producer = getTheProducer();
-		if (this.logger.isTraceEnabled()) {
-			this.logger.trace("Sending: " + producerRecord);
-		}
+		this.logger.trace(() -> "Sending: " + producerRecord);
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
 		producer.send(producerRecord, buildCallback(producerRecord, producer, future));
 		if (this.autoFlush) {
 			flush();
 		}
-		if (this.logger.isTraceEnabled()) {
-			this.logger.trace("Sent: " + producerRecord);
-		}
+		this.logger.trace(() -> "Sent: " + producerRecord);
 		return future;
 	}
 
@@ -393,18 +389,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
 					}
-					if (KafkaTemplate.this.logger.isTraceEnabled()) {
-						KafkaTemplate.this.logger.trace("Sent ok: " + producerRecord + ", metadata: " + metadata);
-					}
+					KafkaTemplate.this.logger.trace(() -> "Sent ok: " + producerRecord + ", metadata: " + metadata);
 				}
 				else {
 					future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onError(producerRecord, exception);
 					}
-					if (KafkaTemplate.this.logger.isDebugEnabled()) {
-						KafkaTemplate.this.logger.debug("Failed to send: " + producerRecord, exception);
-					}
+					KafkaTemplate.this.logger.debug(exception, () -> "Failed to send: " + producerRecord);
 				}
 			}
 			finally {

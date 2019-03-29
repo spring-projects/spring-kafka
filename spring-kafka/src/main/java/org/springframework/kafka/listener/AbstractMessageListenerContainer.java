@@ -25,7 +25,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -38,6 +37,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
@@ -66,7 +66,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private static final int DEFAULT_TOPIC_CHECK_TIMEOUT = 30;
 
-	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
+	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass())); // NOSONAR
 
 	protected final ConsumerFactory<K, V> consumerFactory; // NOSONAR (final)
 
@@ -330,7 +330,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				}
 			}
 			catch (Exception e) {
-				this.logger.error("Failed to check topic existence", e);
+				this.logger.error(e, "Failed to check topic existence");
 			}
 			if (missing != null && missing.size() > 0) {
 				throw new IllegalStateException(
@@ -368,7 +368,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
 					publishContainerStoppedEvent();
 				}
-				catch (InterruptedException e) {
+				catch (@SuppressWarnings("unused") InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
 			}
@@ -406,18 +406,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				Log logger2 = AbstractMessageListenerContainer.this.logger;
-				if (logger2.isInfoEnabled()) {
-					logger2.info(getGroupId() + ": partitions revoked: " + partitions);
-				}
+				AbstractMessageListenerContainer.this.logger.info(() ->
+					getGroupId() + ": partitions revoked: " + partitions);
 			}
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				Log logger2 = AbstractMessageListenerContainer.this.logger;
-				if (logger2.isInfoEnabled()) {
-					logger2.info(getGroupId() + ": partitions assigned: " + partitions);
-				}
+				AbstractMessageListenerContainer.this.logger.info(() ->
+					getGroupId() + ": partitions assigned: " + partitions);
 			}
 
 		};

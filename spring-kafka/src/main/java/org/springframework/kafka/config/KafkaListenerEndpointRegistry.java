@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.BeansException;
@@ -38,6 +37,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.util.Assert;
@@ -68,7 +68,7 @@ import org.springframework.util.StringUtils;
 public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifecycle, ApplicationContextAware,
 		ApplicationListener<ContextRefreshedEvent> {
 
-	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
+	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); //NOSONAR
 
 	private final Map<String, MessageListenerContainer> listenerContainers =
 			new ConcurrentHashMap<String, MessageListenerContainer>();
@@ -230,7 +230,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 					((DisposableBean) listenerContainer).destroy();
 				}
 				catch (Exception ex) {
-					this.logger.warn("Failed to destroy message listener container", ex);
+					this.logger.warn(ex, "Failed to destroy message listener container");
 				}
 			}
 		}

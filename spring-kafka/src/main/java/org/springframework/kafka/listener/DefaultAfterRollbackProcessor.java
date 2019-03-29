@@ -20,13 +20,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
@@ -49,7 +49,8 @@ import org.springframework.lang.Nullable;
  */
 public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcessor<K, V> {
 
-	private static final Log logger = LogFactory.getLog(DefaultAfterRollbackProcessor.class); // NOSONAR
+	private static final LogAccessor LOGGER =
+			new LogAccessor(LogFactory.getLog(DefaultAfterRollbackProcessor.class));
 
 	private final FailedRecordTracker failureTracker;
 
@@ -97,7 +98,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 */
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 			int maxFailures) {
-		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, logger);
+		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, LOGGER);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -105,7 +106,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
 			boolean recoverable) {
 
-		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable, this.failureTracker::skip, logger)
+		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable, this.failureTracker::skip, LOGGER)
 				&& this.kafkaTemplate != null && this.kafkaTemplate.isTransactional()) {
 			ConsumerRecord<K, V> skipped = records.get(0);
 			this.kafkaTemplate.sendOffsetsToTransaction(

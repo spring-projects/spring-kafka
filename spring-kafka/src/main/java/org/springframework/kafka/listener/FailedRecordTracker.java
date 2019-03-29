@@ -19,9 +19,9 @@ package org.springframework.kafka.listener;
 import java.time.temporal.ValueRange;
 import java.util.function.BiConsumer;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
 
 /**
@@ -41,9 +41,11 @@ class FailedRecordTracker {
 
 	private final boolean noRetries;
 
-	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures, Log logger) {
+	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures,
+			LogAccessor logger) {
+
 		if (recoverer == null) {
-			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: " + r, t);
+			this.recoverer = (r, t) -> logger.error(t, "Max failures (" + maxFailures + ") reached for: " + r);
 		}
 		else {
 			this.recoverer = recoverer;

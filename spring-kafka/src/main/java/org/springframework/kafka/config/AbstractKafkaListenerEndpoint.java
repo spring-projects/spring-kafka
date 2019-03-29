@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.BeansException;
@@ -34,6 +33,7 @@ import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.expression.BeanFactoryResolver;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.BatchMessageListener;
@@ -67,7 +67,7 @@ import org.springframework.util.Assert;
 public abstract class AbstractKafkaListenerEndpoint<K, V>
 		implements KafkaListenerEndpoint, BeanFactoryAware, InitializingBean {
 
-	private final Log logger = LogFactory.getLog(getClass());
+	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
 	private String id;
 
@@ -458,10 +458,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		if (this.recordFilterStrategy != null) {
 			if (this.batchListener) {
 				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {
-					if (this.logger.isWarnEnabled()) {
-						this.logger.warn("Filter strategy ignored when consuming 'ConsumerRecords'"
+					this.logger.warn(() -> "Filter strategy ignored when consuming 'ConsumerRecords'"
 								+ (this.id != null ? " id: " + this.id : ""));
-					}
 				}
 				else {
 					messageListener = new FilteringBatchMessageListenerAdapter<>(

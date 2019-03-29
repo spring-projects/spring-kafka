@@ -18,9 +18,10 @@ package org.springframework.kafka.listener;
 
 import java.util.Iterator;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+
+import org.springframework.core.log.LogAccessor;
 
 /**
  * Simple handler that invokes a {@link LoggingErrorHandler} for each record.
@@ -31,7 +32,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
  */
 public class BatchLoggingErrorHandler implements BatchErrorHandler {
 
-	private static final Log logger = LogFactory.getLog(BatchLoggingErrorHandler.class); // NOSONAR
+	private static final LogAccessor LOGGER =
+			new LogAccessor(LogFactory.getLog(BatchLoggingErrorHandler.class));
 
 	@Override
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> data) {
@@ -45,7 +47,7 @@ public class BatchLoggingErrorHandler implements BatchErrorHandler {
 				message.append(iterator.next()).append('\n');
 			}
 		}
-		logger.error(message.substring(0, message.length() - 1), thrownException);
+		LOGGER.error(thrownException, () -> message.substring(0, message.length() - 1));
 	}
 
 }

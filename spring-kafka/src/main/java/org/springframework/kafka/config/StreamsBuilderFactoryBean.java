@@ -20,7 +20,6 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
@@ -32,6 +31,7 @@ import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.CleanupConfig;
 import org.springframework.lang.Nullable;
@@ -60,7 +60,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
-	private static final Log LOGGER = LogFactory.getLog(StreamsBuilderFactoryBean.class);
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(StreamsBuilderFactoryBean.class));
 
 	private static final String STREAMS_CONFIG_MUST_NOT_BE_NULL = "'streamsConfig' must not be null";
 
@@ -291,9 +291,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				Assert.state(this.streamsConfig != null || this.properties != null,
 						"'streamsConfig' or streams configuration properties must not be null");
 				Topology topology = getObject().build(); // NOSONAR
-				if (LOGGER.isDebugEnabled()) {
-					LOGGER.debug(topology.describe());
-				}
+				LOGGER.debug(() -> topology.describe().toString());
 				if (this.properties != null) {
 					this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
 				}
@@ -331,7 +329,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				}
 			}
 			catch (Exception e) {
-				LOGGER.error("Failed to stop streams", e);
+				LOGGER.error(e, "Failed to stop streams");
 			}
 			finally {
 				this.running = false;

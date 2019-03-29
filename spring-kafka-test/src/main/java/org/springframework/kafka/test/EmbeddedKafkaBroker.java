@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.exception.ZkInterruptedException;
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -50,6 +49,7 @@ import org.apache.kafka.common.utils.Time;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.core.BrokerAddress;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
@@ -80,7 +80,7 @@ import kafka.zk.EmbeddedZookeeper;
  */
 public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
-	private static final Log logger = LogFactory.getLog(EmbeddedKafkaBroker.class); // NOSONAR
+	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(EmbeddedKafkaBroker.class)); // NOSONAR
 
 	public static final String BEAN_NAME = "embeddedKafka";
 
@@ -471,9 +471,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 				assigned.set(true);
-				if (logger.isDebugEnabled()) {
-					logger.debug("partitions assigned: " + partitions);
-				}
+				logger.debug(() -> "partitions assigned: " + partitions);
 			}
 
 		});
@@ -484,14 +482,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		if (records != null && records.count() > 0) {
 			final ConsumerRecords<?, ?> theRecords = records;
-			if (logger.isDebugEnabled()) {
-				logger.debug("Records received on initial poll for assignment; re-seeking to beginning; "
-						+ records.partitions().stream()
-						.flatMap(p -> theRecords.records(p).stream())
-						// map to same format as send metadata toString()
-						.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-						.collect(Collectors.toList()));
-			}
+			logger.debug(() -> "Records received on initial poll for assignment; re-seeking to beginning; "
+					+ theRecords.partitions().stream()
+					.flatMap(p -> theRecords.records(p).stream())
+					// map to same format as send metadata toString()
+					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
+					.collect(Collectors.toList()));
 			consumer.seekToBeginning(records.partitions());
 		}
 		assertThat(assigned.get())

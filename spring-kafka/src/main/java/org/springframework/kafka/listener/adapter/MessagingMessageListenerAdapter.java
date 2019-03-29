@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -36,6 +35,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.expression.MapAccessor;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ParserContext;
@@ -85,7 +85,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private final Object bean;
 
-	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
+	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); //NOSONAR
 
 	private final Type inferredType;
 
@@ -314,10 +314,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * {@code o.s.messaging.Message<?>}; may be null
 	 */
 	protected void handleResult(Object resultArg, Object request, Object source) {
-		if (this.logger.isDebugEnabled()) {
-			this.logger.debug("Listener method returned result [" + resultArg
-					+ "] - generating response message for it");
-		}
+		this.logger.debug(() -> "Listener method returned result [" + resultArg
+				+ "] - generating response message for it");
 		boolean isInvocationResult = resultArg instanceof InvocationResult;
 		Object result = isInvocationResult ? ((InvocationResult) resultArg).getResult() : resultArg;
 		String replyTopic = evaluateReplyTopic(request, source, resultArg);
@@ -376,15 +374,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param result the result.
 	 * @param topic the topic.
 	 * @param source the source (input).
-	 * @param messageReturnType true if we are returning message(s).
+	 * @param returnTypeMessage true if we are returning message(s).
 	 * @since 2.1.3
 	 */
 	@SuppressWarnings("unchecked")
-	protected void sendResponse(Object result, String topic, @Nullable Object source, boolean messageReturnType) {
-		if (!messageReturnType && topic == null) {
-			if (this.logger.isDebugEnabled()) {
-				this.logger.debug("No replyTopic to handle the reply: " + result);
-			}
+	protected void sendResponse(Object result, String topic, @Nullable Object source, boolean returnTypeMessage) {
+		if (!returnTypeMessage && topic == null) {
+			this.logger.debug(() -> "No replyTopic to handle the reply: " + result);
 		}
 		else if (result instanceof Message) {
 			this.replyTemplate.send((Message<?>) result);
@@ -492,10 +488,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					genericParameterType = extractGenericParameterTypFromMethodParameter(methodParameter);
 				}
 				else {
-					if (this.logger.isDebugEnabled()) {
-						this.logger.debug("Ambiguous parameters for target payload for method " + method
-								+ "; no inferred type available");
-					}
+					this.logger.debug(() -> "Ambiguous parameters for target payload for method " + method
+							+ "; no inferred type available");
 					break;
 				}
 			}

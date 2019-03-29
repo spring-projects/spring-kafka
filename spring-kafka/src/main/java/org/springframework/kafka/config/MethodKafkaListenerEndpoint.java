@@ -19,11 +19,11 @@ package org.springframework.kafka.config;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
@@ -53,7 +53,7 @@ import org.springframework.util.Assert;
  */
 public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndpoint<K, V> {
 
-	private final Log logger = LogFactory.getLog(getClass());
+	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
 	private Object bean;
 
@@ -112,12 +112,11 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		if (replyingMethod != null) {
 			SendTo ann = AnnotationUtils.getAnnotation(replyingMethod, SendTo.class);
 			if (ann != null) {
-				if (replyingMethod.getReturnType().equals(void.class)
-					&& this.logger.isWarnEnabled()) {
-						this.logger.warn("Method "
-								+ replyingMethod
-								+ " has a void return type; @SendTo is ignored" +
-								(this.errorHandler == null ? "" : " unless the error handler returns a result"));
+				if (replyingMethod.getReturnType().equals(void.class)) {
+					this.logger.warn(() -> "Method "
+							+ replyingMethod
+							+ " has a void return type; @SendTo is ignored" +
+							(this.errorHandler == null ? "" : " unless the error handler returns a result"));
 				}
 				String[] destinations = ann.value();
 				if (destinations.length > 1) {

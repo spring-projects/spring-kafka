@@ -122,7 +122,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 		data.forEach(record -> {
 			Header correlation = record.headers().lastHeader(KafkaHeaders.CORRELATION_ID);
 			if (correlation == null) {
-				this.logger.error("No correlationId found in reply: " + record
+				this.logger.error(() -> "No correlationId found in reply: " + record
 						+ " - to use request/reply semantics, the responding server must return the correlation id "
 						+ " in the '" + KafkaHeaders.CORRELATION_ID + "' header");
 			}

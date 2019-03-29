@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -37,6 +36,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import org.springframework.beans.DirectFieldAccessor;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.util.Assert;
 
@@ -49,7 +49,7 @@ import org.springframework.util.Assert;
  */
 public final class KafkaTestUtils {
 
-	private static final Log logger = LogFactory.getLog(KafkaTestUtils.class); // NOSONAR
+	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(KafkaTestUtils.class)); // NOSONAR
 
 	private static Properties defaults;
 
@@ -196,14 +196,12 @@ public final class KafkaTestUtils {
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
 		logger.debug("Polling...");
 		ConsumerRecords<K, V> received = consumer.poll(Duration.ofMillis(timeout));
-		if (logger.isDebugEnabled()) {
-			logger.debug("Received: " + received.count() + ", "
-					+ received.partitions().stream()
-					.flatMap(p -> received.records(p).stream())
-					// map to same format as send metadata toString()
-					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-					.collect(Collectors.toList()));
-		}
+		logger.debug(() -> "Received: " + received.count() + ", "
+				+ received.partitions().stream()
+				.flatMap(p -> received.records(p).stream())
+				// map to same format as send metadata toString()
+				.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
+				.collect(Collectors.toList()));
 		assertThat(received).as("null received from consumer.poll()").isNotNull();
 		return received;
 	}

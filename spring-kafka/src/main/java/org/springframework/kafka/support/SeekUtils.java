@@ -22,10 +22,11 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiPredicate;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+
+import org.springframework.core.log.LogAccessor;
 
 /**
  * Seek utilities.
@@ -56,7 +57,7 @@ public final class SeekUtils {
 	 * @return true if the failed record was skipped.
 	 */
 	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
-			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, Log logger) {
+			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, LogAccessor logger) {
 
 		Map<TopicPartition, Long> partitions = new LinkedHashMap<>();
 		AtomicBoolean first = new AtomicBoolean(true);
@@ -64,8 +65,8 @@ public final class SeekUtils {
 		records.forEach(record ->  {
 			if (recoverable && first.get()) {
 				skipped.set(skipper.test(record, exception));
-				if (skipped.get() && logger.isDebugEnabled()) {
-					logger.debug("Skipping seek of: " + record);
+				if (skipped.get()) {
+					logger.debug(() -> "Skipping seek of: " + record);
 				}
 			}
 			if (!recoverable || !first.get() || !skipped.get()) {
@@ -74,16 +75,13 @@ public final class SeekUtils {
 			}
 			first.set(false);
 		});
-		boolean tracing = logger.isTraceEnabled();
 		partitions.forEach((topicPartition, offset) -> {
 			try {
-				if (tracing) {
-					logger.trace("Seeking: " + topicPartition + " to: " + offset);
-				}
+				logger.trace(() -> "Seeking: " + topicPartition + " to: " + offset);
 				consumer.seek(topicPartition, offset);
 			}
 			catch (Exception e) {
-				logger.error("Failed to seek " + topicPartition + " to " + offset, e);
+				logger.error(e, () -> "Failed to seek " + topicPartition + " to " + offset);
 			}
 		});
 		return skipped.get();

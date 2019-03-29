@@ -46,7 +46,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -66,6 +65,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -100,7 +100,7 @@ import kafka.server.KafkaConfig;
  */
 public class TransactionalContainerTests {
 
-	private final Log logger = LogFactory.getLog(this.getClass());
+	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
 	private static String topic1 = "txTopic1";
 

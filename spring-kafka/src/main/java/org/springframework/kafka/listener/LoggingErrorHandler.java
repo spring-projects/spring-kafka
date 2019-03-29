@@ -16,10 +16,10 @@
 
 package org.springframework.kafka.listener;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.util.ObjectUtils;
 
 /**
@@ -30,11 +30,11 @@ import org.springframework.util.ObjectUtils;
  */
 public class LoggingErrorHandler implements ErrorHandler {
 
-	private static final Log logger = LogFactory.getLog(LoggingErrorHandler.class); // NOSONAR
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(LoggingErrorHandler.class));
 
 	@Override
 	public void handle(Exception thrownException, ConsumerRecord<?, ?> record) {
-		logger.error("Error while processing: " + ObjectUtils.nullSafeToString(record), thrownException);
+		LOGGER.error(thrownException, () -> "Error while processing: " + ObjectUtils.nullSafeToString(record));
 	}
 
 }

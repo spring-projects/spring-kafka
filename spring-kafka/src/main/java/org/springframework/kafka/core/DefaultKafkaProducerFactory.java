@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
@@ -52,6 +51,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextStoppedEvent;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -93,7 +93,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	public static final Duration DEFAULT_PHYSICAL_CLOSE_TIMEOUT = Duration.ofSeconds(30);
 
-	private static final Log LOGGER = LogFactory.getLog(DefaultKafkaProducerFactory.class);
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaProducerFactory.class));
 
 	private final Map<String, Object> configs;
 
@@ -145,11 +145,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		if (StringUtils.hasText(txId)) {
 			setTransactionIdPrefix(txId);
-			if (LOGGER.isInfoEnabled()) {
-				LOGGER.info("If 'setTransactionIdPrefix()' is not going to be configured, " +
-						"an existing 'transactional.id' config with value: '" + txId +
-						"' will be suffixed with the number for concurrent transactions support.");
-			}
+			LOGGER.info(() -> "If 'setTransactionIdPrefix()' is not going to be configured, "
+					+ "the existing 'transactional.id' config with value: '" + txId
+					+ "' will be suffixed for concurrent transactions support.");
 		}
 	}
 
@@ -198,9 +196,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	private void enableIdempotentBehaviour() {
 		Object previousValue = this.configs.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
-		if (LOGGER.isDebugEnabled() && Boolean.FALSE.equals(previousValue)) {
-			LOGGER.debug("The '" + ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG +
-					"' is set to false, may result in duplicate messages");
+		if (Boolean.FALSE.equals(previousValue)) {
+			LOGGER.debug(() -> "The '" + ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG
+					+ "' is set to false, may result in duplicate messages");
 		}
 	}
 
@@ -254,7 +252,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				producerToClose.delegate.close(this.physicalCloseTimeout);
 			}
 			catch (Exception e) {
-				LOGGER.error("Exception while closing producer", e);
+				LOGGER.error(e, "Exception while closing producer");
 			}
 			producerToClose = this.cache.poll();
 		}
@@ -278,7 +276,22 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @since 2.2
 	 */
 	public void reset() {
-		destroy();
+		try {
+			destroy();
+		}
+		catch (Exception e) {
+			LOGGER.error(e, "Exception while closing producer");
+		}
+	}
+
+	/**
+	 * NoOp.
+	 * @return always true.
+	 * @deprecated {@link org.springframework.context.Lifecycle} is no longer implemented.
+	 */
+	@Deprecated
+	public boolean isRunning() {
+		return true;
 	}
 
 	@Override
@@ -430,16 +443,19 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
+			LOGGER.trace(() -> toString() + " send(" + record + ")");
 			return this.delegate.send(record);
 		}
 
 		@Override
 		public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
+			LOGGER.trace(() -> toString() + " send(" + record + ")");
 			return this.delegate.send(record, callback);
 		}
 
 		@Override
 		public void flush() {
+			LOGGER.trace(() -> toString() + " flush()");
 			this.delegate.flush();
 		}
 
@@ -460,16 +476,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public void beginTransaction() throws ProducerFencedException {
-			if (LOGGER.isDebugEnabled()) {
-				LOGGER.debug("beginTransaction: " + this);
-			}
+			LOGGER.debug(() -> toString() + " beginTransaction()");
 			try {
 				this.delegate.beginTransaction();
 			}
 			catch (RuntimeException e) {
-				if (LOGGER.isErrorEnabled()) {
-					LOGGER.error("beginTransaction failed: " + this, e);
-				}
+				LOGGER.error(e, () -> "beginTransaction failed: " + this);
 				this.txFailed = true;
 				throw e;
 			}
@@ -479,21 +491,18 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId)
 				throws ProducerFencedException {
 
+			LOGGER.trace(() -> toString() + " sendOffsetsToTransaction(" + offsets + ", " + consumerGroupId + ")");
 			this.delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
 		}
 
 		@Override
 		public void commitTransaction() throws ProducerFencedException {
-			if (LOGGER.isDebugEnabled()) {
-				LOGGER.debug("commitTransaction: " + this);
-			}
+			LOGGER.debug(() -> toString() + " commitTransaction()");
 			try {
 				this.delegate.commitTransaction();
 			}
 			catch (RuntimeException e) {
-				if (LOGGER.isErrorEnabled()) {
-					LOGGER.error("commitTransaction failed: " + this, e);
-				}
+				LOGGER.error(e, () -> "commitTransaction failed: " + this);
 				this.txFailed = true;
 				throw e;
 			}
@@ -501,16 +510,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public void abortTransaction() throws ProducerFencedException {
-			if (LOGGER.isDebugEnabled()) {
-				LOGGER.debug("abortTransaction: " + this);
-			}
+			LOGGER.debug(() -> toString() + " abortTransaction()");
 			try {
 				this.delegate.abortTransaction();
 			}
 			catch (RuntimeException e) {
-				if (LOGGER.isErrorEnabled()) {
-					LOGGER.error("Abort failed: " + this, e);
-				}
+				LOGGER.error(e, () -> "Abort failed: " + this);
 				this.txFailed = true;
 				throw e;
 			}
@@ -530,13 +535,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		@Override
 		public void close(@Nullable Duration timeout) {
+			LOGGER.trace(() -> toString() + " close(" + (timeout == null ? "null" : timeout) + ")");
 			if (this.cache != null) {
 				if (this.txFailed) {
-					if (LOGGER.isWarnEnabled()) {
-						LOGGER.warn("Error during transactional operation; producer removed from cache; possible " +
-								"cause: "
-								+ "broker restarted during transaction: " + this);
-					}
+					LOGGER.warn(() -> "Error during transactional operation; producer removed from cache; "
+							+ "possible cause: "
+							+ "broker restarted during transaction: " + this);
 					if (timeout == null) {
 						this.delegate.close();
 					}

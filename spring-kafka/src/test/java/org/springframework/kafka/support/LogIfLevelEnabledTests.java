@@ -17,182 +17,132 @@
 package org.springframework.kafka.support;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.withSettings;
 
-import org.apache.commons.logging.Log;
+import java.util.function.Supplier;
+
 import org.junit.jupiter.api.Test;
+
+import org.springframework.core.log.LogAccessor;
 
 /**
  * @author Gary Russell
  * @since 2.2.1
  *
  */
+@SuppressWarnings("unchecked")
 public class LogIfLevelEnabledTests {
 
 	private static final RuntimeException rte = new RuntimeException();
 
 	@Test
 	public void testFatalNoEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.FATAL);
-		given(theLogger.isFatalEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isFatalEnabled();
-		verify(theLogger).fatal(any());
+		verify(theLogger).fatal(any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testErrorNoEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.ERROR);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isErrorEnabled();
-		verify(theLogger).error(any());
+		verify(theLogger).error(any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testWarnNoEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.WARN);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isWarnEnabled();
-		verify(theLogger).warn(any());
+		verify(theLogger).warn(any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testInfoNoEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.INFO);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
-		given(theLogger.isInfoEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isInfoEnabled();
-		verify(theLogger).info(any());
+		verify(theLogger).info(any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testDebugNoEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.DEBUG);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
-		given(theLogger.isInfoEnabled()).willReturn(true);
-		given(theLogger.isDebugEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isDebugEnabled();
-		verify(theLogger).debug(any());
+		verify(theLogger).debug(any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testTraceNoEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.TRACE);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
-		given(theLogger.isInfoEnabled()).willReturn(true);
-		given(theLogger.isDebugEnabled()).willReturn(true);
-		given(theLogger.isTraceEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isTraceEnabled();
-		verify(theLogger).trace(any());
+		verify(theLogger).trace(any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testFatalWithEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.FATAL);
-		given(theLogger.isFatalEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isFatalEnabled();
-		verify(theLogger).fatal(any(), any());
+		verify(theLogger).fatal(any(), any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testErrorWithEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.ERROR);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isErrorEnabled();
-		verify(theLogger).error(any(), any());
+		verify(theLogger).error(any(), any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testWarnWithEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.WARN);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isWarnEnabled();
-		verify(theLogger).warn(any(), any());
+		verify(theLogger).warn(any(), any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testInfoWithEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.INFO);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
-		given(theLogger.isInfoEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isInfoEnabled();
-		verify(theLogger).info(any(), any());
+		verify(theLogger).info(any(), any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testDebugWithEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class, withSettings().verboseLogging());
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.DEBUG);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
-		given(theLogger.isInfoEnabled()).willReturn(true);
-		given(theLogger.isDebugEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isDebugEnabled();
-		verify(theLogger).debug(any(), any());
+		verify(theLogger).debug(any(), any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testTraceWithEx() {
-		Log theLogger = mock(Log.class);
+		LogAccessor theLogger = mock(LogAccessor.class);
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.TRACE);
-		given(theLogger.isFatalEnabled()).willReturn(true);
-		given(theLogger.isErrorEnabled()).willReturn(true);
-		given(theLogger.isWarnEnabled()).willReturn(true);
-		given(theLogger.isInfoEnabled()).willReturn(true);
-		given(theLogger.isDebugEnabled()).willReturn(true);
-		given(theLogger.isTraceEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isTraceEnabled();
-		verify(theLogger).trace(any(), any());
+		verify(theLogger).trace(any(), any(Supplier.class));
 		verifyNoMoreInteractions(theLogger);
 	}
 

@@ -132,9 +132,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		else {
 			message = NULL_MESSAGE; // optimization since we won't need any conversion to invoke
 		}
-		if (logger.isDebugEnabled()) {
-			logger.debug("Processing [" + message + "]");
-		}
+		logger.debug(() -> "Processing [" + message + "]");
 		invoke(records, acknowledgment, consumer, message);
 	}
 

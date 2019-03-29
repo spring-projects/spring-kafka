@@ -22,12 +22,12 @@ import java.io.ObjectInputStream;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.lang.Nullable;
@@ -81,7 +81,7 @@ public final class ListenerUtils {
 	 */
 	@Nullable
 	public static DeserializationException getExceptionFromHeader(final ConsumerRecord<?, ?> record,
-			String headerName, Log logger) {
+			String headerName, LogAccessor logger) {
 
 		Header header = record.headers().lastHeader(headerName);
 		if (header != null) {
@@ -96,7 +96,7 @@ public final class ListenerUtils {
 				return ex;
 			}
 			catch (IOException | ClassNotFoundException | ClassCastException e) {
-				logger.error("Failed to deserialize a deserialization exception", e);
+				logger.error(e, "Failed to deserialize a deserialization exception");
 			}
 		}
 		return null;
