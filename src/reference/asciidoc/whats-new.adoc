@@ -44,4 +44,5 @@ See <<streams-config, Streams Configuration>> for more information.
 ==== JSON Components Changes
 
 Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.
+The `JsonDeserializer` now provides `TypeReference`-based constructors for better handling of target generic container types.
 See its JavaDocs and <<serdes>> for more information.

@@ -39,6 +39,7 @@ import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 /**
  * @author Igor Stepanov
@@ -210,6 +211,14 @@ public class JsonSerializationTests {
 		JsonDeserializer<List<String>> de = new JsonDeserializer<>(List.class);
 		List<String> dummy = Arrays.asList("foo", "bar", "baz");
 		assertThat(de.deserialize(topic, ser.serialize(topic, dummy))).isEqualTo(dummy);
+	}
+
+	@Test
+	public void testDeserializerTypeReference() {
+		JsonSerializer<List<DummyEntity>> ser = new JsonSerializer<>();
+		JsonDeserializer<List<DummyEntity>> de = new JsonDeserializer<>(new TypeReference<List<DummyEntity>>() { });
+		List<DummyEntity> dummy = Arrays.asList(this.entityArray);
+		assertThat(de.deserialize(this.topic, ser.serialize(this.topic, dummy))).isEqualTo(dummy);
 	}
 
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {

@@ -2305,6 +2305,8 @@ Starting with version 2.3, all the JSON-aware components are configured by defau
 Also such an instance is supplied with well-known modules for custom data types, such a Java time and Kotlin support.
 See `JacksonUtils.enhancedObjectMapper()` JavaDocs for more information.
 
+Also starting with version 2.3, the `JsonDeserializer` provides `TypeReference`-based constructors for better handling of target generic container types.
+
 Starting with version 2.1, you can convey type information in record `Headers`, allowing the handling of multiple types.
 In addition, you can configure the serializer and deserializer by using the following Kafka properties:
 

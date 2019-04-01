@@ -35,9 +35,11 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * Generic {@link org.apache.kafka.common.serialization.Deserializer Deserializer} for
@@ -107,7 +109,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	protected final ObjectMapper objectMapper; // NOSONAR
 
-	protected Class<T> targetType; // NOSONAR
+	protected JavaType targetType; // NOSONAR
 
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
@@ -121,7 +123,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * Construct an instance with a default {@link ObjectMapper}.
 	 */
 	public JsonDeserializer() {
-		this(null, true);
+		this((Class<T>) null, true);
 	}
 
 	/**
@@ -129,7 +131,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param objectMapper a custom object mapper.
 	 */
 	public JsonDeserializer(ObjectMapper objectMapper) {
-		this(null, objectMapper, true);
+		this((Class<T>) null, objectMapper, true);
 	}
 
 	/**
@@ -142,6 +144,15 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
+	 * Construct an instance with the provided target type, and a default {@link ObjectMapper}.
+	 * @param targetType the target type reference to use if no type info headers are present.
+	 * @since 2.3
+	 */
+	public JsonDeserializer(TypeReference<? super T> targetType) {
+		this(targetType, true);
+	}
+
+	/**
 	 * Construct an instance with the provided target type, and
 	 * useHeadersIfPresent with a default {@link ObjectMapper}.
 	 * @param targetType the target type.
@@ -149,7 +160,19 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	public JsonDeserializer(Class<? super T> targetType, boolean useHeadersIfPresent) {
+	public JsonDeserializer(@Nullable Class<? super T> targetType, boolean useHeadersIfPresent) {
+		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
+	}
+
+	/**
+	 * Construct an instance with the provided target type, and
+	 * useHeadersIfPresent with a default {@link ObjectMapper}.
+	 * @param targetType the target type reference.
+	 * @param useHeadersIfPresent true to use headers if present and fall back to target
+	 * type if not.
+	 * @since 2.3
+	 */
+	public JsonDeserializer(TypeReference<? super T> targetType, boolean useHeadersIfPresent) {
 		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
 	}
 
@@ -163,6 +186,15 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
+	 * Construct an instance with the provided target type, and {@link ObjectMapper}.
+	 * @param targetType the target type reference to use if no type info headers are present.
+	 * @param objectMapper the mapper. type if not.
+	 */
+	public JsonDeserializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
+		this(targetType, objectMapper, true);
+	}
+
+	/**
 	 * Construct an instance with the provided target type, {@link ObjectMapper} and
 	 * useHeadersIfPresent.
 	 * @param targetType the target type.
@@ -171,16 +203,60 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	@SuppressWarnings("unchecked")
 	public JsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper,
 			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
 		this.objectMapper = objectMapper;
-		this.targetType = (Class<T>) targetType;
-		if (this.targetType == null) {
-			this.targetType = (Class<T>) ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
+		JavaType javaType = null;
+		if (targetType == null) {
+			Class<?> genericType = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
+			if (genericType != null) {
+				javaType = TypeFactory.defaultInstance().constructType(genericType);
+			}
 		}
+		else {
+			javaType = TypeFactory.defaultInstance().constructType(targetType);
+		}
+
+		initialize(javaType, useHeadersIfPresent);
+	}
+
+	/**
+	 * Construct an instance with the provided target type, {@link ObjectMapper} and
+	 * useHeadersIfPresent.
+	 * @param targetType the target type reference.
+	 * @param objectMapper the mapper.
+	 * @param useHeadersIfPresent true to use headers if present and fall back to target
+	 * type if not.
+	 * @since 2.3
+	 */
+	public JsonDeserializer(TypeReference<? super T> targetType, ObjectMapper objectMapper,
+			boolean useHeadersIfPresent) {
+
+		this(targetType != null ? TypeFactory.defaultInstance().constructType(targetType) : null,
+				objectMapper, useHeadersIfPresent);
+	}
+
+	/**
+	 * Construct an instance with the provided target type, {@link ObjectMapper} and
+	 * useHeadersIfPresent.
+	 * @param targetType the target type reference.
+	 * @param objectMapper the mapper.
+	 * @param useHeadersIfPresent true to use headers if present and fall back to target
+	 * type if not.
+	 * @since 2.3
+	 */
+	public JsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper,
+			boolean useHeadersIfPresent) {
+
+		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
+		this.objectMapper = objectMapper;
+		initialize(targetType, useHeadersIfPresent);
+	}
+
+	private void initialize(@Nullable JavaType targetType, boolean useHeadersIfPresent) {
+		this.targetType = targetType;
 		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 
@@ -261,34 +337,34 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private void setupTarget(Map<String, ?> configs, boolean isKey) {
 		try {
+			JavaType javaType = null;
 			if (isKey && configs.containsKey(KEY_DEFAULT_TYPE)) {
-				setupTargetType(configs, KEY_DEFAULT_TYPE);
+				javaType = setupTargetType(configs, KEY_DEFAULT_TYPE);
 			}
 			// TODO don't forget to remove these code after DEFAULT_VALUE_TYPE being removed.
 			else if (!isKey && configs.containsKey(DEPRECATED_DEFAULT_VALUE_TYPE)) {
-				setupTargetType(configs, DEPRECATED_DEFAULT_VALUE_TYPE);
+				javaType = setupTargetType(configs, DEPRECATED_DEFAULT_VALUE_TYPE);
 			}
 			else if (!isKey && configs.containsKey(VALUE_DEFAULT_TYPE)) {
-				setupTargetType(configs, VALUE_DEFAULT_TYPE);
+				javaType = setupTargetType(configs, VALUE_DEFAULT_TYPE);
 			}
 
-			if (this.targetType != null) {
-				this.reader = this.objectMapper.readerFor(this.targetType);
+			if (javaType != null) {
+				initialize(javaType, TypePrecedence.TYPE_ID.equals(this.typeMapper.getTypePrecedence()));
 			}
-			addTargetPackageToTrusted();
 		}
 		catch (ClassNotFoundException | LinkageError e) {
 			throw new IllegalStateException(e);
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void setupTargetType(Map<String, ?> configs, String key) throws ClassNotFoundException, LinkageError {
+	private JavaType setupTargetType(Map<String, ?> configs, String key) throws ClassNotFoundException, LinkageError {
 		if (configs.get(key) instanceof Class) {
-			this.targetType = (Class<T>) configs.get(key);
+			return TypeFactory.defaultInstance().constructType((Class<?>) configs.get(key));
 		}
 		else if (configs.get(key) instanceof String) {
-			this.targetType = (Class<T>) ClassUtils.forName((String) configs.get(key), null);
+			return TypeFactory.defaultInstance()
+							.constructType(ClassUtils.forName((String) configs.get(key), null));
 		}
 		else {
 			throw new IllegalStateException(key + " must be Class or String");
@@ -313,7 +389,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private String getTargetPackageName() {
 		if (this.targetType != null) {
-			return ClassUtils.getPackageName(this.targetType).replaceFirst("\\[L", "");
+			return ClassUtils.getPackageName(this.targetType.getRawClass()).replaceFirst("\\[L", "");
 		}
 		return null;
 	}
