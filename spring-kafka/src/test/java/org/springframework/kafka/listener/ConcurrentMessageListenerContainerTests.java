@@ -38,8 +38,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -58,6 +56,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.event.KafkaEvent;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
@@ -74,7 +74,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  */
 public class ConcurrentMessageListenerContainerTests {
 
-	private final Log logger = LogFactory.getLog(this.getClass());
+	private final Log logger = EnhancedLogFactory.getLog(this.getClass());
 
 	private static String topic1 = "testTopic1";
 

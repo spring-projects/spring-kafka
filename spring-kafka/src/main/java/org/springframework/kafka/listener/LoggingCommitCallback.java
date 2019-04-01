@@ -18,11 +18,12 @@ package org.springframework.kafka.listener;
 
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
+
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 
 /**
  * Logs commit results at DEBUG level for success and ERROR for failures.
@@ -32,15 +33,15 @@ import org.apache.kafka.common.TopicPartition;
  */
 public final class LoggingCommitCallback implements OffsetCommitCallback {
 
-	private static final Log logger = LogFactory.getLog(LoggingCommitCallback.class); // NOSONAR
+	private static final Log LOGGER = EnhancedLogFactory.getLog(LoggingCommitCallback.class);
 
 	@Override
 	public void onComplete(Map<TopicPartition, OffsetAndMetadata> offsets, Exception exception) {
 		if (exception != null) {
-			logger.error("Commit failed for " + offsets, exception);
+			LOGGER.error(() -> "Commit failed for " + offsets, exception);
 		}
-		else if (logger.isDebugEnabled()) {
-			logger.debug("Commits for " + offsets + " completed");
+		else {
+			LOGGER.debug(() -> "Commits for " + offsets + " completed");
 		}
 	}
 

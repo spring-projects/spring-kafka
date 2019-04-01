@@ -35,9 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
@@ -72,6 +69,8 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.messaging.Message;
@@ -138,7 +137,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final Set<Class<?>> nonAnnotatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
 
-	private final Log logger = LogFactory.getLog(getClass());
+	private final Log logger = EnhancedLogFactory.getLog(getClass());
 
 	private final ListenerScope listenerScope = new ListenerScope();
 
@@ -295,9 +294,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 			if (annotatedMethods.isEmpty()) {
 				this.nonAnnotatedClasses.add(bean.getClass());
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("No @KafkaListener annotations found on bean type: " + bean.getClass());
-				}
+				this.logger.trace(() -> "No @KafkaListener annotations found on bean type: " + bean.getClass());
 			}
 			else {
 				// Non-empty set of methods

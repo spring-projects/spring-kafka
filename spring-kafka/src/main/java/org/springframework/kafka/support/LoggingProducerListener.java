@@ -16,9 +16,7 @@
 
 package org.springframework.kafka.support;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.util.ObjectUtils;
 
 /**
@@ -37,7 +35,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 	 */
 	public static final int DEFAULT_MAX_CONTENT_LOGGED = 100;
 
-	private static final Log logger = LogFactory.getLog(LoggingProducerListener.class); // NOSONAR
+	private static final Log LOGGER = EnhancedLogFactory.getLog(LoggingProducerListener.class);
 
 	private boolean includeContents = true;
 
@@ -65,7 +63,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 
 	@Override
 	public void onError(String topic, Integer partition, K key, V value, Exception exception) {
-		if (logger.isErrorEnabled()) {
+		if (LOGGER.isErrorEnabled()) {
 			StringBuffer logOutput = new StringBuffer();
 			logOutput.append("Exception thrown when sending a message");
 			if (this.includeContents) {
@@ -81,7 +79,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 				logOutput.append(" and partition ").append(partition);
 			}
 			logOutput.append(":");
-			logger.error(logOutput, exception);
+			LOGGER.error(logOutput, exception);
 		}
 	}
 

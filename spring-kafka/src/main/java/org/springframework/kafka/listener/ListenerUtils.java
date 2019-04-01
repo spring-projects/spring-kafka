@@ -22,12 +22,12 @@ import java.io.ObjectInputStream;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.lang.Nullable;

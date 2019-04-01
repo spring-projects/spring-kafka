@@ -22,10 +22,11 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiPredicate;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 
 /**
  * Seek utilities.

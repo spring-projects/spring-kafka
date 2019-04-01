@@ -18,8 +18,7 @@ package org.springframework.kafka.support;
 
 import java.util.function.Supplier;
 
-import org.apache.commons.logging.Log;
-
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.util.Assert;
 
 /**
@@ -127,68 +126,56 @@ public final class LogIfLevelEnabled {
 	}
 
 	private void fatal(Supplier<Object> messageSupplier, Throwable t) {
-		if (this.logger.isFatalEnabled()) {
-			if (t != null) {
-				this.logger.fatal(messageSupplier.get(), t);
-			}
-			else {
-				this.logger.fatal(messageSupplier.get());
-			}
+		if (t != null) {
+			this.logger.fatal(messageSupplier, t);
+		}
+		else {
+			this.logger.fatal(messageSupplier);
 		}
 	}
 
 	private void error(Supplier<Object> messageSupplier, Throwable t) {
-		if (this.logger.isErrorEnabled()) {
-			if (t != null) {
-				this.logger.error(messageSupplier.get(), t);
-			}
-			else {
-				this.logger.error(messageSupplier.get());
-			}
+		if (t != null) {
+			this.logger.error(messageSupplier, t);
+		}
+		else {
+			this.logger.error(messageSupplier);
 		}
 	}
 
 	private void warn(Supplier<Object> messageSupplier, Throwable t) {
-		if (this.logger.isWarnEnabled()) {
-			if (t != null) {
-				this.logger.warn(messageSupplier.get(), t);
-			}
-			else {
-				this.logger.warn(messageSupplier.get());
-			}
+		if (t != null) {
+			this.logger.warn(messageSupplier, t);
+		}
+		else {
+			this.logger.warn(messageSupplier);
 		}
 	}
 
 	private void info(Supplier<Object> messageSupplier, Throwable t) {
-		if (this.logger.isInfoEnabled()) {
-			if (t != null) {
-				this.logger.info(messageSupplier.get(), t);
-			}
-			else {
-				this.logger.info(messageSupplier.get());
-			}
+		if (t != null) {
+			this.logger.info(messageSupplier, t);
+		}
+		else {
+			this.logger.info(messageSupplier);
 		}
 	}
 
 	private void debug(Supplier<Object> messageSupplier, Throwable t) {
-		if (this.logger.isDebugEnabled()) {
-			if (t != null) {
-				this.logger.debug(messageSupplier.get(), t);
-			}
-			else {
-				this.logger.debug(messageSupplier.get());
-			}
+		if (t != null) {
+			this.logger.debug(messageSupplier, t);
+		}
+		else {
+			this.logger.debug(messageSupplier);
 		}
 	}
 
 	private void trace(Supplier<Object> messageSupplier, Throwable t) {
-		if (this.logger.isTraceEnabled()) {
-			if (t != null) {
-				this.logger.trace(messageSupplier.get(), t);
-			}
-			else {
-				this.logger.trace(messageSupplier.get());
-			}
+		if (t != null) {
+			this.logger.trace(messageSupplier, t);
+		}
+		else {
+			this.logger.trace(messageSupplier);
 		}
 	}
 

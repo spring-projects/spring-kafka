@@ -19,9 +19,9 @@ package org.springframework.kafka.listener;
 import java.time.temporal.ValueRange;
 import java.util.function.BiConsumer;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.lang.Nullable;
 
 /**

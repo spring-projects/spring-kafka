@@ -28,8 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreatePartitionsResult;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
@@ -46,6 +44,8 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 
 /**
  * An admin that delegates to an {@link AdminClient} to create topics defined
@@ -65,7 +65,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 
 	private static final int DEFAULT_OPERATION_TIMEOUT = 30;
 
-	private static final Log LOGGER = LogFactory.getLog(KafkaAdmin.class);
+	private static final Log LOGGER = EnhancedLogFactory.getLog(KafkaAdmin.class);
 
 	private final Map<String, Object> config;
 
@@ -220,19 +220,15 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 			try {
 				TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
 				if (topic.numPartitions() < topicDescription.partitions().size()) {
-					if (LOGGER.isInfoEnabled()) {
-						LOGGER.info(String.format(
-							"Topic '%s' exists but has a different partition count: %d not %d", n,
-							topicDescription.partitions().size(), topic.numPartitions()));
-					}
+					LOGGER.info(() -> String.format(
+						"Topic '%s' exists but has a different partition count: %d not %d", n,
+						topicDescription.partitions().size(), topic.numPartitions()));
 				}
 				else if (topic.numPartitions() > topicDescription.partitions().size()) {
-					if (LOGGER.isInfoEnabled()) {
-						LOGGER.info(String.format(
-							"Topic '%s' exists but has a different partition count: %d not %d, increasing "
-							+ "if the broker supports it", n,
-							topicDescription.partitions().size(), topic.numPartitions()));
-					}
+					LOGGER.info(() -> String.format(
+						"Topic '%s' exists but has a different partition count: %d not %d, increasing "
+						+ "if the broker supports it", n,
+						topicDescription.partitions().size(), topic.numPartitions()));
 					topicsToModify.put(n, NewPartitions.increaseTo(topic.numPartitions()));
 				}
 			}

@@ -21,9 +21,10 @@ import static org.mockito.Mockito.mock;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
+
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 
 /**
  * @author Gary Russell

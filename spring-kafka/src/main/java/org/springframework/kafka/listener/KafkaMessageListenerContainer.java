@@ -35,8 +35,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -65,6 +63,8 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
@@ -388,7 +388,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private static final String RAW_TYPES = RAWTYPES;
 
-		private final Log logger = LogFactory.getLog(ListenerConsumer.class);
+		private final Log logger = EnhancedLogFactory.getLog(ListenerConsumer.class);
 
 		private final ContainerProperties containerProperties = getContainerProperties();
 
@@ -613,8 +613,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					return Duration.ofMillis(Long.parseLong((String) timeout));
 				}
 				else {
-					if (timeout != null && this.logger.isWarnEnabled()) {
-						this.logger.warn("Unexpected type: " + timeout.getClass().getName() + " in property '"
+					if (timeout != null) {
+						Object timeoutToLog = timeout;
+						this.logger.warn(() -> "Unexpected type: " + timeoutToLog.getClass().getName()
+							+ " in property '"
 							+ ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
 							+ "'; defaulting to 60 seconds for sync commit timeouts");
 					}
@@ -808,10 +810,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void debugRecords(ConsumerRecords<K, V> records) {
-			if (records != null && this.logger.isDebugEnabled()) {
-				this.logger.debug("Received: " + records.count() + " records");
-				if (records.count() > 0 && this.logger.isTraceEnabled()) {
-					this.logger.trace(records.partitions().stream()
+			if (records != null) {
+				this.logger.debug(() -> "Received: " + records.count() + " records");
+				if (records.count() > 0) {
+					this.logger.trace(() -> records.partitions().stream()
 							.flatMap(p -> records.records(p).stream())
 							// map to same format as send metadata toString()
 							.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
@@ -824,18 +826,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!this.consumerPaused && isPaused()) {
 				this.consumer.pause(this.consumer.assignment());
 				this.consumerPaused = true;
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("Paused consumption from: " + this.consumer.paused());
-				}
+				this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
 				publishConsumerPausedEvent(this.consumer.assignment());
 			}
 		}
 
 		private void checkResumed() {
 			if (this.consumerPaused && !isPaused()) {
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("Resuming consumption from: " + this.consumer.paused());
-				}
+				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
 				Set<TopicPartition> paused = this.consumer.paused();
 				this.consumer.resume(paused);
 				this.consumerPaused = false;
@@ -891,9 +889,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.errorHandler != null) {
 				this.errorHandler.clearThreadState();
 			}
-			if (this.logger.isInfoEnabled()) {
-				this.logger.info(getGroupId() + ": Consumer stopped");
-			}
+			this.logger.info(() -> getGroupId() + ": Consumer stopped");
 			publishConsumerStoppedEvent();
 		}
 
@@ -935,12 +931,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void handleAcks() {
 			ConsumerRecord<K, V> record = this.acks.poll();
 			while (record != null) {
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("Ack: " + record);
-				}
+				traceAck(record);
 				processAck(record);
 				record = this.acks.poll();
 			}
+		}
+
+		private void traceAck(ConsumerRecord<K, V> record) {
+			this.logger.trace(() -> "Ack: " + record);
 		}
 
 		private void processAck(ConsumerRecord<K, V> record) {
@@ -1185,9 +1183,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("Processing " + record);
-				}
+				this.logger.trace(() -> "Processing " + record);
 				try {
 					TransactionSupport
 							.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
@@ -1249,9 +1245,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("Processing " + record);
-				}
+				this.logger.trace(() -> "Processing " + record);
 				doInvokeRecordListener(record, null, iterator);
 			}
 		}
@@ -1477,9 +1471,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void processSeeks() {
 			TopicPartitionInitialOffset offset = this.seeks.poll();
 			while (offset != null) {
-				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("Seek: " + offset);
-				}
+				traceSeek(offset);
 				try {
 					SeekPosition position = offset.getPosition();
 					if (position == null) {
@@ -1497,6 +1489,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				offset = this.seeks.poll();
 			}
+		}
+
+		private void traceSeek(TopicPartitionInitialOffset offset) {
+			this.logger.trace(() -> "Seek: " + offset);
 		}
 
 		private void initPartitionsIfNeeded() {
@@ -1542,9 +1538,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 					try {
 						this.consumer.seek(topicPartition, newOffset);
-						if (this.logger.isDebugEnabled()) {
-							this.logger.debug("Reset " + topicPartition + " to offset " + newOffset);
-						}
+						logReset(topicPartition, newOffset);
 					}
 					catch (Exception e) {
 						this.logger.error("Failed to set initial offset for " + topicPartition
@@ -1552,6 +1546,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 			}
+		}
+
+		private void logReset(TopicPartition topicPartition, long newOffset) {
+			this.logger.debug(() -> "Reset " + topicPartition + " to offset " + newOffset);
 		}
 
 		private void updatePendingOffsets() {
@@ -1569,9 +1567,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void commitIfNecessary() {
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
-			if (this.logger.isDebugEnabled()) {
-				this.logger.debug("Commit list: " + commits);
-			}
+			this.logger.debug(() -> "Commit list: " + commits);
 			if (!commits.isEmpty()) {
 				this.commitLogger.log(() -> "Committing: " + commits);
 				try {
@@ -1647,7 +1643,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						producerFactory.closeProducerFor(zombieFenceTxIdSuffix(tp.topic(), tp.partition()));
 					}
 					catch (Exception e) {
-						this.logger.error("Failed to close producer with transaction id suffix: "
+						this.logger.error(() -> "Failed to close producer with transaction id suffix: "
 								+ zombieFenceTxIdSuffix(tp.topic(), tp.partition()), e);
 					}
 				});

@@ -26,8 +26,6 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
@@ -36,6 +34,8 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
@@ -52,7 +52,7 @@ import org.springframework.util.ObjectUtils;
  */
 public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<?, ?>, Exception> {
 
-	private static final Log logger = LogFactory.getLog(DeadLetterPublishingRecoverer.class); // NOSONAR
+	private static final Log logger = EnhancedLogFactory.getLog(DeadLetterPublishingRecoverer.class); // NOSONAR
 
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
 		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
@@ -171,9 +171,7 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		if (key.isPresent()) {
 			return (KafkaTemplate<Object, Object>) this.templates.get(key.get());
 		}
-		if (logger.isWarnEnabled()) {
-			logger.warn("Failed to find a template for " + value.getClass() + " attemting to use the last entry");
-		}
+		logger.warn(() -> "Failed to find a template for " + value.getClass() + " attemting to use the last entry");
 		return (KafkaTemplate<Object, Object>) this.templates.values()
 				.stream()
 				.reduce((first,  second) -> second)
@@ -211,15 +209,13 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
 		try {
 			kafkaTemplate.send(outRecord).addCallback(result -> {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Successful dead-letter publication: " + result);
-				}
+				logger.debug(() -> "Successful dead-letter publication: " + result);
 			}, ex -> {
-				logger.error("Dead-letter publication failed for: " + outRecord, ex);
+				logger.error(() -> "Dead-letter publication failed for: " + outRecord, ex);
 			});
 		}
 		catch (Exception e) {
-			logger.error("Dead-letter publication failed for: " + outRecord, e);
+			logger.error(() -> "Dead-letter publication failed for: " + outRecord, e);
 		}
 	}
 

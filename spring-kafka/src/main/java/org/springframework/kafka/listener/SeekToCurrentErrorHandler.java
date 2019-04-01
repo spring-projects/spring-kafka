@@ -23,8 +23,6 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -34,6 +32,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.lang.Nullable;
@@ -56,7 +56,7 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 
 	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
 
-	protected static final Log LOGGER = LogFactory.getLog(SeekToCurrentErrorHandler.class); // NOSONAR visibility
+	protected static final Log LOGGER = EnhancedLogFactory.getLog(SeekToCurrentErrorHandler.class); // NOSONAR visibility
 
 	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 

@@ -20,14 +20,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
 
@@ -49,7 +49,7 @@ import org.springframework.lang.Nullable;
  */
 public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcessor<K, V> {
 
-	private static final Log logger = LogFactory.getLog(DefaultAfterRollbackProcessor.class); // NOSONAR
+	private static final Log logger = EnhancedLogFactory.getLog(DefaultAfterRollbackProcessor.class); // NOSONAR
 
 	private final FailedRecordTracker failureTracker;
 

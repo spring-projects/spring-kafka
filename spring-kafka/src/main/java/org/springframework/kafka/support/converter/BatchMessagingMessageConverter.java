@@ -23,8 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -32,6 +30,8 @@ import org.apache.kafka.common.header.Headers;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -60,7 +60,7 @@ import org.springframework.messaging.support.MessageBuilder;
  */
 public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
-	protected final Log logger = LogFactory.getLog(getClass()); // NOSONAR
+	protected final Log logger = EnhancedLogFactory.getLog(getClass()); // NOSONAR
 
 	private final RecordMessageConverter recordConverter;
 
@@ -164,8 +164,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				convertedHeaders.add(converted);
 			}
 			else {
-				if (this.logger.isDebugEnabled() && !logged) {
-					this.logger.debug(
+				if (!logged) {
+					this.logger.debug(() ->
 						"No header mapper is available; Jackson is required for the default mapper; "
 						+ "headers (if present) are not mapped but provided raw in "
 						+ KafkaHeaders.NATIVE_HEADERS);

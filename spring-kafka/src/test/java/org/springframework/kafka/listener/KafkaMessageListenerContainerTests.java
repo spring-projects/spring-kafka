@@ -25,7 +25,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -50,11 +49,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -89,6 +87,8 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
@@ -110,7 +110,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
  */
 public class KafkaMessageListenerContainerTests {
 
-	private final Log logger = LogFactory.getLog(this.getClass());
+	private final Log logger = EnhancedLogFactory.getLog(this.getClass());
 
 	private static String topic1 = "testTopic1";
 
@@ -1791,6 +1791,7 @@ public class KafkaMessageListenerContainerTests {
 		this.logger.info("Stop JSON4");
 	}
 
+	@SuppressWarnings({ "unchecked", "unchecked" })
 	@Test
 	public void testStaticAssign() throws Exception {
 		this.logger.info("Start static");
@@ -1816,6 +1817,11 @@ public class KafkaMessageListenerContainerTests {
 		Log consumerLogger = mock(Log.class);
 		given(consumerLogger.isDebugEnabled()).willReturn(true);
 		given(consumerLogger.isTraceEnabled()).willReturn(true);
+		List<String> log = new ArrayList<>();
+		willAnswer(inv -> {
+			log.add((String) ((Supplier<Object>) inv.getArgument(0)).get());
+			return null;
+		}).given(consumerLogger).trace(any(Supplier.class));
 		container.start();
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -1831,9 +1837,7 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		pf.destroy();
 		this.logger.info("Stop static");
-		ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-		verify(consumerLogger, atLeastOnce()).trace(captor.capture());
-		assertThat(captor.getAllValues()).contains("[testTopic22-0@0]");
+		assertThat(log).contains("[testTopic22-0@0]");
 	}
 
 	@Test

@@ -18,14 +18,14 @@ package org.springframework.kafka.listener.adapter;
 
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.DelegatingMessageListener;
 import org.springframework.kafka.listener.ListenerType;
 import org.springframework.kafka.listener.ListenerUtils;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 
 /**
  * Top level class for all listener adapters.
@@ -39,7 +39,7 @@ import org.springframework.kafka.listener.ListenerUtils;
 public abstract class AbstractDelegatingMessageListenerAdapter<T>
 		implements ConsumerSeekAware, DelegatingMessageListener<T> {
 
-	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
+	protected final Log logger = EnhancedLogFactory.getLog(this.getClass()); // NOSONAR
 
 	protected final T delegate; //NOSONAR
 

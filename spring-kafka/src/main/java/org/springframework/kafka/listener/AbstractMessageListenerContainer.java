@@ -23,8 +23,6 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -36,6 +34,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -60,7 +60,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	public static final int DEFAULT_PHASE = Integer.MAX_VALUE - 100; // late phase
 
-	protected final Log logger = LogFactory.getLog(this.getClass()); // NOSONAR
+	protected final Log logger = EnhancedLogFactory.getLog(this.getClass()); // NOSONAR
 
 	protected final ConsumerFactory<K, V> consumerFactory; // NOSONAR (final)
 
@@ -372,18 +372,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				Log logger2 = AbstractMessageListenerContainer.this.logger;
-				if (logger2.isInfoEnabled()) {
-					logger2.info(getGroupId() + ": partitions revoked: " + partitions);
-				}
+				AbstractMessageListenerContainer.this.logger.info(() ->
+					getGroupId() + ": partitions revoked: " + partitions);
 			}
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				Log logger2 = AbstractMessageListenerContainer.this.logger;
-				if (logger2.isInfoEnabled()) {
-					logger2.info(getGroupId() + ": partitions assigned: " + partitions);
-				}
+				AbstractMessageListenerContainer.this.logger.info(() ->
+					getGroupId() + ": partitions assigned: " + partitions);
 			}
 
 		};

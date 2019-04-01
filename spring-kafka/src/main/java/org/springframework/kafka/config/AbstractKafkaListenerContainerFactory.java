@@ -21,9 +21,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,6 +36,8 @@ import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -62,7 +61,7 @@ import org.springframework.util.Assert;
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
 		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware, InitializingBean {
 
-	protected final Log logger = LogFactory.getLog(getClass()); // NOSONAR protected
+	protected final Log logger = EnhancedLogFactory.getLog(getClass()); // NOSONAR protected
 
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null);
 

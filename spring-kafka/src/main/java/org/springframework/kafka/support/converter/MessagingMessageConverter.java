@@ -20,8 +20,6 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -30,6 +28,8 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -54,7 +54,7 @@ import org.springframework.util.Assert;
  */
 public class MessagingMessageConverter implements RecordMessageConverter {
 
-	protected final Log logger = LogFactory.getLog(getClass()); // NOSONAR
+	protected final Log logger = EnhancedLogFactory.getLog(getClass()); // NOSONAR
 
 	private boolean generateMessageId = false;
 
@@ -109,12 +109,10 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 			this.headerMapper.toHeaders(record.headers(), rawHeaders);
 		}
 		else {
-			if (this.logger.isDebugEnabled()) {
-				this.logger.debug(
-						"No header mapper is available; Jackson is required for the default mapper; "
-						+ "headers (if present) are not mapped but provided raw in "
-						+ KafkaHeaders.NATIVE_HEADERS);
-			}
+			this.logger.debug(() ->
+					"No header mapper is available; Jackson is required for the default mapper; "
+					+ "headers (if present) are not mapped but provided raw in "
+					+ KafkaHeaders.NATIVE_HEADERS);
 			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
 		}
 		commonHeaders(acknowledgment, consumer, rawHeaders, record.key(), record.topic(), record.partition(),

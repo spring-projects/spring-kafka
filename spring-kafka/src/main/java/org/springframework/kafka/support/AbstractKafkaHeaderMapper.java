@@ -27,10 +27,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.header.Header;
 
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
@@ -46,7 +45,7 @@ import org.springframework.util.PatternMatchUtils;
  */
 public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
-	protected final Log logger = LogFactory.getLog(getClass()); // NOSONAR
+	protected final Log logger = EnhancedLogFactory.getLog(getClass()); // NOSONAR
 
 	private final List<HeaderMatcher> matchers = new ArrayList<>();
 
@@ -140,10 +139,8 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		if (matches(header)) {
 			if ((header.equals(MessageHeaders.REPLY_CHANNEL) || header.equals(MessageHeaders.ERROR_CHANNEL))
 					&& !(value instanceof String)) {
-				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("Cannot map " + header + " when type is [" + value.getClass()
-							+ "]; it must be a String");
-				}
+				this.logger.debug(() -> "Cannot map " + header + " when type is [" + value.getClass()
+						+ "]; it must be a String");
 				return false;
 			}
 			return true;
@@ -157,10 +154,8 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 				return !matcher.isNegated();
 			}
 		}
-		if (this.logger.isDebugEnabled()) {
-			this.logger.debug(MessageFormat.format("headerName=[{0}] WILL NOT be mapped; matched no patterns",
-					header));
-		}
+		this.logger.debug(() -> MessageFormat.format("headerName=[{0}] WILL NOT be mapped; matched no patterns",
+				header));
 		return false;
 	}
 
@@ -269,7 +264,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 */
 	protected static class SimplePatternBasedHeaderMatcher implements HeaderMatcher {
 
-		private static final Log LOGGER = LogFactory.getLog(SimplePatternBasedHeaderMatcher.class);
+		private static final Log LOGGER = EnhancedLogFactory.getLog(SimplePatternBasedHeaderMatcher.class);
 
 		private final String pattern;
 

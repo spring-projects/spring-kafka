@@ -113,7 +113,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		if (tempReplyTopic == null) {
 			this.replyTopic = null;
 			this.replyPartition = null;
-			this.logger.debug("Could not determine container's reply topic/partition; senders must populate "
+			this.logger.debug(() -> "Could not determine container's reply topic/partition; senders must populate "
 					+ "at least the " + KafkaHeaders.REPLY_TOPIC + " header, and optionally the "
 					+ KafkaHeaders.REPLY_PARTITION + " header");
 		}
@@ -231,9 +231,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			}
 		}
 		headers.add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
-		if (this.logger.isDebugEnabled()) {
-			this.logger.debug("Sending: " + record + WITH_CORRELATION_ID + correlationId);
-		}
+		this.logger.debug(() -> "Sending: " + record + WITH_CORRELATION_ID + correlationId);
 		TemplateRequestReplyFuture<K, V, R> future = new TemplateRequestReplyFuture<>();
 		this.futures.put(correlationId, future);
 		try {
@@ -251,9 +249,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.scheduler.schedule(() -> {
 			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
 			if (removed != null) {
-				if (this.logger.isWarnEnabled()) {
-					this.logger.warn("Reply timed out for: " + record + WITH_CORRELATION_ID + correlationId);
-				}
+				this.logger.warn(() -> "Reply timed out for: " + record + WITH_CORRELATION_ID + correlationId);
 				removed.setException(new KafkaException("Reply timed out"));
 			}
 		}, Instant.now().plusMillis(this.replyTimeout));
@@ -293,26 +289,23 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 			}
 			if (correlationId == null) {
-				this.logger.error("No correlationId found in reply: " + record
+				this.logger.error(() -> "No correlationId found in reply: " + record
 						+ " - to use request/reply semantics, the responding server must return the correlation id "
 						+ " in the '" + KafkaHeaders.CORRELATION_ID + "' header");
 			}
 			else {
 				RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);
+				CorrelationKey correlationKey = correlationId;
 				if (future == null) {
 					if (this.sharedReplyTopic) {
-						if (this.logger.isDebugEnabled()) {
-							this.logger.debug(missingCorrelationLogMessage(record, correlationId));
-						}
+						this.logger.debug(() -> missingCorrelationLogMessage(record, correlationKey));
 					}
-					else if (this.logger.isErrorEnabled()) {
-						this.logger.error(missingCorrelationLogMessage(record, correlationId));
+					else {
+						this.logger.error(() -> missingCorrelationLogMessage(record, correlationKey));
 					}
 				}
 				else {
-					if (this.logger.isDebugEnabled()) {
-						this.logger.debug("Received: " + record + WITH_CORRELATION_ID + correlationId);
-					}
+					this.logger.debug(() -> "Received: " + record + WITH_CORRELATION_ID + correlationKey);
 					future.set(record);
 				}
 			}

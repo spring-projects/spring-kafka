@@ -21,9 +21,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.withSettings;
 
-import org.apache.commons.logging.Log;
 import org.junit.jupiter.api.Test;
+
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 
 /**
  * @author Gary Russell
@@ -40,7 +42,6 @@ public class LogIfLevelEnabledTests {
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.FATAL);
 		given(theLogger.isFatalEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isFatalEnabled();
 		verify(theLogger).fatal(any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -52,7 +53,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isFatalEnabled()).willReturn(true);
 		given(theLogger.isErrorEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isErrorEnabled();
 		verify(theLogger).error(any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -65,7 +65,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isErrorEnabled()).willReturn(true);
 		given(theLogger.isWarnEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isWarnEnabled();
 		verify(theLogger).warn(any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -79,7 +78,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isWarnEnabled()).willReturn(true);
 		given(theLogger.isInfoEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isInfoEnabled();
 		verify(theLogger).info(any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -94,7 +92,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isInfoEnabled()).willReturn(true);
 		given(theLogger.isDebugEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isDebugEnabled();
 		verify(theLogger).debug(any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -110,7 +107,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isDebugEnabled()).willReturn(true);
 		given(theLogger.isTraceEnabled()).willReturn(true);
 		logger.log(() -> "foo");
-		verify(theLogger).isTraceEnabled();
 		verify(theLogger).trace(any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -121,7 +117,6 @@ public class LogIfLevelEnabledTests {
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.FATAL);
 		given(theLogger.isFatalEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isFatalEnabled();
 		verify(theLogger).fatal(any(), any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -133,7 +128,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isFatalEnabled()).willReturn(true);
 		given(theLogger.isErrorEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isErrorEnabled();
 		verify(theLogger).error(any(), any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -146,7 +140,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isErrorEnabled()).willReturn(true);
 		given(theLogger.isWarnEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isWarnEnabled();
 		verify(theLogger).warn(any(), any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -160,14 +153,13 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isWarnEnabled()).willReturn(true);
 		given(theLogger.isInfoEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isInfoEnabled();
 		verify(theLogger).info(any(), any());
 		verifyNoMoreInteractions(theLogger);
 	}
 
 	@Test
 	public void testDebugWithEx() {
-		Log theLogger = mock(Log.class);
+		Log theLogger = mock(Log.class, withSettings().verboseLogging());
 		LogIfLevelEnabled logger = new LogIfLevelEnabled(theLogger, LogIfLevelEnabled.Level.DEBUG);
 		given(theLogger.isFatalEnabled()).willReturn(true);
 		given(theLogger.isErrorEnabled()).willReturn(true);
@@ -175,7 +167,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isInfoEnabled()).willReturn(true);
 		given(theLogger.isDebugEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isDebugEnabled();
 		verify(theLogger).debug(any(), any());
 		verifyNoMoreInteractions(theLogger);
 	}
@@ -191,7 +182,6 @@ public class LogIfLevelEnabledTests {
 		given(theLogger.isDebugEnabled()).willReturn(true);
 		given(theLogger.isTraceEnabled()).willReturn(true);
 		logger.log(() -> "foo", rte);
-		verify(theLogger).isTraceEnabled();
 		verify(theLogger).trace(any(), any());
 		verifyNoMoreInteractions(theLogger);
 	}

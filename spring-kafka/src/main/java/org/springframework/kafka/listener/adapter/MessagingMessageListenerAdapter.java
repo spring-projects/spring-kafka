@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -48,6 +46,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.EnhancedLogFactory;
+import org.springframework.kafka.support.EnhancedLogFactory.Log;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
@@ -85,7 +85,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private final Object bean;
 
-	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
+	protected final Log logger = EnhancedLogFactory.getLog(getClass()); //NOSONAR
 
 	private final Type inferredType;
 
@@ -376,15 +376,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param result the result.
 	 * @param topic the topic.
 	 * @param source the source (input).
-	 * @param messageReturnType true if we are returning message(s).
+	 * @param returnTypeMessage true if we are returning message(s).
 	 * @since 2.1.3
 	 */
 	@SuppressWarnings("unchecked")
-	protected void sendResponse(Object result, String topic, @Nullable Object source, boolean messageReturnType) {
-		if (!messageReturnType && topic == null) {
-			if (this.logger.isDebugEnabled()) {
-				this.logger.debug("No replyTopic to handle the reply: " + result);
-			}
+	protected void sendResponse(Object result, String topic, @Nullable Object source, boolean returnTypeMessage) {
+		if (!returnTypeMessage && topic == null) {
+			this.logger.debug(() -> "No replyTopic to handle the reply: " + result);
 		}
 		else if (result instanceof Message) {
 			this.replyTemplate.send((Message<?>) result);
