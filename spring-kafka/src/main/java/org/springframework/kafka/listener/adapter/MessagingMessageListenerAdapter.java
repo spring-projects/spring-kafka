@@ -548,19 +548,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				genericParameterType = ((ParameterizedType) genericParameterType).getActualTypeArguments()[0];
 			}
 			else if (parameterizedType.getRawType().equals(List.class)
-					&& parameterizedType.getActualTypeArguments().length == 1) { // NOSONAR
+					&& parameterizedType.getActualTypeArguments().length == 1) {
 
 				Type paramType = parameterizedType.getActualTypeArguments()[0];
 				this.isConsumerRecordList = paramType.equals(ConsumerRecord.class)
-						|| (paramType instanceof ParameterizedType
-						&& ((ParameterizedType) paramType).getRawType().equals(ConsumerRecord.class)
-						|| (paramType instanceof WildcardType
-						&& ((WildcardType) paramType).getUpperBounds() != null
-						&& ((WildcardType) paramType).getUpperBounds().length > 0
-						&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType
-						&& ((ParameterizedType) ((WildcardType)
-						paramType).getUpperBounds()[0]).getRawType().equals(ConsumerRecord.class))
-				);
+						|| (isSimpleListOfConsumerRecord(paramType)
+						|| isListOfConsumerRecordUpperBounded(paramType));
 				boolean messageHasGeneric = paramType instanceof ParameterizedType
 						&& ((ParameterizedType) paramType).getRawType().equals(Message.class);
 				this.isMessageList = paramType.equals(Message.class) || messageHasGeneric;
@@ -573,6 +566,24 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 		return genericParameterType;
+	}
+
+	private boolean isSimpleListOfConsumerRecord(Type paramType) {
+		return paramType instanceof ParameterizedType
+				&& ((ParameterizedType) paramType).getRawType().equals(ConsumerRecord.class);
+	}
+
+	private boolean isListOfConsumerRecordUpperBounded(Type paramType) {
+		return isWIldCardWithUpperBound(paramType)
+			&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType
+			&& ((ParameterizedType) ((WildcardType) paramType).getUpperBounds()[0])
+						.getRawType().equals(ConsumerRecord.class);
+	}
+
+	private boolean isWIldCardWithUpperBound(Type paramType) {
+		return paramType instanceof WildcardType
+			&& ((WildcardType) paramType).getUpperBounds() != null
+			&& ((WildcardType) paramType).getUpperBounds().length > 0;
 	}
 
 	/*
