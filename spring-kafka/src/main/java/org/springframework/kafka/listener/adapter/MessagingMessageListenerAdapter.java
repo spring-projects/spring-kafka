@@ -574,13 +574,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	private boolean isListOfConsumerRecordUpperBounded(Type paramType) {
-		return isWIldCardWithUpperBound(paramType)
+		return isWildCardWithUpperBound(paramType)
 			&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType
 			&& ((ParameterizedType) ((WildcardType) paramType).getUpperBounds()[0])
 						.getRawType().equals(ConsumerRecord.class);
 	}
 
-	private boolean isWIldCardWithUpperBound(Type paramType) {
+	private boolean isWildCardWithUpperBound(Type paramType) {
 		return paramType instanceof WildcardType
 			&& ((WildcardType) paramType).getUpperBounds() != null
 			&& ((WildcardType) paramType).getUpperBounds().length > 0;
