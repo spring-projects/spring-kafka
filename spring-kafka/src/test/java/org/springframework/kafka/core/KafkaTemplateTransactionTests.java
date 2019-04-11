@@ -17,7 +17,8 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -74,6 +75,7 @@ import kafka.server.KafkaConfig;
 /**
  * @author Gary Russell
  * @author Nakul Mishra
+ * @author Artem Bilan
  *
  * @since 1.3
  *
@@ -90,12 +92,12 @@ public class KafkaTemplateTransactionTests {
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
 	@Test
-	public void testLocalTransaction() throws Exception {
+	public void testLocalTransaction() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
+		senderProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "my.transaction.");
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
-		pf.setTransactionIdPrefix("my.transaction.");
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testLocalTx", "false", embeddedKafka);
@@ -126,7 +128,7 @@ public class KafkaTemplateTransactionTests {
 	}
 
 	@Test
-	public void testGlobalTransaction() throws Exception {
+	public void testGlobalTransaction() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -142,11 +144,12 @@ public class KafkaTemplateTransactionTests {
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, STRING_KEY_TOPIC);
 		KafkaTransactionManager<String, String> tm = new KafkaTransactionManager<>(pf);
 		tm.setTransactionSynchronization(AbstractPlatformTransactionManager.SYNCHRONIZATION_ON_ACTUAL_TRANSACTION);
-		new TransactionTemplate(tm).execute(s -> {
-			template.sendDefault("foo", "bar");
-			template.sendDefault("baz", "qux");
-			return null;
-		});
+		new TransactionTemplate(tm)
+				.execute(s -> {
+					template.sendDefault("foo", "bar");
+					template.sendDefault("baz", "qux");
+					return null;
+				});
 		ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer);
 		Iterator<ConsumerRecord<String, String>> iterator = records.iterator();
 		ConsumerRecord<String, String> record = iterator.next();
@@ -185,26 +188,22 @@ public class KafkaTemplateTransactionTests {
 	}
 
 	@Test
-	public void testDefaultProducerIdempotentConfig() throws Exception {
+	public void testDefaultProducerIdempotentConfig() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(
-				senderProps);
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("my.transaction.");
 		pf.destroy();
-		assertThat(pf.getConfigurationProperties()
-				.get(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)).isEqualTo(true);
+		assertThat(pf.getConfigurationProperties().get(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)).isEqualTo(true);
 	}
 
 	@Test
-	public void testOverrideProducerIdempotentConfig() throws Exception {
+	public void testOverrideProducerIdempotentConfig() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false);
-		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(
-				senderProps);
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("my.transaction.");
 		pf.destroy();
-		assertThat(pf.getConfigurationProperties()
-				.get(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)).isEqualTo(false);
+		assertThat(pf.getConfigurationProperties().get(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)).isEqualTo(false);
 	}
 
 	@Test
@@ -216,9 +215,9 @@ public class KafkaTemplateTransactionTests {
 		pf.setTransactionIdPrefix("my.transaction.");
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
-		assertThatThrownBy(() -> template.send("foo", "bar"))
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("No transaction is in process;");
+		assertThatIllegalStateException()
+				.isThrownBy(() -> template.send("foo", "bar"))
+				.withMessageContaining("No transaction is in process;");
 	}
 
 	@Test
@@ -236,10 +235,11 @@ public class KafkaTemplateTransactionTests {
 
 		ResourcelessTransactionManager tm = new ResourcelessTransactionManager();
 
-		new TransactionTemplate(tm).execute(s -> {
-			template.sendDefault("foo", "bar");
-			return null;
-		});
+		new TransactionTemplate(tm)
+				.execute(s -> {
+					template.sendDefault("foo", "bar");
+					return null;
+				});
 
 		assertThat(producer.history()).containsExactly(new ProducerRecord<>(STRING_KEY_TOPIC, "foo", "bar"));
 		assertThat(producer.transactionCommitted()).isTrue();
@@ -261,13 +261,14 @@ public class KafkaTemplateTransactionTests {
 
 		ResourcelessTransactionManager tm = new ResourcelessTransactionManager();
 
-		new TransactionTemplate(tm).execute(s -> {
-			template.sendDefault("foo", "bar");
+		new TransactionTemplate(tm)
+				.execute(s -> {
+					template.sendDefault("foo", "bar");
 
-			// Mark the mock producer as fenced so it throws when committing the transaction
-			producer.fenceProducer();
-			return null;
-		});
+					// Mark the mock producer as fenced so it throws when committing the transaction
+					producer.fenceProducer();
+					return null;
+				});
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.closed()).isTrue();
@@ -291,12 +292,13 @@ public class KafkaTemplateTransactionTests {
 
 		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
 
-		new TransactionTemplate(tm).execute(s -> {
-			new DeadLetterPublishingRecoverer(template).accept(
-					new ConsumerRecord<>(STRING_KEY_TOPIC, 0, 0L, "key", "foo"),
-					new RuntimeException("foo"));
-			return null;
-		});
+		new TransactionTemplate(tm)
+				.execute(s -> {
+					new DeadLetterPublishingRecoverer(template).accept(
+							new ConsumerRecord<>(STRING_KEY_TOPIC, 0, 0L, "key", "foo"),
+							new RuntimeException("foo"));
+					return null;
+				});
 
 		verify(producer1).beginTransaction();
 		verify(producer1).commitTransaction();
@@ -318,10 +320,12 @@ public class KafkaTemplateTransactionTests {
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 
-		assertThatThrownBy(() -> template.executeInTransaction(t -> {
-			producer.fenceProducer();
-			return null;
-		})).isInstanceOf(ProducerFencedException.class);
+		assertThatExceptionOfType(ProducerFencedException.class)
+				.isThrownBy(() ->
+						template.executeInTransaction(t -> {
+							producer.fenceProducer();
+							return null;
+						}));
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.transactionAborted()).isFalse();
@@ -343,9 +347,8 @@ public class KafkaTemplateTransactionTests {
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 
-		assertThatThrownBy(() -> template.executeInTransaction(t -> {
-			return null;
-		})).isInstanceOf(ProducerFencedException.class);
+		assertThatExceptionOfType(ProducerFencedException.class)
+				.isThrownBy(() -> template.executeInTransaction(t -> null));
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.transactionAborted()).isFalse();
@@ -366,9 +369,12 @@ public class KafkaTemplateTransactionTests {
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 
-		assertThatThrownBy(() -> template.executeInTransaction(t -> {
-			throw new RuntimeException("foo");
-		})).isExactlyInstanceOf(RuntimeException.class).withFailMessage("foo");
+		assertThatExceptionOfType(RuntimeException.class)
+				.isThrownBy(() ->
+						template.executeInTransaction(t -> {
+							throw new RuntimeException("foo");
+						}))
+				.withMessage("foo");
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.transactionAborted()).isTrue();
@@ -385,20 +391,21 @@ public class KafkaTemplateTransactionTests {
 		producer1.initTransactions();
 		AtomicBoolean first = new AtomicBoolean(true);
 
-		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<Object, Object>(
-				Collections.emptyMap()) {
+		DefaultKafkaProducerFactory<Object, Object> pf =
+				new DefaultKafkaProducerFactory<Object, Object>(
+						Collections.emptyMap()) {
 
-			@Override
-			protected Producer<Object, Object> createTransactionalProducer() {
-				return first.getAndSet(false) ? producer1 : producer2;
-			}
+					@Override
+					protected Producer<Object, Object> createTransactionalProducer() {
+						return first.getAndSet(false) ? producer1 : producer2;
+					}
 
-			@Override
-			Producer<Object, Object> createTransactionalProducerForPartition() {
-				return createTransactionalProducer();
-			}
+					@Override
+					Producer<Object, Object> createTransactionalProducerForPartition() {
+						return createTransactionalProducer();
+					}
 
-		};
+				};
 		pf.setTransactionIdPrefix("tx.");
 
 		KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
@@ -408,12 +415,12 @@ public class KafkaTemplateTransactionTests {
 
 		try {
 			TransactionSupport.setTransactionIdSuffix("testExecuteInTransactionNewInnerTx");
-			new TransactionTemplate(tm).execute(s -> {
-				return template.executeInTransaction(t -> {
-					template.sendDefault("foo", "bar");
-					return null;
-				});
-			});
+			new TransactionTemplate(tm)
+					.execute(s ->
+							template.executeInTransaction(t -> {
+								template.sendDefault("foo", "bar");
+								return null;
+							}));
 
 			InOrder inOrder = inOrder(producer1, producer2);
 			inOrder.verify(producer1).beginTransaction();
