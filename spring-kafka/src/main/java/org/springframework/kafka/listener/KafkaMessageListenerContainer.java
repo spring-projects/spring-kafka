@@ -1720,21 +1720,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				if (this.consumerAwareListener != null) {
-					this.consumerAwareListener.onPartitionsRevokedBeforeCommit(ListenerConsumer.this.consumer,
-							partitions);
+				try {
+					if (this.consumerAwareListener != null) {
+						this.consumerAwareListener.onPartitionsRevokedBeforeCommit(ListenerConsumer.this.consumer,
+								partitions);
+					}
+					else {
+						this.userListener.onPartitionsRevoked(partitions);
+					}
+					// Wait until now to commit, in case the user listener added acks
+					commitPendingAcks();
+					if (this.consumerAwareListener != null) {
+						this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
+								partitions);
+					}
 				}
-				else {
-					this.userListener.onPartitionsRevoked(partitions);
-				}
-				// Wait until now to commit, in case the user listener added acks
-				commitPendingAcks();
-				if (this.consumerAwareListener != null) {
-					this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
-							partitions);
-				}
-				if (ListenerConsumer.this.kafkaTxManager != null) {
-					closeProducers(partitions);
+				finally {
+					if (ListenerConsumer.this.kafkaTxManager != null) {
+						closeProducers(partitions);
+					}
 				}
 			}
 
