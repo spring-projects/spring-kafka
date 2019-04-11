@@ -17,7 +17,7 @@
 package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -257,7 +257,7 @@ public class EnableKafkaIntegrationTests {
 				"listenerConsumer.consumer"));
 		assertThat(
 				KafkaTestUtils.getPropertyValue(this.listener.listen4Consumer, "fetcher.maxPollRecords", Integer.class))
-						.isEqualTo(100);
+				.isEqualTo(100);
 		assertThat(this.quxGroup).hasSize(1);
 		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
 		List<?> containers = KafkaTestUtils.getPropertyValue(manualContainer, "containers", List.class);
@@ -311,14 +311,12 @@ public class EnableKafkaIntegrationTests {
 				.isNotEqualTo("rebalanceListener");
 		String clientId = KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.clientId",
 				String.class);
-		assertThat(
-				clientId)
-				.startsWith("rebal-");
+		assertThat(clientId).startsWith("rebal-");
 		assertThat(clientId.indexOf('-')).isEqualTo(clientId.lastIndexOf('-'));
 	}
 
 	@Test
-	public void testAutoStartup() throws Exception {
+	public void testAutoStartup() {
 		MessageListenerContainer listenerContainer = registry.getListenerContainer("manualStart");
 		assertThat(listenerContainer).isNotNull();
 		assertThat(listenerContainer.isRunning()).isFalse();
@@ -401,7 +399,6 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	@DirtiesContext
 	public void testJsonHeaders() throws Exception {
 		ConcurrentMessageListenerContainer<?, ?> container =
 				(ConcurrentMessageListenerContainer<?, ?>) registry.getListenerContainer("jsonHeaders");
@@ -549,7 +546,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testReplyingListener() throws Exception {
+	public void testReplyingListener() {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -563,7 +560,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testReplyingBatchListener() throws Exception {
+	public void testReplyingBatchListener() {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testBatchReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -589,7 +586,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testReplyingListenerWithErrorHandler() throws Exception {
+	public void testReplyingListenerWithErrorHandler() {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testErrorHandlerReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -603,7 +600,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testVoidListenerWithReplyingErrorHandler() throws Exception {
+	public void testVoidListenerWithReplyingErrorHandler() {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testVoidWithErrorHandlerReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -617,7 +614,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testReplyingBatchListenerWithErrorHandler() throws Exception {
+	public void testReplyingBatchListenerWithErrorHandler() {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testErrorHandlerBatchReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -643,7 +640,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testMultiReplyTo() throws Exception {
+	public void testMultiReplyTo() {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testMultiReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -712,10 +709,12 @@ public class EnableKafkaIntegrationTests {
 		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 1);
 		embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1));
 		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 2);
-		assertThatThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1)))
-			.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("exists");
-		assertThatThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions2", 10, (short) 2)))
-			.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("replication");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1)))
+				.withMessageContaining("exists");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions2", 10, (short) 2)))
+				.withMessageContaining("replication");
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testMultiReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -736,7 +735,7 @@ public class EnableKafkaIntegrationTests {
 	@Test
 	public void testAutoConfigTm() {
 		assertThat(this.transactionalFactory.getContainerProperties().getTransactionManager())
-			.isInstanceOf(ChainedKafkaTransactionManager.class);
+				.isInstanceOf(ChainedKafkaTransactionManager.class);
 	}
 
 	@Test
@@ -1424,8 +1423,9 @@ public class EnableKafkaIntegrationTests {
 			this.latch3.countDown();
 		}
 
-		@KafkaListener(id = "qux", topics = "annotated4", containerFactory = "kafkaManualAckListenerContainerFactory",
-				containerGroup = "qux#{'Group'}", properties = {
+		@KafkaListener(id = "#{'qux'}", topics = "annotated4",
+				containerFactory = "kafkaManualAckListenerContainerFactory", containerGroup = "qux#{'Group'}",
+				properties = {
 						"max.poll.interval.ms:#{'${poll.interval:60000}'}",
 						ConsumerConfig.MAX_POLL_RECORDS_CONFIG + "=#{'${poll.recs:100}'}"
 				})
@@ -1888,6 +1888,7 @@ public class EnableKafkaIntegrationTests {
 		public Foo convert(String source) {
 			return delegate.convert(source);
 		}
+
 	}
 
 	public static class ValidatedClass {
