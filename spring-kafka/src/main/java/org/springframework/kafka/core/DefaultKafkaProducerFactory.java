@@ -189,6 +189,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		enableIdempotentBehaviour();
 	}
 
+	protected String getTransactionIdPrefix() {
+		return this.transactionIdPrefix;
+	}
+
 	/**
 	 * When set to 'true', the producer will ensure that exactly one copy of each message is written in the stream.
 	 */
