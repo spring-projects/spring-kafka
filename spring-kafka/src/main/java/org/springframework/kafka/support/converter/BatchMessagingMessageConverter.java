@@ -125,6 +125,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	@Override
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer, Type type) {
+
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
@@ -156,9 +157,11 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 			topics.add(record.topic());
 			partitions.add(record.partition());
 			offsets.add(record.offset());
-			timestampTypes.add(record.timestampType().name());
+			if (record.timestampType() != null) {
+				timestampTypes.add(record.timestampType().name());
+			}
 			timestamps.add(record.timestamp());
-			if (this.headerMapper != null) {
+			if (this.headerMapper != null && record.headers() != null) {
 				Map<String, Object> converted = new HashMap<>();
 				this.headerMapper.toHeaders(record.headers(), converted);
 				convertedHeaders.add(converted);

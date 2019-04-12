@@ -101,11 +101,12 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	@Override
 	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Type type) {
+
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
-		if (this.headerMapper != null) {
+		if (this.headerMapper != null && record.headers() != null) {
 			this.headerMapper.toHeaders(record.headers(), rawHeaders);
 		}
 		else {
@@ -117,8 +118,9 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 			}
 			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
 		}
+		String ttName = record.timestampType() != null ? record.timestampType().name() : null;
 		commonHeaders(acknowledgment, consumer, rawHeaders, record.key(), record.topic(), record.partition(),
-				record.offset(), record.timestampType().name(), record.timestamp());
+				record.offset(), ttName, record.timestamp());
 
 		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);
 	}

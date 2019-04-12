@@ -42,7 +42,8 @@ public interface MessageConverter {
 	}
 
 	default void commonHeaders(Acknowledgment acknowledgment, Consumer<?, ?> consumer, Map<String, Object> rawHeaders,
-			Object theKey, Object topic, Object partition, Object offset, Object timestampType, Object timestamp) {
+			Object theKey, Object topic, Object partition, Object offset,
+			@Nullable Object timestampType, Object timestamp) {
 
 		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, theKey);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topic);

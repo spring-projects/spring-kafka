@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -113,6 +114,20 @@ public class BatchMessageConverterTests {
 		assertThat(headers.get(KafkaHeaders.GROUP_ID)).isEqualTo("test.g");
 		KafkaUtils.clearConsumerGroupId();
 		return headers;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void missingHeaders() {
+		BatchMessageConverter converter = new BatchMessagingMessageConverter();
+		Headers nullHeaders = null;
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz",
+				nullHeaders);
+		List<ConsumerRecord<?, ?>> records = Collections.singletonList(record);
+		Message<?> message = converter.toMessage(records, null, null, null);
+		assertThat(((List<String>) message.getPayload())).contains("baz");
+		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC, List.class)).contains("foo");
+		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY, List.class)).contains("bar");
 	}
 
 }
