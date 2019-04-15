@@ -62,13 +62,13 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 		Collection<TopicPartitionInitialOffset> topicPartitions = endpoint.getTopicPartitions();
 		if (!topicPartitions.isEmpty()) {
 			ContainerProperties properties = new ContainerProperties(
-					topicPartitions.toArray(new TopicPartitionInitialOffset[topicPartitions.size()]));
+					topicPartitions.toArray(new TopicPartitionInitialOffset[0]));
 			return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(), properties);
 		}
 		else {
 			Collection<String> topics = endpoint.getTopics();
 			if (!topics.isEmpty()) {
-				ContainerProperties properties = new ContainerProperties(topics.toArray(new String[topics.size()]));
+				ContainerProperties properties = new ContainerProperties(topics.toArray(new String[0]));
 				return new ConcurrentMessageListenerContainer<K, V>(getConsumerFactory(), properties);
 			}
 			else {
