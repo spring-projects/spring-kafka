@@ -2,6 +2,8 @@
 
 This section covers the changes made from version 2.2 to version 2.3.
 
+Also see <<new-in-sik>>.
+
 [[kafka-client-2.2]]
 ==== Kafka Client Version
 
@@ -41,7 +43,7 @@ See <<configuring-topics>> for more information.
 You can now perform additional configuration of the `StreamsBuilderFactoryBean` created by `@EnableKafkaStreams`.
 See <<streams-config, Streams Configuration>> for more information.
 
-==== JSON Components Changes
+==== JSON Component Changes
 
 Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.
 The `JsonDeserializer` now provides `TypeReference`-based constructors for better handling of target generic container types.
