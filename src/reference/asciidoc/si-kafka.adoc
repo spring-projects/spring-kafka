@@ -22,6 +22,7 @@ It provides the following components:
 
 * The pollable `KafkaMessageSource` now implements `Pausable` so the consumer can be `paused` and `resumed`.
 You must continue to poll the adapter while paused, to avoid a topic/partition rebalance.
+See <<max-poll-records, the discussion about `max.poll.records`>> for more information.
 * XML configuration is now supported for the gateways and polled inbound channel adapter (in addition to the existing XML support for the other adapters).
 * The pollable message source can now be configured to fetch multiple records at-a-time.
 
@@ -372,7 +373,8 @@ public KafkaMessageSource<String, String> source(ConsumerFactory<String, String>
 
 Refer to the javadocs for available properties.
 
-By default, `max.poll.records` must be 1; either explicitly set in the consumer factory, or it will be forced to 1 if the consumer factory is a `DefaultKafkaConsumerFactory`.
+[[max-poll-records]]
+By default, `max.poll.records` must be either explicitly set in the consumer factory, or it will be forced to 1 if the consumer factory is a `DefaultKafkaConsumerFactory`.
 Starting with versio 3.2, you can set the property `allowMultiFetch` to `true` to override this behavior.
 
 IMPORTANT: You must poll the consumer within `max.poll.interval.ms` to avoid a rebalance.
