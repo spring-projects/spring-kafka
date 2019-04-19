@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.fail;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -36,6 +37,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -53,6 +55,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
@@ -91,9 +94,21 @@ public class ReplyingKafkaTemplateTests {
 
 	private static final String C_REQUEST = "cRequest";
 
+	private static final String D_REPLY = "dReply";
+
+	private static final String D_REQUEST = "dRequest";
+
+	private static final String E_REPLY = "eReply";
+
+	private static final String E_REQUEST = "eRequest";
+
+	private static final String F_REPLY = "fReply";
+
+	private static final String F_REQUEST = "fRequest";
+
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, 5, A_REQUEST, A_REPLY,
-			B_REQUEST, B_REPLY, C_REQUEST, C_REPLY);
+			B_REQUEST, B_REPLY, C_REQUEST, C_REPLY, D_REQUEST, D_REPLY, E_REQUEST, E_REPLY, F_REQUEST, F_REPLY);
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -180,6 +195,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testTimeout() throws Exception {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
@@ -200,6 +216,7 @@ public class ReplyingKafkaTemplateTests {
 			catch (ExecutionException e) {
 				assertThat(e).hasCauseExactlyInstanceOf(KafkaException.class).hasMessageContaining("Reply timed out");
 			}
+			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
 		}
 		finally {
 			template.stop();
@@ -224,6 +241,90 @@ public class ReplyingKafkaTemplateTests {
 			assertThat(receivedHeaders).containsKey("qux");
 			assertThat(receivedHeaders).doesNotContainKey("baz");
 			assertThat(receivedHeaders).hasSize(2);
+		}
+		finally {
+			template.stop();
+		}
+	}
+
+	@Test
+	public void testAggregateNormal() throws Exception {
+		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
+				new TopicPartitionInitialOffset(D_REPLY, 0), 2);
+		try {
+			template.setReplyTimeout(30_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(D_REQUEST, null, null, null, "foo");
+			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> future =
+					template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> consumerRecord =
+					future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value().size()).isEqualTo(2);
+			Iterator<ConsumerRecord<Integer, String>> iterator = consumerRecord.value().iterator();
+			String value1 = iterator.next().value();
+			assertThat(value1).isIn("fOO", "FOO");
+			String value2 = iterator.next().value();
+			assertThat(value2).isIn("fOO", "FOO");
+			assertThat(value2).isNotSameAs(value1);
+		}
+		finally {
+			template.stop();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	@Ignore("time sensitive")
+	public void testAggregateTimeout() throws Exception {
+		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
+				new TopicPartitionInitialOffset(E_REPLY, 0), 3);
+		try {
+			template.setReplyTimeout(5_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(E_REQUEST, null, null, null, "foo");
+			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> future =
+					template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			try {
+				future.get(30, TimeUnit.SECONDS);
+				fail("Expected Exception");
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw e;
+			}
+			catch (ExecutionException e) {
+				assertThat(e).hasCauseExactlyInstanceOf(KafkaException.class).hasMessageContaining("Reply timed out");
+			}
+			Thread.sleep(10_000);
+			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).isEmpty();
+		}
+		finally {
+			template.stop();
+		}
+	}
+
+	@Test
+	@Ignore("time sensitive")
+	public void testAggregateTimeoutPartial() throws Exception {
+		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
+				new TopicPartitionInitialOffset(F_REPLY, 0), 3);
+		template.setReturnPartialOnTimeout(true);
+		try {
+			template.setReplyTimeout(5_000);
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(F_REQUEST, null, null, null, "foo");
+			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> future =
+					template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> consumerRecord =
+					future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value().size()).isEqualTo(2);
+			Iterator<ConsumerRecord<Integer, String>> iterator = consumerRecord.value().iterator();
+			String value1 = iterator.next().value();
+			assertThat(value1).isIn("fOO", "FOO");
+			String value2 = iterator.next().value();
+			assertThat(value2).isIn("fOO", "FOO");
+			assertThat(value2).isNotSameAs(value1);
 		}
 		finally {
 			template.stop();
@@ -262,8 +363,7 @@ public class ReplyingKafkaTemplateTests {
 		return template;
 	}
 
-	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionInitialOffset topic)
-			throws Exception {
+	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionInitialOffset topic) {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
@@ -273,7 +373,30 @@ public class ReplyingKafkaTemplateTests {
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
 		container.setBeanName(this.testName.getMethodName());
-		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(this.config.pf(), container);
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(this.config.pf(),
+				container);
+		template.setSharedReplyTopic(true);
+		template.start();
+		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(1);
+		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic.topic());
+		return template;
+	}
+
+	public AggregatingReplyingKafkaTemplate<Integer, String, String> aggregatingTemplate(
+			TopicPartitionInitialOffset topic, int releaseSize) {
+
+		ContainerProperties containerProperties = new ContainerProperties(topic);
+		containerProperties.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
+				embeddedKafka);
+		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		DefaultKafkaConsumerFactory<Integer, Collection<ConsumerRecord<Integer, String>>> cf =
+				new DefaultKafkaConsumerFactory<>(consumerProps);
+		KafkaMessageListenerContainer<Integer, Collection<ConsumerRecord<Integer, String>>> container =
+				new KafkaMessageListenerContainer<>(cf, containerProperties);
+		container.setBeanName(this.testName.getMethodName());
+		AggregatingReplyingKafkaTemplate<Integer, String, String> template =
+				new AggregatingReplyingKafkaTemplate<>(this.config.pf(), container, coll -> coll.size() == releaseSize);
 		template.setSharedReplyTopic(true);
 		template.start();
 		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(1);
@@ -353,6 +476,18 @@ public class ReplyingKafkaTemplateTests {
 		@Bean
 		public MultiMessageReturn mmr() {
 			return new MultiMessageReturn();
+		}
+
+		@KafkaListener(id = "def1", topics = { D_REQUEST, E_REQUEST, F_REQUEST })
+		@SendTo  // default REPLY_TOPIC header
+		public String dListener1(String in) {
+			return in.toUpperCase();
+		}
+
+		@KafkaListener(id = "def2", topics = { D_REQUEST, E_REQUEST, F_REQUEST })
+		@SendTo  // default REPLY_TOPIC header
+		public String dListener2(String in) {
+			return in.substring(0, 1) + in.substring(1).toUpperCase();
 		}
 
 	}
