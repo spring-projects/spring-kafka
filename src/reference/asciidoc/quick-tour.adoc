@@ -122,7 +122,7 @@ private Map<String, Object> senderProps() {
 ----
 ====
 
-==== With Java Configuration
+==== With Spring Configuration in Java
 
 You can do the same work as appears in the previous example with Spring configuration in Java.
 The following example shows how to do so:
