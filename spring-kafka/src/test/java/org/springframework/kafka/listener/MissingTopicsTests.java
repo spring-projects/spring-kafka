@@ -43,7 +43,7 @@ public class MissingTopicsTests {
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
 	@Test
-	public void testMissingTopicCMLC() throws Exception {
+	public void testMissingTopicCMLC() {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("missing1", "true", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("notexisting");
@@ -61,7 +61,7 @@ public class MissingTopicsTests {
 	}
 
 	@Test
-	public void testMissingTopicKMLC() throws Exception {
+	public void testMissingTopicKMLC() {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("missing2", "true", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("notexisting");

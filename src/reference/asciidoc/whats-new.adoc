@@ -52,3 +52,12 @@ See its JavaDocs and <<serdes>> for more information.
 A `ByteArrayJsonMessageConverter` has been provided as well as a new super class for all Json converters, `JsonMessageConverter`.
 Also, a `StringOrBytesSerializer` is now available; it can serialize `byte[]`, `Bytes` and `String` values in `ProducerRecord` s.
 See <<messaging-message-conversion>> for more information.
+
+==== ReplyingKafkaTemplate
+
+When a reply times out, the future is completed exceptionally with a `KafkaReplyTimeoutException` instead of a `KafkaException`.
+
+==== AggregatingReplyingKafkaTemplate
+
+Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
+See <<aggregating-request-reply>> for more information.

@@ -46,7 +46,6 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -214,7 +213,9 @@ public class ReplyingKafkaTemplateTests {
 				throw e;
 			}
 			catch (ExecutionException e) {
-				assertThat(e).hasCauseExactlyInstanceOf(KafkaException.class).hasMessageContaining("Reply timed out");
+				assertThat(e)
+					.hasCauseExactlyInstanceOf(KafkaReplyTimeoutException.class)
+					.hasMessageContaining("Reply timed out");
 			}
 			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
 		}
@@ -266,6 +267,7 @@ public class ReplyingKafkaTemplateTests {
 			String value2 = iterator.next().value();
 			assertThat(value2).isIn("fOO", "FOO");
 			assertThat(value2).isNotSameAs(value1);
+			assertThat(consumerRecord.topic()).isEqualTo(AggregatingReplyingKafkaTemplate.AGGREGATED_RESULTS_TOPIC);
 		}
 		finally {
 			template.stop();
@@ -293,7 +295,9 @@ public class ReplyingKafkaTemplateTests {
 				throw e;
 			}
 			catch (ExecutionException e) {
-				assertThat(e).hasCauseExactlyInstanceOf(KafkaException.class).hasMessageContaining("Reply timed out");
+				assertThat(e)
+					.hasCauseExactlyInstanceOf(KafkaReplyTimeoutException.class)
+					.hasMessageContaining("Reply timed out");
 			}
 			Thread.sleep(10_000);
 			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
@@ -325,6 +329,8 @@ public class ReplyingKafkaTemplateTests {
 			String value2 = iterator.next().value();
 			assertThat(value2).isIn("fOO", "FOO");
 			assertThat(value2).isNotSameAs(value1);
+			assertThat(consumerRecord.topic())
+					.isEqualTo(AggregatingReplyingKafkaTemplate.PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC);
 		}
 		finally {
 			template.stop();

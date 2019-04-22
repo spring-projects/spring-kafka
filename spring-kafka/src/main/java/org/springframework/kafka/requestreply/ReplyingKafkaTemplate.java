@@ -272,7 +272,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 					this.logger.warn("Reply timed out for: " + record + WITH_CORRELATION_ID + correlationId);
 				}
 				if (!handleTimeout(correlationId, removed)) {
-					removed.setException(new KafkaException("Reply timed out"));
+					removed.setException(new KafkaReplyTimeoutException("Reply timed out"));
 				}
 			}
 		}, Instant.now().plusMillis(this.replyTimeout));

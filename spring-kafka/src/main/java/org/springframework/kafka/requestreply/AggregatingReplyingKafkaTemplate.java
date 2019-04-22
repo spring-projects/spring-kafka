@@ -24,11 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
@@ -56,11 +57,23 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 		extends ReplyingKafkaTemplate<K, V, Collection<ConsumerRecord<K, R>>>
 		implements BatchConsumerAwareMessageListener<K, Collection<ConsumerRecord<K, R>>> {
 
+	/**
+	 * Pseudo topic name for the "outer" {@link ConsumerRecords} that has the aggregated
+	 * results in its value after a normal release by the release strategy.
+	 */
+	public static final String AGGREGATED_RESULTS_TOPIC = "aggregatedResults";
+
+	/**
+	 * Pseudo topic name for the "outer" {@link ConsumerRecords} that has the aggregated
+	 * results in its value after a timeout.
+	 */
+	public static final String PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC = "partialResultsAfterTimeout";
+
 	private final ConcurrentMap<CorrelationKey, List<ConsumerRecord<K, R>>> pending = new ConcurrentHashMap<>();
 
 	private final Map<TopicPartition, Long> offsets = new HashMap<>();
 
-	private final Function<Collection<ConsumerRecord<K, R>>, Boolean> releaseStrategy;
+	private final Predicate<Collection<ConsumerRecord<K, R>>> releaseStrategy;
 
 	private Duration commitTimeout = Duration.ofSeconds(30);
 
@@ -75,7 +88,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	 */
 	public AggregatingReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, Collection<ConsumerRecord<K, R>>> replyContainer,
-			Function<Collection<ConsumerRecord<K, R>>, Boolean> releaseStrategy) {
+			Predicate<Collection<ConsumerRecord<K, R>>> releaseStrategy) {
 
 		super(producerFactory, replyContainer);
 		Assert.notNull(releaseStrategy, "'releaseStrategy' cannot be null");
@@ -115,9 +128,9 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 			else {
 				CorrelationKey correlationId = new CorrelationKey(correlation.value());
 				List<ConsumerRecord<K, R>> list = addToCollection(record, correlationId);
-				if (isPending(correlationId) && this.releaseStrategy.apply(list)) {
+				if (isPending(correlationId) && this.releaseStrategy.test(list)) {
 					ConsumerRecord<K, Collection<ConsumerRecord<K, R>>> done =
-							new ConsumerRecord<>("aggregatedResults", 0, 0L, null, list);
+							new ConsumerRecord<>(AGGREGATED_RESULTS_TOPIC, 0, 0L, null, list);
 					done.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
 					this.pending.remove(correlationId);
 					checkOffsetCommits(list, consumer);
@@ -156,7 +169,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 
 		List<ConsumerRecord<K, R>> removed = this.pending.remove(correlationId);
 		if (removed != null && this.returnPartialOnTimeout) {
-			future.set(new ConsumerRecord<>("partialResultsAfterTimeout", 0, 0L, null, removed));
+			future.set(new ConsumerRecord<>(PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC, 0, 0L, null, removed));
 			return true;
 		}
 		else {
