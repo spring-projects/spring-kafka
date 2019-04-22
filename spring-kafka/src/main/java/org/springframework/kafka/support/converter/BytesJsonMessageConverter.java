@@ -26,14 +26,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * JSON Message converter - {@code Bytes} on output, String, Bytes, or byte[] on input.
  * Used in conjunction with Kafka {@code BytesSerializer/BytesDeserializer}. More
- * efficient than {@link StringJsonMessageConverter} because the {@code String/byte[]} is
- * avoided.
+ * efficient than {@link StringJsonMessageConverter} because the {@code String<->byte[]}
+ * conversion is avoided.
  *
  * @author Gary Russell
  * @since 2.1.7
  *
  */
-public class BytesJsonMessageConverter extends StringJsonMessageConverter {
+public class BytesJsonMessageConverter extends JsonMessageConverter {
 
 	public BytesJsonMessageConverter() {
 		super();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2018-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,29 +22,29 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * JSON Message converter - String on output, String, Bytes, or byte[] on input. Used in
- * conjunction with Kafka
- * {@code StringSerializer/StringDeserializer or BytesDeserializer}. Consider using the
- * BytesJsonMessageConverter instead.
+ * JSON Message converter - {@code byte[]} on output, String, Bytes, or byte[] on input.
+ * Used in conjunction with Kafka {@code ByteArraySerializer/ByteArrayDeserializer}. More
+ * efficient than {@link StringJsonMessageConverter} because the {@code String<->byte[]}
+ * conversion is avoided.
  *
  * @author Gary Russell
- * @author Artem Bilan
- * @author Dariusz Szablinski
+ * @since 2.3
+ *
  */
-public class StringJsonMessageConverter extends JsonMessageConverter {
+public class ByteArrayJsonMessageConverter extends JsonMessageConverter {
 
-	public StringJsonMessageConverter() {
+	public ByteArrayJsonMessageConverter() {
 		super();
 	}
 
-	public StringJsonMessageConverter(ObjectMapper objectMapper) {
+	public ByteArrayJsonMessageConverter(ObjectMapper objectMapper) {
 		super(objectMapper);
 	}
 
 	@Override
 	protected Object convertPayload(Message<?> message) {
 		try {
-			return this.objectMapper.writeValueAsString(message.getPayload());
+			return getObjectMapper().writeValueAsBytes(message.getPayload());
 		}
 		catch (JsonProcessingException e) {
 			throw new ConversionException("Failed to convert to JSON", e);

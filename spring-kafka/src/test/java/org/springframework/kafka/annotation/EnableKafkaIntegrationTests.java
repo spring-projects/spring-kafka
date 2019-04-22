@@ -65,6 +65,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.web.JsonPath;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
@@ -97,6 +98,8 @@ import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.support.converter.JsonMessageConverter;
+import org.springframework.kafka.support.converter.ProjectingMessageConverter;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
@@ -149,7 +152,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
-			"annotated34", "annotated35", "annotated36");
+			"annotated34", "annotated35", "annotated36", "annotated37");
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -745,6 +748,14 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.convertedKey).isEqualTo("foo");
 	}
 
+	@Test
+	public void testProjection() throws InterruptedException {
+		template.send("annotated37", 0, "{ \"username\" : \"SomeUsername\", \"user\" : { \"name\" : \"SomeName\"}}");
+		assertThat(this.listener.projectionLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.name).isEqualTo("SomeName");
+		assertThat(this.listener.username).isEqualTo("SomeUsername");
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -830,7 +841,7 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			StringJsonMessageConverter converter = new StringJsonMessageConverter();
+			JsonMessageConverter converter = new JsonMessageConverter();
 			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
 			converter.setTypeMapper(typeMapper);
@@ -846,12 +857,25 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			StringJsonMessageConverter converter = new StringJsonMessageConverter();
+			JsonMessageConverter converter = new JsonMessageConverter();
 			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
 			typeMapper.setTypePrecedence(TypePrecedence.TYPE_ID);
 			converter.setTypeMapper(typeMapper);
 			factory.setMessageConverter(converter);
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> projectionListenerContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			JsonMessageConverter converter = new JsonMessageConverter();
+			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+			typeMapper.addTrustedPackages("*");
+			converter.setTypeMapper(typeMapper);
+			factory.setMessageConverter(new ProjectingMessageConverter(converter));
 			return factory;
 		}
 
@@ -1287,97 +1311,105 @@ public class EnableKafkaIntegrationTests {
 
 		private final ThreadLocal<ConsumerSeekCallback> seekCallBack = new ThreadLocal<>();
 
-		private final CountDownLatch latch1 = new CountDownLatch(1);
+		final CountDownLatch latch1 = new CountDownLatch(1);
 
-		private final CountDownLatch latch2 = new CountDownLatch(2); // seek
+		final CountDownLatch latch2 = new CountDownLatch(2); // seek
 
-		private final CountDownLatch latch3 = new CountDownLatch(1);
+		final CountDownLatch latch3 = new CountDownLatch(1);
 
-		private final CountDownLatch latch4 = new CountDownLatch(1);
+		final CountDownLatch latch4 = new CountDownLatch(1);
 
-		private final CountDownLatch latch5 = new CountDownLatch(1);
+		final CountDownLatch latch5 = new CountDownLatch(1);
 
-		private final CountDownLatch latch6 = new CountDownLatch(1);
+		final CountDownLatch latch6 = new CountDownLatch(1);
 
-		private final CountDownLatch latch7 = new CountDownLatch(1);
+		final CountDownLatch latch7 = new CountDownLatch(1);
 
-		private final CountDownLatch latch7a = new CountDownLatch(2);
+		final CountDownLatch latch7a = new CountDownLatch(2);
 
-		private volatile String latch7String;
+		volatile String latch7String;
 
-		private final CountDownLatch latch8 = new CountDownLatch(1);
+		final CountDownLatch latch8 = new CountDownLatch(1);
 
-		private final CountDownLatch latch9 = new CountDownLatch(1);
+		final CountDownLatch latch9 = new CountDownLatch(1);
 
-		private final CountDownLatch latch10 = new CountDownLatch(1);
+		final CountDownLatch latch10 = new CountDownLatch(1);
 
-		private final CountDownLatch latch11 = new CountDownLatch(1);
+		final CountDownLatch latch11 = new CountDownLatch(1);
 
-		private final CountDownLatch latch12 = new CountDownLatch(1);
+		final CountDownLatch latch12 = new CountDownLatch(1);
 
-		private final CountDownLatch latch13 = new CountDownLatch(1);
+		final CountDownLatch latch13 = new CountDownLatch(1);
 
-		private final CountDownLatch latch14 = new CountDownLatch(1);
+		final CountDownLatch latch14 = new CountDownLatch(1);
 
-		private final CountDownLatch latch15 = new CountDownLatch(1);
+		final CountDownLatch latch15 = new CountDownLatch(1);
 
-		private final CountDownLatch latch16 = new CountDownLatch(1);
+		final CountDownLatch latch16 = new CountDownLatch(1);
 
-		private final CountDownLatch latch17 = new CountDownLatch(4);
+		final CountDownLatch latch17 = new CountDownLatch(4);
 
-		private final CountDownLatch latch18 = new CountDownLatch(2);
+		final CountDownLatch latch18 = new CountDownLatch(2);
 
-		private final CountDownLatch latch19 = new CountDownLatch(1);
+		final CountDownLatch latch19 = new CountDownLatch(1);
 
-		private final CountDownLatch latch20 = new CountDownLatch(1);
+		final CountDownLatch latch20 = new CountDownLatch(1);
 
-		private final CountDownLatch latch21 = new CountDownLatch(1);
+		final CountDownLatch latch21 = new CountDownLatch(1);
 
-		private final CountDownLatch validationLatch = new CountDownLatch(1);
+		final CountDownLatch validationLatch = new CountDownLatch(1);
 
-		private Exception validationException;
+		final CountDownLatch eventLatch = new CountDownLatch(1);
 
-		private final CountDownLatch eventLatch = new CountDownLatch(1);
+		final CountDownLatch keyLatch = new CountDownLatch(1);
 
-		private final CountDownLatch keyLatch = new CountDownLatch(1);
+		final AtomicBoolean reposition12 = new AtomicBoolean();
 
-		private String convertedKey;
+		final CountDownLatch projectionLatch = new CountDownLatch(1);
 
-		private volatile Integer partition;
+		volatile Integer partition;
 
-		private volatile ConsumerRecord<?, ?> record;
+		volatile ConsumerRecord<?, ?> record;
 
-		private volatile Acknowledgment ack;
+		volatile Acknowledgment ack;
 
-		private volatile Object payload;
+		volatile Object payload;
 
-		private Integer key;
+		volatile Exception validationException;
 
-		private String topic;
+		volatile String convertedKey;
 
-		private Foo foo;
+		volatile Integer key;
 
-		private Foo listen16foo;
+		volatile String topic;
 
-		private volatile ListenerContainerIdleEvent event;
+		volatile Foo foo;
 
-		private volatile List<Integer> keys;
+		volatile Foo listen16foo;
 
-		private volatile List<Integer> partitions;
+		volatile ListenerContainerIdleEvent event;
 
-		private volatile List<String> topics;
+		volatile List<Integer> keys;
 
-		private volatile List<Long> offsets;
+		volatile List<Integer> partitions;
 
-		private volatile Consumer<?, ?> listen4Consumer;
+		volatile List<String> topics;
 
-		private volatile Consumer<?, ?> listen12Consumer;
+		volatile List<Long> offsets;
 
-		private volatile Consumer<?, ?> listen13Consumer;
+		volatile Consumer<?, ?> listen4Consumer;
 
-		private volatile ConsumerRecords<?, ?> consumerRecords;
+		volatile Consumer<?, ?> listen12Consumer;
 
-		private volatile String receivedGroupId;
+		volatile Consumer<?, ?> listen13Consumer;
+
+		volatile ConsumerRecords<?, ?> consumerRecords;
+
+		volatile String receivedGroupId;
+
+		volatile String username;
+
+		volatile String name;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
@@ -1516,8 +1548,6 @@ public class EnableKafkaIntegrationTests {
 			this.latch11.countDown();
 		}
 
-		private final AtomicBoolean reposition12 = new AtomicBoolean();
-
 		@KafkaListener(id = "list3", topics = "annotated16", containerFactory = "batchFactory",
 				errorHandler = "listen12ErrorHandler")
 		public void listen12(List<ConsumerRecord<Integer, String>> list, Consumer<?, ?> consumer) {
@@ -1644,6 +1674,14 @@ public class EnableKafkaIntegrationTests {
 				containerFactory = "kafkaJsonListenerContainerFactory")
 		public void validatedListener(@Payload @Valid ValidatedClass val) {
 			// NOSONAR
+		}
+
+		@KafkaListener(id = "projection", topics = "annotated37",
+				containerFactory = "projectionListenerContainerFactory")
+		public void projectionListener(ProjectionSample sample) {
+			this.username = sample.getUsername();
+			this.name = sample.getName();
+			this.projectionLatch.countDown();
 		}
 
 		@Override
@@ -1905,5 +1943,15 @@ public class EnableKafkaIntegrationTests {
 		}
 
 	}
+
+	interface ProjectionSample {
+
+		String getUsername();
+
+		@JsonPath("$.user.name")
+		String getName();
+
+	}
+
 
 }

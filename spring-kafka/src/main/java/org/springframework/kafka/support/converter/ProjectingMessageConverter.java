@@ -22,6 +22,7 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.utils.Bytes;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.data.projection.MethodInterceptorFactory;
@@ -42,6 +43,7 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
  *
  * @author Oliver Gierke
  * @author Artem Bilan
+ * @author Gary Russell
  *
  * @since 2.1.1
  */
@@ -52,7 +54,7 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 	private final MessagingMessageConverter delegate;
 
 	/**
-	 * Creates a new {@link ProjectingMessageConverter} using a
+	 * Create a new {@link ProjectingMessageConverter} using a
 	 * {@link JacksonUtils#enhancedObjectMapper()} by default.
 	 * @since 2.3
 	 */
@@ -61,11 +63,31 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 	}
 
 	/**
-	 * Creates a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * Create a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
 	 * @param mapper must not be {@literal null}.
 	 */
 	public ProjectingMessageConverter(ObjectMapper mapper) {
+		this(mapper, new StringJsonMessageConverter());
+	}
+
+	/**
+	 * Create a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * @param delegate the delegate converter for outbound and non-interfaces.
+	 * @since 2.3
+	 */
+	public ProjectingMessageConverter(MessagingMessageConverter delegate) {
+		this(JacksonUtils.enhancedObjectMapper(), new StringJsonMessageConverter());
+	}
+
+	/**
+	 * Create a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * @param mapper must not be {@literal null}.
+	 * @param delegate the delegate converter for outbound and non-interfaces.
+	 * @since 2.3
+	 */
+	public ProjectingMessageConverter(ObjectMapper mapper, MessagingMessageConverter delegate) {
 		Assert.notNull(mapper, "ObjectMapper must not be null");
+		Assert.notNull(delegate, "'delegate' cannot be null");
 
 		JacksonMappingProvider provider = new JacksonMappingProvider(mapper);
 		MethodInterceptorFactory interceptorFactory = new JsonProjectingMethodInterceptorFactory(provider);
@@ -74,7 +96,7 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 		factory.registerMethodInvokerFactory(interceptorFactory);
 
 		this.projectionFactory = factory;
-		this.delegate = new StringJsonMessageConverter(mapper);
+		this.delegate = delegate;
 	}
 
 	@Override
@@ -118,7 +140,12 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 			return (byte[]) source;
 		}
 
-		throw new ConversionException(String.format("Unsupported payload type '%s'. Expected 'String' or 'byte[]'",
+		if (source instanceof Bytes) {
+			return ((Bytes) source).get();
+		}
+
+		throw new ConversionException(String.format(
+				"Unsupported payload type '%s'. Expected 'String', 'Bytes', or 'byte[]'",
 				source.getClass()), null);
 	}
 

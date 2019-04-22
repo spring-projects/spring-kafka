@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.utils.Bytes;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -36,11 +37,11 @@ import org.springframework.data.web.JsonPath;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.support.MessageBuilder;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.DocumentContext;
 
 /**
  * @author Oliver Gierke
+ * @author Gary Russell
  *
  * @since 2.1.1
  */
@@ -52,7 +53,9 @@ public class ProjectingMessageConverterTests {
 
 	private static final byte[] BYTE_ARRAY_PAYLOAD = STRING_PAYLOAD.getBytes(StandardCharsets.UTF_8);
 
-	private final ProjectingMessageConverter converter = new ProjectingMessageConverter(new ObjectMapper());
+	private static final Bytes BYTES_PAYLOAD = Bytes.wrap(BYTE_ARRAY_PAYLOAD);
+
+	private final ProjectingMessageConverter converter = new ProjectingMessageConverter();
 
 	@Mock
 	private ConsumerRecord<?, ?> record;
@@ -63,7 +66,7 @@ public class ProjectingMessageConverterTests {
 	@Test
 	public void rejectsNullObjectMapper() {
 		this.exception.expect(IllegalArgumentException.class);
-		new ProjectingMessageConverter(null);
+		new ProjectingMessageConverter(null, null);
 	}
 
 	@Test
@@ -77,12 +80,14 @@ public class ProjectingMessageConverterTests {
 	public void createsProjectedPayloadForInterface() {
 		assertProjectionProxy(STRING_PAYLOAD);
 		assertProjectionProxy(BYTE_ARRAY_PAYLOAD);
+		assertProjectionProxy(BYTES_PAYLOAD);
 	}
 
 	@Test
 	public void usesJacksonToCreatePayloadForClass() {
 		assertSimpleObject(STRING_PAYLOAD);
 		assertSimpleObject(BYTE_ARRAY_PAYLOAD);
+		assertSimpleObject(BYTES_PAYLOAD);
 	}
 
 	@Test
