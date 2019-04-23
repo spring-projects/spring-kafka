@@ -18,26 +18,33 @@ package org.springframework.kafka.requestreply;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -53,8 +60,10 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
@@ -276,7 +285,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	@Ignore("time sensitive")
+//	@Ignore("time sensitive")
 	public void testAggregateTimeout() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionInitialOffset(E_REPLY, 0), 3);
@@ -309,7 +318,7 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	@Test
-	@Ignore("time sensitive")
+//	@Ignore("time sensitive")
 	public void testAggregateTimeoutPartial() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionInitialOffset(F_REPLY, 0), 3);
@@ -335,6 +344,35 @@ public class ReplyingKafkaTemplateTests {
 		finally {
 			template.stop();
 		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	public void testAggregateDiscardOrphans() throws InterruptedException {
+		GenericMessageListenerContainer container = mock(GenericMessageListenerContainer.class);
+		ContainerProperties properties = new ContainerProperties("one", "two");
+		properties.setAckMode(AckMode.MANUAL);
+		given(container.getContainerProperties()).willReturn(properties);
+		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(
+				mock(ProducerFactory.class), container, coll -> false);
+		List<ConsumerRecord> records = new ArrayList<>();
+		ConsumerRecord record = new ConsumerRecord("one", 0, 0L, null, "test1");
+		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, "one".getBytes()));
+		records.add(record);
+		record = new ConsumerRecord("two", 0, 0L, null, "test1");
+		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, "two".getBytes()));
+		records.add(record);
+		Consumer consumer = mock(Consumer.class);
+		template.onMessage(records, consumer);
+		assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).hasSize(2);
+		template.setReplyTimeout(1);
+		Thread.sleep(20);
+		template.onMessage(Collections.emptyList(), consumer);
+		assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).hasSize(0);
+		Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+		offsets.put(new TopicPartition("one", 0), new OffsetAndMetadata(1));
+		offsets.put(new TopicPartition("two", 0), new OffsetAndMetadata(1));
+		verify(consumer).commitSync(offsets, Duration.ofSeconds(30));
 	}
 
 	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(String topic) throws Exception {

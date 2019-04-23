@@ -20,8 +20,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
@@ -69,7 +71,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	 */
 	public static final String PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC = "partialResultsAfterTimeout";
 
-	private final ConcurrentMap<CorrelationKey, List<ConsumerRecord<K, R>>> pending = new ConcurrentHashMap<>();
+	private final ConcurrentMap<CorrelationKey, Set<RecordHolder<K, R>>> pending = new ConcurrentHashMap<>();
 
 	private final Map<TopicPartition, Long> offsets = new HashMap<>();
 
@@ -78,6 +80,8 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	private Duration commitTimeout = Duration.ofSeconds(30);
 
 	private boolean returnPartialOnTimeout;
+
+	private volatile long lastOrphanCheck = System.currentTimeMillis();
 
 	/**
 	 * Construct an instance using the provided parameter arguments. The releaseStrategy
@@ -117,6 +121,10 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 
 	@Override
 	public void onMessage(List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> data, Consumer<?, ?> consumer) {
+		long now = System.currentTimeMillis();
+		if (now - this.lastOrphanCheck > getReplyTimeout() * 10) { // NOSONAR magic #
+			weedOrphans(consumer);
+		}
 		List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> completed = new ArrayList<>();
 		data.forEach(record -> {
 			Header correlation = record.headers().lastHeader(KafkaHeaders.CORRELATION_ID);
@@ -127,13 +135,16 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 			}
 			else {
 				CorrelationKey correlationId = new CorrelationKey(correlation.value());
-				List<ConsumerRecord<K, R>> list = addToCollection(record, correlationId);
+				List<ConsumerRecord<K, R>> list = addToCollection(record, correlationId, now).stream()
+						.map(entry -> entry.getRecord())
+						.collect(Collectors.toList());
 				if (isPending(correlationId) && this.releaseStrategy.test(list)) {
 					ConsumerRecord<K, Collection<ConsumerRecord<K, R>>> done =
 							new ConsumerRecord<>(AGGREGATED_RESULTS_TOPIC, 0, 0L, null, list);
 					done.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
 					this.pending.remove(correlationId);
-					checkOffsetCommits(list, consumer);
+					checkOffsets(list);
+					commitIfNecessary(consumer);
 					completed.add(done);
 				}
 			}
@@ -143,13 +154,57 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 		}
 	}
 
-	private synchronized void checkOffsetCommits(List<ConsumerRecord<K, R>> list, Consumer<?, ?> consumer) {
+	/**
+	 * We may receive a partial delivery of a previously completed group of replies
+	 * e.g. after a rebalance. To avoid a memory leak, check for such conditions and
+	 * discard from time-to-time.
+	 * @param consumer the consumer.
+	 */
+	private void weedOrphans(Consumer<?, ?> consumer) {
+		Map<CorrelationKey, List<ConsumerRecord<K, R>>> orphaned = this.pending.entrySet()
+			.stream()
+			.filter(entry -> entry.getValue()
+					.stream()
+					.allMatch(holder -> holder.getTimestamp() > this.lastOrphanCheck))
+			.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()
+					.stream()
+					.map(holder -> holder.getRecord())
+					.collect(Collectors.toList())));
+		logger.debug("Discarding " + orphaned + " most likely a partial redelivery of an already released group");
+		orphaned.values()
+			.forEach(list -> checkOffsets(list));
+		orphaned.keySet().forEach(corr -> this.pending.remove(corr));
+		commitIfNecessary(consumer);
+	}
+
+	@Override
+	protected boolean handleTimeout(CorrelationKey correlationId,
+			RequestReplyFuture<K, V, Collection<ConsumerRecord<K, R>>> future) {
+
+		Set<RecordHolder<K, R>> removed = this.pending.remove(correlationId);
+		if (removed != null && this.returnPartialOnTimeout) {
+			List<ConsumerRecord<K, R>> list = removed.stream()
+				.map(entry -> entry.getRecord())
+				.collect(Collectors.toList());
+			future.set(new ConsumerRecord<>(PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC, 0, 0L, null, list));
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	private synchronized void checkOffsets(List<ConsumerRecord<K, R>> list) {
 		list.forEach(record -> this.offsets.compute(
-			new TopicPartition(record.topic(), record.partition()), (k, v) -> record.offset()));
-		if (this.pending.isEmpty()) {
+			new TopicPartition(record.topic(), record.partition()),
+				(k, v) -> v == null ? record.offset() + 1 : Math.max(v, record.offset() + 1)));
+	}
+
+	private synchronized void commitIfNecessary(Consumer<?, ?> consumer) {
+		if (this.pending.isEmpty() && !this.offsets.isEmpty()) {
 			consumer.commitSync(this.offsets.entrySet().stream()
 					.collect(Collectors.toMap(
-											entry -> entry.getKey(),
+											Map.Entry::getKey,
 											entry -> new OffsetAndMetadata(entry.getValue()))),
 								this.commitTimeout);
 			this.offsets.clear();
@@ -157,24 +212,68 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private List<ConsumerRecord<K, R>> addToCollection(ConsumerRecord record, CorrelationKey correlationId) {
-		List<ConsumerRecord<K, R>> list = this.pending.computeIfAbsent(correlationId, id -> new ArrayList<>());
-		list.add(record);
-		return list;
+	private Set<RecordHolder<K, R>> addToCollection(ConsumerRecord record, CorrelationKey correlationId, long now) {
+		Set<RecordHolder<K, R>> set = this.pending.computeIfAbsent(correlationId, id -> new LinkedHashSet<>());
+		set.add(new RecordHolder<>(record, now));
+		return set;
 	}
 
-	@Override
-	protected boolean handleTimeout(CorrelationKey correlationId,
-			RequestReplyFuture<K, V, Collection<ConsumerRecord<K, R>>> future) {
+	private static final class RecordHolder<K, R> {
 
-		List<ConsumerRecord<K, R>> removed = this.pending.remove(correlationId);
-		if (removed != null && this.returnPartialOnTimeout) {
-			future.set(new ConsumerRecord<>(PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC, 0, 0L, null, removed));
-			return true;
+		private final ConsumerRecord<K, R> record;
+
+		private final long timestamp;
+
+		RecordHolder(ConsumerRecord<K, R> record, long timestamp) {
+			this.record = record;
+			this.timestamp = timestamp;
 		}
-		else {
+
+		ConsumerRecord<K, R> getRecord() {
+			return this.record;
+		}
+
+		long getTimestamp() {
+			return this.timestamp;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result
+					+ this.record.topic().hashCode()
+					+ this.record.partition()
+					+ (int) this.record.offset();
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			@SuppressWarnings("rawtypes")
+			RecordHolder other = (RecordHolder) obj;
+			if (this.record == null) {
+				if (other.record != null) {
+					return false;
+				}
+			}
+			else if (this.record.topic().equals(other.record.topic())
+					&& this.record.partition() == other.record.partition()
+					&& this.record.offset() == other.record.offset()) {
+				return true;
+			}
 			return false;
 		}
+
 	}
 
 }

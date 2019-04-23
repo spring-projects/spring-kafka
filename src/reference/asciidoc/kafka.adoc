@@ -619,6 +619,10 @@ public static final String PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC = "partialResults
 
 The real `ConsumerRecord` s in the `Collection` contain the actual topic(s) from which the replies are received.
 
+IMPORTANT: The listener container for the replies MUST be configured with `AckMode.MANUAL` or `AckMode.MANUAL_IMMEDIATE`; the consumer property `enable.auto.commit` must be `false` (the default since version 2.3).
+To avoid any possibility of losing messages, the template only commits offsets when there are zero requests outstanding, i.e. when the last outstanding request is released by the release strategy.
+After a rebalance, it is possible for duplicate reply deliveries; these will be ignored for any in-flight requests; you may see error log messages when duplicate replies are received for already released replies.
+
 ==== Receiving Messages
 
 You can receive messages by configuring a `MessageListenerContainer` and providing a message listener or by

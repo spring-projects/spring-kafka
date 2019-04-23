@@ -135,6 +135,10 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.schedulerSet = true;
 	}
 
+	protected long getReplyTimeout() {
+		return this.replyTimeout;
+	}
+
 	public void setReplyTimeout(long replyTimeout) {
 		Assert.isTrue(replyTimeout >= 0, "'replyTimeout' must be >= 0");
 		this.replyTimeout = replyTimeout;
