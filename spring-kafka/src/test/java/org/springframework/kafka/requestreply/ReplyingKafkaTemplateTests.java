@@ -18,7 +18,9 @@ package org.springframework.kafka.requestreply;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -33,12 +35,14 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
@@ -146,6 +150,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -163,6 +168,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -181,6 +187,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -201,6 +208,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -231,6 +239,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -255,6 +264,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -281,6 +291,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -315,6 +326,7 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
@@ -344,36 +356,46 @@ public class ReplyingKafkaTemplateTests {
 		}
 		finally {
 			template.stop();
+			template.destroy();
 		}
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	public void testAggregateDiscardOrphans() throws InterruptedException {
+	public void testAggregateOrphansNotStored() throws Exception {
 		GenericMessageListenerContainer container = mock(GenericMessageListenerContainer.class);
-		ContainerProperties properties = new ContainerProperties("one", "two");
+		ContainerProperties properties = new ContainerProperties("two");
 		properties.setAckMode(AckMode.MANUAL);
 		given(container.getContainerProperties()).willReturn(properties);
-		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(
-				mock(ProducerFactory.class), container, coll -> false);
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Producer producer = mock(Producer.class);
+		given(pf.createProducer()).willReturn(producer);
+		AtomicReference<byte[]> correlation = new AtomicReference<>();
+		willAnswer(invocation -> {
+			ProducerRecord rec = invocation.getArgument(0);
+			correlation.set(rec.headers().lastHeader(KafkaHeaders.CORRELATION_ID).value());
+			return null;
+		}).given(producer).send(any(), any());
+		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(pf, container, coll -> true);
+		template.setReplyTimeout(30_000);
+		template.start();
 		List<ConsumerRecord> records = new ArrayList<>();
-		ConsumerRecord record = new ConsumerRecord("one", 0, 0L, null, "test1");
-		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, "one".getBytes()));
-		records.add(record);
-		record = new ConsumerRecord("two", 0, 0L, null, "test1");
-		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, "two".getBytes()));
+		ConsumerRecord record = new ConsumerRecord("two", 0, 0L, null, "test1");
+		RequestReplyFuture future = template.sendAndReceive(new ProducerRecord("one", null, "test"));
+		record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
 		records.add(record);
 		Consumer consumer = mock(Consumer.class);
 		template.onMessage(records, consumer);
-		assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).hasSize(2);
-		template.setReplyTimeout(1);
-		Thread.sleep(20);
-		template.onMessage(Collections.emptyList(), consumer);
+		assertThat(future.get(10, TimeUnit.SECONDS)).isNotNull();
 		assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).hasSize(0);
 		Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-		offsets.put(new TopicPartition("one", 0), new OffsetAndMetadata(1));
 		offsets.put(new TopicPartition("two", 0), new OffsetAndMetadata(1));
 		verify(consumer).commitSync(offsets, Duration.ofSeconds(30));
+		// simulate redelivery after completion
+		template.onMessage(records, consumer);
+		assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).hasSize(0);
+		template.stop();
+		template.destroy();
 	}
 
 	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(String topic) throws Exception {

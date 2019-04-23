@@ -91,6 +91,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private volatile boolean running;
 
+	private volatile boolean schedulerInitialized;
+
 	public ReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, R> replyContainer) {
 
@@ -198,8 +200,9 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	@Override
 	public void afterPropertiesSet() {
-		if (!this.schedulerSet) {
+		if (!this.schedulerSet && !this.schedulerInitialized) {
 			((ThreadPoolTaskScheduler) this.scheduler).initialize();
+			this.schedulerInitialized = true;
 		}
 	}
 
@@ -355,14 +358,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			else {
 				RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);
 				if (future == null) {
-					if (this.sharedReplyTopic) {
-						if (this.logger.isDebugEnabled()) {
-							this.logger.debug(missingCorrelationLogMessage(record, correlationId));
-						}
-					}
-					else if (this.logger.isErrorEnabled()) {
-						this.logger.error(missingCorrelationLogMessage(record, correlationId));
-					}
+					logLateArrival(record, correlationId);
 				}
 				else {
 					if (this.logger.isDebugEnabled()) {
@@ -372,6 +368,17 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 			}
 		});
+	}
+
+	protected void logLateArrival(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
+		if (this.sharedReplyTopic) {
+			if (this.logger.isDebugEnabled()) {
+				this.logger.debug(missingCorrelationLogMessage(record, correlationId));
+			}
+		}
+		else if (this.logger.isErrorEnabled()) {
+			this.logger.error(missingCorrelationLogMessage(record, correlationId));
+		}
 	}
 
 	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
