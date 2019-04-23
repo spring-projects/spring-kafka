@@ -123,7 +123,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	public void onMessage(List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> data, Consumer<?, ?> consumer) {
 		long now = System.currentTimeMillis();
 		if (now - this.lastOrphanCheck > getReplyTimeout() * 10) { // NOSONAR magic #
-			weedOrphans(consumer);
+			weedOrphans(consumer, now);
 		}
 		List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> completed = new ArrayList<>();
 		data.forEach(record -> {
@@ -159,8 +159,9 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	 * e.g. after a rebalance. To avoid a memory leak, check for such conditions and
 	 * discard from time-to-time.
 	 * @param consumer the consumer.
+	 * @param now the current time.
 	 */
-	private void weedOrphans(Consumer<?, ?> consumer) {
+	private void weedOrphans(Consumer<?, ?> consumer, long now) {
 		Map<CorrelationKey, List<ConsumerRecord<K, R>>> orphaned = this.pending.entrySet()
 			.stream()
 			.filter(entry -> entry.getValue()
@@ -173,10 +174,13 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 		if (logger.isDebugEnabled()) {
 			logger.debug("Discarding " + orphaned + " most likely a partial redelivery of an already released group");
 		}
-		orphaned.values()
-			.forEach(list -> checkOffsets(list));
-		orphaned.keySet().forEach(corr -> this.pending.remove(corr));
+		orphaned.entrySet()
+			.forEach(entry -> {
+				checkOffsets(entry.getValue());
+				this.pending.remove(entry.getKey());
+			});
 		commitIfNecessary(consumer);
+		this.lastOrphanCheck = now;
 	}
 
 	@Override

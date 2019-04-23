@@ -255,7 +255,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug("Sending: " + record + WITH_CORRELATION_ID + correlationId);
 		}
-		TemplateRequestReplyFuture<K, V, R> future = new TemplateRequestReplyFuture<>();
+		RequestReplyFuture<K, V, R> future = new RequestReplyFuture<>();
 		this.futures.put(correlationId, future);
 		try {
 			future.setSendFuture(send(record));
@@ -377,22 +377,6 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
 		return "No pending reply: " + record + WITH_CORRELATION_ID
 				+ correlationId + ", perhaps timed out, or using a shared reply topic";
-	}
-
-	/**
-	 * A listenable future for requests/replies.
-	 *
-	 * @param <K> the key type.
-	 * @param <V> the outbound data type.
-	 * @param <R> the reply data type.
-	 * TODO: Remove this in 2.3 - adds no value to the super class
-	 */
-	public static class TemplateRequestReplyFuture<K, V, R> extends RequestReplyFuture<K, V, R> {
-
-		TemplateRequestReplyFuture() {
-			super();
-		}
-
 	}
 
 }
