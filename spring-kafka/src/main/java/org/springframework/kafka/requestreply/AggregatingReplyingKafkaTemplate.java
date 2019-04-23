@@ -170,7 +170,9 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 					.stream()
 					.map(holder -> holder.getRecord())
 					.collect(Collectors.toList())));
-		logger.debug("Discarding " + orphaned + " most likely a partial redelivery of an already released group");
+		if (logger.isDebugEnabled()) {
+			logger.debug("Discarding " + orphaned + " most likely a partial redelivery of an already released group");
+		}
 		orphaned.values()
 			.forEach(list -> checkOffsets(list));
 		orphaned.keySet().forEach(corr -> this.pending.remove(corr));
