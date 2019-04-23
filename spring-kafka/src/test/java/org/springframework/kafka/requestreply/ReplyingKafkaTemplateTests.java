@@ -45,6 +45,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -285,7 +286,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-//	@Ignore("time sensitive")
+	@Ignore("time sensitive")
 	public void testAggregateTimeout() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionInitialOffset(E_REPLY, 0), 3);
@@ -318,7 +319,7 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	@Test
-//	@Ignore("time sensitive")
+	@Ignore("time sensitive")
 	public void testAggregateTimeoutPartial() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionInitialOffset(F_REPLY, 0), 3);
