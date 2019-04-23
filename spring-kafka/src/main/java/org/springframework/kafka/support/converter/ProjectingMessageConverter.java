@@ -76,7 +76,7 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 	 * @since 2.3
 	 */
 	public ProjectingMessageConverter(MessagingMessageConverter delegate) {
-		this(JacksonUtils.enhancedObjectMapper(), new StringJsonMessageConverter());
+		this(JacksonUtils.enhancedObjectMapper(), delegate);
 	}
 
 	/**

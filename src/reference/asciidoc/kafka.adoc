@@ -2452,6 +2452,8 @@ On the producer side, when you use Spring Integration or the `KafkaTemplate.send
 * `ByteArrayJsonMessageConverter` with `ByteArraySerializer`
 
 Again, using `byte[]` or `Bytes` is more efficient because they avoid a `String` to `byte[]` conversion.
+
+For convenience, the framework also provides a `StringOrBytesSerializer` which can serialize all three value types so it can be used with any of the message converters.
 ====
 
 [[data-projection]]
@@ -2485,7 +2487,7 @@ public void projection(SomeSample in) {
 ====
 
 Accessor methods will be used to lookup the property name as field in the received JSON document by default.
-The @JsonPath expression allows customization of the value lookup, and even to define multiple JSONPath expressions, to lookup values from multiple places until an expression returns an actual value.
+The `@JsonPath` expression allows customization of the value lookup, and even to define multiple JSON Path expressions, to lookup values from multiple places until an expression returns an actual value.
 
 To enable this feature, use a `ProjectingMessageConverter` configured with an appropriate delegate converter (used for outbound conversion and converting non-projection interfaces).
 You must also add `spring-data:spring-data-commons` and `com.jayway.jsonpath:json-path` to the class path.
