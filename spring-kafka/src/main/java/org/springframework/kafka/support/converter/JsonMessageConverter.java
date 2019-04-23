@@ -46,7 +46,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
  */
 public class JsonMessageConverter extends MessagingMessageConverter {
 
-	protected final ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper;
 
 	private Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 
@@ -126,7 +126,7 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 			}
 		}
 		else {
-			throw new IllegalStateException("Only String or byte[] supported");
+			throw new IllegalStateException("Only String, Bytes, or byte[] supported");
 		}
 	}
 
