@@ -16,16 +16,20 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
@@ -280,31 +284,47 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected void checkTopics() {
 		if (this.containerProperties.isMissingTopicsFatal() && this.containerProperties.getTopicPattern() == null) {
-			try (Consumer<K, V> consumer =
-					this.consumerFactory.createConsumer(this.containerProperties.getGroupId(),
-							this.containerProperties.getClientId(), null,
-							this.containerProperties.getConsumerProperties())) {
-				if (consumer != null) {
+			Map<String, Object> configs = this.consumerFactory.getConfigurationProperties()
+				.entrySet()
+				.stream()
+				.filter(entry -> AdminClientConfig.configNames().contains(entry.getKey()))
+				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+			List<String> missing = null;
+			try (AdminClient client = AdminClient.create(configs)) {
+				if (client != null) {
 					String[] topics = this.containerProperties.getTopics();
 					if (topics == null) {
 						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
 								.map(TopicPartitionInitialOffset::topic)
 								.toArray(String[]::new);
 					}
-					List<String> missing = new ArrayList<>();
-					for (String topic : topics) {
-						if (consumer.partitionsFor(topic) == null) {
-							missing.add(topic);
-						}
-					}
-					if (missing.size() > 0) {
-						throw new IllegalStateException(
-								"Topic(s) " + missing.toString()
-										+ " is/are not present and missingTopicsFatal is true");
-					}
+					DescribeTopicsResult result = client.describeTopics(Arrays.asList(topics));
+					missing = result.values()
+						.entrySet()
+						.stream()
+						.filter(entry -> {
+							try {
+								entry.getValue().get(30, TimeUnit.SECONDS);
+								return false;
+							}
+							catch (@SuppressWarnings("unused") Exception e) {
+								return true;
+							}
+						})
+						.map(Entry::getKey)
+						.collect(Collectors.toList());
 				}
 			}
+			catch (Exception e) {
+				this.logger.error("Failed to check topic existence", e);
+			}
+			if (missing != null && missing.size() > 0) {
+				throw new IllegalStateException(
+						"Topic(s) " + missing.toString()
+								+ " is/are not present and missingTopicsFatal is true");
+			}
 		}
+
 	}
 
 	public void checkGroupId() {

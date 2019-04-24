@@ -152,7 +152,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
-			"annotated34", "annotated35", "annotated36", "annotated37");
+			"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart");
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 

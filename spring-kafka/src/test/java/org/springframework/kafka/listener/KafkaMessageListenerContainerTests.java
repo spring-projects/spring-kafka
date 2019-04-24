@@ -1876,6 +1876,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
@@ -1897,6 +1898,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "true", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setMissingTopicsFatal(false);
 		containerProps.setAckMode(AckMode.MANUAL);
 		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
@@ -1912,6 +1914,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		badContainer.setBatchErrorHandler(new BatchLoggingErrorHandler());
@@ -1927,6 +1930,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		badContainer.setErrorHandler(new LoggingErrorHandler());
