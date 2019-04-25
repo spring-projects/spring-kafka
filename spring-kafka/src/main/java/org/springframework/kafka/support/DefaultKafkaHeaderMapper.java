@@ -36,10 +36,8 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.MimeType;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdNodeBasedDeserializer;
@@ -230,9 +228,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 						target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(value)));
 						jsonHeaders.put(key, className);
 					}
-					catch (@SuppressWarnings("unused") Exception e) {
+					catch (Exception e) {
 						if (logger.isDebugEnabled()) {
-							logger.debug("Could not map " + key + " with type " + valueToAdd.getClass().getName());
+							logger.debug("Could not map " + key + " with type " + valueToAdd.getClass().getName(), e);
 						}
 					}
 				}
@@ -272,9 +270,8 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 							headers.put(header.key(), value);
 						}
 						catch (IOException e) {
-							logger.error("Could not decode json type: " + new String(header.value()) + " for key: " + header
-											.key(),
-									e);
+							logger.error("Could not decode json type: " + new String(header.value()) + " for key: " +
+									header.key(), e);
 							headers.put(header.key(), header.value());
 						}
 					}
@@ -283,16 +280,14 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					}
 				}
 				else {
-					headers.put(header.key(), headertValueToAddIn(header));
+					headers.put(header.key(), headerValueToAddIn(header));
 				}
 			}
 		});
 	}
 
-	private Object decodeValue(Header h, Class<?> type)
-			throws IOException, JsonParseException, JsonMappingException, LinkageError {
-
-		final ObjectMapper headerObjectMapper = getObjectMapper();
+	private Object decodeValue(Header h, Class<?> type) throws IOException, LinkageError {
+		ObjectMapper headerObjectMapper = getObjectMapper();
 		Object value = headerObjectMapper.readValue(h.value(), type);
 		if (type.equals(NonTrustedHeaderType.class)) {
 			// Upstream NTHT propagated; may be trusted here...

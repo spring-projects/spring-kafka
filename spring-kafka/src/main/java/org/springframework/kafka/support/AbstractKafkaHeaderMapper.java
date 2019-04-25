@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,8 @@ import org.springframework.util.PatternMatchUtils;
  * Base for Kafka header mappers.
  *
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.1.3
  *
  */
@@ -50,7 +53,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private final List<HeaderMatcher> matchers = new ArrayList<>();
 
-	private final Map<String, Boolean> rawMappedtHeaders = new HashMap<>();
+	private final Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 
 	private boolean mapAllStringsOut;
 
@@ -88,9 +91,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	protected final void addMatchers(HeaderMatcher... matchersToAdd) {
 		Assert.notNull(matchersToAdd, "'matchersToAdd' cannot be null");
 		Assert.noNullElements(matchersToAdd, "'matchersToAdd' cannot have null elements");
-		for (HeaderMatcher matcher : matchersToAdd) {
-			this.matchers.add(matcher);
-		}
+		Collections.addAll(this.matchers, matchersToAdd);
 	}
 
 	/**
@@ -98,7 +99,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * To map to a {@code String} for inbound, there must be an entry in the rawMappedHeaders map.
 	 * @param mapAllStringsOut true to map all strings.
 	 * @since 2.2.5
-	 * @see #setRawMappedHaeaders(Map)
+	 * @see #setRawMappedHeaders(Map)
 	 */
 	public void setMapAllStringsOut(boolean mapAllStringsOut) {
 		this.mapAllStringsOut = mapAllStringsOut;
@@ -112,7 +113,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * Set the charset to use when mapping String-valued headers to/from byte[]. Default UTF-8.
 	 * @param charset the charset.
 	 * @since 2.2.5
-	 * @see #setRawMappedHaeaders(Map)
+	 * @see #setRawMappedHeaders(Map)
 	 */
 	public void setCharset(Charset charset) {
 		Assert.notNull(charset, "'charset' cannot be null");
@@ -129,10 +130,10 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @see #setCharset(Charset)
 	 * @see #setMapAllStringsOut(boolean)
 	 */
-	public void setRawMappedHaeaders(Map<String, Boolean> rawMappedHeaders) {
+	public void setRawMappedHeaders(Map<String, Boolean> rawMappedHeaders) {
 		if (!ObjectUtils.isEmpty(rawMappedHeaders)) {
-			this.rawMappedtHeaders.clear();
-			this.rawMappedtHeaders.putAll(rawMappedHeaders);
+			this.rawMappedHeaders.clear();
+			this.rawMappedHeaders.putAll(rawMappedHeaders);
 		}
 	}
 
@@ -167,7 +168,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	/**
 	 * Check if the value is a String and convert to byte[], if so configured.
 	 * @param key the header name.
-	 * @param value the headet value.
+	 * @param value the header value.
 	 * @return the value to add.
 	 * @since 2.2.5
 	 */
@@ -181,7 +182,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	@Nullable
 	private byte[] mapRawOut(String header, Object value) {
-		if (this.mapAllStringsOut || this.rawMappedtHeaders.containsKey(header)) {
+		if (this.mapAllStringsOut || this.rawMappedHeaders.containsKey(header)) {
 			if (value instanceof byte[]) {
 				return (byte[]) value;
 			}
@@ -197,7 +198,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @param header the header.
 	 * @return the value to add.
 	 */
-	protected Object headertValueToAddIn(Header header) {
+	protected Object headerValueToAddIn(Header header) {
 		Object mapped = mapRawIn(header.key(), header.value());
 		if (mapped == null) {
 			mapped = header.value();
@@ -207,7 +208,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	@Nullable
 	private String mapRawIn(String header, byte[] value) {
-		Boolean asString = this.rawMappedtHeaders.get(header);
+		Boolean asString = this.rawMappedHeaders.get(header);
 		if (Boolean.TRUE.equals(asString)) {
 			return new String(value, this.charset);
 		}
@@ -275,7 +276,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 		private final boolean negate;
 
-		public SimplePatternBasedHeaderMatcher(String pattern) {
+		protected SimplePatternBasedHeaderMatcher(String pattern) {
 			this(pattern.startsWith("!") ? pattern.substring(1) : pattern, pattern.startsWith("!"));
 		}
 
