@@ -155,7 +155,7 @@ public class DefaultKafkaHeaderMapperTests {
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesAString", true);
 		rawMappedHeaders.put("thisOnesBytes", false);
-		mapper.setRawMappedHaeaders(rawMappedHeaders);
+		mapper.setRawMappedHeaders(rawMappedHeaders);
 		Map<String, Object> headersMap = new HashMap<>();
 		headersMap.put("thisOnesAString", "foo");
 		headersMap.put("thisOnesBytes", "bar");
@@ -180,7 +180,7 @@ public class DefaultKafkaHeaderMapperTests {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesBytes", false);
-		mapper.setRawMappedHaeaders(rawMappedHeaders);
+		mapper.setRawMappedHeaders(rawMappedHeaders);
 		Map<String, Object> headersMap = new HashMap<>();
 		headersMap.put("thisOnesAString", "foo");
 		headersMap.put("thisOnesBytes", "bar");
@@ -208,7 +208,7 @@ public class DefaultKafkaHeaderMapperTests {
 		mapper.setMapAllStringsOut(true);
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesBytes", false);
-		mapper.setRawMappedHaeaders(rawMappedHeaders);
+		mapper.setRawMappedHeaders(rawMappedHeaders);
 		Map<String, Object> headersMap = new HashMap<>();
 		headersMap.put("thisOnesAString", "foo");
 		headersMap.put("thisOnesBytes", "bar");
