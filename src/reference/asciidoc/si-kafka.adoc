@@ -375,7 +375,7 @@ Refer to the javadocs for available properties.
 
 [[max-poll-records]]
 By default, `max.poll.records` must be either explicitly set in the consumer factory, or it will be forced to 1 if the consumer factory is a `DefaultKafkaConsumerFactory`.
-Starting with versio 3.2, you can set the property `allowMultiFetch` to `true` to override this behavior.
+Starting with version 3.2, you can set the property `allowMultiFetch` to `true` to override this behavior.
 
 IMPORTANT: You must poll the consumer within `max.poll.interval.ms` to avoid a rebalance.
 If you set `allowMultiFetch` to `true` you must process all the retrieved records, and poll again, within `max.poll.interval.ms`.

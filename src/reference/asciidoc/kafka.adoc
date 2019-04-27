@@ -791,7 +791,7 @@ This prevents the container from starting if any of the configured topics are no
 It does not apply if the container is configured to listen to a topic pattern (regex).
 Previously, the container threads looped within the `consumer.poll()` method waiting for the topic to appear while logging many messages.
 Aside from the logs, there was no indication that there was a problem.
-To restore the previous behavior, you canset the property to `false`.
+To restore the previous behavior, you can set the property to `false`.
 
 [[using-ConcurrentMessageListenerContainer]]
 ====== Using `ConcurrentMessageListenerContainer`
@@ -1455,7 +1455,7 @@ public class Config implements KafkaListenerConfigurer {
 ----
 ====
 
-The follwing examples show how to validate:
+The following examples show how to validate:
 
 ====
 [source, java]

@@ -288,7 +288,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			if (this.hasAckParameter && acknowledgment == null) {
 				throw new ListenerExecutionFailedException("invokeHandler Failed",
 						new IllegalStateException("No Acknowledgment available as an argument, "
-								+ "the listener container must have a MANUAL Ackmode to populate the Acknowledgment.",
+								+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment.",
 								ex));
 			}
 			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +

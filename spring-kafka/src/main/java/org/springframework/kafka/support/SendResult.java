@@ -20,7 +20,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
 /**
- * Result for a Listenablefuture after a send.
+ * Result for a ListenableFuture after a send.
  *
  * @param <K> the key type.
  * @param <V> the value type.

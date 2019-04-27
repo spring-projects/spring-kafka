@@ -231,7 +231,7 @@ public class ContainerProperties {
 	 */
 	public ContainerProperties(String... topics) {
 		Assert.notEmpty(topics, "An array of topics must be provided");
-		this.topics = Arrays.asList(topics).toArray(new String[topics.length]);
+		this.topics = topics.clone();
 		this.topicPattern = null;
 		this.topicPartitions = null;
 	}

@@ -36,9 +36,8 @@ import org.springframework.lang.Nullable;
 public interface MessageConverter {
 
 	@Nullable
-	static String getGroupid() {
-		String groupId = KafkaUtils.getConsumerGroupId();
-		return groupId == null ? null : groupId;
+	static String getGroupId() {
+		return KafkaUtils.getConsumerGroupId();
 	}
 
 	default void commonHeaders(Acknowledgment acknowledgment, Consumer<?, ?> consumer, Map<String, Object> rawHeaders,
@@ -52,7 +51,7 @@ public interface MessageConverter {
 		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampType);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamp);
 		JavaUtils.INSTANCE
-			.acceptIfNotNull(KafkaHeaders.GROUP_ID, MessageConverter.getGroupid(),
+			.acceptIfNotNull(KafkaHeaders.GROUP_ID, MessageConverter.getGroupId(),
 					(key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment, (key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.CONSUMER, consumer, (key, val) -> rawHeaders.put(key, val));

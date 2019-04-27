@@ -126,12 +126,10 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		this.templates = templates;
 		this.transactional = templates.values().iterator().next().isTransactional();
 		Boolean tx = this.transactional;
-		Assert.isTrue(!templates.values()
+		Assert.isTrue(templates.values()
 			.stream()
 			.map(t -> t.isTransactional())
-			.filter(t -> !t.equals(tx))
-			.findFirst()
-			.isPresent(), "All templates must have the same setting for transactional");
+			.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
 		this.destinationResolver = destinationResolver;
 	}
 
@@ -172,7 +170,7 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		if (key.isPresent()) {
 			return (KafkaTemplate<Object, Object>) this.templates.get(key.get());
 		}
-		LOGGER.warn(() -> "Failed to find a template for " + value.getClass() + " attemting to use the last entry");
+		LOGGER.warn(() -> "Failed to find a template for " + value.getClass() + " attempting to use the last entry");
 		return (KafkaTemplate<Object, Object>) this.templates.values()
 				.stream()
 				.reduce((first,  second) -> second)

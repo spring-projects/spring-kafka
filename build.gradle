@@ -384,7 +384,7 @@ task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 	description = "Builds -${classifier} archive, containing all jars and docs, " +
 			"suitable for community download page."
 
-	ext.baseDir = "${project.name}-${project.version}";
+	ext.baseDir = "${project.name}-${project.version}"
 
 	from('src/dist') {
 		include 'readme.txt'

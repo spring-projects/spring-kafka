@@ -383,8 +383,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public BrokerAddress[] getBrokerAddresses() {
 		List<BrokerAddress> addresses = new ArrayList<BrokerAddress>();
-		for (int i = 0; i < this.kafkaPorts.length; i++) {
-			addresses.add(new BrokerAddress("127.0.0.1", this.kafkaPorts[i]));
+		for (int kafkaPort : this.kafkaPorts) {
+			addresses.add(new BrokerAddress("127.0.0.1", kafkaPort));
 		}
 		return addresses.toArray(new BrokerAddress[0]);
 	}

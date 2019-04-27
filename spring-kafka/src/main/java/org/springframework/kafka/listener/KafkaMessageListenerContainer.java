@@ -1344,7 +1344,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				while (iterator.hasNext()) {
 					records.add(iterator.next());
 				}
-				((RemainingRecordsErrorHandler) this.errorHandler).handle(decorateException(e), records, this.consumer,
+				this.errorHandler.handle(decorateException(e), records, this.consumer,
 						KafkaMessageListenerContainer.this.container);
 			}
 			else {
