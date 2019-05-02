@@ -211,6 +211,8 @@ public class JsonSerializationTests {
 		JsonDeserializer<List<String>> de = new JsonDeserializer<>(List.class);
 		List<String> dummy = Arrays.asList("foo", "bar", "baz");
 		assertThat(de.deserialize(topic, ser.serialize(topic, dummy))).isEqualTo(dummy);
+		ser.close();
+		de.close();
 	}
 
 	@Test
@@ -219,6 +221,8 @@ public class JsonSerializationTests {
 		JsonDeserializer<List<DummyEntity>> de = new JsonDeserializer<>(new TypeReference<List<DummyEntity>>() { });
 		List<DummyEntity> dummy = Arrays.asList(this.entityArray);
 		assertThat(de.deserialize(this.topic, ser.serialize(this.topic, dummy))).isEqualTo(dummy);
+		ser.close();
+		de.close();
 	}
 
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {

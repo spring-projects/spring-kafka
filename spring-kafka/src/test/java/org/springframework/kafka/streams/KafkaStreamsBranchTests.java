@@ -84,7 +84,7 @@ public class KafkaStreamsBranchTests {
 	private EmbeddedKafkaBroker embeddedKafka;
 
 	@Test
-	public void testBranchingStream() throws Exception {
+	public void testBranchingStream() {
 		Consumer<String, String> falseConsumer = createConsumer();
 		this.embeddedKafka.consumeFromAnEmbeddedTopic(falseConsumer, FALSE_TOPIC);
 

@@ -50,7 +50,7 @@ import org.springframework.util.ObjectUtils;
  * @since 2.2
  *
  */
-public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<?, ?>, Exception> {
+public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 
 	private static final LogAccessor LOGGER =
 			new LogAccessor(LogFactory.getLog(DeadLetterPublishingRecoverer.class));
@@ -138,14 +138,16 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
 		RecordHeaders headers = new RecordHeaders(record.headers().toArray());
 		enhanceHeaders(headers, record, exception);
+		boolean isKey = false;
 		DeserializationException deserEx = ListenerUtils.getExceptionFromHeader(record,
 				ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER, LOGGER);
 		if (deserEx == null) {
 			deserEx = ListenerUtils.getExceptionFromHeader(record,
 					ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER, LOGGER);
+			isKey = true;
 		}
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
-				deserEx == null ? null : deserEx.getData());
+				deserEx == null ? null : deserEx.getData(), isKey);
 		KafkaTemplate<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
 		if (this.transactional && !kafkaTemplate.inTransaction()) {
 			kafkaTemplate.executeInTransaction(t -> {
@@ -187,16 +189,18 @@ public class DeadLetterPublishingRecoverer implements BiConsumer<ConsumerRecord<
 	 * @param topicPartition the {@link TopicPartition} returned by the destination
 	 * resolver.
 	 * @param headers the headers - original record headers plus DLT headers.
-	 * @param value the value to use instead of the consumer record value.
+	 * @param data the value to use instead of the consumer record value.
+	 * @param isKey true if key deserialization failed.
 	 * @return the producer record to send.
 	 * @see KafkaHeaders
 	 */
 	protected ProducerRecord<Object, Object> createProducerRecord(ConsumerRecord<?, ?> record,
-			TopicPartition topicPartition, RecordHeaders headers, @Nullable byte[] value) {
+			TopicPartition topicPartition, RecordHeaders headers, @Nullable byte[] data, boolean isKey) {
 
 		return new ProducerRecord<>(topicPartition.topic(),
 				topicPartition.partition() < 0 ? null : topicPartition.partition(),
-				record.key(), value == null ? record.value() : value, headers);
+				isKey && data != null ? data : record.key(),
+				data == null || isKey ? record.value() : data, headers);
 	}
 
 	/**

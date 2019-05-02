@@ -92,7 +92,7 @@ public class KafkaStreamsJsonSerializationTests {
 	private Consumer<JsonObjectKey, JsonObjectValue> objectOutputTopicConsumer;
 
 	@Before
-	public void setup() throws Exception {
+	public void setup() {
 		this.objectOutputTopicConsumer = consumer(OBJECT_OUTPUT_TOPIC, jsonObjectKeySerde, jsonObjectValueSerde);
 	}
 
@@ -118,7 +118,7 @@ public class KafkaStreamsJsonSerializationTests {
 		assertThat(output.value().getValue()).isEqualTo("twenty-five");
 	}
 
-	private <K, V> Consumer<K, V> consumer(String topic, Serde<K> keySerde, Serde<V> valueSerde) throws Exception {
+	private <K, V> Consumer<K, V> consumer(String topic, Serde<K> keySerde, Serde<V> valueSerde) {
 		Map<String, Object> consumerProps =
 				KafkaTestUtils.consumerProps(UUID.randomUUID().toString(), "false", this.embeddedKafka);
 		consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10000);

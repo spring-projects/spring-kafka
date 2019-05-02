@@ -19,6 +19,7 @@ package org.springframework.kafka.config;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KafkaClientSupplier;
@@ -29,7 +30,10 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
@@ -52,7 +56,8 @@ import org.springframework.util.Assert;
  *
  * @since 1.1.4
  */
-public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder> implements SmartLifecycle {
+public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder>
+		implements SmartLifecycle, ApplicationContextAware {
 
 	/**
 	 * The default {@link Duration} of {@code 10 seconds} for close timeout.
@@ -65,6 +70,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private static final String STREAMS_CONFIG_MUST_NOT_BE_NULL = "'streamsConfig' must not be null";
 
 	private static final String CLEANUP_CONFIG_MUST_NOT_BE_NULL = "'cleanupConfig' must not be null";
+
+	private static final Map<String, ApplicationContext> contexts = new ConcurrentHashMap<>();
 
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
 
@@ -176,6 +183,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.streamsConfig = new StreamsConfig(streamsConfig);
 		this.cleanupConfig = cleanupConfig;
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.contexts.put(applicationContext.getId(), applicationContext);
 	}
 
 	/**
@@ -355,6 +367,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public KafkaStreams getKafkaStreams() {
 		return this.kafkaStreams;
+	}
+
+	@Nullable
+	public static ApplicationContext getApplicationContext(String contextId) {
+		return contexts.get(contextId);
 	}
 
 }

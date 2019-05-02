@@ -259,8 +259,11 @@ public class KafkaStreamsTests {
 		}
 
 		@Bean
-		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>> kafkaListenerContainerFactory() {
-			ConcurrentKafkaListenerContainerFactory<Integer, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+					kafkaListenerContainerFactory() {
+
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			return factory;
 		}
