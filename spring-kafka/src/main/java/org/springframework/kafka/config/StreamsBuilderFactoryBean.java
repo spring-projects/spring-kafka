@@ -187,7 +187,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-		this.contexts.put(applicationContext.getId(), applicationContext);
+		contexts.put(applicationContext.getId(), applicationContext);
 	}
 
 	/**

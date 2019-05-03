@@ -43,6 +43,10 @@ See <<configuring-topics>> for more information.
 You can now perform additional configuration of the `StreamsBuilderFactoryBean` created by `@EnableKafkaStreams`.
 See <<streams-config, Streams Configuration>> for more information.
 
+A `RecoveringDeserializationExceptionHandler` is now provided which allows records with deserialization errors to be recovered.
+It can be used in conjunction with a `DeadLetterPublishingRecoverer` to send these records to a dead-letter topic.
+See <<streams-deser-recovery>> for more information.
+
 ==== JSON Component Changes
 
 Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.

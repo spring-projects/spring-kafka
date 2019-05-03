@@ -41,7 +41,6 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -78,9 +77,6 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 public class RecoveringDeserializationExceptionHandlerTests {
 
 	@Autowired
-	private ApplicationContext context;
-
-	@Autowired
 	private KafkaTemplate<byte[], byte[]> kafkaTemplate;
 
 	@Autowired
@@ -90,10 +86,37 @@ public class RecoveringDeserializationExceptionHandlerTests {
 	void viaStringProperty() {
 		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
 		Map<String, Object> configs = new HashMap<String, Object>();
-		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_CONTEXT_ID, this.context.getId());
-		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, "testRecoverer");
+		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER,
+				Recoverer.class.getName());
 		handler.configure(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
+		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
+		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
+	}
+
+	@Test
+	void viaClassProperty() {
+		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
+		Map<String, Object> configs = new HashMap<String, Object>();
+		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, Recoverer.class);
+		handler.configure(configs);
+		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
+		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
+		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
+	}
+
+	@Test
+	void viaObjectProperty() {
+		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
+		Map<String, Object> configs = new HashMap<String, Object>();
+		Recoverer rec = new Recoverer();
+		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, rec);
+		handler.configure(configs);
+		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isSameAs(rec);
 		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
 				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
 		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
@@ -115,6 +138,17 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		assertThat(record.key()).isEqualTo("foo".getBytes());
 		assertThat(record.value()).isEqualTo("bar".getBytes());
 		assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+	}
+
+	public static class Recoverer implements ConsumerRecordRecoverer {
+
+		@Override
+		public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+			if (exception instanceof IllegalStateException) {
+				throw new IllegalStateException("recovery failed test");
+			}
+		}
+
 	}
 
 	@Configuration
@@ -149,7 +183,7 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		}
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-		public KafkaStreamsConfiguration kStreamsConfigs(ApplicationContext context) {
+		public KafkaStreamsConfiguration kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
@@ -160,8 +194,7 @@ public class RecoveringDeserializationExceptionHandlerTests {
 			props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100");
 			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					RecoveringDeserializationExceptionHandler.class);
-			props.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_CONTEXT_ID, context.getId());
-			props.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, "recoverer");
+			props.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, recoverer());
 			return new KafkaStreamsConfiguration(props);
 		}
 
@@ -182,9 +215,9 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.brokerAddresses, "recovererGroup",
 					"false");
-			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
 
@@ -211,22 +244,6 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		@KafkaListener(topics = "recovererDLQ")
 		public void listener(ConsumerRecord<byte[], byte[]> payload) {
 			resultFuture().set(payload);
-		}
-
-		@Bean
-		public Recoverer testRecoverer() {
-			return new Recoverer();
-		}
-
-	}
-
-	public static class Recoverer implements ConsumerRecordRecoverer {
-
-		@Override
-		public void accept(ConsumerRecord<?, ?> record, Exception exception) {
-			if (exception instanceof IllegalStateException) {
-				throw new IllegalStateException("recovery failed test");
-			}
 		}
 
 	}

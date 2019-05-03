@@ -68,11 +68,12 @@ public class KafkaStreamsCustomizerTests {
 		KafkaStreams.State state = this.streamsBuilderFactoryBean.getKafkaStreams().state();
 		assertThat(STATE_LISTENER.getCurrentState()).isEqualTo(state);
 		Properties properties = configuration.asProperties();
-		assertThat(properties.getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo(config.brokerAddresses);
-		assertThat(properties.getProperty(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG))
-				.endsWith("Foo");
-		assertThat(properties.getProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG))
-			.isEqualTo("1000");
+		assertThat(properties.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG))
+			.isEqualTo(Collections.singletonList(config.brokerAddresses));
+		assertThat(properties.get(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG))
+				.isEqualTo(Foo.class);
+		assertThat(properties.get(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG))
+			.isEqualTo(1000);
 	}
 
 	@Configuration

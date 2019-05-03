@@ -211,6 +211,41 @@ To use the enricher within a stream:
 
 The transformer does not change the `key` or `value`; it simply adds headers.
 
+[[streams-deser-recovery]]
+==== Recovery from Deserialization Exceptions
+
+Version 2.3 introduced the `RecoveringDeserializationExceptionHandler` which can take some action when a deserialization exception occurs.
+Refer to the Kafka documentation about `DeserializationExceptionHandler`, of which the `RecoveringDeserializationExceptionHandler` is an implementation.
+The `RecoveringDeserializationExceptionHandler` is configured with a `ConsumerRecordRecoverer` implementation.
+The framework provides the `DeadLetterPublishingRecoverer` which sends the failed record to a dead-letter topic.
+See <<dead-letters>> for more information about this recoverer.
+
+To configure the recoverer, add the following properties to your streams configuration:
+
+====
+[source, java]
+----
+@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+public KafkaStreamsConfiguration kStreamsConfigs() {
+    Map<String, Object> props = new HashMap<>();
+    ...
+    props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+            RecoveringDeserializationExceptionHandler.class);
+    props.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, recoverer());
+    ...
+    return new KafkaStreamsConfiguration(props);
+}
+
+@Bean
+public DeadLetterPublishingRecoverer recoverer() {
+    return new DeadLetterPublishingRecoverer(kafkaTemplate(),
+            (record, ex) -> new TopicPartition("recovererDLQ", -1));
+}
+----
+====
+
+Of course, the `recoverer()` bean can be your own implementation of `ConsumerRecordRecoverer`.
+
 ==== Kafka Streams Example
 
 The following example combines all the topics we have covered in this chapter:

@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.streams;
 
+import java.lang.reflect.Constructor;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -24,10 +25,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
+import org.springframework.util.ClassUtils;
 
 /**
  * A {@link DeserializationExceptionHandler} that calls a {@link ConsumerRecordRecoverer}.
@@ -40,12 +39,7 @@ import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 public class RecoveringDeserializationExceptionHandler implements DeserializationExceptionHandler {
 
 	/**
-	 * Property name for the application context id.
-	 */
-	public static final String KSTREAM_DESERIALIZATION_CONTEXT_ID = "spring.deserialization.context.id";
-
-	/**
-	 * Property name for the bean name of the recoverer.
+	 * Property name for configuring the recoverer using properties.
 	 */
 	public static final String KSTREAM_DESERIALIZATION_RECOVERER = "spring.deserialization.recoverer";
 
@@ -80,34 +74,51 @@ public class RecoveringDeserializationExceptionHandler implements Deserializatio
 
 	@Override
 	public void configure(Map<String, ?> configs) {
-		if (configs.containsKey(KSTREAM_DESERIALIZATION_CONTEXT_ID)) {
-			ApplicationContext context = StreamsBuilderFactoryBean
-					.getApplicationContext((String) configs.get(KSTREAM_DESERIALIZATION_CONTEXT_ID));
-			if (context != null) {
-				String beanName = (String) configs.get(KSTREAM_DESERIALIZATION_RECOVERER);
-				if (beanName != null) {
-					try {
-						this.recoverer = context.getBean(beanName, ConsumerRecordRecoverer.class);
-					}
-					catch (NoSuchBeanDefinitionException e) {
-						LOGGER.error("Failed to retrieve recoverer from application context"
-								+ "; failed deserializations cannot be recovered", e);
-					}
-				}
-				else {
-					LOGGER.error("No " + KSTREAM_DESERIALIZATION_RECOVERER + " property found"
-							+ "; failed deserializations cannot be recovered");
-				}
+		if (configs.containsKey(KSTREAM_DESERIALIZATION_RECOVERER)) {
+			Object configValue = configs.get(KSTREAM_DESERIALIZATION_RECOVERER);
+			if (configValue instanceof ConsumerRecordRecoverer) {
+				this.recoverer = (ConsumerRecordRecoverer) configValue;
+			}
+			else if (configValue instanceof String) {
+				fromString(configValue);
+			}
+			else if (configValue instanceof Class) {
+				fromClass(configValue);
 			}
 			else {
-				LOGGER.error("No application context with id " + configs.get(KSTREAM_DESERIALIZATION_CONTEXT_ID)
+				LOGGER.error("Unkown property type for " + KSTREAM_DESERIALIZATION_RECOVERER
 						+ "; failed deserializations cannot be recovered");
 			}
 		}
-		else {
-			LOGGER.error("No application context id property; failed deserializations cannot be recovered");
-		}
 
+	}
+
+	private void fromString(Object configValue) throws LinkageError {
+		try {
+			@SuppressWarnings("unchecked")
+			Class<? extends ConsumerRecordRecoverer> clazz =
+					(Class<? extends ConsumerRecordRecoverer>) ClassUtils
+						.forName((String) configValue,
+									RecoveringDeserializationExceptionHandler.class.getClassLoader());
+			Constructor<? extends ConsumerRecordRecoverer> constructor = clazz.getConstructor();
+			this.recoverer = constructor.newInstance();
+		}
+		catch (Exception e) {
+			LOGGER.error("Failed to instantiate recoverer, failed deserializations cannot be recovered", e);
+		}
+	}
+
+	private void fromClass(Object configValue) {
+		try {
+			@SuppressWarnings("unchecked")
+			Class<? extends ConsumerRecordRecoverer> clazz =
+				(Class<? extends ConsumerRecordRecoverer>) configValue;
+			Constructor<? extends ConsumerRecordRecoverer> constructor = clazz.getConstructor();
+			this.recoverer = constructor.newInstance();
+		}
+		catch (Exception e) {
+			LOGGER.error("Failed to instantiate recoverer, failed deserializations cannot be recovered", e);
+		}
 	}
 
 }

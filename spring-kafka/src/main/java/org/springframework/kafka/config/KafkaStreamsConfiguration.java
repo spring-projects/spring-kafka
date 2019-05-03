@@ -71,16 +71,7 @@ public class KafkaStreamsConfiguration {
 	public Properties asProperties() {
 		if (this.properties == null) {
 			Properties props = new Properties();
-			this.configs.forEach((k, v) -> {
-				String value;
-				if (this.conversionService.canConvert(v.getClass(), String.class)) {
-					value = this.conversionService.convert(v, String.class);
-				}
-				else {
-					value = v.toString();
-				}
-				props.setProperty(k, value);
-			});
+			props.putAll(this.configs);
 			this.properties = props;
 		}
 		return this.properties;
