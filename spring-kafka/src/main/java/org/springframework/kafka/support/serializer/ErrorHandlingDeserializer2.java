@@ -193,7 +193,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 
 	@Override
 	public void close() {
-		this.delegate.close();
+		if (this.delegate != null) this.delegate.close();
 	}
 
 	private void deserializationException(Headers headers, byte[] data, Exception e) {
