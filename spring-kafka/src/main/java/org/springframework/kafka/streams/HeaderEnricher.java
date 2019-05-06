@@ -55,7 +55,7 @@ public class HeaderEnricher<K, V> implements Transformer<K, V, KeyValue<K, V>> {
 
 	@Override
 	public KeyValue<K, V> transform(K key, V value) {
-		Headers headers = processorContext.headers();
+		Headers headers = this.processorContext.headers();
 		Container<K, V> container = new Container<>(this.processorContext, key, value);
 		this.headerExpressions.forEach((name, expression) -> {
 			Object headerValue = expression.getValue(container);
