@@ -254,7 +254,9 @@ project ('spring-kafka-test') {
 		compile "org.springframework:spring-test:$springVersion"
 		compile "org.springframework.retry:spring-retry:$springRetryVersion"
 
-		compile ("org.apache.kafka:kafka-clients:$kafkaVersion:test")
+		compile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
+		compile "org.apache.kafka:kafka-streams:$kafkaVersion"
+		compile "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
 
 		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
