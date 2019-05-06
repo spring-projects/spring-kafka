@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.listener;
+package org.springframework.kafka.streams.messaging;
 
-import java.util.function.BiConsumer;
+import java.util.function.Function;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.messaging.Message;
 
 /**
- * A {@link BiConsumer} extension for recovering consumer records.
+ * A function that receives a spring-messaging {@link Message} and returns
+ * a {@link Message}.
  *
  * @author Gary Russell
  * @since 2.3
  *
  */
 @FunctionalInterface
-public interface ConsumerRecordRecoverer extends BiConsumer<ConsumerRecord<?, ?>, Exception> {
+public interface MessagingFunction extends Function<Message<?>, Message<?>> {
 
 }
