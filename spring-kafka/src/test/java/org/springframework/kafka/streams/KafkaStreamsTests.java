@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.kstream;
+package org.springframework.kafka.streams;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -49,6 +49,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.expression.Expression;
+import org.springframework.expression.common.LiteralExpression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -147,6 +150,9 @@ public class KafkaStreamsTests {
 
 		assertThat(result.topic()).isEqualTo(streamingTopic2);
 		assertThat(result.value()).isEqualTo(payload.toUpperCase() + payload2.toUpperCase());
+		assertThat(result.headers().lastHeader("foo")).isNotNull();
+		assertThat(result.headers().lastHeader("foo").value()).isEqualTo("bar".getBytes());
+		assertThat(result.headers().lastHeader("spel")).isNotNull();
 
 		assertThat(stateLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
@@ -214,6 +220,11 @@ public class KafkaStreamsTests {
 		@Bean
 		public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
 			KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
+			Map<String, Expression> headers = new HashMap<>();
+			headers.put("foo", new LiteralExpression("bar"));
+			SpelExpressionParser parser = new SpelExpressionParser();
+			headers.put("spel", parser.parseExpression("context.timestamp() + key + value"));
+			HeaderEnricher<Integer, String> enricher = new HeaderEnricher<>(headers);
 			stream.mapValues((ValueMapper<String, String>) String::toUpperCase)
 					.mapValues(Foo::new)
 					.through(FOOS, Produced.with(Serdes.Integer(), new JsonSerde<Foo>() {
@@ -225,7 +236,9 @@ public class KafkaStreamsTests {
 					.reduce((value1, value2) -> value1 + value2, Materialized.as("windowStore"))
 					.toStream()
 					.map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
-					.filter((i, s) -> s.length() > 40).to(streamingTopic2);
+					.filter((i, s) -> s.length() > 40)
+					.transform(() -> enricher)
+					.to(streamingTopic2);
 
 			stream.print(Printed.toSysOut());
 

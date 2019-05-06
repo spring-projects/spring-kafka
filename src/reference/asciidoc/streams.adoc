@@ -189,6 +189,28 @@ There must only be one such bean, or one must be marked `@Primary`.
 By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
 Starting with version 2.1.2, the factory bean has additional constructors, taking a `CleanupConfig` object that has properties to let you control whether the `cleanUp()` method is called during `start()` or `stop()` or neither.
 
+==== Header Enricher
+
+Version 2.3 added the `HeaderEnricher` implementation of `Transformer`.
+This can be used to add headers within the stream processing; the header values are SpEL expressions; the root object of the expression evaluation has 3 properties:
+
+* `context` - the `ProcessorContext`, allowing access to the current record metadata
+* `key` - the key of the current record
+* `value` - the value of the current record
+
+The expressions must return a `byte[]` or a `String` (which will be converted to `byte[]` using `UTF-8`).
+
+To use the enricher within a stream:
+
+====
+[source, java]
+----
+.transform(() -> enricher)
+----
+====
+
+The transformer does not change the `key` or `value`; it simply adds headers.
+
 ==== Kafka Streams Example
 
 The following example combines all the topics we have covered in this chapter:

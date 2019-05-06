@@ -61,3 +61,8 @@ When a reply times out, the future is completed exceptionally with a `KafkaReply
 
 Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
 See <<aggregating-request-reply>> for more information.
+
+==== Kafka Streams
+
+The `HeaderEnricher` transformer has been provided, using SpEL to generate the header values.
+See <<streams-header-enricher>> for more information.
