@@ -690,10 +690,10 @@ You can use a `MessagingTransformer` to invoke an integration flow from a `KStre
 [source, java]
 ----
 @Bean
-public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder,
-        MessagingTransformer<String, String, String> transformer)  transformer) {
-    KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
-    stream.mapValues((ValueMapper<String, String>) String::toUpperCase)
+public KStream<byte[], byte[]> kStream(StreamsBuilder kStreamBuilder,
+        MessagingTransformer<byte[], byte[], byte[]> transformer)  transformer) {
+    KStream<byte[], byte[]> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
+    stream.mapValues((ValueMapper<byte[], byte[]>) String::toUpperCase)
             ...
             .transform(() -> transformer)
             .to(streamingTopic2);
@@ -705,7 +705,7 @@ public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder,
 
 @Bean
 @DependsOn("flow")
-public MessagingTransformer<String, String, String> transformer(
+public MessagingTransformer<byte[], byte[], String> transformer(
         MessagingFunction function) {
 
     MessagingMessageConverter converter = new MessagingMessageConverter();
