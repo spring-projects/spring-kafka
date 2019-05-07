@@ -96,6 +96,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private ReplyHeadersConfigurer replyHeadersConfigurer;
 
+	private Boolean missingTopicsFatal;
+
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
 	 * @param consumerFactory The consumer factory.
@@ -259,6 +261,17 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Set to false to allow the container to start even if any of the configured topics
+	 * are not present on the broker. Does not apply when topic patterns are configured.
+	 * Default true;
+	 * @param missingTopicsFatal the missingTopicsFatal.
+	 * @since 2.3
+	 */
+	public void setMissingTopicsFatal(boolean missingTopicsFatal) {
+		this.missingTopicsFatal = missingTopicsFatal;
+	}
+
+	/**
 	 * Obtain the properties template for this factory - set properties as needed
 	 * and they will be copied to a final properties instance for the endpoint.
 	 * @return the properties.
@@ -335,7 +348,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 					properties::setAckCount)
 			.acceptIfCondition(this.containerProperties.getAckTime() > 0, this.containerProperties.getAckTime(),
 					properties::setAckTime)
-			.acceptIfNotNull(this.errorHandler, instance::setGenericErrorHandler);
+			.acceptIfNotNull(this.errorHandler, instance::setGenericErrorHandler)
+			.acceptIfNotNull(this.missingTopicsFatal, instance.getContainerProperties()::setMissingTopicsFatal);
 		if (endpoint.getAutoStartup() != null) {
 			instance.setAutoStartup(endpoint.getAutoStartup());
 		}

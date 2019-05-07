@@ -62,6 +62,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -131,6 +132,9 @@ public class ReplyingKafkaTemplateTests {
 	@Autowired
 	private Config config;
 
+	@Autowired
+	private KafkaListenerEndpointRegistry registry;
+
 	@Test
 	public void testGood() throws Exception {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
@@ -147,6 +151,10 @@ public class ReplyingKafkaTemplateTests {
 			new DefaultKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
 			assertThat(receivedHeaders).containsKey("baz");
 			assertThat(receivedHeaders).hasSize(2);
+			assertThat(KafkaTestUtils.getPropertyValue(
+					this.registry.getListenerContainer(A_REQUEST), "containerProperties.missingTopicsFatal",
+					Boolean.class))
+				.isFalse();
 		}
 		finally {
 			template.stop();
@@ -501,6 +509,7 @@ public class ReplyingKafkaTemplateTests {
 			factory.setConsumerFactory(cf());
 			factory.setReplyTemplate(template());
 			factory.setReplyHeadersConfigurer((k, v) -> k.equals("baz"));
+			factory.setMissingTopicsFatal(false);
 			return factory;
 		}
 
@@ -529,7 +538,7 @@ public class ReplyingKafkaTemplateTests {
 			return factory;
 		}
 
-		@KafkaListener(topics = A_REQUEST)
+		@KafkaListener(id = A_REQUEST, topics = A_REQUEST)
 		@SendTo  // default REPLY_TOPIC header
 		public String handleA(String in) {
 			return in.toUpperCase();
