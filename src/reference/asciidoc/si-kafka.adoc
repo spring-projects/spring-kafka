@@ -681,6 +681,44 @@ public void in(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key,
 ----
 ====
 
+[[streams-integration]]
+==== Calling a Spring Integration flow from a `KStream`
+
+You can use a `MessagingTransformer` to invoke an integration flow from a `KStream`:
+
+====
+[source, java]
+----
+@Bean
+public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
+    KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
+    stream.mapValues((ValueMapper<String, String>) String::toUpperCase)
+            ...
+            .transform(() -> transformer()
+            .to(streamingTopic2);
+
+    stream.print(Printed.toSysOut());
+
+    return stream;
+}
+
+@Bean
+@DependsOn("flow")
+public MessagingTransformer transformer(MessagingFunction function) {
+    MessagingMessageConverter converter = new MessagingMessageConverter();
+    converter.setHeaderMapper(new SimpleKafkaHeaderMapper("*"));
+    return new MessagingTransformer(function, converter);
+}
+
+@Bean
+public IntegrationFlow flow() {
+    return IntegrationFlows.from(MessagingFunction.class)
+        ...
+        .get();
+}
+----
+====
+
 ==== What's New in Spring Integration for Apache Kafka
 
 See the https://projects.spring.io/spring-kafka/[Spring for Apache Kafka Project Page] for a matrix of compatible `spring-kafka` and `kafka-clients` versions.
@@ -720,3 +758,10 @@ The 2.3.x branch introduced the following changes:
 
 * Update to `spring-kafka` 2.2.x and `kafka-clients` 2.0.0
 * Support tombstones in EIP POJO Methods
+
+===== 3.2.x
+
+* The `KafkaMessageSource` 's `Consumer` can now be paused and resumed.
+* XML configuration for gateways and the pollable source.
+* The `KafkaMessageSource` can now be configured to fetch multiple records on each `poll()`.
+* The `MessagingTransformer` allows you to invoke a Spring Integration flow from a Kafka streams topology.
