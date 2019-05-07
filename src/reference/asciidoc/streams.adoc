@@ -216,7 +216,20 @@ The transformer does not change the `key` or `value`; it simply adds headers.
 ==== `MessagingTransformer`
 
 Version 2.3 added the `MessagingTransformer` this allows a Kafka Streams topology to interact with a Spring Messaging component, such as a Spring Integration flow.
-The transformer requires an implementation of `MessagingFunction` which is a `java.util.function.Function<Message<?>, Message<?>>`.
+The transformer requires an implementation of `MessagingFunction`.
+
+====
+[source, java]
+----
+@FunctionalInterface
+public interface MessagingFunction {
+
+	Message<?> exchange(Message<?> message);
+
+}
+----
+====
+
 Spring Integration automatically provides an implementation using its `GatewayProxyFactoryBean`.
 It also requires a `MessagingMessageConverter` to convert the key, value and metadata (including headers) to/from a Spring Messaging `Message<?>`.
 See <<streams-integration>> for more information.

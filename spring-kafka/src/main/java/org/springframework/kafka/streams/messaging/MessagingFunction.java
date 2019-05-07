@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.streams.messaging;
 
-import java.util.function.Function;
-
 import org.springframework.messaging.Message;
 
 /**
@@ -29,6 +27,8 @@ import org.springframework.messaging.Message;
  *
  */
 @FunctionalInterface
-public interface MessagingFunction extends Function<Message<?>, Message<?>> {
+public interface MessagingFunction {
+
+	Message<?> exchange(Message<?> message);
 
 }

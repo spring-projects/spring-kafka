@@ -73,7 +73,7 @@ public class MessagingTransformer<K, V, R> implements Transformer<K, V, KeyValue
 				key, value,
 				headers);
 		Message<?> message = this.converter.toMessage(record, null, null, null);
-		message = this.function.apply(message);
+		message = this.function.exchange(message);
 		List<String> headerList = new ArrayList<>();
 		headers.forEach(header -> headerList.add(header.key()));
 		headerList.forEach(name -> headers.remove(name));
