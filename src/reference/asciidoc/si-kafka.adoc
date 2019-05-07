@@ -705,8 +705,8 @@ public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder,
 
 @Bean
 @DependsOn("flow")
-public MessagingTransformer<String, String, String> transformer)
-        transformer(MessagingFunction function) {
+public MessagingTransformer<String, String, String> transformer(
+        MessagingFunction function) {
 
     MessagingMessageConverter converter = new MessagingMessageConverter();
     converter.setHeaderMapper(new SimpleKafkaHeaderMapper("*"));
@@ -721,6 +721,8 @@ public IntegrationFlow flow() {
 }
 ----
 ====
+
+When an integration flow starts with an interface, the proxy that is created has the name of the flow bean, appended with ".gateway" so this bean name can be used a a `@Qualifier` if needed.
 
 ==== What's New in Spring Integration for Apache Kafka
 

@@ -30,6 +30,7 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 /**
  * A {@link Transformer} implementation that invokes a {@link MessagingFunction}
@@ -53,6 +54,8 @@ public class MessagingTransformer<K, V, R> implements Transformer<K, V, KeyValue
 	private ProcessorContext processorContext;
 
 	public MessagingTransformer(MessagingFunction function, MessagingMessageConverter converter) {
+		Assert.notNull(function, "'function' cannot be null");
+		Assert.notNull(converter, "'converter' cannot be null");
 		this.function = function;
 		this.converter = converter;
 	}
