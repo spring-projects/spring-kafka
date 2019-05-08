@@ -37,14 +37,18 @@ public interface ConsumerSeekAware {
 	 * containers listeners should store the callback in a {@code ThreadLocal}.
 	 * @param callback the callback.
 	 */
-	void registerSeekCallback(ConsumerSeekCallback callback);
+	default void registerSeekCallback(ConsumerSeekCallback callback) {
+		// do nothing
+	}
 
 	/**
 	 * When using group management, called when partition assignments change.
 	 * @param assignments the new assignments and their current offsets.
 	 * @param callback the callback to perform an initial seek after assignment.
 	 */
-	void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
+	default void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		// do nothing
+	}
 
 	/**
 	 * If the container is configured to emit idle container events, this method is called
@@ -52,7 +56,9 @@ public interface ConsumerSeekAware {
 	 * @param assignments the new assignments and their current offsets.
 	 * @param callback the callback to perform a seek.
 	 */
-	void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
+	default void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		// do nothing
+	}
 
 	/**
 	 * A callback that a listener can invoke to seek to a specific offset.

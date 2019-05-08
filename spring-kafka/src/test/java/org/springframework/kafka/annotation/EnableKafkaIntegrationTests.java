@@ -1689,18 +1689,6 @@ public class EnableKafkaIntegrationTests {
 			this.seekCallBack.set(callback);
 		}
 
-		@Override
-		public void onPartitionsAssigned(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
-				ConsumerSeekCallback callback) {
-			// NOSONAR
-		}
-
-		@Override
-		public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
-				ConsumerSeekCallback callback) {
-			// NOSONAR
-		}
-
 	}
 
 	interface IfaceListener<T> {
