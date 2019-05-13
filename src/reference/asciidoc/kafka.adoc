@@ -1010,6 +1010,8 @@ public void listen(ConsumerRecord<?, ?> record) {
 
 You can specify each partition in the `partitions` or `partitionOffsets` attribute but not both.
 
+As with most annotation properties, you can use SpEL expressions; for an example of how to generate a large list of partitions, see <<assign-all-parts>>.
+
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.
 The following example also shows how to use a different container factory.
 
@@ -2875,6 +2877,8 @@ static class MultiListenerBean {
 ====
 
 Note that the argument is `null`, not `KafkaNull`.
+
+TIP: See <<assign-all-parts>>.
 
 [[annotation-error-handling]]
 ==== Handling Exceptions

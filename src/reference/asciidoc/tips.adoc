@@ -1,0 +1,44 @@
+[[assign-all-parts]]
+=== Manually Assigning All Partitions
+
+Let's say you want to always read all records from all partitions (such as when using a compacted topic to load a distributed cache), it can be useful to manually assign the partitions and not use Kafka's group management.
+Doing so can be unwieldy when there are many partitions, because you have to list the partitions.
+It's also an issue if the number of partitions changes over time, because you would have to recompile your application each time the partition count changes.
+
+The following is an example of how to use the power of a SpEL expression to create the partition list dynamically when the application starts:
+
+====
+[source, java]
+----
+@KafkaListener(topicPartitions = @TopicPartition(topic = "compacted",
+                                                 partitions = "#{@finder.partitions('compacted')}"))
+public void listen(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key, String payload) {
+    ...
+}
+
+@Bean
+public PartitionFinder finder(ConsumerFactory<String, String> consumerFactory) {
+    return new PartitionFinder(consumerFactory);
+}
+
+public static class PartitionFinder {
+
+    private final ConsumerFactory<String, String> consumerFactory;
+
+    public PartitionFinder(ConsumerFactory<String, String> consumerFactory) {
+        this.consumerFactory = consumerFactory;
+    }
+
+    public String[] partitions(String topic) {
+        try (Consumer<String, String> consumer = consumerFactory.createConsumer()) {
+            return consumer.partitionsFor(topic).stream()
+                .map(pi -> "" + pi.partition())
+                .toArray(String[]::new);
+        }
+    }
+
+}
+----
+====
+
+Using this in conjunction with `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG=earliest` will load all records each time the application is started.

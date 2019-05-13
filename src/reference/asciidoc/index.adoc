@@ -43,6 +43,10 @@ include::streams.adoc[]
 
 include::testing.adoc[]
 
+== Tips and Tricks
+
+include::tips.adoc[]
+
 == Spring Integration
 
 This part of the reference guide shows how to use the `spring-integration-kafka` module of Spring Integration.
