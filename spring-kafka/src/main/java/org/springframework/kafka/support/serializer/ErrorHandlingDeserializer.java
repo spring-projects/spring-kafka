@@ -53,7 +53,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 
 	private Deserializer<T> delegate;
 
-	private boolean isKey;
+	private boolean isForKey;
 
 	public ErrorHandlingDeserializer() {
 	}
@@ -86,7 +86,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		}
 		Assert.state(this.delegate != null, "No delegate deserializer configured");
 		this.delegate.configure(configs, isKey);
-		this.isKey = isKey;
+		this.isForKey = isKey;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -125,7 +125,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		// We need this container to trick a generic type. It doesn't matter at runtime anyway.
 		AtomicReference<T> reference =
 				(AtomicReference<T>) new AtomicReference<>(
-						new DeserializationException("Failed to deserialize", headers, data, this.isKey, e));
+						new DeserializationException("Failed to deserialize", headers, data, this.isForKey, e));
 		return reference.get();
 	}
 

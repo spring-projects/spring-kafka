@@ -82,7 +82,7 @@ import org.springframework.messaging.handler.annotation.support.HeaderMethodArgu
 import org.springframework.messaging.handler.annotation.support.HeadersMethodArgumentResolver;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageMethodArgumentResolver;
-import org.springframework.messaging.handler.annotation.support.PayloadArgumentResolver;
+import org.springframework.messaging.handler.annotation.support.PayloadMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
@@ -194,7 +194,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * @param messageHandlerMethodFactory the {@link MessageHandlerMethodFactory} instance.
 	 */
 	public void setMessageHandlerMethodFactory(MessageHandlerMethodFactory messageHandlerMethodFactory) {
-		this.messageHandlerMethodFactory.setMessageHandlerMethodFactory(messageHandlerMethodFactory);
+		this.messageHandlerMethodFactory.setHandlerMethodFactory(messageHandlerMethodFactory);
 	}
 
 	/**
@@ -254,7 +254,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		// Set the custom handler method factory once resolved by the configurer
 		MessageHandlerMethodFactory handlerMethodFactory = this.registrar.getMessageHandlerMethodFactory();
 		if (handlerMethodFactory != null) {
-			this.messageHandlerMethodFactory.setMessageHandlerMethodFactory(handlerMethodFactory);
+			this.messageHandlerMethodFactory.setHandlerMethodFactory(handlerMethodFactory);
 		}
 		else {
 			addFormatters(this.messageHandlerMethodFactory.defaultFormattingConversionService);
@@ -385,7 +385,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						method = iface.getMethod(method.getName(), method.getParameterTypes());
 						break;
 					}
-					catch (NoSuchMethodException noMethod) {
+					catch (@SuppressWarnings("unused") NoSuchMethodException noMethod) {
+						// NOSONAR
 					}
 				}
 			}
@@ -779,22 +780,22 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		private final DefaultFormattingConversionService defaultFormattingConversionService =
 				new DefaultFormattingConversionService();
 
-		private MessageHandlerMethodFactory messageHandlerMethodFactory;
+		private MessageHandlerMethodFactory handlerMethodFactory;
 
-		public void setMessageHandlerMethodFactory(MessageHandlerMethodFactory kafkaHandlerMethodFactory1) {
-			this.messageHandlerMethodFactory = kafkaHandlerMethodFactory1;
+		public void setHandlerMethodFactory(MessageHandlerMethodFactory kafkaHandlerMethodFactory1) {
+			this.handlerMethodFactory = kafkaHandlerMethodFactory1;
 		}
 
 		@Override
 		public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
-			return getMessageHandlerMethodFactory().createInvocableHandlerMethod(bean, method);
+			return getHandlerMethodFactory().createInvocableHandlerMethod(bean, method);
 		}
 
-		private MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
-			if (this.messageHandlerMethodFactory == null) {
-				this.messageHandlerMethodFactory = createDefaultMessageHandlerMethodFactory();
+		private MessageHandlerMethodFactory getHandlerMethodFactory() {
+			if (this.handlerMethodFactory == null) {
+				this.handlerMethodFactory = createDefaultMessageHandlerMethodFactory();
 			}
-			return this.messageHandlerMethodFactory;
+			return this.handlerMethodFactory;
 		}
 
 		private MessageHandlerMethodFactory createDefaultMessageHandlerMethodFactory() {
@@ -893,7 +894,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	}
 
-	private static class KafkaNullAwarePayloadArgumentResolver extends PayloadArgumentResolver {
+	private static class KafkaNullAwarePayloadArgumentResolver extends PayloadMethodArgumentResolver {
 
 		KafkaNullAwarePayloadArgumentResolver(MessageConverter messageConverter, Validator validator) {
 			super(messageConverter, validator);

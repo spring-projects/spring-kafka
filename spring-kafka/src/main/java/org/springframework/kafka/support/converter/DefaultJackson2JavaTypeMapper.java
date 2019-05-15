@@ -42,7 +42,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
  * @since 2.1
  */
 public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
-		implements Jackson2JavaTypeMapper, ClassMapper {
+		implements Jackson2JavaTypeMapper {
 
 	private static final List<String> TRUSTED_PACKAGES =
 			Arrays.asList(
@@ -73,12 +73,12 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 	/**
 	 * Specify a set of packages to trust during deserialization.
 	 * The asterisk ({@code *}) means trust all.
-	 * @param trustedPackages the trusted Java packages for deserialization
+	 * @param packagesToTrust the trusted Java packages for deserialization
 	 */
 	@Override
-	public void addTrustedPackages(String... trustedPackages) {
-		if (trustedPackages != null) {
-			for (String whiteListClass : trustedPackages) {
+	public void addTrustedPackages(String... packagesToTrust) {
+		if (packagesToTrust != null) {
+			for (String whiteListClass : packagesToTrust) {
 				if ("*".equals(whiteListClass)) {
 					this.trustedPackages.clear();
 					break;

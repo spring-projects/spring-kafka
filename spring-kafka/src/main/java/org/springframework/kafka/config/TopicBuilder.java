@@ -48,43 +48,43 @@ public final class TopicBuilder {
 
 	/**
 	 * Set the number of partitions (default 1).
-	 * @param partitions the partitions.
+	 * @param partitionCount the partitions.
 	 * @return the builder.
 	 */
-	public TopicBuilder partitions(int partitions) {
-		this.partitions = partitions;
+	public TopicBuilder partitions(int partitionCount) {
+		this.partitions = partitionCount;
 		return this;
 	}
 
 	/**
 	 * Set the number of replicas (default 1).
-	 * @param replicas the replicas (which will be cast to short).
+	 * @param replicaCount the replicas (which will be cast to short).
 	 * @return the builder.
 	 */
-	public TopicBuilder replicas(int replicas) {
-		this.replicas = (short) replicas;
+	public TopicBuilder replicas(int replicaCount) {
+		this.replicas = (short) replicaCount;
 		return this;
 	}
 
 	/**
 	 * Set the replica assignments.
-	 * @param replicasAssignments the assignments.
+	 * @param replicaAssignments the assignments.
 	 * @return the builder.
 	 * @see NewTopic#replicasAssignments()
 	 */
-	public TopicBuilder replicasAssignments(Map<Integer, List<Integer>> replicasAssignments) {
-		this.replicasAssignments = replicasAssignments;
+	public TopicBuilder replicasAssignments(Map<Integer, List<Integer>> replicaAssignments) {
+		this.replicasAssignments = replicaAssignments;
 		return this;
 	}
 
 	/**
 	 * Set the configs.
-	 * @param configs the configs.
+	 * @param configProps the configs.
 	 * @return the builder.
 	 * @see NewTopic#configs()
 	 */
-	public TopicBuilder configs(Map<String, String> configs) {
-		this.configs.putAll(configs);
+	public TopicBuilder configs(Map<String, String> configProps) {
+		this.configs.putAll(configProps);
 		return this;
 	}
 

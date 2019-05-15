@@ -80,7 +80,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 
 	private Deserializer<T> delegate;
 
-	private boolean isKey;
+	private boolean isForKey;
 
 	private BiFunction<byte[], Headers, T> failedDeserializationFunction;
 
@@ -96,8 +96,8 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 		this.failedDeserializationFunction = failedDeserializationFunction;
 	}
 
-	public boolean isKey() {
-		return this.isKey;
+	public boolean isForKey() {
+		return this.isForKey;
 	}
 
 	/**
@@ -106,8 +106,8 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 	 * @param isKey true for a key deserializer, false otherwise.
 	 * @since 2.2.3
 	 */
-	public void setKey(boolean isKey) {
-		this.isKey = isKey;
+	public void setForKey(boolean isKey) {
+		this.isForKey = isKey;
 	}
 
 	/**
@@ -118,7 +118,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 	 * @since 2.2.3
 	 */
 	public ErrorHandlingDeserializer2<T> keyDeserializer(boolean isKey) {
-		this.isKey = isKey;
+		this.isForKey = isKey;
 		return this;
 	}
 
@@ -127,7 +127,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 		setupDelegate(configs, isKey ? KEY_DESERIALIZER_CLASS : VALUE_DESERIALIZER_CLASS);
 		Assert.state(this.delegate != null, "No delegate deserializer configured");
 		this.delegate.configure(configs, isKey);
-		this.isKey = isKey;
+		this.isForKey = isKey;
 		setupFunction(configs, isKey ? KEY_FUNCTION : VALUE_FUNCTION);
 	}
 
@@ -200,7 +200,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 
 	private void deserializationException(Headers headers, byte[] data, Exception e) {
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
-		DeserializationException exception = new DeserializationException("failed to deserialize", data, this.isKey, e);
+		DeserializationException exception = new DeserializationException("failed to deserialize", data, this.isForKey, e);
 		try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
 			oos.writeObject(exception);
 		}
@@ -208,7 +208,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 			stream = new ByteArrayOutputStream();
 			try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
 				exception = new DeserializationException("failed to deserialize",
-						data, this.isKey, new RuntimeException("Could not deserialize type "
+						data, this.isForKey, new RuntimeException("Could not deserialize type "
 								+ e.getClass().getName() + " with message " + e.getMessage()
 								+ " failure: " + ex.getMessage()));
 				oos.writeObject(exception);
@@ -218,7 +218,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 			}
 		}
 		headers.add(
-				new RecordHeader(this.isKey ? KEY_DESERIALIZER_EXCEPTION_HEADER : VALUE_DESERIALIZER_EXCEPTION_HEADER,
+				new RecordHeader(this.isForKey ? KEY_DESERIALIZER_EXCEPTION_HEADER : VALUE_DESERIALIZER_EXCEPTION_HEADER,
 						stream.toByteArray()));
 	}
 

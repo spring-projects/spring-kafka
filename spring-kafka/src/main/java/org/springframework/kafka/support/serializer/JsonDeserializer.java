@@ -255,8 +255,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		initialize(targetType, useHeadersIfPresent);
 	}
 
-	private void initialize(@Nullable JavaType targetType, boolean useHeadersIfPresent) {
-		this.targetType = targetType;
+	private void initialize(@Nullable JavaType type, boolean useHeadersIfPresent) {
+		this.targetType = type;
 		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 

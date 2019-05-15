@@ -46,8 +46,8 @@ public class CompositeKafkaStreamsCustomizer implements KafkaStreamsCustomizer {
 		this.kafkaStreamsCustomizers.forEach(kafkaStreamsCustomizer -> kafkaStreamsCustomizer.customize(kafkaStreams));
 	}
 
-	public void addKafkaStreamsCustomizers(List<KafkaStreamsCustomizer> kafkaStreamsCustomizers) {
-		this.kafkaStreamsCustomizers.addAll(kafkaStreamsCustomizers);
+	public void addKafkaStreamsCustomizers(List<KafkaStreamsCustomizer> customizers) {
+		this.kafkaStreamsCustomizers.addAll(customizers);
 	}
 
 }

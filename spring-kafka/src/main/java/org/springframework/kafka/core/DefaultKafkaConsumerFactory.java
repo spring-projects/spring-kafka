@@ -160,8 +160,8 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		return createKafkaConsumer(modifiedConfigs);
 	}
 
-	protected KafkaConsumer<K, V> createKafkaConsumer(Map<String, Object> configs) {
-		return new KafkaConsumer<>(configs, this.keyDeserializer, this.valueDeserializer);
+	protected KafkaConsumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
+		return new KafkaConsumer<>(configProps, this.keyDeserializer, this.valueDeserializer);
 	}
 
 	@Override
