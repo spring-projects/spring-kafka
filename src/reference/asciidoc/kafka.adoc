@@ -281,6 +281,20 @@ public void sendToKafka(final MyOutputData data) {
 ----
 ====
 
+[[producer-factory]]
+===== Using `DefaultKafkaProducerFactory`
+
+As seen in <<kafka-template>>, a `ProducerFactory` is used to create the producer.
+
+When not using <<transactions>>, by default, the `DefaultKafkaProducerFactory` creates a singleton producer used by all clients, as recommended in the `KafkaProducer` javadocs.
+However, if you call `flush()` on the template, this can cause delays for other threads using the same producer.
+Starting with version 2.3, the `DefaultKafkaProducerFactory` has a new property `producerPerThread`.
+When set to `true`, the factory will create (and cache) a separate producer for each thread, to avoid this issue.
+
+IMPORTANT: When `producerPerThread` is `true`, user code **must** call `closeThreadBoundProducer()` on the factory when the producer is no longer needed.
+This will physically close the producer and remove it from the `ThreadLocal`.
+Calling `reset()` or `destroy()` will not clean up these producers.
+
 [[transactions]]
 ===== Transactions
 

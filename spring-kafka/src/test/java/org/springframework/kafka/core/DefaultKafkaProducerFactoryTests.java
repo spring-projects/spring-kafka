@@ -21,7 +21,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
@@ -103,7 +105,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void testResetSingle() throws Exception {
+	public void testResetSingle() {
 		final Producer producer = mock(Producer.class);
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
@@ -121,6 +123,7 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(cache.size()).isEqualTo(0);
 		pf.reset();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
+		verify(producer).close(any(Duration.class));
 	}
 
 	@Test
@@ -149,6 +152,37 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(cache.size()).isEqualTo(1);
 		pf.onApplicationEvent(new ContextStoppedEvent(ctx));
 		assertThat(cache.size()).isEqualTo(0);
+		verify(producer).close(any(Duration.class));
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public void testThreadLocal() {
+		final Producer producer = mock(Producer.class);
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			boolean created;
+
+			@Override
+			protected Producer createKafkaProducer() {
+				assertThat(this.created).isFalse();
+				this.created = true;
+				return producer;
+			}
+
+		};
+		pf.setProducerPerThread(true);
+		Producer aProducer = pf.createProducer();
+		assertThat(aProducer).isNotNull();
+		aProducer.close();
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isSameAs(aProducer);
+		bProducer.close();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNotNull();
+		pf.closeThreadBoundProducer();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNull();
+		verify(producer).close(any(Duration.class));
 	}
 
 }

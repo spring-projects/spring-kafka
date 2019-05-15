@@ -60,4 +60,13 @@ public interface ProducerFactory<K, V> {
 		return false;
 	}
 
+	/**
+	 * If the factory implementation uses thread-bound producers, call this method to
+	 * close and release this thread's producer.
+	 * @since 2.3
+	 */
+	default void closeThreadBoundProducer() {
+		// NOSONAR
+	}
+
 }

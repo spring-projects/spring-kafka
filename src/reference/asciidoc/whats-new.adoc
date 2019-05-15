@@ -9,6 +9,11 @@ Also see <<new-in-sik>>.
 
 This version requires the 2.2.0 `kafka-clients` or higher.
 
+==== Producer Factory Changes
+
+The `DefaultKafkaProducerFactory` can now be configured to create a producer per thread.
+See <<producer-factory>> for more information.
+
 ==== Listener Container Changes
 
 Previously, error handlers received `ListenerExecutionFailedException` (with the actual listener exception as the `cause`) when the listener was invoked using a listener adapter (such as `@KafkaListener` s).
@@ -47,6 +52,13 @@ A `RecoveringDeserializationExceptionHandler` is now provided which allows recor
 It can be used in conjunction with a `DeadLetterPublishingRecoverer` to send these records to a dead-letter topic.
 See <<streams-deser-recovery>> for more information.
 
+The `HeaderEnricher` transformer has been provided, using SpEL to generate the header values.
+See <<streams-header-enricher>> for more information.
+
+The `MessagingTransformer` has been provided.
+This allows a Kafka streams topoology to interact with a spring-messaging component, such as a Spring Integration flow.
+See <<streams-messaging>> and <<streams-integration>> for more information.
+
 ==== JSON Component Changes
 
 Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.
@@ -65,12 +77,3 @@ When a reply times out, the future is completed exceptionally with a `KafkaReply
 
 Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
 See <<aggregating-request-reply>> for more information.
-
-==== Kafka Streams
-
-The `HeaderEnricher` transformer has been provided, using SpEL to generate the header values.
-See <<streams-header-enricher>> for more information.
-
-The `MessagingTransformer` has been provided.
-This allows a Kafka streams topoology to interact with a spring-messaging component, such as a Spring Integration flow.
-See <<streams-messaging>> and <<streams-integration>> for more information.

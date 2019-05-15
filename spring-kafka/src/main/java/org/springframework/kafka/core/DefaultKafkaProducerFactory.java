@@ -115,6 +115,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private boolean producerPerConsumerPartition = true;
 
+	private boolean producerPerThread;
+
+	private ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers;
+
 	private volatile CloseSafeProducer<K, V> producer;
 
 	/**
@@ -192,14 +196,17 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
-	 * When set to 'true', the producer will ensure that exactly one copy of each message is written in the stream.
+	 * Set to true to create a producer per thread instead of singleton that is shared by
+	 * all clients. Clients <b>must</b> call {@link #closeThreadBoundProducer()} to
+	 * physically close the producer when it is no longer needed. These producers will not
+	 * be closed by {@link #destroy()} or {@link #reset()}.
+	 * @param producerPerThread true for a producer per thread.
+	 * @since 2.3
+	 * @see #closeThreadBoundProducer()
 	 */
-	private void enableIdempotentBehaviour() {
-		Object previousValue = this.configs.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
-		if (Boolean.FALSE.equals(previousValue)) {
-			LOGGER.debug(() -> "The '" + ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG
-					+ "' is set to false, may result in duplicate messages");
-		}
+	public void setProducerPerThread(boolean producerPerThread) {
+		this.producerPerThread = producerPerThread;
+		this.threadBoundProducers = new ThreadLocal<>();
 	}
 
 	/**
@@ -233,6 +240,17 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		return Collections.unmodifiableMap(this.configs);
 	}
 
+	/**
+	 * When set to 'true', the producer will ensure that exactly one copy of each message is written in the stream.
+	 */
+	private void enableIdempotentBehaviour() {
+		Object previousValue = this.configs.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+		if (Boolean.FALSE.equals(previousValue)) {
+			LOGGER.debug(() -> "The '" + ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG
+					+ "' is set to false, may result in duplicate messages");
+		}
+	}
+
 	@Override
 	public boolean transactionCapable() {
 		return this.transactionIdPrefix != null;
@@ -244,12 +262,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		CloseSafeProducer<K, V> producerToClose = this.producer;
 		this.producer = null;
 		if (producerToClose != null) {
-			producerToClose.delegate.close(this.physicalCloseTimeout);
+			producerToClose.getDelegate().close(this.physicalCloseTimeout);
 		}
 		producerToClose = this.cache.poll();
 		while (producerToClose != null) {
 			try {
-				producerToClose.delegate.close(this.physicalCloseTimeout);
+				producerToClose.getDelegate().close(this.physicalCloseTimeout);
 			}
 			catch (Exception e) {
 				LOGGER.error(e, "Exception while closing producer");
@@ -258,7 +276,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
-					(k, v) -> v.delegate.close(this.physicalCloseTimeout));
+					(k, v) -> v.getDelegate().close(this.physicalCloseTimeout));
 			this.consumerProducers.clear();
 		}
 	}
@@ -303,6 +321,14 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			else {
 				return createTransactionalProducer();
 			}
+		}
+		if (this.producerPerThread) {
+			CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
+			if (tlProducer == null) {
+				tlProducer = new CloseSafeProducer<>(createKafkaProducer());
+				this.threadBoundProducers.set(tlProducer);
+			}
+			return tlProducer;
 		}
 		if (this.producer == null) {
 			synchronized (this) {
@@ -392,9 +418,25 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			synchronized (this.consumerProducers) {
 				CloseSafeProducer<K, V> removed = this.consumerProducers.remove(suffix);
 				if (removed != null) {
-					removed.delegate.close(this.physicalCloseTimeout);
+					removed.getDelegate().close(this.physicalCloseTimeout);
 				}
 			}
+		}
+	}
+
+	/**
+	 * When using {@link #setProducerPerThread(boolean)} (true), call this method to close
+	 * and release this thread's producer. Thread bound producers are <b>not</b> closed by
+	 * {@link #destroy()} or {@link #reset()} methods.
+	 * @since 2.3
+	 * @see #setProducerPerThread(boolean)
+	 */
+	@Override
+	public void closeThreadBoundProducer() {
+		CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
+		if (tlProducer != null) {
+			tlProducer.getDelegate().close(this.physicalCloseTimeout);
+			this.threadBoundProducers.remove();
 		}
 	}
 
@@ -439,6 +481,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			this.cache = cache;
 			this.removeConsumerProducer = removeConsumerProducer;
 			this.txId = txId;
+		}
+
+		Producer<K, V> getDelegate() {
+			return this.delegate;
 		}
 
 		@Override
