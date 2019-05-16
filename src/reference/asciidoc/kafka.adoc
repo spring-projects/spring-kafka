@@ -385,8 +385,10 @@ KafkaMessageListenerContainer container(ConsumerFactory<String, String> cf,
 
 NOTE: The offset to be committed is one greater than the offset of the records processed by the listener.
 
-IMPORTANT: You should call this should only when you use transaction synchronization.
-When a listener container is configured to use a `KafkaTransactionManager`, it takes care of sending the offsets to the transaction.
+IMPORTANT: You should call this only when you use transaction synchronization.
+When a listener container is configured to use a `KafkaTransactionManager` or `ChainedKafkaTransactionManager`, it takes care of sending the offsets to the transaction.
+
+See <<ex-jdbc-sync>> for an example application that synchronizes JDBC and Kafka transactions.
 
 [[chained-transaction-manager]]
 ====== Using `ChainedKafkaTransactionManager`
@@ -396,6 +398,8 @@ This is a subclass of `ChainedTransactionManager` that can have exactly one `Kaf
 Since it is a `KafkaAwareTransactionManager`, the container can send the offsets to the transaction in the same way as when the container is configured with a simple `KafkaTransactionManager`.
 This provides another mechanism for synchronizing transactions without having to send the offsets to the transaction in the listener code.
 You should chain your transaction managers in the desired order and provide the `ChainedTransactionManager` in the `ContainerProperties`.
+
+See <<ex-jdbc-sync>> for an example application that synchronizes JDBC and Kafka transactions.
 
 ====== `KafkaTemplate` Local Transactions
 
@@ -1024,7 +1028,7 @@ public void listen(ConsumerRecord<?, ?> record) {
 
 You can specify each partition in the `partitions` or `partitionOffsets` attribute but not both.
 
-As with most annotation properties, you can use SpEL expressions; for an example of how to generate a large list of partitions, see <<assign-all-parts>>.
+As with most annotation properties, you can use SpEL expressions; for an example of how to generate a large list of partitions, see <<tip-assign-all-parts>>.
 
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.
 The following example also shows how to use a different container factory.
@@ -2892,7 +2896,7 @@ static class MultiListenerBean {
 
 Note that the argument is `null`, not `KafkaNull`.
 
-TIP: See <<assign-all-parts>>.
+TIP: See <<tip-assign-all-parts>>.
 
 [[annotation-error-handling]]
 ==== Handling Exceptions

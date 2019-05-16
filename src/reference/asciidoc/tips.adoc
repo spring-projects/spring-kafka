@@ -1,4 +1,4 @@
-[[assign-all-parts]]
+[[tip-assign-all-parts]]
 === Manually Assigning All Partitions
 
 Let's say you want to always read all records from all partitions (such as when using a compacted topic to load a distributed cache), it can be useful to manually assign the partitions and not use Kafka's group management.
@@ -43,3 +43,114 @@ public static class PartitionFinder {
 
 Using this in conjunction with `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG=earliest` will load all records each time the application is started.
 You should also set the container's `AckMode` to `MANUAL` to prevent the container from committing offsets for a `null` consumer group.
+
+[[ex-jdbc-sync]]
+=== Example of Transaction Synchronization
+
+The following Spring Boot application is an example of synchronizing database and Kafka transactions.
+
+====
+[source, java]
+----
+@SpringBootApplication
+public class Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+
+    @Bean
+    public ApplicationRunner runner(KafkaTemplate<String, String> template) {
+        return args -> template.executeInTransaction(t -> t.send("topic1", "test"));
+    }
+
+    @Bean
+    public ChainedKafkaTransactionManager<Object, Object> chainedTm(
+            KafkaTransactionManager<String, String> ktm,
+            DataSourceTransactionManager dstm) {
+
+        return new ChainedKafkaTransactionManager<>(ktm, dstm);
+    }
+
+    @Bean
+    public DataSourceTransactionManager dstm(DataSource dataSource) {
+        return new DataSourceTransactionManager(dataSource);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
+            ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+            ConsumerFactory<Object, Object> kafkaConsumerFactory,
+            ChainedKafkaTransactionManager<Object, Object> chainedTM) {
+
+        ConcurrentKafkaListenerContainerFactory<Object, Object> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        configurer.configure(factory, kafkaConsumerFactory);
+        factory.getContainerProperties().setTransactionManager(chainedTM);
+        return factory;
+    }
+
+    @Component
+    public static class Listener {
+
+        private final JdbcTemplate jdbcTemplate;
+
+        private final KafkaTemplate<String, String> kafkaTemplate;
+
+        public Listener(JdbcTemplate jdbcTemplate, KafkaTemplate<String, String> kafkaTemplate) {
+            this.jdbcTemplate = jdbcTemplate;
+            this.kafkaTemplate = kafkaTemplate;
+        }
+
+        @KafkaListener(id = "group1", topics = "topic1")
+        public void listen1(String in) {
+            this.kafkaTemplate.send("topic2", in.toUpperCase());
+            this.jdbcTemplate.execute("insert into mytable (data) values ('" + in + "')");
+        }
+
+        @KafkaListener(id = "group2", topics = "topic2")
+        public void listen2(String in) {
+            System.out.println(in);
+        }
+
+    }
+
+    @Bean
+    public NewTopic topic1() {
+        return TopicBuilder.name("topic1").build();
+    }
+
+    @Bean
+    public NewTopic topic2() {
+        return TopicBuilder.name("topic2").build();
+    }
+
+}
+----
+====
+
+====
+[source, properties]
+----
+spring.datasource.url=jdbc:mysql://localhost/integration?serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+spring.kafka.consumer.auto-offset-reset=earliest
+spring.kafka.consumer.enable-auto-commit=false
+spring.kafka.consumer.properties.isolation.level=read_committed
+
+spring.kafka.producer.transaction-id-prefix=tx-
+
+#logging.level.org.springframework.transaction=trace
+#logging.level.org.springframework.kafka.transaction=debug
+#logging.level.org.springframework.jdbc=debug
+----
+====
+
+====
+[source, sql]
+----
+create table mytable (data varchar(20));
+----
+====

@@ -4,6 +4,11 @@ This section covers the changes made from version 2.2 to version 2.3.
 
 Also see <<new-in-sik>>.
 
+==== Tips, Tricks and Examples
+
+A new chapter <<tips-n-tricks>> has been added.
+Please submit GitHub issues and/or pull requests for additional entries in that chapter.
+
 [[kafka-client-2.2]]
 ==== Kafka Client Version
 

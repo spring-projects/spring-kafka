@@ -43,7 +43,8 @@ include::streams.adoc[]
 
 include::testing.adoc[]
 
-== Tips and Tricks
+[[tips-n-tricks]]
+== Tips, Tricks and Examples
 
 include::tips.adoc[]
 
