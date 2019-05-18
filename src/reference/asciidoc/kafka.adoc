@@ -2428,7 +2428,7 @@ public ConsumerFactory<Foo, Bar> kafkaConsumerFactory(KafkaProperties properties
 }
 
 @Bean
-public ProducererFactory<Foo, Bar> kafkaProducerFactory(KafkaProperties properties,
+public ProducerFactory<Foo, Bar> kafkaProducerFactory(KafkaProperties properties,
     JsonSserializer customSerializer) {
 
     return new DefaultKafkaConsumerFactory<>(properties.buildProducerProperties(),
