@@ -61,7 +61,7 @@ The `HeaderEnricher` transformer has been provided, using SpEL to generate the h
 See <<streams-header-enricher>> for more information.
 
 The `MessagingTransformer` has been provided.
-This allows a Kafka streams topoology to interact with a spring-messaging component, such as a Spring Integration flow.
+This allows a Kafka streams topology to interact with a spring-messaging component, such as a Spring Integration flow.
 See <<streams-messaging>> and <<streams-integration>> for more information.
 
 ==== JSON Component Changes
