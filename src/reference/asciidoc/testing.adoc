@@ -385,7 +385,7 @@ public static <V> Matcher<ConsumerRecord<?, V>> hasValue(V value) { ... }
 public static Matcher<ConsumerRecord<?, ?>> hasPartition(int partition) { ... }
 
 /**
- * Matcher testing the timestamp of a {@link ConsumerRecord} asssuming the topic has been set with
+ * Matcher testing the timestamp of a {@link ConsumerRecord} assuming the topic has been set with
  * {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}.
  *
  * @param ts timestamp of the consumer record.
