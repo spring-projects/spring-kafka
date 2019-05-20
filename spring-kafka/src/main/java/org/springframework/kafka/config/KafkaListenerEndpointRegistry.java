@@ -79,6 +79,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 
 	private boolean contextRefreshed;
 
+	private volatile boolean running;
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -254,6 +255,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			startIfNecessary(listenerContainer);
 		}
+		this.running = true;
 	}
 
 	@Override
@@ -261,6 +263,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			listenerContainer.stop();
 		}
+		this.running = false;
 	}
 
 	@Override
@@ -279,12 +282,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 
 	@Override
 	public boolean isRunning() {
-		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
-			if (listenerContainer.isRunning()) {
-				return true;
-			}
-		}
-		return false;
+		return this.running;
 	}
 
 
