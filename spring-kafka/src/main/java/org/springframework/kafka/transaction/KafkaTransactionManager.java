@@ -70,6 +70,8 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	private final ProducerFactory<K, V> producerFactory;
 
+	private String transactionIdPrefix;
+
 	/**
 	 * Create a new KafkaTransactionManager, given a ProducerFactory.
 	 * Transaction synchronization is turned off by default, as this manager might be used alongside a datastore-based
@@ -82,6 +84,15 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		Assert.isTrue(producerFactory.transactionCapable(), "The 'ProducerFactory' must support transactions");
 		setTransactionSynchronization(SYNCHRONIZATION_NEVER);
 		this.producerFactory = producerFactory;
+	}
+
+	/**
+	 * Set a transaction id prefix to override the prefix in the producer factory.
+	 * @param transactionIdPrefix the prefix.
+	 * @since 2.3
+	 */
+	public void setTransactionIdPrefix(String transactionIdPrefix) {
+		this.transactionIdPrefix = transactionIdPrefix;
 	}
 
 	/**
@@ -132,7 +143,8 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		KafkaResourceHolder<K, V> resourceHolder = null;
 		try {
-			resourceHolder = ProducerFactoryUtils.getTransactionalResourceHolder(getProducerFactory());
+			resourceHolder = ProducerFactoryUtils.getTransactionalResourceHolder(getProducerFactory(),
+					this.transactionIdPrefix);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Created Kafka transaction on producer [" + resourceHolder.getProducer() + "]");
 			}

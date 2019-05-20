@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -99,7 +100,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final AtomicInteger transactionIdSuffix = new AtomicInteger();
 
-	private final BlockingQueue<CloseSafeProducer<K, V>> cache = new LinkedBlockingQueue<>();
+	private final Map<String, BlockingQueue<CloseSafeProducer<K, V>>> cache = new ConcurrentHashMap<>();
 
 	private final Map<String, CloseSafeProducer<K, V>> consumerProducers = new HashMap<>();
 
@@ -264,16 +265,19 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		if (producerToClose != null) {
 			producerToClose.getDelegate().close(this.physicalCloseTimeout);
 		}
-		producerToClose = this.cache.poll();
-		while (producerToClose != null) {
-			try {
-				producerToClose.getDelegate().close(this.physicalCloseTimeout);
+		this.cache.values().forEach(queue -> {
+			CloseSafeProducer<K, V> next = queue.poll();
+			while (next != null) {
+				try {
+					next.getDelegate().close(this.physicalCloseTimeout);
+				}
+				catch (Exception e) {
+					LOGGER.error(e, "Exception while closing producer");
+				}
+				next = queue.poll();
 			}
-			catch (Exception e) {
-				LOGGER.error(e, "Exception while closing producer");
-			}
-			producerToClose = this.cache.poll();
-		}
+		});
+		this.cache.clear();
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
 					(k, v) -> v.getDelegate().close(this.physicalCloseTimeout));
@@ -314,12 +318,18 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	@Override
 	public Producer<K, V> createProducer() {
-		if (this.transactionIdPrefix != null) {
+		return createProducer(this.transactionIdPrefix);
+	}
+
+	@Override
+	public Producer<K, V> createProducer(@Nullable String txIdPrefixArg) {
+		String txIdPrefix = txIdPrefixArg == null ? this.transactionIdPrefix : txIdPrefixArg;
+		if (txIdPrefix != null) {
 			if (this.producerPerConsumerPartition) {
-				return createTransactionalProducerForPartition();
+				return createTransactionalProducerForPartition(txIdPrefix);
 			}
 			else {
-				return createTransactionalProducer();
+				return createTransactionalProducer(txIdPrefix);
 			}
 		}
 		if (this.producerPerThread) {
@@ -349,15 +359,20 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		return new KafkaProducer<>(this.configs, this.keySerializer, this.valueSerializer);
 	}
 
-	Producer<K, V> createTransactionalProducerForPartition() {
+	protected Producer<K, V> createTransactionalProducerForPartition() {
+		return createTransactionalProducerForPartition(this.transactionIdPrefix);
+	}
+
+	protected Producer<K, V> createTransactionalProducerForPartition(String txIdPrefix) {
 		String suffix = TransactionSupport.getTransactionIdSuffix();
 		if (suffix == null) {
-			return createTransactionalProducer();
+			return createTransactionalProducer(txIdPrefix);
 		}
 		else {
 			synchronized (this.consumerProducers) {
 				if (!this.consumerProducers.containsKey(suffix)) {
-					CloseSafeProducer<K, V> newProducer = doCreateTxProducer(suffix, this::removeConsumerProducer);
+					CloseSafeProducer<K, V> newProducer = doCreateTxProducer(txIdPrefix, suffix,
+							this::removeConsumerProducer);
 					this.consumerProducers.put(suffix, newProducer);
 					return newProducer;
 				}
@@ -387,29 +402,43 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @since 1.3
 	 */
 	protected Producer<K, V> createTransactionalProducer() {
-		Producer<K, V> cachedProducer = this.cache.poll();
+		return createTransactionalProducer(this.transactionIdPrefix);
+	}
+
+	protected Producer<K, V> createTransactionalProducer(String txIdPrefix) {
+		BlockingQueue<CloseSafeProducer<K, V>> queue = getCache(txIdPrefix);
+		Producer<K, V> cachedProducer = queue.poll();
 		if (cachedProducer == null) {
-			return doCreateTxProducer("" + this.transactionIdSuffix.getAndIncrement(), null);
+			return doCreateTxProducer(txIdPrefix, "" + this.transactionIdSuffix.getAndIncrement(), null);
 		}
 		else {
 			return cachedProducer;
 		}
 	}
 
-	private CloseSafeProducer<K, V> doCreateTxProducer(String suffix,
+	private CloseSafeProducer<K, V> doCreateTxProducer(String prefix, String suffix,
 			@Nullable Consumer<CloseSafeProducer<K, V>> remover) {
 
 		Producer<K, V> newProducer;
 		Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
-		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, this.transactionIdPrefix + suffix);
+		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, prefix + suffix);
 		newProducer = new KafkaProducer<>(newProducerConfigs, this.keySerializer, this.valueSerializer);
 		newProducer.initTransactions();
-		return new CloseSafeProducer<>(newProducer, this.cache, remover,
+		return new CloseSafeProducer<>(newProducer, this.cache.get(prefix), remover,
 				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG));
 	}
 
+	@Nullable
 	protected BlockingQueue<CloseSafeProducer<K, V>> getCache() {
-		return this.cache;
+		return getCache(this.transactionIdPrefix);
+	}
+
+	@Nullable
+	protected BlockingQueue<CloseSafeProducer<K, V>> getCache(String txIdPrefix) {
+		if (txIdPrefix == null) {
+			return null;
+		}
+		return this.cache.computeIfAbsent(txIdPrefix, txId -> new LinkedBlockingQueue<>());
 	}
 
 	@Override

@@ -320,6 +320,8 @@ If you wish to revert to the previous behavior, you can set the `producerPerCons
 
 NOTE: While transactions are supported with batch listeners, zombie fencing cannot be supported because a batch may contain records from multiple topics or partitions.
 
+Also see <<transaction-id-prefix>>.
+
 ====== Using `KafkaTransactionManager`
 
 The `KafkaTransactionManager` is an implementation of Spring Framework's `PlatformTransactionManager`.
@@ -423,6 +425,22 @@ If an exception is thrown, the transaction is rolled back.
 
 NOTE: If there is a `KafkaTransactionManager` (or synchronized) transaction in process, it is not used.
 Instead, a new "nested" transaction is used.
+
+[[transaction-id-prefix]]
+====== `transactionIdPrefix`
+
+As mentioned in <<transactions, the overview>>, the producer factory is configured with this property to build the producer `transactional.id` property.
+There is rather a dichotomy when specifying this property in that, when running multiple instances of the application, it must be the same on all instances to satisfy fencing zombies (also mentioned in the overview) when producing records on a listener container thread.
+However, when producing records using transactions that are **not** started by a listener container, the prefix has to be different on each instance.
+Version 2.3, makes this simpler to configure, especially in a Spring Boot application.
+In previous versions, you had to create two producer factories and `KafkaTemplate` s - one for producing records on a listener container thread and one for stand-alone transactions started by `kafkaTemplate.executeInTransaction()` or by a transaction interceptor on a `@Transactional` method.
+
+Now, you can override the factory's `transactionalIdPrefix` on the `KafkaTemplate` and the `KafkaTransactionManager`.
+
+When using a transaction manager and template for a listener container, you would normally leave this to default to the producer factory's property.
+This value should be the same for all application instances.
+For transactions started by the template (or the transaction manager for `@Transaction`) you should set the property on the template and transaction manager respectively.
+This property must have a difference value on each application instance.
 
 [[replying-template]]
 ===== Using `ReplyingKafkaTemplate`

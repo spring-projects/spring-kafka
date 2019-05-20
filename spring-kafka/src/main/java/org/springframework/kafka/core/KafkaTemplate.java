@@ -78,6 +78,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private volatile ProducerListener<K, V> producerListener = new LoggingProducerListener<K, V>();
 
+	private String transactionIdPrefix;
+
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -152,6 +154,19 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	@Override
 	public boolean isTransactional() {
 		return this.transactional;
+	}
+
+	public String getTransactionIdPrefix() {
+		return this.transactionIdPrefix;
+	}
+
+	/**
+	 * Set a transaction id prefix to override the prefix in the producer factory.
+	 * @param transactionIdPrefix the prefix.
+	 * @since 2.3
+	 */
+	public void setTransactionIdPrefix(String transactionIdPrefix) {
+		this.transactionIdPrefix = transactionIdPrefix;
 	}
 
 	/**
@@ -277,7 +292,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			transactionIdSuffix = null;
 		}
 
-		producer = this.producerFactory.createProducer();
+		producer = this.producerFactory.createProducer(this.transactionIdPrefix);
 
 		try {
 			producer.beginTransaction();
@@ -427,11 +442,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 				return producer;
 			}
 			KafkaResourceHolder<K, V> holder = ProducerFactoryUtils
-					.getTransactionalResourceHolder(this.producerFactory);
+					.getTransactionalResourceHolder(this.producerFactory, this.transactionIdPrefix);
 			return holder.getProducer();
 		}
 		else {
-			return this.producerFactory.createProducer();
+			return this.producerFactory.createProducer(this.transactionIdPrefix);
 		}
 	}
 

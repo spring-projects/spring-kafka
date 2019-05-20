@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,9 +56,9 @@ public class DefaultKafkaProducerFactoryTests {
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override
-			protected Producer createTransactionalProducer() {
+			protected Producer createTransactionalProducer(String txIdPrefix) {
 				producer.initTransactions();
-				BlockingQueue<Producer> cache = getCache();
+				BlockingQueue<Producer> cache = getCache(txIdPrefix);
 				Producer cached = cache.poll();
 				return cached == null ? new CloseSafeProducer(producer, cache) : cached;
 			}
@@ -80,8 +81,10 @@ public class DefaultKafkaProducerFactoryTests {
 			kafkaTemplate.send("foo", "bar");
 			return null;
 		});
-		BlockingQueue cache = KafkaTestUtils.getPropertyValue(pf, "cache", BlockingQueue.class);
+		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
 		assertThat(cache).hasSize(1);
+		Queue queue = (Queue) cache.get("foo");
+		assertThat(queue).hasSize(1);
 		try {
 			transactionTemplate.execute(s -> {
 				return null;
@@ -90,7 +93,7 @@ public class DefaultKafkaProducerFactoryTests {
 		catch (CannotCreateTransactionException e) {
 			assertThat(e.getCause().getMessage()).contains("Invalid transition");
 		}
-		assertThat(cache).hasSize(0);
+		assertThat(queue).hasSize(0);
 
 		InOrder inOrder = inOrder(producer);
 		inOrder.verify(producer).initTransactions();
@@ -119,7 +122,7 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(aProducer).isNotNull();
 		aProducer.close();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNotNull();
-		Queue cache = KafkaTestUtils.getPropertyValue(pf, "cache", Queue.class);
+		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
 		assertThat(cache.size()).isEqualTo(0);
 		pf.reset();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
@@ -134,9 +137,9 @@ public class DefaultKafkaProducerFactoryTests {
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override
-			protected Producer createTransactionalProducer() {
+			protected Producer createTransactionalProducer(String txIdPrefix) {
 				producer.initTransactions();
-				BlockingQueue<Producer> cache = getCache();
+				BlockingQueue<Producer> cache = getCache(txIdPrefix);
 				Producer cached = cache.poll();
 				return cached == null ? new CloseSafeProducer(producer, cache) : cached;
 			}
@@ -148,10 +151,12 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(aProducer).isNotNull();
 		aProducer.close();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
-		Queue cache = KafkaTestUtils.getPropertyValue(pf, "cache", Queue.class);
+		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
 		assertThat(cache.size()).isEqualTo(1);
+		Queue queue = (Queue) cache.get("foo");
+		assertThat(queue.size()).isEqualTo(1);
 		pf.onApplicationEvent(new ContextStoppedEvent(ctx));
-		assertThat(cache.size()).isEqualTo(0);
+		assertThat(queue.size()).isEqualTo(0);
 		verify(producer).close(any(Duration.class));
 	}
 

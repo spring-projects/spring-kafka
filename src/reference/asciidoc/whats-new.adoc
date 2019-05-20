@@ -82,3 +82,8 @@ When a reply times out, the future is completed exceptionally with a `KafkaReply
 
 Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
 See <<aggregating-request-reply>> for more information.
+
+==== Transaction Changes
+
+You can now override the producer factory's `transactionIdPrefix` on the `KafkaTemplate` and `KafkaTransactionManager`.
+See <<transaction-id-prefix>> for more information.

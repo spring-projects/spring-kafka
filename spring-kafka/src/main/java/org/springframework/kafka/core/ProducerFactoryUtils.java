@@ -50,13 +50,29 @@ public final class ProducerFactoryUtils {
 	public static <K, V> KafkaResourceHolder<K, V> getTransactionalResourceHolder(
 			final ProducerFactory<K, V> producerFactory) {
 
+		return getTransactionalResourceHolder(producerFactory, null);
+	}
+
+	/**
+	 * Obtain a Producer that is synchronized with the current transaction, if any.
+	 * @param producerFactory the ProducerFactory to obtain a Channel for
+	 * @param txIdPrefix the transaction id prefix; if null, the producer factory
+	 * prefix is used.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the resource holder.
+	 * @since 2.3
+	 */
+	public static <K, V> KafkaResourceHolder<K, V> getTransactionalResourceHolder(
+			final ProducerFactory<K, V> producerFactory, @Nullable String txIdPrefix) {
+
 		Assert.notNull(producerFactory, "ProducerFactory must not be null");
 
 		@SuppressWarnings("unchecked")
 		KafkaResourceHolder<K, V> resourceHolder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
 				.getResource(producerFactory);
 		if (resourceHolder == null) {
-			Producer<K, V> producer = producerFactory.createProducer();
+			Producer<K, V> producer = producerFactory.createProducer(txIdPrefix);
 
 			try {
 				producer.beginTransaction();

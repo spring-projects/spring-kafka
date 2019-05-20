@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -250,7 +251,7 @@ public class SeekToCurrentOnErrorRecordModeTXTests {
 		@Bean
 		public ProducerFactory producerFactory() {
 			ProducerFactory pf = mock(ProducerFactory.class);
-			given(pf.createProducer()).willReturn(producer());
+			given(pf.createProducer(isNull())).willReturn(producer());
 			given(pf.transactionCapable()).willReturn(true);
 			return pf;
 		}

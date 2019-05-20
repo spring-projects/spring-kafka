@@ -35,6 +35,16 @@ public interface ProducerFactory<K, V> {
 	Producer<K, V> createProducer();
 
 	/**
+	 * Create a producer with an overridden transaction id prefix.
+	 * @param txIdPrefix the transaction id prefix.
+	 * @return the producer.
+	 * @since 2.3
+	 */
+	default Producer<K, V> createProducer(@SuppressWarnings("unused") String txIdPrefix) {
+		throw new UnsupportedOperationException("This factory does not support this method");
+	}
+
+	/**
 	 * Return true if the factory supports transactions.
 	 * @return true if transactional.
 	 */

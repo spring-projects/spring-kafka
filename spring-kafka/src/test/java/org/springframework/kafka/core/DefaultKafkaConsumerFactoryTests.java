@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -101,10 +100,12 @@ public class DefaultKafkaConsumerFactoryTests {
 		container.start();
 		try {
 			ListenableFuture<SendResult<Integer, String>> future = template.send("txCache1", "foo");
-			future.get();
-			assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", BlockingQueue.class)).hasSize(0);
+			future.get(10, TimeUnit.SECONDS);
+			pf.getCache();
+			assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", Map.class)).hasSize(0);
 			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
-			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", BlockingQueue.class)).hasSize(1);
+			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(1);
+			assertThat(pfTx.getCache()).hasSize(1);
 		}
 		finally {
 			container.stop();
@@ -140,10 +141,10 @@ public class DefaultKafkaConsumerFactoryTests {
 		container.start();
 		try {
 			ListenableFuture<SendResult<Integer, String>> future = template.send("txCache2", "foo");
-			future.get();
-			assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", BlockingQueue.class)).hasSize(0);
+			future.get(10, TimeUnit.SECONDS);
+			assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", Map.class)).hasSize(0);
 			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
-			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", BlockingQueue.class)).hasSize(0);
+			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(0);
 		}
 		finally {
 			container.stop();

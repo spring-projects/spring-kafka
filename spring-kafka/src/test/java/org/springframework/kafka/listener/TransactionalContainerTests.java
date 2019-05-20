@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
@@ -168,7 +169,7 @@ public class TransactionalContainerTests {
 		willAnswer(i -> {
 			transactionalIds.add(TransactionSupport.getTransactionIdSuffix());
 			return producer;
-		}).given(pf).createProducer();
+		}).given(pf).createProducer(isNull());
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
 		PlatformTransactionManager ptm = tm;
 		if (chained) {
@@ -206,7 +207,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).close();
 		container.stop();
-		verify(pf, times(2)).createProducer();
+		verify(pf, times(2)).createProducer(isNull());
 		verifyNoMoreInteractions(producer);
 		assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
 		assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
@@ -247,7 +248,7 @@ public class TransactionalContainerTests {
 		}).given(producer).close();
 		ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
-		given(pf.createProducer()).willReturn(producer);
+		given(pf.createProducer(isNull())).willReturn(producer);
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
 		ContainerProperties props = new ContainerProperties(new TopicPartitionInitialOffset("foo", 0),
 				new TopicPartitionInitialOffset("foo", 1));
@@ -276,7 +277,7 @@ public class TransactionalContainerTests {
 		verify(consumer).seek(topicPartition1, 0);
 		verify(consumer, never()).commitSync(anyMap(), any());
 		container.stop();
-		verify(pf, times(1)).createProducer();
+		verify(pf, times(1)).createProducer(isNull());
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -314,7 +315,7 @@ public class TransactionalContainerTests {
 		}).given(producer).close();
 		ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
-		given(pf.createProducer()).willReturn(producer);
+		given(pf.createProducer(isNull())).willReturn(producer);
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
 		ContainerProperties props = new ContainerProperties(new TopicPartitionInitialOffset("foo", 0),
 				new TopicPartitionInitialOffset("foo", 1));
@@ -343,7 +344,7 @@ public class TransactionalContainerTests {
 		verify(consumer).seek(topicPartition1, 0);
 		verify(consumer, never()).commitSync(anyMap(), any());
 		container.stop();
-		verify(pf, times(1)).createProducer();
+		verify(pf, times(1)).createProducer(isNull());
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -381,7 +382,7 @@ public class TransactionalContainerTests {
 
 		final ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
-		given(pf.createProducer()).willReturn(producer);
+		given(pf.createProducer(isNull())).willReturn(producer);
 		ContainerProperties props = new ContainerProperties("foo");
 		props.setGroupId("group");
 		props.setTransactionManager(new SomeOtherTransactionManager());
@@ -407,7 +408,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).close();
 		container.stop();
-		verify(pf).createProducer();
+		verify(pf).createProducer(isNull());
 	}
 
 	@SuppressWarnings("unchecked")
