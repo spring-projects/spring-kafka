@@ -266,6 +266,7 @@ project ('spring-kafka-test') {
 		compile ("org.mockito:mockito-core:$mockitoVersion", optional)
 
 		compile ("junit:junit:$junit4Version", optional)
+		compile "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
 
 		compile ("org.assertj:assertj-core:$assertjVersion", optional)
 		compile ("org.apache.logging.log4j:log4j-core:$log4jVersion", optional)

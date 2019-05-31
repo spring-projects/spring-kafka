@@ -23,7 +23,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.springframework.core.annotation.AliasFor;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 
 /**
  * Annotation that can be specified on a test class that runs Spring Kafka based tests.
@@ -59,6 +62,7 @@ import org.springframework.core.annotation.AliasFor;
  *
  * @see org.springframework.kafka.test.EmbeddedKafkaBroker
  */
+@ExtendWith(EmbeddedKafkaCondition.class)
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
@@ -108,8 +112,8 @@ public @interface EmbeddedKafka {
 
 	/**
 	 * Properties in form {@literal key=value} that should be added to the broker config
-	 * before runs. Properties may contain property placeholders, e.g.
-	 * {@code delete.topic.enable=${topic.delete:true}}.
+	 * before runs. When used in a Spring test context, properties may contain property
+	 * placeholders, e.g. {@code delete.topic.enable=${topic.delete:true}}.
 	 * @return the properties to add
 	 * @see #brokerPropertiesLocation()
 	 * @see org.springframework.kafka.test.EmbeddedKafkaBroker#brokerProperties(java.util.Map)
@@ -118,10 +122,11 @@ public @interface EmbeddedKafka {
 
 	/**
 	 * Spring {@code Resource} url specifying the location of properties that should be
-	 * added to the broker config. The {@code brokerPropertiesLocation} url and the
-	 * properties themselves may contain placeholders that are resolved during
-	 * initialization. Properties specified by {@link #brokerProperties()} will override
-	 * properties found in {@code brokerPropertiesLocation}.
+	 * added to the broker config. When used in a Spring test context, the
+	 * {@code brokerPropertiesLocation} url and the properties themselves may contain
+	 * placeholders that are resolved during initialization. Properties specified by
+	 * {@link #brokerProperties()} will override properties found in
+	 * {@code brokerPropertiesLocation}.
 	 * @return a {@code Resource} url specifying the location of properties to add
 	 * @see #brokerProperties()
 	 * @see org.springframework.kafka.test.EmbeddedKafkaBroker#brokerProperties(java.util.Map)

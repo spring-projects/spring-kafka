@@ -263,6 +263,32 @@ Properties defined by `brokerProperties` override properties found in `brokerPro
 
 You can use the `@EmbeddedKafka` annotation with JUnit 4 or JUnit 5.
 
+[[embedded-kafka-junit5]]
+==== @EmbeddedKafka Annotation with JUnit5
+
+Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit5.
+When used with the `@SpringJunitConfig` annotation, the embedded broker is added to the test application context.
+You can auto wire the broker into your test, at the class or method level, to get the broker address list.
+
+When *not* using the spring test context, the `EmbdeddedKafkaCondition` creates a broker; the condition includes a parameter resolver so you can access the broker in your test method...
+
+====
+[source, java]
+----
+@EmbeddedKafka
+public class EmbeddedKafkaConditionTests {
+
+	@Test
+	public void test(EmbeddedKafkaBroker broker) {
+		String brokerList = broker.getBrokersAsString();
+        ...
+	}
+
+}
+----
+====
+
+
 ==== Embedded Broker in `@SpringBootTest` Annotations
 
 https://start.spring.io/[Spring Initializr] now automatically adds the `spring-kafka-test` dependency in test scope to the project configuration.
