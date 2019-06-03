@@ -1739,10 +1739,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 				if (ListenerConsumer.this.consumerPaused) {
-					ListenerConsumer.this.consumerPaused = false;
+					ListenerConsumer.this.consumer.pause(partitions);
 					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
-							+ "the container will pause again before polling, unless the container's "
-							+ "'paused' property is reset by a custom rebalance listener");
+							+ "consumer paused again, so the initial poll() will never return any records");
 				}
 				ListenerConsumer.this.assignedPartitions = partitions;
 				if (!ListenerConsumer.this.autoCommit) {
