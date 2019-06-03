@@ -61,33 +61,6 @@ public final class KafkaTestUtils {
 	 * Set up test properties for an {@code <Integer, String>} consumer.
 	 * @param group the group id.
 	 * @param autoCommit the auto commit.
-	 * @param embeddedKafka a {@link org.springframework.kafka.test.rule.KafkaEmbedded} instance.
-	 * @return the properties.
-	 * @deprecated since 2.2 in favor of {@link #consumerProps(String, String, EmbeddedKafkaBroker)}
-	 */
-	@SuppressWarnings("deprecation")
-	@Deprecated
-	public static Map<String, Object> consumerProps(String group, String autoCommit,
-			org.springframework.kafka.test.rule.KafkaEmbedded embeddedKafka) {
-		return consumerProps(embeddedKafka.getBrokersAsString(), group, autoCommit);
-	}
-
-	/**
-	 * Set up test properties for an {@code <Integer, String>} producer.
-	 * @param embeddedKafka a {@link org.springframework.kafka.test.rule.KafkaEmbedded} instance.
-	 * @return the properties.
-	 * @deprecated since 2.2 in favor of {@link #producerProps(EmbeddedKafkaBroker)}
-	 */
-	@SuppressWarnings("deprecation")
-	@Deprecated
-	public static Map<String, Object> producerProps(org.springframework.kafka.test.rule.KafkaEmbedded embeddedKafka) {
-		return senderProps(embeddedKafka.getBrokersAsString());
-	}
-
-	/**
-	 * Set up test properties for an {@code <Integer, String>} consumer.
-	 * @param group the group id.
-	 * @param autoCommit the auto commit.
 	 * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
 	 * @return the properties.
 	 */
