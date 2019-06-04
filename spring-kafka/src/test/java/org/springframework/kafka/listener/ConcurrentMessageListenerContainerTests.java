@@ -96,9 +96,11 @@ public class ConcurrentMessageListenerContainerTests {
 
 	private static String topic11 = "testTopic11";
 
+	private static String topic12 = "testTopic12";
+
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11);
+			topic6, topic7, topic8, topic9, topic10, topic11, topic12);
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -449,6 +451,44 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(bitSet.cardinality()).isEqualTo(8);
 		container.stop();
 		this.logger.info("Stop MANUAL_IMMEDIATE with Existing");
+	}
+
+	@Test
+	public void testPausedStart() throws Exception {
+		this.logger.info("Start paused start");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic12);
+
+		final CountDownLatch latch = new CountDownLatch(2);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			ConcurrentMessageListenerContainerTests.this.logger.info("paused start: " + message);
+			latch.countDown();
+		});
+
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		container.setConcurrency(2);
+		container.setBeanName("testBatch");
+		container.pause();
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic12);
+		template.sendDefault(0, "foo");
+		template.sendDefault(2, "bar");
+		template.flush();
+		assertThat(latch.await(100, TimeUnit.MILLISECONDS)).isFalse();
+
+		container.resume();
+
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		this.logger.info("Stop paused start");
 	}
 
 	@Test

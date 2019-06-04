@@ -167,6 +167,9 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 					});
 					publishContainerStoppedEvent();
 				});
+				if (isPaused()) {
+					container.pause();
+				}
 				container.start();
 				this.containers.add(container);
 			}
