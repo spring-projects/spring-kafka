@@ -19,7 +19,6 @@ package org.springframework.kafka.support.converter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.header.Headers;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.KafkaHeaders;
@@ -27,6 +26,8 @@ import org.springframework.messaging.Message;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.1.13
  *
  */
@@ -35,9 +36,7 @@ public class MessagingMessageConverterTests {
 	@Test
 	void missingHeaders() {
 		MessagingMessageConverter converter = new MessagingMessageConverter();
-		Headers nullHeaders = null;
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz",
-				nullHeaders);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz");
 		Message<?> message = converter.toMessage(record, null, null, null);
 		assertThat(message.getPayload()).isEqualTo("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");

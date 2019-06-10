@@ -43,6 +43,8 @@ import org.springframework.messaging.MessageHeaders;
 
 /**
  * @author Biju Kunjummen
+ * @author Artem Bilan
+ *
  * @since 1.3
  */
 public class BatchMessageConverterTests {
@@ -120,9 +122,7 @@ public class BatchMessageConverterTests {
 	@Test
 	public void missingHeaders() {
 		BatchMessageConverter converter = new BatchMessagingMessageConverter();
-		Headers nullHeaders = null;
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz",
-				nullHeaders);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz");
 		List<ConsumerRecord<?, ?>> records = Collections.singletonList(record);
 		Message<?> message = converter.toMessage(records, null, null, null);
 		assertThat(((List<String>) message.getPayload())).contains("baz");
