@@ -36,6 +36,7 @@ import org.springframework.kafka.listener.BatchErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
+import org.springframework.kafka.listener.RecordInterceptor;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
@@ -97,6 +98,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private ReplyHeadersConfigurer replyHeadersConfigurer;
 
 	private Boolean missingTopicsFatal;
+
+	private RecordInterceptor<K, V> recordInterceptor;
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -280,6 +283,16 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		return this.containerProperties;
 	}
 
+	/**
+	 * Set an interceptor to be called before calling the listener.
+	 * Does not apply to batch listeners.
+	 * @param recordInterceptor the interceptor.
+	 * @since 2.2.7
+	 */
+	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
+		this.recordInterceptor = recordInterceptor;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		if (this.errorHandler != null) {
@@ -356,6 +369,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		else if (this.autoStartup != null) {
 			instance.setAutoStartup(this.autoStartup);
 		}
+		instance.setRecordInterceptor(this.recordInterceptor);
 		JavaUtils.INSTANCE
 			.acceptIfNotNull(this.phase, instance::setPhase)
 			.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)

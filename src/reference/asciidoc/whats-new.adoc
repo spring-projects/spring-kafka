@@ -34,6 +34,9 @@ See <<seek-to-current>> for more information.
 It is now possible to obtain the consumer's `group.id` property in the listener method.
 See <<listener-group-id>> for more information.
 
+The container has a new property `recordInterceptor` allowing records to be inspected or modified before invoking the listener.
+See <<message-listener-container>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.

@@ -466,6 +466,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Duration syncCommitTimeout;
 
+		private final RecordInterceptor<K, V> recordInterceptor = getRecordInterceptor();
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private volatile Collection<TopicPartition> assignedPartitions;
@@ -1308,26 +1310,35 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ackCurrent(record, producer);
 		}
 
-		private void doInvokeOnMessage(final ConsumerRecord<K, V> record) {
-			switch (this.listenerType) {
-				case ACKNOWLEDGING_CONSUMER_AWARE:
-					this.listener.onMessage(record,
-							this.isAnyManualAck
-									? new ConsumerAcknowledgment(record)
-									: null, this.consumer);
-					break;
-				case CONSUMER_AWARE:
-					this.listener.onMessage(record, this.consumer);
-					break;
-				case ACKNOWLEDGING:
-					this.listener.onMessage(record,
-							this.isAnyManualAck
-									? new ConsumerAcknowledgment(record)
-									: null);
-					break;
-				case SIMPLE:
-					this.listener.onMessage(record);
-					break;
+		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
+			ConsumerRecord<K, V> record = recordArg;
+			if (this.recordInterceptor != null) {
+				record = this.recordInterceptor.intercept(record);
+			}
+			if (record == null) {
+				this.logger.debug(() -> "RecordInterceptor returned null, skipping: " + recordArg);
+			}
+			else {
+				switch (this.listenerType) {
+					case ACKNOWLEDGING_CONSUMER_AWARE:
+						this.listener.onMessage(record,
+								this.isAnyManualAck
+										? new ConsumerAcknowledgment(record)
+										: null, this.consumer);
+						break;
+					case CONSUMER_AWARE:
+						this.listener.onMessage(record, this.consumer);
+						break;
+					case ACKNOWLEDGING:
+						this.listener.onMessage(record,
+								this.isAnyManualAck
+										? new ConsumerAcknowledgment(record)
+										: null);
+						break;
+					case SIMPLE:
+						this.listener.onMessage(record);
+						break;
+				}
 			}
 		}
 

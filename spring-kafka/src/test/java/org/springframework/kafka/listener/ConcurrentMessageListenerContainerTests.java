@@ -124,11 +124,13 @@ public class ConcurrentMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setLogContainerConfig(true);
 
-		final CountDownLatch latch = new CountDownLatch(4);
+		final CountDownLatch latch = new CountDownLatch(3);
 		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
+		final List<String> payloads = new ArrayList<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
 			listenerThreadNames.add(Thread.currentThread().getName());
+			payloads.add(message.value());
 			latch.countDown();
 		});
 
@@ -144,6 +146,11 @@ public class ConcurrentMessageListenerContainerTests {
 				stopLatch.countDown();
 			}
 		});
+		CountDownLatch intercepted = new CountDownLatch(4);
+		container.setRecordInterceptor(record -> {
+			intercepted.countDown();
+			return record.value().equals("baz") ? null : record;
+		});
 		container.start();
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -158,6 +165,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(0, "baz");
 		template.sendDefault(2, "qux");
 		template.flush();
+		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		for (String threadName : listenerThreadNames) {
 			assertThat(threadName).contains("-C-");
@@ -173,6 +181,7 @@ public class ConcurrentMessageListenerContainerTests {
 		Set<KafkaMessageListenerContainer<Integer, String>> children = new HashSet<>(containers);
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
 		events.forEach(e -> {
 			assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
 			if (e instanceof ContainerStoppedEvent) {

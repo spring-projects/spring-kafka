@@ -753,6 +753,10 @@ Two `MessageListenerContainer` implementations are provided:
 The `KafkaMessageListenerContainer` receives all message from all topics or partitions on a single thread.
 The `ConcurrentMessageListenerContainer` delegates to one or more `KafkaMessageListenerContainer` instances to provide multi-threaded consumption.
 
+Starting with version 2.1.7, you can add a `RecordInterceptor` to the listener container; it will be invoked before calling the listener allowing inspection or modification of the record.
+If the interceptor returns null, the listener is not called.
+The interceptor is not invoked when the listener is a <<batch-listners, batch listener>>.
+
 [[kafka-container]]
 ====== Using `KafkaMessageListenerContainer`
 

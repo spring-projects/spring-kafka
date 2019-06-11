@@ -746,6 +746,7 @@ public class EnableKafkaIntegrationTests {
 		this.bytesKeyTemplate.send("annotated36", "foo".getBytes(), "bar");
 		assertThat(this.listener.keyLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.convertedKey).isEqualTo("foo");
+		assertThat(this.config.intercepted).isTrue();
 	}
 
 	@Test
@@ -761,7 +762,11 @@ public class EnableKafkaIntegrationTests {
 	@EnableTransactionManagement(proxyTargetClass = true)
 	public static class Config implements KafkaListenerConfigurer {
 
-		private final CountDownLatch spyLatch = new CountDownLatch(2);
+		final CountDownLatch spyLatch = new CountDownLatch(2);
+
+		volatile Throwable globalErrorThrowable;
+
+		volatile boolean intercepted;
 
 		@Bean
 		public static PropertySourcesPlaceholderConfigurer ppc() {
@@ -783,8 +788,6 @@ public class EnableKafkaIntegrationTests {
 		public ChainedKafkaTransactionManager<Integer, String> cktm() {
 			return new ChainedKafkaTransactionManager<>(ktm(), transactionManager());
 		}
-
-		private Throwable globalErrorThrowable;
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
@@ -884,6 +887,10 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<byte[], String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(bytesStringConsumerFactory());
+			factory.setRecordInterceptor(record -> {
+				this.intercepted = true;
+				return record;
+			});
 			return factory;
 		}
 

@@ -89,6 +89,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private int topicCheckTimeout = DEFAULT_TOPIC_CHECK_TIMEOUT;
 
+	private RecordInterceptor<K, V> recordInterceptor;
+
 	private volatile boolean running = false;
 
 	private volatile boolean paused;
@@ -277,6 +279,20 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	public void setTopicCheckTimeout(int topicCheckTimeout) {
 		this.topicCheckTimeout = topicCheckTimeout;
+	}
+
+	protected RecordInterceptor<K, V> getRecordInterceptor() {
+		return this.recordInterceptor;
+	}
+
+	/**
+	 * Set an interceptor to be called before calling the listener.
+	 * Does not apply to batch listeners.
+	 * @param recordInterceptor the interceptor.
+	 * @since 2.2.7
+	 */
+	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
+		this.recordInterceptor = recordInterceptor;
 	}
 
 	@Override
