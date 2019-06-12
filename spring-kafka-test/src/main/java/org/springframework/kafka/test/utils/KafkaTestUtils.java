@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -30,6 +31,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -141,7 +143,19 @@ public final class KafkaTestUtils {
 	 */
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
 		ConsumerRecords<K, V> received = getRecords(consumer, timeout);
-		assertThat(received.count()).as("Incorrect results returned", received.count()).isEqualTo(1);
+		Iterator<ConsumerRecord<K, V>> iterator = received.records(topic).iterator();
+		assertThat(iterator.hasNext()).as("No records found for topic").isTrue();
+		iterator.next();
+		assertThat(iterator.hasNext()).as("More than one record for topic found").isFalse();
+		if (received.count() > 1) {
+			Map<TopicPartition, Long> reset = new HashMap<>();
+			received.forEach(rec -> {
+				if (!rec.topic().equals(topic)) {
+					reset.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()), tp -> rec.offset());
+				}
+			});
+			reset.forEach((tp, off) -> consumer.seek(tp, off));
+		}
 		return received.records(topic).iterator().next();
 	}
 
