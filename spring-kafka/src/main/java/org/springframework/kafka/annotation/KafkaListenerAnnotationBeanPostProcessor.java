@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -89,6 +90,8 @@ import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.Validator;
+
+import reactor.core.publisher.Flux;
 
 /**
  * Bean post-processor that registers methods annotated with {@link KafkaListener}
@@ -288,6 +291,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 								AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
 				multiMethods.addAll(methodsWithHandler);
 			}
+			// TODO
+			Iterator<Method> iterator = annotatedMethods.keySet().iterator();
+			while (iterator.hasNext()) {
+				Method next = iterator.next();
+				if (next.getParameterTypes()[0].equals(Flux.class)) {
+					annotatedMethods.remove(next);
+				}
+			}
+			// end TODO
 			if (annotatedMethods.isEmpty()) {
 				this.nonAnnotatedClasses.add(bean.getClass());
 				this.logger.trace(() -> "No @KafkaListener annotations found on bean type: " + bean.getClass());
