@@ -69,8 +69,10 @@ public class ReactorAdapter implements SmartLifecycle {
 				.subscription(this.topics);
 		Flux<?> flux = KafkaReceiver.create(options).receive();
 		/*
-		 *  If the method's parameter is not a ReceiverRecord, we could map
+		 *  If the method's parameter is not a Flux<ReceiverRecord>, we could map
 		 *  record.value() using Spring's ConversionService.
+		 *  We could also, say, have Flux<Tuple2<String, String>> and map
+		 *  the key/value (again with conversion if needed).
 		 */
 		try {
 			Object result = this.method.invoke(this.bean, flux);
