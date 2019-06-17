@@ -28,6 +28,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 
@@ -76,8 +77,8 @@ public class ReactorAdapter implements SmartLifecycle {
 		 */
 		try {
 			Object result = this.method.invoke(this.bean, flux);
-			if (result instanceof Disposable) {
-				this.disposable = (Disposable) result;
+			if (result instanceof Mono) {
+				this.disposable = ((Mono<?>) result).subscribe();
 			}
 			this.running = true;
 		}
