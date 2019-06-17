@@ -113,6 +113,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private Properties consumerProperties;
 
+	private boolean reactive;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -409,6 +411,15 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setConsumerProperties(Properties consumerProperties) {
 		this.consumerProperties = consumerProperties;
+	}
+
+	public void setReactive(boolean reactive) {
+		this.reactive = reactive;
+	}
+
+	@Override
+	public boolean isReactive() {
+		return this.reactive;
 	}
 
 	@Override

@@ -19,6 +19,7 @@ package org.springframework.kafka.config;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 
@@ -71,5 +72,9 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 	 * @since 2.2
 	 */
 	C createContainer(Pattern topicPattern);
+
+	default ConsumerFactory<?, ?> getConsumerFactory() {
+		throw new UnsupportedOperationException("This factory does not support this method");
+	}
 
 }

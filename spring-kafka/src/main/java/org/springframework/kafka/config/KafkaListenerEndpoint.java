@@ -115,6 +115,10 @@ public interface KafkaListenerEndpoint {
 		return null;
 	}
 
+	default boolean isReactive() {
+		return false;
+	}
+
 	/**
 	 * Setup the specified message listener container with the model
 	 * defined by this endpoint.

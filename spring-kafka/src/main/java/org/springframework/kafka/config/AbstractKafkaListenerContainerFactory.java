@@ -109,6 +109,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.consumerFactory = consumerFactory;
 	}
 
+	@Override
 	public ConsumerFactory<? super K, ? super V> getConsumerFactory() {
 		return this.consumerFactory;
 	}

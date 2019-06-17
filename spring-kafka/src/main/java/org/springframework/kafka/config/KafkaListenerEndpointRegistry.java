@@ -19,6 +19,7 @@ package org.springframework.kafka.config;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanInitializationException;
@@ -40,6 +42,9 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.reactive.ReactorAdapter;
+import org.springframework.kafka.support.JavaUtils;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -73,6 +78,8 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	private final Map<String, MessageListenerContainer> listenerContainers =
 			new ConcurrentHashMap<String, MessageListenerContainer>();
 
+	private final Map<String, ReactorAdapter> reactorAdapters = new ConcurrentHashMap<>();
+
 	private int phase = AbstractMessageListenerContainer.DEFAULT_PHASE;
 
 	private ConfigurableApplicationContext applicationContext;
@@ -80,6 +87,8 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	private boolean contextRefreshed;
 
 	private volatile boolean running;
+
+	private int reactive;
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -144,7 +153,53 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	 * @see #registerListenerContainer(KafkaListenerEndpoint, KafkaListenerContainerFactory, boolean)
 	 */
 	public void registerListenerContainer(KafkaListenerEndpoint endpoint, KafkaListenerContainerFactory<?> factory) {
-		registerListenerContainer(endpoint, factory, false);
+		if (endpoint.isReactive()) {
+			registerReactiveAdapter(endpoint, factory);
+		}
+		else {
+			registerListenerContainer(endpoint, factory, false);
+		}
+	}
+
+	private void registerReactiveAdapter(KafkaListenerEndpoint endpoint, KafkaListenerContainerFactory<?> factory) {
+		Integer concurrency = endpoint.getConcurrency();
+		if (concurrency == null) {
+			concurrency = 1;
+		}
+		Assert.isInstanceOf(MethodKafkaListenerEndpoint.class, endpoint);
+		MethodKafkaListenerEndpoint<?, ?> methodEndpoint = (MethodKafkaListenerEndpoint<?, ?>) endpoint;
+		for (int i = 0; i < concurrency; i++) {
+			ReactorAdapter adapter;
+			if (endpoint.getTopics() != null) {
+				adapter = new ReactorAdapter(methodEndpoint.getBean(), methodEndpoint.getMethod(),
+						endpoint.getTopics().toArray(new String[0]));
+			}
+			else if (endpoint.getTopicPattern() != null) {
+				adapter = new ReactorAdapter(methodEndpoint.getBean(), methodEndpoint.getMethod(),
+						endpoint.getTopicPattern());
+			}
+			else if (endpoint.getTopicPartitions() != null) {
+				adapter = new ReactorAdapter(methodEndpoint.getBean(), methodEndpoint.getMethod(),
+						endpoint.getTopicPartitions().toArray(new TopicPartitionInitialOffset[0]));
+			}
+			else {
+				throw new IllegalStateException("topics, topicPattern, or topicPartitions is required");
+			}
+			Map<String, Object> configs = new HashMap<>(factory.getConsumerFactory().getConfigurationProperties());
+			int instance = i;
+			JavaUtils.INSTANCE
+				.acceptIfNotNull(ConsumerConfig.GROUP_ID_CONFIG, endpoint.getGroupId(),
+						(key, value) -> configs.put(key, value))
+				.acceptIfNotNull(ConsumerConfig.CLIENT_ID_CONFIG, endpoint.getClientIdPrefix(),
+						(key, value) -> configs.put(key, value + "-" + instance));
+			adapter.setConfigs(configs);
+			String id = endpoint.getId();
+			if (id == null) {
+				id = "reactiveListener#" + this.reactive + "#" + instance;
+			}
+			this.reactorAdapters.put(id, adapter);
+		}
+		this.reactive++;
 	}
 
 	/**
@@ -255,6 +310,9 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			startIfNecessary(listenerContainer);
 		}
+		this.reactorAdapters.values().forEach(adapter -> {
+			adapter.start();
+		});
 		this.running = true;
 	}
 
@@ -263,6 +321,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			listenerContainer.stop();
 		}
+		this.reactorAdapters.values().forEach(adapter -> adapter.stop());
 		this.running = false;
 	}
 

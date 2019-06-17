@@ -22,9 +22,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -47,9 +49,15 @@ public class ReactorAdapter implements SmartLifecycle {
 
 	private final List<String> topics;
 
+	private final Pattern topicPattern;
+
+	private final List<TopicPartitionInitialOffset> topicPartitions;
+
 	private final Map<String, Object> configs = new HashMap<>();
 
-	private Disposable disposable;
+	private String id;
+
+	private volatile Disposable disposable;
 
 	private volatile boolean running;
 
@@ -58,10 +66,38 @@ public class ReactorAdapter implements SmartLifecycle {
 		this.method = method;
 		this.method.setAccessible(true);
 		this.topics = Arrays.asList(topics);
+		this.topicPattern = null;
+		this.topicPartitions = null;
+	}
+
+	public ReactorAdapter(Object bean, Method method, Pattern topicPattern) {
+		this.bean = bean;
+		this.method = method;
+		this.method.setAccessible(true);
+		this.topics = null;
+		this.topicPattern = topicPattern;
+		this.topicPartitions = null;
+	}
+
+	public ReactorAdapter(Object bean, Method method, TopicPartitionInitialOffset... topics) {
+		this.bean = bean;
+		this.method = method;
+		this.method.setAccessible(true);
+		this.topics = null;
+		this.topicPattern = null;
+		this.topicPartitions = Arrays.asList(topics);
 	}
 
 	public void setConfigs(Map<String, Object> configs) {
 		this.configs.putAll(configs);
+	}
+
+	public String getId() {
+		return this.id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	@Override

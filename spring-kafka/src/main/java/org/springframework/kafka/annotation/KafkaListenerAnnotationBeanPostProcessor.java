@@ -291,15 +291,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 								AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
 				multiMethods.addAll(methodsWithHandler);
 			}
-			// TODO
 			Iterator<Method> iterator = annotatedMethods.keySet().iterator();
-			while (iterator.hasNext()) {
-				Method next = iterator.next();
-				if (next.getParameterTypes()[0].equals(Flux.class)) {
-					annotatedMethods.remove(next);
-				}
-			}
-			// end TODO
 			if (annotatedMethods.isEmpty()) {
 				this.nonAnnotatedClasses.add(bean.getClass());
 				this.logger.trace(() -> "No @KafkaListener annotations found on bean type: " + bean.getClass());
@@ -468,6 +460,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
 		if (StringUtils.hasText(errorHandlerBeanName)) {
 			endpoint.setErrorHandler(this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
+		}
+		Class<?>[] parameterTypes = endpoint.getMethod().getParameterTypes();
+		if (parameterTypes.length == 1 && parameterTypes[0].equals(Flux.class)) {
+			endpoint.setReactive(true);
 		}
 		this.registrar.registerEndpoint(endpoint, factory);
 		if (StringUtils.hasText(beanRef)) {
