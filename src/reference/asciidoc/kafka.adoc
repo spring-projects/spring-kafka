@@ -2405,6 +2405,8 @@ For a parent container, the source and container properties are identical.
 [[serdes]]
 ==== Serialization, Deserialization, and Message Conversion
 
+===== Overview
+
 Apache Kafka provides a high-level API for serializing and deserializing record values as well as their keys.
 It is present with the `org.apache.kafka.common.serialization.Serializer<T>` and
 `org.apache.kafka.common.serialization.Deserializer<T>` abstractions with some built-in implementations.
@@ -2426,6 +2428,8 @@ For more complex or particular cases, the `KafkaConsumer` (and, therefore, `Kafk
 constructors to accept `Serializer` and `Deserializer` instances for `keys` and `values`, respectively.
 
 When you use this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (through constructors or setter methods) to inject custom `Serializer` and `Deserializer` instances into the target `Producer` or `Consumer`.
+
+===== JSON
 
 Spring for Apache Kafka also provides `JsonSerializer` and `JsonDeserializer` implementations that are based on the
 Jackson JSON object mapper.
@@ -2468,7 +2472,7 @@ You can revert to the previous behavior by setting the `removeTypeHeaders` prope
 [[serdes-mapping-types]]
 ===== Mapping Types
 
-Starting with version 2.2, you can now provide type mappings by using the properties in the preceding list.
+Starting with version 2.2, when using JSON, you can now provide type mappings by using the properties in the preceding list.
 Previously, you had to customize the type mapper within the serializer and deserializer.
 Mappings consist of a comma-delimited list of `token:className` pairs.
 On outbound, the payload's class name is mapped to the corresponding token.
@@ -2541,6 +2545,36 @@ DefaultKafkaConsumerFactory<Integer, Cat1> cf = new DefaultKafkaConsumerFactory<
         new IntegerDeserializer(), new JsonDeserializer<>(Cat1.class, false));
 ----
 ====
+
+[[delegating-serialization]]
+===== Delegating Serializer and Deserializer
+
+Version 2.3 introduced the `DelegatingSerializer` and `DelegatingDeserializer`, which allow producing and consuming records with different key and/or value types.
+Producers must set a header `DelegatingSerializer.SERIALIZATION_SELECTOR` to a selector value that is used to select which serializer to use; if a match is not found, an `IllegalStateException` is thrown.
+
+For incoming records, the deserializer uses the same header to select the deserializer to use; if a match is not found or the header is not present, the raw `byte[]` is returned.
+
+You can configure the map of selector to `Serializer` / `Deserializer` via a constructor, or you can configure it via Kafka producer/consumer properties with the key `DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG`.
+For the serializer, the producer property can be a `Map<String, Object>` where the key is the selector and the value is a `Serializer` instance, a serializer `Class` or the class name.
+The property can also be a String of comma-delimited map entries, as shown below.
+
+For the deserializer, the producer property can be a `Map<String, Object>` where the key is the selector and the value is a `Deserializer` instance, a deserializer `Class` or the class name.
+The property can also be a String of comma-delimited map entries, as shown below.
+
+To configure using properties, use the following syntax:
+
+====
+[source, java]
+----
+producerProps.put(DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG,
+    "thing1:com.example.MyThing1Serializer, thing2:com.example.MyThing2Serializer")
+
+consumerProps.put(DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG,
+    "thing1:com.example.MyThing1Deserializer, thing2:com.example.MyThing2Deserializer")
+----
+====
+
+Producers would then set the `DelegatingSerializer.SERIALIZATION_SELECTOR` header to `thing1` or `thing2`.
 
 [[messaging-message-conversion]]
 ===== Spring Messaging Message Conversion

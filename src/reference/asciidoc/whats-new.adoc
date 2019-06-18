@@ -90,3 +90,8 @@ See <<aggregating-request-reply>> for more information.
 
 You can now override the producer factory's `transactionIdPrefix` on the `KafkaTemplate` and `KafkaTransactionManager`.
 See <<transaction-id-prefix>> for more information.
+
+==== New Delegating Serializer/Deserializer
+
+The framework now provides a delegating `Serializer` and `Deserializer`, utilizing a header to enable producing and consuming records with multiple key/value types.
+See <<delegating-serialization>> for more information.
