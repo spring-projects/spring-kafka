@@ -2558,7 +2558,7 @@ You can configure the map of selector to `Serializer` / `Deserializer` via a con
 For the serializer, the producer property can be a `Map<String, Object>` where the key is the selector and the value is a `Serializer` instance, a serializer `Class` or the class name.
 The property can also be a String of comma-delimited map entries, as shown below.
 
-For the deserializer, the producer property can be a `Map<String, Object>` where the key is the selector and the value is a `Deserializer` instance, a deserializer `Class` or the class name.
+For the deserializer, the consumer property can be a `Map<String, Object>` where the key is the selector and the value is a `Deserializer` instance, a deserializer `Class` or the class name.
 The property can also be a String of comma-delimited map entries, as shown below.
 
 To configure using properties, use the following syntax:
@@ -2569,7 +2569,7 @@ To configure using properties, use the following syntax:
 producerProps.put(DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG,
     "thing1:com.example.MyThing1Serializer, thing2:com.example.MyThing2Serializer")
 
-consumerProps.put(DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG,
+consumerProps.put(DelegatingDeserializer.SERIALIZATION_SELECTOR_CONFIG,
     "thing1:com.example.MyThing1Deserializer, thing2:com.example.MyThing2Deserializer")
 ----
 ====
