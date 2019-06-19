@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -30,10 +31,20 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
- * The {@link ConsumerFactory} implementation to produce a new {@link Consumer} instance
- * for provided {@link Map} {@code configs} and optional {@link Deserializer} {@code keyDeserializer},
- * {@code valueDeserializer} implementations on each {@link #createConsumer()}
+ * The {@link ConsumerFactory} implementation to produce new {@link Consumer} instances
+ * for provided {@link Map} {@code configs} and optional {@link Deserializer}s on each {@link #createConsumer()}
  * invocation.
+ * <p>
+ * If you are using {@link Deserializer}s that have no-arg constructors and require no setup, then simplest to
+ * specify {@link Deserializer} classes in spring.kafka.consumer configuration and create the
+ * {@link DefaultKafkaConsumerFactory} with just a map of configs.
+ * <p>
+ * If that is not possible, but you are using {@link Deserializer}s that may be shared between all {@link Consumer}
+ * instances (and specifically that their close() method is a no-op), then you can pass in {@link Deserializer}
+ * instances for one or both of the key and value deserializers.
+ * <p>
+ * If neither of the above is true then you may provide a {@link Supplier} function for one or both {@link Deserializer}s
+ * which will be used to obtain {@link Deserializer}(s) each time a {@link Consumer} is created by the factory.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -41,21 +52,22 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Murali Reddy
  * @author Artem Bilan
+ * @author Chris Gilbert
  */
 public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
 	private final Map<String, Object> configs;
 
-	private Deserializer<K> keyDeserializer;
+	private Supplier<Deserializer<K>> keyDeserializerSupplier;
 
-	private Deserializer<V> valueDeserializer;
+	private Supplier<Deserializer<V>> valueDeserializerSupplier;
 
 	/**
 	 * Construct a factory with the provided configuration.
 	 * @param configs the configuration.
 	 */
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs) {
-		this(configs, null, null);
+		this(configs, () -> null, () -> null);
 	}
 
 	/**
@@ -67,17 +79,29 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
 			@Nullable Deserializer<K> keyDeserializer,
 			@Nullable Deserializer<V> valueDeserializer) {
+		this(configs, () -> keyDeserializer, () -> valueDeserializer);
+	}
+
+	/**
+	 * Construct a factory with the provided configuration and deserializer suppliers.
+	 * @param configs the configuration.
+	 * @param keyDeserializerSupplier   the key {@link Deserializer} supplier function.
+	 * @param valueDeserializerSupplier the value {@link Deserializer} supplier function.
+	 */
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
+									@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier,
+									@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier) {
 		this.configs = new HashMap<>(configs);
-		this.keyDeserializer = keyDeserializer;
-		this.valueDeserializer = valueDeserializer;
+		this.keyDeserializerSupplier = keyDeserializerSupplier == null ? () -> null : keyDeserializerSupplier;
+		this.valueDeserializerSupplier = valueDeserializerSupplier == null ? () -> null : valueDeserializerSupplier;
 	}
 
 	public void setKeyDeserializer(@Nullable Deserializer<K> keyDeserializer) {
-		this.keyDeserializer = keyDeserializer;
+		this.keyDeserializerSupplier = () -> keyDeserializer;
 	}
 
 	public void setValueDeserializer(@Nullable Deserializer<V> valueDeserializer) {
-		this.valueDeserializer = valueDeserializer;
+		this.valueDeserializerSupplier = () -> valueDeserializer;
 	}
 
 	@Override
@@ -87,12 +111,12 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 
 	@Override
 	public Deserializer<K> getKeyDeserializer() {
-		return this.keyDeserializer;
+		return this.keyDeserializerSupplier.get();
 	}
 
 	@Override
 	public Deserializer<V> getValueDeserializer() {
-		return this.valueDeserializer;
+		return this.valueDeserializerSupplier.get();
 	}
 
 	@Override
@@ -161,7 +185,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
-		return new KafkaConsumer<>(configProps, this.keyDeserializer, this.valueDeserializer);
+		return new KafkaConsumer<>(configProps, this.keyDeserializerSupplier.get(), this.valueDeserializerSupplier.get());
 	}
 
 	@Override

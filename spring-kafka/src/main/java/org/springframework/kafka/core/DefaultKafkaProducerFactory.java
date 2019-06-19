@@ -30,6 +30,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -64,8 +65,24 @@ import org.springframework.util.StringUtils;
  * <p>
  * This implementation will return the same {@link Producer} instance (if transactions are
  * not enabled) for the provided {@link Map} {@code configs} and optional {@link Serializer}
- * {@code keySerializer}, {@code valueSerializer} implementations on each
- * {@link #createProducer()} invocation.
+ * implementations on each {@link #createProducer()} invocation.
+ * <p>
+ * If you are using {@link Serializer}s that have no-arg constructors and require no setup, then simplest to
+ * specify {@link Serializer} classes in spring.kafka.producer configuration and create the
+ * {@link DefaultKafkaProducerFactory} with just a map of configs.
+ * <p>
+ * If that is not possible, but you are sure that at least one of the following is true:
+ * <ul>
+ *     <li>only one {@link Producer} will use the {@link Serializer}s</li>
+ *     <li>you are using {@link Serializer}s that may be shared between {@link Producer} instances (and specifically
+ *     that their close() method is a no-op)</li>
+ *     <li>you are certain that there is no risk of any single {@link Producer} being closed while other
+ *     {@link Producer} instances with the same {@link Serializer}s are in use</li>
+ * </ul>
+ * then you can pass in {@link Serializer} instances for one or both of the key and value serializers.
+ * <p>
+ * If none of the above is true then you may provide a {@link Supplier} function for one or both {@link Serializer}s
+ * which will be used to obtain {@link Serializer}(s) each time a {@link Producer} is created by the factory.
  * <p>
  * The {@link Producer} is wrapped and the underlying {@link KafkaProducer} instance is
  * not actually closed when {@link Producer#close()} is invoked. The {@link KafkaProducer}
@@ -85,6 +102,7 @@ import org.springframework.util.StringUtils;
  * @author Murali Reddy
  * @author Nakul Mishra
  * @author Artem Bilan
+ * @author Chris Gilbert
  */
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, ApplicationContextAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
@@ -104,9 +122,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final Map<String, CloseSafeProducer<K, V>> consumerProducers = new HashMap<>();
 
-	private Serializer<K> keySerializer;
+	private Supplier<Serializer<K>> keySerializerSupplier;
 
-	private Serializer<V> valueSerializer;
+	private Supplier<Serializer<V>> valueSerializerSupplier;
 
 	private Duration physicalCloseTimeout = DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
 
@@ -127,7 +145,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @param configs the configuration.
 	 */
 	public DefaultKafkaProducerFactory(Map<String, Object> configs) {
-		this(configs, null, null);
+		this(configs, () -> null, () -> null);
 	}
 
 	/**
@@ -143,9 +161,25 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			@Nullable Serializer<K> keySerializer,
 			@Nullable Serializer<V> valueSerializer) {
 
+		this (configs, () -> keySerializer, () -> valueSerializer);
+	}
+
+	/**
+	 * Construct a factory with the provided configuration and {@link Serializer} Suppliers.
+	 * Also configures a {@link #transactionIdPrefix} as a value from the
+	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided.
+	 * This config is going to be overridden with a suffix for target {@link Producer} instance.
+	 * @param configs the configuration.
+	 * @param keySerializerSupplier the key {@link Serializer} supplier function.
+	 * @param valueSerializerSupplier the value {@link Serializer} supplier function.
+	 */
+	public DefaultKafkaProducerFactory(Map<String, Object> configs,
+									@Nullable Supplier<Serializer<K>> keySerializerSupplier,
+									@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
+
 		this.configs = new HashMap<>(configs);
-		this.keySerializer = keySerializer;
-		this.valueSerializer = valueSerializer;
+		this.keySerializerSupplier = keySerializerSupplier == null ? () -> null : keySerializerSupplier;
+		this.valueSerializerSupplier = valueSerializerSupplier == null ? () -> null : valueSerializerSupplier;
 
 		String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		if (StringUtils.hasText(txId)) {
@@ -162,11 +196,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	public void setKeySerializer(@Nullable Serializer<K> keySerializer) {
-		this.keySerializer = keySerializer;
+		this.keySerializerSupplier = () -> keySerializer;
 	}
 
 	public void setValueSerializer(@Nullable Serializer<V> valueSerializer) {
-		this.valueSerializer = valueSerializer;
+		this.valueSerializerSupplier = () -> valueSerializer;
 	}
 
 	/**
@@ -356,7 +390,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @return the producer.
 	 */
 	protected Producer<K, V> createKafkaProducer() {
-		return new KafkaProducer<>(this.configs, this.keySerializer, this.valueSerializer);
+		return new KafkaProducer<>(this.configs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
 	}
 
 	protected Producer<K, V> createTransactionalProducerForPartition() {
@@ -423,7 +457,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		Producer<K, V> newProducer;
 		Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
 		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, prefix + suffix);
-		newProducer = new KafkaProducer<>(newProducerConfigs, this.keySerializer, this.valueSerializer);
+		newProducer = new KafkaProducer<>(newProducerConfigs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
 		newProducer.initTransactions();
 		return new CloseSafeProducer<>(newProducer, this.cache.get(prefix), remover,
 				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG));
