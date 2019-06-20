@@ -62,7 +62,7 @@ public class DefaultKafkaHeaderMapperTests {
 				.setHeader(MessageHeaders.REPLY_CHANNEL, new ExecutorSubscribableChannel())
 				.setHeader(MessageHeaders.ERROR_CHANNEL, "errors")
 				.setHeader(MessageHeaders.CONTENT_TYPE, utf8Text)
-				.setHeader("simpleContentType", MimeTypeUtils.TEXT_PLAIN)
+				.setHeader("simpleContentType", MimeTypeUtils.TEXT_PLAIN_VALUE)
 				.setHeader("customToString", new Bar("fiz"))
 				.build();
 		RecordHeaders recordHeaders = new RecordHeaders();
@@ -75,8 +75,8 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(headers.get("baz")).isEqualTo("qux");
 		assertThat(headers.get("fix")).isInstanceOf(NonTrustedHeaderType.class);
 		assertThat(headers.get("linkedMVMap")).isInstanceOf(LinkedMultiValueMap.class);
-		assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isEqualTo(utf8Text.toString());
-		assertThat(headers.get("simpleContentType")).isEqualTo(MimeTypeUtils.TEXT_PLAIN.toString());
+		assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isEqualTo(utf8Text);
+		assertThat(headers.get("simpleContentType")).isEqualTo(MimeTypeUtils.TEXT_PLAIN_VALUE);
 		assertThat(headers.get(MessageHeaders.REPLY_CHANNEL)).isNull();
 		assertThat(headers.get(MessageHeaders.ERROR_CHANNEL)).isEqualTo("errors");
 		assertThat(headers.get("customToString")).isEqualTo("Bar [field=fiz]");
