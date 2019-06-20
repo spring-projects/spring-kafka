@@ -32,7 +32,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
  *
  * @since 2.3
  */
-public class JacksonMimeTypeModule extends SimpleModule {
+public final class JacksonMimeTypeModule extends SimpleModule {
 
 	private static final long serialVersionUID = 1L;
 
@@ -45,6 +45,10 @@ public class JacksonMimeTypeModule extends SimpleModule {
 	 * target JSON as a plain string.
 	 */
 	private static final class MimeTypeSerializer extends JsonSerializer<MimeType> {
+
+		MimeTypeSerializer() {
+			super();
+		}
 
 		@Override
 		public void serialize(MimeType value, JsonGenerator generator, SerializerProvider serializers)

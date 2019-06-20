@@ -71,6 +71,7 @@ See <<streams-messaging>> and <<streams-integration>> for more information.
 
 Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.
 The `JsonDeserializer` now provides `TypeReference`-based constructors for better handling of target generic container types.
+Also a `JacksonMimeTypeModule` has been introduced for serialization of `org.springframework.util.MimeType` to plain string.
 See its JavaDocs and <<serdes>> for more information.
 
 A `ByteArrayJsonMessageConverter` has been provided as well as a new super class for all Json converters, `JsonMessageConverter`.
