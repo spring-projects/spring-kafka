@@ -19,13 +19,12 @@ package org.springframework.kafka.support;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -33,7 +32,6 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
 
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper.NonTrustedHeaderType;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.ExecutorSubscribableChannel;
@@ -55,7 +53,7 @@ public class DefaultKafkaHeaderMapperTests {
 	public void testTrustedAndNot() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		mapper.addToStringClasses(Bar.class.getName());
-		MimeType utf8Text = new MimeType(MimeTypeUtils.TEXT_PLAIN, Charset.forName("UTF-8"));
+		MimeType utf8Text = new MimeType(MimeTypeUtils.TEXT_PLAIN, StandardCharsets.UTF_8);
 		Message<String> message = MessageBuilder.withPayload("foo")
 				.setHeader("foo", "bar".getBytes())
 				.setHeader("baz", "qux")
