@@ -63,6 +63,7 @@ public final class JacksonUtils {
 
 	@SuppressWarnings("unchecked")
 	private static void registerWellKnownModulesIfAvailable(ObjectMapper objectMapper, ClassLoader classLoader) {
+		objectMapper.registerModule(new JacksonMimeTypeModule());
 		try {
 			Class<? extends Module> jdk8Module = (Class<? extends Module>)
 					ClassUtils.forName("com.fasterxml.jackson.datatype.jdk8.Jdk8Module", classLoader);

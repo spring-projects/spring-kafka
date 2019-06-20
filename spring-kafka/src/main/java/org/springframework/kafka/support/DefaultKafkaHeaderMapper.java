@@ -66,12 +66,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					"org.springframework.util"
 			);
 
-	private static final List<String> DEFAULT_TO_STRING_CLASSES =
-			Arrays.asList(
-					"org.springframework.util.MimeType",
-					"org.springframework.http.MediaType"
-			);
-
 	/**
 	 * Header name for java types of other headers.
 	 */
@@ -81,7 +75,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	private final Set<String> trustedPackages = new LinkedHashSet<>(DEFAULT_TRUSTED_PACKAGES);
 
-	private final Set<String> toStringClasses = new LinkedHashSet<>(DEFAULT_TO_STRING_CLASSES);
+	private final Set<String> toStringClasses = new LinkedHashSet<>();
 
 	/**
 	 * Construct an instance with the default object mapper and default header patterns

@@ -20,8 +20,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,6 +44,8 @@ import org.springframework.util.MimeTypeUtils;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 1.3
  *
  */
@@ -94,7 +98,7 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testReserializedNonTrusted() {
+	public void testDeserializedNonTrusted() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		Message<String> message = MessageBuilder.withPayload("foo")
 				.setHeader("fix", new Foo())
@@ -126,27 +130,19 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testMimeBackwardsCompat() {
+	public void testMimeTypeInHeaders() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		MessageHeaders headers = new MessageHeaders(
-				Collections.singletonMap("foo", MimeType.valueOf("application/json")));
+				Collections.singletonMap("foo",
+						Arrays.asList(MimeType.valueOf("application/json"), MimeType.valueOf("text/plain"))));
 
 		RecordHeaders recordHeaders = new RecordHeaders();
 		mapper.fromHeaders(headers, recordHeaders);
 		Map<String, Object> receivedHeaders = new HashMap<>();
 		mapper.toHeaders(recordHeaders, receivedHeaders);
 		Object fooHeader = receivedHeaders.get("foo");
-		assertThat(fooHeader).isInstanceOf(String.class);
-		assertThat(fooHeader).isEqualTo("application/json");
-
-		KafkaTestUtils.getPropertyValue(mapper, "toStringClasses", Set.class).clear();
-		recordHeaders = new RecordHeaders();
-		mapper.fromHeaders(headers, recordHeaders);
-		receivedHeaders = new HashMap<>();
-		mapper.toHeaders(recordHeaders, receivedHeaders);
-		fooHeader = receivedHeaders.get("foo");
-		assertThat(fooHeader).isInstanceOf(MimeType.class);
-		assertThat(fooHeader).isEqualTo(MimeType.valueOf("application/json"));
+		assertThat(fooHeader).isInstanceOf(List.class);
+		assertThat(fooHeader).asList().containsExactly("application/json", "text/plain");
 	}
 
 	@Test
