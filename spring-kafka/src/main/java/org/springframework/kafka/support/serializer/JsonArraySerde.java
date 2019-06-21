@@ -13,7 +13,7 @@ public class JsonArraySerde<T> implements Serde<List<T>> {
     private final Deserializer<List<T>> jsonArrayDeserializer;
 
     public JsonArraySerde(Class<T> targetType) {
-        var objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
 
         this.jsonArraySerializer = new JsonArraySerializer<>(objectMapper);
         this.jsonArrayDeserializer = new JsonArrayDeserializer<>(targetType, objectMapper);
