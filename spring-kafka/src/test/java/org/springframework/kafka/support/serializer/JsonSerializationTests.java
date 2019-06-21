@@ -196,6 +196,9 @@ public class JsonSerializationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.TYPE_ID);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
+		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
+			.isEqualTo(TypePrecedence.INFERRED);
+		this.jsonReader.setUseTypeHeaders(true);
 		this.jsonReader.configure(Collections.emptyMap(), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.TYPE_ID);
@@ -225,11 +228,53 @@ public class JsonSerializationTests {
 		de.close();
 	}
 
+	@Test
+	public void testPreExistingHeaders() {
+		JsonSerializer<? super Foo> ser = new JsonSerializer<>();
+		Headers headers = new RecordHeaders();
+		ser.serialize("", headers, new Foo());
+		byte[] data = ser.serialize("", headers, new Bar());
+		JsonDeserializer<? super Foo> deser = new JsonDeserializer<>();
+		deser.setRemoveTypeHeaders(false);
+		deser.addTrustedPackages(this.getClass().getPackage().getName());
+		assertThat(deser.deserialize("", headers, data)).isInstanceOf(Bar.class);
+		assertThat(headers.headers(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)).hasSize(1);
+		ser.close();
+		deser.close();
+	}
+
+	@Test
+	public void testDontUseTypeHeaders() {
+		JsonSerializer<? super Foo> ser = new JsonSerializer<>();
+		Headers headers = new RecordHeaders();
+		byte[] data = ser.serialize("", headers, new Bar());
+		JsonDeserializer<? super Foo> deser = new JsonDeserializer<>(Foo.class);
+		deser.setRemoveTypeHeaders(false);
+		deser.setUseTypeHeaders(false);
+		deser.addTrustedPackages(this.getClass().getPackage().getName());
+		assertThat(deser.deserialize("", headers, data)).isExactlyInstanceOf(Foo.class);
+		assertThat(headers.headers(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)).hasSize(1);
+		ser.close();
+		deser.close();
+	}
+
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {
 
 	}
 
 	static class DummyEntityArrayJsonDeserializer extends JsonDeserializer<DummyEntity[]> {
+
+	}
+
+	public static class Foo {
+
+		public String foo = "foo";
+
+	}
+
+	public static class Bar extends Foo {
+
+		public String bar = "bar";
 
 	}
 

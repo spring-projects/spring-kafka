@@ -18,6 +18,7 @@ package org.springframework.kafka.support.serializer;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -118,6 +119,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	private boolean typeMapperExplicitlySet = false;
 
 	private boolean removeTypeHeaders = true;
+
+	private boolean useTypeHeaders = true;
 
 	/**
 	 * Construct an instance with a default {@link ObjectMapper}.
@@ -305,6 +308,21 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		this.removeTypeHeaders = removeTypeHeaders;
 	}
 
+	/**
+	 * Set to false to ignore type information in headers and use the configured
+	 * target type instead.
+	 * Only applies if the preconfigured type mapper is used.
+	 * Default true.
+	 * @param useTypeHeaders false to ignore type headers.
+	 * @since 2.2.8
+	 */
+	public void setUseTypeHeaders(boolean useTypeHeaders) {
+		if (!this.typeMapperExplicitlySet) {
+			this.useTypeHeaders = useTypeHeaders;
+			setUpTypePrecedence(Collections.emptyMap());
+		}
+	}
+
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		setUseTypeMapperForKey(isKey);
@@ -327,11 +345,10 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private void setUpTypePrecedence(Map<String, ?> configs) {
 		if (!this.typeMapperExplicitlySet) {
-			boolean useTypeHeaders = true;
 			if (configs.containsKey(USE_TYPE_INFO_HEADERS)) {
-				useTypeHeaders = Boolean.parseBoolean(configs.get(USE_TYPE_INFO_HEADERS).toString());
+				this.useTypeHeaders = Boolean.parseBoolean(configs.get(USE_TYPE_INFO_HEADERS).toString());
 			}
-			this.typeMapper.setTypePrecedence(useTypeHeaders ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
+			this.typeMapper.setTypePrecedence(this.useTypeHeaders ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
 		}
 	}
 

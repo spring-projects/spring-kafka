@@ -160,7 +160,12 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 
 	@Override
 	public void fromJavaType(JavaType javaType, Headers headers) {
-		addHeader(headers, getClassIdFieldName(), javaType.getRawClass());
+		String classIdFieldName = getClassIdFieldName();
+		if (headers.lastHeader(classIdFieldName) != null) {
+			removeHeaders(headers);
+		}
+
+		addHeader(headers, classIdFieldName, javaType.getRawClass());
 
 		if (javaType.isContainerType() && !javaType.isArrayType()) {
 			addHeader(headers, getContentClassIdFieldName(), javaType.getContentType().getRawClass());

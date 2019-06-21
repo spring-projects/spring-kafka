@@ -19,7 +19,6 @@ package org.springframework.kafka.support.converter;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.kafka.common.header.Header;
@@ -157,12 +156,11 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	}
 
 	protected String retrieveHeaderAsString(Headers headers, String headerName) {
-		Iterator<Header> headerValues = headers.headers(headerName).iterator();
-		if (headerValues.hasNext()) {
-			Header headerValue = headerValues.next();
+		Header header = headers.lastHeader(headerName);
+		if (header != null) {
 			String classId = null;
-			if (headerValue.value() != null) {
-				classId = new String(headerValue.value(), StandardCharsets.UTF_8);
+			if (header.value() != null) {
+				classId = new String(header.value(), StandardCharsets.UTF_8);
 			}
 			return classId;
 		}
