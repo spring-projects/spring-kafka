@@ -408,6 +408,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				doStop(callback);
 				publishContainerStoppedEvent();
 			}
+			else {
+				callback.run();
+			}
 		}
 	}
 
