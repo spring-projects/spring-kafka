@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.AbstractMap;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -81,133 +82,154 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@Test
-	public void testNoOverrides() {
+	public void testNoOverridesWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.emptyMap();
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps).isEqualTo(originalConfig);
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, null, null, null);
+		assertThat(configPassedToKafkaConsumer).isEqualTo(originalConfig);
 	}
 
 	@Test
-	public void testPropertyOverrides() {
+	public void testPropertyOverridesWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Stream
 				.of(new AbstractMap.SimpleEntry<>("config1", new Object()),
 						new AbstractMap.SimpleEntry<>("config2", new Object()))
 				.collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
-
 		Properties overrides = new Properties();
 		overrides.setProperty("config1", "overridden");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get("config1")).isEqualTo("overridden");
-				assertThat(configProps.get("config2")).isSameAs(originalConfig.get("config2"));
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, null, null, overrides);
+		assertThat(configPassedToKafkaConsumer.get("config1")).isEqualTo("overridden");
+		assertThat(configPassedToKafkaConsumer.get("config2")).isSameAs(originalConfig.get("config2"));
 	}
 
 	@Test
-	public void testClientIdSuffixOnDefault() {
+	public void testSuffixOnExistingClientIdWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.CLIENT_ID_CONFIG, "original");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("original-1");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, null, "-1", null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("original-1");
 	}
 
 	@Test
-	public void testClientIdSuffixWithoutDefault() {
+	public void testSuffixWithoutExistingClientIdWhenCreatingConsumer() {
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(Collections.emptyMap()) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.CLIENT_ID_CONFIG)).isNull();
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, null, "-1", null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isNull();
 	}
 
 	@Test
-	public void testClientIdPrefixOnDefault() {
+	public void testPrefixOnExistingClientIdWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.CLIENT_ID_CONFIG, "original");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, "overridden", null, null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden");
 	}
 
 	@Test
-	public void testClientIdPrefixWithoutDefault() {
+	public void testPrefixWithoutExistingClientIdWhenCreatingConsumer() {
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(Collections.emptyMap()) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, "overridden", null, null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden");
 	}
 
 	@Test
-	public void testClientIdSuffixAndPrefixOnDefault() {
+	public void testSuffixAndPrefixOnExistingClientIdWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.CLIENT_ID_CONFIG, "original");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden-1");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, "overridden", "-1", null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden-1");
 	}
 
 	@Test
-	public void testClientIdSuffixAndPrefixOnPropertyOverride() {
+	public void testSuffixAndPrefixOnOverridenClientIdWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.CLIENT_ID_CONFIG, "original");
 		Properties overrides = new Properties();
 		overrides.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, "property-overridden");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden-1");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer(null, "overridden", "-1", overrides);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden-1");
 	}
 
 
 	@Test
-	public void testGroupIdOnDefault() {
+	public void testOverriddenGroupIdWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("overridden");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer("overridden", null, null, null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("overridden");
 	}
 
 	@Test
-	public void testGroupIdWithoutDefault() {
+	public void testOverriddenGroupIdWithoutExistingGroupIdWhenCreatingConsumer() {
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(Collections.emptyMap()) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("overridden");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer("overridden", null, null, null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("overridden");
 	}
 
 	@Test
-	public void testGroupIdOnPropertyOverride() {
+	public void testOverriddenGroupIdOnOverriddenPropertyWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
 		Properties overrides = new Properties();
 		overrides.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "property-overridden");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
 		new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 			protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-				assertThat(configProps.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("overridden");
+				configPassedToKafkaConsumer.putAll(configProps);
 				return null;
 			}
 		}.createConsumer("overridden", null, null, overrides);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("overridden");
 	}
 
 	@SuppressWarnings("unchecked")
