@@ -164,26 +164,6 @@ public KafkaTemplate<Integer, String> kafkaTemplate() {
 ----
 ====
 
-or if you are using Spring Boot, you can make use of the `KafkaProperties` ConfigurationProperties class to pull in application properties, rather than manually adding them to a map:
-
-====
-[source, java]
-----
-
-private KafkaProperties properties;
-
-@Bean
-public ProducerFactory<Integer, String> producerFactory() {
-    return new DefaultKafkaProducerFactory<>(properties.buildProducerProperties());
-}
-
-@Bean
-public KafkaTemplate<Integer, String> kafkaTemplate() {
-    return new KafkaTemplate<Integer, String>(producerFactory());
-}
-----
-====
-
 You can also configure the template by using standard `<bean/>` definitions.
 
 Then, to use the template, you can invoke one of its methods.
@@ -315,9 +295,8 @@ IMPORTANT: When `producerPerThread` is `true`, user code **must** call `closeThr
 This will physically close the producer and remove it from the `ThreadLocal`.
 Calling `reset()` or `destroy()` will not clean up these producers.
 
-When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in <<kafka-template>>),
-or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all Producers share the same instances).
-Alternatively you can provide Suppliers of Serializers that will be used to obtain separate `Serializer` instances for each `Producer`:
+When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a `Map` of properties (see example in <<kafka-template>>), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer`s share the same instances).
+Alternatively you can provide `Supplier`s of `Serializer`s that will be used to obtain separate `Serializer` instances for each `Producer`:
 
 ====
 [source, java]
@@ -325,7 +304,7 @@ Alternatively you can provide Suppliers of Serializers that will be used to obta
 
 @Bean
 public ProducerFactory<Integer, CustomValue> producerFactory() {
-    return new DefaultKafkaProducerFactory<>(producerConfigs(), null, () -> new CustomValueSerializer();
+    return new DefaultKafkaProducerFactory<>(producerConfigs(), null, () -> new CustomValueSerializer());
 }
 
 @Bean
@@ -2414,7 +2393,7 @@ For more complex or particular cases, the `KafkaConsumer` (and, therefore, `Kafk
 constructors to accept `Serializer` and `Deserializer` instances for `keys` and `values`, respectively.
 
 When you use this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (through constructors or setter methods) to inject custom `Serializer` and `Deserializer` instances into the target `Producer` or `Consumer`.
-Also, you can pass in Supplier functions for custom `Serializer` and `Deserializer` instances through constructors - these functions are called on creation of each `Producer` or `Consumer`
+Also, you can pass in `Supplier` functions for custom `Serializer` and `Deserializer` instances through constructors - these functions are called on creation of each `Producer` or `Consumer`.
 
 Spring for Apache Kafka also provides `JsonSerializer` and `JsonDeserializer` implementations that are based on the
 Jackson JSON object mapper.

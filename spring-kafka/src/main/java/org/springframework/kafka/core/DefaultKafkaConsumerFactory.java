@@ -36,8 +36,9 @@ import org.springframework.util.StringUtils;
  * invocation.
  * <p>
  * If you are using {@link Deserializer}s that have no-arg constructors and require no setup, then simplest to
- * specify {@link Deserializer} classes in spring.kafka.consumer configuration and create the
- * {@link DefaultKafkaConsumerFactory} with just a map of configs.
+ * specify {@link Deserializer} classes against {@value ConsumerConfig#KEY_DESERIALIZER_CLASS_CONFIG} and
+ * {@value ConsumerConfig#VALUE_DESERIALIZER_CLASS_CONFIG} keys in the {@code configs} passed to the
+ * {@link DefaultKafkaConsumerFactory} constructor.
  * <p>
  * If that is not possible, but you are using {@link Deserializer}s that may be shared between all {@link Consumer}
  * instances (and specifically that their close() method is a no-op), then you can pass in {@link Deserializer}
