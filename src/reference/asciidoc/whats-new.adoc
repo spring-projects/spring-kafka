@@ -99,3 +99,10 @@ See <<transaction-id-prefix>> for more information.
 
 The framework now provides a delegating `Serializer` and `Deserializer`, utilizing a header to enable producing and consuming records with multiple key/value types.
 See <<delegating-serialization>> for more information.
+
+==== New function for recovering from deserializing errors
+
+`ErrorHandlingDeserializer2` now uses a POJO (`FailedDeserializationInfo`) for passing all the contextual information
+around a deserialization error.
+This enables the code to access to extra information that was missing in the old
+`BiFunction<byte[], Headers, T> failedDeserializationFunction`

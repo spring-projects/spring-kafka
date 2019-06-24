@@ -22,11 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -43,6 +42,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.kafka.support.serializer.FailedDeserializationInfo;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -197,23 +197,22 @@ public class BatchListenerConversion2Tests {
 
 	public static class BadFoo extends Foo {
 
-		private final byte[] failedDecode;
+		private final FailedDeserializationInfo failedDeserializationInfo;
 
-		public BadFoo(byte[] failedDecode) {
-			this.failedDecode = failedDecode;
+		public BadFoo(FailedDeserializationInfo failedDeserializationInfo) {
+			this.failedDeserializationInfo = failedDeserializationInfo;
 		}
 
-		public byte[] getFailedDecode() {
-			return this.failedDecode;
+		public FailedDeserializationInfo getFailedDeserializationInfo() {
+			return failedDeserializationInfo;
 		}
-
 	}
 
-	public static class FailedFooProvider implements BiFunction<byte[], Headers, Foo> {
+	public static class FailedFooProvider implements Function<FailedDeserializationInfo, Foo> {
 
 		@Override
-		public Foo apply(byte[] t, Headers u) {
-			return new BadFoo(t);
+		public Foo apply(FailedDeserializationInfo failedDeserializationInfo) {
+			return new BadFoo(failedDeserializationInfo);
 		}
 
 	}

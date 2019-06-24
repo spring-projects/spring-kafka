@@ -2710,9 +2710,9 @@ If the delegate fails to deserialize the record content, the `ErrorHandlingDeser
 When you use a record-level `MessageListener`, if the `ConsumerRecord` contains a `DeserializationException` header for either the key or value, the container's `ErrorHandler` is called with the failed `ConsumerRecord`.
 The record is not passed to the listener.
 
-Alternatively, you can configure the `ErrorHandlingDeserializer2` to create a custom value by providing a `failedDeserializationFunction`, which is a `BiConsumer<byte[], Headers, T>`.
+Alternatively, you can configure the `ErrorHandlingDeserializer2` to create a custom value by providing a `failedDeserializationFunction`, which is a `Function<FailedDeserializationInfo, T>`.
 This function is invoked to create an instance of `T`, which is passed to the listener in the usual fashion.
-The raw record value and headers are provided to the function.
+An object of type `FailedDeserializationInfo`, which contains all the contextual information is provided to the function.
 You can find the `DeserializationException` (as a serialized Java object) in headers.
 See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/ErrorHandlingDeserializer2.html[Javadoc] for the `ErrorHandlingDeserializer2` for more information.
 
@@ -2747,23 +2747,23 @@ The following example uses a `failedDeserializationFunction`.
 ----
 public class BadFoo extends Foo {
 
-  private final byte[] failedDecode;
+  private final FailedDeserializationInfo failedDeserializationInfo;
 
-  public BadFoo(byte[] failedDecode) {
-    this.failedDecode = failedDecode;
+  public BadFoo(FailedDeserializationInfo failedDeserializationInfo) {
+    this.failedDeserializationInfo = failedDeserializationInfo;
   }
 
-  public byte[] getFailedDecode() {
-    return this.failedDecode;
+  public FailedDeserializationInfo getFailedDeserializationInfo() {
+    return this.failedDeserializationInfo;
   }
 
 }
 
-public class FailedFooProvider implements BiFunction<byte[], Headers, Foo> {
+public class FailedFooProvider implements Function<FailedDeserializationInfo, Foo> {
 
   @Override
-  public Foo apply(byte[] t, Headers u) {
-    return new BadFoo(t);
+  public Foo apply(FailedDeserializationInfo info) {
+    return new BadFoo(info);
   }
 
 }

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -82,7 +83,11 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 
 	private boolean isForKey;
 
-	private BiFunction<byte[], Headers, T> failedDeserializationFunction;
+	/**
+	 * Set in order to have a supplier for a T value when deserialization fails.
+	 * @since 2.3
+	 */
+	private Function<FailedDeserializationInfo, T> failedDeserializationFunction;
 
 	public ErrorHandlingDeserializer2() {
 		super();
@@ -92,7 +97,18 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 		this.delegate = setupDelegate(delegate);
 	}
 
+	/**
+	 * Provides an alternative supplying mechanism when deserialization fails.
+	 * @param failedDeserializationFunction BiFunction type param to he invoked.
+	 * @since 1.3
+	 * @deprecated in favor of {@link ErrorHandlingDeserializer2#setFailedDeserializationFunction(Function)}.
+	 */
+	@Deprecated
 	public void setFailedDeserializationFunction(BiFunction<byte[], Headers, T> failedDeserializationFunction) {
+		this.failedDeserializationFunction = (failed) -> failedDeserializationFunction.apply(failed.getData(), failed.getHeaders());
+	}
+
+	public void setFailedDeserializationFunction(Function<FailedDeserializationInfo, T> failedDeserializationFunction) {
 		this.failedDeserializationFunction = failedDeserializationFunction;
 	}
 
@@ -156,9 +172,9 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 			try {
 				Object value = configs.get(configKey);
 				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
-				Assert.isTrue(BiFunction.class.isAssignableFrom(clazz), "'function' must be a 'BiFunction	', not a "
+				Assert.isTrue(Function.class.isAssignableFrom(clazz), "'function' must be a 'Function ', not a "
 						+ clazz.getName());
-				this.failedDeserializationFunction = (BiFunction<byte[], Headers, T>) clazz.newInstance();
+				this.failedDeserializationFunction = (Function<FailedDeserializationInfo, T>) clazz.newInstance();
 			}
 			catch (ClassNotFoundException | LinkageError | InstantiationException | IllegalAccessException e) {
 				throw new IllegalStateException(e);
@@ -172,9 +188,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 			return this.delegate.deserialize(topic, data);
 		}
 		catch (Exception e) {
-			return this.failedDeserializationFunction != null
-					? this.failedDeserializationFunction.apply(data, null)
-					: null;
+			return recoverFromSupplier(topic, data, e);
 		}
 	}
 
@@ -185,9 +199,27 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 		}
 		catch (Exception e) {
 			deserializationException(headers, data, e);
-			return this.failedDeserializationFunction != null
-					? this.failedDeserializationFunction.apply(data, headers)
-					: null;
+			return recoverFromSupplier(topic, headers, data, e);
+		}
+	}
+
+	private T recoverFromSupplier(String topic, Headers headers, byte[] data, Exception exception) {
+		if (this.failedDeserializationFunction != null) {
+			FailedDeserializationInfo t = new FailedDeserializationInfo(topic, headers, data, this.isForKey, exception);
+			return this.failedDeserializationFunction.apply(t);
+		}
+		else {
+			return null;
+		}
+	}
+
+	private T recoverFromSupplier(String topic, byte[] data, Exception exception) {
+		if (this.failedDeserializationFunction != null) {
+			FailedDeserializationInfo t = new FailedDeserializationInfo(topic, null, data, this.isForKey, exception);
+			return this.failedDeserializationFunction.apply(t);
+		}
+		else {
+			return null;
 		}
 	}
 
