@@ -838,7 +838,7 @@ return container;
 
 Note that when creating a `DefaultKafkaConsumerFactory`, using the constructor that just takes in the properties as above means that key and value `Deserializer` classes are picked up from configuration.
 Alternatively, `Deserializer` instances may be passed to the `DefaultKafkaConsumerFactory` constructor for key and/or value, in which case all Consumers share the same instances.
-Another option is to provide Suppliers of Deserializers that will be used to obtain separate `Deserializer` instances for each `Consumer`:
+Another option is to provide `Supplier<Deserializer>`s that will be used to obtain separate `Deserializer` instances for each `Consumer`:
 
 ====
 [source, java]
@@ -2392,7 +2392,7 @@ For more complex or particular cases, the `KafkaConsumer` (and, therefore, `Kafk
 constructors to accept `Serializer` and `Deserializer` instances for `keys` and `values`, respectively.
 
 When you use this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (through constructors or setter methods) to inject custom `Serializer` and `Deserializer` instances into the target `Producer` or `Consumer`.
-Also, you can pass in `Supplier` functions for custom `Serializer` and `Deserializer` instances through constructors - these functions are called on creation of each `Producer` or `Consumer`.
+Also, you can pass in `Supplier<Serializer>` or `Supplier<Deserializer>` instances through constructors - these `Supplier`s are called on creation of each `Producer` or `Consumer`.
 
 Spring for Apache Kafka also provides `JsonSerializer` and `JsonDeserializer` implementations that are based on the
 Jackson JSON object mapper.

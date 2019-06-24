@@ -19,10 +19,9 @@ This version requires the 2.2.0 `kafka-clients` or higher.
 The `DefaultKafkaProducerFactory` can now be configured to create a producer per thread.
 See <<producer-factory>> for more information.
 
-You can also provide `Serializer` suppliers in the constructor as an alternative to either configured classes (which require no-arg constructors).
-or constructing with `Serializer` instances, which are then shared between all Producers.
+You can also provide `Supplier<Serializer>` instances in the constructor as an alternative to either configured classes (which require no-arg constructors), or constructing with `Serializer` instances, which are then shared between all Producers.
 
-The same option is also available with `Deserializer` suppliers in `DefaultKafkaConsumerFactory` - see <<kafka-container>>
+The same option is available with `Supplier<Deserializer>` instances in `DefaultKafkaConsumerFactory` - see <<kafka-container>>.
 
 ==== Listener Container Changes
 
