@@ -36,8 +36,8 @@ import org.springframework.util.StringUtils;
  * invocation.
  * <p>
  * If you are using {@link Deserializer}s that have no-arg constructors and require no setup, then simplest to
- * specify {@link Deserializer} classes against {@value ConsumerConfig#KEY_DESERIALIZER_CLASS_CONFIG} and
- * {@value ConsumerConfig#VALUE_DESERIALIZER_CLASS_CONFIG} keys in the {@code configs} passed to the
+ * specify {@link Deserializer} classes against {@link ConsumerConfig#KEY_DESERIALIZER_CLASS_CONFIG} and
+ * {@link ConsumerConfig#VALUE_DESERIALIZER_CLASS_CONFIG} keys in the {@code configs} passed to the
  * {@link DefaultKafkaConsumerFactory} constructor.
  * <p>
  * If that is not possible, but you are using {@link Deserializer}s that may be shared between all {@link Consumer}

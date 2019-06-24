@@ -295,7 +295,7 @@ IMPORTANT: When `producerPerThread` is `true`, user code **must** call `closeThr
 This will physically close the producer and remove it from the `ThreadLocal`.
 Calling `reset()` or `destroy()` will not clean up these producers.
 
-When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a `Map` of properties (see example in <<kafka-template>>), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer`s share the same instances).
+When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in <<kafka-template>>), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer`s share the same instances).
 Alternatively you can provide `Supplier`s of `Serializer`s that will be used to obtain separate `Serializer` instances for each `Producer`:
 
 ====
@@ -313,7 +313,6 @@ public KafkaTemplate<Integer, CustomValue> kafkaTemplate() {
 }
 
 ----
-
 ====
 [[transactions]]
 ===== Transactions

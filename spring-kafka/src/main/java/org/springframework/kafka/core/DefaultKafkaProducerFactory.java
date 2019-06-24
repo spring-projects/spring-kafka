@@ -68,8 +68,8 @@ import org.springframework.util.StringUtils;
  * implementations on each {@link #createProducer()} invocation.
  * <p>
  * If you are using {@link Serializer}s that have no-arg constructors and require no setup, then simplest to
- * specify {@link Serializer} classes against {@value ProducerConfig#KEY_SERIALIZER_CLASS_CONFIG} and
- * {@value ProducerConfig#VALUE_SERIALIZER_CLASS_CONFIG} keys in the {@code configs} passed to the
+ * specify {@link Serializer} classes against {@link ProducerConfig#KEY_SERIALIZER_CLASS_CONFIG} and
+ * {@link ProducerConfig#VALUE_SERIALIZER_CLASS_CONFIG} keys in the {@code configs} passed to the
  * {@link DefaultKafkaProducerFactory} constructor.
  * <p>
  * If that is not possible, but you are sure that at least one of the following is true:
