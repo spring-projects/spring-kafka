@@ -24,6 +24,7 @@ import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.kafka.support.JacksonUtils;
+import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -111,10 +112,65 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @param isKey Use key type headers if true
 	 * @return the JsonSerde
 	 * @since 2.1.3
+	 * @deprecated in favor of {@link #forKeys()}.
 	 */
+	@Deprecated
 	public JsonSerde<T> setUseTypeMapperForKey(boolean isKey) {
-		this.jsonSerializer.setUseTypeMapperForKey(isKey);
-		this.jsonDeserializer.setUseTypeMapperForKey(isKey);
+		return forKeys();
+	}
+
+	// Fluent API
+
+	/**
+	 * Designate this Serde for serializing/deserializing keys (default is values).
+	 * @return the serde.
+	 * @since 2.3
+	 */
+	public JsonSerde<T> forKeys() {
+		this.jsonSerializer.forKeys();
+		this.jsonDeserializer.forKeys();
+		return this;
+	}
+
+	/**
+	 * Configure the serializer to not add type information.
+	 * @return the serde.
+	 * @since 2.3
+	 */
+	public JsonSerde<T> noTypeInfo() {
+		this.jsonSerializer.noTypeInfo();
+		return this;
+	}
+
+	/**
+	 * Don't remove type information headers after deserialization.
+	 * @return the serde.
+	 * @since 2.3
+	 */
+	public JsonSerde<T> dontRemoveTypeHeaders() {
+		this.jsonDeserializer.dontRemoveTypeHeaders();
+		return this;
+	}
+
+	/**
+	 * Ignore type information headers and use the configured target class.
+	 * @return the serde.
+	 * @since 2.3
+	 */
+	public JsonSerde<T> ignoreTypeHeaders() {
+		this.jsonDeserializer.ignoreTypeHeaders();
+		return this;
+	}
+
+	/**
+	 * Use the supplied {@link Jackson2JavaTypeMapper}.
+	 * @param mapper the mapper.
+	 * @return the serde.
+	 * @since 2.3
+	 */
+	public JsonSerde<T> typeMapper(Jackson2JavaTypeMapper mapper) {
+		this.jsonSerializer.setTypeMapper(mapper);
+		this.jsonDeserializer.setTypeMapper(mapper);
 		return this;
 	}
 

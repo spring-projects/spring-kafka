@@ -79,7 +79,7 @@ public class KafkaStreamsJsonSerializationTests {
 	public static final String OBJECT_OUTPUT_TOPIC = "object-output-topic";
 
 	public static final JsonSerde<JsonObjectKey> jsonObjectKeySerde =
-			new JsonSerde<>(JsonObjectKey.class).setUseTypeMapperForKey(true);
+			new JsonSerde<>(JsonObjectKey.class).forKeys();
 
 	public static final JsonSerde<JsonObjectValue> jsonObjectValueSerde = new JsonSerde<>(JsonObjectValue.class);
 

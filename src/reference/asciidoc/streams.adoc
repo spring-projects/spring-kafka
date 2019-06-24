@@ -121,7 +121,8 @@ private StreamsBuilderFactoryBean myKStreamBuilderFactoryBean;
 ----
 ====
 
-==== JSON Serialization and Deserialization
+[[serde]]
+==== Streams JSON Serialization and Deserialization
 
 For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes>>.
 The `JsonSerde` implementation provides the same configuration options through its constructor (target type or `ObjectMapper`).
@@ -134,7 +135,19 @@ stream.through(Serdes.Integer(), new JsonSerde<>(Cat.class), "cats");
 ----
 ====
 
-IMPORTANT: Since Kafka Streams do not support headers, the `addTypeInfo` property on the `JsonSerializer` is ignored.
+When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
+
+====
+[source, java]
+----
+stream.through(new JsonSerde<>(MyKeyType.class)
+        .forKeys()
+        .noTypeInfo(),
+    new JsonSerde<>(MyValueType.class)
+        .noTypeInfo(),
+    "myTypes");
+----
+====
 
 ==== Using `KafkaStreamsBrancher`
 

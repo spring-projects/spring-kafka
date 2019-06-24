@@ -2471,6 +2471,37 @@ In addition, you can configure the serializer and deserializer by using the foll
 Starting with version 2.2, the type information headers (if added by the serializer) are removed by the deserializer.
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
+When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
+
+The following example assumes you are using Spring Boot:
+
+====
+[source, java]
+----
+@Bean
+public DefaultKafkaProducerFactory pf(KafkaProperties properties) {
+    Map<String, Object> props = properties.buildProducerProperties();
+    DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(props,
+        new JsonSerializer<>(MyKeyType.class)
+            .forKeys()
+            .noTypeInfo(),
+        new JsonSerializer<>(MyValueType.class)
+            .noTypeInfo());
+}
+
+@Bean
+public DefaultKafkaConsumerFactory pf(KafkaProperties properties) {
+    Map<String, Object> props = properties.buildConsumerProperties();
+    DefaultKafkaConsumerFactory pf = new DefaultKafkaConsumerFactory(props,
+        new JsonDeserializer<>(MyKeyType.class)
+            .forKeys()
+            .ignoreTypeHeaders(),
+        new JsonSerializer<>(MyValueType.class)
+            .ignoreTypeHeaders());
+}
+----
+====
+
 [[serdes-mapping-types]]
 ===== Mapping Types
 

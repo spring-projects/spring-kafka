@@ -186,4 +186,41 @@ public class JsonSerializer<T> implements Serializer<T> {
 		// No-op
 	}
 
+	// Fluent API
+
+	/**
+	 * Designate this serializer for serializing keys (default is values); only applies if
+	 * the default type mapper is used.
+	 * @return the serializer.
+	 * @since 2.3
+	 * @see #setUseTypeMapperForKey(boolean)
+	 */
+	public JsonSerializer<T> forKeys() {
+		setUseTypeMapperForKey(true);
+		return this;
+	}
+
+	/**
+	 * Do not include type info headers.
+	 * @return the serializer.
+	 * @since 2.3
+	 * @see #setAddTypeInfo(boolean)
+	 */
+	public JsonSerializer<T> noTypeInfo() {
+		setAddTypeInfo(false);
+		return this;
+	}
+
+	/**
+	 * Use the supplied {@link Jackson2JavaTypeMapper}.
+	 * @param mapper the mapper.
+	 * @return the serializer.
+	 * @since 2.3
+	 * @see #setTypeMapper(Jackson2JavaTypeMapper)
+	 */
+	public JsonSerializer<T> typeMapper(Jackson2JavaTypeMapper mapper) {
+		setTypeMapper(mapper);
+		return this;
+	}
+
 }

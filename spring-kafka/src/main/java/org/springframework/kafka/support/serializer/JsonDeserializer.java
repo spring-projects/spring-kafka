@@ -463,4 +463,51 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		// No-op
 	}
 
+	// Fluent API
+
+	/**
+	 * Designate this deserializer for deserializing keys (default is values); only
+	 * applies if the default type mapper is used.
+	 * @return the deserializer.
+	 * @since 2.3
+	 */
+	public JsonDeserializer<T> forKeys() {
+		setUseTypeMapperForKey(true);
+		return this;
+	}
+
+	/**
+	 * Don't remove type information headers.
+	 * @return the deserializer.
+	 * @since 2.3
+	 * @see #setRemoveTypeHeaders(boolean)
+	 */
+	public JsonDeserializer<T> dontRemoveTypeHeaders() {
+		setRemoveTypeHeaders(false);
+		return this;
+	}
+
+	/**
+	 * Ignore type information headers and use the configured target class.
+	 * @return the deserializer.
+	 * @since 2.3
+	 * @see #setUseTypeHeaders(boolean)
+	 */
+	public JsonDeserializer<T> ignoreTypeHeaders() {
+		setUseTypeHeaders(false);
+		return this;
+	}
+
+	/**
+	 * Use the supplied {@link Jackson2JavaTypeMapper}.
+	 * @param mapper the mapper.
+	 * @return the deserializer.
+	 * @since 2.3
+	 * @see #setTypeMapper(Jackson2JavaTypeMapper)
+	 */
+	public JsonDeserializer<T> typeMapper(Jackson2JavaTypeMapper mapper) {
+		setTypeMapper(mapper);
+		return this;
+	}
+
 }
