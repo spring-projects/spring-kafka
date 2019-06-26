@@ -28,6 +28,9 @@ import org.springframework.util.Assert;
  * A {@link RecordInterceptor} that delegates to one or more {@link RecordInterceptor} in
  * order.
  *
+ * @param <K> the key type.
+ * @param <V> the value type.
+ *
  * @author Artem Bilan
  * @author Gary Russell
  * @since 2.3
@@ -38,6 +41,7 @@ public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V>
 	private final Collection<RecordInterceptor<K, V>> delegates = new ArrayList<>();
 
 	@SafeVarargs
+	@SuppressWarnings("varargs")
 	public CompositeRecordInterceptor(RecordInterceptor<K, V>... delegates) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.noNullElements(delegates, "'delegates' cannot have null entries");
@@ -47,7 +51,7 @@ public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V>
 	@Override
 	public ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record) {
 		ConsumerRecord<K, V> recordToIntercept = record;
-		for (RecordInterceptor<K, V> delegate : delegates) {
+		for (RecordInterceptor<K, V> delegate : this.delegates) {
 			recordToIntercept = delegate.intercept(recordToIntercept);
 		}
 		return recordToIntercept;
