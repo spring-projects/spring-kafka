@@ -39,6 +39,7 @@ It is now possible to obtain the consumer's `group.id` property in the listener 
 See <<listener-group-id>> for more information.
 
 The container has a new property `recordInterceptor` allowing records to be inspected or modified before invoking the listener.
+A `CompositeRecordInterceptor` is also provided in case you need to invoke multiple interceptors.
 See <<message-listener-container>> for more information.
 
 ==== ErrorHandler Changes
