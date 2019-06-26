@@ -22,11 +22,14 @@ import java.util.Collection;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.util.Assert;
+
 /**
  * A {@link RecordInterceptor} that delegates to one or more {@link RecordInterceptor} in
  * order.
  *
  * @author Artem Bilan
+ * @author Gary Russell
  * @since 2.3
  *
  */
@@ -36,6 +39,8 @@ public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V>
 
 	@SafeVarargs
 	public CompositeRecordInterceptor(RecordInterceptor<K, V>... delegates) {
+		Assert.notNull(delegates, "'delegates' cannot be null");
+		Assert.noNullElements(delegates, "'delegates' cannot have null entries");
 		this.delegates.addAll(Arrays.asList(delegates));
 	}
 
