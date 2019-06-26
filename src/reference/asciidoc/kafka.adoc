@@ -776,7 +776,7 @@ Starting with version 2.2.7, you can add a `RecordInterceptor` to the listener c
 If the interceptor returns null, the listener is not called.
 The interceptor is not invoked when the listener is a <<batch-listners, batch listener>>.
 
-Starting with version 2.3, a `CompositeRecordInterceptor` which can be used to invoke multiple interceptors.
+Starting with version 2.3, the `CompositeRecordInterceptor` can be used to invoke multiple interceptors.
 
 [[kafka-container]]
 ====== Using `KafkaMessageListenerContainer`
