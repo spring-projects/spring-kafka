@@ -105,7 +105,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 	 */
 	@Deprecated
 	public void setFailedDeserializationFunction(BiFunction<byte[], Headers, T> failedDeserializationFunction) {
-		this.failedDeserializationFunction = (failed) -> failedDeserializationFunction.apply(failed.getData(), failed.getHeaders());
+		setFailedDeserializationFunction((failed) -> failedDeserializationFunction.apply(failed.getData(), failed.getHeaders()));
 	}
 
 	public void setFailedDeserializationFunction(Function<FailedDeserializationInfo, T> failedDeserializationFunction) {
@@ -188,7 +188,7 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 			return this.delegate.deserialize(topic, data);
 		}
 		catch (Exception e) {
-			return recoverFromSupplier(topic, data, e);
+			return recoverFromSupplier(topic, null, data, e);
 		}
 	}
 
@@ -205,18 +205,8 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 
 	private T recoverFromSupplier(String topic, Headers headers, byte[] data, Exception exception) {
 		if (this.failedDeserializationFunction != null) {
-			FailedDeserializationInfo t = new FailedDeserializationInfo(topic, headers, data, this.isForKey, exception);
-			return this.failedDeserializationFunction.apply(t);
-		}
-		else {
-			return null;
-		}
-	}
-
-	private T recoverFromSupplier(String topic, byte[] data, Exception exception) {
-		if (this.failedDeserializationFunction != null) {
-			FailedDeserializationInfo t = new FailedDeserializationInfo(topic, null, data, this.isForKey, exception);
-			return this.failedDeserializationFunction.apply(t);
+			FailedDeserializationInfo failedDeserializationInfo = new FailedDeserializationInfo(topic, headers, data, this.isForKey, exception);
+			return this.failedDeserializationFunction.apply(failedDeserializationInfo);
 		}
 		else {
 			return null;
