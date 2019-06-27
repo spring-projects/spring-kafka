@@ -288,6 +288,8 @@ public class EmbeddedKafkaConditionTests {
 ----
 ====
 
+IMPORTANT: When there is a Spring test application context available, the topics and broker properties can contain property placeholders, which will be resolved as long as the property is defined somewhere.
+If there is no Spring context available, these placeholders won't be resolved.
 
 ==== Embedded Broker in `@SpringBootTest` Annotations
 
