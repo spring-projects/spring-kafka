@@ -97,9 +97,9 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 	 * Provides an alternative supplying mechanism when deserialization fails.
 	 * @param failedDeserializationFunction BiFunction type param to he invoked.
 	 * @since 2.3
-	 * @deprecated in favor of {@link ErrorHandlingDeserializer2#setFailedDeserializationFunction(Function)}.
+	 * @deprecated since 2.3 in favor of {@link ErrorHandlingDeserializer2#setFailedDeserializationFunction(Function)}.
 	 */
-	@Deprecated(since = "2.8")
+	@Deprecated
 	public void setFailedDeserializationFunction(BiFunction<byte[], Headers, T> failedDeserializationFunction) {
 		setFailedDeserializationFunction((failed) -> failedDeserializationFunction.apply(failed.getData(), failed.getHeaders()));
 	}
