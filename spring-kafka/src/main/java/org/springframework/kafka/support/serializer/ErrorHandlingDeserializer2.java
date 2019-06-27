@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,10 +83,6 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 
 	private boolean isForKey;
 
-	/**
-	 * Set in order to have a supplier for a T value when deserialization fails.
-	 * @since 2.3
-	 */
 	private Function<FailedDeserializationInfo, T> failedDeserializationFunction;
 
 	public ErrorHandlingDeserializer2() {
@@ -100,14 +96,18 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 	/**
 	 * Provides an alternative supplying mechanism when deserialization fails.
 	 * @param failedDeserializationFunction BiFunction type param to he invoked.
-	 * @since 1.3
+	 * @since 2.3
 	 * @deprecated in favor of {@link ErrorHandlingDeserializer2#setFailedDeserializationFunction(Function)}.
 	 */
-	@Deprecated
+	@Deprecated(since = "2.8")
 	public void setFailedDeserializationFunction(BiFunction<byte[], Headers, T> failedDeserializationFunction) {
 		setFailedDeserializationFunction((failed) -> failedDeserializationFunction.apply(failed.getData(), failed.getHeaders()));
 	}
-
+	/**
+	 * Set in order to have a supplier for a T value when deserialization fails.
+	 * @param failedDeserializationFunction Function type param to he invoked.
+	 * @since 2.3
+	 */
 	public void setFailedDeserializationFunction(Function<FailedDeserializationInfo, T> failedDeserializationFunction) {
 		this.failedDeserializationFunction = failedDeserializationFunction;
 	}
