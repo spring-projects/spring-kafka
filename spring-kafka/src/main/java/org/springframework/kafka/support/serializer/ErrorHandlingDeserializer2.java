@@ -104,8 +104,8 @@ public class ErrorHandlingDeserializer2<T> implements Deserializer<T> {
 		setFailedDeserializationFunction((failed) -> failedDeserializationFunction.apply(failed.getData(), failed.getHeaders()));
 	}
 	/**
-	 * Set in order to have a supplier for a T value when deserialization fails.
-	 * @param failedDeserializationFunction Function type param to he invoked.
+	 * Called this method passing a Function<FailedDeserializationInfo, T> in order to have a supplier for a T value when deserialization fails.
+	 * @param failedDeserializationFunction Function type param to be invoked.
 	 * @since 2.3
 	 */
 	public void setFailedDeserializationFunction(Function<FailedDeserializationInfo, T> failedDeserializationFunction) {
