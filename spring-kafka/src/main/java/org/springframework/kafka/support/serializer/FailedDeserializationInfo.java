@@ -79,7 +79,7 @@ public class FailedDeserializationInfo {
 	public String toString() {
 		return "FailedDeserializationInfo{" +
 				"topic='" + this.topic + '\'' +
-				", headers=" + headers +
+				", headers=" + this.headers +
 				", data=" + Arrays.toString(this.data) +
 				", isForKey=" + this.isForKey +
 				", exception=" + this.exception +
