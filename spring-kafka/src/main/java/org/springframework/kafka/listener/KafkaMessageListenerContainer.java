@@ -630,7 +630,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			};
 		}
 
-		private void seekPartitions(Collection<TopicPartition> partitions, boolean idle) {
+		private void seekPartitions(@Nullable Collection<TopicPartition> partitions, boolean idle) {
+			if (partitions == null) {
+				return;
+			}
 			Map<TopicPartition, Long> current = new HashMap<>();
 			for (TopicPartition topicPartition : partitions) {
 				current.put(topicPartition, ListenerConsumer.this.consumer.position(topicPartition));
