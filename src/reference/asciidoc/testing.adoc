@@ -288,6 +288,9 @@ public class EmbeddedKafkaConditionTests {
 ----
 ====
 
+A stand-alone (not Spring test context) broker will be created if the class annotated with `@EmbeddedBroker` is not also annotated (or meta annotated) with `ExtendedWith(SpringExtension.class)`.
+`@SpringJunitConfig` and `@SpringBootTest` are so meta annotated and the context-based broker will be used when either of those annotations are also present.
+
 IMPORTANT: When there is a Spring test application context available, the topics and broker properties can contain property placeholders, which will be resolved as long as the property is defined somewhere.
 If there is no Spring context available, these placeholders won't be resolved.
 

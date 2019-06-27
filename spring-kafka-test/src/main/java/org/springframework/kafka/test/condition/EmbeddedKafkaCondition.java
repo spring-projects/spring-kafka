@@ -24,9 +24,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
+import org.assertj.core.util.Arrays;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
@@ -39,7 +41,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -86,8 +88,7 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 	@Override
 	public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
 		Optional<AnnotatedElement> element = context.getElement();
-		if (element.isPresent() &&
-				AnnotatedElementUtils.findMergedAnnotation(element.get(), SpringJUnitConfig.class) == null) {
+		if (element.isPresent() && !springTestContext(element.get())) {
 
 			EmbeddedKafka embedded = AnnotatedElementUtils.findMergedAnnotation(element.get(), EmbeddedKafka.class);
 			// When running in a spring test context, the EmbeddedKafkaContextCustomizer will create the broker.
@@ -101,6 +102,14 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 			}
 		}
 		return ConditionEvaluationResult.enabled("");
+	}
+
+	private boolean springTestContext(AnnotatedElement annotatedElement) {
+		return AnnotatedElementUtils.findAllMergedAnnotations(annotatedElement, ExtendWith.class)
+				.stream()
+				.filter(extended -> Arrays.asList(extended.value()).contains(SpringExtension.class))
+				.findFirst()
+				.isPresent();
 	}
 
 	@SuppressWarnings("unchecked")
