@@ -621,8 +621,17 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		long sleepFor = ackMode.equals(AckMode.MANUAL_IMMEDIATE) ? 20_000 : 50;
+		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
-			Thread.sleep(50);
+			if (!first.getAndSet(false)) {
+				try {
+					Thread.sleep(sleepFor);
+				}
+				catch (@SuppressWarnings("unused") InterruptedException ex) {
+					throw new WakeupException();
+				}
+			}
 			return consumerRecords;
 		});
 		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
@@ -630,6 +639,7 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(ackMode);
+		containerProps.setMissingTopicsFatal(false);
 		final CountDownLatch latch = new CountDownLatch(2);
 		final List<Acknowledgment> acks = new ArrayList<>();
 		final AtomicReference<Thread> consumerThread = new AtomicReference<>();
@@ -647,6 +657,10 @@ public class KafkaMessageListenerContainerTests {
 					}
 
 				});
+		willAnswer(inv -> {
+			consumerThread.get().interrupt();
+			return null;
+		}).given(consumer).wakeup();
 
 		final CountDownLatch commitLatch = new CountDownLatch(1);
 		final AtomicReference<Thread> commitThread = new AtomicReference<>();
@@ -663,6 +677,7 @@ public class KafkaMessageListenerContainerTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		long t1 = System.currentTimeMillis();
 		acks.get(1).acknowledge();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(messageListener, consumer);
@@ -671,6 +686,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
 		assertThat(commitThread.get()).isSameAs(consumerThread.get());
+		assertThat(System.currentTimeMillis() - t1).isLessThan(15_000);
 	}
 
 	@SuppressWarnings("unchecked")

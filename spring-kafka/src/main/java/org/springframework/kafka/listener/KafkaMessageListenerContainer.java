@@ -756,7 +756,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					pollAndInvoke();
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
-					// Ignore, we're stopping
+					// Ignore, we're stopping or applying immediate foreign acks
 				}
 				catch (NoOffsetForPartitionException nofpe) {
 					this.fatalError = true;
@@ -947,6 +947,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!Thread.currentThread().equals(this.consumerThread)) {
 				try {
 					this.acks.put(record);
+					if (this.isManualImmediateAck) {
+						this.consumer.wakeup();
+					}
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
