@@ -2676,6 +2676,23 @@ consumerProps.put(DelegatingDeserializer.SERIALIZATION_SELECTOR_CONFIG,
 
 Producers would then set the `DelegatingSerializer.SERIALIZATION_SELECTOR` header to `thing1` or `thing2`.
 
+[[retrying-deserialization]]
+===== Retrying Deserializer
+
+The `RetryingDeserializer` uses a delegate `Deserializer` and `RetryTemplate` to retry deserialization when the delegate might have transient errors, such a network issues, during deserialization.
+
+====
+[source, java]
+----
+ConsumerFactory cf = new DefaultKafkaConsumerFactory(myConsumerConfigs,
+    new RetryingDeserializer(myUnreliableKeyDeserializer, retryTemplate),
+    new RetryingDeserializer(myUnreliableValueDeserializer, retryTemplate));
+----
+====
+
+Refer to the https://github.com/spring-projects/spring-retry[spring-retry] project for configuration of the `RetryTemplate` with a retry policy, back off policy, etc.
+
+
 [[messaging-message-conversion]]
 ===== Spring Messaging Message Conversion
 

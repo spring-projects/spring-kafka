@@ -103,7 +103,12 @@ See <<transaction-id-prefix>> for more information.
 ==== New Delegating Serializer/Deserializer
 
 The framework now provides a delegating `Serializer` and `Deserializer`, utilizing a header to enable producing and consuming records with multiple key/value types.
-See <<delegating-serialization>> for more information.
+See <<delegating-deserialization>> for more information.
+
+==== New Retrying Deserializer
+
+The framework now provides a delegating `RetryingDeserializer`, to retry serialization when transient errors such as network problems might occur.
+See <<retrying-serialization>> for more information.
 
 ==== New function for recovering from deserializing errors
 
