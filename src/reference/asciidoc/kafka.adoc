@@ -1877,6 +1877,35 @@ So, when you use an `ExponentialBackOffPolicy`, you must ensure that the `maxInt
 To enable stateful retry, you can use the `RetryingMessageListenerAdapter` constructor that takes a `stateful` `boolean` argument (set it to `true`).
 When you configure the listener container factory (for `@KafkaListener`), set the factory's `statefulRetry` property to `true`.
 
+IMPORTANT: Version 2.2 added recovery to the `SeekToCurrentErrorHandler`, such as sending a failed record to a dead-letter topic.
+When using stateful retry, you must perform the recovery in the retry `RecoveryCallback` and NOT in the error handler.
+Otherwise, if the recovery is done in the error handler, the retry template's state will never be cleared.
+Also, you must ensure that the `maxFailures` in the `SeekToCurrentErrorHandler` must be at least as many as configured in the retry policy, again to ensure that the retries are exhausted and the state cleared.
+Here is an example for retry configuration when used with a `SeekToCurrentErrorHandler` where `factory` is the `ConcurrentKafkaListenerContainerFactory`.
+
+====
+[source, java]
+----
+@Autowired
+DeadLetterPublishingRecoverer recoverer;
+
+...
+    factory.setRetryTemplate(new RetryTemplate()); // 3 retries by default
+    factory.setStatefulRetry(true);
+    factory.setRecoveryCallback(context -> {
+        recoverer.accept((ConsumerRecord<?, ?>) context.getAttribute("record"),
+                (Exception) context.getLastThrowable());
+        return null;
+    });
+...
+
+@Bean
+public SeekToCurrentErrorHandler eh() {
+    return new SeekToCurrentErrorHandler(4); // at least 3
+}
+----
+====
+
 [[idle-containers]]
 ===== Detecting Idle and Non-Responsive Consumers
 
