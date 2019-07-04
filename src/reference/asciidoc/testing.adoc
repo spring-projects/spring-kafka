@@ -501,7 +501,7 @@ public class KafkaTemplateTests {
     @Test
     public void testTemplate() throws Exception {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false",
-            embeddedKafka);
+            embeddedKafka.getEmbeddedKafka());
         DefaultKafkaConsumerFactory<Integer, String> cf =
                             new DefaultKafkaConsumerFactory<Integer, String>(consumerProps);
         ContainerProperties containerProperties = new ContainerProperties(TEMPLATE_TOPIC);
