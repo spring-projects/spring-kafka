@@ -49,6 +49,7 @@ import org.springframework.util.Assert;
  * @author Soby Chacko
  * @author Zach Olauson
  * @author Nurettin Yilmaz
+ * @author Denis Washington
  *
  * @since 1.1.4
  */
@@ -290,7 +291,12 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			try {
 				Assert.state(this.streamsConfig != null || this.properties != null,
 						"'streamsConfig' or streams configuration properties must not be null");
-				Topology topology = getObject().build(); // NOSONAR
+				Properties topologyProps = this.properties;
+				if (topologyProps == null) {
+					topologyProps = new Properties();
+					topologyProps.putAll(this.streamsConfig.originals());
+				}
+				Topology topology = getObject().build(topologyProps); // NOSONAR: getObject() cannot return null
 				LOGGER.debug(() -> topology.describe().toString());
 				if (this.properties != null) {
 					this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);

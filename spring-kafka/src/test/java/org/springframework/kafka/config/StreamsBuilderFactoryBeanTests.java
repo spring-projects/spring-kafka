@@ -17,6 +17,8 @@
 package org.springframework.kafka.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,7 +26,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -66,6 +70,9 @@ public class StreamsBuilderFactoryBeanTests {
 	@Autowired
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
+	@Autowired
+	private KafkaStreamsConfiguration kafkaStreamsConfiguration;
+
 	@Test
 	public void testCleanupStreams() throws IOException {
 		Files.createDirectory(Paths.get(stateStoreDir.toString(), APPLICATION_ID));
@@ -78,6 +85,36 @@ public class StreamsBuilderFactoryBeanTests {
 		assertThat(stateStore).exists();
 		streamsBuilderFactoryBean.start();
 		assertThat(stateStore).doesNotExist();
+	}
+
+	@Test
+	public void testBuildWithProperties() throws Exception {
+		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration) {
+			@Override
+			protected StreamsBuilder createInstance() {
+				return spy(super.createInstance());
+			}
+		};
+		streamsBuilderFactoryBean.afterPropertiesSet();
+		streamsBuilderFactoryBean.start();
+		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
+		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void testBuildWithStreamsConfig() throws Exception {
+		StreamsConfig streamsConfig = new StreamsConfig(kafkaStreamsConfiguration.asProperties());
+		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(streamsConfig) {
+			@Override
+			protected StreamsBuilder createInstance() {
+				return spy(super.createInstance());
+			}
+		};
+		streamsBuilderFactoryBean.afterPropertiesSet();
+		streamsBuilderFactoryBean.start();
+		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
+		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
 	}
 
 	@Configuration
@@ -97,6 +134,7 @@ public class StreamsBuilderFactoryBeanTests {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
+			props.put(StreamsConfig.TOPOLOGY_OPTIMIZATION, StreamsConfig.OPTIMIZE);
 			props.put(StreamsConfig.STATE_DIR_CONFIG, stateStoreDir.toString());
 			return new KafkaStreamsConfiguration(props);
 		}
