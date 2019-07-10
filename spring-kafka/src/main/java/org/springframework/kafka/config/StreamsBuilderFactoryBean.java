@@ -50,6 +50,7 @@ import org.springframework.util.Assert;
  * @author Zach Olauson
  * @author Nurettin Yilmaz
  * @author Denis Washington
+ * @author Gary Russell
  *
  * @since 1.1.4
  */
@@ -68,8 +69,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private static final String CLEANUP_CONFIG_MUST_NOT_BE_NULL = "'cleanupConfig' must not be null";
 
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
-
-	private StreamsConfig streamsConfig;
 
 	private Properties properties;
 
@@ -126,7 +125,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig, CleanupConfig cleanupConfig) {
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
-		this.streamsConfig = streamsConfig;
+		this.properties = propertiesFromStreamsConfig(streamsConfig);
 		this.cleanupConfig = cleanupConfig;
 	}
 
@@ -175,24 +174,32 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig, CleanupConfig cleanupConfig) {
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
-		this.streamsConfig = new StreamsConfig(streamsConfig);
+		this.properties = propertiesFromConfigs(streamsConfig);
 		this.cleanupConfig = cleanupConfig;
 	}
 
 	/**
 	 * Set {@link StreamsConfig} on this factory.
 	 * @param streamsConfig the streams configuration.
+	 * @deprecated in favor of {@link #setStreamsConfiguration(Properties)}.
 	 * @since 2.1.3
 	 */
+	@Deprecated
 	public void setStreamsConfig(StreamsConfig streamsConfig) {
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.isNull(this.properties, "Cannot have both streamsConfig and streams configuration properties");
-		this.streamsConfig = streamsConfig;
+		this.properties = propertiesFromStreamsConfig(streamsConfig);
 	}
 
+	/**
+	 * Get the streams config.
+	 * @return the config.
+	 * @deprecated in favor of {@link #getStreamsConfiguration()}.
+	 */
+	@Deprecated
 	@Nullable
 	public StreamsConfig getStreamsConfig() {
-		return this.streamsConfig;
+		return new StreamsConfig(this.properties);
 	}
 
 	/**
@@ -202,7 +209,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public void setStreamsConfiguration(Properties streamsConfig) {
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
-		Assert.isNull(this.streamsConfig, "Cannot have both streamsConfig and streams configuration properties");
 		this.properties = streamsConfig;
 	}
 
@@ -254,21 +260,36 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		return StreamsBuilder.class;
 	}
 
-	@Override
-	protected synchronized StreamsBuilder createInstance() {
-		if (this.autoStartup) {
-			Assert.state(this.streamsConfig != null || this.properties != null,
-					"'streamsConfig' or streams configuration properties must not be null");
-		}
-		return new StreamsBuilder();
-	}
-
 	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
 	}
 
 	public void setPhase(int phase) {
 		this.phase = phase;
+	}
+
+	@Override
+	public int getPhase() {
+		return this.phase;
+	}
+
+	/**
+	 * Get a managed by this {@link StreamsBuilderFactoryBean} {@link KafkaStreams} instance.
+	 * @return KafkaStreams managed instance;
+	 * may be null if this {@link StreamsBuilderFactoryBean} hasn't been started.
+	 * @since 1.1.4
+	 */
+	public KafkaStreams getKafkaStreams() {
+		return this.kafkaStreams;
+	}
+
+	@Override
+	protected synchronized StreamsBuilder createInstance() {
+		if (this.autoStartup) {
+			Assert.state(this.properties != null,
+					"streams configuration properties must not be null");
+		}
+		return new StreamsBuilder();
 	}
 
 	@Override
@@ -288,21 +309,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public synchronized void start() {
 		if (!this.running) {
 			try {
-				Assert.state(this.streamsConfig != null || this.properties != null,
-						"'streamsConfig' or streams configuration properties must not be null");
-				Properties topologyProps = this.properties;
-				if (topologyProps == null) {
-					topologyProps = new Properties();
-					topologyProps.putAll(this.streamsConfig.originals());
-				}
-				Topology topology = getObject().build(topologyProps); // NOSONAR: getObject() cannot return null
+				Assert.state(this.properties != null,
+						"streams configuration properties must not be null");
+				Topology topology = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
 				LOGGER.debug(() -> topology.describe().toString());
-				if (this.properties != null) {
-					this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
-				}
-				else {
-					this.kafkaStreams = new KafkaStreams(topology, this.streamsConfig, this.clientSupplier);
-				}
+				this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
 				this.kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
@@ -347,19 +358,14 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		return this.running;
 	}
 
-	@Override
-	public int getPhase() {
-		return this.phase;
+	private Properties propertiesFromStreamsConfig(StreamsConfig config) {
+		return propertiesFromConfigs(config.originals());
 	}
 
-	/**
-	 * Get a managed by this {@link StreamsBuilderFactoryBean} {@link KafkaStreams} instance.
-	 * @return KafkaStreams managed instance;
-	 * may be null if this {@link StreamsBuilderFactoryBean} hasn't been started.
-	 * @since 1.1.4
-	 */
-	public KafkaStreams getKafkaStreams() {
-		return this.kafkaStreams;
+	private Properties propertiesFromConfigs(Map<String, Object> configs) {
+		Properties props = new Properties();
+		props.putAll(configs);
+		return props;
 	}
 
 }

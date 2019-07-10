@@ -18,8 +18,7 @@ package org.springframework.kafka.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Properties;
 
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.Test;
@@ -71,11 +70,10 @@ public class StreamsBuilderFactoryLateConfigTests {
 
 	@Test
 	public void testStreamsBuilderFactoryWithConfigProvidedLater() {
-		Map<String, Object> props = new HashMap<>();
+		Properties props = new Properties();
 		props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
 		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
-		StreamsConfig streamsConfig = new StreamsConfig(props);
-		streamsBuilderFactoryBean.setStreamsConfig(streamsConfig);
+		streamsBuilderFactoryBean.setStreamsConfiguration(props);
 
 		assertThat(streamsBuilderFactoryBean.isRunning()).isFalse();
 		streamsBuilderFactoryBean.start();
