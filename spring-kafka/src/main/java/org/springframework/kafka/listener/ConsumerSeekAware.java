@@ -91,6 +91,18 @@ public interface ConsumerSeekAware {
 		 */
 		void seekToEnd(String topic, int partition);
 
+		/**
+		 * Queue a seek to a position relative to the start or end of the current position.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 * @param offset the offset; positive values are relative to the start, negative
+		 * values are relative to the end, unless toCurrent is true.
+		 * @param toCurrent true for the offset to be relative to the current position rather
+		 * than the beginning or end.
+		 * @since 2.3
+		 */
+		void seekRelative(String topic, int partition, long offset, boolean toCurrent);
+
 	}
 
 }

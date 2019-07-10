@@ -21,15 +21,26 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.core.ConsumerFactory;
@@ -44,7 +55,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	public void testCorrectContainerForConsumerError() throws InterruptedException {
+	void testCorrectContainerForConsumerError() throws InterruptedException {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
 		AtomicBoolean first = new AtomicBoolean(true);
@@ -60,6 +71,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) record -> { });
+		containerProperties.setMissingTopicsFatal(false);
 		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
 				containerProperties);
 		CountDownLatch latch = new CountDownLatch(1);
@@ -72,6 +84,142 @@ public class ConcurrentMessageListenerContainerMockTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(errorContainer.get()).isSameAs(container);
 		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	@DisplayName("Seek on TL callback when idle")
+	void testSyncRelativeSeeks() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		TestMessageListener listener = new TestMessageListener();
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			return empty;
+		}).given(consumer).poll(any());
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		TopicPartition tp2 = new TopicPartition("foo", 2);
+		TopicPartition tp3 = new TopicPartition("foo", 3);
+		List<TopicPartition> assignments = Arrays.asList(tp0, tp1, tp2, tp3);
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+				.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(any())).willReturn(100L);
+		given(consumer.beginningOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 0L)));
+		given(consumer.endOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 200L)));
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener(listener);
+		containerProperties.setIdleEventInterval(10L);
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(listener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).seek(tp0, 60L);
+		verify(consumer).seek(tp1, 140L);
+		verify(consumer).seek(tp2, 160L);
+		verify(consumer).seek(tp3, 40L);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	@DisplayName("Seek from activeListener")
+	void testAsyncRelativeSeeks() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		TestMessageListener listener = new TestMessageListener();
+		CountDownLatch latch = new CountDownLatch(2);
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		TopicPartition tp2 = new TopicPartition("foo", 2);
+		TopicPartition tp3 = new TopicPartition("foo", 3);
+		List<TopicPartition> assignments = Arrays.asList(tp0, tp1, tp2, tp3);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
+		recordMap.put(tp0, Collections.singletonList(new ConsumerRecord("foo", 0, 0, null, "bar")));
+		recordMap.put(tp1, Collections.singletonList(new ConsumerRecord("foo", 1, 0, null, "bar")));
+		recordMap.put(tp2, Collections.singletonList(new ConsumerRecord("foo", 2, 0, null, "bar")));
+		recordMap.put(tp3, Collections.singletonList(new ConsumerRecord("foo", 3, 0, null, "bar")));
+		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			if (listener.latch.getCount() <= 0) {
+				latch.countDown();
+			}
+			return records;
+		}).given(consumer).poll(any());
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+				.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(any())).willReturn(100L);
+		given(consumer.beginningOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 0L)));
+		given(consumer.endOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 200L)));
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener(listener);
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).seek(tp0, 70L);
+		verify(consumer).seek(tp1, 130L);
+		verify(consumer).seekToEnd(Collections.singletonList(tp2));
+		verify(consumer).seek(tp2, 70L); // position - 30 (seekToEnd ignored by mock)
+		verify(consumer).seekToBeginning(Collections.singletonList(tp3));
+		verify(consumer).seek(tp3, 30L);
+		container.stop();
+	}
+
+	public static class TestMessageListener implements MessageListener<String, String>, ConsumerSeekAware {
+
+		private static ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
+
+		CountDownLatch latch = new CountDownLatch(1);
+
+		@Override
+		public void onMessage(ConsumerRecord<String, String> data) {
+			ConsumerSeekCallback callback = callbacks.get();
+			if (latch.getCount() > 0) {
+				callback.seekRelative("foo", 0, -30, true);
+				callback.seekRelative("foo", 1, 30, true);
+				callback.seekRelative("foo", 2, -30, false);
+				callback.seekRelative("foo", 3, 30, false);
+			}
+			this.latch.countDown();
+		}
+
+		@Override
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			callbacks.set(callback);
+		}
+
+		@Override
+		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (latch.getCount() > 0) {
+				callback.seekRelative("foo", 0, -40, true);
+				callback.seekRelative("foo", 1, 40, true);
+				callback.seekRelative("foo", 2, -40, false);
+				callback.seekRelative("foo", 3, 40, false);
+			}
+			this.latch.countDown();
+		}
+
 	}
 
 }

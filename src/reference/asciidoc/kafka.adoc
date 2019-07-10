@@ -2058,8 +2058,17 @@ void seek(String topic, int partition, long offset);
 void seekToBeginning(String topic, int partition);
 
 void seekToEnd(String topic, int partition);
+
+void seekRelative(String topic, int partition, long offset, boolean toCurrent);
 ----
 ====
+
+`seekRelative` was added in version 2.3, to perform relative seeks.
+
+* `offset` negative and `toCurrent` `false` - seek relative to the end of the partition.
+* `offset` positive and `toCurrent` `false` - seek relative to the beginning of the partition.
+* `offset` negative and `toCurrent` `true` - seek relative to the current position (rewind).
+* `offset` positive and `toCurrent` `true` - seek relative to the current position (fast forward).
 
 You can also perform seek operations from `onIdleContainer()` when an idle container is detected.
 See <<idle-containers>> for how to enable idle container detection.

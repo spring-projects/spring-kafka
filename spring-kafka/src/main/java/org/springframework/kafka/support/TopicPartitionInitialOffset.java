@@ -20,6 +20,8 @@ import java.util.Objects;
 
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.lang.Nullable;
+
 /**
  * A configuration container to represent a topic name, partition number and, optionally,
  * an initial offset for it. The initial offset can be:
@@ -35,6 +37,7 @@ import org.apache.kafka.common.TopicPartition;
  * {@link #isRelativeToCurrent()}.</li>
  * </ul>
  * Offsets are applied when the container is {@code start()}ed.
+ * This class is also used for deferred seek operations.
  *
  * @author Artem Bilan
  * @author Gary Russell
@@ -114,6 +117,21 @@ public class TopicPartitionInitialOffset {
 	public TopicPartitionInitialOffset(String topic, int partition, SeekPosition position) {
 		this.topicPartition = new TopicPartition(topic, partition);
 		this.initialOffset = null;
+		this.relativeToCurrent = false;
+		this.position = position;
+	}
+
+	/**
+	 * Construct an instance with the provided {@link SeekPosition}.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param offset the offset from the seek position.
+	 * @param position {@link SeekPosition}.
+	 * @since 2.3
+	 */
+	public TopicPartitionInitialOffset(String topic, int partition, Long offset, @Nullable SeekPosition position) {
+		this.topicPartition = new TopicPartition(topic, partition);
+		this.initialOffset = offset;
 		this.relativeToCurrent = false;
 		this.position = position;
 	}

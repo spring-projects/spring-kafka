@@ -42,6 +42,9 @@ The container has a new property `recordInterceptor` allowing records to be insp
 A `CompositeRecordInterceptor` is also provided in case you need to invoke multiple interceptors.
 See <<message-listener-container>> for more information.
 
+The `ConsumerSeekAware` has a new method allowing you to perform seeks relative to the beginning, end, or current position.
+See <<seek>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.
