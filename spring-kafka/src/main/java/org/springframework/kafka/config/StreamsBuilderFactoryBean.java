@@ -197,7 +197,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @deprecated in favor of {@link #getStreamsConfiguration()}.
 	 */
 	@Deprecated
-	@Nullable
 	public StreamsConfig getStreamsConfig() {
 		return new StreamsConfig(this.properties);
 	}
