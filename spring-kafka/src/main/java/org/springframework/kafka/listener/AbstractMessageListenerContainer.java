@@ -40,7 +40,7 @@ import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -325,7 +325,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					String[] topics = this.containerProperties.getTopics();
 					if (topics == null) {
 						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
-								.map(TopicPartitionInitialOffset::topic)
+								.map(TopicPartitionOffset::getTopic)
 								.toArray(String[]::new);
 					}
 					DescribeTopicsResult result = client.describeTopics(Arrays.asList(topics));

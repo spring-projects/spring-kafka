@@ -32,7 +32,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
 
 /**
@@ -135,7 +135,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		if (!isRunning()) {
 			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
-			TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
+			TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
 			if (topicPartitions != null && this.concurrency > topicPartitions.length) {
 				this.logger.warn(() -> "When specific partitions are provided, the concurrency must be less than or "
 						+ "equal to the number of partitions; reduced from " + this.concurrency + " to "
@@ -177,19 +177,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
-	private TopicPartitionInitialOffset[] partitionSubset(ContainerProperties containerProperties, int i) {
-		TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
+	private TopicPartitionOffset[] partitionSubset(ContainerProperties containerProperties, int i) {
+		TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
 		if (this.concurrency == 1) {
 			return topicPartitions;
 		}
 		else {
 			int numPartitions = topicPartitions.length;
 			if (numPartitions == this.concurrency) {
-				return new TopicPartitionInitialOffset[] { topicPartitions[i] };
+				return new TopicPartitionOffset[] { topicPartitions[i] };
 			}
 			else {
 				int perContainer = numPartitions / this.concurrency;
-				TopicPartitionInitialOffset[] subset;
+				TopicPartitionOffset[] subset;
 				if (i == this.concurrency - 1) {
 					subset = Arrays.copyOfRange(topicPartitions, i * perContainer, topicPartitions.length);
 				}

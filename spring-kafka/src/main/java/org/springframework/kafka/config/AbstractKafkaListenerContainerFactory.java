@@ -41,7 +41,7 @@ import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
 import org.springframework.kafka.support.JavaUtils;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
@@ -380,11 +380,11 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	@Override
-	public C createContainer(final Collection<TopicPartitionInitialOffset> topicPartitions) {
+	public C createContainer(final Collection<TopicPartitionOffset> topicPartitions) {
 		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 					@Override
-					public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
+					public Collection<TopicPartitionOffset> getTopicPartitions() {
 						return topicPartitions;
 					}
 

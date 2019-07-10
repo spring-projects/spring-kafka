@@ -73,7 +73,7 @@ import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.KafkaNull;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
@@ -501,15 +501,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return groupId;
 	}
 
-	private TopicPartitionInitialOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {
+	private TopicPartitionOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {
 		TopicPartition[] topicPartitions = kafkaListener.topicPartitions();
-		List<TopicPartitionInitialOffset> result = new ArrayList<>();
+		List<TopicPartitionOffset> result = new ArrayList<>();
 		if (topicPartitions.length > 0) {
 			for (TopicPartition topicPartition : topicPartitions) {
 				result.addAll(resolveTopicPartitionsList(topicPartition));
 			}
 		}
-		return result.toArray(new TopicPartitionInitialOffset[0]);
+		return result.toArray(new TopicPartitionOffset[0]);
 	}
 
 	private String[] resolveTopics(KafkaListener kafkaListener) {
@@ -543,7 +543,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return pattern;
 	}
 
-	private List<TopicPartitionInitialOffset> resolveTopicPartitionsList(TopicPartition topicPartition) {
+	private List<TopicPartitionOffset> resolveTopicPartitionsList(TopicPartition topicPartition) {
 		Object topic = resolveExpression(topicPartition.topic());
 		Assert.state(topic instanceof String,
 				"topic in @TopicPartition must resolve to a String, not " + topic.getClass());
@@ -552,14 +552,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		PartitionOffset[] partitionOffsets = topicPartition.partitionOffsets();
 		Assert.state(partitions.length > 0 || partitionOffsets.length > 0,
 				"At least one 'partition' or 'partitionOffset' required in @TopicPartition for topic '" + topic + "'");
-		List<TopicPartitionInitialOffset> result = new ArrayList<>();
+		List<TopicPartitionOffset> result = new ArrayList<>();
 		for (String partition : partitions) {
 			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result);
 		}
 
 		for (PartitionOffset partitionOffset : partitionOffsets) {
-			TopicPartitionInitialOffset topicPartitionOffset =
-					new TopicPartitionInitialOffset((String) topic,
+			TopicPartitionOffset topicPartitionOffset =
+					new TopicPartitionOffset((String) topic,
 							resolvePartition(topic, partitionOffset),
 							resolveInitialOffset(topic, partitionOffset),
 							isRelative(topic, partitionOffset));
@@ -653,7 +653,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	@SuppressWarnings("unchecked")
 	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
-			List<TopicPartitionInitialOffset> result) {
+			List<TopicPartitionOffset> result) {
 		if (resolvedValue instanceof String[]) {
 			for (Object object : (String[]) resolvedValue) {
 				resolvePartitionAsInteger(topic, object, result);
@@ -662,15 +662,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
 					"partition in @TopicPartition for topic '" + topic + "' cannot be empty");
-			result.add(new TopicPartitionInitialOffset(topic, Integer.valueOf((String) resolvedValue)));
+			result.add(new TopicPartitionOffset(topic, Integer.valueOf((String) resolvedValue)));
 		}
 		else if (resolvedValue instanceof Integer[]) {
 			for (Integer partition : (Integer[]) resolvedValue) {
-				result.add(new TopicPartitionInitialOffset(topic, partition));
+				result.add(new TopicPartitionOffset(topic, partition));
 			}
 		}
 		else if (resolvedValue instanceof Integer) {
-			result.add(new TopicPartitionInitialOffset(topic, (Integer) resolvedValue));
+			result.add(new TopicPartitionOffset(topic, (Integer) resolvedValue));
 		}
 		else if (resolvedValue instanceof Iterable) {
 			for (Object object : (Iterable<Object>) resolvedValue) {

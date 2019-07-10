@@ -89,8 +89,8 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
-import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
+import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
@@ -189,12 +189,12 @@ public class KafkaMessageListenerContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("delegate");
-		AtomicReference<List<TopicPartitionInitialOffset>> offsets = new AtomicReference<>();
+		AtomicReference<List<TopicPartitionOffset>> offsets = new AtomicReference<>();
 		container.setApplicationEventPublisher(e -> {
 			if (e instanceof ConsumerStoppingEvent) {
 				ConsumerStoppingEvent event = (ConsumerStoppingEvent) e;
 				offsets.set(event.getPartitions().stream()
-						.map(p -> new TopicPartitionInitialOffset(p.topic(), p.partition(),
+						.map(p -> new TopicPartitionOffset(p.topic(), p.partition(),
 								event.getConsumer().position(p, Duration.ofMillis(10_000))))
 						.collect(Collectors.toList()));
 			}
@@ -213,14 +213,14 @@ public class KafkaMessageListenerContainerTests {
 		// Stack traces are environment dependent - verified in eclipse
 		//		assertThat(trace.get()[1].getMethodName()).contains("invokeRecordListener");
 		container.stop();
-		List<TopicPartitionInitialOffset> list = offsets.get();
+		List<TopicPartitionOffset> list = offsets.get();
 		assertThat(list).isNotNull();
 		list.forEach(tpio -> {
-				if (tpio.partition() == 0) {
-					assertThat(tpio.initialOffset()).isEqualTo(1);
+				if (tpio.getPartition() == 0) {
+					assertThat(tpio.getOffset()).isEqualTo(1);
 				}
 				else {
-					assertThat(tpio.initialOffset()).isEqualTo(0);
+					assertThat(tpio.getOffset()).isEqualTo(0);
 				}
 		});
 		final CountDownLatch latch2 = new CountDownLatch(1);
@@ -558,8 +558,8 @@ public class KafkaMessageListenerContainerTests {
 			Thread.sleep(50);
 			return consumerRecords;
 		});
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
@@ -634,8 +634,8 @@ public class KafkaMessageListenerContainerTests {
 			}
 			return consumerRecords;
 		});
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(ackMode);
@@ -708,8 +708,8 @@ public class KafkaMessageListenerContainerTests {
 			deadLatch.countDown();
 			return null;
 		}).given(consumer).wakeup();
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setNoPollThreshold(2.0f);
@@ -742,8 +742,8 @@ public class KafkaMessageListenerContainerTests {
 			latch.countDown();
 			return records;
 		});
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setNoPollThreshold(2.0f);
 		containerProps.setPollTimeout(100);
@@ -1241,7 +1241,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testDefinedPartitions() throws Exception {
 		this.logger.info("Start defined parts");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test13", "false", embeddedKafka);
-		TopicPartitionInitialOffset topic1Partition0 = new TopicPartitionInitialOffset(topic13, 0, 0L);
+		TopicPartitionOffset topic1Partition0 = new TopicPartitionOffset(topic13, 0, 0L);
 
 		CountDownLatch initialConsumersLatch = new CountDownLatch(2);
 
@@ -1298,7 +1298,7 @@ public class KafkaMessageListenerContainerTests {
 				.commitSync(anyMap(), any());
 		stubbingComplete1.countDown();
 
-		TopicPartitionInitialOffset topic1Partition1 = new TopicPartitionInitialOffset(topic13, 1, 0L);
+		TopicPartitionOffset topic1Partition1 = new TopicPartitionOffset(topic13, 1, 0L);
 		ContainerProperties container2Props = new ContainerProperties(topic1Partition1);
 		CountDownLatch latch2 = new CountDownLatch(2);
 		container2Props.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -1396,8 +1396,8 @@ public class KafkaMessageListenerContainerTests {
 
 		cf = new DefaultKafkaConsumerFactory<>(props);
 		// reset beginning for part 0, minus one for part 1
-		topic1Partition0 = new TopicPartitionInitialOffset(topic13, 0, -1000L);
-		topic1Partition1 = new TopicPartitionInitialOffset(topic13, 1, -1L);
+		topic1Partition0 = new TopicPartitionOffset(topic13, 0, -1000L);
+		topic1Partition1 = new TopicPartitionOffset(topic13, 1, -1L);
 		ContainerProperties container4Props = new ContainerProperties(topic1Partition0, topic1Partition1);
 
 		CountDownLatch latch4 = new CountDownLatch(3);
@@ -1442,8 +1442,8 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(1, 2, "BAR");
 		template.flush();
 
-		topic1Partition0 = new TopicPartitionInitialOffset(topic13, 0, 1L);
-		topic1Partition1 = new TopicPartitionInitialOffset(topic13, 1, 1L);
+		topic1Partition0 = new TopicPartitionOffset(topic13, 0, 1L);
+		topic1Partition1 = new TopicPartitionOffset(topic13, 1, 1L);
 		ContainerProperties container5Props = new ContainerProperties(topic1Partition0, topic1Partition1);
 
 		final CountDownLatch latch5 = new CountDownLatch(4);
@@ -1489,8 +1489,8 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(1, 2, "BUZ");
 		template.flush();
 
-		topic1Partition0 = new TopicPartitionInitialOffset(topic13, 0, 1L, true);
-		topic1Partition1 = new TopicPartitionInitialOffset(topic13, 1, -1L, true);
+		topic1Partition0 = new TopicPartitionOffset(topic13, 0, 1L, true);
+		topic1Partition1 = new TopicPartitionOffset(topic13, 1, -1L, true);
 		ContainerProperties container6Props = new ContainerProperties(topic1Partition0, topic1Partition1);
 
 		final CountDownLatch latch6 = new CountDownLatch(4);
@@ -1815,9 +1815,9 @@ public class KafkaMessageListenerContainerTests {
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset(topic22, 0),
-				new TopicPartitionInitialOffset(topic22, 1)
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset[] {
+				new TopicPartitionOffset(topic22, 0),
+				new TopicPartitionOffset(topic22, 1)
 		});
 		final CountDownLatch latch = new CountDownLatch(1);
 		final List<ConsumerRecord<Integer, String>> received = new ArrayList<>();
@@ -2158,13 +2158,13 @@ public class KafkaMessageListenerContainerTests {
 			Thread.sleep(50);
 			return emptyRecords;
 		});
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0, SeekPosition.BEGINNING),
-				new TopicPartitionInitialOffset("foo", 1, SeekPosition.END),
-				new TopicPartitionInitialOffset("foo", 2, 0L),
-				new TopicPartitionInitialOffset("foo", 3, Long.MAX_VALUE),
-				new TopicPartitionInitialOffset("foo", 4, SeekPosition.BEGINNING),
-				new TopicPartitionInitialOffset("foo", 5, SeekPosition.END),
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0, SeekPosition.BEGINNING),
+				new TopicPartitionOffset("foo", 1, SeekPosition.END),
+				new TopicPartitionOffset("foo", 2, 0L),
+				new TopicPartitionOffset("foo", 3, Long.MAX_VALUE),
+				new TopicPartitionOffset("foo", 4, SeekPosition.BEGINNING),
+				new TopicPartitionOffset("foo", 5, SeekPosition.END),
 		};
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
@@ -2305,8 +2305,8 @@ public class KafkaMessageListenerContainerTests {
 			return null;
 		}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(42)));
 		given(consumer.assignment()).willReturn(records1.keySet());
-		TopicPartitionInitialOffset[] topicPartitionOffset = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartitionOffset = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartitionOffset);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.COUNT);
@@ -2354,8 +2354,8 @@ public class KafkaMessageListenerContainerTests {
 		willAnswer(i -> {
 			throw new RuntimeException("Commit failed");
 		}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setClientId("clientId");

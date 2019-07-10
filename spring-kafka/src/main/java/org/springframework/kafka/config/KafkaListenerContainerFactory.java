@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 
 /**
  * Factory for {@link MessageListenerContainer}s.
@@ -50,7 +50,7 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 	 * @return the container.
 	 * @since 2.2
 	 */
-	C createContainer(Collection<TopicPartitionInitialOffset> topicPartitions);
+	C createContainer(Collection<TopicPartitionOffset> topicPartitions);
 
 	/**
 	 * Create and configure a container without a listener; used to create containers that

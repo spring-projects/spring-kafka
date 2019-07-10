@@ -67,8 +67,8 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
-import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
+import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
@@ -115,7 +115,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private final AbstractMessageListenerContainer<K, V> container;
 
-	private final TopicPartitionInitialOffset[] topicPartitions;
+	private final TopicPartitionOffset[] topicPartitions;
 
 	private volatile ListenerConsumer listenerConsumer;
 
@@ -135,7 +135,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	public KafkaMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
 
-		this(null, consumerFactory, containerProperties, (TopicPartitionInitialOffset[]) null);
+		this(null, consumerFactory, containerProperties, (TopicPartitionOffset[]) null);
 	}
 
 	/**
@@ -149,7 +149,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	 */
 	@Deprecated
 	public KafkaMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
-			ContainerProperties containerProperties, TopicPartitionInitialOffset... topicPartitions) {
+			ContainerProperties containerProperties, TopicPartitionOffset... topicPartitions) {
 
 		this(null, consumerFactory, containerProperties, topicPartitions);
 	}
@@ -164,7 +164,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
 
-		this(container, consumerFactory, containerProperties, (TopicPartitionInitialOffset[]) null);
+		this(container, consumerFactory, containerProperties, (TopicPartitionOffset[]) null);
 	}
 
 	/**
@@ -177,7 +177,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	 */
 	KafkaMessageListenerContainer(AbstractMessageListenerContainer<K, V> container,
 			ConsumerFactory<? super K, ? super V> consumerFactory,
-			ContainerProperties containerProperties, TopicPartitionInitialOffset... topicPartitions) {
+			ContainerProperties containerProperties, TopicPartitionOffset... topicPartitions) {
 
 		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
@@ -432,7 +432,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
-		private final BlockingQueue<TopicPartitionInitialOffset> seeks = new LinkedBlockingQueue<>();
+		private final BlockingQueue<TopicPartitionOffset> seeks = new LinkedBlockingQueue<>();
 
 		private final ErrorHandler errorHandler;
 
@@ -654,12 +654,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				List<TopicPartitionInitialOffset> topicPartitionsToAssign =
+				List<TopicPartitionOffset> topicPartitionsToAssign =
 						Arrays.asList(KafkaMessageListenerContainer.this.topicPartitions);
 				this.definedPartitions = new HashMap<>(topicPartitionsToAssign.size());
-				for (TopicPartitionInitialOffset topicPartition : topicPartitionsToAssign) {
-					this.definedPartitions.put(topicPartition.topicPartition(),
-							new OffsetMetadata(topicPartition.initialOffset(), topicPartition.isRelativeToCurrent(),
+				for (TopicPartitionOffset topicPartition : topicPartitionsToAssign) {
+					this.definedPartitions.put(topicPartition.getTopicPartition(),
+							new OffsetMetadata(topicPartition.getOffset(), topicPartition.isRelativeToCurrent(),
 									topicPartition.getPosition()));
 				}
 				subscribingConsumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
@@ -1533,41 +1533,41 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void processSeeks() {
-			TopicPartitionInitialOffset offset = this.seeks.poll();
+			TopicPartitionOffset offset = this.seeks.poll();
 			while (offset != null) {
 				traceSeek(offset);
 				try {
 					SeekPosition position = offset.getPosition();
-					Long whereTo = offset.initialOffset();
+					Long whereTo = offset.getOffset();
 					if (position == null) {
 						if (offset.isRelativeToCurrent()) {
-							whereTo += this.consumer.position(offset.topicPartition());
+							whereTo += this.consumer.position(offset.getTopicPartition());
 						}
-						this.consumer.seek(offset.topicPartition(), whereTo);
+						this.consumer.seek(offset.getTopicPartition(), whereTo);
 					}
 					else if (position.equals(SeekPosition.BEGINNING)) {
-						this.consumer.seekToBeginning(Collections.singletonList(offset.topicPartition()));
+						this.consumer.seekToBeginning(Collections.singletonList(offset.getTopicPartition()));
 						if (whereTo != null) {
-							this.consumer.seek(offset.topicPartition(), whereTo);
+							this.consumer.seek(offset.getTopicPartition(), whereTo);
 						}
 					}
 					else {
-						this.consumer.seekToEnd(Collections.singletonList(offset.topicPartition()));
+						this.consumer.seekToEnd(Collections.singletonList(offset.getTopicPartition()));
 						if (whereTo != null) {
-							whereTo += this.consumer.position(offset.topicPartition());
-							this.consumer.seek(offset.topicPartition(), whereTo);
+							whereTo += this.consumer.position(offset.getTopicPartition());
+							this.consumer.seek(offset.getTopicPartition(), whereTo);
 						}
 					}
 				}
 				catch (Exception e) {
-					TopicPartitionInitialOffset offsetToLog = offset;
+					TopicPartitionOffset offsetToLog = offset;
 					this.logger.error(e, () -> "Exception while seeking " + offsetToLog);
 				}
 				offset = this.seeks.poll();
 			}
 		}
 
-		private void traceSeek(TopicPartitionInitialOffset offset) {
+		private void traceSeek(TopicPartitionOffset offset) {
 			this.logger.trace(() -> "Seek: " + offset);
 		}
 
@@ -1686,29 +1686,29 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override
 		public void seek(String topic, int partition, long offset) {
-			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, offset));
+			this.seeks.add(new TopicPartitionOffset(topic, partition, offset));
 		}
 
 		@Override
 		public void seekToBeginning(String topic, int partition) {
-			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.BEGINNING));
+			this.seeks.add(new TopicPartitionOffset(topic, partition, SeekPosition.BEGINNING));
 		}
 
 		@Override
 		public void seekToEnd(String topic, int partition) {
-			this.seeks.add(new TopicPartitionInitialOffset(topic, partition, SeekPosition.END));
+			this.seeks.add(new TopicPartitionOffset(topic, partition, SeekPosition.END));
 		}
 
 		@Override
 		public void seekRelative(String topic, int partition, long offset, boolean toCurrent) {
 			if (toCurrent) {
-				this.seeks.add(new TopicPartitionInitialOffset(topic, partition, offset, toCurrent));
+				this.seeks.add(new TopicPartitionOffset(topic, partition, offset, toCurrent));
 			}
 			else if (offset >= 0) {
-				this.seeks.add(new TopicPartitionInitialOffset(topic, partition, offset, SeekPosition.BEGINNING));
+				this.seeks.add(new TopicPartitionOffset(topic, partition, offset, SeekPosition.BEGINNING));
 			}
 			else {
-				this.seeks.add(new TopicPartitionInitialOffset(topic, partition, offset, SeekPosition.END));
+				this.seeks.add(new TopicPartitionOffset(topic, partition, offset, SeekPosition.END));
 			}
 		}
 

@@ -14,6 +14,10 @@ Please submit GitHub issues and/or pull requests for additional entries in that 
 
 This version requires the 2.2.0 `kafka-clients` or higher.
 
+==== Class/Package Changes
+
+`TopicPartitionInitialOffset` is deprecated in favor of `TopicPartitionOffset`.
+
 ==== Producer and Consumer Factory Changes
 
 The `DefaultKafkaProducerFactory` can now be configured to create a producer per thread.

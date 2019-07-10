@@ -94,7 +94,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
@@ -279,11 +279,11 @@ public class EnableKafkaIntegrationTests {
 		assertThat(fizConcurrentContainer).isNotNull();
 		MessageListenerContainer fizContainer = (MessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(fizConcurrentContainer, "containers", List.class).get(0);
-		TopicPartitionInitialOffset offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
-				TopicPartitionInitialOffset[].class)[2];
+		TopicPartitionOffset offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
+				TopicPartitionOffset[].class)[2];
 		assertThat(offset.isRelativeToCurrent()).isFalse();
 		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
-				TopicPartitionInitialOffset[].class)[3];
+				TopicPartitionOffset[].class)[3];
 		assertThat(offset.isRelativeToCurrent()).isTrue();
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.coordinator.groupId"))
 				.isEqualTo("fiz");

@@ -40,7 +40,7 @@ import org.junit.Test;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 
 /**
  * @author Gary Russell
@@ -64,8 +64,8 @@ public class TestOOMError {
 			Thread.sleep(50);
 			return consumerRecords;
 		});
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
@@ -103,8 +103,8 @@ public class TestOOMError {
 			Thread.sleep(50);
 			return consumerRecords;
 		});
-		TopicPartitionInitialOffset[] topicPartition = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset("foo", 0) };
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);

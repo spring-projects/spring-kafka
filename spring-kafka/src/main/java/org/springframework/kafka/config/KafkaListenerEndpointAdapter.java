@@ -21,7 +21,7 @@ import java.util.Collections;
 import java.util.regex.Pattern;
 
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 
 /**
@@ -58,7 +58,7 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 	}
 
 	@Override
-	public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
+	public Collection<TopicPartitionOffset> getTopicPartitions() {
 		return Collections.emptyList();
 	}
 

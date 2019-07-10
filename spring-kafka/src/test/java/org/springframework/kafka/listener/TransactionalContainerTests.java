@@ -76,7 +76,7 @@ import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
@@ -250,8 +250,8 @@ public class TransactionalContainerTests {
 		given(pf.transactionCapable()).willReturn(true);
 		given(pf.createProducer(isNull())).willReturn(producer);
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		ContainerProperties props = new ContainerProperties(new TopicPartitionInitialOffset("foo", 0),
-				new TopicPartitionInitialOffset("foo", 1));
+		ContainerProperties props = new ContainerProperties(new TopicPartitionOffset("foo", 0),
+				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
 		props.setTransactionManager(tm);
 		final KafkaTemplate template = new KafkaTemplate(pf);
@@ -317,8 +317,8 @@ public class TransactionalContainerTests {
 		given(pf.transactionCapable()).willReturn(true);
 		given(pf.createProducer(isNull())).willReturn(producer);
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		ContainerProperties props = new ContainerProperties(new TopicPartitionInitialOffset("foo", 0),
-				new TopicPartitionInitialOffset("foo", 1));
+		ContainerProperties props = new ContainerProperties(new TopicPartitionOffset("foo", 0),
+				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
 		props.setTransactionManager(tm);
 		final KafkaTemplate template = new KafkaTemplate(pf);

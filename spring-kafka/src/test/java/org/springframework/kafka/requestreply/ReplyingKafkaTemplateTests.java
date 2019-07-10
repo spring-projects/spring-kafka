@@ -76,7 +76,7 @@ import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
@@ -184,7 +184,7 @@ public class ReplyingKafkaTemplateTests {
 	@Test
 	public void testGoodDefaultReplyHeaders() throws Exception {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(
-				new TopicPartitionInitialOffset(A_REPLY, 3));
+				new TopicPartitionOffset(A_REPLY, 3));
 		try {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(A_REQUEST, "bar");
@@ -280,7 +280,7 @@ public class ReplyingKafkaTemplateTests {
 	@Test
 	public void testAggregateNormal() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
-				new TopicPartitionInitialOffset(D_REPLY, 0), 2);
+				new TopicPartitionOffset(D_REPLY, 0), 2);
 		try {
 			template.setReplyTimeout(30_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(D_REQUEST, null, null, null, "foo");
@@ -309,7 +309,7 @@ public class ReplyingKafkaTemplateTests {
 	@Ignore("time sensitive")
 	public void testAggregateTimeout() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
-				new TopicPartitionInitialOffset(E_REPLY, 0), 3);
+				new TopicPartitionOffset(E_REPLY, 0), 3);
 		try {
 			template.setReplyTimeout(5_000);
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(E_REQUEST, null, null, null, "foo");
@@ -343,7 +343,7 @@ public class ReplyingKafkaTemplateTests {
 	@Ignore("time sensitive")
 	public void testAggregateTimeoutPartial() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
-				new TopicPartitionInitialOffset(F_REPLY, 0), 3);
+				new TopicPartitionOffset(F_REPLY, 0), 3);
 		template.setReturnPartialOnTimeout(true);
 		try {
 			template.setReplyTimeout(5_000);
@@ -440,7 +440,7 @@ public class ReplyingKafkaTemplateTests {
 		return template;
 	}
 
-	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionInitialOffset topic) {
+	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionOffset topic) {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
@@ -455,12 +455,12 @@ public class ReplyingKafkaTemplateTests {
 		template.setSharedReplyTopic(true);
 		template.start();
 		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(1);
-		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic.topic());
+		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic.getTopic());
 		return template;
 	}
 
 	public AggregatingReplyingKafkaTemplate<Integer, String, String> aggregatingTemplate(
-			TopicPartitionInitialOffset topic, int releaseSize) {
+			TopicPartitionOffset topic, int releaseSize) {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		containerProperties.setAckMode(AckMode.MANUAL_IMMEDIATE);
@@ -477,7 +477,7 @@ public class ReplyingKafkaTemplateTests {
 		template.setSharedReplyTopic(true);
 		template.start();
 		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(1);
-		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic.topic());
+		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic.getTopic());
 		return template;
 	}
 

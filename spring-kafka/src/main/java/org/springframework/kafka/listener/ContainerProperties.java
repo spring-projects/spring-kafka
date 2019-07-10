@@ -27,7 +27,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 
 import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.kafka.support.LogIfLevelEnabled;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -128,7 +128,7 @@ public class ContainerProperties {
 	/**
 	 * Topics/partitions/initial offsets.
 	 */
-	private final TopicPartitionInitialOffset[] topicPartitions;
+	private final TopicPartitionOffset[] topicPartitions;
 
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
@@ -256,12 +256,12 @@ public class ContainerProperties {
 	 * partitions.
 	 * @param topicPartitions the topic partitions.
 	 */
-	public ContainerProperties(TopicPartitionInitialOffset... topicPartitions) {
+	public ContainerProperties(TopicPartitionOffset... topicPartitions) {
 		this.topics = null;
 		this.topicPattern = null;
 		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
 		this.topicPartitions = new LinkedHashSet<>(Arrays.asList(topicPartitions))
-				.toArray(new TopicPartitionInitialOffset[topicPartitions.length]);
+				.toArray(new TopicPartitionOffset[topicPartitions.length]);
 	}
 
 	/**
@@ -442,7 +442,7 @@ public class ContainerProperties {
 		return this.topicPattern;
 	}
 
-	public TopicPartitionInitialOffset[] getTopicPartitions() {
+	public TopicPartitionOffset[] getTopicPartitions() {
 		return this.topicPartitions; // NOSONAR
 	}
 

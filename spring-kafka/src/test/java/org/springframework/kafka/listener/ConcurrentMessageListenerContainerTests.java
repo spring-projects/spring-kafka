@@ -58,7 +58,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.event.KafkaEvent;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
@@ -503,14 +503,14 @@ public class ConcurrentMessageListenerContainerTests {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testConcurrencyWithPartitions() {
-		TopicPartitionInitialOffset[] topic1PartitionS = new TopicPartitionInitialOffset[] {
-				new TopicPartitionInitialOffset(topic1, 0),
-				new TopicPartitionInitialOffset(topic1, 1),
-				new TopicPartitionInitialOffset(topic1, 2),
-				new TopicPartitionInitialOffset(topic1, 3),
-				new TopicPartitionInitialOffset(topic1, 4),
-				new TopicPartitionInitialOffset(topic1, 5),
-				new TopicPartitionInitialOffset(topic1, 6)
+		TopicPartitionOffset[] topic1PartitionS = new TopicPartitionOffset[] {
+				new TopicPartitionOffset(topic1, 0),
+				new TopicPartitionOffset(topic1, 1),
+				new TopicPartitionOffset(topic1, 2),
+				new TopicPartitionOffset(topic1, 3),
+				new TopicPartitionOffset(topic1, 4),
+				new TopicPartitionOffset(topic1, 5),
+				new TopicPartitionOffset(topic1, 6)
 		};
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
@@ -538,7 +538,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(containers).hasSize(3);
 		for (int i = 0; i < 3; i++) {
 			assertThat(KafkaTestUtils.getPropertyValue(containers.get(i), "topicPartitions",
-					TopicPartitionInitialOffset[].class).length).isEqualTo(i < 2 ? 2 : 3);
+					TopicPartitionOffset[].class).length).isEqualTo(i < 2 ? 2 : 3);
 		}
 		container.stop();
 	}

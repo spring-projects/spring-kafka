@@ -45,7 +45,7 @@ import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapte
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.retry.RecoveryCallback;
@@ -77,7 +77,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private Pattern topicPattern;
 
-	private final Collection<TopicPartitionInitialOffset> topicPartitions = new ArrayList<>();
+	private final Collection<TopicPartitionOffset> topicPartitions = new ArrayList<>();
 
 	private BeanFactory beanFactory;
 
@@ -167,7 +167,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Set the topics to use. Either these or 'topicPattern' or 'topicPartitions'
 	 * should be provided, but not a mixture.
 	 * @param topics to set.
-	 * @see #setTopicPartitions(TopicPartitionInitialOffset...)
+	 * @see #setTopicPartitions(TopicPartitionOffset...)
 	 * @see #setTopicPattern(Pattern)
 	 */
 	public void setTopics(String... topics) {
@@ -193,7 +193,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @see #setTopics(String...)
 	 * @see #setTopicPattern(Pattern)
 	 */
-	public void setTopicPartitions(TopicPartitionInitialOffset... topicPartitions) {
+	public void setTopicPartitions(TopicPartitionOffset... topicPartitions) {
 		Assert.notNull(topicPartitions, "'topics' must not be null");
 		this.topicPartitions.clear();
 		this.topicPartitions.addAll(Arrays.asList(topicPartitions));
@@ -204,7 +204,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @return the topicPartitions for this endpoint.
 	 */
 	@Override
-	public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
+	public Collection<TopicPartitionOffset> getTopicPartitions() {
 		return Collections.unmodifiableCollection(this.topicPartitions);
 	}
 
@@ -212,7 +212,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Set the topic pattern to use. Cannot be used with
 	 * topics or topicPartitions.
 	 * @param topicPattern the pattern
-	 * @see #setTopicPartitions(TopicPartitionInitialOffset...)
+	 * @see #setTopicPartitions(TopicPartitionOffset...)
 	 * @see #setTopics(String...)
 	 */
 	public void setTopicPattern(Pattern topicPattern) {
