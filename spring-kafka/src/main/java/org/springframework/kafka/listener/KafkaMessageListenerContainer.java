@@ -778,7 +778,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!this.autoCommit && !this.isRecordAck) {
 				processCommits();
 			}
-			processSeeks();
+			if (this.seeks.size() > 0) {
+				processSeeks();
+			}
 			checkPaused();
 			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
 			this.lastPoll = System.currentTimeMillis();
@@ -1463,14 +1465,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void processSeeks() {
-			List<TopicPartitionOffset> timestampSeeks = this.seeks.stream()
-				.filter(tpo -> SeekPosition.TIMESTAMP.equals(tpo.getPosition()))
-				.collect(Collectors.toList());
-			if (timestampSeeks.size() > 0) {
-				this.seeks.removeAll(timestampSeeks);
+			Iterator<TopicPartitionOffset> seekIterator = this.seeks.iterator();
+			Map<TopicPartition, Long> timestampSeeks = null;
+			while (seekIterator.hasNext()) {
+				TopicPartitionOffset tpo = seekIterator.next();
+				if (SeekPosition.TIMESTAMP.equals(tpo.getPosition())) {
+					if (timestampSeeks == null) {
+						timestampSeeks = new HashMap<>();
+					}
+					timestampSeeks.put(tpo.getTopicPartition(), tpo.getOffset());
+					seekIterator.remove();
+				}
+			}
+			if (timestampSeeks != null) {
 				Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = this.consumer
-						.offsetsForTimes(timestampSeeks.stream()
-								.collect(Collectors.toMap(tpo -> tpo.getTopicPartition(), tpo -> tpo.getOffset())));
+						.offsetsForTimes(timestampSeeks);
 				offsetsForTimes.forEach((tp, ot) -> this.consumer.seek(tp, ot.offset()));
 			}
 			TopicPartitionOffset offset = this.seeks.poll();
@@ -1659,9 +1668,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override
 		public void seekToTimestamp(Collection<TopicPartition> topicParts, long timestamp) {
-			this.seeks.addAll(topicParts.stream()
-					.map(tp -> new TopicPartitionOffset(tp, timestamp, SeekPosition.TIMESTAMP))
-					.collect(Collectors.toList()));
+			topicParts.forEach(tp -> seekToTimestamp(tp.topic(), tp.partition(), timestamp));
 		}
 
 		@Override
