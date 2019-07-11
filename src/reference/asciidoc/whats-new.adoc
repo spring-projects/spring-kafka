@@ -49,6 +49,9 @@ See <<message-listener-container>> for more information.
 The `ConsumerSeekAware` has new methods allowing you to perform seeks relative to the beginning, end, or current position and to seek to the first offset greater than or equal to a time stamp.
 See <<seek>> for more information.
 
+A convenience class `AbstractConsumerSeekAware` is now provided to simplify seeking.
+See <<seek>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.

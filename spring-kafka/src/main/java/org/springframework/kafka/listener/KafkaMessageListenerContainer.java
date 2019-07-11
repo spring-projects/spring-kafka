@@ -1475,6 +1475,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (position == null) {
 						if (offset.isRelativeToCurrent()) {
 							whereTo += this.consumer.position(offset.getTopicPartition());
+							whereTo = Math.max(whereTo, 0);
 						}
 						this.consumer.seek(offset.getTopicPartition(), whereTo);
 					}
@@ -1483,6 +1484,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						if (whereTo != null) {
 							this.consumer.seek(offset.getTopicPartition(), whereTo);
 						}
+					}
+					else if (position.equals(SeekPosition.TIMESTAMP)) {
+						// possible late addition since the grouped processing above
+						Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = this.consumer
+								.offsetsForTimes(
+										Collections.singletonMap(offset.getTopicPartition(), offset.getOffset()));
+						offsetsForTimes.forEach((tp, ot) -> this.consumer.seek(tp, ot.offset()));
 					}
 					else {
 						this.consumer.seekToEnd(Collections.singletonList(offset.getTopicPartition()));
@@ -1511,6 +1519,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 					timestampSeeks.put(tpo.getTopicPartition(), tpo.getOffset());
 					seekIterator.remove();
+					traceSeek(tpo);
 				}
 			}
 			if (timestampSeeks != null) {

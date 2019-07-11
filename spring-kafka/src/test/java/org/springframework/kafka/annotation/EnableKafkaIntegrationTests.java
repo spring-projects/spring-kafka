@@ -76,6 +76,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
+import org.springframework.kafka.listener.AbstractConsumerSeekAware;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ConsumerAwareErrorHandler;
 import org.springframework.kafka.listener.ConsumerAwareListenerErrorHandler;
@@ -152,7 +153,7 @@ public class EnableKafkaIntegrationTests {
 			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
-			"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart");
+			"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle");
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -200,6 +201,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	private ConcurrentKafkaListenerContainerFactory<Integer, String> transactionalFactory;
+
+	@Autowired
+	private SeekToLastOnIdleListener seekOnIdleListener;
 
 	@Test
 	public void testAnonymous() {
@@ -757,6 +761,15 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.username).isEqualTo("SomeUsername");
 	}
 
+	@Test
+	public void testSeekToLastOnIdle() throws InterruptedException {
+		this.registry.getListenerContainer("seekOnIdle").start();
+		this.template.send("seekOnIdle", 0, "foo");
+		this.template.send("seekOnIdle", 1, "bar");
+		assertThat(this.seekOnIdleListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		this.registry.getListenerContainer("seekOnIdle").stop();
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -968,6 +981,7 @@ public class EnableKafkaIntegrationTests {
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.MANUAL_IMMEDIATE);
 			props.setIdleEventInterval(100L);
+			props.setPollTimeout(50L);
 			factory.setRecordFilterStrategy(manualFilter());
 			factory.setAckDiscarded(true);
 			factory.setRetryTemplate(new RetryTemplate());
@@ -1048,6 +1062,11 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public Listener listener() {
 			return new Listener();
+		}
+
+		@Bean
+		public SeekToLastOnIdleListener seekOnIdle() {
+			return new SeekToLastOnIdleListener();
 		}
 
 		@Bean
@@ -1694,6 +1713,33 @@ public class EnableKafkaIntegrationTests {
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
 			this.seekCallBack.set(callback);
+		}
+
+	}
+
+	public static class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
+
+		private final CountDownLatch latch = new CountDownLatch(10);
+
+		@KafkaListener(id = "seekOnIdle", topics = "seekOnIdle", autoStartup = "false",
+				containerFactory = "kafkaManualAckListenerContainerFactory")
+		public void listen(String in, Acknowledgment ack) {
+			this.latch.countDown();
+			ack.acknowledge();
+		}
+
+		@Override
+		public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
+				ConsumerSeekCallback callback) {
+
+			if (this.latch.getCount() > 0) {
+				assignments.keySet().forEach(tp -> {
+					ConsumerSeekCallback callbackFor = getCallbackFor(tp);
+					if (callbackFor != null) {
+						callbackFor.seekRelative(tp.topic(), tp.partition(), -1, true);
+					}
+				});
+			}
 		}
 
 	}

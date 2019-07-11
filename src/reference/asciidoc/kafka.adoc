@@ -2153,6 +2153,35 @@ class Listener implements ConsumerSeekAware {
 ----
 ====
 
+To make things simpler, version 2.3 added the `AbstractConsumerSeekAware` class, which keeps track of which callback is to be used for a topic/partition.
+The following example shows how to seek to the last record processed, in each partition, each time the container goes idle.
+
+====
+[source, java]
+----
+public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
+
+    @KafkaListener(id = "seekOnIdle", topics = "seekOnIdle")
+    public void listen(String in) {
+        ...
+    }
+
+    @Override
+    public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
+            ConsumerSeekCallback callback) {
+
+        assignments.keySet().forEach(tp -> {
+            ConsumerSeekCallback callbackFor = getCallbackFor(tp);
+            if (callbackFor != null) {
+                callbackFor.seekRelative(tp.topic(), tp.partition(), -1, true);
+            }
+        });
+    }
+
+}
+----
+====
+
 [[container-factory]]
 ===== Container factory
 
