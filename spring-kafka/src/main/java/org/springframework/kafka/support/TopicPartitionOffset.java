@@ -59,7 +59,12 @@ public class TopicPartitionOffset {
 		/**
 		 * Seek to the end.
 		 */
-		END
+		END,
+
+		/**
+		 * Seek to the time stamp.
+		 */
+		TIMESTAMP
 	}
 
 	private final TopicPartition topicPartition;
@@ -125,11 +130,25 @@ public class TopicPartitionOffset {
 	 * Construct an instance with the provided {@link SeekPosition}.
 	 * @param topic the topic.
 	 * @param partition the partition.
-	 * @param offset the offset from the seek position.
+	 * @param offset the offset from the seek position (or timestamp for
+	 * {@link SeekPosition#TIMESTAMP}).
 	 * @param position {@link SeekPosition}.
+	 * @since 2.3
 	 */
 	public TopicPartitionOffset(String topic, int partition, Long offset, @Nullable SeekPosition position) {
-		this.topicPartition = new TopicPartition(topic, partition);
+		this(new TopicPartition(topic, partition), offset, position);
+	}
+
+	/**
+	 * Construct an instance with the provided {@link SeekPosition}.
+	 * @param topicPartition the topic/partition.
+	 * @param offset the offset from the seek position (or timestamp for
+	 * {@link SeekPosition#TIMESTAMP}).
+	 * @param position {@link SeekPosition}.
+	 * @since 2.3
+	 */
+	public TopicPartitionOffset(TopicPartition topicPartition, Long offset, @Nullable SeekPosition position) {
+		this.topicPartition = topicPartition;
 		this.offset = offset;
 		this.relativeToCurrent = false;
 		this.position = position;
@@ -168,7 +187,8 @@ public class TopicPartitionOffset {
 			return false;
 		}
 		TopicPartitionOffset that = (TopicPartitionOffset) o;
-		return Objects.equals(this.topicPartition, that.topicPartition);
+		return Objects.equals(this.topicPartition, that.topicPartition)
+				&& Objects.equals(this.position, that.position);
 	}
 
 	@Override

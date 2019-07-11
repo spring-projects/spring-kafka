@@ -39,6 +39,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -92,7 +93,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 	void testSyncRelativeSeeks() throws InterruptedException {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
-		TestMessageListener listener = new TestMessageListener();
+		TestMessageListener1 listener = new TestMessageListener1();
 		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
 		willAnswer(invocation -> {
 			Thread.sleep(10);
@@ -137,7 +138,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 	void testAsyncRelativeSeeks() throws InterruptedException {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
-		TestMessageListener listener = new TestMessageListener();
+		TestMessageListener1 listener = new TestMessageListener1();
 		CountDownLatch latch = new CountDownLatch(2);
 		TopicPartition tp0 = new TopicPartition("foo", 0);
 		TopicPartition tp1 = new TopicPartition("foo", 1);
@@ -186,7 +187,117 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.stop();
 	}
 
-	public static class TestMessageListener implements MessageListener<String, String>, ConsumerSeekAware {
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	@DisplayName("Seek timestamp TL callback when idle")
+	void testSyncTimestampSeeks() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		TestMessageListener2 listener = new TestMessageListener2();
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			return empty;
+		}).given(consumer).poll(any());
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		TopicPartition tp2 = new TopicPartition("foo", 2);
+		TopicPartition tp3 = new TopicPartition("foo", 3);
+		List<TopicPartition> assignments = Arrays.asList(tp0, tp1, tp2, tp3);
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+				.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(any())).willReturn(100L);
+		given(consumer.beginningOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 0L)));
+		given(consumer.endOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 200L)));
+		given(consumer.offsetsForTimes(Collections.singletonMap(tp0, 42L)))
+				.willReturn(Collections.singletonMap(tp0, new OffsetAndTimestamp(63L, 42L)));
+		given(consumer.offsetsForTimes(assignments.stream().collect(Collectors.toMap(tp -> tp, tp -> 43L))))
+				.willReturn(assignments.stream()
+						.collect(Collectors.toMap(tp -> tp, tp -> new OffsetAndTimestamp(82L, 43L))));
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener(listener);
+		containerProperties.setIdleEventInterval(10L);
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(listener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).seek(tp0, 63L);
+		verify(consumer).seek(tp0, 82L);
+		verify(consumer).seek(tp1, 82L);
+		verify(consumer).seek(tp2, 82L);
+		verify(consumer).seek(tp3, 82L);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	@DisplayName("Timestamp seek from activeListener")
+	void testAsyncTimestampSeeks() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		TestMessageListener2 listener = new TestMessageListener2();
+		CountDownLatch latch = new CountDownLatch(2);
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		TopicPartition tp2 = new TopicPartition("foo", 2);
+		TopicPartition tp3 = new TopicPartition("foo", 3);
+		List<TopicPartition> assignments = Arrays.asList(tp0, tp1, tp2, tp3);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
+		recordMap.put(tp0, Collections.singletonList(new ConsumerRecord("foo", 0, 0, null, "bar")));
+		recordMap.put(tp1, Collections.singletonList(new ConsumerRecord("foo", 1, 0, null, "bar")));
+		recordMap.put(tp2, Collections.singletonList(new ConsumerRecord("foo", 2, 0, null, "bar")));
+		recordMap.put(tp3, Collections.singletonList(new ConsumerRecord("foo", 3, 0, null, "bar")));
+		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			if (listener.latch.getCount() <= 0) {
+				latch.countDown();
+			}
+			return records;
+		}).given(consumer).poll(any());
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+				.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(any())).willReturn(100L);
+		given(consumer.beginningOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 0L)));
+		given(consumer.endOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 200L)));
+		given(consumer.offsetsForTimes(Collections.singletonMap(tp0, 42L)))
+				.willReturn(Collections.singletonMap(tp0, new OffsetAndTimestamp(73L, 42L)));
+		given(consumer.offsetsForTimes(any()))
+				.willReturn(assignments.stream()
+					.collect(Collectors.toMap(tp -> tp,
+							tp -> new OffsetAndTimestamp(tp.equals(tp0) ? 73L : 92L, 43L))));
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener(listener);
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).seek(tp0, 73L);
+		verify(consumer).seek(tp1, 92L);
+		verify(consumer).seek(tp2, 92L);
+		verify(consumer).seek(tp3, 92L);
+		container.stop();
+	}
+
+	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {
 
 		private static ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
 
@@ -216,6 +327,47 @@ public class ConcurrentMessageListenerContainerMockTests {
 				callback.seekRelative("foo", 1, 40, true);
 				callback.seekRelative("foo", 2, -40, false);
 				callback.seekRelative("foo", 3, 40, false);
+			}
+			this.latch.countDown();
+		}
+
+	}
+
+	public static class TestMessageListener2 implements MessageListener<String, String>, ConsumerSeekAware {
+
+		private static ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
+
+		CountDownLatch latch = new CountDownLatch(1);
+
+		private Collection<TopicPartition> partitions;
+
+		@Override
+		public void onMessage(ConsumerRecord<String, String> data) {
+			ConsumerSeekCallback callback = callbacks.get();
+			if (latch.getCount() > 0) {
+				callback.seekToTimestamp("foo", 0, 42L);
+				callback.seekToTimestamp(this.partitions.stream()
+						.filter(tp -> !tp.equals(new TopicPartition("foo", 0)))
+						.collect(Collectors.toList()), 43L);
+			}
+			this.latch.countDown();
+		}
+
+		@Override
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			callbacks.set(callback);
+		}
+
+		@Override
+		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			this.partitions = assignments.keySet();
+		}
+
+		@Override
+		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (latch.getCount() > 0) {
+				callback.seekToTimestamp("foo", 0, 42L);
+				callback.seekToTimestamp(assignments.keySet(), 43L);
 			}
 			this.latch.countDown();
 		}

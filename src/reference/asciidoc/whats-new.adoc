@@ -46,7 +46,7 @@ The container has a new property `recordInterceptor` allowing records to be insp
 A `CompositeRecordInterceptor` is also provided in case you need to invoke multiple interceptors.
 See <<message-listener-container>> for more information.
 
-The `ConsumerSeekAware` has a new method allowing you to perform seeks relative to the beginning, end, or current position.
+The `ConsumerSeekAware` has new methods allowing you to perform seeks relative to the beginning, end, or current position and to seek to the first offset greater than or equal to a time stamp.
 See <<seek>> for more information.
 
 ==== ErrorHandler Changes

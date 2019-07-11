@@ -43,6 +43,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
@@ -504,9 +505,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							consumerProperties);
 
 			this.transactionTemplate = determineTransactionTemplate();
+			this.genericListener = listener;
 			subscribeOrAssignTopics(this.consumer);
 			GenericErrorHandler<?> errHandler = KafkaMessageListenerContainer.this.getGenericErrorHandler();
-			this.genericListener = listener;
 			if (listener instanceof BatchMessageListener) {
 				this.listener = null;
 				this.batchListener = (BatchMessageListener<K, V>) listener;
@@ -1462,6 +1463,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void processSeeks() {
+			List<TopicPartitionOffset> timestampSeeks = this.seeks.stream()
+				.filter(tpo -> SeekPosition.TIMESTAMP.equals(tpo.getPosition()))
+				.collect(Collectors.toList());
+			if (timestampSeeks.size() > 0) {
+				this.seeks.removeAll(timestampSeeks);
+				Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = this.consumer
+						.offsetsForTimes(timestampSeeks.stream()
+								.collect(Collectors.toMap(tpo -> tpo.getTopicPartition(), tpo -> tpo.getOffset())));
+				offsetsForTimes.forEach((tp, ot) -> this.consumer.seek(tp, ot.offset()));
+			}
 			TopicPartitionOffset offset = this.seeks.poll();
 			while (offset != null) {
 				traceSeek(offset);
@@ -1641,6 +1652,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@Override
+		public void seekToTimestamp(String topic, int partition, long timestamp) {
+			this.seeks.add(new TopicPartitionOffset(topic, partition, timestamp, SeekPosition.TIMESTAMP));
+		}
+
+		@Override
+		public void seekToTimestamp(Collection<TopicPartition> topicParts, long timestamp) {
+			this.seeks.addAll(topicParts.stream()
+					.map(tp -> new TopicPartitionOffset(tp, timestamp, SeekPosition.TIMESTAMP))
+					.collect(Collectors.toList()));
+		}
 
 		@Override
 		public String toString() {
@@ -1879,6 +1901,31 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (whereTo != null) {
 					consumerToSeek.seek(topicPart, whereTo);
 				}
+			}
+
+			@Override
+			public void seekToTimestamp(String topic, int partition, long timestamp) {
+				Consumer<K, V> consumerToSeek = ListenerConsumer.this.consumer;
+				Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = consumerToSeek.offsetsForTimes(
+						Collections.singletonMap(new TopicPartition(topic, partition), timestamp));
+				offsetsForTimes.forEach((tp, ot) -> {
+					if (ot != null) {
+						consumerToSeek.seek(tp, ot.offset());
+					}
+				});
+			}
+
+			@Override
+			public void seekToTimestamp(Collection<TopicPartition> topicParts, long timestamp) {
+				Consumer<K, V> consumerToSeek = ListenerConsumer.this.consumer;
+				Map<TopicPartition, Long> map = topicParts.stream()
+						.collect(Collectors.toMap(tp -> tp, tp -> timestamp));
+				Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = consumerToSeek.offsetsForTimes(map);
+				offsetsForTimes.forEach((tp, ot) -> {
+					if (ot != null) {
+						consumerToSeek.seek(tp, ot.offset());
+					}
+				});
 			}
 
 			@Nullable

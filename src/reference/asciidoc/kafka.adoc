@@ -2060,6 +2060,10 @@ void seekToBeginning(String topic, int partition);
 void seekToEnd(String topic, int partition);
 
 void seekRelative(String topic, int partition, long offset, boolean toCurrent);
+
+void seekToTimestamp(String topic, int partition, long timestamp);
+
+void seekToTimestamp(Collection<TopicPartition> topicPartitions, long timestamp);
 ----
 ====
 
@@ -2069,6 +2073,11 @@ void seekRelative(String topic, int partition, long offset, boolean toCurrent);
 * `offset` positive and `toCurrent` `false` - seek relative to the beginning of the partition.
 * `offset` negative and `toCurrent` `true` - seek relative to the current position (rewind).
 * `offset` positive and `toCurrent` `true` - seek relative to the current position (fast forward).
+
+The `seekToTimestamp` methods were also added in version 2.3.
+
+NOTE: When seeking to the same timestamp for multiple partitions in the `onIdleContainer` or `onPartitionsAssigned` methods, the second method is preferred because it is more efficient to find the offsets for the timestamps in a single call to the consumer's `offsetsForTimes` method.
+When called from other locations, the container will gather all timestamp seek requests and make one call to `offsetsForTimes`.
 
 You can also perform seek operations from `onIdleContainer()` when an idle container is detected.
 See <<idle-containers>> for how to enable idle container detection.

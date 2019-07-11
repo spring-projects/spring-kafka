@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.apache.kafka.common.TopicPartition;
@@ -102,6 +103,26 @@ public interface ConsumerSeekAware {
 		 * @since 2.3
 		 */
 		void seekRelative(String topic, int partition, long offset, boolean toCurrent);
+
+		/**
+		 * Seek to the first offset greater than or equal to the time stamp.
+		 * Use {@link #seekToTimestamp(Collection, long)} when seeking multiple partitions
+		 * because the offset lookup is blocking.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 * @param timestamp the time stamp.
+		 * @since 2.3
+		 * @see #seekToTimestamp(Collection, long)
+		 */
+		void seekToTimestamp(String topic, int partition, long timestamp);
+
+		/**
+		 * Seek to the first offset greater than or equal to the time stamp.
+		 * @param topicPartitions the topic/partitions.
+		 * @param timestamp the time stamp.
+		 * @since 2.3
+		 */
+		void seekToTimestamp(Collection<TopicPartition> topicPartitions, long timestamp);
 
 	}
 
