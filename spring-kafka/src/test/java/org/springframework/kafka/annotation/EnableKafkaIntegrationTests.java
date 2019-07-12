@@ -32,6 +32,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -765,9 +767,16 @@ public class EnableKafkaIntegrationTests {
 	@Test
 	public void testSeekToLastOnIdle() throws InterruptedException {
 		this.registry.getListenerContainer("seekOnIdle").start();
-		this.template.send("seekOnIdle", 0, "foo");
-		this.template.send("seekOnIdle", 1, "bar");
-		assertThat(this.seekOnIdleListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		this.seekOnIdleListener.waitForBalancedAssignment();
+		this.template.send("seekOnIdle", 0, 0, "foo");
+		this.template.send("seekOnIdle", 1, 1, "bar");
+		assertThat(this.seekOnIdleListener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.seekOnIdleListener.latch2.getCount()).isEqualTo(2L);
+		this.seekOnIdleListener.rewindAllOneRecord();
+		assertThat(this.seekOnIdleListener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.seekOnIdleListener.latch3.getCount()).isEqualTo(1L);
+		this.seekOnIdleListener.rewindOnePartitionOneRecord("seekOnIdle", 1);
+		assertThat(this.seekOnIdleListener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.getListenerContainer("seekOnIdle").stop();
 		assertThat(KafkaTestUtils.getPropertyValue(this.seekOnIdleListener, "callbacks", Map.class)).hasSize(0);
 	}
@@ -948,6 +957,7 @@ public class EnableKafkaIntegrationTests {
 			factory.setRecordFilterStrategy(recordFilter());
 			// always send to the same partition so the replies are in order for the test
 			factory.setReplyTemplate(partitionZeroReplyingTemplate());
+			factory.setMissingTopicsFatal(false);
 			return factory;
 		}
 
@@ -1721,12 +1731,20 @@ public class EnableKafkaIntegrationTests {
 
 	public static class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
 
-		private final CountDownLatch latch = new CountDownLatch(10);
+		private final CountDownLatch latch1 = new CountDownLatch(10);
 
-		@KafkaListener(id = "seekOnIdle", topics = "seekOnIdle", autoStartup = "false",
-				containerFactory = "kafkaManualAckListenerContainerFactory")
-		public void listen(String in, Acknowledgment ack) {
-			this.latch.countDown();
+		private final CountDownLatch latch2 = new CountDownLatch(12);
+
+		private final CountDownLatch latch3 = new CountDownLatch(13);
+
+		private final Set<Thread> consumerThreads = ConcurrentHashMap.newKeySet();
+
+		@KafkaListener(id = "seekOnIdle", topics = "seekOnIdle", autoStartup = "false", concurrency = "2",
+				clientIdPrefix = "seekOnIdle", containerFactory = "kafkaManualAckListenerContainerFactory")
+		public void listen(@SuppressWarnings("unused") String in, Acknowledgment ack) {
+			this.latch1.countDown();
+			this.latch2.countDown();
+			this.latch3.countDown();
 			ack.acknowledge();
 		}
 
@@ -1734,13 +1752,40 @@ public class EnableKafkaIntegrationTests {
 		public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
 				ConsumerSeekCallback callback) {
 
-			if (this.latch.getCount() > 0) {
-				assignments.keySet().forEach(tp -> {
-					ConsumerSeekCallback callbackFor = getCallbackFor(tp);
-					if (callbackFor != null) {
-						callbackFor.seekRelative(tp.topic(), tp.partition(), -1, true);
-					}
-				});
+			if (this.latch1.getCount() > 0) {
+				assignments.keySet().forEach(tp -> callback.seekRelative(tp.topic(), tp.partition(), -1, true));
+			}
+		}
+
+		public void rewindAllOneRecord() {
+			getSeekCallbacks()
+				.forEach((tp, callback) ->
+					callback.seekRelative(tp.topic(), tp.partition(), -1, true));
+		}
+
+		public void rewindOnePartitionOneRecord(String topic, int partition) {
+			getSeekCallbackFor(new org.apache.kafka.common.TopicPartition(topic, partition))
+				.seekRelative(topic, partition, -1, true);
+		}
+
+		@Override
+		public synchronized void onPartitionsAssigned(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
+				ConsumerSeekCallback callback) {
+
+			super.onPartitionsAssigned(assignments, callback);
+			if (assignments.size() > 0) {
+				this.consumerThreads.add(Thread.currentThread());
+				notifyAll();
+			}
+		}
+
+		public synchronized void waitForBalancedAssignment() throws InterruptedException {
+			int n = 0;
+			while (this.consumerThreads.size() < 2) {
+				wait(1000);
+				if (n++ > 20) {
+					throw new IllegalStateException("Balanced distribution did not occur");
+				}
 			}
 		}
 

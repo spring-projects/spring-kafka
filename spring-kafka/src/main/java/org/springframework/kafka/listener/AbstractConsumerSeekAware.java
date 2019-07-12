@@ -36,20 +36,18 @@ import org.springframework.lang.Nullable;
  */
 public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
-	private static final ThreadLocal<ConsumerSeekCallback> callbackForThread = new ThreadLocal<>();
+	private final ThreadLocal<ConsumerSeekCallback> callbackForThread = new ThreadLocal<>();
 
 	private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
 
-	private final Map<TopicPartition, ConsumerSeekCallback> unmodifiable = Collections.unmodifiableMap(this.callbacks);
-
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
-		callbackForThread.set(callback);
+		this.callbackForThread.set(callback);
 	}
 
 	@Override
 	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-		ConsumerSeekCallback threadCallback = callbackForThread.get();
+		ConsumerSeekCallback threadCallback = this.callbackForThread.get();
 		if (threadCallback != null) {
 			assignments.keySet().forEach(tp -> this.callbacks.put(tp, threadCallback));
 		}
@@ -58,7 +56,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	@Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 		partitions.forEach(tp -> this.callbacks.remove(tp));
-		callbackForThread.remove();
+		this.callbackForThread.remove();
 	}
 
 	/**
@@ -67,7 +65,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	 * @return the callback (or null if there is no assignment).
 	 */
 	@Nullable
-	protected ConsumerSeekCallback getCallbackFor(TopicPartition topicPartition) {
+	protected ConsumerSeekCallback getSeekCallbackFor(TopicPartition topicPartition) {
 		return this.callbacks.get(topicPartition);
 	}
 
@@ -75,8 +73,8 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	 * The map of callbacks for all currently assigned partitions.
 	 * @return the map.
 	 */
-	protected Map<TopicPartition, ConsumerSeekCallback> getCallbacks() {
-		return this.unmodifiable;
+	protected Map<TopicPartition, ConsumerSeekCallback> getSeekCallbacks() {
+		return Collections.unmodifiableMap(this.callbacks);
 	}
 
 }

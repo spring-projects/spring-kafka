@@ -1989,7 +1989,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					end = consumerToSeek.position(topicPart);
 				}
 				if (end != null) {
-					return end + offset;
+					long newOffset = end + offset;
+					return newOffset < 0 ? 0 : newOffset;
 				}
 				return null;
 			}

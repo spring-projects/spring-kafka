@@ -2124,27 +2124,26 @@ public class SeekExampleApplication {
 @Component
 class Listener implements ConsumerSeekAware {
 
-
     private static final Logger logger = LoggerFactory.getLogger(Listener.class);
 
-    private static final ThreadLocal<ConsumerSeekCallback> callbackForThread = new ThreadLocal<>();
+    private final ThreadLocal<ConsumerSeekCallback> callbackForThread = new ThreadLocal<>();
 
     private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
 
     @Override
     public void registerSeekCallback(ConsumerSeekCallback callback) {
-        callbackForThread.set(callback);
+        this.callbackForThread.set(callback);
     }
 
     @Override
     public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-        assignments.keySet().forEach(tp -> this.callbacks.put(tp, callbackForThread.get()));
+        assignments.keySet().forEach(tp -> this.callbacks.put(tp, this.callbackForThread.get()));
     }
 
     @Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 		partitions.forEach(tp -> this.callbacks.remove(tp));
-		callbackForThread.remove();
+		this.callbackForThread.remove();
 	}
 
     @Override
@@ -2166,6 +2165,7 @@ class Listener implements ConsumerSeekAware {
 
 To make things simpler, version 2.3 added the `AbstractConsumerSeekAware` class, which keeps track of which callback is to be used for a topic/partition.
 The following example shows how to seek to the last record processed, in each partition, each time the container goes idle.
+It also has methods that allow arbitrary external calls to rewind partitions by one record.
 
 ====
 [source, java]
@@ -2181,12 +2181,24 @@ public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
     public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
             ConsumerSeekCallback callback) {
 
-        assignments.keySet().forEach(tp -> {
-            ConsumerSeekCallback callbackFor = getCallbackFor(tp);
-            if (callbackFor != null) {
-                callbackFor.seekRelative(tp.topic(), tp.partition(), -1, true);
-            }
-        });
+            assignments.keySet().forEach(tp -> callback.seekRelative(tp.topic(), tp.partition(), -1, true));
+    }
+
+    /**
+    * Rewind all partitions one record.
+    */
+    public void rewindAllOneRecord() {
+        getSeekCallbacks()
+            .forEach((tp, callback) ->
+                callback.seekRelative(tp.topic(), tp.partition(), -1, true));
+    }
+
+    /**
+    * Rewind one partition one record.
+    */
+    public void rewindOnePartitionOneRecord(String topic, int partition) {
+        getSeekCallbackFor(new org.apache.kafka.common.TopicPartition(topic, partition))
+            .seekRelative(topic, partition, -1, true);
     }
 
 }
