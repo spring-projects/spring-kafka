@@ -403,6 +403,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final GenericMessageListener<?> genericListener;
 
+		private final ConsumerSeekAware consumerSeekAwareListener;
+
 		private final MessageListener<K, V> listener;
 
 		private final BatchMessageListener<K, V> batchListener;
@@ -506,6 +508,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			this.transactionTemplate = determineTransactionTemplate();
 			this.genericListener = listener;
+			this.consumerSeekAwareListener = checkConsumerSeekAware(listener);
 			subscribeOrAssignTopics(this.consumer);
 			GenericErrorHandler<?> errHandler = KafkaMessageListenerContainer.this.getGenericErrorHandler();
 			if (listener instanceof BatchMessageListener) {
@@ -563,6 +566,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				// update the property so we can use it directly from code elsewhere
 				this.containerProperties.setSyncCommitTimeout(this.syncCommitTimeout);
 			}
+		}
+
+		@Nullable
+		private ConsumerSeekAware checkConsumerSeekAware(GenericMessageListener<?> candidate) {
+			return candidate instanceof ConsumerSeekAware ? (ConsumerSeekAware) candidate : null;
 		}
 
 		boolean isConsumerPaused() {
@@ -694,17 +702,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void seekPartitions(Collection<TopicPartition> partitions, boolean idle) {
-			((ConsumerSeekAware) this.genericListener).registerSeekCallback(this);
+			this.consumerSeekAwareListener.registerSeekCallback(this);
 			Map<TopicPartition, Long> current = new HashMap<>();
 			for (TopicPartition topicPartition : partitions) {
 				current.put(topicPartition, ListenerConsumer.this.consumer.position(topicPartition));
 			}
 			if (idle) {
-				((ConsumerSeekAware) ListenerConsumer.this.genericListener).onIdleContainer(current, this.seekCallback);
+				this.consumerSeekAwareListener.onIdleContainer(current, this.seekCallback);
 			}
 			else {
-				((ConsumerSeekAware) ListenerConsumer.this.genericListener).onPartitionsAssigned(current,
-						this.seekCallback);
+				this.consumerSeekAwareListener.onPartitionsAssigned(current, this.seekCallback);
 			}
 		}
 
@@ -729,8 +736,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@Override
 		public void run() {
 			this.consumerThread = Thread.currentThread();
-			if (this.genericListener instanceof ConsumerSeekAware) {
-				((ConsumerSeekAware) this.genericListener).registerSeekCallback(this);
+			if (this.consumerSeekAwareListener != null) {
+				this.consumerSeekAwareListener.registerSeekCallback(this);
 			}
 			KafkaUtils.setConsumerGroupId(this.consumerGroupId);
 			this.count = 0;
@@ -838,7 +845,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					publishIdleContainerEvent(now - this.lastReceive, this.isConsumerAwareListener
 							? this.consumer : null, this.consumerPaused);
 					this.lastAlertAt = now;
-					if (this.genericListener instanceof ConsumerSeekAware) {
+					if (this.consumerSeekAwareListener != null) {
 						Collection<TopicPartition> partitions = getAssignedPartitions();
 						if (partitions != null) {
 							seekPartitions(partitions, true);
@@ -879,8 +886,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.errorHandler != null) {
 				this.errorHandler.clearThreadState();
 			}
-			if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
-				((ConsumerSeekAware) ListenerConsumer.this.genericListener).onPartitionsRevoked(partitions);
+			if (this.consumerSeekAwareListener != null) {
+				this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
 			}
 			this.logger.info(() -> getGroupId() + ": Consumer stopped");
 			publishConsumerStoppedEvent();
@@ -1797,8 +1804,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
 								partitions);
 					}
-					if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
-						((ConsumerSeekAware) ListenerConsumer.this.genericListener).onPartitionsRevoked(partitions);
+					if (ListenerConsumer.this.consumerSeekAwareListener != null) {
+						ListenerConsumer.this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
 					}
 				}
 				finally {
