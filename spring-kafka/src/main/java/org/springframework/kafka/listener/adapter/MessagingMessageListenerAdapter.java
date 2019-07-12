@@ -254,6 +254,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	@Override
+	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+		if (this.bean instanceof ConsumerSeekAware) {
+			((ConsumerSeekAware) this.bean).onPartitionsRevoked(partitions);
+		}
+	}
+
+	@Override
 	public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 		if (this.bean instanceof ConsumerSeekAware) {
 			((ConsumerSeekAware) this.bean).onIdleContainer(assignments, callback);

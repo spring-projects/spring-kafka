@@ -694,6 +694,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void seekPartitions(Collection<TopicPartition> partitions, boolean idle) {
+			((ConsumerSeekAware) this.genericListener).registerSeekCallback(this);
 			Map<TopicPartition, Long> current = new HashMap<>();
 			for (TopicPartition topicPartition : partitions) {
 				current.put(topicPartition, ListenerConsumer.this.consumer.position(topicPartition));
@@ -847,9 +848,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		public void wrapUp() {
+		private void wrapUp() {
 			KafkaUtils.clearConsumerGroupId();
 			publishConsumerStoppingEvent(this.consumer);
+			Collection<TopicPartition> partitions = getAssignedPartitions();
 			if (!this.fatalError) {
 				if (this.kafkaTxManager == null) {
 					commitPendingAcks();
@@ -861,7 +863,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 				else {
-					closeProducers(getAssignedPartitions());
+					closeProducers(partitions);
 				}
 			}
 			else {
@@ -876,6 +878,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			getAfterRollbackProcessor().clearThreadState();
 			if (this.errorHandler != null) {
 				this.errorHandler.clearThreadState();
+			}
+			if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
+				((ConsumerSeekAware) ListenerConsumer.this.genericListener).onPartitionsRevoked(partitions);
 			}
 			this.logger.info(() -> getGroupId() + ": Consumer stopped");
 			publishConsumerStoppedEvent();
@@ -1791,6 +1796,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (this.consumerAwareListener != null) {
 						this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
 								partitions);
+					}
+					if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
+						((ConsumerSeekAware) ListenerConsumer.this.genericListener).onPartitionsRevoked(partitions);
 					}
 				}
 				finally {

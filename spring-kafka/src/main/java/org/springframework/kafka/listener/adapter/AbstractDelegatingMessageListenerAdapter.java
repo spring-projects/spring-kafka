@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.apache.commons.logging.LogFactory;
@@ -74,6 +75,13 @@ public abstract class AbstractDelegatingMessageListenerAdapter<T>
 	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 		if (this.seekAware != null) {
 			this.seekAware.onPartitionsAssigned(assignments, callback);
+		}
+	}
+
+	@Override
+	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+		if (this.seekAware != null) {
+			this.seekAware.onPartitionsRevoked(partitions);
 		}
 	}
 

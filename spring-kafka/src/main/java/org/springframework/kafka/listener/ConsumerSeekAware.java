@@ -52,6 +52,17 @@ public interface ConsumerSeekAware {
 	}
 
 	/**
+	 * When using group management, called when partition assignments are revoked.
+	 * Listeners should discard any callback saved from
+	 * {@link #registerSeekCallback(ConsumerSeekCallback)} on this thread.
+	 * @param partitions the partitions that have been revoked.
+	 * @since 2.3
+	 */
+	default void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+		// do nothing
+	}
+
+	/**
 	 * If the container is configured to emit idle container events, this method is called
 	 * when the container idle event is emitted - allowing a seek operation.
 	 * @param assignments the new assignments and their current offsets.

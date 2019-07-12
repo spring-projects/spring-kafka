@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,8 +49,16 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	@Override
 	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-		this.callbacks.clear();
-		assignments.keySet().forEach(tp -> this.callbacks.put(tp, callbackForThread.get()));
+		ConsumerSeekCallback threadCallback = callbackForThread.get();
+		if (threadCallback != null) {
+			assignments.keySet().forEach(tp -> this.callbacks.put(tp, threadCallback));
+		}
+	}
+
+	@Override
+	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+		partitions.forEach(tp -> this.callbacks.remove(tp));
+		callbackForThread.remove();
 	}
 
 	/**

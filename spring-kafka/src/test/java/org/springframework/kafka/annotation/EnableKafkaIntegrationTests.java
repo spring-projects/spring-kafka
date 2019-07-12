@@ -761,6 +761,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.username).isEqualTo("SomeUsername");
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testSeekToLastOnIdle() throws InterruptedException {
 		this.registry.getListenerContainer("seekOnIdle").start();
@@ -768,6 +769,7 @@ public class EnableKafkaIntegrationTests {
 		this.template.send("seekOnIdle", 1, "bar");
 		assertThat(this.seekOnIdleListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.getListenerContainer("seekOnIdle").stop();
+		assertThat(KafkaTestUtils.getPropertyValue(this.seekOnIdleListener, "callbacks", Map.class)).hasSize(0);
 	}
 
 	@Configuration

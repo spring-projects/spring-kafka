@@ -2033,20 +2033,26 @@ void registerSeekCallback(ConsumerSeekCallback callback);
 
 void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
 
+void onPartitionsRevoked(Collection<TopicPartition> partitions)
+
 void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
 ----
 ====
 
-The first method is called when the container is started.
+The `registerSeekCallback` is called when the container is started and whenever partitions are assigned.
 You should use this callback when seeking at some arbitrary time after initialization.
 You should save a reference to the callback.
 If you use the same listener in multiple containers (or in a `ConcurrentMessageListenerContainer`), you should store the callback in a `ThreadLocal` or some other structure keyed by the listener `Thread`.
 
-When using group management, the second method is called when assignments change.
+When using group management, `onPartitionsAssigned` is called when partitions are assigned.
 You can use this method, for example, for setting initial offsets for the partitions, by calling the callback.
+You can also use this method to associate this thread's callback with the assigned partitions (see the example below).
 You must use the callback argument, not the one passed into `registerSeekCallback`.
 This method is never called if you explicitly assign partitions yourself.
 Use the `TopicPartitionOffset` in that case.
+
+`onPartitionsRevoked` is called when the container is stopped or Kafka revokes assignments.
+You should discard this thread's callback and remove any associations to the revoked partitions.
 
 The callback has the following methods:
 
@@ -2121,10 +2127,9 @@ class Listener implements ConsumerSeekAware {
 
     private static final Logger logger = LoggerFactory.getLogger(Listener.class);
 
+    private static final ThreadLocal<ConsumerSeekCallback> callbackForThread = new ThreadLocal<>();
 
     private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
-
-    private static final ThreadLocal<ConsumerSeekCallback> callbackForThread = new ThreadLocal<>();
 
     @Override
     public void registerSeekCallback(ConsumerSeekCallback callback) {
@@ -2135,6 +2140,12 @@ class Listener implements ConsumerSeekAware {
     public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
         assignments.keySet().forEach(tp -> this.callbacks.put(tp, callbackForThread.get()));
     }
+
+    @Override
+	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+		partitions.forEach(tp -> this.callbacks.remove(tp));
+		callbackForThread.remove();
+	}
 
     @Override
     public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
