@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
@@ -128,7 +129,7 @@ public class ContainerProperties {
 	/**
 	 * Topics/partitions/initial offsets.
 	 */
-	private final TopicPartitionOffset[] topicPartitions;
+	private final TopicPartitionOffset[] topicPartitionsToAssign;
 
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
@@ -233,7 +234,7 @@ public class ContainerProperties {
 		Assert.notEmpty(topics, "An array of topics must be provided");
 		this.topics = topics.clone();
 		this.topicPattern = null;
-		this.topicPartitions = null;
+		this.topicPartitionsToAssign = null;
 	}
 
 	/**
@@ -248,7 +249,23 @@ public class ContainerProperties {
 	public ContainerProperties(Pattern topicPattern) {
 		this.topics = null;
 		this.topicPattern = topicPattern;
-		this.topicPartitions = null;
+		this.topicPartitionsToAssign = null;
+	}
+
+	/**
+	 * Create properties for a container that will assign itself the provided topic
+	 * partitions.
+	 * @param topicPartitions the topic partitions.
+	 * @deprecated in favor of {@link #ContainerProperties(TopicPartitionOffset...)}.
+	 */
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	public ContainerProperties(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
+		this.topics = null;
+		this.topicPattern = null;
+		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
+		this.topicPartitionsToAssign = new LinkedHashSet<>(Arrays.asList(topicPartitions))
+				.toArray(new TopicPartitionOffset[topicPartitions.length]);
 	}
 
 	/**
@@ -260,7 +277,7 @@ public class ContainerProperties {
 		this.topics = null;
 		this.topicPattern = null;
 		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		this.topicPartitions = new LinkedHashSet<>(Arrays.asList(topicPartitions))
+		this.topicPartitionsToAssign = new LinkedHashSet<>(Arrays.asList(topicPartitions))
 				.toArray(new TopicPartitionOffset[topicPartitions.length]);
 	}
 
@@ -442,8 +459,22 @@ public class ContainerProperties {
 		return this.topicPattern;
 	}
 
-	public TopicPartitionOffset[] getTopicPartitions() {
-		return this.topicPartitions; // NOSONAR
+	/**
+	 * Return the topics/partitions to be manually assigned.
+	 * @deprecated in favor of {@link #getTopicPartitionsToAssign()}.
+	 * @return the topics/partitions.
+	 */
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	public org.springframework.kafka.support.TopicPartitionInitialOffset[] getTopicPartitions() {
+		return Arrays.stream(this.topicPartitionsToAssign)
+				.map(TopicPartitionOffset::toTPIO)
+				.collect(Collectors.toList())
+				.toArray(new org.springframework.kafka.support.TopicPartitionInitialOffset[0]);
+	}
+
+	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
+		return this.topicPartitionsToAssign;
 	}
 
 	public AckMode getAckMode() {
@@ -707,8 +738,8 @@ public class ContainerProperties {
 	private String renderTopics() {
 		return (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
 				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
-				+ (this.topicPartitions != null
-						? ", topicPartitions=" + Arrays.toString(this.topicPartitions)
+				+ (this.topicPartitionsToAssign != null
+						? ", topicPartitions=" + Arrays.toString(this.topicPartitionsToAssign)
 						: "");
 	}
 

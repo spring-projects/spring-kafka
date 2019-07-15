@@ -67,8 +67,18 @@ public interface KafkaListenerEndpoint {
 	/**
 	 * Return the topicPartitions for this endpoint.
 	 * @return the topicPartitions for this endpoint.
+	 * @deprecated in favor of {@link #getTopicPartitionsToAssign()}.
 	 */
-	Collection<TopicPartitionOffset> getTopicPartitions();
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> getTopicPartitions();
+
+	/**
+	 * Return the topicPartitions for this endpoint.
+	 * @return the topicPartitions for this endpoint.
+	 * @since 2.3
+	 */
+	TopicPartitionOffset[] getTopicPartitionsToAssign();
 
 	/**
 	 * Return the topicPattern for this endpoint.

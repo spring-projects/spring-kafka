@@ -175,6 +175,36 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
 	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
+	 * @deprecated in favor of
+	 * {@link #KafkaMessageListenerContainer(AbstractMessageListenerContainer, ConsumerFactory, ContainerProperties, TopicPartitionOffset...)}
+	 */
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	KafkaMessageListenerContainer(AbstractMessageListenerContainer<K, V> container,
+			ConsumerFactory<? super K, ? super V> consumerFactory, ContainerProperties containerProperties,
+			org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
+
+		super(consumerFactory, containerProperties);
+		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
+		this.container = container == null ? this : container;
+		if (topicPartitions != null) {
+			this.topicPartitions = Arrays.stream(topicPartitions)
+					.map(TopicPartitionOffset::fromTPIO)
+					.collect(Collectors.toList())
+					.toArray(new TopicPartitionOffset[0]);
+		}
+		else {
+			this.topicPartitions = containerProperties.getTopicPartitionsToAssign();
+		}
+	}
+
+	/**
+	 * Construct an instance with the supplied configuration properties and specific
+	 * topics/partitions/initialOffsets.
+	 * @param container a delegating container (if this is a sub-container).
+	 * @param consumerFactory the consumer factory.
+	 * @param containerProperties the container properties.
+	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
 	 */
 	KafkaMessageListenerContainer(AbstractMessageListenerContainer<K, V> container,
 			ConsumerFactory<? super K, ? super V> consumerFactory,
@@ -187,7 +217,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);
 		}
 		else {
-			this.topicPartitions = containerProperties.getTopicPartitions();
+			this.topicPartitions = containerProperties.getTopicPartitionsToAssign();
 		}
 	}
 

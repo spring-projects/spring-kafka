@@ -20,6 +20,7 @@ package org.springframework.kafka.config;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -379,13 +380,27 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 						instance.getContainerProperties()::setConsumerProperties);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * @deprecated in favor of {@link #createContainer(TopicPartitionOffset[])}
+	 */
+	@Deprecated
+	@SuppressWarnings("deprecation")
 	@Override
-	public C createContainer(final Collection<TopicPartitionOffset> topicPartitions) {
+	public C createContainer(final Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> topicPartitions) {
+		return createContainer(topicPartitions.stream()
+				.map(TopicPartitionOffset::fromTPIO)
+				.collect(Collectors.toList())
+				.toArray(new TopicPartitionOffset[0]));
+	}
+
+	@Override
+	public C createContainer(final TopicPartitionOffset[] topicsAndPartitions) {
 		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 					@Override
-					public Collection<TopicPartitionOffset> getTopicPartitions() {
-						return topicPartitions;
+					public TopicPartitionOffset[] getTopicPartitionsToAssign() {
+						return topicsAndPartitions;
 					}
 
 				};

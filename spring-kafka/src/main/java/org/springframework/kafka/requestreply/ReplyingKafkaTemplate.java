@@ -112,10 +112,10 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		if (properties.getTopics() != null && properties.getTopics().length == 1) {
 			tempReplyTopic = properties.getTopics()[0];
 		}
-		else if (properties.getTopicPartitions() != null && properties.getTopicPartitions().length == 1) {
-			tempReplyTopic = properties.getTopicPartitions()[0].getTopic();
+		else if (properties.getTopicPartitionsToAssign() != null && properties.getTopicPartitionsToAssign().length == 1) {
+			tempReplyTopic = properties.getTopicPartitionsToAssign()[0].getTopic();
 			ByteBuffer buffer = ByteBuffer.allocate(4); // NOSONAR magic #
-			buffer.putInt(properties.getTopicPartitions()[0].getPartition());
+			buffer.putInt(properties.getTopicPartitionsToAssign()[0].getPartition());
 			tempReplyPartition = buffer.array();
 		}
 		if (tempReplyTopic == null) {

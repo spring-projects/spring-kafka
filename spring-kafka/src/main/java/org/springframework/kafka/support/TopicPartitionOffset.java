@@ -65,6 +65,7 @@ public class TopicPartitionOffset {
 		 * Seek to the time stamp.
 		 */
 		TIMESTAMP
+
 	}
 
 	private final TopicPartition topicPartition;
@@ -204,6 +205,32 @@ public class TopicPartitionOffset {
 				", relativeToCurrent=" + this.relativeToCurrent +
 				(this.position == null ? "" : (", position=" + this.position.name())) +
 				'}';
+	}
+
+	/**
+	 * API not intended for use outside of the framework.
+	 * @param offset the offset.
+	 * @return the offset.
+	 * @since 2.3
+	 */
+	@SuppressWarnings("deprecation")
+	public static TopicPartitionOffset fromTPIO(TopicPartitionInitialOffset offset) {
+		return new TopicPartitionOffset(offset.topicPartition(), offset.initialOffset(),
+				offset.getPosition() == null ? null
+				: SeekPosition.valueOf(offset.getPosition().name()));
+	}
+
+	/**
+	 * API not intended for use outside of the framework.
+	 * @param offset the offset.
+	 * @return the offset.
+	 * @since 2.3
+	 */
+	@SuppressWarnings("deprecation")
+	public static TopicPartitionInitialOffset toTPIO(TopicPartitionOffset offset) {
+		return new TopicPartitionInitialOffset(offset.getTopicPartition(), offset.getOffset(),
+				offset.getPosition() == null ? null
+				: TopicPartitionInitialOffset.SeekPosition.valueOf(offset.getPosition().name()));
 	}
 
 }

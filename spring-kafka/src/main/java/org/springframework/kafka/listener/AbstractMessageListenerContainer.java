@@ -123,8 +123,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		else if (containerProperties.getTopicPattern() != null) {
 			this.containerProperties = new ContainerProperties(containerProperties.getTopicPattern());
 		}
-		else if (containerProperties.getTopicPartitions() != null) {
-			this.containerProperties = new ContainerProperties(containerProperties.getTopicPartitions());
+		else if (containerProperties.getTopicPartitionsToAssign() != null) {
+			this.containerProperties = new ContainerProperties(containerProperties.getTopicPartitionsToAssign());
 		}
 		else {
 			throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
@@ -324,7 +324,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				if (client != null) {
 					String[] topics = this.containerProperties.getTopics();
 					if (topics == null) {
-						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
+						topics = Arrays.stream(this.containerProperties.getTopicPartitionsToAssign())
 								.map(TopicPartitionOffset::getTopic)
 								.toArray(String[]::new);
 					}
@@ -358,7 +358,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	public void checkGroupId() {
-		if (this.containerProperties.getTopicPartitions() == null) {
+		if (this.containerProperties.getTopicPartitionsToAssign() == null) {
 			boolean hasGroupIdConsumerConfig = true; // assume true for non-standard containers
 			if (this.consumerFactory != null) { // we always have one for standard containers
 				Object groupIdConfig = this.consumerFactory.getConfigurationProperties()

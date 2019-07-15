@@ -46,11 +46,24 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 	 * Create and configure a container without a listener; used to create containers that
 	 * are not used for KafkaListener annotations. Containers created using this method
 	 * are not added to the listener endpoint registry.
-	 * @param topicPartitions the topicPartitions.
+	 * @param topicPartitions the topicPartitions to assign.
+	 * @deprecated in favor of {@link #createContainer(TopicPartitionOffset[])}.
 	 * @return the container.
 	 * @since 2.2
 	 */
-	C createContainer(Collection<TopicPartitionOffset> topicPartitions);
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	C createContainer(Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> topicPartitions);
+
+	/**
+	 * Create and configure a container without a listener; used to create containers that
+	 * are not used for KafkaListener annotations. Containers created using this method
+	 * are not added to the listener endpoint registry.
+	 * @param topicPartitions the topicPartitions to assign.
+	 * @return the container.
+	 * @since 2.3
+	 */
+	C createContainer(TopicPartitionOffset[] topicPartitions);
 
 	/**
 	 * Create and configure a container without a listener; used to create containers that

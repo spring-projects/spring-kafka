@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -190,6 +191,26 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Either this or 'topic' or 'topicPattern'
 	 * should be provided, but not a mixture.
 	 * @param topicPartitions to set.
+	 * @deprecated in favor of {@link #setTopicPartitions(TopicPartitionOffset...)}.
+	 * @see #setTopics(String...)
+	 * @see #setTopicPattern(Pattern)
+	 */
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	public void setTopicPartitions(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
+		Assert.notNull(topicPartitions, "'topics' must not be null");
+		this.topicPartitions.clear();
+		this.topicPartitions.addAll(Arrays.asList(topicPartitions).stream()
+				.map(TopicPartitionOffset::fromTPIO)
+				.collect(Collectors.toList()));
+	}
+
+	/**
+	 * Set the topicPartitions to use.
+	 * Either this or 'topic' or 'topicPattern'
+	 * should be provided, but not a mixture.
+	 * @param topicPartitions to set.
+	 * @since 2.3
 	 * @see #setTopics(String...)
 	 * @see #setTopicPattern(Pattern)
 	 */
@@ -202,10 +223,25 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	/**
 	 * Return the topicPartitions for this endpoint.
 	 * @return the topicPartitions for this endpoint.
+	 * @deprecated in favor of {@link #getTopicPartitionsToAssign()}
+	 */
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	@Override
+	public Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> getTopicPartitions() {
+		return Collections.unmodifiableCollection(this.topicPartitions.stream()
+				.map(TopicPartitionOffset::toTPIO)
+				.collect(Collectors.toList()));
+	}
+
+	/**
+	 * Return the topicPartitions for this endpoint.
+	 * @return the topicPartitions for this endpoint.
+	 * @since 2.3
 	 */
 	@Override
-	public Collection<TopicPartitionOffset> getTopicPartitions() {
-		return Collections.unmodifiableCollection(this.topicPartitions);
+	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
+		return this.topicPartitions.toArray(new TopicPartitionOffset[0]);
 	}
 
 	/**

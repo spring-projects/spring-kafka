@@ -135,7 +135,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		if (!isRunning()) {
 			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
-			TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
+			TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitionsToAssign();
 			if (topicPartitions != null && this.concurrency > topicPartitions.length) {
 				this.logger.warn(() -> "When specific partitions are provided, the concurrency must be less than or "
 						+ "equal to the number of partitions; reduced from " + this.concurrency + " to "
@@ -178,7 +178,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	private TopicPartitionOffset[] partitionSubset(ContainerProperties containerProperties, int i) {
-		TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
+		TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitionsToAssign();
 		if (this.concurrency == 1) {
 			return topicPartitions;
 		}
