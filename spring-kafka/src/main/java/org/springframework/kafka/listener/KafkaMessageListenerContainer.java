@@ -189,9 +189,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		this.container = container == null ? this : container;
 		if (topicPartitions != null) {
 			this.topicPartitions = Arrays.stream(topicPartitions)
-					.map(TopicPartitionOffset::fromTPIO)
-					.collect(Collectors.toList())
-					.toArray(new TopicPartitionOffset[0]);
+					.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
+					.toArray(TopicPartitionOffset[]::new);
 		}
 		else {
 			this.topicPartitions = containerProperties.getTopicPartitionsToAssign();

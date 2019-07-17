@@ -200,9 +200,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	public void setTopicPartitions(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
 		Assert.notNull(topicPartitions, "'topics' must not be null");
 		this.topicPartitions.clear();
-		this.topicPartitions.addAll(Arrays.asList(topicPartitions).stream()
-				.map(TopicPartitionOffset::fromTPIO)
-				.collect(Collectors.toList()));
+		Arrays.stream(topicPartitions)
+				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
+				.forEach(this.topicPartitions::add);
 	}
 
 	/**
@@ -230,7 +230,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	@Override
 	public Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> getTopicPartitions() {
 		return Collections.unmodifiableCollection(this.topicPartitions.stream()
-				.map(TopicPartitionOffset::toTPIO)
+				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::fromTPO)
 				.collect(Collectors.toList()));
 	}
 

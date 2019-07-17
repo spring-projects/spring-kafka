@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
@@ -468,9 +467,8 @@ public class ContainerProperties {
 	@SuppressWarnings("deprecation")
 	public org.springframework.kafka.support.TopicPartitionInitialOffset[] getTopicPartitions() {
 		return Arrays.stream(this.topicPartitionsToAssign)
-				.map(TopicPartitionOffset::toTPIO)
-				.collect(Collectors.toList())
-				.toArray(new org.springframework.kafka.support.TopicPartitionInitialOffset[0]);
+				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::fromTPO)
+				.toArray(org.springframework.kafka.support.TopicPartitionInitialOffset[]::new);
 	}
 
 	public TopicPartitionOffset[] getTopicPartitionsToAssign() {

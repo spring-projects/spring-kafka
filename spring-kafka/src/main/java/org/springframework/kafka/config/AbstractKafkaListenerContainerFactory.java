@@ -20,7 +20,6 @@ package org.springframework.kafka.config;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -389,9 +388,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	@Override
 	public C createContainer(final Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> topicPartitions) {
 		return createContainer(topicPartitions.stream()
-				.map(TopicPartitionOffset::fromTPIO)
-				.collect(Collectors.toList())
-				.toArray(new TopicPartitionOffset[0]));
+				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
+				.toArray(TopicPartitionOffset[]::new));
 	}
 
 	@Override
@@ -400,7 +398,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 					@Override
 					public TopicPartitionOffset[] getTopicPartitionsToAssign() {
-						return topicsAndPartitions;
+						return Arrays.copyOf(topicsAndPartitions, topicsAndPartitions.length);
 					}
 
 				};

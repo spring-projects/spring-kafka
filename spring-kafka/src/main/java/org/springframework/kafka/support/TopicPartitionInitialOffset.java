@@ -210,4 +210,29 @@ public class TopicPartitionInitialOffset {
 				'}';
 	}
 
+	/**
+	 * API not intended for use outside of the framework.
+	 * @param offset the offset.
+	 * @return the offset.
+	 * @since 2.3
+	 */
+	public static TopicPartitionInitialOffset fromTPO(TopicPartitionOffset offset) {
+		return new TopicPartitionInitialOffset(offset.getTopicPartition(), offset.getOffset(),
+				offset.getPosition() == null ? null
+				: SeekPosition.valueOf(offset.getPosition().name()));
+	}
+
+	/**
+	 * API not intended for use outside of the framework.
+	 * @param offset the offset.
+	 * @return the offset.
+	 * @since 2.3
+	 */
+	public static TopicPartitionOffset toTPO(TopicPartitionInitialOffset offset) {
+		return new TopicPartitionOffset(offset.topicPartition(), offset.initialOffset(),
+				offset.getPosition() == null ? null
+				: TopicPartitionOffset.SeekPosition.valueOf(offset.getPosition().name()));
+	}
+
+
 }
