@@ -18,7 +18,6 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
@@ -263,8 +262,9 @@ public class ContainerProperties {
 		this.topics = null;
 		this.topicPattern = null;
 		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		this.topicPartitionsToAssign = new LinkedHashSet<>(Arrays.asList(topicPartitions))
-				.toArray(new TopicPartitionOffset[topicPartitions.length]);
+		this.topicPartitionsToAssign = Arrays.stream(topicPartitions)
+				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
+				.toArray(TopicPartitionOffset[]::new);
 	}
 
 	/**
@@ -276,8 +276,7 @@ public class ContainerProperties {
 		this.topics = null;
 		this.topicPattern = null;
 		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		this.topicPartitionsToAssign = new LinkedHashSet<>(Arrays.asList(topicPartitions))
-				.toArray(new TopicPartitionOffset[topicPartitions.length]);
+		this.topicPartitionsToAssign = Arrays.copyOf(topicPartitions, topicPartitions.length);
 	}
 
 	/**

@@ -393,7 +393,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	@Override
-	public C createContainer(final TopicPartitionOffset[] topicsAndPartitions) {
+	public C createContainer(final TopicPartitionOffset... topicsAndPartitions) {
 		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 					@Override

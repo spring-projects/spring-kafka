@@ -63,7 +63,7 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 	 * @return the container.
 	 * @since 2.3
 	 */
-	C createContainer(TopicPartitionOffset[] topicPartitions);
+	C createContainer(TopicPartitionOffset... topicPartitions);
 
 	/**
 	 * Create and configure a container without a listener; used to create containers that
