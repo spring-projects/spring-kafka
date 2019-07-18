@@ -354,13 +354,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	@Override
 	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) {
-		@SuppressWarnings("unchecked")
-		KafkaResourceHolder<K, V> resourceHolder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
-				.getResource(this.producerFactory);
-		Assert.isTrue(resourceHolder != null, "No transaction in process");
-		if (resourceHolder.getProducer() != null) {
-			resourceHolder.getProducer().sendOffsetsToTransaction(offsets, consumerGroupId);
+		Producer<K, V> producer = this.producers.get();
+		if (producer == null) {
+			@SuppressWarnings("unchecked")
+			KafkaResourceHolder<K, V> resourceHolder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
+					.getResource(this.producerFactory);
+			Assert.isTrue(resourceHolder != null, "No transaction in process");
+			producer = resourceHolder.getProducer();
 		}
+		producer.sendOffsetsToTransaction(offsets, consumerGroupId);
 	}
 
 	protected void closeProducer(Producer<K, V> producer, boolean inLocalTx) {
