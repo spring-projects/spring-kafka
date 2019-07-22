@@ -1742,9 +1742,9 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "seekOnIdle", topics = "seekOnIdle", autoStartup = "false", concurrency = "2",
 				clientIdPrefix = "seekOnIdle", containerFactory = "kafkaManualAckListenerContainerFactory")
 		public void listen(@SuppressWarnings("unused") String in, Acknowledgment ack) {
-			this.latch1.countDown();
-			this.latch2.countDown();
 			this.latch3.countDown();
+			this.latch2.countDown();
+			this.latch1.countDown();
 			ack.acknowledge();
 		}
 
