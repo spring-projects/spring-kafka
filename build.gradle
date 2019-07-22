@@ -92,8 +92,8 @@ subprojects { subproject ->
 		scalaVersion = '2.12'
 		springRetryVersion = '1.2.4.RELEASE'
 		springVersion = '5.2.0.BUILD-SNAPSHOT'
-		springDataCommonsVersion = '2.2.0.RC1'
-		reactorVersion = '3.3.0.M2'
+		springDataCommonsVersion = '2.2.0.BUILD-SNAPSHOT'
+		reactorVersion = '3.3.0.BUILD-SNAPSHOT'
 		reactorKafkaVersion = '1.1.1.RELEASE'
 
 		idPrefix = 'kafka'
@@ -241,7 +241,10 @@ project ('spring-kafka') {
 		compile ("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion", optional)
 
 		// Spring Data projection message binding support
-		compile ("org.springframework.data:spring-data-commons:$springDataCommonsVersion", optional)
+		compile ("org.springframework.data:spring-data-commons:$springDataCommonsVersion") {
+			optional(it)
+			exclude group: 'org.springframework'
+		}
 		compile ("com.jayway.jsonpath:json-path:$jaywayJsonPathVersion", optional)
 
 		//Reactive
