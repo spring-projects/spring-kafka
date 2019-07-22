@@ -33,19 +33,19 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @see KafkaListenerAnnotationBeanPostProcessor
  * @see KafkaListenerEndpointRegistry
  * @see EnableKafka
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class KafkaBootstrapConfiguration {
 
-	@SuppressWarnings("rawtypes")
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public KafkaListenerAnnotationBeanPostProcessor kafkaListenerAnnotationProcessor() {
-		return new KafkaListenerAnnotationBeanPostProcessor();
+	public KafkaListenerAnnotationBeanPostProcessor<?, ?> kafkaListenerAnnotationProcessor() {
+		return new KafkaListenerAnnotationBeanPostProcessor<>();
 	}
 
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)

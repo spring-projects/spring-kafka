@@ -39,7 +39,7 @@ import org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer;
  *
  * @since 1.1.4
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class KafkaStreamsDefaultConfiguration {
 
 	/**
@@ -56,8 +56,8 @@ public class KafkaStreamsDefaultConfiguration {
 	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
 			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-				ObjectProvider<KafkaStreamsConfiguration> streamsConfigProvider,
-				ObjectProvider<StreamsBuilderFactoryBeanCustomizer> customizerProvider) {
+					ObjectProvider<KafkaStreamsConfiguration> streamsConfigProvider,
+			ObjectProvider<StreamsBuilderFactoryBeanCustomizer> customizerProvider) {
 
 		KafkaStreamsConfiguration streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
