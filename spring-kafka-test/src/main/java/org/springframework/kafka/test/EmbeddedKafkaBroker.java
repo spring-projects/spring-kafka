@@ -200,6 +200,17 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		this.adminTimeout = Duration.ofSeconds(adminTimeout);
 	}
 
+	/**
+	 * Set the system property with this name to the list of broker addresses.
+	 * @param brokerListProperty the brokerListProperty to set
+	 * @return this broker.
+	 * @since 2.3
+	 */
+	public EmbeddedKafkaBroker brokerListProperty(String brokerListProperty) {
+		this.brokerListProperty = brokerListProperty;
+		return this;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		this.zookeeper = new EmbeddedZookeeper();
@@ -227,7 +238,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			}
 		}
 		createKafkaTopics(this.topics);
-		this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
+		if (this.brokerListProperty == null) {
+			this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
+		}
 		if (this.brokerListProperty == null) {
 			this.brokerListProperty = SPRING_EMBEDDED_KAFKA_BROKERS;
 		}

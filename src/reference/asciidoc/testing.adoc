@@ -338,12 +338,8 @@ public class MyApplicationTests {
 
     @ClassRule
     public static EmbeddedKafkaRule broker = new EmbeddedKafkaRule(1,
-        false, "someTopic");
-
-    @BeforeClass
-    public static void setup() {
-        System.setProperty("spring.kafka.bootstrap-servers",
-                    broker.getEmbeddedKafka().getBrokersAsString());
+        false, "someTopic")
+            .brokerListProperty("spring.kafka.bootstrap-servers");
     }
 
     @Autowired
@@ -358,6 +354,8 @@ public class MyApplicationTests {
 ----
 ====
 
+Notice that, since this is a Spring Boot application, we override the broker list property to set Boot's property.
+
 [[kafka-testing-embeddedkafka-annotation]]
 ===== `@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean
 
@@ -367,13 +365,9 @@ The following example shows how to use an `@EmbeddedKafka` Annotation to create 
 [source, java]
 ----
 @RunWith(SpringRunner.class)
-@EmbeddedKafka(topics = "someTopic")
+@EmbeddedKafka(topics = "someTopic",
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 public class MyApplicationTests {
-
-    static {
-        System.setProperty(EmbeddedKafkaBroker.BROKER_LIST_PROPERTY,
-                "spring.kafka.bootstrap-servers");
-    }
 
     @Autowired
     private KafkaTemplate<String, String> template;

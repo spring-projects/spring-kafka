@@ -124,3 +124,8 @@ See <<retrying-deserialization>> for more information.
 
 `ErrorHandlingDeserializer2` now uses a POJO (`FailedDeserializationInfo`) for passing all the contextual information around a deserialization error.
 This enables the code to access to extra information that was missing in the old `BiFunction<byte[], Headers, T> failedDeserializationFunction`.
+
+==== EmbeddedKafkaBroker Changes
+
+You can now override the default broker list property name in the annotation.
+See <<kafka-testing-embeddedkafka-annotation>> for more information.

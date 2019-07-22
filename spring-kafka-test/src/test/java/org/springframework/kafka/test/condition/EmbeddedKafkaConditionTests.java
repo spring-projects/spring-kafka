@@ -22,18 +22,20 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * @author Gary Russell
  * @since 2.3
  *
  */
-@EmbeddedKafka
+@EmbeddedKafka(bootstrapServersProperty = "my.bss.property")
 public class EmbeddedKafkaConditionTests {
 
 	@Test
 	public void test(EmbeddedKafkaBroker broker) {
 		assertThat(broker.getBrokersAsString()).isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(broker, "brokerListProperty")).isEqualTo("my.bss.property");
 	}
 
 }

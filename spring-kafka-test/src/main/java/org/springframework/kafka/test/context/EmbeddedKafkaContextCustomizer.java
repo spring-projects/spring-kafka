@@ -105,6 +105,9 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 		}
 
 		embeddedKafkaBroker.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
+		if (StringUtils.hasText(this.embeddedKafka.bootstrapServersProperty())) {
+			embeddedKafkaBroker.brokerListProperty(this.embeddedKafka.bootstrapServersProperty());
+		}
 
 		beanFactory.initializeBean(embeddedKafkaBroker, EmbeddedKafkaBroker.BEAN_NAME);
 		beanFactory.registerSingleton(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafkaBroker);

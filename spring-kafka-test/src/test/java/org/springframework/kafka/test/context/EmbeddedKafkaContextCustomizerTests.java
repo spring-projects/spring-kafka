@@ -18,7 +18,7 @@ package org.springframework.kafka.test.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.mock;
+import static org.mockito.Mockito.mock;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -30,12 +30,14 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 
 /**
  * @author Oleg Artyomov
  * @author Sergio Lourenco
  * @author Artem Bilan
+ * @author Gary Russell
  *
  * @since 1.3
  */
@@ -81,6 +83,8 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 		assertThat(factoryStub.getBroker().getBrokersAsString())
 				.isEqualTo("127.0.0.1:" + annotationWithPorts.ports()[0]);
+		assertThat(KafkaTestUtils.getPropertyValue(factoryStub.getBroker(), "brokerListProperty"))
+				.isEqualTo("my.bss.prop");
 	}
 
 
@@ -94,7 +98,7 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 	}
 
-	@EmbeddedKafka(ports = 8085)
+	@EmbeddedKafka(ports = 8085, bootstrapServersProperty = "my.bss.prop")
 	private class TestWithEmbeddedKafkaPorts {
 
 	}

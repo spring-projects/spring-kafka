@@ -151,6 +151,9 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 			}
 		}
 		broker.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
+		if (StringUtils.hasText(embedded.bootstrapServersProperty())) {
+			broker.brokerListProperty(embedded.bootstrapServersProperty());
+		}
 		broker.afterPropertiesSet();
 		return broker;
 	}
