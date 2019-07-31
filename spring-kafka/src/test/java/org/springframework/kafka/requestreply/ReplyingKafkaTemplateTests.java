@@ -25,6 +25,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -121,9 +122,14 @@ public class ReplyingKafkaTemplateTests {
 
 	private static final String F_REQUEST = "fRequest";
 
+	private static final String G_REPLY = "gReply";
+
+	private static final String G_REQUEST = "gRequest";
+
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, 5, A_REQUEST, A_REPLY,
-			B_REQUEST, B_REPLY, C_REQUEST, C_REPLY, D_REQUEST, D_REPLY, E_REQUEST, E_REPLY, F_REQUEST, F_REPLY);
+			B_REQUEST, B_REPLY, C_REQUEST, C_REPLY, D_REQUEST, D_REPLY, E_REQUEST, E_REPLY, F_REQUEST, F_REPLY,
+			G_REQUEST, G_REPLY);
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
@@ -152,10 +158,8 @@ public class ReplyingKafkaTemplateTests {
 			new DefaultKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
 			assertThat(receivedHeaders).containsKey("baz");
 			assertThat(receivedHeaders).hasSize(2);
-			assertThat(KafkaTestUtils.getPropertyValue(
-					this.registry.getListenerContainer(A_REQUEST), "containerProperties.missingTopicsFatal",
-					Boolean.class))
-				.isFalse();
+			assertThat(this.registry.getListenerContainer(A_REQUEST).getContainerProperties().isMissingTopicsFatal())
+					.isFalse();
 		}
 		finally {
 			template.stop();
@@ -481,6 +485,28 @@ public class ReplyingKafkaTemplateTests {
 		return template;
 	}
 
+	@Test
+	public void withCustomHeaders() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(new TopicPartitionOffset(G_REPLY, 1));
+		template.setCorrelationHeaderName("custom.correlation.id");
+		template.setReplyTopicHeaderName("custom.reply.to");
+		template.setReplyPartitionHeaderName("custom.reply.partition");
+		try {
+			template.setReplyTimeout(30_000);
+			Headers headers = new RecordHeaders();
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(G_REQUEST, null, null, null, "foo", headers);
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("fooWithCustomHeaders");
+			assertThat(consumerRecord.partition()).isEqualTo(1);
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
@@ -568,6 +594,16 @@ public class ReplyingKafkaTemplateTests {
 			return in.substring(0, 1) + in.substring(1).toUpperCase();
 		}
 
+		@KafkaListener(id = G_REQUEST, topics = G_REQUEST)
+		public void gListener(Message<String> in) {
+			String replyTopic = new String(in.getHeaders().get("custom.reply.to",  byte[].class));
+			int replyPart = ByteBuffer.wrap(in.getHeaders().get("custom.reply.partition", byte[].class)).getInt();
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(replyTopic, replyPart, null,
+					in.getPayload() + "WithCustomHeaders");
+			record.headers().add(new RecordHeader("custom.correlation.id",
+					in.getHeaders().get("custom.correlation.id", byte[].class)));
+			template().send(record);
+		}
 	}
 
 	@KafkaListener(topics = C_REQUEST, groupId = C_REQUEST)

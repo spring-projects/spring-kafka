@@ -129,3 +129,8 @@ This enables the code to access to extra information that was missing in the old
 
 You can now override the default broker list property name in the annotation.
 See <<kafka-testing-embeddedkafka-annotation>> for more information.
+
+==== ReplyingKafkaTemplate Changes
+
+You can now customize the header names for correlation, reply topic and reply partition.
+See <<replying-template>> for more information.

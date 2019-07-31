@@ -20,7 +20,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,6 +90,12 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private Function<ProducerRecord<K, V>, CorrelationKey> correlationStrategy =
 			ReplyingKafkaTemplate::defaultCorrelationIdStrategy;
+
+	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
+
+	private String replyTopicHeaderName = KafkaHeaders.REPLY_TOPIC;
+
+	private String replyPartitionHeaderName = KafkaHeaders.REPLY_PARTITION;
 
 	private volatile boolean running;
 
@@ -204,6 +209,39 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.correlationStrategy = correlationStrategy;
 	}
 
+	/**
+	 * Set a custom header name for the correlation id. Default
+	 * {@link KafkaHeaders#CORRELATION_ID}.
+	 * @param correlationHeaderName the header name.
+	 * @since 2.3
+	 */
+	public void setCorrelationHeaderName(String correlationHeaderName) {
+		Assert.notNull(correlationHeaderName, "'correlationHeaderName' cannot be null");
+		this.correlationHeaderName = correlationHeaderName;
+	}
+
+	/**
+	 * Set a custom header name for the reply topic. Default
+	 * {@link KafkaHeaders#REPLY_TOPIC}.
+	 * @param replyTopicHeaderName the header name.
+	 * @since 2.3
+	 */
+	public void setReplyTopicHeaderName(String replyTopicHeaderName) {
+		Assert.notNull(replyTopicHeaderName, "'replyTopicHeaderName' cannot be null");
+		this.replyTopicHeaderName = replyTopicHeaderName;
+	}
+
+	/**
+	 * Set a custom header name for the reply partition. Default
+	 * {@link KafkaHeaders#REPLY_PARTITION}.
+	 * @param replyPartitionHeaderName the reply partition header name.
+	 * @since 2.3
+	 */
+	public void setReplyPartitionHeaderName(String replyPartitionHeaderName) {
+		Assert.notNull(replyPartitionHeaderName, "'replyPartitionHeaderName' cannot be null");
+		this.replyPartitionHeaderName = replyPartitionHeaderName;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		if (!this.schedulerSet && !this.schedulerInitialized) {
@@ -249,12 +287,12 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		Headers headers = record.headers();
 		boolean hasReplyTopic = headers.lastHeader(KafkaHeaders.REPLY_TOPIC) != null;
 		if (!hasReplyTopic && this.replyTopic != null) {
-			headers.add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, this.replyTopic));
+			headers.add(new RecordHeader(this.replyTopicHeaderName, this.replyTopic));
 			if (this.replyPartition != null) {
-				headers.add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, this.replyPartition));
+				headers.add(new RecordHeader(this.replyPartitionHeaderName, this.replyPartition));
 			}
 		}
-		headers.add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId.getCorrelationId()));
+		headers.add(new RecordHeader(this.correlationHeaderName, correlationId.getCorrelationId()));
 		this.logger.debug(() -> "Sending: " + record + WITH_CORRELATION_ID + correlationId);
 		RequestReplyFuture<K, V, R> future = new RequestReplyFuture<>();
 		this.futures.put(correlationId, future);
@@ -338,18 +376,15 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	@Override
 	public void onMessage(List<ConsumerRecord<K, R>> data) {
 		data.forEach(record -> {
-			Iterator<Header> iterator = record.headers().iterator();
+			Header correlationHeader = record.headers().lastHeader(this.correlationHeaderName);
 			CorrelationKey correlationId = null;
-			while (correlationId == null && iterator.hasNext()) {
-				Header next = iterator.next();
-				if (next.key().equals(KafkaHeaders.CORRELATION_ID)) {
-					correlationId = new CorrelationKey(next.value());
-				}
+			if (correlationHeader != null) {
+				correlationId = new CorrelationKey(correlationHeader.value());
 			}
 			if (correlationId == null) {
 				this.logger.error(() -> "No correlationId found in reply: " + record
 						+ " - to use request/reply semantics, the responding server must return the correlation id "
-						+ " in the '" + KafkaHeaders.CORRELATION_ID + "' header");
+						+ " in the '" + this.correlationHeaderName + "' header");
 			}
 			else {
 				RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);

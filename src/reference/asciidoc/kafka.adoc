@@ -544,7 +544,7 @@ public class KRequestingApplication {
 
 Note that we can use Boot's auto-configured container factory to create the reply container.
 
-The template sets a header called `KafkaHeaders.CORRELATION_ID`, which must be echoed back by the server side.
+The template sets a header (named `KafkaHeaders.CORRELATION_ID` by default), which must be echoed back by the server side.
 
 In this case, the following `@KafkaListener` application responds:
 
@@ -616,6 +616,17 @@ In this case, though, the reply container must not use Kafka's group management 
 
 NOTE: The `DefaultKafkaHeaderMapper` requires Jackson to be on the classpath (for the `@KafkaListener`).
 If it is not available, the message converter has no header mapper, so you must configure a `MessagingMessageConverter` with a `SimpleKafkaHeaderMapper`, as shown earlier.
+
+By default, 3 headers are used:
+
+* `KafkaHeaders.CORRELATION_ID` - used to correlate the reply to a request
+* `KafkaHeaders.REPLY_TOPIC` - used to tell the server where to reply
+* `KafkaHeaders.REPLY_PARTITION` - (optional) used to tell the server which partition to reply to
+
+These header names are used by the `@KafkaListener` infrastructure to route the reply.
+
+Starting with version 2.3, you can customize the header names - the template has 3 properties `correlationHeaderName`, `replyTopicHeaderName`, and `replyPartitionHeaderName`.
+This is useful if your server is not a Spring application (or does not use the `@KafkaListener`).
 
 [[aggregating-request-reply]]
 ===== Aggregating Multiple Replies
