@@ -30,6 +30,8 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * Default implementation of {@link AfterRollbackProcessor}. Seeks all
@@ -65,17 +67,34 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * @since 2.2
 	 */
 	public DefaultAfterRollbackProcessor() {
-		this(null, SeekUtils.DEFAULT_MAX_FAILURES);
+		this(null, SeekUtils.DEFAULT_BACK_OFF);
 	}
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
 	 * 'maxFailures' have occurred for a topic/partition/offset.
 	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
+	 * @deprecated in favor of {@link #DefaultAfterRollbackProcessor(BackOff)}.
+	 * <b>IMPORTANT</b> When using a {@link FixedBackOff}, the maxAttempts property
+	 * represents retries (one less than maxFailures). To retry indefinitely, use a
+	 * fixed or exponential {@link BackOff} configured appropriately.
+	 * To use the other constructor with the semantics of this one, with maxFailures
+	 * equal to 3, use {@code new DefaultAfterRollbackProcessor(new FixedBackOff(0L, 2L)}.
 	 * @since 2.2.1
 	 */
+	@Deprecated
 	public DefaultAfterRollbackProcessor(int maxFailures) {
 		this(null, maxFailures);
+	}
+
+	/**
+	 * Construct an instance with the default recoverer which simply logs the record after
+	 * the backOff returns STOP for a topic/partition/offset.
+	 * @param backOff the {@link BackOff}.
+	 * @since 2.3
+	 */
+	public DefaultAfterRollbackProcessor(BackOff backOff) {
+		this(null, backOff);
 	}
 
 	/**
@@ -86,7 +105,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * @since 2.2
 	 */
 	public DefaultAfterRollbackProcessor(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
-		this(recoverer, SeekUtils.DEFAULT_MAX_FAILURES);
+		this(recoverer, SeekUtils.DEFAULT_BACK_OFF);
 	}
 
 	/**
@@ -94,11 +113,33 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * maxFailures have occurred for a topic/partition/offset.
 	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
 	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
+	 * @deprecated in favor of {@link #DefaultAfterRollbackProcessor(BackOff)}.
+	 * <b>IMPORTANT</b> When using a {@link FixedBackOff}, the maxAttempts property
+	 * represents retries (one less than maxFailures). To retry indefinitely, use a
+	 * fixed or exponential {@link BackOff} configured appropriately.
+	 * To use the other constructor with the semantics of this one, with maxFailures
+	 * equal to 3, use
+	 * {@code new DefaultAfterRollbackProcessor(recoverer, new FixedBackOff(0L, 2L)}.
 	 * @since 2.2
 	 */
+	@Deprecated
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 			int maxFailures) {
-		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, LOGGER);
+
+		this.failureTracker = new FailedRecordTracker(recoverer, new FixedBackOff(0L, maxFailures - 1), LOGGER);
+	}
+
+	/**
+	 * Construct an instance with the provided recoverer which will be called after
+	 * the backOff returns STOP for a topic/partition/offset.
+	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
+	 * @param backOff the {@link BackOff}.
+	 * @since 2.3
+	 */
+	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
+			BackOff backOff) {
+
+		this.failureTracker = new FailedRecordTracker(recoverer, backOff, LOGGER);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
@@ -38,7 +39,7 @@ public class FailedRecordTrackerTests {
 		AtomicBoolean recovered = new AtomicBoolean();
 		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
 			recovered.set(true);
-		}, 1, mock(LogAccessor.class));
+		}, new FixedBackOff(0L, 0L), mock(LogAccessor.class));
 		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		assertThat(tracker.skip(record, new RuntimeException())).isTrue();
 		assertThat(recovered.get()).isTrue();
@@ -49,7 +50,7 @@ public class FailedRecordTrackerTests {
 		AtomicBoolean recovered = new AtomicBoolean();
 		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
 			recovered.set(true);
-		}, 4, mock(LogAccessor.class));
+		}, new FixedBackOff(0L, 3L), mock(LogAccessor.class));
 		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
 		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
@@ -60,7 +61,7 @@ public class FailedRecordTrackerTests {
 
 	@Test
 	public void testSuccessAfterFailure() {
-		FailedRecordTracker tracker = new FailedRecordTracker(null, 2, mock(LogAccessor.class));
+		FailedRecordTracker tracker = new FailedRecordTracker(null, new FixedBackOff(0L, 1L), mock(LogAccessor.class));
 		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
 		record = new ConsumerRecord<>("bar", 0, 0L, "bar", "baz");

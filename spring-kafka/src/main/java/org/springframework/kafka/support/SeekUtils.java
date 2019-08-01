@@ -27,6 +27,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * Seek utilities.
@@ -41,6 +42,12 @@ public final class SeekUtils {
 	 * The number of times a topic/partition/offset can fail before being rejected.
 	 */
 	public static final int DEFAULT_MAX_FAILURES = 10;
+
+	/**
+	 * The default back off - a {@link FixedBackOff} with 0 interval and
+	 * {@link #DEFAULT_MAX_FAILURES} - 1 retry attempts.
+	 */
+	public static final FixedBackOff DEFAULT_BACK_OFF = new FixedBackOff(0, DEFAULT_MAX_FAILURES - 1);
 
 	private SeekUtils() {
 		super();
@@ -62,7 +69,7 @@ public final class SeekUtils {
 		Map<TopicPartition, Long> partitions = new LinkedHashMap<>();
 		AtomicBoolean first = new AtomicBoolean(true);
 		AtomicBoolean skipped = new AtomicBoolean();
-		records.forEach(record ->  {
+		records.forEach(record -> {
 			if (recoverable && first.get()) {
 				skipped.set(skipper.test(record, exception));
 				if (skipped.get()) {

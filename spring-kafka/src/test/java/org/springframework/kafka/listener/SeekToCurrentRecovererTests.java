@@ -62,6 +62,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
@@ -129,7 +130,7 @@ public class SeekToCurrentRecovererTests {
 			}
 
 		};
-		SeekToCurrentErrorHandler errorHandler = spy(new SeekToCurrentErrorHandler(recoverer, 3));
+		SeekToCurrentErrorHandler errorHandler = spy(new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 2)));
 		container.setErrorHandler(errorHandler);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
@@ -169,7 +170,7 @@ public class SeekToCurrentRecovererTests {
 	public void seekToCurrentErrorHandlerRecovers() {
 		@SuppressWarnings("unchecked")
 		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, 2);
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
@@ -202,7 +203,7 @@ public class SeekToCurrentRecovererTests {
 	private void seekToCurrentErrorHandlerRecoversManualAcks(boolean syncCommits) {
 		@SuppressWarnings("unchecked")
 		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, 2);
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
 		eh.setCommitRecovered(true);
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
@@ -247,7 +248,7 @@ public class SeekToCurrentRecovererTests {
 	public void testNeverRecover() {
 		@SuppressWarnings("unchecked")
 		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, -1);
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, Long.MAX_VALUE));
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));

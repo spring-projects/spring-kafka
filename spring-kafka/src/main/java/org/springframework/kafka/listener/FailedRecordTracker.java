@@ -16,13 +16,15 @@
 
 package org.springframework.kafka.listener;
 
-import java.time.temporal.ValueRange;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.BackOffExecution;
 
 /**
  * Track record processing failure counts.
@@ -37,21 +39,23 @@ class FailedRecordTracker {
 
 	private final BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer;
 
-	private final int maxFailures;
-
 	private final boolean noRetries;
 
-	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures,
+	private final BackOff backOff;
+
+	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			LogAccessor logger) {
 
+		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
-			this.recoverer = (r, t) -> logger.error(t, "Max failures (" + maxFailures + ") reached for: " + r);
+			this.recoverer = (rec, thr) -> logger.error(thr, "Backoff " + this.failures.get().getBackOffExecution()
+				+ " exhausted for " + rec);
 		}
 		else {
 			this.recoverer = recoverer;
 		}
-		this.maxFailures = maxFailures;
-		this.noRetries = ValueRange.of(0, 1).isValidIntValue(maxFailures);
+		this.noRetries = backOff.start().nextBackOff() == BackOffExecution.STOP;
+		this.backOff = backOff;
 	}
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
@@ -60,16 +64,24 @@ class FailedRecordTracker {
 			return true;
 		}
 		FailedRecord failedRecord = this.failures.get();
-		if (this.maxFailures > 0 && (failedRecord == null || newFailure(record, failedRecord))) {
-			this.failures.set(new FailedRecord(record.topic(), record.partition(), record.offset()));
-			return false;
+		if (failedRecord == null || newFailure(record, failedRecord)) {
+			failedRecord = new FailedRecord(record.topic(), record.partition(), record.offset(), this.backOff.start());
+			this.failures.set(failedRecord);
 		}
-		else if (this.maxFailures > 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
-				this.recoverer.accept(record, exception);
-				return true;
+		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
+		if (nextBackOff != BackOffExecution.STOP) {
+			try {
+				Thread.sleep(nextBackOff);
+			}
+			catch (@SuppressWarnings("unused") InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			return false;
 		}
 		else {
-			return false;
+			this.recoverer.accept(record, exception);
+			this.failures.remove();
+			return true;
 		}
 	}
 
@@ -95,29 +107,29 @@ class FailedRecordTracker {
 
 		private final long offset;
 
-		private int count;
+		private final BackOffExecution backOffExecution;
 
-		FailedRecord(String topic, int partition, long offset) {
+		FailedRecord(String topic, int partition, long offset, BackOffExecution backOffExecution) {
 			this.topic = topic;
 			this.partition = partition;
 			this.offset = offset;
-			this.count = 1;
+			this.backOffExecution = backOffExecution;
 		}
 
-		private String getTopic() {
+		String getTopic() {
 			return this.topic;
 		}
 
-		private int getPartition() {
+		int getPartition() {
 			return this.partition;
 		}
 
-		private long getOffset() {
+		long getOffset() {
 			return this.offset;
 		}
 
-		private int incrementAndGet() {
-			return ++this.count;
+		BackOffExecution getBackOffExecution() {
+			return this.backOffExecution;
 		}
 
 	}

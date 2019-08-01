@@ -40,6 +40,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.invocation.MethodArgumentResolutionException;
 import org.springframework.util.Assert;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * An error handler that seeks to the current offset for each topic in the remaining
@@ -74,17 +76,34 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	 * @since 2.2
 	 */
 	public SeekToCurrentErrorHandler() {
-		this(null, SeekUtils.DEFAULT_MAX_FAILURES);
+		this(null, SeekUtils.DEFAULT_BACK_OFF);
 	}
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
 	 * 'maxFailures' have occurred for a topic/partition/offset.
 	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
+	 * @deprecated in favor of {@link #SeekToCurrentErrorHandler(BackOff)}.
+	 * <b>IMPORTANT</b> When using a {@link FixedBackOff}, the maxAttempts property
+	 * represents retries (one less than maxFailures). To retry indefinitely, use a
+	 * fixed or exponential {@link BackOff} configured appropriately.
+	 * To use the other constructor with the semantics of this one, with maxFailures
+	 * equal to 3, use {@code new SeekToCurrentErrorHandler(new FixedBackOff(0L, 2L)}.
 	 * @since 2.2.1
 	 */
+	@Deprecated
 	public SeekToCurrentErrorHandler(int maxFailures) {
 		this(null, maxFailures);
+	}
+
+	/**
+	 * Construct an instance with the default recoverer which simply logs the record after
+	 * the backOff returns STOP for a topic/partition/offset.
+	 * @param backOff the {@link BackOff}.
+	 * @since 2.3
+	 */
+	public SeekToCurrentErrorHandler(BackOff backOff) {
+		this(null, backOff);
 	}
 
 	/**
@@ -95,7 +114,7 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	 * @since 2.2
 	 */
 	public SeekToCurrentErrorHandler(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
-		this(recoverer, SeekUtils.DEFAULT_MAX_FAILURES);
+		this(recoverer, SeekUtils.DEFAULT_BACK_OFF);
 	}
 
 	/**
@@ -103,10 +122,30 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	 * maxFailures have occurred for a topic/partition/offset.
 	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
 	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
+	 * @deprecated in favor of {@link #SeekToCurrentErrorHandler(BiConsumer, BackOff)}.
+	 * <b>IMPORTANT</b> When using a {@link FixedBackOff}, the maxAttempts property
+	 * represents retries (one less than maxFailures). To retry indefinitely, use a
+	 * fixed or exponential {@link BackOff} configured appropriately.
+	 * To use the other constructor with the semantics of this one, with maxFailures
+	 * equal to 3, use
+	 * {@code new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 2L)}.
 	 * @since 2.2
 	 */
+	@Deprecated
 	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
-		this.failureTracker = new FailedRecordTracker(recoverer, maxFailures, LOGGER);
+		this.failureTracker = new FailedRecordTracker(recoverer, new FixedBackOff(0L, maxFailures - 1), LOGGER);
+		this.classifier = configureDefaultClassifier();
+	}
+
+	/**
+	 * Construct an instance with the provided recoverer which will be called after
+	 * the backOff returns STOP for a topic/partition/offset.
+	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
+	 * @param backOff the {@link BackOff}.
+	 * @since 2.3
+	 */
+	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff) {
+		this.failureTracker = new FailedRecordTracker(recoverer, backOff, LOGGER);
 		this.classifier = configureDefaultClassifier();
 	}
 

@@ -89,6 +89,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.util.backoff.FixedBackOff;
 
 import kafka.server.KafkaConfig;
 
@@ -541,7 +542,7 @@ public class TransactionalContainerTests {
 
 		};
 		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
-				spy(new DefaultAfterRollbackProcessor<>(recoverer, 3));
+				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 2L)));
 		afterRollbackProcessor.setCommitRecovered(true);
 		afterRollbackProcessor.setKafkaTemplate(dlTemplate);
 		container.setAfterRollbackProcessor(afterRollbackProcessor);

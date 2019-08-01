@@ -3441,8 +3441,8 @@ The following example configures recovery after three tries:
 ----
 SeekToCurrentErrorHandler errorHandler =
     new SeekToCurrentErrorHandler((record, exception) -> {
-        // recover after 3 failures - e.g. send to a dead-letter topic
-    }, 3);
+        // recover after 3 failures, woth no back off - e.g. send to a dead-letter topic
+    }, new FixedBackOff(0L, 2L));
 ----
 ====
 
@@ -3488,6 +3488,14 @@ This error handler does not support recovery, because the framework cannot know 
 After seeking, an exception that wraps the `ListenerExecutionFailedException` is thrown.
 This is to cause the transaction to roll back (if transactions are enabled).
 
+Starting with version 2.3, a `BackOff` can be provided to the `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor` so that the consumer thread can sleep for some configurable time between delivery attempts.
+Spring Framework provides two out of the box `BackOff` s, `FixedBackOff` and `ExponentialBackOff`.
+The maximum back off time must not exceed the `max.poll.interval.ms` consumer property, to avoid a rebalance.
+
+IMPORTANT: Previously, the configuration was "maxFailures" (which included the first delivery attempt).
+When using a `FixedBackOff`, its `maxAttempts` properties represents the number of delivery retries (one less than the old `maxFailures` property).
+Also, `maxFailures=-1` meant retry indefinitely with the old configuration, with a `BackOff` you would set the `maxAttempts` to `Long.MAX_VALUE` for a `FixedBackOff` and leave the `maxElapsedTime` to its default in an `ExponentialBackOff`.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.
@@ -3521,8 +3529,8 @@ The following example configures recovery after three tries:
 ----
 AfterRollbackProcessor<String, String> processor =
     new DefaultAfterRollbackProcessor((record, exception) -> {
-        // recover after 3 failures - e.g. send to a dead-letter topic
-    }, 3);
+        // recover after 3 failures, with no back off - e.g. send to a dead-letter topic
+    }, new FixedBackOff(0L, 2L));
 ----
 ====
 
@@ -3565,7 +3573,7 @@ DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(temp
                 return new TopicPartition(r.topic() + ".other.failures", r.partition());
             }
         });
-ErrorHandler errorHandler = new SeekToCurrentErrorHandler(recoverer, 3);
+ErrorHandler errorHandler = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 2L));
 ----
 ====
 
