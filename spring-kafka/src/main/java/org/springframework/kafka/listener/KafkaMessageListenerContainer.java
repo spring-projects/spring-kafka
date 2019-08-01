@@ -752,7 +752,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Assert.state(batch
 						? BatchErrorHandler.class.isAssignableFrom(clazz)
 						: ErrorHandler.class.isAssignableFrom(clazz),
-					"Error handler is not compatible with the message listener, expecting an instance of "
+					() -> "Error handler is not compatible with the message listener, expecting an instance of "
 					+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass().getName());
 		}
 

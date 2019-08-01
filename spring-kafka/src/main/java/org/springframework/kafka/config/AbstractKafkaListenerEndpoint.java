@@ -471,7 +471,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 			adapter.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
 		}
 		Object messageListener = adapter;
-		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
+		Assert.state(messageListener != null,
+				() -> "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.retryTemplate != null) {
 			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
 					this.retryTemplate, this.recoveryCallback, this.statefulRetry);

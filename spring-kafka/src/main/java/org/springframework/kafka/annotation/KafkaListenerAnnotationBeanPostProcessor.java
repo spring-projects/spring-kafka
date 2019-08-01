@@ -546,12 +546,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private List<TopicPartitionOffset> resolveTopicPartitionsList(TopicPartition topicPartition) {
 		Object topic = resolveExpression(topicPartition.topic());
 		Assert.state(topic instanceof String,
-				"topic in @TopicPartition must resolve to a String, not " + topic.getClass());
+				() -> "topic in @TopicPartition must resolve to a String, not " + topic.getClass());
 		Assert.state(StringUtils.hasText((String) topic), "topic in @TopicPartition must not be empty");
 		String[] partitions = topicPartition.partitions();
 		PartitionOffset[] partitionOffsets = topicPartition.partitionOffsets();
 		Assert.state(partitions.length > 0 || partitionOffsets.length > 0,
-				"At least one 'partition' or 'partitionOffset' required in @TopicPartition for topic '" + topic + "'");
+				() -> "At least one 'partition' or 'partitionOffset' required in @TopicPartition for topic '" + topic + "'");
 		List<TopicPartitionOffset> result = new ArrayList<>();
 		for (String partition : partitions) {
 			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result);
@@ -580,7 +580,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Integer partition;
 		if (partitionValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) partitionValue),
-					"partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
+					() -> "partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
 			partition = Integer.valueOf((String) partitionValue);
 		}
 		else if (partitionValue instanceof Integer) {
@@ -599,7 +599,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Long initialOffset;
 		if (initialOffsetValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) initialOffsetValue),
-					"'initialOffset' in @PartitionOffset for topic '" + topic + "' cannot be empty");
+					() -> "'initialOffset' in @PartitionOffset for topic '" + topic + "' cannot be empty");
 			initialOffset = Long.valueOf((String) initialOffsetValue);
 		}
 		else if (initialOffsetValue instanceof Long) {
@@ -661,7 +661,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
-					"partition in @TopicPartition for topic '" + topic + "' cannot be empty");
+					() -> "partition in @TopicPartition for topic '" + topic + "' cannot be empty");
 			result.add(new TopicPartitionOffset(topic, Integer.valueOf((String) resolvedValue)));
 		}
 		else if (resolvedValue instanceof Integer[]) {
