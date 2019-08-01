@@ -41,13 +41,4 @@ public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> 
 		handle(thrownException, null);
 	}
 
-	/**
-	 * Optional method to clear thread state; will be called just before a consumer
-	 * thread terminates.
-	 * @since 2.2
-	 */
-	default void clearThreadState() {
-		// NOSONAR
-	}
-
 }

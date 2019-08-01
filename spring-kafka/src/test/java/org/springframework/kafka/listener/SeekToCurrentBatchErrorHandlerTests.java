@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -51,6 +52,7 @@ import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -61,6 +63,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
@@ -116,6 +119,22 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		inOrder.verify(this.producer).commitTransaction();
 		assertThat(this.config.ehException).isInstanceOf(ListenerExecutionFailedException.class);
 		assertThat(((ListenerExecutionFailedException) this.config.ehException).getGroupId()).isEqualTo(CONTAINER_ID);
+	}
+
+	@Test
+	public void testBackOff() {
+		SeekToCurrentBatchErrorHandler eh = new SeekToCurrentBatchErrorHandler();
+		eh.setBackOff(new FixedBackOff(10L, 3));
+		@SuppressWarnings("rawtypes")
+		ConsumerRecords crs = new ConsumerRecords<>(Collections.emptyMap());
+		RuntimeException ex = new RuntimeException();
+		long t1 = System.currentTimeMillis();
+		for (int i = 0; i < 10; i++) {
+			assertThatThrownBy(() -> eh.handle(ex, crs, mock(Consumer.class), mock(MessageListenerContainer.class)))
+				.isInstanceOf(KafkaException.class)
+				.hasCause(ex);
+		}
+		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(100L);
 	}
 
 	@Configuration

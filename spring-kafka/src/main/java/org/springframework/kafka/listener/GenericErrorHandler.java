@@ -47,4 +47,13 @@ public interface GenericErrorHandler<T> {
 		handle(thrownException, data);
 	}
 
+	/**
+	 * Optional method to clear thread state; will be called just before a consumer
+	 * thread terminates.
+	 * @since 2.3
+	 */
+	default void clearThreadState() {
+		// NOSONAR
+	}
+
 }

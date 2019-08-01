@@ -1872,11 +1872,15 @@ If you need retry capabilities when you use a batch listener, we recommend that 
 [[stateful-retry]]
 ===== Stateful Retry
 
+IMPORTANT: Now that the `SeekToCurrentErrorHandler` can be configured with a `BackOff` and has the ability to retry only certain exceptions (since version 2.3), the use of stateful retry, via the listener adapter retry configuration, is no longer necessary.
+You can provide the same functionality with appropriate configuration of the error handler and remove all retry configuration from the listener adatper.
+See <<seek-to-current>> for more information.
+
 You should understand that the retry discussed in the <<retrying-deliveries,preceding section>> suspends the consumer thread (if a `BackOffPolicy` is used).
 There are no calls to `Consumer.poll()` during the retries.
 Kafka has two properties to determine consumer health.
 The `session.timeout.ms` is used to determine if the consumer is active.
-Since version `0.10.1.0`, heartbeats are sent on a background thread, so a slow consumer no longer affects that.
+Since `kafka-clients` version `0.10.1.0`, heartbeats are sent on a background thread, so a slow consumer no longer affects that.
 `max.poll.interval.ms` (default: five minutes) is used to determine if a consumer appears to be hung (taking too long to process records from the last poll).
 If the time between `poll()` calls exceeds this, the broker revokes the assigned partitions and performs a rebalance.
 For lengthy retry sequences, with back off, this can easily happen.
@@ -1912,10 +1916,12 @@ DeadLetterPublishingRecoverer recoverer;
 
 @Bean
 public SeekToCurrentErrorHandler eh() {
-    return new SeekToCurrentErrorHandler(4); // at least 3
+    return new SeekToCurrentErrorHandler(new FixedBackOff(0L, 3L)); // at least 3
 }
 ----
 ====
+
+However, see the note at the beginning of this section; you can avoid using the `RetryTemplate` altogether.
 
 [[idle-containers]]
 ===== Detecting Idle and Non-Responsive Consumers
@@ -3495,6 +3501,11 @@ The maximum back off time must not exceed the `max.poll.interval.ms` consumer pr
 IMPORTANT: Previously, the configuration was "maxFailures" (which included the first delivery attempt).
 When using a `FixedBackOff`, its `maxAttempts` properties represents the number of delivery retries (one less than the old `maxFailures` property).
 Also, `maxFailures=-1` meant retry indefinitely with the old configuration, with a `BackOff` you would set the `maxAttempts` to `Long.MAX_VALUE` for a `FixedBackOff` and leave the `maxElapsedTime` to its default in an `ExponentialBackOff`.
+
+The `SeekToCurrentBatchErrorHandler` can also be configured with a `BackOff` to add a delay between delivery attempts.
+Generally, you should configure the `BackOff` to never return `STOP`.
+However, since this error handler has no mechanism to "recover" after retries are exhausted, if the `BackOffExecution` returns `STOP`, the previous interval will be used for all subsequent delays.
+Again, the maximum delay must be less than the `max.poll.interval.ms` consumer property.
 
 ===== Container Stopping Error Handlers
 
