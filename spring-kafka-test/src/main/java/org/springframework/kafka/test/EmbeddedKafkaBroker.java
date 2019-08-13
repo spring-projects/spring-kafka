@@ -231,6 +231,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			if (this.brokerProperties != null) {
 				this.brokerProperties.forEach(brokerConfigProperties::put);
 			}
+			if (!this.brokerProperties.containsKey(KafkaConfig.NumPartitionsProp())) {
+				brokerConfigProperties.setProperty(KafkaConfig.NumPartitionsProp(), "" + this.partitionsPerTopic);
+			}
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
 			this.kafkaServers.add(server);
 			if (this.kafkaPorts[i] == 0) {
