@@ -101,22 +101,6 @@ public class StreamsBuilderFactoryBeanTests {
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
 	}
 
-	@Test
-	@SuppressWarnings("deprecation")
-	public void testBuildWithStreamsConfig() throws Exception {
-		StreamsConfig streamsConfig = new StreamsConfig(kafkaStreamsConfiguration.asProperties());
-		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(streamsConfig) {
-			@Override
-			protected StreamsBuilder createInstance() {
-				return spy(super.createInstance());
-			}
-		};
-		streamsBuilderFactoryBean.afterPropertiesSet();
-		streamsBuilderFactoryBean.start();
-		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
-		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
-	}
-
 	@Configuration
 	@EnableKafkaStreams
 	public static class KafkaStreamsConfig {

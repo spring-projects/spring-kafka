@@ -24,7 +24,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
@@ -104,32 +103,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Construct an instance with the supplied streams configuration.
-	 * @param streamsConfig the streams configuration.
-	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration)}
-	 */
-	@Deprecated
-	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig) {
-		this(streamsConfig, new CleanupConfig());
-	}
-
-	/**
-	 * Construct an instance with the supplied streams configuration and
-	 * clean up configuration.
-	 * @param streamsConfig the streams configuration.
-	 * @param cleanupConfig the cleanup configuration.
-	 * @since 2.1.2.
-	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration, CleanupConfig)}
-	 */
-	@Deprecated
-	public StreamsBuilderFactoryBean(StreamsConfig streamsConfig, CleanupConfig cleanupConfig) {
-		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
-		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
-		this.properties = propertiesFromStreamsConfig(streamsConfig);
-		this.cleanupConfig = cleanupConfig;
-	}
-
-	/**
 	 * Construct an instance with the supplied streams configuration and
 	 * clean up configuration.
 	 * @param streamsConfig the streams configuration.
@@ -146,59 +119,10 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	/**
 	 * Construct an instance with the supplied streams configuration.
 	 * @param streamsConfig the streams configuration.
-	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration)}.
-	 */
-	@Deprecated
-	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig) {
-		this(streamsConfig, new CleanupConfig());
-	}
-
-	/**
-	 * Construct an instance with the supplied streams configuration.
-	 * @param streamsConfig the streams configuration.
 	 * @since 2.2
 	 */
 	public StreamsBuilderFactoryBean(KafkaStreamsConfiguration streamsConfig) {
 		this(streamsConfig, new CleanupConfig());
-	}
-
-	/**
-	 * Construct an instance with the supplied streams configuration and
-	 * clean up configuration.
-	 * @param streamsConfig the streams configuration.
-	 * @param cleanupConfig the cleanup configuration.
-	 * @since 2.1.2.
-	 * @deprecated in favor of {@link #StreamsBuilderFactoryBean(KafkaStreamsConfiguration, CleanupConfig)}.
-	 */
-	@Deprecated
-	public StreamsBuilderFactoryBean(Map<String, Object> streamsConfig, CleanupConfig cleanupConfig) {
-		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
-		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
-		this.properties = propertiesFromConfigs(streamsConfig);
-		this.cleanupConfig = cleanupConfig;
-	}
-
-	/**
-	 * Set {@link StreamsConfig} on this factory.
-	 * @param streamsConfig the streams configuration.
-	 * @deprecated in favor of {@link #setStreamsConfiguration(Properties)}.
-	 * @since 2.1.3
-	 */
-	@Deprecated
-	public void setStreamsConfig(StreamsConfig streamsConfig) {
-		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
-		Assert.isNull(this.properties, "Cannot have both streamsConfig and streams configuration properties");
-		this.properties = propertiesFromStreamsConfig(streamsConfig);
-	}
-
-	/**
-	 * Get the streams config.
-	 * @return the config.
-	 * @deprecated in favor of {@link #getStreamsConfiguration()}.
-	 */
-	@Deprecated
-	public StreamsConfig getStreamsConfig() {
-		return new StreamsConfig(this.properties);
 	}
 
 	/**
@@ -355,10 +279,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	@Override
 	public synchronized boolean isRunning() {
 		return this.running;
-	}
-
-	private Properties propertiesFromStreamsConfig(StreamsConfig config) {
-		return propertiesFromConfigs(config.originals());
 	}
 
 	private Properties propertiesFromConfigs(Map<String, Object> configs) {
