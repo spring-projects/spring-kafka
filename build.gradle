@@ -18,6 +18,7 @@ plugins {
 	id 'org.asciidoctor.convert' version '1.6.1'
 	id 'org.ajoberstar.grgit' version '3.1.1'
 	id "io.spring.nohttp" version "0.0.3.RELEASE"
+	id "io.spring.dependency-management" version "1.0.8.RELEASE" apply false
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -35,6 +36,27 @@ ext {
 
 	modifiedFiles =
 			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
+
+	assertjVersion = '3.12.2'
+	googleJsr305Version = '3.0.2'
+	hamcrestVersion = '1.3'
+	hibernateValidationVersion = '6.0.16.Final'
+	jacksonVersion = '2.9.9.20190807'
+	jaywayJsonPathVersion = '2.4.0'
+	junit4Version = '4.12'
+	junitJupiterVersion = '5.5.1'
+	junitPlatformVersion = '1.5.1'
+	kafkaVersion = '2.3.0'
+	log4jVersion = '2.12.0'
+	mockitoVersion = '3.0.0'
+	reactorVersion = '3.3.0.BUILD-SNAPSHOT'
+	reactorKafkaVersion = '1.1.1.RELEASE'
+	scalaVersion = '2.12'
+	springRetryVersion = '1.2.4.RELEASE'
+	springVersion = '5.2.0.BUILD-SNAPSHOT'
+	springDataCommonsVersion = '2.2.0.BUILD-SNAPSHOT'
+
+	idPrefix = 'kafka'
 }
 
 nohttp {
@@ -44,6 +66,18 @@ nohttp {
 
 allprojects {
 	group = 'org.springframework.kafka'
+
+	apply plugin: "io.spring.dependency-management"
+
+	dependencyManagement {
+		resolutionStrategy {
+			cacheChangingModulesFor 0, 'seconds'
+		}
+		applyMavenExclusions = false
+		generatedPomCustomization {
+			enabled = false
+		}
+	}
 
 	repositories {
 		maven { url 'https://repo.spring.io/libs-milestone' }
@@ -74,30 +108,6 @@ subprojects { subproject ->
 		kotlinOptions {
 			jvmTarget = '1.8'
 		}
-	}
-
-	ext {
-		assertjVersion = '3.12.2'
-		googleJsr305Version = '3.0.2'
-		hamcrestVersion = '1.3'
-		hibernateValidationVersion = '6.0.16.Final'
-		jacksonVersion = '2.9.9'
-		jaywayJsonPathVersion = '2.4.0'
-		junit4Version = '4.12'
-		junitJupiterVersion = '5.5.1'
-		junitPlatformVersion = '1.5.1'
-		kafkaVersion = '2.3.0'
-		log4jVersion = '2.12.0'
-		mockitoVersion = '3.0.0'
-		reactorVersion = '3.3.0.BUILD-SNAPSHOT'
-		reactorKafkaVersion = '1.1.1.RELEASE'
-		scalaVersion = '2.12'
-		springRetryVersion = '1.2.4.RELEASE'
-		springVersion = '5.2.0.BUILD-SNAPSHOT'
-		springDataCommonsVersion = '2.2.0.BUILD-SNAPSHOT'
-
-		idPrefix = 'kafka'
-
 	}
 
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
@@ -227,6 +237,12 @@ subprojects { subproject ->
 project ('spring-kafka') {
 	description = 'Spring Kafka Support'
 
+	dependencyManagement {
+		imports {
+			mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonVersion"
+		}
+	}
+
 	dependencies {
 		compile "org.springframework:spring-context:$springVersion"
 		compile "org.springframework:spring-messaging:$springVersion"
@@ -237,8 +253,8 @@ project ('spring-kafka') {
 		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
 		compile ("org.apache.kafka:kafka-streams:$kafkaVersion", optional)
 
-		compile ("com.fasterxml.jackson.core:jackson-core:$jacksonVersion", optional)
-		compile ("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion", optional)
+		compile ('com.fasterxml.jackson.core:jackson-core', optional)
+		compile ('com.fasterxml.jackson.core:jackson-databind', optional)
 
 		// Spring Data projection message binding support
 		compile ("org.springframework.data:spring-data-commons:$springDataCommonsVersion") {
