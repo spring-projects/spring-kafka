@@ -38,7 +38,7 @@ public class SeekToCurrentBatchErrorHandler implements ContainerAwareBatchErrorH
 
 	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static
 
-	private final ThreadLocal<Long> lastInterval = new ThreadLocal<>(); // ditto
+	private final ThreadLocal<Long> lastInterval = new ThreadLocal<>(); // Intentionally not static
 
 	private BackOff backOff;
 
