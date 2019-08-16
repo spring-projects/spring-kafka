@@ -139,7 +139,7 @@ public class TransactionalContainerTests {
 		willAnswer(i -> {
 			closeLatch.countDown();
 			return null;
-		}).given(producer).close();
+		}).given(producer).close(anyLong(), any());
 		ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
 		final List<String> transactionalIds = new ArrayList<>();
@@ -171,7 +171,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
 				new OffsetAndMetadata(0)), "group");
 		inOrder.verify(producer).commitTransaction();
-		inOrder.verify(producer).close();
+		inOrder.verify(producer).close(anyLong(), any());
 		inOrder.verify(producer).beginTransaction();
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		inOrder.verify(producer).send(captor.capture(), any(Callback.class));
@@ -179,7 +179,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
 				new OffsetAndMetadata(1)), "group");
 		inOrder.verify(producer).commitTransaction();
-		inOrder.verify(producer).close();
+		inOrder.verify(producer).close(anyLong(), any());
 		container.stop();
 		verify(pf, times(2)).createProducer();
 		verifyNoMoreInteractions(producer);
@@ -219,7 +219,7 @@ public class TransactionalContainerTests {
 		willAnswer(i -> {
 			closeLatch.countDown();
 			return null;
-		}).given(producer).close();
+		}).given(producer).close(anyLong(), any());
 		ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
 		given(pf.createProducer()).willReturn(producer);
@@ -246,7 +246,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer, never()).sendOffsetsToTransaction(anyMap(), anyString());
 		inOrder.verify(producer, never()).commitTransaction();
 		inOrder.verify(producer).abortTransaction();
-		inOrder.verify(producer).close();
+		inOrder.verify(producer).close(anyLong(), any());
 		verify(consumer).seek(topicPartition0, 0);
 		verify(consumer).seek(topicPartition1, 0);
 		verify(consumer, never()).commitSync(any());
@@ -286,7 +286,7 @@ public class TransactionalContainerTests {
 		willAnswer(i -> {
 			closeLatch.countDown();
 			return null;
-		}).given(producer).close();
+		}).given(producer).close(anyLong(), any());
 		ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
 		given(pf.createProducer()).willReturn(producer);
@@ -313,7 +313,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer, never()).sendOffsetsToTransaction(anyMap(), anyString());
 		inOrder.verify(producer, never()).commitTransaction();
 		inOrder.verify(producer).abortTransaction();
-		inOrder.verify(producer).close();
+		inOrder.verify(producer).close(anyLong(), any());
 		verify(consumer).seek(topicPartition0, 0);
 		verify(consumer).seek(topicPartition1, 0);
 		verify(consumer, never()).commitSync(any());
@@ -352,7 +352,7 @@ public class TransactionalContainerTests {
 		willAnswer(i -> {
 			closeLatch.countDown();
 			return null;
-		}).given(producer).close();
+		}).given(producer).close(anyLong(), any());
 
 		final ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
@@ -380,7 +380,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
 				new OffsetAndMetadata(1)), "group");
 		inOrder.verify(producer).commitTransaction();
-		inOrder.verify(producer).close();
+		inOrder.verify(producer).close(anyLong(), any());
 		container.stop();
 		verify(pf).createProducer();
 	}

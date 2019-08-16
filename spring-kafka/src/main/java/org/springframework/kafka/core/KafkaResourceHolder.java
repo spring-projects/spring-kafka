@@ -16,9 +16,12 @@
 
 package org.springframework.kafka.core;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.clients.producer.Producer;
 
 import org.springframework.transaction.support.ResourceHolderSupport;
+import org.springframework.util.Assert;
 
 /**
  * Kafka resource holder, wrapping a Kafka producer. KafkaTransactionManager binds instances of this
@@ -33,12 +36,27 @@ public class KafkaResourceHolder<K, V> extends ResourceHolderSupport {
 
 	private final Producer<K, V> producer;
 
+	private final long closeTimeout;
+
 	/**
 	 * Construct an instance for the producer.
 	 * @param producer the producer.
 	 */
 	public KafkaResourceHolder(Producer<K, V> producer) {
+		this(producer, ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+	}
+
+	/**
+	 * Construct an instance for the producer.
+	 * @param producer the producer.
+	 * @param closeTimeout the close timeout.
+	 * @since 1.3.11
+	 */
+	public KafkaResourceHolder(Producer<K, V> producer, long closeTimeout) {
+		Assert.notNull(producer, "'producer' cannot be null");
+		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");
 		this.producer = producer;
+		this.closeTimeout = closeTimeout;
 	}
 
 	public Producer<K, V> getProducer() {
@@ -50,7 +68,7 @@ public class KafkaResourceHolder<K, V> extends ResourceHolderSupport {
 	}
 
 	public void close() {
-		this.producer.close();
+		this.producer.close(this.closeTimeout, TimeUnit.MILLISECONDS);
 	}
 
 	public void rollback() {

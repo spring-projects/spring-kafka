@@ -18,6 +18,7 @@ package org.springframework.kafka.core;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -77,6 +78,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private volatile ProducerListener<K, V> producerListener = new LoggingProducerListener<K, V>();
 
+	private final long closeTimeout = ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -147,6 +149,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 */
 	public void setMessageConverter(RecordMessageConverter messageConverter) {
 		this.messageConverter = messageConverter;
+	}
+
+	/**
+	 * Set the maximum time to wait when closing a producer; default 5 seconds.
+	 * @param closeTimeout the close timeout.
+	 * @since 1.3.11
+	 */
+	public void setCloseTimeout(long closeTimeout) {
+		setCloseTimeout(closeTimeout);
 	}
 
 	@Override
@@ -329,9 +340,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		producer.sendOffsetsToTransaction(offsets, consumerGroupId);
 	}
 
-	protected void closeProducer(Producer<K, V> producer, boolean inLocalTx) {
-		if (!inLocalTx) {
-			producer.close();
+	protected void closeProducer(Producer<K, V> producer, boolean inTx) {
+		if (!inTx) {
+			producer.close(this.closeTimeout, TimeUnit.MILLISECONDS);
 		}
 	}
 
@@ -409,7 +420,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 				return producer;
 			}
 			KafkaResourceHolder<K, V> holder = ProducerFactoryUtils
-					.getTransactionalResourceHolder(this.producerFactory);
+					.getTransactionalResourceHolder(this.producerFactory, this.closeTimeout);
 			return holder.getProducer();
 		}
 		else {

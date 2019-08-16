@@ -42,6 +42,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.factory.DisposableBean;
@@ -123,8 +124,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
-	 * The time to wait when physically closing the producer (when {@link #stop()} or {@link #destroy()} is invoked.
-	 * Specified in seconds; default {@value #DEFAULT_PHYSICAL_CLOSE_TIMEOUT}.
+	 * The time to wait when physically closing the producer via the factory rather than
+	 * closing the producer itself (when {@link #reset()}, {@link #destroy() or
+	 * #closeProducerFor(String)} are invoked). Specified in seconds; default
+	 * {@link #DEFAULT_PHYSICAL_CLOSE_TIMEOUT}.
 	 * @param physicalCloseTimeout the timeout in seconds.
 	 * @since 1.0.7
 	 */
@@ -179,7 +182,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	@SuppressWarnings("resource")
 	@Override
-	public void destroy() throws Exception { //NOSONAR
+	public void destroy() {
 		CloseSafeProducer<K, V> producer = this.producer;
 		this.producer = null;
 		if (producer != null) {
@@ -334,7 +337,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		private final String txId;
 
-		private volatile boolean txFailed;
+		private volatile Exception txFailed;
 
 		CloseSafeProducer(Producer<K, V> delegate) {
 			this(delegate, null, null);
@@ -402,7 +405,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				if (logger.isErrorEnabled()) {
 					logger.error("beginTransaction failed: " + this, e);
 				}
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -426,7 +429,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				if (logger.isErrorEnabled()) {
 					logger.error("commitTransaction failed: " + this, e);
 				}
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -443,7 +446,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				if (logger.isErrorEnabled()) {
 					logger.error("Abort failed: " + this, e);
 				}
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -456,17 +459,16 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public void close(long timeout, TimeUnit unit) {
 			if (this.cache != null) {
-				if (this.txFailed) {
+				long closeTimeout = this.txFailed instanceof TimeoutException || unit == null
+						? 0L
+						: timeout;
+				if (this.txFailed != null) {
 					if (logger.isWarnEnabled()) {
-						logger.warn("Error during transactional operation; producer removed from cache; possible cause: "
-							+ "broker restarted during transaction: " + this);
+						logger.warn("Error during transactional operation; producer removed from cache; "
+								+ "possible cause: "
+								+ "broker restarted during transaction: " + this);
 					}
-					if (unit == null) {
-						this.delegate.close();
-					}
-					else {
-						this.delegate.close(timeout, unit);
-					}
+					this.delegate.close(closeTimeout, unit);
 					if (this.consumerProducers != null) {
 						removeConsumerProducer();
 					}
@@ -476,12 +478,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 						synchronized (this) {
 							if (!this.cache.contains(this)
 									&& !this.cache.offer(this)) {
-								if (unit == null) {
-									this.delegate.close();
-								}
-								else {
-									this.delegate.close(timeout, unit);
-								}
+								this.delegate.close(closeTimeout, unit);
 							}
 						}
 					}

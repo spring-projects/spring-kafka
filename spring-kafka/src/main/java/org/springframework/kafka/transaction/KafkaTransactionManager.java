@@ -18,7 +18,6 @@ package org.springframework.kafka.transaction;
 
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.transaction.CannotCreateTransactionException;
@@ -45,9 +44,9 @@ import org.springframework.util.Assert;
  *
  * <p>
  * Application code is required to retrieve the transactional Kafka resources via
- * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory)}.
- * Spring's {@link KafkaTemplate} will auto detect a thread-bound Producer and
- * automatically participate in it.
+ * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory, java.time.Duration)}.
+ * Spring's {@link org.springframework.kafka.core.KafkaTemplate KafkaTemplate} will auto
+ * detect a thread-bound Producer and automatically participate in it.
  *
  * <p>
  * <b>The use of {@link DefaultKafkaProducerFactory} as a target for this transaction
@@ -68,7 +67,11 @@ import org.springframework.util.Assert;
 public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionManager
 		implements ResourceTransactionManager {
 
+	private static final long DEFAULT_CLOSE_TIMEOUT = 5000L;
+
 	private final ProducerFactory<K, V> producerFactory;
+
+	private final long closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
 	/**
 	 * Create a new KafkaTransactionManager, given a ConnectionFactory.
@@ -90,6 +93,15 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	 */
 	public ProducerFactory<K, V> getProducerFactory() {
 		return this.producerFactory;
+	}
+
+	/**
+	 * Set the maximum time to wait when closing a producer; default 5 seconds.
+	 * @param closeTimeout the close timeout.
+	 * @since 1.3.11
+	 */
+	public void setCloseTimeout(long closeTimeout) {
+		setCloseTimeout(closeTimeout);
 	}
 
 	@Override
@@ -122,7 +134,8 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		KafkaResourceHolder<K, V> resourceHolder = null;
 		try {
-			resourceHolder = ProducerFactoryUtils.getTransactionalResourceHolder(getProducerFactory());
+			resourceHolder = ProducerFactoryUtils.getTransactionalResourceHolder(getProducerFactory(),
+					this.closeTimeout);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Created Kafka transaction on producer [" + resourceHolder.getProducer() + "]");
 			}
