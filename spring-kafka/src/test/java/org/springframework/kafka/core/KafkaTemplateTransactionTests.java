@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -33,9 +34,12 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -50,6 +54,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.assertj.core.api.Assertions;
@@ -328,7 +333,7 @@ public class KafkaTemplateTransactionTests {
 
 		verify(producer1).beginTransaction();
 		verify(producer1).commitTransaction();
-		verify(producer1).close();
+		verify(producer1).close(any());
 		verify(producer2, never()).beginTransaction();
 		verify(template, never()).executeInTransaction(any());
 	}
@@ -357,6 +362,69 @@ public class KafkaTemplateTransactionTests {
 		assertThat(producer.transactionAborted()).isFalse();
 		assertThat(producer.closed()).isTrue();
 		verify(producer, never()).abortTransaction();
+		verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+	}
+
+	@Test
+	public void testQuickCloseAfterCommitTimeout() {
+		@SuppressWarnings("unchecked")
+		Producer<String, String> producer = mock(Producer.class);
+
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<String, String>(Collections.emptyMap()) {
+
+			@Override
+			public Producer<String, String> createProducer(String txIdPrefixArg) {
+				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, getCache());
+				return closeSafeProducer;
+			}
+
+		};
+		pf.setTransactionIdPrefix("foo");
+
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+
+		willThrow(new TimeoutException()).given(producer).commitTransaction();
+		assertThatExceptionOfType(TimeoutException.class)
+			.isThrownBy(() ->
+				template.executeInTransaction(t -> {
+					return null;
+				}));
+		verify(producer, never()).abortTransaction();
+		verify(producer).close(Duration.ofMillis(0));
+	}
+
+	@Test
+	public void testNormalCloseAfterCommitCacheFull() {
+		@SuppressWarnings("unchecked")
+		Producer<String, String> producer = mock(Producer.class);
+
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<String, String>(Collections.emptyMap()) {
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public Producer<String, String> createProducer(String txIdPrefixArg) {
+				BlockingQueue<CloseSafeProducer<String, String>> cache = new LinkedBlockingDeque<>(1);
+				try {
+					cache.put(new CloseSafeProducer<>(mock(Producer.class)));
+				}
+				catch (@SuppressWarnings("unused") InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, cache);
+				return closeSafeProducer;
+			}
+
+		};
+		pf.setTransactionIdPrefix("foo");
+
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+
+		template.executeInTransaction(t -> {
+			return null;
+		});
+		verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
 	}
 
 	@Test
@@ -452,9 +520,9 @@ public class KafkaTemplateTransactionTests {
 			inOrder.verify(producer1).beginTransaction();
 			inOrder.verify(producer2).beginTransaction();
 			inOrder.verify(producer2).commitTransaction();
-			inOrder.verify(producer2).close();
+			inOrder.verify(producer2).close(any());
 			inOrder.verify(producer1).commitTransaction();
-			inOrder.verify(producer1).close();
+			inOrder.verify(producer1).close(any());
 		}
 		finally {
 			TransactionSupport.clearTransactionIdSuffix();

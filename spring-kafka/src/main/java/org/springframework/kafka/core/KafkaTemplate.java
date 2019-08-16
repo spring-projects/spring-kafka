@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -80,6 +81,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private String transactionIdPrefix;
 
+	private Duration closeTimeout = ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -167,6 +169,16 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 */
 	public void setTransactionIdPrefix(String transactionIdPrefix) {
 		this.transactionIdPrefix = transactionIdPrefix;
+	}
+
+	/**
+	 * Set the maximum time to wait when closing a producer; default 5 seconds.
+	 * @param closeTimeout the close timeout.
+	 * @since 1.3.11
+	 */
+	public void setCloseTimeout(Duration closeTimeout) {
+		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");
+		this.closeTimeout = closeTimeout;
 	}
 
 	/**
@@ -365,9 +377,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		producer.sendOffsetsToTransaction(offsets, consumerGroupId);
 	}
 
-	protected void closeProducer(Producer<K, V> producer, boolean inLocalTx) {
-		if (!inLocalTx) {
-			producer.close();
+	protected void closeProducer(Producer<K, V> producer, boolean inTx) {
+		if (!inTx) {
+			producer.close(this.closeTimeout);
 		}
 	}
 
@@ -444,7 +456,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 				return producer;
 			}
 			KafkaResourceHolder<K, V> holder = ProducerFactoryUtils
-					.getTransactionalResourceHolder(this.producerFactory, this.transactionIdPrefix);
+					.getTransactionalResourceHolder(this.producerFactory, this.transactionIdPrefix, this.closeTimeout);
 			return holder.getProducer();
 		}
 		else {

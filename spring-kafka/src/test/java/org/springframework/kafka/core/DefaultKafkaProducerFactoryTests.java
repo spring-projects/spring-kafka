@@ -101,7 +101,7 @@ public class DefaultKafkaProducerFactoryTests {
 		inOrder.verify(producer).send(any(), any());
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).beginTransaction();
-		inOrder.verify(producer).close();
+		inOrder.verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
 		inOrder.verifyNoMoreInteractions();
 		pf.destroy();
 	}
@@ -120,7 +120,7 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
-		aProducer.close();
+		aProducer.close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNotNull();
 		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
 		assertThat(cache.size()).isEqualTo(0);

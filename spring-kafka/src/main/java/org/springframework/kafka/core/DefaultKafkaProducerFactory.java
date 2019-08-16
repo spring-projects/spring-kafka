@@ -45,6 +45,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.BeansException;
@@ -205,7 +206,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
-	 * The time to wait when physically closing the producer (when {@link #reset()} or {@link #destroy()} is invoked).
+	 * The time to wait when physically closing the producer via the factory rather than
+	 * closing the producer itself (when {@link #reset()}, {@link #destroy()
+	 * #closeProducerFor(String)}, or {@link #closeThreadBoundProducer()} are invoked).
 	 * Specified in seconds; default {@link #DEFAULT_PHYSICAL_CLOSE_TIMEOUT}.
 	 * @param physicalCloseTimeout the timeout in seconds.
 	 * @since 1.0.7
@@ -215,9 +218,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
-	 * Set a prefix for the {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} config.
-	 * By default a {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} value from configs is used as a prefix
-	 * in the target producer configs.
+	 * Set a prefix for the {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} config. By
+	 * default a {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} value from configs is used
+	 * as a prefix in the target producer configs.
 	 * @param transactionIdPrefix the prefix.
 	 * @since 1.3
 	 */
@@ -514,6 +517,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	protected static class CloseSafeProducer<K, V> implements Producer<K, V> {
 
+		private static final Duration CLOSE_TIMEOUT_AFTER_TX_TIMEOUT = Duration.ofMillis(0);
+
 		private final Producer<K, V> delegate;
 
 		private final BlockingQueue<CloseSafeProducer<K, V>> cache;
@@ -522,7 +527,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		private final String txId;
 
-		private volatile boolean txFailed;
+		private volatile Exception txFailed;
 
 		CloseSafeProducer(Producer<K, V> delegate) {
 			this(delegate, null, null);
@@ -593,7 +598,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 			catch (RuntimeException e) {
 				LOGGER.error(e, () -> "beginTransaction failed: " + this);
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -614,7 +619,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 			catch (RuntimeException e) {
 				LOGGER.error(e, () -> "commitTransaction failed: " + this);
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -627,7 +632,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 			catch (RuntimeException e) {
 				LOGGER.error(e, () -> "Abort failed: " + this);
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -648,16 +653,14 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		public void close(@Nullable Duration timeout) {
 			LOGGER.trace(() -> toString() + " close(" + (timeout == null ? "null" : timeout) + ")");
 			if (this.cache != null) {
-				if (this.txFailed) {
+				Duration closeTimeout = this.txFailed instanceof TimeoutException
+						? CLOSE_TIMEOUT_AFTER_TX_TIMEOUT
+						: timeout;
+				if (this.txFailed != null) {
 					LOGGER.warn(() -> "Error during transactional operation; producer removed from cache; "
 							+ "possible cause: "
 							+ "broker restarted during transaction: " + this);
-					if (timeout == null) {
-						this.delegate.close();
-					}
-					else {
-						this.delegate.close(timeout);
-					}
+					this.delegate.close(closeTimeout);
 					if (this.removeConsumerProducer != null) {
 						this.removeConsumerProducer.accept(this);
 					}
@@ -667,12 +670,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 						synchronized (this) {
 							if (!this.cache.contains(this)
 									&& !this.cache.offer(this)) {
-								if (timeout == null) {
-									this.delegate.close();
-								}
-								else {
-									this.delegate.close(timeout);
-								}
+								this.delegate.close(closeTimeout);
 							}
 						}
 					}
