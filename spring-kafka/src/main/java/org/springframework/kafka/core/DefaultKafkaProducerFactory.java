@@ -16,6 +16,9 @@
 
 package org.springframework.kafka.core;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -43,7 +46,9 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.common.utils.AppInfoParser;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
@@ -126,8 +131,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
-	 * The time to wait when physically closing the producer (when {@link #stop()} or {@link #destroy()} is invoked).
-	 * Specified in seconds; default {@value #DEFAULT_PHYSICAL_CLOSE_TIMEOUT}.
+	 * The time to wait when physically closing the producer via the factory rather than
+	 * closing the producer itself (when {@link #reset()}, {@link #destroy() or
+	 * #closeProducerFor(String)} are invoked). Specified in seconds; default
+	 * {@link #DEFAULT_PHYSICAL_CLOSE_TIMEOUT}.
 	 * @param physicalCloseTimeout the timeout in seconds.
 	 * @since 1.0.7
 	 */
@@ -195,7 +202,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	@SuppressWarnings("resource")
 	@Override
-	public void destroy() throws Exception { //NOSONAR
+	public void destroy() {
 		CloseSafeProducer<K, V> producer = this.producer;
 		this.producer = null;
 		if (producer != null) {
@@ -352,6 +359,25 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	protected static class CloseSafeProducer<K, V> implements Producer<K, V> {
 
+		private static final Duration CLOSE_TIMEOUT_AFTER_TX_TIMEOUT = Duration.ofMillis(0);
+
+		private static final Method CLOSE_WITH_DURATION;
+
+		static {
+			Method method = null;
+			String clientVersion = AppInfoParser.getVersion();
+			try {
+				if (!clientVersion.startsWith("1.") && !clientVersion.startsWith("2.0.")
+						&& !clientVersion.startsWith("2.1.")) {
+					method = KafkaProducer.class.getDeclaredMethod("close", Duration.class);
+				}
+			}
+			catch (NoSuchMethodException e) {
+				logger.error("Failed to get close(Duration) method for version: " + clientVersion, e);
+			}
+			CLOSE_WITH_DURATION = method;
+		}
+
 		private final Producer<K, V> delegate;
 
 		private final BlockingQueue<CloseSafeProducer<K, V>> cache;
@@ -360,7 +386,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		private final String txId;
 
-		private volatile boolean txFailed;
+		private volatile Exception txFailed;
 
 		CloseSafeProducer(Producer<K, V> delegate) {
 			this(delegate, null, null);
@@ -428,7 +454,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				if (logger.isErrorEnabled()) {
 					logger.error("beginTransaction failed: " + this, e);
 				}
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -452,7 +478,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				if (logger.isErrorEnabled()) {
 					logger.error("commitTransaction failed: " + this, e);
 				}
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -469,7 +495,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				if (logger.isErrorEnabled()) {
 					logger.error("Abort failed: " + this, e);
 				}
-				this.txFailed = true;
+				this.txFailed = e;
 				throw e;
 			}
 		}
@@ -482,17 +508,16 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public void close(long timeout, @Nullable TimeUnit unit) {
 			if (this.cache != null) {
-				if (this.txFailed) {
+				Duration closeTimeout = this.txFailed instanceof TimeoutException || unit == null
+						? CLOSE_TIMEOUT_AFTER_TX_TIMEOUT
+						: Duration.ofMillis(unit.toMillis(timeout));
+				if (this.txFailed != null) {
 					if (logger.isWarnEnabled()) {
-						logger.warn("Error during transactional operation; producer removed from cache; possible cause: "
-							+ "broker restarted during transaction: " + this);
+						logger.warn("Error during transactional operation; producer removed from cache; "
+								+ "possible cause: "
+								+ "broker restarted during transaction: " + this);
 					}
-					if (unit == null) {
-						this.delegate.close();
-					}
-					else {
-						this.delegate.close(timeout, unit);
-					}
+					closeDelegate(closeTimeout);
 					if (this.removeConsumerProducer != null) {
 						this.removeConsumerProducer.accept(this);
 					}
@@ -502,16 +527,25 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 						synchronized (this) {
 							if (!this.cache.contains(this)
 									&& !this.cache.offer(this)) {
-								if (unit == null) {
-									this.delegate.close();
-								}
-								else {
-									this.delegate.close(timeout, unit);
-								}
+								closeDelegate(closeTimeout);
 							}
 						}
 					}
 				}
+			}
+		}
+
+		private void closeDelegate(Duration closeTimeout) {
+			if (CLOSE_WITH_DURATION != null) {
+				try {
+					CLOSE_WITH_DURATION.invoke(this.delegate, closeTimeout);
+				}
+				catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					logger.error("Failed to invoke close(Duration) with reflection", e);
+				}
+			}
+			else {
+				this.delegate.close(closeTimeout.toMillis(), TimeUnit.MILLISECONDS);
 			}
 		}
 

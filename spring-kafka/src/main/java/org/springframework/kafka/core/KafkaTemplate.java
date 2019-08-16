@@ -16,8 +16,10 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -77,6 +79,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 	private volatile ProducerListener<K, V> producerListener = new LoggingProducerListener<K, V>();
 
+	private Duration closeTimeout = ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -155,6 +158,27 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 */
 	public boolean isTransactional() {
 		return this.transactional;
+	}
+
+	/**
+	 * Set the maximum time to wait when closing a producer; default 5 seconds.
+	 * @param closeTimeout the close timeout.
+	 * @deprecated in favor of {@link #setCloseTimeout(Duration)}.
+	 * @since 1.3.11
+	 */
+	@Deprecated
+	public void setCloseTimeout(long closeTimeout) {
+		setCloseTimeout(Duration.ofMillis(closeTimeout));
+	}
+
+	/**
+	 * Set the maximum time to wait when closing a producer; default 5 seconds.
+	 * @param closeTimeout the close timeout.
+	 * @since 2.1.14
+	 */
+	public void setCloseTimeout(Duration closeTimeout) {
+		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");
+		this.closeTimeout = closeTimeout;
 	}
 
 	@Override
@@ -342,9 +366,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		producer.sendOffsetsToTransaction(offsets, consumerGroupId);
 	}
 
-	protected void closeProducer(Producer<K, V> producer, boolean inLocalTx) {
-		if (!inLocalTx) {
-			producer.close();
+	protected void closeProducer(Producer<K, V> producer, boolean inTx) {
+		if (!inTx) {
+			producer.close(this.closeTimeout.toMillis(), TimeUnit.MILLISECONDS);
 		}
 	}
 
@@ -422,7 +446,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 				return producer;
 			}
 			KafkaResourceHolder<K, V> holder = ProducerFactoryUtils
-					.getTransactionalResourceHolder(this.producerFactory);
+					.getTransactionalResourceHolder(this.producerFactory, this.closeTimeout);
 			return holder.getProducer();
 		}
 		else {

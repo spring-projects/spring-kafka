@@ -16,6 +16,9 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.clients.producer.Producer;
 
 import org.springframework.transaction.support.ResourceHolderSynchronization;
@@ -34,6 +37,11 @@ import org.springframework.util.Assert;
  */
 public final class ProducerFactoryUtils {
 
+	/**
+	 * The default close timeout (5 seconds).
+	 */
+	public static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(5);
+
 	private static ThreadLocal<String> groupIds = new ThreadLocal<>();
 
 	private ProducerFactoryUtils() {
@@ -50,6 +58,38 @@ public final class ProducerFactoryUtils {
 	public static <K, V> KafkaResourceHolder<K, V> getTransactionalResourceHolder(
 			final ProducerFactory<K, V> producerFactory) {
 
+		return getTransactionalResourceHolder(producerFactory, DEFAULT_CLOSE_TIMEOUT);
+	}
+
+	/**
+	 * Obtain a Producer that is synchronized with the current transaction, if any.
+	 * @param producerFactory the ProducerFactory to obtain a Channel for
+	 * @param closeTimeout the producer close timeout.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the resource holder.
+	 * @deprecated in favor of {@link #getTransactionalResourceHolder(ProducerFactory, Duration)}
+	 * @since 1.3.11
+	 */
+	@Deprecated
+	public static <K, V> KafkaResourceHolder<K, V> getTransactionalResourceHolder(
+			final ProducerFactory<K, V> producerFactory, long closeTimeout) {
+
+		return getTransactionalResourceHolder(producerFactory, Duration.ofMillis(closeTimeout));
+	}
+
+	/**
+	 * Obtain a Producer that is synchronized with the current transaction, if any.
+	 * @param producerFactory the ProducerFactory to obtain a Channel for
+	 * @param closeTimeout the producer close timeout.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the resource holder.
+	 * @since 2.1.14
+	 */
+	public static <K, V> KafkaResourceHolder<K, V> getTransactionalResourceHolder(
+			final ProducerFactory<K, V> producerFactory, Duration closeTimeout) {
+
 		Assert.notNull(producerFactory, "ProducerFactory must not be null");
 
 		@SuppressWarnings("unchecked")
@@ -62,11 +102,11 @@ public final class ProducerFactoryUtils {
 				producer.beginTransaction();
 			}
 			catch (RuntimeException e) {
-				producer.close();
+				producer.close(closeTimeout.toMillis(), TimeUnit.MILLISECONDS);
 				throw e;
 			}
 
-			resourceHolder = new KafkaResourceHolder<K, V>(producer);
+			resourceHolder = new KafkaResourceHolder<K, V>(producer, closeTimeout);
 			bindResourceToTransaction(resourceHolder, producerFactory);
 		}
 		return resourceHolder;
@@ -74,7 +114,7 @@ public final class ProducerFactoryUtils {
 
 	public static <K, V> void releaseResources(KafkaResourceHolder<K, V> resourceHolder) {
 		if (resourceHolder != null) {
-			resourceHolder.getProducer().close();
+			resourceHolder.close();
 		}
 	}
 
