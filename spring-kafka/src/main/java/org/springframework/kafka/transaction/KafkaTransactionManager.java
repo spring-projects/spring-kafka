@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.transaction;
 
+import java.time.Duration;
+
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ProducerFactoryUtils;
@@ -42,9 +44,9 @@ import org.springframework.util.Assert;
  *
  * <p>
  * Application code is required to retrieve the transactional Kafka resources via
- * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory)}. Spring's
- * {@link org.springframework.kafka.core.KafkaTemplate KafkaTemplate} will auto detect a
- * thread-bound Producer and automatically participate in it.
+ * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory, java.time.Duration)}.
+ * Spring's {@link org.springframework.kafka.core.KafkaTemplate KafkaTemplate} will auto
+ * detect a thread-bound Producer and automatically participate in it.
  *
  * <p>
  * <b>The use of {@link org.springframework.kafka.core.DefaultKafkaProducerFactory
@@ -70,6 +72,8 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	private final ProducerFactory<K, V> producerFactory;
 
+	private Duration closeTimeout = ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT;
+
 	/**
 	 * Create a new KafkaTransactionManager, given a ProducerFactory.
 	 * Transaction synchronization is turned off by default, as this manager might be used alongside a datastore-based
@@ -91,6 +95,27 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	@Override
 	public ProducerFactory<K, V> getProducerFactory() {
 		return this.producerFactory;
+	}
+
+	/**
+	 * Set the maximum time to wait when closing a producer; default 5 seconds.
+	 * @param closeTimeout the close timeout.
+	 * @deprecated in favor of {@link #setCloseTimeout(Duration)}.
+	 * @since 1.3.11
+	 */
+	@Deprecated
+	public void setCloseTimeout(long closeTimeout) {
+		setCloseTimeout(Duration.ofMillis(closeTimeout));
+	}
+
+	/**
+	 * Set the maximum time to wait when closing a producer; default 5 seconds.
+	 * @param closeTimeout the close timeout.
+	 * @since 2.1.14
+	 */
+	public void setCloseTimeout(Duration closeTimeout) {
+		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");
+		this.closeTimeout = closeTimeout;
 	}
 
 	/**
@@ -132,7 +157,8 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		KafkaResourceHolder<K, V> resourceHolder = null;
 		try {
-			resourceHolder = ProducerFactoryUtils.getTransactionalResourceHolder(getProducerFactory());
+			resourceHolder = ProducerFactoryUtils.getTransactionalResourceHolder(getProducerFactory(),
+					this.closeTimeout);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Created Kafka transaction on producer [" + resourceHolder.getProducer() + "]");
 			}

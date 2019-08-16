@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import java.util.HashMap;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.producer.Producer;
@@ -96,14 +97,14 @@ public class DefaultKafkaProducerFactoryTests {
 		inOrder.verify(producer).send(any(), any());
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).beginTransaction();
-		inOrder.verify(producer).close();
+		inOrder.verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 		inOrder.verifyNoMoreInteractions();
 		pf.destroy();
 	}
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void testResetSingle() throws Exception {
+	public void testResetSingle() {
 		final Producer producer = mock(Producer.class);
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
@@ -115,7 +116,7 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
-		aProducer.close();
+		aProducer.close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNotNull();
 		Queue cache = KafkaTestUtils.getPropertyValue(pf, "cache", Queue.class);
 		assertThat(cache.size()).isEqualTo(0);
