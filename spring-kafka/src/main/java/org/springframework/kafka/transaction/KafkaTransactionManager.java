@@ -111,7 +111,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	/**
 	 * Set the maximum time to wait when closing a producer; default 5 seconds.
 	 * @param closeTimeout the close timeout.
-	 * @since 1.3.11
+	 * @since 2.3
 	 */
 	public void setCloseTimeout(Duration closeTimeout) {
 		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");
