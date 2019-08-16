@@ -174,7 +174,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	/**
 	 * Set the maximum time to wait when closing a producer; default 5 seconds.
 	 * @param closeTimeout the close timeout.
-	 * @since 2.3
+	 * @since 2.1.14
 	 */
 	public void setCloseTimeout(Duration closeTimeout) {
 		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");

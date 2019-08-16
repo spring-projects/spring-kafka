@@ -63,6 +63,21 @@ public final class ProducerFactoryUtils {
 	/**
 	 * Obtain a Producer that is synchronized with the current transaction, if any.
 	 * @param producerFactory the ProducerFactory to obtain a Channel for
+	 * @param closeTimeout the producer close timeout.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the resource holder.
+	 * @since 2.1.14
+	 */
+	public static <K, V> KafkaResourceHolder<K, V> getTransactionalResourceHolder(
+			final ProducerFactory<K, V> producerFactory, Duration closeTimeout) {
+
+		return getTransactionalResourceHolder(producerFactory, null, closeTimeout);
+	}
+
+	/**
+	 * Obtain a Producer that is synchronized with the current transaction, if any.
+	 * @param producerFactory the ProducerFactory to obtain a Channel for
 	 * @param txIdPrefix the transaction id prefix; if null, the producer factory
 	 * prefix is used.
 	 * @param closeTimeout the producer close timeout.
