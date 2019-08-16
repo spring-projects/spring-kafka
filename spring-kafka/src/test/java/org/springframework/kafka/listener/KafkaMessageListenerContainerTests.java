@@ -489,6 +489,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testRecordAck() throws Exception {
 		logger.info("Start record ack");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test6", "false", embeddedKafka);
+		props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic6);
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -497,6 +498,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setAckOnError(false);
+		containerProps.setIdleBetweenPolls(1000L);
 		//		containerProps.setCommitLogLevel(LogIfLevelEnabled.Level.WARN);
 
 		CountDownLatch stubbingComplete = new CountDownLatch(1);
@@ -506,6 +508,7 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
 		final CountDownLatch latch = new CountDownLatch(2);
+		final List<Long> recordTime = new ArrayList<>();
 		willAnswer(invocation -> {
 
 			Map<TopicPartition, OffsetAndMetadata> map = invocation.getArgument(0);
@@ -515,6 +518,7 @@ public class KafkaMessageListenerContainerTests {
 			finally {
 				for (Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
 					if (entry.getValue().offset() == 2) {
+						recordTime.add(System.currentTimeMillis());
 						latch.countDown();
 					}
 				}
@@ -534,6 +538,7 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(1, 0, "qux");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(recordTime.get(1) - recordTime.get(0)).isGreaterThanOrEqualTo(1000L);
 		Consumer<Integer, String> consumer = cf.createConsumer();
 		consumer.assign(Arrays.asList(new TopicPartition(topic6, 0), new TopicPartition(topic6, 1)));
 		assertThat(consumer.position(new TopicPartition(topic6, 0))).isEqualTo(2);

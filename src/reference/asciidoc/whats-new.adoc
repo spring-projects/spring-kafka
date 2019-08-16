@@ -52,6 +52,9 @@ See <<seek>> for more information.
 A convenience class `AbstractConsumerSeekAware` is now provided to simplify seeking.
 See <<seek>> for more information.
 
+The `ContainerProperties` provides an `idleBetweenPolls` option to let the main loop in the listener container to sleep between `KafkaConsumer.poll()` calls.
+See its JavaDocs and <<kafka-container>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.

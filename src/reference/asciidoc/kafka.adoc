@@ -934,6 +934,9 @@ Starting with version 1.3, the `MessageListenerContainer` provides access to the
 In the case of `ConcurrentMessageListenerContainer`, the `metrics()` method returns the metrics for all the target `KafkaMessageListenerContainer` instances.
 The metrics are grouped into the `Map<MetricName, ? extends Metric>` by the `client-id` provided for the underlying `KafkaConsumer`.
 
+Starting with version 2.3, the `ContainerProperties` provides an `idleBetweenPolls` option to let the main loop in the listener container to sleep between `KafkaConsumer.poll()` calls.
+An actual sleep interval is selected as a minimum from the provided option and difference between a `max.poll.interval.ms` consumer config and the current records batch processing time.
+
 [[committing-offsets]]
 ====== Committing Offsets
 

@@ -222,6 +222,8 @@ public class ContainerProperties {
 
 	private boolean missingTopicsFatal = true;
 
+	private long idleBetweenPolls;
+
 	private Properties consumerProperties = new Properties();
 
 	/**
@@ -701,6 +703,21 @@ public class ContainerProperties {
 	public void setConsumerProperties(Properties consumerProperties) {
 		Assert.notNull(consumerProperties, "'consumerProperties' cannot be null");
 		this.consumerProperties = consumerProperties;
+	}
+
+	/**
+	 * The sleep interval in milliseconds used in the main loop between
+	 * {@link org.apache.kafka.clients.consumer.Consumer#poll(Duration)} calls.
+	 * Defaults to {@code 0} - no idling.
+	 * @param idleBetweenPolls the interval to sleep between polling cycles.
+	 * @since 2.3
+	 */
+	public void setIdleBetweenPolls(long idleBetweenPolls) {
+		this.idleBetweenPolls = idleBetweenPolls;
+	}
+
+	public long getIdleBetweenPolls() {
+		return this.idleBetweenPolls;
 	}
 
 	@Override
