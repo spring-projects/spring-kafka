@@ -648,7 +648,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			boolean isAutoCommit;
 			String autoCommitOverride = consumerProperties.getProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
 			if (!KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
-							.containsKey(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)
+					.containsKey(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)
 					&& autoCommitOverride == null) {
 				consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 				isAutoCommit = false;
@@ -689,9 +689,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (timeout != null) {
 						Object timeoutToLog = timeout;
 						this.logger.warn(() -> "Unexpected type: " + timeoutToLog.getClass().getName()
-							+ " in property '"
-							+ ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
-							+ "'; defaulting to 60 seconds for sync commit timeouts");
+								+ " in property '"
+								+ ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
+								+ "'; defaulting to 60 seconds for sync commit timeouts");
 					}
 					return Duration.ofSeconds(SIXTY);
 				}
@@ -782,10 +782,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			Class<?> clazz = errHandler.getClass();
 			Assert.state(batch
-						? BatchErrorHandler.class.isAssignableFrom(clazz)
-						: ErrorHandler.class.isAssignableFrom(clazz),
+							? BatchErrorHandler.class.isAssignableFrom(clazz)
+							: ErrorHandler.class.isAssignableFrom(clazz),
 					() -> "Error handler is not compatible with the message listener, expecting an instance of "
-					+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass().getName());
+							+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass()
+							.getName());
 		}
 
 		@Override
@@ -806,6 +807,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			while (isRunning()) {
 				try {
 					pollAndInvoke();
+					idleBetweenPollIfNecessary();
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
 					// Ignore, we're stopping or applying immediate foreign acks
@@ -827,7 +829,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					wrapUp();
 					throw e;
 				}
-				idleBetweenPollIfNecessary();
 			}
 			wrapUp();
 		}
@@ -851,8 +852,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				processSeeks();
 			}
 			checkPaused();
-			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
 			this.lastPoll = System.currentTimeMillis();
+			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
 			checkResumed();
 			debugRecords(records);
 			if (records != null && records.count() > 0) {
@@ -916,19 +917,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void idleBetweenPollIfNecessary() {
+		private void idleBetweenPollIfNecessary() throws InterruptedException {
 			long idleBetweenPolls = this.containerProperties.getIdleBetweenPolls();
 			if (idleBetweenPolls > 0) {
 				idleBetweenPolls = Math.min(idleBetweenPolls,
 						this.maxPollInterval - (System.currentTimeMillis() - this.lastPoll));
 				if (idleBetweenPolls > 0) {
-					try {
-						TimeUnit.MILLISECONDS.sleep(idleBetweenPolls);
-					}
-					catch (InterruptedException ex) {
-						Thread.currentThread().interrupt();
-						throw new IllegalStateException("Consumer Thread [" + this + "] has been interrupted", ex);
-					}
+					TimeUnit.MILLISECONDS.sleep(idleBetweenPolls);
 				}
 			}
 		}
@@ -1097,7 +1092,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						if (ListenerConsumer.this.kafkaTxManager != null) {
 							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
 									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-										.getProducer(); // NOSONAR nullable
+									.getProducer(); // NOSONAR nullable
 						}
 						RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
 						if (aborted != null) {
@@ -1276,7 +1271,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							if (ListenerConsumer.this.kafkaTxManager != null) {
 								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
 										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-												.getProducer(); // NOSONAR
+										.getProducer(); // NOSONAR
 							}
 							RuntimeException aborted = doInvokeRecordListener(record, producer, iterator);
 							if (aborted != null) {
@@ -1953,7 +1948,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						}
 					}
 					else {
-						ContainerProperties containerProps = KafkaMessageListenerContainer.this.getContainerProperties();
+						ContainerProperties containerProps =
+								KafkaMessageListenerContainer.this.getContainerProperties();
 						if (containerProps.isSyncCommits()) {
 							ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
 									containerProps.getSyncCommitTimeout());
