@@ -920,7 +920,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			long idleBetweenPolls = this.containerProperties.getIdleBetweenPolls();
 			if (idleBetweenPolls > 0) {
 				idleBetweenPolls = Math.min(idleBetweenPolls,
-						this.maxPollInterval - (System.currentTimeMillis() - this.lastPoll));
+						this.maxPollInterval - (System.currentTimeMillis() - this.lastPoll)
+								- 5000); // NOSONAR - less by five seconds to avoid race condition with rebalance
 				if (idleBetweenPolls > 0) {
 					try {
 						TimeUnit.MILLISECONDS.sleep(idleBetweenPolls);
