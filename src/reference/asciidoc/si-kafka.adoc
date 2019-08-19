@@ -77,6 +77,10 @@ You can override the `DefaultErrorMessageStrategy` by setting the `error-message
 
 If a `send-success-channel` (`sendSuccessChannel`) is provided, a message with a payload of type `org.apache.kafka.clients.producer.RecordMetadata` is sent after a successful send.
 
+IMPORTANT: If your application uses transactions and the same channel adapter is used to publish messages where the transaction is started by a listener container, as well as publishing where there is no existing transaction, you must configure a `transactionIdPrefix` on the `KafkaTemplate` to override the prefix used by the container or transaction manager.
+The prefix used by container-initiated transactions (the producer factory or transaction manager property) must be the same on all application instances.
+The prefix used for producer-only transactions must be unique on all application instances.
+
 
 ===== Java Configuration
 

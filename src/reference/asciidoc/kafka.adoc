@@ -459,7 +459,7 @@ Now, you can override the factory's `transactionalIdPrefix` on the `KafkaTemplat
 When using a transaction manager and template for a listener container, you would normally leave this to default to the producer factory's property.
 This value should be the same for all application instances.
 For transactions started by the template (or the transaction manager for `@Transaction`) you should set the property on the template and transaction manager respectively.
-This property must have a difference value on each application instance.
+This property must have a different value on each application instance.
 
 [[replying-template]]
 ===== Using `ReplyingKafkaTemplate`
