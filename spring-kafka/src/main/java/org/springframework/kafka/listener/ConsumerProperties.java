@@ -18,7 +18,6 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -210,15 +209,7 @@ public class ConsumerProperties {
 
 	/**
 	 * Set the timeout for commitSync operations (if {@link #isSyncCommits()}. Overrides
-	 * the default api timeout property. In order of precedence:
-	 * <ul>
-	 * <li>this property</li>
-	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in
-	 * {@link #setConsumerProperties(Properties)}</li>
-	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in the consumer factory
-	 * properties</li>
-	 * <li>60 seconds</li>
-	 * </ul>
+	 * the default api timeout property.
 	 * @param syncCommitTimeout the timeout.
 	 * @see #setSyncCommits(boolean)
 	 */

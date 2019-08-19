@@ -290,6 +290,25 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
+	 * Set the timeout for commitSync operations (if {@link #isSyncCommits()}. Overrides
+	 * the default api timeout property. In order of precedence:
+	 * <ul>
+	 * <li>this property</li>
+	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in
+	 * {@link #setConsumerProperties(Properties)}</li>
+	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in the consumer factory
+	 * properties</li>
+	 * <li>60 seconds</li>
+	 * </ul>
+	 * @param syncCommitTimeout the timeout.
+	 * @see #setSyncCommits(boolean)
+	 */
+	@Override
+	public void setSyncCommitTimeout(@Nullable Duration syncCommitTimeout) {
+		super.setSyncCommitTimeout(syncCommitTimeout); // NOSONAR - not useless; enhanced javadoc
+	}
+
+	/**
 	 * Set the idle event interval; when set, an event is emitted if a poll returns
 	 * no records and this interval has elapsed since a record was returned.
 	 * @param idleEventInterval the interval.
