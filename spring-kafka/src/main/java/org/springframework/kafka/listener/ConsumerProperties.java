@@ -125,22 +125,6 @@ public class ConsumerProperties {
 	 * Create properties for a container that will assign itself the provided topic
 	 * partitions.
 	 * @param topicPartitions the topic partitions.
-	 * @deprecated in favor of {@link #ContainerProperties(TopicPartitionOffset...)}.
-	 */
-	@Deprecated
-	ConsumerProperties(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
-		this.topics = null;
-		this.topicPattern = null;
-		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		this.topicPartitionsToAssign = Arrays.stream(topicPartitions)
-				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
-				.toArray(TopicPartitionOffset[]::new);
-	}
-
-	/**
-	 * Create properties for a container that will assign itself the provided topic
-	 * partitions.
-	 * @param topicPartitions the topic partitions.
 	 */
 	public ConsumerProperties(TopicPartitionOffset... topicPartitions) {
 		this.topics = null;
@@ -151,7 +135,9 @@ public class ConsumerProperties {
 
 	@Nullable
 	public String[] getTopics() {
-		return this.topics; // NOSONAR
+		return this.topics != null
+				? Arrays.copyOf(this.topics, this.topics.length)
+				: null;
 	}
 
 	@Nullable
@@ -234,7 +220,6 @@ public class ConsumerProperties {
 	 * <li>60 seconds</li>
 	 * </ul>
 	 * @param syncCommitTimeout the timeout.
-	 * @since 2.3
 	 * @see #setSyncCommits(boolean)
 	 */
 	public void setSyncCommitTimeout(@Nullable Duration syncCommitTimeout) {
@@ -290,7 +275,7 @@ public class ConsumerProperties {
 	 * @param commitLogLevel the level.
 	 */
 	public void setCommitLogLevel(LogIfLevelEnabled.Level commitLogLevel) {
-		Assert.notNull(commitLogLevel, "'commitLogLevel' cannot be nul");
+		Assert.notNull(commitLogLevel, "'commitLogLevel' cannot be null");
 		this.commitLogLevel = commitLogLevel;
 	}
 
