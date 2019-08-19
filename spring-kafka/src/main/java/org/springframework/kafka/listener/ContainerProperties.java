@@ -22,7 +22,6 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.springframework.core.task.AsyncListenableTaskExecutor;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
@@ -205,7 +204,9 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	@Deprecated
-	private static TopicPartitionOffset[] convertTopicPartitions(TopicPartitionInitialOffset[] topicPartitions) {
+	private static TopicPartitionOffset[] convertTopicPartitions(
+			org.springframework.kafka.support.TopicPartitionInitialOffset[] topicPartitions) {
+
 		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
 		return Arrays.stream(topicPartitions)
 				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
