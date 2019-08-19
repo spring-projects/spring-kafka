@@ -21,17 +21,12 @@ import java.util.Arrays;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.OffsetCommitCallback;
-
 import org.springframework.core.task.AsyncListenableTaskExecutor;
-import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
  * Contains runtime properties for a listener container.
@@ -41,7 +36,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Yakshin
  * @author Johnny Lim
  */
-public class ContainerProperties {
+public class ContainerProperties extends ConsumerProperties {
 
 	/**
 	 * The offset commit behavior enumeration.
@@ -95,11 +90,6 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * The default {@link #setPollTimeout(long) pollTimeout} (ms).
-	 */
-	public static final long DEFAULT_POLL_TIMEOUT = 5_000L;
-
-	/**
 	 * The default {@link #setShutdownTimeout(long) shutDownTimeout} (ms).
 	 */
 	public static final long DEFAULT_SHUTDOWN_TIMEOUT = 10_000L;
@@ -113,21 +103,6 @@ public class ContainerProperties {
 	 * The default {@link #setNoPollThreshold(float) noPollThreshold}.
 	 */
 	public static final float DEFAULT_NO_POLL_THRESHOLD = 3f;
-
-	/**
-	 * Topic names.
-	 */
-	private final String[] topics;
-
-	/**
-	 * Topic pattern.
-	 */
-	private final Pattern topicPattern;
-
-	/**
-	 * Topics/partitions/initial offsets.
-	 */
-	private final TopicPartitionOffset[] topicPartitionsToAssign;
 
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
@@ -165,11 +140,6 @@ public class ContainerProperties {
 	private Object messageListener;
 
 	/**
-	 * The max time to block in the consumer waiting for records.
-	 */
-	private volatile long pollTimeout = DEFAULT_POLL_TIMEOUT;
-
-	/**
 	 * The executor for threads that poll the consumer.
 	 */
 	private AsyncListenableTaskExecutor consumerTaskExecutor;
@@ -181,30 +151,9 @@ public class ContainerProperties {
 	 */
 	private long shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
-	/**
-	 * A user defined {@link ConsumerRebalanceListener} implementation.
-	 */
-	private ConsumerRebalanceListener consumerRebalanceListener;
-
-	/**
-	 * The commit callback; by default a simple logging callback is used to log
-	 * success at DEBUG level and failures at ERROR level.
-	 */
-	private OffsetCommitCallback commitCallback;
-
-	/**
-	 * Whether or not to call consumer.commitSync() or commitAsync() when the
-	 * container is responsible for commits. Default true.
-	 */
-	private boolean syncCommits = true;
-
-	private Duration syncCommitTimeout;
-
 	private boolean ackOnError = false;
 
 	private Long idleEventInterval;
-
-	private String groupId;
 
 	private PlatformTransactionManager transactionManager;
 
@@ -214,11 +163,7 @@ public class ContainerProperties {
 
 	private float noPollThreshold = DEFAULT_NO_POLL_THRESHOLD;
 
-	private String clientId = "";
-
 	private boolean logContainerConfig;
-
-	private LogIfLevelEnabled.Level commitLogLevel = LogIfLevelEnabled.Level.DEBUG;
 
 	private boolean missingTopicsFatal = true;
 
@@ -231,10 +176,7 @@ public class ContainerProperties {
 	 * @param topics the topics.
 	 */
 	public ContainerProperties(String... topics) {
-		Assert.notEmpty(topics, "An array of topics must be provided");
-		this.topics = topics.clone();
-		this.topicPattern = null;
-		this.topicPartitionsToAssign = null;
+		super(topics);
 	}
 
 	/**
@@ -247,9 +189,7 @@ public class ContainerProperties {
 	 * @see org.apache.kafka.clients.CommonClientConfigs#METADATA_MAX_AGE_CONFIG
 	 */
 	public ContainerProperties(Pattern topicPattern) {
-		this.topics = null;
-		this.topicPattern = topicPattern;
-		this.topicPartitionsToAssign = null;
+		super(topicPattern);
 	}
 
 	/**
@@ -260,12 +200,7 @@ public class ContainerProperties {
 	 */
 	@Deprecated
 	public ContainerProperties(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
-		this.topics = null;
-		this.topicPattern = null;
-		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		this.topicPartitionsToAssign = Arrays.stream(topicPartitions)
-				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
-				.toArray(TopicPartitionOffset[]::new);
+		super(topicPartitions);
 	}
 
 	/**
@@ -274,10 +209,7 @@ public class ContainerProperties {
 	 * @param topicPartitions the topic partitions.
 	 */
 	public ContainerProperties(TopicPartitionOffset... topicPartitions) {
-		this.topics = null;
-		this.topicPattern = null;
-		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		this.topicPartitionsToAssign = Arrays.copyOf(topicPartitions, topicPartitions.length);
+		super(topicPartitions);
 	}
 
 	/**
@@ -306,14 +238,6 @@ public class ContainerProperties {
 	public void setAckMode(AckMode ackMode) {
 		Assert.notNull(ackMode, "'ackMode' cannot be null");
 		this.ackMode = ackMode;
-	}
-
-	/**
-	 * Set the max time to block in the consumer waiting for records.
-	 * @param pollTimeout the timeout in ms; default {@value #DEFAULT_POLL_TIMEOUT}.
-	 */
-	public void setPollTimeout(long pollTimeout) {
-		this.pollTimeout = pollTimeout;
 	}
 
 	/**
@@ -356,56 +280,6 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * Set the user defined {@link ConsumerRebalanceListener} implementation.
-	 * @param consumerRebalanceListener the {@link ConsumerRebalanceListener} instance
-	 */
-	public void setConsumerRebalanceListener(ConsumerRebalanceListener consumerRebalanceListener) {
-		this.consumerRebalanceListener = consumerRebalanceListener;
-	}
-
-	/**
-	 * Set the commit callback; by default a simple logging callback is used to log
-	 * success at DEBUG level and failures at ERROR level.
-	 * Used when {@link #setSyncCommits(boolean) syncCommits} is false.
-	 * @param commitCallback the callback.
-	 * @see #setSyncCommits(boolean)
-	 */
-	public void setCommitCallback(OffsetCommitCallback commitCallback) {
-		this.commitCallback = commitCallback;
-	}
-
-	/**
-	 * Set whether or not to call consumer.commitSync() or commitAsync() when the
-	 * container is responsible for commits. Default true.
-	 * @param syncCommits true to use commitSync().
-	 * @see #setSyncCommitTimeout(Duration)
-	 * @see #setCommitCallback(OffsetCommitCallback)
-	 * @see #setCommitLogLevel(org.springframework.kafka.support.LogIfLevelEnabled.Level)
-	 */
-	public void setSyncCommits(boolean syncCommits) {
-		this.syncCommits = syncCommits;
-	}
-
-	/**
-	 * Set the timeout for commitSync operations (if {@link #isSyncCommits()}. Overrides
-	 * the default api timeout property. In order of precedence:
-	 * <ul>
-	 * <li>this property</li>
-	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in
-	 * {@link #setConsumerProperties(Properties)}</li>
-	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in the consumer factory
-	 * properties</li>
-	 * <li>60 seconds</li>
-	 * </ul>
-	 * @param syncCommitTimeout the timeout.
-	 * @since 2.3
-	 * @see #setSyncCommits(boolean)
-	 */
-	public void setSyncCommitTimeout(@Nullable Duration syncCommitTimeout) {
-		this.syncCommitTimeout = syncCommitTimeout;
-	}
-
-	/**
 	 * Set the idle event interval; when set, an event is emitted if a poll returns
 	 * no records and this interval has elapsed since a record was returned.
 	 * @param idleEventInterval the interval.
@@ -441,24 +315,6 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * Set the group id for this container. Overrides any {@code group.id} property
-	 * provided by the consumer factory configuration.
-	 * @param groupId the group id.
-	 * @since 1.3
-	 */
-	public void setGroupId(String groupId) {
-		this.groupId = groupId;
-	}
-
-	public String[] getTopics() {
-		return this.topics; // NOSONAR
-	}
-
-	public Pattern getTopicPattern() {
-		return this.topicPattern;
-	}
-
-	/**
 	 * Return the topics/partitions to be manually assigned.
 	 * @deprecated in favor of {@link #getTopicPartitionsToAssign()}.
 	 * @return the topics/partitions.
@@ -466,17 +322,11 @@ public class ContainerProperties {
 	@Deprecated
 	@Nullable
 	public org.springframework.kafka.support.TopicPartitionInitialOffset[] getTopicPartitions() {
-		return this.topicPartitionsToAssign != null
-				? Arrays.stream(this.topicPartitionsToAssign)
+		TopicPartitionOffset[] topicPartitionsToAssign = getTopicPartitionsToAssign();
+		return topicPartitionsToAssign != null
+				? Arrays.stream(topicPartitionsToAssign)
 				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::fromTPO)
 				.toArray(org.springframework.kafka.support.TopicPartitionInitialOffset[]::new)
-				: null;
-	}
-
-	@Nullable
-	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
-		return this.topicPartitionsToAssign != null
-				? Arrays.copyOf(this.topicPartitionsToAssign, this.topicPartitionsToAssign.length)
 				: null;
 	}
 
@@ -496,32 +346,12 @@ public class ContainerProperties {
 		return this.messageListener;
 	}
 
-	public long getPollTimeout() {
-		return this.pollTimeout;
-	}
-
 	public AsyncListenableTaskExecutor getConsumerTaskExecutor() {
 		return this.consumerTaskExecutor;
 	}
 
 	public long getShutdownTimeout() {
 		return this.shutdownTimeout;
-	}
-
-	public ConsumerRebalanceListener getConsumerRebalanceListener() {
-		return this.consumerRebalanceListener;
-	}
-
-	public OffsetCommitCallback getCommitCallback() {
-		return this.commitCallback;
-	}
-
-	public boolean isSyncCommits() {
-		return this.syncCommits;
-	}
-
-	public Duration getSyncCommitTimeout() {
-		return this.syncCommitTimeout;
 	}
 
 	public Long getIdleEventInterval() {
@@ -531,10 +361,6 @@ public class ContainerProperties {
 	public boolean isAckOnError() {
 		return this.ackOnError &&
 				!(AckMode.MANUAL_IMMEDIATE.equals(this.ackMode) || AckMode.MANUAL.equals(this.ackMode));
-	}
-
-	public String getGroupId() {
-		return this.groupId;
 	}
 
 	public PlatformTransactionManager getTransactionManager() {
@@ -595,27 +421,6 @@ public class ContainerProperties {
 	}
 
 	/**
-	 * Return the client id.
-	 * @return the client id.
-	 * @since 2.1.1
-	 * @see #setClientId(String)
-	 */
-	public String getClientId() {
-		return this.clientId;
-	}
-
-	/**
-	 * Set the client id; overrides the consumer factory client.id property.
-	 * When used in a concurrent container, will be suffixed with '-n' to
-	 * provide a unique value for each consumer.
-	 * @param clientId the client id.
-	 * @since 2.1.1
-	 */
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
-	}
-
-	/**
 	 * Log the container configuration if true (INFO).
 	 * @return true to log.
 	 * @since 2.1.1
@@ -631,26 +436,6 @@ public class ContainerProperties {
 	 */
 	public void setLogContainerConfig(boolean logContainerConfig) {
 		this.logContainerConfig = logContainerConfig;
-	}
-
-	/**
-	 * The level at which to log offset commits.
-	 * @return the level.
-	 * @since 2.1.2
-	 */
-	public LogIfLevelEnabled.Level getCommitLogLevel() {
-		return this.commitLogLevel;
-	}
-
-	/**
-	 * Set the level at which to log offset commits.
-	 * Default: DEBUG.
-	 * @param commitLogLevel the level.
-	 * @since 2.1.2
-	 */
-	public void setCommitLogLevel(LogIfLevelEnabled.Level commitLogLevel) {
-		Assert.notNull(commitLogLevel, "'commitLogLevel' cannot be nul");
-		this.commitLogLevel = commitLogLevel;
 	}
 
 	/**
@@ -723,42 +508,25 @@ public class ContainerProperties {
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
-				+ renderTopics()
+				+ renderProperties()
 				+ ", ackMode=" + this.ackMode
 				+ ", ackCount=" + this.ackCount
 				+ ", ackTime=" + this.ackTime
 				+ ", messageListener=" + this.messageListener
-				+ ", pollTimeout=" + this.pollTimeout
 				+ (this.consumerTaskExecutor != null
-				? ", consumerTaskExecutor=" + this.consumerTaskExecutor
-				: "")
+						? ", consumerTaskExecutor=" + this.consumerTaskExecutor
+						: "")
 				+ ", shutdownTimeout=" + this.shutdownTimeout
-				+ (this.consumerRebalanceListener != null
-				? ", consumerRebalanceListener=" + this.consumerRebalanceListener
-				: "")
-				+ (this.commitCallback != null ? ", commitCallback=" + this.commitCallback : "")
-				+ ", syncCommits=" + this.syncCommits
-				+ (this.syncCommitTimeout != null ? ", syncCommitTimeout=" + this.syncCommitTimeout : "")
 				+ ", ackOnError=" + this.ackOnError
 				+ ", idleEventInterval="
 				+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
-				+ (this.groupId != null ? ", groupId=" + this.groupId : "")
 				+ (this.transactionManager != null
-				? ", transactionManager=" + this.transactionManager
-				: "")
+						? ", transactionManager=" + this.transactionManager
+						: "")
 				+ ", monitorInterval=" + this.monitorInterval
 				+ (this.scheduler != null ? ", scheduler=" + this.scheduler : "")
 				+ ", noPollThreshold=" + this.noPollThreshold
-				+ (StringUtils.hasText(this.clientId) ? ", clientId=" + this.clientId : "")
 				+ "]";
-	}
-
-	private String renderTopics() {
-		return (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
-				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
-				+ (this.topicPartitionsToAssign != null
-				? ", topicPartitions=" + Arrays.toString(this.topicPartitionsToAssign)
-				: "");
 	}
 
 }
