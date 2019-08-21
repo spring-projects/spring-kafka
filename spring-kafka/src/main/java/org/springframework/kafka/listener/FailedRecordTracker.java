@@ -41,6 +41,8 @@ class FailedRecordTracker {
 
 	private final boolean noRetries;
 
+	private final Log logger;
+
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures, Log logger) {
 		if (recoverer == null) {
 			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: " + r, t);
@@ -50,11 +52,12 @@ class FailedRecordTracker {
 		}
 		this.maxFailures = maxFailures;
 		this.noRetries = ValueRange.of(0, 1).isValidIntValue(maxFailures);
+		this.logger = logger;
 	}
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
 		if (this.noRetries) {
-			this.recoverer.accept(record, exception);
+			recover(record, exception);
 			return true;
 		}
 		FailedRecord failedRecord = this.failures.get();
@@ -63,11 +66,20 @@ class FailedRecordTracker {
 			return false;
 		}
 		else if (this.maxFailures > 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
-				this.recoverer.accept(record, exception);
+				recover(record, exception);
 				return true;
 		}
 		else {
 			return false;
+		}
+	}
+
+	private void recover(ConsumerRecord<?, ?> record, Exception exception) {
+		try {
+			this.recoverer.accept(record, exception);
+		}
+		catch (Exception ex) {
+			this.logger.error("Recoverer threw exception", ex);
 		}
 	}
 
