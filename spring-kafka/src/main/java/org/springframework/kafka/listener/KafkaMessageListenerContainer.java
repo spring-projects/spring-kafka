@@ -1133,11 +1133,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				final List<ConsumerRecord<K, V>> recordList, RuntimeException e,
 				AfterRollbackProcessor<K, V> afterRollbackProcessorToUse) {
 
-			if (recordList == null) {
-				afterRollbackProcessorToUse.process(createRecordList(records), this.consumer, e, false);
+			try {
+				if (recordList == null) {
+					afterRollbackProcessorToUse.process(createRecordList(records), this.consumer, e, false);
+				}
+				else {
+					afterRollbackProcessorToUse.process(recordList, this.consumer, e, false);
+				}
 			}
-			else {
-				afterRollbackProcessorToUse.process(recordList, this.consumer, e, false);
+			catch (Exception ex) {
+				this.logger.error(ex, "AfterRollbackProcessor threw exception");
 			}
 		}
 
@@ -1321,7 +1326,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				});
 			}
 			else {
-				afterRollbackProcessorToUse.process(unprocessed, this.consumer, e, true);
+				try {
+					afterRollbackProcessorToUse.process(unprocessed, this.consumer, e, true);
+				}
+				catch (Exception ex) {
+					this.logger.error(ex, "AfterRollbackProcessor threw exception");
+				}
 			}
 		}
 

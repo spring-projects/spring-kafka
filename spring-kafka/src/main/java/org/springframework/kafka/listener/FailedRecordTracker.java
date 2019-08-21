@@ -43,12 +43,18 @@ class FailedRecordTracker {
 
 	private final BackOff backOff;
 
+	private final LogAccessor logger;
+
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			LogAccessor logger) {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
-			this.recoverer = (rec, thr) -> logger.error(thr, "Backoff " + this.failures.get().getBackOffExecution()
+			FailedRecord failedRecord = this.failures.get();
+			this.recoverer = (rec, thr) -> logger.error(thr, "Backoff "
+				+ (failedRecord == null
+					? "none"
+					: failedRecord.getBackOffExecution())
 				+ " exhausted for " + rec);
 		}
 		else {
@@ -56,11 +62,12 @@ class FailedRecordTracker {
 		}
 		this.noRetries = backOff.start().nextBackOff() == BackOffExecution.STOP;
 		this.backOff = backOff;
+		this.logger = logger;
 	}
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
 		if (this.noRetries) {
-			this.recoverer.accept(record, exception);
+			recover(record, exception);
 			return true;
 		}
 		FailedRecord failedRecord = this.failures.get();
@@ -79,9 +86,18 @@ class FailedRecordTracker {
 			return false;
 		}
 		else {
-			this.recoverer.accept(record, exception);
+			recover(record, exception);
 			this.failures.remove();
 			return true;
+		}
+	}
+
+	private void recover(ConsumerRecord<?, ?> record, Exception exception) {
+		try {
+			this.recoverer.accept(record, exception);
+		}
+		catch (Exception ex) {
+			this.logger.error(ex, "Recoverer threw exception");
 		}
 	}
 

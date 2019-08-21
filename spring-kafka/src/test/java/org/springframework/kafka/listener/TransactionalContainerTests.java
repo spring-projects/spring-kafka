@@ -46,6 +46,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -112,9 +113,11 @@ public class TransactionalContainerTests {
 
 	private static String topic3DLT = "txTopic3.DLT";
 
+	private static String topic4 = "txTopic4";
+
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3,
-				topic3DLT)
+				topic3DLT, topic4)
 			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
 			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
 
@@ -593,6 +596,69 @@ public class TransactionalContainerTests {
 		verify(dlTemplate).sendOffsetsToTransaction(
 				Collections.singletonMap(new TopicPartition(topic3, 0), new OffsetAndMetadata(1L)));
 		logger.info("Stop testMaxAttempts");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testRollbackProcessorCrash() throws Exception {
+		logger.info("Start testRollbackNoRetries");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testRollbackNoRetries", "false", embeddedKafka);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
+		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic4);
+		containerProps.setPollTimeout(10_000);
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
+		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setTransactionIdPrefix("noRetries.");
+		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
+		final CountDownLatch latch = new CountDownLatch(1);
+		AtomicReference<String> data = new AtomicReference<>();
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			data.set(message.value());
+			if (message.offset() == 0) {
+				throw new RuntimeException("fail for no retry");
+			}
+			latch.countDown();
+		});
+
+		@SuppressWarnings({ "rawtypes" })
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		containerProps.setTransactionManager(tm);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testRollbackNoRetries");
+		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = (rec, ex) -> {
+			throw new RuntimeException("arbp fail");
+		};
+		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
+				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 0L)));
+		container.setAfterRollbackProcessor(afterRollbackProcessor);
+		final CountDownLatch stopLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerStoppedEvent) {
+				stopLatch.countDown();
+			}
+		});
+		container.start();
+
+		template.setDefaultTopic(topic4);
+		template.executeInTransaction(t -> {
+			RecordHeaders headers = new RecordHeaders(new RecordHeader[] { new RecordHeader("baz", "qux".getBytes()) });
+			ProducerRecord<Object, Object> record = new ProducerRecord<>(topic4, 0, 0, "foo", headers);
+			template.send(record);
+			template.sendDefault(0, 0, "bar");
+			return null;
+		});
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(data.get()).isEqualTo("bar");
+		container.stop();
+		pf.destroy();
+		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		logger.info("Stop testRollbackNoRetries");
 	}
 
 	@SuppressWarnings("serial")
