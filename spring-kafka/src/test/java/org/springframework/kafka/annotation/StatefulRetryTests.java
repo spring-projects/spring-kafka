@@ -26,9 +26,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -41,11 +39,11 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.retry.support.RetryTemplate;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
@@ -54,14 +52,11 @@ import org.springframework.test.context.junit4.SpringRunner;
  * @since 2.1.3
  *
  */
-@RunWith(SpringRunner.class)
-@DirtiesContext
+@SpringJUnitConfig
+@EmbeddedKafka(topics = "sr1", partitions = 1)
 public class StatefulRetryTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "statefulRetry";
-
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, 1, "sr1");
 
 	@Autowired
 	private Config config;
@@ -88,10 +83,10 @@ public class StatefulRetryTests {
 		private boolean seekPerformed;
 
 		@Bean
-		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
+		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka) {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(consumerFactory());
+			factory.setConsumerFactory(consumerFactory(embeddedKafka));
 			factory.setErrorHandler(new SeekToCurrentErrorHandler() {
 
 				@Override
@@ -112,31 +107,31 @@ public class StatefulRetryTests {
 		}
 
 		@Bean
-		public DefaultKafkaConsumerFactory<Integer, String> consumerFactory() {
-			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+		public DefaultKafkaConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			return new DefaultKafkaConsumerFactory<>(consumerConfigs(embeddedKafka));
 		}
 
 		@Bean
-		public Map<String, Object> consumerConfigs() {
+		public Map<String, Object> consumerConfigs(EmbeddedKafkaBroker embeddedKafka) {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka.getEmbeddedKafka());
+					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
 
 		@Bean
-		public KafkaTemplate<Integer, String> template() {
-			return new KafkaTemplate<>(producerFactory());
+		public KafkaTemplate<Integer, String> template(EmbeddedKafkaBroker embeddedKafka) {
+			return new KafkaTemplate<>(producerFactory(embeddedKafka));
 		}
 
 		@Bean
-		public ProducerFactory<Integer, String> producerFactory() {
-			return new DefaultKafkaProducerFactory<>(producerConfigs());
+		public ProducerFactory<Integer, String> producerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			return new DefaultKafkaProducerFactory<>(producerConfigs(embeddedKafka));
 		}
 
 		@Bean
-		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka());
+		public Map<String, Object> producerConfigs(EmbeddedKafkaBroker embeddedKafka) {
+			return KafkaTestUtils.producerProps(embeddedKafka);
 		}
 
 		@KafkaListener(id = "retry", topics = "sr1", groupId = "sr1")

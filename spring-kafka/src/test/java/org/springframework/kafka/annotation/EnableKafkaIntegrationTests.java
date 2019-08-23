@@ -54,9 +54,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -105,7 +103,7 @@ import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.ProjectingMessageConverter;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.ChainedKafkaTransactionManager;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -121,8 +119,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
@@ -138,26 +135,23 @@ import org.springframework.validation.Validator;
  * @author Dimitri Penner
  * @author Nakul Mishra
  */
-@ContextConfiguration
-@RunWith(SpringJUnit4ClassRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
+@EmbeddedKafka(topics = { "annotated1", "annotated2", "annotated3",
+		"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated8reply",
+		"annotated9", "annotated10",
+		"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
+		"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
+		"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
+		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
+		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
+		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle" })
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true,
-			"annotated1", "annotated2", "annotated3",
-			"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated8reply",
-			"annotated9", "annotated10",
-			"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
-			"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
-			"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
-			"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-			"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
-			"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle");
-
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
+	@Autowired
+	private EmbeddedKafkaBroker embeddedKafka;
 
 	@Autowired
 	private Config config;
@@ -353,7 +347,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated8reply");
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated8reply");
 		this.template.send("annotated8", 0, 1, "foo");
 		this.template.send("annotated8", 0, 1, null);
 		this.template.flush();
@@ -560,7 +554,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated21reply");
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated21reply");
 		template.send("annotated21", 0, "nnotated21reply"); // drop the leading 'a'.
 		template.flush();
 		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated21reply");
@@ -574,7 +568,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testBatchReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated22reply");
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated22reply");
 		template.send("annotated22", 0, 0, "foo");
 		template.send("annotated22", 0, 0, "bar");
 		template.flush();
@@ -600,7 +594,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testErrorHandlerReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated23reply");
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated23reply");
 		template.send("annotated23", 0, "FoO");
 		template.flush();
 		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated23reply");
@@ -614,7 +608,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testVoidWithErrorHandlerReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated30reply");
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated30reply");
 		template.send("annotated30", 0, "FoO");
 		template.flush();
 		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated30reply");
@@ -628,7 +622,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testErrorHandlerBatchReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated24reply");
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated24reply");
 		template.send("annotated24", 0, 0, "FoO");
 		template.send("annotated24", 0, 0, "BaR");
 		template.flush();
@@ -654,7 +648,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testMultiReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromEmbeddedTopics(consumer, "annotated25reply1", "annotated25reply2");
+		this.embeddedKafka.consumeFromEmbeddedTopics(consumer, "annotated25reply1", "annotated25reply2");
 		template.send("annotated25", 0, 1, "foo");
 		template.flush();
 		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated25reply1");
@@ -713,16 +707,16 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testAddingTopics() {
-		int count = embeddedKafka.getTopics().size();
-		embeddedKafka.addTopics("testAddingTopics");
-		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 1);
-		embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1));
-		assertThat(embeddedKafka.getTopics().size()).isEqualTo(count + 2);
+		int count = this.embeddedKafka.getTopics().size();
+		this.embeddedKafka.addTopics("testAddingTopics");
+		assertThat(this.embeddedKafka.getTopics().size()).isEqualTo(count + 1);
+		this.embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1));
+		assertThat(this.embeddedKafka.getTopics().size()).isEqualTo(count + 2);
 		assertThatIllegalArgumentException()
-				.isThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1)))
+				.isThrownBy(() -> this.embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1)))
 				.withMessageContaining("exists");
 		assertThatIllegalArgumentException()
-				.isThrownBy(() -> embeddedKafka.addTopics(new NewTopic("morePartitions2", 10, (short) 2)))
+				.isThrownBy(() -> this.embeddedKafka.addTopics(new NewTopic("morePartitions2", 10, (short) 2)))
 				.withMessageContaining("replication");
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testMultiReplying");
@@ -791,6 +785,9 @@ public class EnableKafkaIntegrationTests {
 		volatile Throwable globalErrorThrowable;
 
 		volatile boolean intercepted;
+
+		@Autowired
+		private EmbeddedKafkaBroker embeddedKafka;
 
 		@Bean
 		public static PropertySourcesPlaceholderConfigurer ppc() {
@@ -1066,7 +1063,7 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
+					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", this.embeddedKafka);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
@@ -1122,7 +1119,7 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.producerProps(embeddedKafka);
+			return KafkaTestUtils.producerProps(this.embeddedKafka);
 		}
 
 		@Bean

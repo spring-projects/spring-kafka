@@ -50,12 +50,10 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.junit.ClassRule;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -80,67 +78,74 @@ import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
  * @since 2.1.3
  *
  */
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
+@EmbeddedKafka(partitions = 5, topics = { ReplyingKafkaTemplateTests.A_REPLY, ReplyingKafkaTemplateTests.A_REQUEST,
+		ReplyingKafkaTemplateTests.B_REPLY, ReplyingKafkaTemplateTests.B_REQUEST,
+		ReplyingKafkaTemplateTests.C_REPLY, ReplyingKafkaTemplateTests.C_REQUEST,
+		ReplyingKafkaTemplateTests.D_REPLY, ReplyingKafkaTemplateTests.D_REQUEST,
+		ReplyingKafkaTemplateTests.E_REPLY, ReplyingKafkaTemplateTests.E_REQUEST,
+		ReplyingKafkaTemplateTests.F_REPLY, ReplyingKafkaTemplateTests.F_REQUEST,
+		ReplyingKafkaTemplateTests.G_REPLY, ReplyingKafkaTemplateTests.G_REQUEST })
 public class ReplyingKafkaTemplateTests {
 
-	private static final String A_REPLY = "aReply";
+	public static final String A_REPLY = "aReply";
 
-	private static final String A_REQUEST = "aRequest";
+	public static final String A_REQUEST = "aRequest";
 
-	private static final String B_REPLY = "bReply";
+	public static final String B_REPLY = "bReply";
 
-	private static final String B_REQUEST = "bRequest";
+	public static final String B_REQUEST = "bRequest";
 
-	private static final String C_REPLY = "cReply";
+	public static final String C_REPLY = "cReply";
 
-	private static final String C_REQUEST = "cRequest";
+	public static final String C_REQUEST = "cRequest";
 
-	private static final String D_REPLY = "dReply";
+	public static final String D_REPLY = "dReply";
 
-	private static final String D_REQUEST = "dRequest";
+	public static final String D_REQUEST = "dRequest";
 
-	private static final String E_REPLY = "eReply";
+	public static final String E_REPLY = "eReply";
 
-	private static final String E_REQUEST = "eRequest";
+	public static final String E_REQUEST = "eRequest";
 
-	private static final String F_REPLY = "fReply";
+	public static final String F_REPLY = "fReply";
 
-	private static final String F_REQUEST = "fRequest";
+	public static final String F_REQUEST = "fRequest";
 
-	private static final String G_REPLY = "gReply";
+	public static final String G_REPLY = "gReply";
 
-	private static final String G_REQUEST = "gRequest";
+	public static final String G_REQUEST = "gRequest";
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, 5, A_REQUEST, A_REPLY,
-			B_REQUEST, B_REPLY, C_REQUEST, C_REPLY, D_REQUEST, D_REPLY, E_REQUEST, E_REPLY, F_REQUEST, F_REPLY,
-			G_REQUEST, G_REPLY);
+	@Autowired
+	private EmbeddedKafkaBroker embeddedKafka;
 
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
-
-	@Rule
-	public TestName testName = new TestName();
+	public String testName;
 
 	@Autowired
 	private Config config;
 
 	@Autowired
 	private KafkaListenerEndpointRegistry registry;
+
+	@BeforeEach
+	public void captureTestName(TestInfo info) {
+		this.testName = info.getTestMethod().get().getName();
+	}
 
 	@Test
 	public void testGood() throws Exception {
@@ -310,7 +315,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	@Ignore("time sensitive")
+	@Disabled("time sensitive")
 	public void testAggregateTimeout() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionOffset(E_REPLY, 0), 3);
@@ -344,7 +349,7 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	@Test
-	@Ignore("time sensitive")
+	@Disabled("time sensitive")
 	public void testAggregateTimeoutPartial() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionOffset(F_REPLY, 0), 3);
@@ -427,13 +432,13 @@ public class ReplyingKafkaTemplateTests {
 			}
 
 		});
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false",
 				embeddedKafka);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
-		container.setBeanName(this.testName.getMethodName());
+		container.setBeanName(this.testName);
 		ReplyingKafkaTemplate<Integer, String, String> template =
 				new ReplyingKafkaTemplate<>(this.config.pf(), container);
 		template.setSharedReplyTopic(true);
@@ -447,13 +452,13 @@ public class ReplyingKafkaTemplateTests {
 	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionOffset topic) {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false",
 				embeddedKafka);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
-		container.setBeanName(this.testName.getMethodName());
+		container.setBeanName(this.testName);
 		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(this.config.pf(),
 				container);
 		template.setSharedReplyTopic(true);
@@ -468,14 +473,14 @@ public class ReplyingKafkaTemplateTests {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		containerProperties.setAckMode(AckMode.MANUAL_IMMEDIATE);
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName.getMethodName(), "false",
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false",
 				embeddedKafka);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, Collection<ConsumerRecord<Integer, String>>> cf =
 				new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, Collection<ConsumerRecord<Integer, String>>> container =
 				new KafkaMessageListenerContainer<>(cf, containerProperties);
-		container.setBeanName(this.testName.getMethodName());
+		container.setBeanName(this.testName);
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template =
 				new AggregatingReplyingKafkaTemplate<>(this.config.pf(), container, coll -> coll.size() == releaseSize);
 		template.setSharedReplyTopic(true);
@@ -511,15 +516,18 @@ public class ReplyingKafkaTemplateTests {
 	@EnableKafka
 	public static class Config {
 
+		@Autowired
+		private EmbeddedKafkaBroker embeddedKafka;
+
 		@Bean
 		public DefaultKafkaProducerFactory<Integer, String> pf() {
-			Map<String, Object> producerProps = KafkaTestUtils.producerProps(embeddedKafka);
+			Map<String, Object> producerProps = KafkaTestUtils.producerProps(this.embeddedKafka);
 			return new DefaultKafkaProducerFactory<>(producerProps);
 		}
 
 		@Bean
 		public DefaultKafkaConsumerFactory<Integer, String> cf() {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("serverSide", "false", embeddedKafka);
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("serverSide", "false", this.embeddedKafka);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return new DefaultKafkaConsumerFactory<>(consumerProps);
 		}

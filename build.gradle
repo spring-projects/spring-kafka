@@ -123,9 +123,6 @@ subprojects { subproject ->
 		testRuntime "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
 		testRuntime "org.junit.platform:junit-platform-launcher:$junitPlatformVersion"
 
-		// To support JUnit 4 tests
-		testRuntime "org.junit.vintage:junit-vintage-engine:$junitJupiterVersion"
-
 		// To avoid compiler warnings about @API annotations in JUnit code
 		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
@@ -267,7 +264,7 @@ project ('spring-kafka') {
 		compile ("io.projectreactor:reactor-core:$reactorVersion", optional)
 		compile ("io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion", optional)
 		testCompile ("io.projectreactor:reactor-test:$reactorVersion")
-
+		testCompile "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 		testCompile project (":spring-kafka-test")
 		testCompile "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
 	}
@@ -294,11 +291,15 @@ project ('spring-kafka-test') {
 
 		compile ("org.mockito:mockito-core:$mockitoVersion", optional)
 
-		compile ("junit:junit:$junit4Version", optional)
+		compile ("junit:junit:$junit4Version") {
+			optional(it)
+			exclude group: 'org.hamcrest', module: 'hamcrest-core'
+		}
 		compile "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
 
 		compile ("org.assertj:assertj-core:$assertjVersion", optional)
 		compile ("org.apache.logging.log4j:log4j-core:$log4jVersion", optional)
+
 	}
 }
 

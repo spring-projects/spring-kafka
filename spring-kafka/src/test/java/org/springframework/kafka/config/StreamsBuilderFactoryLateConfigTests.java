@@ -17,12 +17,13 @@
 package org.springframework.kafka.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.util.Properties;
 
 import org.apache.kafka.streams.StreamsConfig;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,14 +36,14 @@ import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Soby Chacko
  * @author Artem Bilan
  * @author Gary Russell
  */
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka
 public class StreamsBuilderFactoryLateConfigTests {
@@ -55,17 +56,17 @@ public class StreamsBuilderFactoryLateConfigTests {
 	@Autowired
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
-	@Test(expected = KafkaException.class)
+	@Test
 	public void testStreamBuilderFactoryCannotBeStartedWithoutStreamsConfig() {
-		StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
-		streamsBuilderFactoryBean.start();
+		StreamsBuilderFactoryBean fb = new StreamsBuilderFactoryBean();
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> fb.start());
 	}
 
-	@Test(expected = IllegalStateException.class)
-	public void testStreamBuilderFactoryCannotBeInstantiatedWhenAutoStart() throws Exception {
-		StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean();
-		streamsBuilderFactoryBean.setAutoStartup(true);
-		streamsBuilderFactoryBean.createInstance();
+	@Test
+	public void testStreamBuilderFactoryCannotBeInstantiatedWhenAutoStart() {
+		StreamsBuilderFactoryBean fb = new StreamsBuilderFactoryBean();
+		fb.setAutoStartup(true);
+		assertThatIllegalStateException().isThrownBy(() -> fb.createInstance());
 	}
 
 	@Test

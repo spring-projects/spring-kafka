@@ -34,10 +34,9 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,7 +55,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -65,7 +64,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author Elliot Kennedy
  * @author Artem Bilan
  */
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(partitions = 1,
 		topics = {
@@ -91,12 +90,12 @@ public class KafkaStreamsJsonSerializationTests {
 
 	private Consumer<JsonObjectKey, JsonObjectValue> objectOutputTopicConsumer;
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		this.objectOutputTopicConsumer = consumer(OBJECT_OUTPUT_TOPIC, jsonObjectKeySerde, jsonObjectValueSerde);
 	}
 
-	@After
+	@AfterEach
 	public void teardown() {
 		if (this.objectOutputTopicConsumer != null) {
 			this.objectOutputTopicConsumer.close();

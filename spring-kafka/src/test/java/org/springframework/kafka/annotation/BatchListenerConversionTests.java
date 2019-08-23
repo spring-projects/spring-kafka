@@ -30,9 +30,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.BytesSerializer;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -46,7 +44,8 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
@@ -54,8 +53,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
@@ -64,16 +62,12 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
  * @since 1.3.2
  *
  */
-@ContextConfiguration
-@RunWith(SpringJUnit4ClassRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
+@EmbeddedKafka(partitions = 1, topics = { "blc1", "blc2", "blc3", "blc4", "blc5" })
 public class BatchListenerConversionTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "blc";
-
-	@ClassRule // one topic to preserve order
-	public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, 1, "blc1", "blc2", "blc3",
-			"blc4", "blc5");
 
 	@Autowired
 	private Config config;
@@ -131,33 +125,33 @@ public class BatchListenerConversionTests {
 	public static class Config {
 
 		@Bean
-		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
+		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka) {
 			ConcurrentKafkaListenerContainerFactory<Integer, Foo> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(consumerFactory());
+			factory.setConsumerFactory(consumerFactory(embeddedKafka));
 			factory.setBatchListener(true);
 			factory.setMessageConverter(new BatchMessagingMessageConverter(converter()));
-			factory.setReplyTemplate(template());
+			factory.setReplyTemplate(template(embeddedKafka));
 			return factory;
 		}
 
 		@Bean
-		public DefaultKafkaConsumerFactory<Integer, Foo> consumerFactory() {
-			return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+		public DefaultKafkaConsumerFactory<Integer, Foo> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			return new DefaultKafkaConsumerFactory<>(consumerConfigs(embeddedKafka));
 		}
 
 		@Bean
-		public Map<String, Object> consumerConfigs() {
+		public Map<String, Object> consumerConfigs(EmbeddedKafkaBroker embeddedKafka) {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka.getEmbeddedKafka());
+					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
 			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, BytesDeserializer.class);
 			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
 
 		@Bean
-		public KafkaTemplate<Integer, Foo> template() {
-			KafkaTemplate<Integer, Foo> kafkaTemplate = new KafkaTemplate<>(producerFactory());
+		public KafkaTemplate<Integer, Foo> template(EmbeddedKafkaBroker embeddedKafka) {
+			KafkaTemplate<Integer, Foo> kafkaTemplate = new KafkaTemplate<>(producerFactory(embeddedKafka));
 			kafkaTemplate.setMessageConverter(converter());
 			return kafkaTemplate;
 		}
@@ -168,13 +162,13 @@ public class BatchListenerConversionTests {
 		}
 
 		@Bean
-		public ProducerFactory<Integer, Foo> producerFactory() {
-			return new DefaultKafkaProducerFactory<>(producerConfigs());
+		public ProducerFactory<Integer, Foo> producerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			return new DefaultKafkaProducerFactory<>(producerConfigs(embeddedKafka));
 		}
 
 		@Bean
-		public Map<String, Object> producerConfigs() {
-			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka());
+		public Map<String, Object> producerConfigs(EmbeddedKafkaBroker embeddedKafka) {
+			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka);
 			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class);
 			return props;
 		}

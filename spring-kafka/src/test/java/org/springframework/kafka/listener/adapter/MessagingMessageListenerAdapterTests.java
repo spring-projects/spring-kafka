@@ -21,7 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.support.Acknowledgment;

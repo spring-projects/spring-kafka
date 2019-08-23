@@ -32,15 +32,15 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
 
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import reactor.core.publisher.Flux;
@@ -55,14 +55,15 @@ import reactor.test.StepVerifier;
 
 /**
  * @author Mark Norkin
+ * @author Gary Russell
  *
  * @since 2.3.0
  */
+@EmbeddedKafka(topics = ReactiveKafkaProducerTemplateTransactionIntegrationTests.REACTIVE_INT_KEY_TOPIC,
+		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 	private static final String CONSUMER_GROUP_ID = "reactive_transaction_consumer_group";
-
-	private static final int DEFAULT_PARTITIONS_COUNT = 2;
 
 	private static final int DEFAULT_KEY = 42;
 
@@ -72,27 +73,23 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 	private static final long DEFAULT_TIMESTAMP = Instant.now().toEpochMilli();
 
-	private static final String REACTIVE_INT_KEY_TOPIC = "reactive_int_key_topic";
+	public static final String REACTIVE_INT_KEY_TOPIC = "reactive_int_key_topic";
 
 	private static final Duration DEFAULT_VERIFY_TIMEOUT = Duration.ofSeconds(10);
-
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafka =
-			new EmbeddedKafkaRule(3, true, DEFAULT_PARTITIONS_COUNT, REACTIVE_INT_KEY_TOPIC);
 
 	private static ReactiveKafkaConsumerTemplate<Integer, String> reactiveKafkaConsumerTemplate;
 
 	private ReactiveKafkaProducerTemplate<Integer, String> reactiveKafkaProducerTemplate;
 
-	@BeforeClass
+	@BeforeAll
 	public static void setUpBeforeClass() {
 		Map<String, Object> consumerProps =
-				KafkaTestUtils.consumerProps(CONSUMER_GROUP_ID, "false", embeddedKafka.getEmbeddedKafka());
+				KafkaTestUtils.consumerProps(CONSUMER_GROUP_ID, "false", EmbeddedKafkaCondition.getBroker());
 		reactiveKafkaConsumerTemplate =
 				new ReactiveKafkaConsumerTemplate<>(setupReceiverOptionsWithDefaultTopic(consumerProps));
 	}
 
-	@Before
+	@BeforeEach
 	public void setUp() {
 		reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(setupSenderOptionsWithDefaultTopic(),
 				new MessagingMessageConverter());
@@ -100,7 +97,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 	private SenderOptions<Integer, String> setupSenderOptionsWithDefaultTopic() {
 		Map<String, Object> senderProps =
-				KafkaTestUtils.senderProps(embeddedKafka.getEmbeddedKafka().getBrokersAsString());
+				KafkaTestUtils.senderProps(EmbeddedKafkaCondition.getBroker().getBrokersAsString());
 		SenderOptions<Integer, String> senderOptions = SenderOptions.create(senderProps);
 		senderOptions = senderOptions
 				.producerProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "reactive.transaction")
@@ -122,7 +119,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.subscription(Collections.singletonList(REACTIVE_INT_KEY_TOPIC));
 	}
 
-	@After
+	@AfterEach
 	public void tearDown() {
 		reactiveKafkaProducerTemplate.close();
 	}

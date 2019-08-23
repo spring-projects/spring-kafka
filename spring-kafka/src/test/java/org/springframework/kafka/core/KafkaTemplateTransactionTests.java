@@ -58,8 +58,7 @@ import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.assertj.core.api.Assertions;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -69,7 +68,8 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.transaction.ResourcelessTransactionManager;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -77,8 +77,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-
-import kafka.server.KafkaConfig;
 
 /**
  * @author Gary Russell
@@ -88,19 +86,16 @@ import kafka.server.KafkaConfig;
  * @since 1.3
  *
  */
+@EmbeddedKafka(topics = { KafkaTemplateTransactionTests.STRING_KEY_TOPIC,
+		KafkaTemplateTransactionTests.LOCAL_TX_IN_TOPIC }, brokerProperties = {
+				"transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class KafkaTemplateTransactionTests {
 
-	private static final String STRING_KEY_TOPIC = "stringKeyTopic";
+	public static final String STRING_KEY_TOPIC = "stringKeyTopic";
 
-	private static final String LOCAL_TX_IN_TOPIC = "localTxInTopic";
+	public static final String LOCAL_TX_IN_TOPIC = "localTxInTopic";
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, STRING_KEY_TOPIC,
-				LOCAL_TX_IN_TOPIC)
-			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
-			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
-
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
+	private final EmbeddedKafkaBroker embeddedKafka = EmbeddedKafkaCondition.getBroker();
 
 	@Test
 	public void testLocalTransaction() {

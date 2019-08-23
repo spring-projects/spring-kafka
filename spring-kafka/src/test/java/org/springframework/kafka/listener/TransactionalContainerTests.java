@@ -62,8 +62,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -80,7 +80,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.ChainedKafkaTransactionManager;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
@@ -92,8 +93,6 @@ import org.springframework.transaction.support.AbstractPlatformTransactionManage
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.util.backoff.FixedBackOff;
 
-import kafka.server.KafkaConfig;
-
 /**
  * @author Gary Russell
  * @author Artem Bilan
@@ -101,27 +100,29 @@ import kafka.server.KafkaConfig;
  * @since 1.3
  *
  */
+@EmbeddedKafka(topics = { TransactionalContainerTests.topic1, TransactionalContainerTests.topic2,
+		TransactionalContainerTests.topic3, TransactionalContainerTests.topic3DLT, TransactionalContainerTests.topic4 },
+		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class TransactionalContainerTests {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
-	private static String topic1 = "txTopic1";
+	public static final String topic1 = "txTopic1";
 
-	private static String topic2 = "txTopic2";
+	public static final String topic2 = "txTopic2";
 
-	private static String topic3 = "txTopic3";
+	public static final String topic3 = "txTopic3";
 
-	private static String topic3DLT = "txTopic3.DLT";
+	public static final String topic3DLT = "txTopic3.DLT";
 
-	private static String topic4 = "txTopic4";
+	public static final String topic4 = "txTopic4";
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3,
-				topic3DLT, topic4)
-			.brokerProperty(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1")
-			.brokerProperty(KafkaConfig.TransactionsTopicMinISRProp(), "1");
+	private static EmbeddedKafkaBroker embeddedKafka;
 
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
+	@BeforeAll
+	public static void setup() {
+		embeddedKafka = EmbeddedKafkaCondition.getBroker();
+	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {

@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.test.hamcrest;
 
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.Assert.assertThat;
 import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasKey;
 import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasPartition;
@@ -24,10 +25,7 @@ import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasValue;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.record.TimestampType;
-import org.hamcrest.Matchers;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Biju Kunjummen
@@ -35,9 +33,6 @@ import org.junit.rules.ExpectedException;
  * @since 1.3
  */
 public class KafkaMatchersTests {
-
-	@Rule
-	public ExpectedException expectedException = ExpectedException.none();
 
 	@Test
 	public void testKeyMatcher() {
@@ -55,9 +50,9 @@ public class KafkaMatchersTests {
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 10,
 				1487694048607L, TimestampType.CREATE_TIME, 123L, 2, 3, "key1", "value1");
 
-		expectedException.expectMessage(Matchers.containsString(
-				"Expected: a ConsumerRecord with timestamp of type: <CreateTime> and value: <123L>"));
-		assertThat(record, hasTimestamp(123L));
+		assertThatExceptionOfType(AssertionError.class).isThrownBy(() -> assertThat(record, hasTimestamp(123L)))
+				.withMessageContaining(
+						"Expected: a ConsumerRecord with timestamp of type: <CreateTime> and value: <123L>");
 	}
 
 }

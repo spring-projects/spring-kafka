@@ -17,6 +17,8 @@
 package org.springframework.kafka.support.converter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.doReturn;
 
 import java.nio.charset.StandardCharsets;
@@ -25,12 +27,10 @@ import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.utils.Bytes;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.web.JsonPath;
@@ -45,7 +45,7 @@ import com.jayway.jsonpath.DocumentContext;
  *
  * @since 2.1.1
  */
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ProjectingMessageConverterTests {
 
 	private static final String STRING_PAYLOAD =
@@ -60,13 +60,9 @@ public class ProjectingMessageConverterTests {
 	@Mock
 	private ConsumerRecord<?, ?> record;
 
-	@Rule
-	public ExpectedException exception = ExpectedException.none();
-
 	@Test
 	public void rejectsNullObjectMapper() {
-		this.exception.expect(IllegalArgumentException.class);
-		new ProjectingMessageConverter(null, null);
+		assertThatIllegalArgumentException().isThrownBy(() -> new ProjectingMessageConverter(null, null));
 	}
 
 	@Test
@@ -92,10 +88,9 @@ public class ProjectingMessageConverterTests {
 
 	@Test
 	public void rejectsInvalidPayload() {
-		this.exception.expect(ConversionException.class);
-		this.exception.expectMessage(Object.class.getName());
-
-		assertProjectionProxy(new Object());
+		assertThatExceptionOfType(ConversionException.class)
+			.isThrownBy(() -> assertProjectionProxy(new Object()))
+			.withMessageContaining(Object.class.getName());
 	}
 
 	@Test

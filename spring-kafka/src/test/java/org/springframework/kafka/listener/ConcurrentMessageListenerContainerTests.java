@@ -45,8 +45,8 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -60,7 +60,8 @@ import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.event.KafkaEvent;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -72,37 +73,45 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  * @author Artem Yakshin
  * @author Vladimir Tsanev
  */
+@EmbeddedKafka(topics = { ConcurrentMessageListenerContainerTests.topic1,
+		ConcurrentMessageListenerContainerTests.topic2,
+		ConcurrentMessageListenerContainerTests.topic4, ConcurrentMessageListenerContainerTests.topic5,
+		ConcurrentMessageListenerContainerTests.topic6, ConcurrentMessageListenerContainerTests.topic7,
+		ConcurrentMessageListenerContainerTests.topic8, ConcurrentMessageListenerContainerTests.topic9,
+		ConcurrentMessageListenerContainerTests.topic10, ConcurrentMessageListenerContainerTests.topic11,
+		ConcurrentMessageListenerContainerTests.topic12 })
 public class ConcurrentMessageListenerContainerTests {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass()));
 
-	private static String topic1 = "testTopic1";
+	public static final String topic1 = "testTopic1";
 
-	private static String topic2 = "testTopic2";
+	public static final String topic2 = "testTopic2";
 
-	private static String topic4 = "testTopic4";
+	public static final String topic4 = "testTopic4";
 
-	private static String topic5 = "testTopic5";
+	public static final String topic5 = "testTopic5";
 
-	private static String topic6 = "testTopic6";
+	public static final String topic6 = "testTopic6";
 
-	private static String topic7 = "testTopic7";
+	public static final String topic7 = "testTopic7";
 
-	private static String topic8 = "testTopic8";
+	public static final String topic8 = "testTopic8";
 
-	private static String topic9 = "testTopic9";
+	public static final String topic9 = "testTopic9";
 
-	private static String topic10 = "testTopic10";
+	public static final String topic10 = "testTopic10";
 
-	private static String topic11 = "testTopic11";
+	public static final String topic11 = "testTopic11";
 
-	private static String topic12 = "testTopic12";
+	public static final String topic12 = "testTopic12";
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic4, topic5,
-			topic6, topic7, topic8, topic9, topic10, topic11, topic12);
+	private static EmbeddedKafkaBroker embeddedKafka;
 
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
+	@BeforeAll
+	public static void setup() {
+		embeddedKafka = EmbeddedKafkaCondition.getBroker();
+	}
 
 	@SuppressWarnings("unchecked")
 	@Test
@@ -528,6 +537,7 @@ public class ConcurrentMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic1PartitionS);
 		containerProps.setGroupId("grp");
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
+		containerProps.setMissingTopicsFatal(false);
 
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);

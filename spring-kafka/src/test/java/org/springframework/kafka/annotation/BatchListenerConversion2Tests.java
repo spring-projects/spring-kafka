@@ -27,9 +27,7 @@ import java.util.function.Function;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -44,10 +42,11 @@ import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.support.serializer.FailedDeserializationInfo;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
@@ -56,14 +55,12 @@ import org.springframework.test.context.junit4.SpringRunner;
  * @since 2.1.1
  *
  */
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
+@EmbeddedKafka(topics = "blc.2.1", partitions = 1)
 public class BatchListenerConversion2Tests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "blc2";
-
-	@ClassRule // one topic to preserve order
-	public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, 1, "blc.2.1");
 
 	@Autowired
 	private Config config;
@@ -87,6 +84,9 @@ public class BatchListenerConversion2Tests {
 	@EnableKafka
 	public static class Config {
 
+		@Autowired
+		private EmbeddedKafkaBroker embeddedKafka;
+
 		@Bean
 		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, Foo> factory =
@@ -105,7 +105,7 @@ public class BatchListenerConversion2Tests {
 		@Bean
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka.getEmbeddedKafka());
+					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", this.embeddedKafka);
 			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
 			consumerProps.put(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 			consumerProps.put(ErrorHandlingDeserializer2.VALUE_FUNCTION, FailedFooProvider.class);
@@ -131,7 +131,7 @@ public class BatchListenerConversion2Tests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka());
+			Map<String, Object> props = KafkaTestUtils.producerProps(this.embeddedKafka);
 			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 			return props;
 		}

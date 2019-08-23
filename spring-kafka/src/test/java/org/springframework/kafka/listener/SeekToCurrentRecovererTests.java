@@ -48,8 +48,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -60,7 +60,8 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -69,16 +70,19 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.2
  *
  */
+@EmbeddedKafka(topics = {SeekToCurrentRecovererTests.topic1, SeekToCurrentRecovererTests.topic1DLT })
 public class SeekToCurrentRecovererTests {
 
-	private static String topic1 = "seekTopic1";
+	public static final String topic1 = "seekTopic1";
 
-	private static String topic1DLT = "seekTopic1.FOO";
+	public static final String topic1DLT = "seekTopic1.FOO";
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic1DLT);
+	private static EmbeddedKafkaBroker embeddedKafka;
 
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
+	@BeforeAll
+	public static void setup() {
+		embeddedKafka = EmbeddedKafkaCondition.getBroker();
+	}
 
 	@Test
 	public void testMaxFailures() throws Exception {

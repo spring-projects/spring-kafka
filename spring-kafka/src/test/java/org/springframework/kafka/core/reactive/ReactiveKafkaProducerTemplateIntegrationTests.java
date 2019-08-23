@@ -38,11 +38,10 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.reactivestreams.Subscription;
 
@@ -50,7 +49,8 @@ import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -68,9 +68,11 @@ import reactor.util.function.Tuple2;
 
 /**
  * @author Mark Norkin
+ * @author Gary Russell
  *
  * @since 2.3.0
  */
+@EmbeddedKafka(topics = ReactiveKafkaProducerTemplateIntegrationTests.REACTIVE_INT_KEY_TOPIC, partitions = 1)
 public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 	private static final int DEFAULT_PARTITIONS_COUNT = 2;
@@ -83,27 +85,23 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 	private static final long DEFAULT_TIMESTAMP = Instant.now().toEpochMilli();
 
-	private static final String REACTIVE_INT_KEY_TOPIC = "reactive_int_key_topic";
+	public static final String REACTIVE_INT_KEY_TOPIC = "reactive_int_key_topic";
 
 	private static final Duration DEFAULT_VERIFY_TIMEOUT = Duration.ofSeconds(10);
-
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafka =
-			new EmbeddedKafkaRule(1, true, DEFAULT_PARTITIONS_COUNT, REACTIVE_INT_KEY_TOPIC);
 
 	private static ReactiveKafkaConsumerTemplate<Integer, String> reactiveKafkaConsumerTemplate;
 
 	private ReactiveKafkaProducerTemplate<Integer, String> reactiveKafkaProducerTemplate;
 
-	@BeforeClass
+	@BeforeAll
 	public static void setUpBeforeClass() {
 		Map<String, Object> consumerProps = KafkaTestUtils
-				.consumerProps("reactive_consumer_group", "false", embeddedKafka.getEmbeddedKafka());
+				.consumerProps("reactive_consumer_group", "false", EmbeddedKafkaCondition.getBroker());
 		reactiveKafkaConsumerTemplate =
 				new ReactiveKafkaConsumerTemplate<>(setupReceiverOptionsWithDefaultTopic(consumerProps));
 	}
 
-	@Before
+	@BeforeEach
 	public void setUp() {
 		this.reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(setupSenderOptionsWithDefaultTopic(),
 				new MessagingMessageConverter());
@@ -111,7 +109,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 	private SenderOptions<Integer, String> setupSenderOptionsWithDefaultTopic() {
 		Map<String, Object> senderProps =
-				KafkaTestUtils.senderProps(embeddedKafka.getEmbeddedKafka().getBrokersAsString());
+				KafkaTestUtils.senderProps(EmbeddedKafkaCondition.getBroker().getBrokersAsString());
 		return SenderOptions.create(senderProps);
 	}
 
@@ -126,7 +124,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.subscription(Collections.singletonList(REACTIVE_INT_KEY_TOPIC));
 	}
 
-	@After
+	@AfterEach
 	public void tearDown() {
 		this.reactiveKafkaProducerTemplate.close();
 	}

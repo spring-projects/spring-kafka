@@ -21,12 +21,13 @@ import static org.assertj.core.api.Assertions.fail;
 
 import java.util.Map;
 
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
@@ -34,13 +35,15 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  * @since 2.2
  *
  */
+@EmbeddedKafka(brokerProperties = "auto.create.topics.enable=false")
 public class MissingTopicsTests {
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true)
-		.brokerProperty("auto.create.topics.enable", false);
+	private static EmbeddedKafkaBroker embeddedKafka;
 
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
+	@BeforeAll
+	public static void setup() {
+		embeddedKafka = EmbeddedKafkaCondition.getBroker();
+	}
 
 	@Test
 	public void testMissingTopicCMLC() {

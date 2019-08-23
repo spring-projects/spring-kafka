@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
@@ -47,7 +47,7 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 	private EmbeddedKafka annotationFromSecondClass;
 
-	@Before
+	@BeforeEach
 	public void beforeEachTest() {
 		annotationFromFirstClass = AnnotationUtils.findAnnotation(TestWithEmbeddedKafka.class, EmbeddedKafka.class);
 		annotationFromSecondClass =

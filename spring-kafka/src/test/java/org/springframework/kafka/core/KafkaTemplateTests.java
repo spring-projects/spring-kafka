@@ -46,10 +46,9 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.assertj.core.api.Assertions;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.CompositeProducerListener;
@@ -60,7 +59,8 @@ import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
@@ -74,21 +74,20 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Biju Kunjummen
  * @author Endika Guti?rrez
  */
+@EmbeddedKafka(topics = { KafkaTemplateTests.INT_KEY_TOPIC, KafkaTemplateTests.STRING_KEY_TOPIC })
 public class KafkaTemplateTests {
 
-	private static final String INT_KEY_TOPIC = "intKeyTopic";
+	public static final String INT_KEY_TOPIC = "intKeyTopic";
 
-	private static final String STRING_KEY_TOPIC = "stringKeyTopic";
+	public static final String STRING_KEY_TOPIC = "stringKeyTopic";
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, INT_KEY_TOPIC, STRING_KEY_TOPIC);
-
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
+	private static EmbeddedKafkaBroker embeddedKafka;
 
 	private static Consumer<Integer, String> consumer;
 
-	@BeforeClass
-	public static void setUp() throws Exception {
+	@BeforeAll
+	public static void setUp() {
+		embeddedKafka = EmbeddedKafkaCondition.getBroker();
 		Map<String, Object> consumerProps = KafkaTestUtils
 				.consumerProps("KafkaTemplatetests" + UUID.randomUUID().toString(), "false", embeddedKafka);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
@@ -97,13 +96,13 @@ public class KafkaTemplateTests {
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, INT_KEY_TOPIC);
 	}
 
-	@AfterClass
+	@AfterAll
 	public static void tearDown() {
 		consumer.close();
 	}
 
 	@Test
-	public void testTemplate() throws Exception {
+	public void testTemplate() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -161,7 +160,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testTemplateWithTimestamps() throws Exception {
+	public void testTemplateWithTimestamps() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -189,7 +188,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testWithMessage() throws Exception {
+	public void testWithMessage() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -276,8 +275,7 @@ public class KafkaTemplateTests {
 		}
 		PL pl1 = new PL();
 		PL pl2 = new PL();
-		@SuppressWarnings("unchecked")
-		CompositeProducerListener<Integer, String> cpl = new CompositeProducerListener<>(pl1, pl2);
+		CompositeProducerListener<Integer, String> cpl = new CompositeProducerListener<>(new PL[] { pl1, pl2 });
 		template.setProducerListener(cpl);
 		template.sendDefault("foo");
 		template.flush();
@@ -347,7 +345,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testTemplateDisambiguation() throws Exception {
+	public void testTemplateDisambiguation() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
@@ -357,13 +355,13 @@ public class KafkaTemplateTests {
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		cf.setKeyDeserializer(new StringDeserializer());
-		Consumer<String, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, STRING_KEY_TOPIC);
+		Consumer<String, String> localConsumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(localConsumer, STRING_KEY_TOPIC);
 		template.sendDefault("foo", "bar");
 		template.flush();
-		ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, STRING_KEY_TOPIC);
+		ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(localConsumer, STRING_KEY_TOPIC);
 		assertThat(record).has(Assertions.<ConsumerRecord<String, String>>allOf(key("foo"), value("bar")));
-		consumer.close();
+		localConsumer.close();
 		pf.createProducer().close();
 		pf.destroy();
 	}

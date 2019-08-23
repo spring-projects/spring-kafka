@@ -65,10 +65,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -95,7 +93,8 @@ import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -108,66 +107,74 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
  * @author Artem Bilan
  * @author Loic Talhouarne
  */
+@EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
+		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,
+		KafkaMessageListenerContainerTests.topic5, KafkaMessageListenerContainerTests.topic6,
+		KafkaMessageListenerContainerTests.topic7, KafkaMessageListenerContainerTests.topic8,
+		KafkaMessageListenerContainerTests.topic9, KafkaMessageListenerContainerTests.topic10,
+		KafkaMessageListenerContainerTests.topic11, KafkaMessageListenerContainerTests.topic12,
+		KafkaMessageListenerContainerTests.topic13, KafkaMessageListenerContainerTests.topic14,
+		KafkaMessageListenerContainerTests.topic15, KafkaMessageListenerContainerTests.topic16,
+		KafkaMessageListenerContainerTests.topic17, KafkaMessageListenerContainerTests.topic18,
+		KafkaMessageListenerContainerTests.topic19, KafkaMessageListenerContainerTests.topic20,
+		KafkaMessageListenerContainerTests.topic21, KafkaMessageListenerContainerTests.topic22,
+		KafkaMessageListenerContainerTests.topic23 })
 public class KafkaMessageListenerContainerTests {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass()));
 
-	private static String topic1 = "testTopic1";
+	public static final String topic1 = "testTopic1";
 
-	private static String topic2 = "testTopic2";
+	public static final String topic2 = "testTopic2";
 
-	private static String topic3 = "testTopic3";
+	public static final String topic3 = "testTopic3";
 
-	private static String topic4 = "testTopic4";
+	public static final String topic4 = "testTopic4";
 
-	private static String topic5 = "testTopic5";
+	public static final String topic5 = "testTopic5";
 
-	private static String topic6 = "testTopic6";
+	public static final String topic6 = "testTopic6";
 
-	private static String topic7 = "testTopic7";
+	public static final String topic7 = "testTopic7";
 
-	private static String topic8 = "testTopic8";
+	public static final String topic8 = "testTopic8";
 
-	private static String topic9 = "testTopic9";
+	public static final String topic9 = "testTopic9";
 
-	private static String topic10 = "testTopic10";
+	public static final String topic10 = "testTopic10";
 
-	private static String topic11 = "testTopic11";
+	public static final String topic11 = "testTopic11";
 
-	private static String topic12 = "testTopic12";
+	public static final String topic12 = "testTopic12";
 
-	private static String topic13 = "testTopic13";
+	public static final String topic13 = "testTopic13";
 
-	private static String topic14 = "testTopic14";
+	public static final String topic14 = "testTopic14";
 
-	private static String topic15 = "testTopic15";
+	public static final String topic15 = "testTopic15";
 
-	private static String topic16 = "testTopic16";
+	public static final String topic16 = "testTopic16";
 
-	private static String topic17 = "testTopic17";
+	public static final String topic17 = "testTopic17";
 
-	private static String topic18 = "testTopic18";
+	public static final String topic18 = "testTopic18";
 
-	private static String topic19 = "testTopic19";
+	public static final String topic19 = "testTopic19";
 
-	private static String topic20 = "testTopic20";
+	public static final String topic20 = "testTopic20";
 
-	private static String topic21 = "testTopic21";
+	public static final String topic21 = "testTopic21";
 
-	private static String topic22 = "testTopic22";
+	public static final String topic22 = "testTopic22";
 
-	private static String topic23 = "testTopic23";
+	public static final String topic23 = "testTopic23";
 
+	private static EmbeddedKafkaBroker embeddedKafka;
 
-	@ClassRule
-	public static EmbeddedKafkaRule embeddedKafkaRule = new EmbeddedKafkaRule(1, true, topic1, topic2, topic3, topic4,
-			topic5, topic6, topic7, topic8, topic9, topic10, topic11, topic12, topic13, topic14, topic15, topic16,
-			topic17, topic18, topic19, topic20, topic21, topic22, topic23);
-
-	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
-
-	@Rule
-	public TestName testName = new TestName();
+	@BeforeAll
+	public static void setup() {
+		embeddedKafka = EmbeddedKafkaCondition.getBroker();
+	}
 
 	@Test
 	public void testDelegateType() throws Exception {

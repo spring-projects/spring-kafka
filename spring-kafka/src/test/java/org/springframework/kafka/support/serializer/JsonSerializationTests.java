@@ -17,7 +17,8 @@
 package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,8 +30,8 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
@@ -71,7 +72,7 @@ public class JsonSerializationTests {
 
 	private String topic;
 
-	@Before
+	@BeforeEach
 	public void init() {
 		entity = new DummyEntity();
 		entity.intValue = 19;
@@ -134,29 +135,17 @@ public class JsonSerializationTests {
 	 */
 	@Test
 	public void testDeserializeSerializedDummyException() {
-		try {
-			jsonReader.deserialize(topic, stringWriter.serialize(topic, "dummy"));
-			fail("Expected SerializationException");
-		}
-		catch (SerializationException e) {
-			assertThat(e.getMessage()).startsWith("Can't deserialize data [");
-			assertThat(e.getCause()).isInstanceOf(JsonParseException.class);
-		}
-		catch (Exception e) {
-			fail("Expected SerializationException, not " + e.getClass());
-		}
-		try {
-			Headers headers = new RecordHeaders();
-			headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "com.malware.DummyEntity".getBytes());
-			dummyEntityJsonDeserializer.deserialize(topic, headers, jsonWriter.serialize(topic, entity));
-			fail("Expected IllegalArgumentException");
-		}
-		catch (IllegalArgumentException e) {
-			assertThat(e.getMessage()).contains("not in the trusted packages");
-		}
-		catch (Exception e) {
-			fail("Expected IllegalArgumentException, not " + e.getClass());
-		}
+		assertThatExceptionOfType(SerializationException.class)
+				.isThrownBy(() -> jsonReader.deserialize(topic, stringWriter.serialize(topic, "dummy")))
+				.withMessageStartingWith("Can't deserialize data [")
+				.withCauseInstanceOf(JsonParseException.class);
+
+		Headers headers = new RecordHeaders();
+		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "com.malware.DummyEntity".getBytes());
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> dummyEntityJsonDeserializer
+						.deserialize(topic, headers, jsonWriter.serialize(topic, entity)))
+				.withMessageContaining("not in the trusted packages");
 	}
 
 	@Test

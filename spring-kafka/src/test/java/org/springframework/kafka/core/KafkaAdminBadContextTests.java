@@ -16,15 +16,14 @@
 
 package org.springframework.kafka.core;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -40,13 +39,9 @@ public class KafkaAdminBadContextTests {
 
 	@Test
 	public void testContextNotLoaded() {
-		try {
-			new AnnotationConfigApplicationContext(BadConfig.class).close();
-			fail("Expected Exception");
-		}
-		catch (IllegalStateException e) {
-			assertThat(e.getMessage()).isIn("Could not create admin", "Could not configure topics");
-		}
+		assertThatIllegalStateException()
+				.isThrownBy(() -> new AnnotationConfigApplicationContext(BadConfig.class).close())
+				.withMessageMatching("(Could not create admin|Could not configure topics)");
 	}
 
 	@Configuration

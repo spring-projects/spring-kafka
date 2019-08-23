@@ -27,14 +27,13 @@ import java.util.Map;
 import javax.security.auth.login.AppConfigurationEntry;
 
 import org.apache.kafka.common.security.JaasContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer.ControlFlag;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import com.sun.security.auth.login.ConfigFile;
 
@@ -45,7 +44,7 @@ import com.sun.security.auth.login.ConfigFile;
  * @since 1.3
  */
 @SuppressWarnings("restriction")
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 public class KafkaJaasLoginModuleInitializerTests {
 
 	@Test

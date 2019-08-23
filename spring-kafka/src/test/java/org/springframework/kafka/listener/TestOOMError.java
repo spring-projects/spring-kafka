@@ -35,7 +35,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
