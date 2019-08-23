@@ -64,6 +64,9 @@ public class KafkaAdminTests {
 	@Autowired
 	private NewTopic topic2;
 
+	@Autowired
+	private NewTopic topic3;
+
 	@Test
 	public void testTopicConfigs() {
 		assertThat(topic1.configs()).containsEntry(
@@ -75,6 +78,7 @@ public class KafkaAdminTests {
 		assertThat(TopicBuilder.name("foo")
 					.replicas(3)
 					.build().replicationFactor()).isEqualTo((short) 3);
+		assertThat(topic3.replicasAssignments()).hasSize(3);
 	}
 
 	@Test
@@ -118,7 +122,7 @@ public class KafkaAdminTests {
 
 		@Bean
 		public EmbeddedKafkaBroker kafkaEmbedded() {
-			return new EmbeddedKafkaBroker(1);
+			return new EmbeddedKafkaBroker(3);
 		}
 
 		@Bean
@@ -142,6 +146,16 @@ public class KafkaAdminTests {
 		public NewTopic topic2() {
 			return TopicBuilder.name("bar")
 					.replicasAssignments(Collections.singletonMap(0, Collections.singletonList(0)))
+					.config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
+					.build();
+		}
+
+		@Bean
+		public NewTopic topic3() {
+			return TopicBuilder.name("baz")
+					.assignReplicas(0, Arrays.asList(0, 1))
+					.assignReplicas(1, Arrays.asList(1, 2))
+					.assignReplicas(2, Arrays.asList(2, 0))
 					.config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
 					.build();
 		}

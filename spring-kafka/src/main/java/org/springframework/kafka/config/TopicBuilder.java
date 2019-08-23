@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.config;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +74,22 @@ public final class TopicBuilder {
 	 * @see NewTopic#replicasAssignments()
 	 */
 	public TopicBuilder replicasAssignments(Map<Integer, List<Integer>> replicaAssignments) {
-		this.replicasAssignments = replicaAssignments;
+		replicaAssignments.forEach((part, list) -> assignReplicas(part, list));
+		return this;
+	}
+
+	/**
+	 * Add an individual replica assignment.
+	 * @param partition the partition.
+	 * @param replicaList the replicas.
+	 * @return the builder.
+	 * @see NewTopic#replicasAssignments()
+	 */
+	public TopicBuilder assignReplicas(int partition, List<Integer> replicaList) {
+		if (this.replicasAssignments == null) {
+			this.replicasAssignments = new HashMap<>();
+		}
+		this.replicasAssignments.put(partition, new ArrayList<>(replicaList));
 		return this;
 	}
 
