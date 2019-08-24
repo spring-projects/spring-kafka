@@ -18,8 +18,7 @@ The following example shows how to do so:
 @Bean
 public KafkaAdmin admin() {
     Map<String, Object> configs = new HashMap<>();
-    configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-            StringUtils.arrayToCommaDelimitedString(embeddedKafka().getBrokerAddresses()));
+    configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, ...);
     return new KafkaAdmin(configs);
 }
 
