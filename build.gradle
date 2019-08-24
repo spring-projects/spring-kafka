@@ -138,7 +138,7 @@ subprojects { subproject ->
 	test {
 		// suppress all console output during testing unless running `gradle -i`
 		logging.captureStandardOutput(LogLevel.INFO)
-		maxHeapSize = '1024m'
+		maxHeapSize = '1536m'
 		jacoco {
 			append = false
 			destinationFile = file("$buildDir/jacoco.exec")
