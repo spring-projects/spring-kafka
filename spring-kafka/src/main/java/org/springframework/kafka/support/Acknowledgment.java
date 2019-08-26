@@ -28,9 +28,34 @@ package org.springframework.kafka.support;
 public interface Acknowledgment {
 
 	/**
-	 * Invoked when the message for which the acknowledgment has been created has been processed.
-	 * Calling this method implies that all the previous messages in the partition have been processed already.
+	 * Invoked when the record or batch for which the acknowledgment has been created has
+	 * been processed. Calling this method implies that all the previous messages in the
+	 * partition have been processed already.
 	 */
 	void acknowledge();
+
+	/**
+	 * Negatively acknowledge the current record - discard remaining records from the poll
+	 * and re-seek all partitions so that this record will be redelivered after the sleep
+	 * time. Must be called on the consumer thread.
+	 * @param sleep the time to sleep.
+	 * @since 2.3
+	 */
+	default void nack(long sleep) {
+		throw new UnsupportedOperationException("nack(sleep) is not supported by this Acknowledgment");
+	}
+
+	/**
+	 * Negatively acknowledge the record at an index in a batch - commit the offset(s) of
+	 * records before the index and re-seek the partitions so that the record at the index
+	 * and subsequent records will be redelivered after the sleep time. Must be called on
+	 * the consumer thread.
+	 * @param index the index of the failed record in the batch.
+	 * @param sleep the time to sleep.
+	 * @since 2.3
+	 */
+	default void nack(int index, long sleep) {
+		throw new UnsupportedOperationException("nack(index, sleep) is not supported by this Acknowledgment");
+	}
 
 }

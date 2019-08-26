@@ -70,6 +70,7 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
+import org.springframework.kafka.support.SeekUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.TransactionSupport;
@@ -522,6 +523,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private long lastReceive = System.currentTimeMillis();
 
 		private long lastAlertAt = this.lastReceive;
+
+		private long nackSleep = -1;
+
+		private int nackIndex;
 
 		private volatile boolean consumerPaused;
 
@@ -1193,6 +1198,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void invokeBatchOnMessage(final ConsumerRecords<K, V> records, List<ConsumerRecord<K, V>> recordList,
 				@SuppressWarnings(RAW_TYPES) Producer producer) throws InterruptedException {
+
 			if (this.wantsFullRecords) {
 				this.batchListener.onMessage(records,
 						this.isAnyManualAck
@@ -1203,6 +1209,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				doInvokeBatchOnMessage(records, recordList);
 			}
+			List<ConsumerRecord<?, ?>> toSeek = null;
+			if (this.nackSleep >= 0) {
+				Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+				int index = 0;
+				toSeek = new ArrayList<>();
+				List<ConsumerRecord<K, V>> commits = new ArrayList<>();
+				while (iterator.hasNext()) {
+					ConsumerRecord<K, V> next = iterator.next();
+					if (index++ >= this.nackIndex) {
+						toSeek.add(next);
+					}
+					else {
+						this.acks.put(next);
+					}
+				}
+			}
 			if (!this.isAnyManualAck && !this.autoCommit) {
 				for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
 					this.acks.put(record);
@@ -1211,10 +1233,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					sendOffsetsToTransaction(producer);
 				}
 			}
+			if (this.nackSleep >= 0) {
+				if (!this.autoCommit) {
+					processCommits();
+				}
+				SeekUtils.doSeeks(toSeek, this.consumer, null, true, (rec, ex) -> false, this.logger);
+				this.nackSleep = -1;
+			}
 		}
 
 		private void doInvokeBatchOnMessage(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList) {
+
 			switch (this.listenerType) {
 				case ACKNOWLEDGING_CONSUMER_AWARE:
 					this.batchListener.onMessage(recordList,
@@ -1301,6 +1331,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				finally {
 					TransactionSupport.clearTransactionIdSuffix();
 				}
+				if (this.nackSleep >= 0) {
+					handleNack(records, record);
+					break;
+				}
+
 			}
 		}
 
@@ -1341,7 +1376,33 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				final ConsumerRecord<K, V> record = iterator.next();
 				this.logger.trace(() -> "Processing " + record);
 				doInvokeRecordListener(record, null, iterator);
+				if (this.nackSleep >= 0) {
+					handleNack(records, record);
+					break;
+				}
 			}
+		}
+
+		private void handleNack(final ConsumerRecords<K, V> records, final ConsumerRecord<K, V> record) {
+			if (!this.autoCommit && !this.isRecordAck) {
+				processCommits();
+			}
+			List<ConsumerRecord<?, ?>> list = new ArrayList<>();
+			Iterator<ConsumerRecord<K, V>> iterator2 = records.iterator();
+			while (iterator2.hasNext()) {
+				ConsumerRecord<K, V> next = iterator2.next();
+				if (next.equals(record) || list.size() > 0) {
+					list.add(next);
+				}
+			}
+			SeekUtils.doSeeks(list, this.consumer, null, true, (rec, ex) -> false, this.logger);
+			try {
+				Thread.sleep(this.nackSleep);
+			}
+			catch (@SuppressWarnings("unused") InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			this.nackSleep = -1;
 		}
 
 		/**
@@ -1399,7 +1460,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			doInvokeOnMessage(record);
-			ackCurrent(record, producer);
+			if (this.nackSleep < 0) {
+				ackCurrent(record, producer);
+			}
 		}
 
 		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
@@ -1829,9 +1892,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public void acknowledge() {
-				Assert.state(ListenerConsumer.this.isAnyManualAck,
-						"A manual ackmode is required for an acknowledging listener");
 				processAck(this.record);
+			}
+
+			@Override
+			public void nack(long sleep) {
+				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
+						"nack() can only be called on the consumer thread");
+				Assert.isTrue(sleep >= 0, "sleep cannot be negative");
+				ListenerConsumer.this.nackSleep = sleep;
 			}
 
 			@Override
@@ -1852,11 +1921,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public void acknowledge() {
-				Assert.state(ListenerConsumer.this.isAnyManualAck,
-						"A manual ackmode is required for an acknowledging listener");
 				for (ConsumerRecord<K, V> record : getHighestOffsetRecords(this.records)) {
 					processAck(record);
 				}
+			}
+
+			@Override
+			public void nack(int index, long sleep) {
+				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
+						"nack() can only be called on the consumer thread");
+				Assert.isTrue(sleep >= 0, "sleep cannot be negative");
+				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
+				ListenerConsumer.this.nackIndex = index;
+				ListenerConsumer.this.nackSleep = sleep;
 			}
 
 			@Override

@@ -994,6 +994,22 @@ public interface Acknowledgment {
 
 This method gives the listener control over when offsets are committed.
 
+Starting with version 2.3, the `Acknowledgment` interface has two additional methods `nack(long sleep)` and `nack(int index, long sleep)`.
+The first one is used with a record listener, the second with a batch listener.
+Calling the wrong method for your listener type will throw an `IllegalStateException`.
+
+IMPORTANT: `nack()` can only be called on the consumer thread that invokes your listener.
+
+With a record listener, when `nack()` is called, any pending offsets are committed, the remaing records from the last poll are discarded, and seeks are performed on their partitions so that the failed record and unprocessed records are redelivered on the `poll()`.
+The consumer thread can be paused before redelivery, by setting the `sleep` argument.
+This is similar functionality to throwing an exception when the container is configured with a `SeekToCurrentErrorHandler`.
+
+When using a batch listener, you can specify the index within the batch where the failure occurred.
+When `nack()` is called, offsets will be committed for records before the index and seeks are performed on the partitions for the failed and discarded records so that they will be redelivered on the next `poll()`.
+This is an improvement over the `SeekToCurrentBatchErrorHandler`, which can only seek the entire batch for redelivery.
+
+See <<seek-to-current>> for more information.
+
 [[container-auto-startup]]
 ====== Listener Container Auto Startup
 
@@ -3501,6 +3517,7 @@ public SeekToCurrentErrorHandler errorHandler(BiConsumer<ConsumerRecord<?, ?>, E
 
 
 The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch, so the whole batch is replayed.
+Also see <<committing-offsets>> for an alternative.
 This error handler does not support recovery, because the framework cannot know which message in the batch is failing.
 
 After seeking, an exception that wraps the `ListenerExecutionFailedException` is thrown.
