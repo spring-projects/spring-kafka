@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -90,6 +91,7 @@ public class ManualNackBatchTests {
 	@Test
 	public void discardRemainingRecordsFromPollAndSeek() throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -117,9 +119,11 @@ public class ManualNackBatchTests {
 
 		private final List<String> contents = new ArrayList<>();
 
-		private final CountDownLatch pollLatch = new CountDownLatch(1);
+		private final CountDownLatch pollLatch = new CountDownLatch(3);
 
 		private final CountDownLatch deliveryLatch = new CountDownLatch(2);
+
+		private final CountDownLatch commitLatch = new CountDownLatch(2);
 
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
 
@@ -191,6 +195,10 @@ public class ManualNackBatchTests {
 						return new ConsumerRecords(Collections.emptyMap());
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+			willAnswer(i -> {
+				this.commitLatch.countDown();
+				return null;
+			}).given(consumer).commitSync(anyMap(), any());
 			willAnswer(i -> {
 				this.closeLatch.countDown();
 				return null;
