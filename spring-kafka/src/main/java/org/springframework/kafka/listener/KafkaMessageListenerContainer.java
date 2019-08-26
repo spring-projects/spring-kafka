@@ -1214,7 +1214,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 				int index = 0;
 				toSeek = new ArrayList<>();
-				List<ConsumerRecord<K, V>> commits = new ArrayList<>();
 				while (iterator.hasNext()) {
 					ConsumerRecord<K, V> next = iterator.next();
 					if (index++ >= this.nackIndex) {
