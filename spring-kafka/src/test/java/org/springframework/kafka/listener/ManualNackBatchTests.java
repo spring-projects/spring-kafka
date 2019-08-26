@@ -107,7 +107,6 @@ public class ManualNackBatchTests {
 		commit2.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
 		commit2.put(new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
 		inOrder.verify(this.consumer).commitSync(commit2, Duration.ofSeconds(60));
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
 				{ "foo", "bar", "baz", "qux", "fiz", "buz", "qux", "fiz", "buz" });
 	}
