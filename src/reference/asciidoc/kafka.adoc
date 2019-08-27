@@ -1010,6 +1010,8 @@ This is an improvement over the `SeekToCurrentBatchErrorHandler`, which can only
 
 See <<seek-to-current>> for more information.
 
+IMPORTANT: When using partition assignment via group management, it is important to ensure the `sleep` argument (plus the time spent processing records from the previous poll) is less than the consumer `max.poll.interval.ms` property.
+
 [[container-auto-startup]]
 ====== Listener Container Auto Startup
 

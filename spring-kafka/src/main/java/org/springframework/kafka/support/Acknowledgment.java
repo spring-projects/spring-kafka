@@ -38,6 +38,11 @@ public interface Acknowledgment {
 	 * Negatively acknowledge the current record - discard remaining records from the poll
 	 * and re-seek all partitions so that this record will be redelivered after the sleep
 	 * time. Must be called on the consumer thread.
+	 * <p>
+	 * <b>When using group management,
+	 * {@code sleep + time spent processing the previous messages from the poll} must be
+	 * less than the consumer {@code max.poll.interval.ms} property, to avoid a
+	 * rebalance.</b>
 	 * @param sleep the time to sleep.
 	 * @since 2.3
 	 */
@@ -50,6 +55,10 @@ public interface Acknowledgment {
 	 * records before the index and re-seek the partitions so that the record at the index
 	 * and subsequent records will be redelivered after the sleep time. Must be called on
 	 * the consumer thread.
+	 * <p>
+	 * <b>When using group management,
+	 * {@code sleep + time spent processing the records before the index} must be less
+	 * than the consumer {@code max.poll.interval.ms} property, to avoid a rebalance.</b>
 	 * @param index the index of the failed record in the batch.
 	 * @param sleep the time to sleep.
 	 * @since 2.3
