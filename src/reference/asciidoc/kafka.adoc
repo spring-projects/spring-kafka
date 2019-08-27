@@ -1000,7 +1000,7 @@ Calling the wrong method for your listener type will throw an `IllegalStateExcep
 
 IMPORTANT: `nack()` can only be called on the consumer thread that invokes your listener.
 
-With a record listener, when `nack()` is called, any pending offsets are committed, the remaing records from the last poll are discarded, and seeks are performed on their partitions so that the failed record and unprocessed records are redelivered on the `poll()`.
+With a record listener, when `nack()` is called, any pending offsets are committed, the remaing records from the last poll are discarded, and seeks are performed on their partitions so that the failed record and unprocessed records are redelivered on the next `poll()`.
 The consumer thread can be paused before redelivery, by setting the `sleep` argument.
 This is similar functionality to throwing an exception when the container is configured with a `SeekToCurrentErrorHandler`.
 
