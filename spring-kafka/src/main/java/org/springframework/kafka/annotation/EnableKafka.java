@@ -241,6 +241,7 @@ import org.springframework.context.annotation.Import;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @see KafkaListener
  * @see KafkaListenerAnnotationBeanPostProcessor
@@ -250,6 +251,6 @@ import org.springframework.context.annotation.Import;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import(KafkaBootstrapConfiguration.class)
+@Import(KafkaListenerConfigurationSelector.class)
 public @interface EnableKafka {
 }

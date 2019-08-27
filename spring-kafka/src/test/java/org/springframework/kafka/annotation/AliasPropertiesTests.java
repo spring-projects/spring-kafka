@@ -34,7 +34,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.AliasFor;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -46,6 +48,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.2
  *
  */
@@ -59,10 +63,14 @@ public class AliasPropertiesTests {
 	@Autowired
 	private Config config;
 
+	@Autowired
+	private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
 	@Test
 	public void testAliasFor() throws Exception {
 		this.template.send("alias.tests", "foo");
 		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.kafkaListenerEndpointRegistry()).isSameAs(this.kafkaListenerEndpointRegistry);
 	}
 
 	@Configuration
@@ -70,6 +78,11 @@ public class AliasPropertiesTests {
 	public static class Config {
 
 		private final CountDownLatch latch = new CountDownLatch(1);
+
+		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
+		public KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry() {
+			return new KafkaListenerEndpointRegistry();
+		}
 
 		@Bean
 		public EmbeddedKafkaBroker embeddedKafka() {

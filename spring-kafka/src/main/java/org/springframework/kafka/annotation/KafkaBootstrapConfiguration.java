@@ -16,15 +16,15 @@
 
 package org.springframework.kafka.annotation;
 
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Role;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 
 /**
- * {@code @Configuration} class that registers a {@link KafkaListenerAnnotationBeanPostProcessor}
+ * An {@link ImportBeanDefinitionRegistrar} class that registers a {@link KafkaListenerAnnotationBeanPostProcessor}
  * bean capable of processing Spring's @{@link KafkaListener} annotation. Also register
  * a default {@link KafkaListenerEndpointRegistry}.
  *
@@ -39,18 +39,21 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
  * @see KafkaListenerEndpointRegistry
  * @see EnableKafka
  */
-@Configuration(proxyBeanMethods = false)
-public class KafkaBootstrapConfiguration {
+public class KafkaBootstrapConfiguration implements ImportBeanDefinitionRegistrar {
 
-	@Bean(name = KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public KafkaListenerAnnotationBeanPostProcessor<?, ?> kafkaListenerAnnotationProcessor() {
-		return new KafkaListenerAnnotationBeanPostProcessor<>();
-	}
+	@Override
+	public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+		if (!registry.containsBeanDefinition(
+				KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)) {
 
-	@Bean(name = KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
-	public KafkaListenerEndpointRegistry defaultKafkaListenerEndpointRegistry() {
-		return new KafkaListenerEndpointRegistry();
+			registry.registerBeanDefinition(KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME,
+					new RootBeanDefinition(KafkaListenerAnnotationBeanPostProcessor.class));
+		}
+
+		if (!registry.containsBeanDefinition(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)) {
+			registry.registerBeanDefinition(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
+					new RootBeanDefinition(KafkaListenerEndpointRegistry.class));
+		}
 	}
 
 }
