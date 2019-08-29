@@ -473,6 +473,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		Object messageListener = adapter;
 		Assert.state(messageListener != null,
 				() -> "Endpoint [" + this + "] must provide a non null message listener");
+		Assert.state(this.retryTemplate == null || !this.batchListener,
+				"A 'RetryTemplate' is not supported with a batch listener; consider configuring the container "
+				+ "with a suitably configured 'SeekToCurrentBatchErrorHandler' instead");
 		if (this.retryTemplate != null) {
 			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
 					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
