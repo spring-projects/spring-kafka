@@ -19,6 +19,7 @@ package org.springframework.kafka.test.utils;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,10 +27,14 @@ import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
@@ -40,6 +45,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -157,6 +163,63 @@ public final class KafkaTestUtils {
 			reset.forEach((tp, off) -> consumer.seek(tp, off));
 		}
 		return received.records(topic).iterator().next();
+	}
+
+	/**
+	 * Get a single record for the group from the topic/partition. Optionally, seeking to the current last record.
+	 * @param brokerAddresses the broker address(es).
+	 * @param group the group.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param seekToLast true to fetch an existing last record, if present.
+	 * @param timeout the timeout.
+	 * @return the record or null if no record received.
+	 * @since 2.3
+	 */
+	@Nullable
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static ConsumerRecord<?, ?> getOneRecord(String brokerAddresses, String group, String topic, int partition,
+			boolean seekToLast, boolean commit, long timeout) {
+
+		Map<String, Object> consumerConfig = consumerProps(brokerAddresses, group, "false");
+		consumerConfig.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
+		consumerConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		try (KafkaConsumer consumer = new KafkaConsumer(consumerConfig)) {
+			TopicPartition topicPart = new TopicPartition(topic, partition);
+			consumer.assign(Collections.singletonList(topicPart));
+			if (seekToLast) {
+				consumer.seekToEnd(Collections.singletonList(topicPart));
+				if (consumer.position(topicPart) > 0) {
+					consumer.seek(topicPart, consumer.position(topicPart) - 1);
+				}
+			}
+			ConsumerRecords<?, ?> records = consumer.poll(Duration.ofMillis(timeout));
+			ConsumerRecord<?, ?> record = records.count() == 1 ? records.iterator().next() : null;
+			if (record != null && commit) {
+				consumer.commitSync();
+			}
+			return record;
+		}
+	}
+
+	/**
+	 * Get the current offset and metadata for the provided group/topic/partition.
+	 * @param brokerAddresses the broker address(es).
+	 * @param group the group.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @return the offset and metadata.
+	 * @throws Exception if an exception occurs.
+	 * @since 2.3
+	 */
+	public static OffsetAndMetadata getCurrentOffset(String brokerAddresses, String group, String topic, int partition)
+			throws Exception {
+
+		try (AdminClient client = AdminClient
+				.create(Collections.singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAddresses))) {
+			return client.listConsumerGroupOffsets(group).partitionsToOffsetAndMetadata().get()
+					.get(new TopicPartition(topic, partition));
+		}
 	}
 
 	/**

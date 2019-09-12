@@ -16,9 +16,12 @@
 
 package org.springframework.kafka.test.utils;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -32,7 +35,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
  * @since 2.2.7
  *
  */
-@EmbeddedKafka(topics = { "singleTopic1", "singleTopic2" })
+@EmbeddedKafka(topics = { "singleTopic1", "singleTopic2", "singleTopic3" })
 public class KafkaTestUtilsTests {
 
 	@Test
@@ -49,6 +52,28 @@ public class KafkaTestUtilsTests {
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic1");
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic2");
 		consumer.close();
+	}
+
+	@Test
+	public void testGetOneRecord(EmbeddedKafkaBroker broker) throws Exception {
+		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
+		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
+		producer.send(new ProducerRecord<>("singleTopic3", 0, 1, "foo"));
+		producer.close();
+		ConsumerRecord<?, ?> oneRecord = KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "getOne",
+				"singleTopic3", 0, false, true, 10_000L);
+		assertThat(oneRecord.value()).isEqualTo("foo");
+		assertThat(KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), "getOne", "singleTopic3", 0))
+				.isNotNull()
+				.extracting(omd -> omd.offset())
+				.isEqualTo(1L);
+		oneRecord = KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "getOne",
+				"singleTopic3", 0, true, true, 10_000L);
+		assertThat(oneRecord.value()).isEqualTo("foo");
+		assertThat(KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), "getOne", "singleTopic3", 0))
+				.isNotNull()
+				.extracting(omd -> omd.offset())
+				.isEqualTo(1L);
 	}
 
 }
