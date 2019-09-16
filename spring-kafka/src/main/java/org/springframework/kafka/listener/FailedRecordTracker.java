@@ -17,10 +17,13 @@
 package org.springframework.kafka.listener;
 
 import java.time.temporal.ValueRange;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.Log;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.lang.Nullable;
 
@@ -33,7 +36,7 @@ import org.springframework.lang.Nullable;
  */
 class FailedRecordTracker {
 
-	private final ThreadLocal<FailedRecord> failures = new ThreadLocal<>(); // intentionally not static
+	private final ThreadLocal<Map<TopicPartition, FailedRecord>> failures = new ThreadLocal<>(); // intentionally not static
 
 	private final BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer;
 
@@ -60,14 +63,25 @@ class FailedRecordTracker {
 			recover(record, exception);
 			return true;
 		}
-		FailedRecord failedRecord = this.failures.get();
-		if (this.maxFailures > 0 && (failedRecord == null || newFailure(record, failedRecord))) {
-			this.failures.set(new FailedRecord(record.topic(), record.partition(), record.offset()));
+		Map<TopicPartition, FailedRecord> map = this.failures.get();
+		if (map == null) {
+			this.failures.set(new HashMap<>());
+			map = this.failures.get();
+		}
+		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+		FailedRecord failedRecord = map.get(topicPartition);
+		if (failedRecord == null || failedRecord.getOffset() != record.offset()) {
+			failedRecord = new FailedRecord(record.offset());
+			map.put(topicPartition, failedRecord);
 			return false;
 		}
 		else if (this.maxFailures > 0 && failedRecord.incrementAndGet() >= this.maxFailures) {
-				recover(record, exception);
-				return true;
+			recover(record, exception);
+			map.remove(topicPartition);
+			if (map.isEmpty()) {
+				this.failures.remove();
+			}
+			return true;
 		}
 		else {
 			return false;
@@ -83,42 +97,22 @@ class FailedRecordTracker {
 		}
 	}
 
-	private boolean newFailure(ConsumerRecord<?, ?> record, FailedRecord failedRecord) {
-		return !failedRecord.getTopic().equals(record.topic())
-				|| failedRecord.getPartition() != record.partition()
-				|| failedRecord.getOffset() != record.offset();
-	}
-
 	void clearThreadState() {
 		this.failures.remove();
 	}
 
 	private static final class FailedRecord {
 
-		private final String topic;
-
-		private final int partition;
-
 		private final long offset;
 
 		private int count;
 
-		FailedRecord(String topic, int partition, long offset) {
-			this.topic = topic;
-			this.partition = partition;
+		FailedRecord(long offset) {
 			this.offset = offset;
 			this.count = 1;
 		}
 
-		private String getTopic() {
-			return this.topic;
-		}
-
-		private int getPartition() {
-			return this.partition;
-		}
-
-		private long getOffset() {
+		long getOffset() {
 			return this.offset;
 		}
 
