@@ -16,9 +16,12 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
@@ -35,7 +38,7 @@ import org.springframework.util.backoff.BackOffExecution;
  */
 class FailedRecordTracker {
 
-	private final ThreadLocal<FailedRecord> failures = new ThreadLocal<>(); // intentionally not static
+	private final ThreadLocal<Map<TopicPartition, FailedRecord>> failures = new ThreadLocal<>(); // intentionally not static
 
 	private final BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer;
 
@@ -50,12 +53,18 @@ class FailedRecordTracker {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
-			FailedRecord failedRecord = this.failures.get();
-			this.recoverer = (rec, thr) -> logger.error(thr, "Backoff "
-				+ (failedRecord == null
-					? "none"
-					: failedRecord.getBackOffExecution())
-				+ " exhausted for " + rec);
+			this.recoverer = (rec, thr) -> {
+				Map<TopicPartition, FailedRecord> map = this.failures.get();
+				FailedRecord failedRecord = null;
+				if (map != null) {
+					failedRecord = map.get(new TopicPartition(rec.topic(), rec.partition()));
+				}
+				logger.error(thr, "Backoff "
+					+ (failedRecord == null
+						? "none"
+						: failedRecord.getBackOffExecution())
+					+ " exhausted for " + rec);
+			};
 		}
 		else {
 			this.recoverer = recoverer;
@@ -70,10 +79,16 @@ class FailedRecordTracker {
 			recover(record, exception);
 			return true;
 		}
-		FailedRecord failedRecord = this.failures.get();
-		if (failedRecord == null || newFailure(record, failedRecord)) {
-			failedRecord = new FailedRecord(record.topic(), record.partition(), record.offset(), this.backOff.start());
-			this.failures.set(failedRecord);
+		Map<TopicPartition, FailedRecord> map = this.failures.get();
+		if (map == null) {
+			this.failures.set(new HashMap<>());
+			map = this.failures.get();
+		}
+		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+		FailedRecord failedRecord = map.get(topicPartition);
+		if (failedRecord == null || failedRecord.getOffset() != record.offset()) {
+			failedRecord = new FailedRecord(record.offset(), this.backOff.start());
+			map.put(topicPartition, failedRecord);
 		}
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
 		if (nextBackOff != BackOffExecution.STOP) {
@@ -87,7 +102,10 @@ class FailedRecordTracker {
 		}
 		else {
 			recover(record, exception);
-			this.failures.remove();
+			map.remove(topicPartition);
+			if (map.isEmpty()) {
+				this.failures.remove();
+			}
 			return true;
 		}
 	}
@@ -101,12 +119,6 @@ class FailedRecordTracker {
 		}
 	}
 
-	private boolean newFailure(ConsumerRecord<?, ?> record, FailedRecord failedRecord) {
-		return !failedRecord.getTopic().equals(record.topic())
-				|| failedRecord.getPartition() != record.partition()
-				|| failedRecord.getOffset() != record.offset();
-	}
-
 	void clearThreadState() {
 		this.failures.remove();
 	}
@@ -117,27 +129,13 @@ class FailedRecordTracker {
 
 	private static final class FailedRecord {
 
-		private final String topic;
-
-		private final int partition;
-
 		private final long offset;
 
 		private final BackOffExecution backOffExecution;
 
-		FailedRecord(String topic, int partition, long offset, BackOffExecution backOffExecution) {
-			this.topic = topic;
-			this.partition = partition;
+		FailedRecord(long offset, BackOffExecution backOffExecution) {
 			this.offset = offset;
 			this.backOffExecution = backOffExecution;
-		}
-
-		String getTopic() {
-			return this.topic;
-		}
-
-		int getPartition() {
-			return this.partition;
 		}
 
 		long getOffset() {

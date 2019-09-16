@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -72,6 +74,23 @@ public class FailedRecordTrackerTests {
 		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
 		record = new ConsumerRecord<>("bar", 1, 1L, "bar", "baz");
 		assertThat(tracker.skip(record, new RuntimeException())).isTrue();
+	}
+
+	@Test
+	public void testDifferentOrder() {
+		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+		FailedRecordTracker tracker = new FailedRecordTracker((rec, ex) -> {
+			records.add(rec);
+		}, new FixedBackOff(0L, 2L), mock(LogAccessor.class));
+		ConsumerRecord<?, ?> record1 = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		ConsumerRecord<?, ?> record2 = new ConsumerRecord<>("foo", 1, 0L, "bar", "baz");
+		assertThat(tracker.skip(record1, new RuntimeException())).isFalse();
+		assertThat(tracker.skip(record2, new RuntimeException())).isFalse();
+		assertThat(tracker.skip(record1, new RuntimeException())).isFalse();
+		assertThat(tracker.skip(record2, new RuntimeException())).isFalse();
+		assertThat(tracker.skip(record1, new RuntimeException())).isTrue();
+		assertThat(tracker.skip(record2, new RuntimeException())).isTrue();
+		assertThat(records).hasSize(2);
 	}
 
 }
