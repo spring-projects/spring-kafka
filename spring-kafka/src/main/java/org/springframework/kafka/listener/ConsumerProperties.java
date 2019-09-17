@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -93,6 +94,8 @@ public class ConsumerProperties {
 	private boolean syncCommits = true;
 
 	private LogIfLevelEnabled.Level commitLogLevel = LogIfLevelEnabled.Level.DEBUG;
+
+	private Properties kafkaConsumerProperties = new Properties();
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -270,6 +273,35 @@ public class ConsumerProperties {
 		this.commitLogLevel = commitLogLevel;
 	}
 
+	/**
+	 * Get the consumer properties that will be merged with the consumer properties
+	 * provided by the consumer factory; properties here will supersede any with the same
+	 * name(s) in the consumer factory.
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @return the properties.
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #setGroupId(String)
+	 * @see #setClientId(String)
+	 */
+	public Properties getKafkaConsumerProperties() {
+		return this.kafkaConsumerProperties;
+	}
+
+	/**
+	 * Set the consumer properties that will be merged with the consumer properties
+	 * provided by the consumer factory; properties here will supersede any with the same
+	 * name(s) in the consumer factory.
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @param kafkaConsumerProperties the properties.
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #setGroupId(String)
+	 * @see #setClientId(String)
+	 */
+	public void setKafkaConsumerProperties(Properties kafkaConsumerProperties) {
+		Assert.notNull(kafkaConsumerProperties, "'consumerProperties' cannot be null");
+		this.kafkaConsumerProperties = kafkaConsumerProperties;
+	}
+
 	@Override
 	public String toString() {
 		return "ConsumerProperties ["
@@ -287,7 +319,8 @@ public class ConsumerProperties {
 						: "")
 				+ (this.commitCallback != null ? ", commitCallback=" + this.commitCallback : "")
 				+ ", syncCommits=" + this.syncCommits
-				+ (this.syncCommitTimeout != null ? ", syncCommitTimeout=" + this.syncCommitTimeout : "");
+				+ (this.syncCommitTimeout != null ? ", syncCommitTimeout=" + this.syncCommitTimeout : "")
+				+ (this.kafkaConsumerProperties.size() > 0 ? ", properties=" + this.kafkaConsumerProperties : "");
 	}
 
 	private String renderTopics() {

@@ -169,8 +169,6 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private long idleBetweenPolls;
 
-	private Properties consumerProperties = new Properties();
-
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -295,7 +293,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * <ul>
 	 * <li>this property</li>
 	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in
-	 * {@link #setConsumerProperties(Properties)}</li>
+	 * {@link #setKafkaConsumerProperties(Properties)}</li>
 	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in the consumer factory
 	 * properties</li>
 	 * <li>60 seconds</li>
@@ -498,9 +496,11 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
 	 * @see #setGroupId(String)
 	 * @see #setClientId(String)
+	 * @deprecated in favor of {@link #getKafkaConsumerProperties()}.
 	 */
+	@Deprecated
 	public Properties getConsumerProperties() {
-		return this.consumerProperties;
+		return getKafkaConsumerProperties();
 	}
 
 	/**
@@ -513,10 +513,11 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
 	 * @see #setGroupId(String)
 	 * @see #setClientId(String)
+	 * @deprecated in favor of {@link #setKafkaConsumerProperties(Properties)}.
 	 */
+	@Deprecated
 	public void setConsumerProperties(Properties consumerProperties) {
-		Assert.notNull(consumerProperties, "'consumerProperties' cannot be null");
-		this.consumerProperties = consumerProperties;
+		setKafkaConsumerProperties(consumerProperties);
 	}
 
 	/**

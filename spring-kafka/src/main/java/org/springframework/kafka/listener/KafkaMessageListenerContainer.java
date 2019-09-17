@@ -534,7 +534,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
-			Properties consumerProperties = new Properties(this.containerProperties.getConsumerProperties());
+			Properties consumerProperties = new Properties(this.containerProperties.getKafkaConsumerProperties());
 			this.autoCommit = determineAutoCommit(consumerProperties);
 			this.consumer =
 					KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
@@ -676,7 +676,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return this.containerProperties.getSyncCommitTimeout();
 			}
 			else {
-				Object timeout = this.containerProperties.getConsumerProperties()
+				Object timeout = this.containerProperties.getKafkaConsumerProperties()
 						.get(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG);
 				if (timeout == null) {
 					timeout = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()

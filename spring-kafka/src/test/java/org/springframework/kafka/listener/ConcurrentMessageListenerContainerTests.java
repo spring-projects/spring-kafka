@@ -236,7 +236,7 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 		Properties consumerProperties = new Properties();
 		consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
-		containerProps.setConsumerProperties(consumerProperties);
+		containerProps.setKafkaConsumerProperties(consumerProperties);
 		final CountDownLatch rebalancePartitionsAssignedLatch = new CountDownLatch(2);
 		final CountDownLatch rebalancePartitionsRevokedLatch = new CountDownLatch(2);
 		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
@@ -571,7 +571,7 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 		Properties consumerProperties = new Properties();
 		consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
-		containerProps.setConsumerProperties(consumerProperties);
+		containerProps.setKafkaConsumerProperties(consumerProperties);
 
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);

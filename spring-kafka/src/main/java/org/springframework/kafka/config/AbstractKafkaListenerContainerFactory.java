@@ -376,7 +376,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(endpoint.getGroupId(), instance.getContainerProperties()::setGroupId)
 				.acceptIfNotNull(endpoint.getClientIdPrefix(), instance.getContainerProperties()::setClientId)
 				.acceptIfNotNull(endpoint.getConsumerProperties(),
-						instance.getContainerProperties()::setConsumerProperties);
+						instance.getContainerProperties()::setKafkaConsumerProperties);
 	}
 
 	/**

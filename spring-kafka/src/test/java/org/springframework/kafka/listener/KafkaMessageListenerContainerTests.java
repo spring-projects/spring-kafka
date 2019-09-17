@@ -575,6 +575,7 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setMissingTopicsFatal(false);
 		final CountDownLatch latch = new CountDownLatch(2);
 		MessageListener<Integer, String> messageListener = spy(
 				new MessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
@@ -728,6 +729,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setPollTimeout(10);
 		containerProps.setMonitorInterval(1);
 		containerProps.setMessageListener(mock(MessageListener.class));
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -761,6 +763,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setPollTimeout(100);
 		containerProps.setMonitorInterval(1);
 		containerProps.setMessageListener(mock(MessageListener.class));
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final AtomicInteger eventCounter = new AtomicInteger();
@@ -1288,7 +1291,7 @@ public class KafkaMessageListenerContainerTests {
 		Properties defaultProperties = new Properties();
 		defaultProperties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "42");
 		Properties consumerProperties = new Properties(defaultProperties);
-		container1Props.setConsumerProperties(consumerProperties);
+		container1Props.setKafkaConsumerProperties(consumerProperties);
 		CountDownLatch stubbingComplete1 = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container1 = spyOnContainer(
 				new KafkaMessageListenerContainer<>(cf, container1Props), stubbingComplete1);
@@ -1317,7 +1320,7 @@ public class KafkaMessageListenerContainerTests {
 			logger.info("defined part: " + message);
 			latch2.countDown();
 		});
-		container2Props.setConsumerProperties(consumerProperties);
+		container2Props.setKafkaConsumerProperties(consumerProperties);
 		CountDownLatch stubbingComplete2 = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container2 = spyOnContainer(
 				new KafkaMessageListenerContainer<>(cf, container2Props), stubbingComplete2);
@@ -2124,7 +2127,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMissingTopicsFatal(false);
 		Properties consumerProps = new Properties();
 		consumerProps.setProperty(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "42000");
-		containerProps.setConsumerProperties(consumerProps);
+		containerProps.setKafkaConsumerProperties(consumerProps);
 		containerProps.setSyncCommitTimeout(Duration.ofSeconds(41)); // wins
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
@@ -2183,6 +2186,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setClientId("clientId");
 		containerProps.setMessageListener((MessageListener) r -> { });
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
@@ -2324,13 +2328,15 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAckMode(AckMode.COUNT);
 		containerProps.setAckCount(3);
 		containerProps.setClientId("clientId");
+		containerProps.setMissingTopicsFatal(false);
 		AtomicInteger recordCount = new AtomicInteger();
 		containerProps.setMessageListener((MessageListener) r -> {
 			recordCount.incrementAndGet();
 		});
 		Properties consumerProps = new Properties();
 		consumerProps.setProperty(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "42000"); // wins
-		containerProps.setConsumerProperties(consumerProps);
+		containerProps.setKafkaConsumerProperties(consumerProps);
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
@@ -2374,6 +2380,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setIdleEventInterval(100L);
 		containerProps.setMessageListener((MessageListener) r -> {
 		});
+		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch ehl = new CountDownLatch(1);

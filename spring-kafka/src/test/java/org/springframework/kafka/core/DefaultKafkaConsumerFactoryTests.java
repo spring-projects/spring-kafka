@@ -86,6 +86,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -107,6 +108,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -124,6 +126,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -139,6 +142,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(Collections.emptyMap()) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -155,6 +159,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -170,6 +175,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(Collections.emptyMap()) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -186,6 +192,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -204,6 +211,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -221,6 +229,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -236,6 +245,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(Collections.emptyMap()) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -254,6 +264,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
+					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
@@ -261,6 +272,26 @@ public class DefaultKafkaConsumerFactoryTests {
 				};
 		target.createConsumer("overridden", null, null, overrides);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("overridden");
+	}
+
+	@Test
+	public void testOverriddenMaxPollRecordsOnly() {
+		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
+		Properties overrides = new Properties();
+		overrides.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "2");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> target =
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
+
+					@Override
+					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+						configPassedToKafkaConsumer.putAll(configProps);
+						return null;
+					}
+
+				};
+		target.createConsumer(null, null, null, overrides);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo("2");
 	}
 
 	@SuppressWarnings("unchecked")
