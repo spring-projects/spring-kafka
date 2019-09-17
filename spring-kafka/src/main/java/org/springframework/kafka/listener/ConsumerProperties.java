@@ -298,7 +298,7 @@ public class ConsumerProperties {
 	 * @see #setClientId(String)
 	 */
 	public void setKafkaConsumerProperties(Properties kafkaConsumerProperties) {
-		Assert.notNull(kafkaConsumerProperties, "'consumerProperties' cannot be null");
+		Assert.notNull(kafkaConsumerProperties, "'kafkaConsumerProperties' cannot be null");
 		this.kafkaConsumerProperties = kafkaConsumerProperties;
 	}
 
