@@ -14,10 +14,10 @@ plugins {
 	id 'base'
 	id 'project-report'
 	id 'idea'
-	id "org.sonarqube" version '2.7.1'
-	id "org.asciidoctor.convert" version '2.3.0'
+	id 'org.sonarqube' version '2.7.1'
+	id 'org.asciidoctor.convert' version '2.3.0'
 	id 'org.ajoberstar.grgit' version '3.1.1'
-	id "io.spring.nohttp" version "0.0.3.RELEASE"
+	id 'io.spring.nohttp' version '0.0.3.RELEASE'
 	id 'io.spring.dependency-management' version '1.0.8.RELEASE' apply false
 }
 
@@ -65,7 +65,7 @@ nohttp {
 allprojects {
 	group = 'org.springframework.kafka'
 
-	apply plugin: "io.spring.dependency-management"
+	apply plugin: 'io.spring.dependency-management'
 
 	dependencyManagement {
 		resolutionStrategy {
@@ -124,17 +124,17 @@ subprojects { subproject ->
 	// dependencies that are common across all java projects
 	dependencies {
 		compileOnly "com.google.code.findbugs:jsr305:$googleJsr305Version"
-		testCompile "org.junit.jupiter:junit-jupiter-api"
-		testRuntime "org.junit.jupiter:junit-jupiter-engine"
-		testRuntime "org.junit.platform:junit-platform-launcher"
+		testCompile 'org.junit.jupiter:junit-jupiter-api'
+		testRuntime 'org.junit.jupiter:junit-jupiter-engine'
+		testRuntime 'org.junit.platform:junit-platform-launcher'
 
 		// To avoid compiler warnings about @API annotations in JUnit code
 		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
 		testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
 
-		testCompile "org.jetbrains.kotlin:kotlin-reflect"
-		testCompile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+		testCompile 'org.jetbrains.kotlin:kotlin-reflect'
+		testCompile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -153,7 +153,7 @@ subprojects { subproject ->
 
 	checkstyle {
 		configFile = file("${rootDir}/src/checkstyle/checkstyle.xml")
-		toolVersion = "8.24"
+		toolVersion = '8.24'
 	}
 
 	jacocoTestReport {
@@ -222,10 +222,10 @@ subprojects { subproject ->
 		}
 
 		from("${rootProject.projectDir}/src/dist") {
-			include "license.txt"
-			include "notice.txt"
-			into "META-INF"
-			expand(copyright: new Date().format("yyyy"), version: project.version)
+			include 'license.txt'
+			include 'notice.txt'
+			into 'META-INF'
+			expand(copyright: new Date().format('yyyy'), version: project.version)
 		}
 	}
 
@@ -240,9 +240,9 @@ project ('spring-kafka') {
 	description = 'Spring Kafka Support'
 
 	dependencies {
-		compile "org.springframework:spring-context"
-		compile "org.springframework:spring-messaging"
-		compile "org.springframework:spring-tx"
+		compile 'org.springframework:spring-context'
+		compile 'org.springframework:spring-messaging'
+		compile 'org.springframework:spring-tx'
 		compile ("org.springframework.retry:spring-retry:$springRetryVersion") {
 			exclude group: 'org.springframework'
 		}
@@ -259,12 +259,11 @@ project ('spring-kafka') {
 		}
 		compile ("com.jayway.jsonpath:json-path:$jaywayJsonPathVersion", optional)
 
-		//Reactive
-		compile ("io.projectreactor:reactor-core", optional)
-		compile ("io.projectreactor.kafka:reactor-kafka", optional)
+		compile ('io.projectreactor:reactor-core', optional)
+		compile ('io.projectreactor.kafka:reactor-kafka', optional)
 
-		testCompile project (":spring-kafka-test")
-		testCompile ("io.projectreactor:reactor-test")
+		testCompile project (':spring-kafka-test')
+		testCompile ('io.projectreactor:reactor-test')
 		testCompile "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 		testCompile "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
 	}
@@ -274,8 +273,8 @@ project ('spring-kafka-test') {
 	description = 'Spring Kafka Test Support'
 
 	dependencies {
-		compile "org.springframework:spring-context"
-		compile "org.springframework:spring-test"
+		compile 'org.springframework:spring-context'
+		compile 'org.springframework:spring-test'
 		compile ("org.springframework.retry:spring-retry:$springRetryVersion") {
 			exclude group: 'org.springframework'
 		}
@@ -285,7 +284,7 @@ project ('spring-kafka-test') {
 		compile "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
 		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
-		compile "org.junit.jupiter:junit-jupiter-api"
+		compile 'org.junit.jupiter:junit-jupiter-api'
 		compile ("org.hamcrest:hamcrest-core:$hamcrestVersion", optional)
 		compile ("org.mockito:mockito-core:$mockitoVersion", optional)
 		compile ("junit:junit:$junit4Version") {
@@ -352,13 +351,13 @@ reference.onlyIf { "$System.env.NO_REFERENCE_TASK" != 'true' || project.hasPrope
 
 sonarqube {
 	properties {
-		property "sonar.jacoco.reportPath", "${buildDir.name}/jacoco.exec"
-		property "sonar.links.homepage", linkHomepage
-		property "sonar.links.ci", linkCi
-		property "sonar.links.issue", linkIssue
-		property "sonar.links.scm", linkScmUrl
-		property "sonar.links.scm_dev", linkScmDevConnection
-		property "sonar.java.coveragePlugin", "jacoco"
+		property 'sonar.jacoco.reportPath', "${buildDir.name}/jacoco.exec"
+		property 'sonar.links.homepage', linkHomepage
+		property 'sonar.links.ci', linkCi
+		property 'sonar.links.issue', linkIssue
+		property 'sonar.links.scm', linkScmUrl
+		property 'sonar.links.scm_dev', linkScmDevConnection
+		property 'sonar.java.coveragePlugin', 'jacoco'
 	}
 }
 
@@ -378,7 +377,7 @@ task api(type: Javadoc) {
 	classpath = files(subprojects.collect { project ->
 		project.sourceSets.main.compileClasspath
 	})
-	destinationDir = new File(buildDir, "api")
+	destinationDir = new File(buildDir, 'api')
 }
 
 task docsZip(type: Zip, dependsOn: [reference]) {
