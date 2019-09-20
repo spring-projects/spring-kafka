@@ -34,7 +34,10 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
@@ -56,7 +59,8 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  */
 public abstract class AbstractMessageListenerContainer<K, V>
-		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware {
+		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
+			ApplicationContextAware {
 
 	/**
 	 * The default {@link org.springframework.context.SmartLifecycle} phase for listener
@@ -94,6 +98,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	private volatile boolean running = false;
 
 	private volatile boolean paused;
+
+	private ApplicationContext applicationContext;
 
 	/**
 	 * Construct an instance with the provided properties.
@@ -142,6 +148,15 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		if (this.containerProperties.getConsumerRebalanceListener() == null) {
 			this.containerProperties.setConsumerRebalanceListener(createSimpleLoggingConsumerRebalanceListener());
 		}
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.applicationContext = applicationContext;
+	}
+
+	protected ApplicationContext getApplicationContext() {
+		return this.applicationContext;
 	}
 
 	@Override

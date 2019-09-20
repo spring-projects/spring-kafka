@@ -47,6 +47,7 @@ ext {
 	junitJupiterVersion = '5.5.2'
 	kafkaVersion = '2.3.0'
 	log4jVersion = '2.12.1'
+	micrometerVersion = '1.2.1'
 	mockitoVersion = '3.0.0'
 	reactorVersion = 'Dysprosium-BUILD-SNAPSHOT'
 	scalaVersion = '2.12'
@@ -261,6 +262,7 @@ project ('spring-kafka') {
 
 		compile ('io.projectreactor:reactor-core', optional)
 		compile ('io.projectreactor.kafka:reactor-kafka', optional)
+		compile ("io.micrometer:micrometer-core:$micrometerVersion", optional)
 
 		testCompile project (':spring-kafka-test')
 		testCompile ('io.projectreactor:reactor-test')

@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
@@ -104,6 +106,8 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public static final float DEFAULT_NO_POLL_THRESHOLD = 3f;
 
+	private final Map<String, String> micrometerTags = new HashMap<>();
+
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
 	 * <ul>
@@ -168,6 +172,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean missingTopicsFatal = true;
 
 	private long idleBetweenPolls;
+
+	private boolean micrometerEnabled = true;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -533,6 +539,34 @@ public class ContainerProperties extends ConsumerProperties {
 
 	public long getIdleBetweenPolls() {
 		return this.idleBetweenPolls;
+	}
+
+	public boolean isMicrometerEnabled() {
+		return this.micrometerEnabled;
+	}
+
+	/**
+	 * Set to false to disable the Micrometer listener timers. Default true.
+	 * @param micrometerEnabled false to disable.
+	 * @since 2.3
+	 */
+	public void setMicrometerEnabled(boolean micrometerEnabled) {
+		this.micrometerEnabled = micrometerEnabled;
+	}
+
+	/**
+	 * Set additional tags for the Micrometer listener timers.
+	 * @param tags the tags.
+	 * @since 2.3
+	 */
+	public void setMicrometerTags(Map<String, String> tags) {
+		if (tags != null) {
+			this.micrometerTags.putAll(tags);
+		}
+	}
+
+	public Map<String, String> getMicrometerTags() {
+		return this.micrometerTags;
 	}
 
 	@Override

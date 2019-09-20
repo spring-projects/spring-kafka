@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -127,6 +128,9 @@ import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 /**
  * @author Gary Russell
  * @author Artem Bilan
@@ -201,6 +205,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	private SeekToLastOnIdleListener seekOnIdleListener;
 
+	@Autowired
+	private MeterRegistry meterRegistry;
+
 	@Test
 	public void testAnonymous() {
 		MessageListenerContainer container = this.registry
@@ -227,6 +234,14 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.partition).isNotNull();
 		assertThat(this.listener.topic).isEqualTo("annotated2");
 		assertThat(this.listener.receivedGroupId).isEqualTo("bar");
+
+		assertThat(this.meterRegistry.get("spring.kafka.listener")
+			.tag("name", "bar-0")
+			.tag("extraTag", "foo")
+			.tag("result", "success")
+			.timer()
+			.count())
+		.isEqualTo(2L);
 
 		template.send("annotated3", 0, "foo");
 		template.flush();
@@ -790,6 +805,11 @@ public class EnableKafkaIntegrationTests {
 		private EmbeddedKafkaBroker embeddedKafka;
 
 		@Bean
+		public MeterRegistry meterRegistry() {
+			return new SimpleMeterRegistry();
+		}
+
+		@Bean
 		public static PropertySourcesPlaceholderConfigurer ppc() {
 			return new PropertySourcesPlaceholderConfigurer();
 		}
@@ -823,6 +843,7 @@ public class EnableKafkaIntegrationTests {
 				this.globalErrorThrowable = t;
 				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
 			});
+			factory.getContainerProperties().setMicrometerTags(Collections.singletonMap("extraTag", "foo"));
 			return factory;
 		}
 

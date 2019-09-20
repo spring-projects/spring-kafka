@@ -24,7 +24,10 @@ import java.util.regex.Pattern;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
@@ -61,7 +64,8 @@ import org.springframework.util.Assert;
  * @see AbstractMessageListenerContainer
  */
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
-		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware, InitializingBean {
+		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware, InitializingBean,
+			ApplicationContextAware {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR protected
 
@@ -100,6 +104,14 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Boolean missingTopicsFatal;
 
 	private RecordInterceptor<K, V> recordInterceptor;
+
+	private ApplicationContext applicationContext;
+
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.applicationContext = applicationContext;
+	}
 
 	/**
 	 * Specify a {@link ConsumerFactory} to use.
@@ -372,6 +384,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		instance.setRecordInterceptor(this.recordInterceptor);
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.phase, instance::setPhase)
+				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)
 				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
 				.acceptIfNotNull(endpoint.getGroupId(), instance.getContainerProperties()::setGroupId)
 				.acceptIfNotNull(endpoint.getClientIdPrefix(), instance.getContainerProperties()::setClientId)

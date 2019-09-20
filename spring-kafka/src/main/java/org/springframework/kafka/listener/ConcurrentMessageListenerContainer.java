@@ -155,6 +155,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				}
 				String beanName = getBeanName();
 				container.setBeanName((beanName != null ? beanName : "consumer") + "-" + i);
+				container.setApplicationContext(getApplicationContext());
 				if (getApplicationEventPublisher() != null) {
 					container.setApplicationEventPublisher(getApplicationEventPublisher());
 				}
