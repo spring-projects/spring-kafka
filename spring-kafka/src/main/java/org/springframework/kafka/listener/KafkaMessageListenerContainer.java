@@ -617,7 +617,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
 			MicrometerHolder holder = null;
 			try {
-				if (this.containerProperties.isMicrometerEnabled()) {
+				if (ClassUtils.isPresent("io.micrometer.core.instrument.MeterRegistry", getClass().getClassLoader())
+						&& this.containerProperties.isMicrometerEnabled()) {
 					holder = new MicrometerHolder(getApplicationContext(), getBeanName(),
 							this.containerProperties.getMicrometerTags());
 				}
@@ -2268,9 +2269,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		MicrometerHolder(@Nullable ApplicationContext context, String name, Map<String, String> tags) {
 			if (context == null) {
 				throw new IllegalStateException("No micrometer registry present");
-			}
-			if (!ClassUtils.isPresent("io.micrometer.core.instrument.MeterRegistry", getClass().getClassLoader())) {
-				throw new IllegalStateException("No micrometer detected");
 			}
 			Map<String, MeterRegistry> registries = context.getBeansOfType(MeterRegistry.class, false, false);
 			if (registries.size() == 1) {
