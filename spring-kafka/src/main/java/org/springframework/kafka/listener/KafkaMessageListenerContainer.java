@@ -966,6 +966,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void wrapUp() {
 			KafkaUtils.clearConsumerGroupId();
+			if (this.micrometerHolder != null) {
+				this.micrometerHolder.destroy();
+			}
 			publishConsumerStoppingEvent(this.consumer);
 			Collection<TopicPartition> partitions = getAssignedPartitions();
 			if (!this.fatalError) {
