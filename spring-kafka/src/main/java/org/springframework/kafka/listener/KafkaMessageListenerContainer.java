@@ -124,6 +124,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private static final int DEFAULT_ACK_TIME = 5000;
 
+	private static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
+			"io.micrometer.core.instrument.MeterRegistry", KafkaMessageListenerContainer.class.getClassLoader());
+
 	private final AbstractMessageListenerContainer<K, V> container;
 
 	private final TopicPartitionOffset[] topicPartitions;
@@ -617,8 +620,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
 			MicrometerHolder holder = null;
 			try {
-				if (ClassUtils.isPresent("io.micrometer.core.instrument.MeterRegistry", getClass().getClassLoader())
-						&& this.containerProperties.isMicrometerEnabled()) {
+				if (MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()) {
 					holder = new MicrometerHolder(getApplicationContext(), getBeanName(),
 							this.containerProperties.getMicrometerTags());
 				}

@@ -2152,6 +2152,24 @@ Note that `SimpleThreadScope` does not destroy beans that have a destruction int
 IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
 If you change the multicaster to use an async executor, thread cleanup is not effective.
 
+[[micrometer]]
+===== Monitoring Listener Performance
+
+Starting with version 2.3, the listener container will automatically create and update Micrometer `Timer` s for the listener, if `Micrometer` is detected on the class path, and a `MeterRegistry` is present in the application context.
+The timers can be disabled by setting the `ContainerProperty` `micrometerEnabled` to `false`.
+
+Two timers are maintained - one for successful calls to the listener and one for failures.
+
+The timers are named `spring.kafka.listener` and have the following tags:
+
+* `name` : (container bean name)
+* `result` : `success` or `failure`
+* `exception` : `none` or `ListenerExecutionFailedException`
+
+You can add additional tags using the `ContainerProperties` `micrometerTags` property.
+
+NOTE: With the concurrent container, timers are created for each thread and the `name` tag is suffixed with `-n` where n is `0` to `concurrency-1`.
+
 [[transactions]]
 ==== Transactions
 

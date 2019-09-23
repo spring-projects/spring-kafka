@@ -58,6 +58,9 @@ See its JavaDocs and <<kafka-container>> for more information.
 When using `AckMode.MANUAL` (or `MANUAL_IMMEDIATE`) you can now cause a redelivery by calling `nack` on the `Acknowledgment`.
 See <<committing-offsets>> for more information.
 
+Listener performance can now be monitored using Micrometer `Timer` s.
+See <<micrometer>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.

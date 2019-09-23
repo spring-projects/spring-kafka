@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -566,7 +567,7 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	public Map<String, String> getMicrometerTags() {
-		return this.micrometerTags;
+		return Collections.unmodifiableMap(this.micrometerTags);
 	}
 
 	@Override
