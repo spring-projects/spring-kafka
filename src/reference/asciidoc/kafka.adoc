@@ -329,18 +329,23 @@ public KafkaTemplate<Integer, CustomValue> kafkaTemplate() {
 
 Version 2.1.3 introduced a subclass of `KafkaTemplate` to provide request/reply semantics.
 The class is named `ReplyingKafkaTemplate` and has one method (in addition to those in the superclass).
-The following listing shows the method's signature:
+The following listing shows the method signatures:
 
 ====
 [source, java]
 ----
 RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record);
+
+RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record,
+    Duration replyTimeout);
 ----
 ====
 
 The result is a `ListenableFuture` that is asynchronously populated with the result (or an exception, for a timeout).
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
 You can use this future to determine the result of the send operation.
+
+If the first method is used, or the `replyTimeout` argument is `null`, the template's `defaultReplyTimeout` property is used (5 seconds by default).
 
 The following Spring Boot application shows an example of how to use the feature:
 
@@ -359,9 +364,9 @@ public class KRequestingApplication {
         return args -> {
             ProducerRecord<String, String> record = new ProducerRecord<>("kRequests", "foo");
             RequestReplyFuture<String, String, String> replyFuture = template.sendAndReceive(record);
-            SendResult<String, String> sendResult = replyFuture.getSendFuture().get();
+            SendResult<String, String> sendResult = replyFuture.getSendFuture().get(10, TimeUnit.SECONDS);
             System.out.println("Sent ok: " + sendResult.getRecordMetadata());
-            ConsumerRecord<String, String> consumerRecord = replyFuture.get();
+            ConsumerRecord<String, String> consumerRecord = replyFuture.get(10, TimeUnit.SECONDS);
             System.out.println("Return value: " + consumerRecord.value());
         };
     }

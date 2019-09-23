@@ -16,7 +16,11 @@
 
 package org.springframework.kafka.requestreply;
 
+import java.time.Duration;
+
 import org.apache.kafka.clients.producer.ProducerRecord;
+
+import org.springframework.lang.Nullable;
 
 /**
  * Request/reply operations.
@@ -32,10 +36,19 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 public interface ReplyingKafkaOperations<K, V, R> {
 
 	/**
-	 * Send a request and receive a reply.
+	 * Send a request and receive a reply with the default timeout.
 	 * @param record the record to send.
 	 * @return a RequestReplyFuture.
 	 */
 	RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record);
+
+	/**
+	 * Send a request and receive a reply.
+	 * @param record the record to send.
+	 * @param replyTimeout the reply timeout; if null, the default will be used.
+	 * @return a RequestReplyFuture.
+	 * @since 2.3
+	 */
+	RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, @Nullable Duration replyTimeout);
 
 }

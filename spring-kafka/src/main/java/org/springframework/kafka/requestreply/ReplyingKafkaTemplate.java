@@ -18,6 +18,7 @@ package org.springframework.kafka.requestreply;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -44,6 +45,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
@@ -66,7 +68,9 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private static final String WITH_CORRELATION_ID = " with correlationId: ";
 
-	private static final long DEFAULT_REPLY_TIMEOUT = 5000L;
+	private static final int FIVE = 5;
+
+	private static final Duration DEFAULT_REPLY_TIMEOUT = Duration.ofSeconds(FIVE);
 
 	private final GenericMessageListenerContainer<K, R> replyContainer;
 
@@ -82,7 +86,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private boolean autoStartup = true;
 
-	private long replyTimeout = DEFAULT_REPLY_TIMEOUT;
+	private Duration defaultReplyTimeout = DEFAULT_REPLY_TIMEOUT;
 
 	private boolean schedulerSet;
 
@@ -149,13 +153,49 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.schedulerSet = true;
 	}
 
+	/**
+	 * Return the reply timeout used if no replyTimeout is provided in the
+	 * {@link #sendAndReceive(ProducerRecord, Duration)} call.
+	 * @return the timeout.
+	 * @deprecated in favor of {@link #getDefaultReplyTimeout()}.
+	 */
+	@Deprecated
 	protected long getReplyTimeout() {
-		return this.replyTimeout;
+		return this.defaultReplyTimeout.toMillis();
 	}
 
+	/**
+	 * Set the reply timeout used if no replyTimeout is provided in the
+	 * {@link #sendAndReceive(ProducerRecord, Duration)} call.
+	 * @param replyTimeout the timeout.
+	 * @deprecated in favor of {@link #setDefaultReplyTimeout(Duration)}.
+	 */
+	@Deprecated
 	public void setReplyTimeout(long replyTimeout) {
 		Assert.isTrue(replyTimeout >= 0, "'replyTimeout' must be >= 0");
-		this.replyTimeout = replyTimeout;
+		this.defaultReplyTimeout = Duration.ofMillis(replyTimeout);
+	}
+
+	/**
+	 * Return the reply timeout used if no replyTimeout is provided in the
+	 * {@link #sendAndReceive(ProducerRecord, Duration)} call.
+	 * @return the timeout.
+	 * @since 2.3
+	 */
+	protected Duration getDefaultReplyTimeout() {
+		return this.defaultReplyTimeout;
+	}
+
+	/**
+	 * Set the reply timeout used if no replyTimeout is provided in the
+	 * {@link #sendAndReceive(ProducerRecord, Duration)} call.
+	 * @param defaultReplyTimeout the timeout.
+	 * @since 2.3
+	 */
+	public void setDefaultReplyTimeout(Duration defaultReplyTimeout) {
+		Assert.notNull(defaultReplyTimeout, "'defaultReplyTimeout' cannot be null");
+		Assert.isTrue(defaultReplyTimeout.toMillis() >= 0, "'replyTimeout' must be >= 0");
+		this.defaultReplyTimeout = defaultReplyTimeout;
 	}
 
 	@Override
@@ -282,6 +322,11 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	@Override
 	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record) {
+		return sendAndReceive(record, null);
+	}
+
+	@Override
+	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, @Nullable Duration replyTimeout) {
 		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
 		CorrelationKey correlationId = this.correlationStrategy.apply(record);
 		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
@@ -304,11 +349,11 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			this.futures.remove(correlationId);
 			throw new KafkaException("Send failed", e);
 		}
-		scheduleTimeout(record, correlationId);
+		scheduleTimeout(record, correlationId, replyTimeout == null ? this.defaultReplyTimeout : replyTimeout);
 		return future;
 	}
 
-	private void scheduleTimeout(ProducerRecord<K, V> record, CorrelationKey correlationId) {
+	private void scheduleTimeout(ProducerRecord<K, V> record, CorrelationKey correlationId, Duration replyTimeout) {
 		this.scheduler.schedule(() -> {
 			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
 			if (removed != null) {
@@ -317,7 +362,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 					removed.setException(new KafkaReplyTimeoutException("Reply timed out"));
 				}
 			}
-		}, Instant.now().plusMillis(this.replyTimeout));
+		}, Instant.now().plus(replyTimeout));
 	}
 
 	/**

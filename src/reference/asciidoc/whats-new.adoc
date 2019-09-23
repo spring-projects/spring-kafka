@@ -112,6 +112,8 @@ See the javadocs, <<serdes>>, and <<serde>> for more informaion.
 
 When a reply times out, the future is completed exceptionally with a `KafkaReplyTimeoutException` instead of a `KafkaException`.
 
+Also, an overloaded `sendAndReceive` method is now provided that allows specifying the reply timeout on a per message basis.
+
 ==== AggregatingReplyingKafkaTemplate
 
 Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
