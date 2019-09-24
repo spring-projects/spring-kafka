@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 /**
  * The utilities for Jackson {@link ObjectMapper} instances.
@@ -54,9 +55,10 @@ public final class JacksonUtils {
 	 * @return the {@link ObjectMapper} instance.
 	 */
 	public static ObjectMapper enhancedObjectMapper(ClassLoader classLoader) {
-		ObjectMapper objectMapper = new ObjectMapper();
-		objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
-		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		ObjectMapper objectMapper = JsonMapper.builder()
+			.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false)
+			.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+			.build();
 		registerWellKnownModulesIfAvailable(objectMapper, classLoader);
 		return objectMapper;
 	}
