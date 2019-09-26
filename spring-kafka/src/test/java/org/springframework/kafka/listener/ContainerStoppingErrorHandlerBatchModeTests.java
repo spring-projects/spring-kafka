@@ -93,7 +93,6 @@ public class ContainerStoppingErrorHandlerBatchModeTests {
 		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		inOrder.verify(this.consumer).wakeup();
 		inOrder.verify(this.consumer).unsubscribe();
 		inOrder.verify(this.consumer).close();
 		inOrder.verifyNoMoreInteractions();

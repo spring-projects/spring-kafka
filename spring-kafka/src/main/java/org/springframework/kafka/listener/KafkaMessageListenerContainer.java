@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -354,7 +355,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		if (isRunning()) {
 			this.listenerConsumerFuture.addCallback(new StopCallback(callback));
 			setRunning(false);
-			this.listenerConsumer.consumer.wakeup();
+			this.listenerConsumer.wakeIfNecessary();
 		}
 	}
 
@@ -519,6 +520,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final MicrometerHolder micrometerHolder;
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
+
+		private final AtomicBoolean polling = new AtomicBoolean();
 
 		private volatile Collection<TopicPartition> assignedPartitions;
 
@@ -887,7 +890,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			checkPaused();
 			this.lastPoll = System.currentTimeMillis();
+			this.polling.set(true);
 			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
+			if (!this.polling.compareAndSet(true, false)) {
+				/*
+				 * There is a small race condition where wakeIfNecessary was called between
+				 * exiting the poll and before we reset the boolean.
+				 */
+				if (records.count() > 0) {
+					this.logger.debug(() -> "Discarding polled records, container stopped: " + records.count());
+				}
+				return;
+			}
 			checkResumed();
 			debugRecords(records);
 			if (records != null && records.count() > 0) {
@@ -898,6 +912,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				checkIdle();
+			}
+		}
+
+		void wakeIfNecessary() {
+			if (this.polling.getAndSet(false)) {
+				this.consumer.wakeup();
 			}
 		}
 

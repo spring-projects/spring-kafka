@@ -27,6 +27,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -612,6 +613,69 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
+		verify(consumer).wakeup();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testRecordAckAfterStop() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setMissingTopicsFatal(false);
+		final CountDownLatch latch1 = new CountDownLatch(1);
+		final CountDownLatch latch2 = new CountDownLatch(1);
+		MessageListener<Integer, String> messageListener = spy(
+				new MessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
+
+					@Override
+					public void onMessage(ConsumerRecord<Integer, String> data) {
+						latch1.countDown();
+						try {
+							latch2.await(10, TimeUnit.SECONDS);
+						}
+						catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+					}
+
+				});
+
+		final CountDownLatch commitLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+					commitLatch.countDown();
+					return null;
+				}
+		).given(consumer).commitSync(anyMap(), any());
+
+		containerProps.setMessageListener(messageListener);
+		containerProps.setClientId("clientId");
+		containerProps.setShutdownTimeout(5L);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		latch2.countDown();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		InOrder inOrder = inOrder(messageListener, consumer);
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
+		inOrder.verify(consumer).commitSync(anyMap(), any());
+		verify(consumer, never()).wakeup();
 	}
 
 	@Test
