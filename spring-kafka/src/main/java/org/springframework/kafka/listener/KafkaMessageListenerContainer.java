@@ -540,8 +540,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private int nackIndex;
 
-		private Object sample;
-
 		private volatile boolean consumerPaused;
 
 		private volatile long lastPoll = System.currentTimeMillis();
@@ -618,17 +616,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.containerProperties.setSyncCommitTimeout(this.syncCommitTimeout);
 			}
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
-			MicrometerHolder holder = null;
-			try {
-				if (MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()) {
-					holder = new MicrometerHolder(getApplicationContext(), getBeanName(),
-							this.containerProperties.getMicrometerTags());
-				}
-			}
-			catch (@SuppressWarnings("unused") IllegalStateException ex) {
-				// NOSONAR - no micrometer or meter registry
-			}
-			this.micrometerHolder = holder;
+			this.micrometerHolder = obtainMicrometerHolder();
 		}
 
 		private long obtainMaxPollInterval(Properties consumerProperties) {
@@ -791,6 +779,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		protected ErrorHandler determineErrorHandler(GenericErrorHandler<?> errHandler) {
 			return errHandler != null ? (ErrorHandler) errHandler
 					: this.transactionManager != null ? null : new LoggingErrorHandler();
+		}
+
+		@Nullable
+		private MicrometerHolder obtainMicrometerHolder() {
+			MicrometerHolder holder = null;
+			try {
+				if (MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()) {
+					holder = new MicrometerHolder(getApplicationContext(), getBeanName(),
+							this.containerProperties.getMicrometerTags());
+				}
+			}
+			catch (@SuppressWarnings("unused") IllegalStateException ex) {
+				// NOSONAR - no micrometer or meter registry
+			}
+			return holder;
 		}
 
 		private void seekPartitions(Collection<TopicPartition> partitions, boolean idle) {
@@ -1196,19 +1199,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings(RAW_TYPES) Producer producer) {
 
+			Object sample = startMicrometerSample();
 			try {
-				if (this.micrometerHolder != null) {
-					this.sample = this.micrometerHolder.start();
-				}
 				invokeBatchOnMessage(records, recordList, producer);
-				if (this.sample != null) {
-					this.micrometerHolder.success(this.sample);
-				}
+				successTimer(sample);
 			}
 			catch (RuntimeException e) {
-				if (this.sample != null) {
-					this.micrometerHolder.failure(this.sample);
-				}
+				failureTimer(sample);
 				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
 					this.acks.addAll(getHighestOffsetRecords(records));
 				}
@@ -1231,6 +1228,26 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				Thread.currentThread().interrupt();
 			}
 			return null;
+		}
+
+		@Nullable
+		private Object startMicrometerSample() {
+			if (this.micrometerHolder != null) {
+				return this.micrometerHolder.start();
+			}
+			return null;
+		}
+
+		private void successTimer(@Nullable Object sample) {
+			if (sample != null) {
+				this.micrometerHolder.success(sample);
+			}
+		}
+
+		private void failureTimer(@Nullable Object sample) {
+			if (sample != null) {
+				this.micrometerHolder.failure(sample);
+			}
 		}
 
 		private void invokeBatchOnMessage(final ConsumerRecords<K, V> records, // NOSONAR - Cyclomatic Complexity
@@ -1453,19 +1470,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				@SuppressWarnings(RAW_TYPES) Producer producer,
 				Iterator<ConsumerRecord<K, V>> iterator) {
 
+			Object sample = startMicrometerSample();
+
 			try {
-				if (this.micrometerHolder != null) {
-					this.sample = this.micrometerHolder.start();
-				}
 				invokeOnMessage(record, producer);
-				if (this.sample != null) {
-					this.micrometerHolder.success(this.sample);
-				}
+				successTimer(sample);
 			}
 			catch (RuntimeException e) {
-				if (this.sample != null) {
-					this.micrometerHolder.failure(this.sample);
-				}
+				failureTimer(sample);
 				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
 					ackCurrent(record);
 				}
