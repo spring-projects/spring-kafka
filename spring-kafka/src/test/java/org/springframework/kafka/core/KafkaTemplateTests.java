@@ -208,7 +208,7 @@ public class KafkaTemplateTests {
 		assertThat(iterator.hasNext()).isTrue();
 		Header next = iterator.next();
 		assertThat(next.key()).isEqualTo("foo");
-		assertThat(new String(next.value())).isEqualTo("\"bar\"");
+		assertThat(new String(next.value())).isEqualTo("bar");
 		assertThat(iterator.hasNext()).isTrue();
 		next = iterator.next();
 		assertThat(next.key()).isEqualTo(DefaultKafkaHeaderMapper.JSON_TYPES);

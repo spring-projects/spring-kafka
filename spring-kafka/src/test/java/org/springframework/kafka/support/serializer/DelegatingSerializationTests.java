@@ -98,7 +98,7 @@ public class DelegatingSerializationTests {
 				Collections.singletonMap(DelegatingSerializer.SERIALIZATION_SELECTOR, "string"));
 		new DefaultKafkaHeaderMapper().fromHeaders(messageHeaders, headers);
 		assertThat(headers.lastHeader(DelegatingSerializer.SERIALIZATION_SELECTOR).value())
-				.isEqualTo(new byte[] { '"', 's', 't', 'r', 'i', 'n', 'g', '"' });
+				.isEqualTo(new byte[] { 's', 't', 'r', 'i', 'n', 'g' });
 		serialized = serializer.serialize("foo", headers, "bar");
 		assertThat(serialized).isEqualTo(new byte[] { 'b', 'a', 'r' });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo("bar");

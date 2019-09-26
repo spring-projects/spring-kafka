@@ -12,7 +12,7 @@ Please submit GitHub issues and/or pull requests for additional entries in that 
 [[kafka-client-2.2]]
 ==== Kafka Client Version
 
-This version requires the 2.2.0 `kafka-clients` or higher.
+This version requires the 2.3.0 `kafka-clients` or higher.
 
 ==== Class/Package Changes
 
@@ -148,3 +148,8 @@ See <<kafka-testing-embeddedkafka-annotation>> for more information.
 
 You can now customize the header names for correlation, reply topic and reply partition.
 See <<replying-template>> for more information.
+
+==== Header Mapper Changes
+
+The `DefaultKafkaHeaderMapper` no longer encodes simple String-valued headers as JSON.
+See <<header-mapping>> for more information.

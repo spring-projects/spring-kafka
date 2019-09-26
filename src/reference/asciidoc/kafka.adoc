@@ -3221,6 +3221,14 @@ The `DefaultKafkaHeaderMapper` has a method called `addToStringClasses()` that l
 During inbound mapping, they are mapped as `String`.
 By default, only `org.springframework.util.MimeType` and `org.springframework.http.MediaType` are mapped this way.
 
+NOTE: Starting with version 2.3, handling of String-valued headers is simplified.
+Such headers are no longer JSON encoded, by default (i.e. they do not have enclosing `"..."` added).
+The type is still added to the JSON_TYPES header so the receiving system can convert back to a String (from `byte[]`).
+The mapper can handle (decode) headers produced by older versions (it checks for a leading `"`); in this way an application using 2.3 can consume records from older versions.
+
+IMPORTANT: To be compatible with earlier versions, set `encodeStrings` to `true`, if records produced by a version using 2.3 might be consumed by applications using earlier versions.
+When all applications are using 2.3 or higher, you can leave the property at its default value of `false`.
+
 [[tombstones]]
 ==== Null Payloads and Log Compaction of 'Tombstone' Records
 
