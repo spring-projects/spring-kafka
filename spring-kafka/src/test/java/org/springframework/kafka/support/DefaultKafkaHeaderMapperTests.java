@@ -48,7 +48,6 @@ import org.springframework.util.MimeTypeUtils;
  * @since 1.3
  *
  */
-@SuppressWarnings("deprecation")
 public class DefaultKafkaHeaderMapperTests {
 
 	@Test
@@ -203,6 +202,15 @@ public class DefaultKafkaHeaderMapperTests {
 				entry("thisOnesBytes", "bar".getBytes()),
 				entry("alwaysRaw", "baz".getBytes()),
 				entry("backwardCompatible", "qux"));
+		mapper.setEncodeStrings(true);
+		target = new RecordHeaders();
+		mapper.fromHeaders(headers, target);
+		assertThat(target).containsExactlyInAnyOrder(
+				new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
+						"{\"thisOnesAString\":\"java.lang.String\"}".getBytes()),
+				new RecordHeader("thisOnesAString", "\"foo\"".getBytes()),
+				new RecordHeader("alwaysRaw", "baz".getBytes()),
+				new RecordHeader("thisOnesBytes", "bar".getBytes()));
 	}
 
 	@Test

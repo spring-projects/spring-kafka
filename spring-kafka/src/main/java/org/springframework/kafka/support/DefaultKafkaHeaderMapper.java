@@ -240,7 +240,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 							valueToAdd = valueToAdd.toString();
 							className = JAVA_LANG_STRING;
 						}
-						if (valueToAdd instanceof String) {
+						if (!this.encodeStrings && valueToAdd instanceof String) {
 							target.add(new RecordHeader(key, ((String) valueToAdd).getBytes(getCharset())));
 							className = JAVA_LANG_STRING;
 						}
