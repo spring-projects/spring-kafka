@@ -61,6 +61,9 @@ See <<committing-offsets>> for more information.
 Listener performance can now be monitored using Micrometer `Timer` s.
 See <<micrometer>> for more information.
 
+The containers now publish additional consumer lifecyle events relating to startup.
+See <<events>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.

@@ -1813,6 +1813,23 @@ public SeekToCurrentErrorHandler eh() {
 
 However, see the note at the beginning of this section; you can avoid using the `RetryTemplate` altogether.
 
+[[events]]
+===== Listener Consumer Lifecycle Events
+
+The following events are published when containers are started and stopped:
+
+* `ConsumerStartingEvent` - published when a consumer thread is first started, before it starts polling.
+* `ConsumerStartedEvent` - published when a consumer is about to start polling.
+* `ConsumerFailedToStartEvent` - published if no `ConsumerStartingEvent` is published within the `consumerStartTimeout` container property.
+This event might signal that the configured task executor has insufficient threads to support the containers it is used in and their concurrency.
+An error message is also logged when this condition occurs.
+* `IdleContainerEvent` - discussed in <<idle-containers>>.
+* `NonResponsiveConsumerEvent` - discussed in <<idle-containers>>.
+* `ConsumerPausedEvent` - discussed in <<pause-resume>>.
+* `ConsumerResumedEvent` - discussed in <<pause-resume>>.
+* `ConsumerStoppingEvent` - published when a consumer begins to stop.
+* `ConsumerStartedEvent` - published when a consumer is stopped.
+
 [[idle-containers]]
 ===== Detecting Idle and Non-Responsive Consumers
 

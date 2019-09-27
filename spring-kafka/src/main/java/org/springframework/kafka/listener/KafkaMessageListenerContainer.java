@@ -30,6 +30,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -61,8 +62,11 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
+import org.springframework.kafka.event.ConsumerStartedEvent;
+import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
@@ -132,15 +136,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private final TopicPartitionOffset[] topicPartitions;
 
-	private volatile ListenerConsumer listenerConsumer;
-
-	private volatile ListenableFuture<?> listenerConsumerFuture;
-
 	private String clientIdSuffix;
 
 	private Runnable emergencyStop = () -> stop(() -> {
 		// NOSONAR
 	});
+
+	private volatile ListenerConsumer listenerConsumer;
+
+	private volatile ListenableFuture<?> listenerConsumerFuture;
+
+	private volatile CountDownLatch startLatch = new CountDownLatch(1);
 
 	/**
 	 * Construct an instance with the supplied configuration properties.
@@ -320,9 +326,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		ListenerType listenerType = determineListenerType(listener);
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType);
 		setRunning(true);
+		this.startLatch = new CountDownLatch(1);
 		this.listenerConsumerFuture = containerProperties
 				.getConsumerTaskExecutor()
 				.submitListenable(this.listenerConsumer);
+		try {
+			if (!this.startLatch.await(containerProperties.getConsumerStartTimout().toMillis(), TimeUnit.MILLISECONDS)) {
+				this.logger.error("Consumer thread failed to start - does the configured task executor "
+						+ "have enough threads to support all containers and concurrency?");
+			}
+			publishConsumerFailedToStart();
+		}
+		catch (@SuppressWarnings("unused") InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	private void checkAckMode(ContainerProperties containerProperties) {
@@ -403,6 +420,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private void publishConsumerStoppedEvent() {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.container));
+		}
+	}
+
+	private void publishConsumerStartingEvent() {
+		this.startLatch.countDown();
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerStartingEvent(this, this.container));
+		}
+	}
+
+	private void publishConsumerStartedEvent() {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerStartedEvent(this, this.container));
+		}
+	}
+
+	private void publishConsumerFailedToStart() {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerFailedToStartEvent(this, this.container));
 		}
 	}
 
@@ -833,6 +869,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override
 		public void run() {
+			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
 			if (this.consumerSeekAwareListener != null) {
 				this.consumerSeekAwareListener.registerSeekCallback(this);
@@ -841,6 +878,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.count = 0;
 			this.last = System.currentTimeMillis();
 			initAssignedPartitions();
+			publishConsumerStartedEvent();
 			while (isRunning()) {
 				try {
 					pollAndInvoke();

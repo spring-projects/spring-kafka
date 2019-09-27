@@ -107,6 +107,8 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public static final float DEFAULT_NO_POLL_THRESHOLD = 3f;
 
+	private static final Duration DEFAULT_CONSUMER_START_TIMEOUT = Duration.ofSeconds(30);
+
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
 	/**
@@ -175,6 +177,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private long idleBetweenPolls;
 
 	private boolean micrometerEnabled = true;
+
+	private Duration consumerStartTimout = DEFAULT_CONSUMER_START_TIMEOUT;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -568,6 +572,20 @@ public class ContainerProperties extends ConsumerProperties {
 
 	public Map<String, String> getMicrometerTags() {
 		return Collections.unmodifiableMap(this.micrometerTags);
+	}
+
+	public Duration getConsumerStartTimout() {
+		return this.consumerStartTimout;
+	}
+
+	/**
+	 * Set the timeout to wait for a consumer thread to start before logging
+	 * an error. Default 30 seconds.
+	 * @param consumerStartTimout the consumer start timeout.
+	 */
+	public void setConsumerStartTimout(Duration consumerStartTimout) {
+		Assert.notNull(consumerStartTimout, "'consumerStartTimout' cannot be null");
+		this.consumerStartTimout = consumerStartTimout;
 	}
 
 	@Override

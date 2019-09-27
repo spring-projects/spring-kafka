@@ -18,17 +18,22 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,7 +50,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.event.ConsumerFailedToStartEvent;
+import org.springframework.kafka.event.ConsumerStartedEvent;
+import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * @author Gary Russell
@@ -53,6 +62,53 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  *
  */
 public class ConcurrentMessageListenerContainerMockTests {
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void testThreadStarvation() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		Set<String> consumerThreads = ConcurrentHashMap.newKeySet();
+		CountDownLatch latch = new CountDownLatch(2);
+		willAnswer(invocation -> {
+			consumerThreads.add(Thread.currentThread().getName());
+			latch.countDown();
+			Thread.sleep(50);
+			return new ConsumerRecords<>(Collections.emptyMap());
+		}).given(consumer).poll(any());
+		given(consumerFactory.createConsumer(anyString(), anyString(), anyString(),
+				eq(KafkaTestUtils.defaultPropertyOverrides())))
+						.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener) record -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		ThreadPoolTaskExecutor exec = new ThreadPoolTaskExecutor();
+		exec.setCorePoolSize(1);
+		exec.afterPropertiesSet();
+		containerProperties.setConsumerTaskExecutor(exec);
+		containerProperties.setConsumerStartTimout(Duration.ofMillis(50));
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
+				containerProperties);
+		container.setConcurrency(2);
+		CountDownLatch startedLatch = new CountDownLatch(2);
+		CountDownLatch failedLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStartingEvent || event instanceof ConsumerStartedEvent) {
+				startedLatch.countDown();
+			}
+			else if (event instanceof ConsumerFailedToStartEvent) {
+				failedLatch.countDown();
+			}
+		});
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(consumerThreads).hasSize(1);
+		assertThat(startedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(failedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		exec.destroy();
+	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
