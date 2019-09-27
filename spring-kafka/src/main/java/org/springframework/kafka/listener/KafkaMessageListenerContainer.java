@@ -334,8 +334,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!this.startLatch.await(containerProperties.getConsumerStartTimout().toMillis(), TimeUnit.MILLISECONDS)) {
 				this.logger.error("Consumer thread failed to start - does the configured task executor "
 						+ "have enough threads to support all containers and concurrency?");
+				publishConsumerFailedToStart();
 			}
-			publishConsumerFailedToStart();
 		}
 		catch (@SuppressWarnings("unused") InterruptedException e) {
 			Thread.currentThread().interrupt();
