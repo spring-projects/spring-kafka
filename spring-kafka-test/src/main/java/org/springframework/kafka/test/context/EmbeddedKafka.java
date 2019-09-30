@@ -96,6 +96,13 @@ public @interface EmbeddedKafka {
 	int[] ports() default {0};
 
 	/**
+	 * Set the port on which the embedded Zookeeper should listen;
+	 * @return the port.
+	 * @since 2.3
+	 */
+	int zookeeperPort() default 0;
+
+	/**
 	 * @return partitions per topic
 	 */
 	int partitions() default 2;

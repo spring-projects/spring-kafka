@@ -67,11 +67,11 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 						.toArray(String[]::new);
 
 		EmbeddedKafkaBroker embeddedKafkaBroker = new EmbeddedKafkaBroker(this.embeddedKafka.count(),
-				this.embeddedKafka.controlledShutdown(),
-				this.embeddedKafka.partitions(),
-				topics);
-
-		embeddedKafkaBroker.kafkaPorts(this.embeddedKafka.ports());
+					this.embeddedKafka.controlledShutdown(),
+					this.embeddedKafka.partitions(),
+					topics)
+				.kafkaPorts(this.embeddedKafka.ports())
+				.zkPort(this.embeddedKafka.zookeeperPort());
 
 		Properties properties = new Properties();
 

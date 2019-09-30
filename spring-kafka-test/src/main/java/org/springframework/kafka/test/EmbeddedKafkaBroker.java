@@ -18,6 +18,9 @@ package org.springframework.kafka.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +49,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.common.utils.Utils;
+import org.apache.zookeeper.server.NIOServerCnxnFactory;
+import org.apache.zookeeper.server.ZooKeeperServer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
@@ -63,7 +69,7 @@ import kafka.server.NotRunning;
 import kafka.utils.CoreUtils;
 import kafka.utils.TestUtils;
 import kafka.utils.ZKStringSerializer$;
-import kafka.zk.EmbeddedZookeeper;
+import kafka.zk.ZkFourLetterWords;
 
 /**
  * An embedded Kafka Broker(s) and Zookeeper manager.
@@ -113,6 +119,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	private ZkClient zookeeperClient;
 
 	private String zkConnect;
+
+	private int zkPort;
 
 	private int[] kafkaPorts;
 
@@ -191,6 +199,16 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	/**
+	 * Set an explicit port for the embedded Zookeeper.
+	 * @param port the port.
+	 * @return the {@link EmbeddedKafkaBroker}.
+	 * @since 2.3
+	 */
+	public EmbeddedKafkaBroker zkPort(int port) {
+		this.zkPort = port;
+		return this;
+	}
+	/**
 	 * Set the timeout in seconds for admin operations (e.g. topic creation, close).
 	 * Default 30 seconds.
 	 * @param adminTimeout the timeout.
@@ -211,13 +229,36 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		return this;
 	}
 
+	/**
+	 * Get the port that the embedded Zookeeper is running on or will run on.
+	 * @param zkPort the port.
+	 * @since 2.3
+	 */
+	public int getZkPort() {
+		return this.zookeeper != null ? this.zookeeper.getPort() : this.zkPort;
+	}
+
+	/**
+	 * Set the port to run the embedded Zookeeper on (default random).
+	 * @param zkPort the port.
+	 * @since 2.3
+	 */
+	public void setZkPort(int zkPort) {
+		this.zkPort = zkPort;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
-		this.zookeeper = new EmbeddedZookeeper();
+		try {
+			this.zookeeper = new EmbeddedZookeeper(this.zkPort);
+		}
+		catch (IOException | InterruptedException e) {
+			throw new IllegalStateException("Failed to create embedded Zookeeper", e);
+		}
 		int zkConnectionTimeout = 6000; // NOSONAR magic #
 		int zkSessionTimeout = 6000; // NOSONAR magic #
 
-		this.zkConnect = "127.0.0.1:" + this.zookeeper.port();
+		this.zkConnect = "127.0.0.1:" + this.zookeeper.getPort();
 		this.zookeeperClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
 				ZKStringSerializer$.MODULE$);
 		this.kafkaServers.clear();
@@ -360,6 +401,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		try {
 			this.zookeeper.shutdown();
+			this.zkConnect = null;
 		}
 		catch (Exception e) {
 			// do nothing
@@ -508,6 +550,88 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				.as("Failed to be assigned partitions from the embedded topics")
 				.isTrue();
 		logger.debug("Subscription Initiated");
+	}
+
+	/**
+	 * Ported from scala to allow setting the port.
+	 *
+	 * @author Gary Russell
+	 * @since 2.3
+	 */
+	public static final class EmbeddedZookeeper {
+
+		private final NIOServerCnxnFactory factory;
+
+		private final ZooKeeperServer zookeeper;
+
+		private final int port;
+
+		private final File snapshotDir;
+
+		private final File logDir;
+
+		public EmbeddedZookeeper(int zkPort) throws IOException, InterruptedException {
+			this.snapshotDir = TestUtils.tempDir();
+			this.logDir = TestUtils.tempDir();
+			int tickTime = 800; // allow a maxSessionTimeout of 20 * 800ms = 16 secs
+
+			System.setProperty("zookeeper.forceSync", "no"); // disable fsync to ZK txn
+																// log in tests to avoid
+																// timeout
+			this.zookeeper = new ZooKeeperServer(this.snapshotDir, this.logDir, tickTime);
+			this.factory = new NIOServerCnxnFactory();
+			InetSocketAddress addr = new InetSocketAddress("127.0.0.1", zkPort == 0 ? TestUtils.RandomPort() : zkPort);
+			this.factory.configure(addr, 0);
+			this.factory.startup(zookeeper);
+			this.port = zookeeper.getClientPort();
+		}
+
+		public int getPort() {
+			return this.port;
+		}
+
+		public File getSnapshotDir() {
+			return this.snapshotDir;
+		}
+
+		public File getLogDir() {
+			return this.logDir;
+		}
+
+		public void shutdown() throws IOException {
+			// Also shuts down ZooKeeperServer
+			try {
+				this.factory.shutdown();
+			}
+			catch (Exception e) {
+				logger.error(e, "ZK shutdown failed");
+			}
+
+			int n = 0;
+			while (n++ < 100) {
+				try {
+					ZkFourLetterWords.sendStat("127.0.0.1", port, 3000);
+					Thread.sleep(100);
+				}
+				catch (@SuppressWarnings("unused") Exception e) {
+					break;
+				}
+			}
+			if (n == 100) {
+				logger.debug("Zookeeper failed to stop");
+			}
+
+			try {
+				this.zookeeper.getZKDatabase().close();
+			}
+			catch (Exception e) {
+				logger.error(e, "ZK db close failed");
+			}
+
+			Utils.delete(this.logDir);
+			Utils.delete(this.snapshotDir);
+		}
+
 	}
 
 }

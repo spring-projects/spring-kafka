@@ -96,6 +96,11 @@ public class EmbeddedKafkaRule extends ExternalResource implements TestRule {
 		return this;
 	}
 
+	public EmbeddedKafkaRule zkPort(int port) {
+		this.embeddedKafka.setZkPort(port);
+		return this;
+	}
+
 	/**
 	 * Return an underlying delegator {@link EmbeddedKafkaBroker} instance.
 	 * @return the {@link EmbeddedKafkaBroker} instance.

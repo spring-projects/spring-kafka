@@ -115,9 +115,9 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 	@SuppressWarnings("unchecked")
 	private EmbeddedKafkaBroker createBroker(EmbeddedKafka embedded) {
 		EmbeddedKafkaBroker broker;
-		broker = new EmbeddedKafkaBroker(embedded.count(),
-				embedded.controlledShutdown(), embedded.topics());
-		broker.kafkaPorts(embedded.ports());
+		broker = new EmbeddedKafkaBroker(embedded.count(), embedded.controlledShutdown(), embedded.topics())
+				.zkPort(embedded.zookeeperPort())
+				.kafkaPorts(embedded.ports());
 		Properties properties = new Properties();
 
 		for (String pair : embedded.brokerProperties()) {

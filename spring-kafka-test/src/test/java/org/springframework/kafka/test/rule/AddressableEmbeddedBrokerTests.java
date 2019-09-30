@@ -61,7 +61,8 @@ public class AddressableEmbeddedBrokerTests {
 
 	@Test
 	public void testKafkaEmbedded() {
-		assertThat(broker.getBrokersAsString()).isEqualTo("127.0.0.1:" + this.config.port);
+		assertThat(broker.getBrokersAsString()).isEqualTo("127.0.0.1:" + this.config.kafkaPort);
+		assertThat(broker.getZkPort()).isEqualTo(this.config.zkPort);
 		assertThat(broker.getBrokersAsString())
 				.isEqualTo(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS));
 		assertThat(broker.getZookeeperConnectionString())
@@ -69,7 +70,7 @@ public class AddressableEmbeddedBrokerTests {
 	}
 
 	@Test
-	public void testLateStartedConsumer() throws Exception {
+	public void testLateStartedConsumer() {
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(TEST_EMBEDDED, "false", this.broker);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		Consumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
@@ -93,16 +94,22 @@ public class AddressableEmbeddedBrokerTests {
 	@Configuration
 	public static class Config {
 
-		private int port;
+		private int kafkaPort;
+
+		private int zkPort;
 
 		@Bean
 		public EmbeddedKafkaBroker broker() throws IOException {
 			ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
-			this.port = ss.getLocalPort();
+			this.kafkaPort = ss.getLocalPort();
+			ss.close();
+			ss = ServerSocketFactory.getDefault().createServerSocket(0);
+			this.zkPort = ss.getLocalPort();
 			ss.close();
 
 			return new EmbeddedKafkaBroker(1, true, TEST_EMBEDDED)
-					.kafkaPorts(this.port);
+					.zkPort(this.zkPort)
+					.kafkaPorts(this.kafkaPort);
 		}
 
 	}
