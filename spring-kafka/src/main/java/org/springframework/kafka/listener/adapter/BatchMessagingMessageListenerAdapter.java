@@ -28,7 +28,6 @@ import org.springframework.kafka.listener.BatchAcknowledgingConsumerAwareMessage
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.messaging.Message;
@@ -58,8 +57,6 @@ import org.springframework.messaging.support.MessageBuilder;
  */
 public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements BatchAcknowledgingConsumerAwareMessageListener<K, V> {
-
-	private static final Message<KafkaNull> NULL_MESSAGE = new GenericMessage<>(KafkaNull.INSTANCE);
 
 	private BatchMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
 

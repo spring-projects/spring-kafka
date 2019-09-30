@@ -49,6 +49,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -59,6 +60,7 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
@@ -83,6 +85,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private static final ParserContext PARSER_CONTEXT = new TemplateParserContext("!{", "}");
 
+	/**
+	 * Message used when no conversion is needed.
+	 */
+	protected static final Message<KafkaNull> NULL_MESSAGE = new GenericMessage<>(KafkaNull.INSTANCE); // NOSONAR
+
 	private final Object bean;
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); //NOSONAR
@@ -98,6 +105,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private boolean isConsumerRecords;
 
 	private boolean isMessageList;
+
+	private boolean conversionNeeded = true;
 
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
 
@@ -172,6 +181,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	public boolean isConsumerRecords() {
 		return this.isConsumerRecords;
+	}
+
+	public boolean isConversionNeeded() {
+		return this.conversionNeeded;
 	}
 
 	/**
@@ -481,14 +494,26 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 		Type genericParameterType = null;
 		int allowedBatchParameters = 1;
+		int notConvertibleParameters = 0;
 
 		for (int i = 0; i < method.getParameterCount(); i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
 			/*
 			 * We're looking for a single non-annotated parameter, or one annotated with @Payload.
-			 * We ignore parameters with type Message because they are not involved with conversion.
+			 * We ignore parameters with type Message, Consumer, Ack, ConsumerRecord because they
+			 * are not involved with conversion.
 			 */
-			if (eligibleParameter(methodParameter)
+			Type parameterType = methodParameter.getGenericParameterType();
+			boolean isNotConvertible = parameterIsType(parameterType, ConsumerRecord.class);
+			boolean isAck = parameterIsType(parameterType, Acknowledgment.class);
+			this.hasAckParameter |= isAck;
+			isNotConvertible |= isAck;
+			boolean isConsumer = parameterIsType(parameterType, Consumer.class);
+			isNotConvertible |= isConsumer;
+			if (isNotConvertible) {
+				notConvertibleParameters++;
+			}
+			if (!isNotConvertible && !isMessageWithNoTypeInfo(parameterType)
 					&& (methodParameter.getParameterAnnotations().length == 0
 					|| methodParameter.hasParameterAnnotation(Payload.class))) {
 				if (genericParameterType == null) {
@@ -500,8 +525,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					break;
 				}
 			}
-			else if (methodParameter.getGenericParameterType().equals(Acknowledgment.class)) {
-				this.hasAckParameter = true;
+			else if (isAck) {
 				allowedBatchParameters++;
 			}
 			else if (methodParameter.hasParameterAnnotation(Header.class)) {
@@ -511,11 +535,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				}
 			}
 			else {
-				if (methodParameter.getGenericParameterType().equals(Consumer.class)) {
+				if (isConsumer) {
 					allowedBatchParameters++;
 				}
 				else {
-					Type parameterType = methodParameter.getGenericParameterType();
 					if (parameterType instanceof ParameterizedType
 							&& ((ParameterizedType) parameterType).getRawType().equals(Consumer.class)) {
 						allowedBatchParameters++;
@@ -524,6 +547,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 
+		if (notConvertibleParameters == method.getParameterCount()) {
+			this.conversionNeeded = false;
+		}
 		boolean validParametersForBatch = method.getGenericParameterTypes().length <= allowedBatchParameters;
 
 		if (!validParametersForBatch) {
@@ -587,27 +613,26 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			&& ((WildcardType) paramType).getUpperBounds().length > 0;
 	}
 
-	/*
-	 * Don't consider parameter types that are available after conversion.
-	 * Acknowledgment, ConsumerRecord, Consumer, ConsumerRecord<...>, Consumer<...>, and Message<?>.
-	 */
-	private boolean eligibleParameter(MethodParameter methodParameter) {
-		Type parameterType = methodParameter.getGenericParameterType();
-		if (parameterType.equals(Acknowledgment.class) || parameterType.equals(ConsumerRecord.class)
-				|| parameterType.equals(Consumer.class)) {
-			return false;
-		}
+	private boolean isMessageWithNoTypeInfo(Type parameterType) {
 		if (parameterType instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) parameterType;
 			Type rawType = parameterizedType.getRawType();
-			if (rawType.equals(ConsumerRecord.class) || rawType.equals(Consumer.class)) {
-				return false;
-			}
-			else if (rawType.equals(Message.class)) {
-				return !(parameterizedType.getActualTypeArguments()[0] instanceof WildcardType);
+			if  (rawType.equals(Message.class)) {
+				return parameterizedType.getActualTypeArguments()[0] instanceof WildcardType;
 			}
 		}
-		return !parameterType.equals(Message.class); // could be Message without a generic type
+		return parameterType.equals(Message.class); // could be Message without a generic type
+	}
+
+	private boolean parameterIsType(Type parameterType, Type type) {
+		if (parameterType instanceof ParameterizedType) {
+			ParameterizedType parameterizedType = (ParameterizedType) parameterType;
+			Type rawType = parameterizedType.getRawType();
+			if (rawType.equals(type)) {
+				return true;
+			}
+		}
+		return parameterType.equals(type);
 	}
 
 	/**

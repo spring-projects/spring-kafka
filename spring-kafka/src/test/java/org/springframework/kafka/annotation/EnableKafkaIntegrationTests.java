@@ -27,6 +27,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
@@ -102,6 +104,7 @@ import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.ProjectingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -246,13 +249,13 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated3", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch3.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.listener.record.value()).isEqualTo("foo");
+		assertThat(this.listener.capturedRecord.value()).isEqualTo("foo");
 		assertThat(this.config.listen3Exception).isNotNull();
 
 		template.send("annotated4", 0, "foo");
 		template.flush();
 		assertThat(this.listener.latch4.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.listener.record.value()).isEqualTo("foo");
+		assertThat(this.listener.capturedRecord.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
 		assertThat(this.listener.eventLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.event.getListenerId().startsWith("qux-"));
@@ -849,6 +852,37 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
+				factoryWithBadConverter() {
+
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			factory.setRecordFilterStrategy(recordFilter());
+			factory.setReplyTemplate(partitionZeroReplyingTemplate());
+			factory.setErrorHandler((ConsumerAwareErrorHandler) (t, d, c) -> {
+				this.globalErrorThrowable = t;
+				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
+			});
+			factory.getContainerProperties().setMicrometerTags(Collections.singletonMap("extraTag", "foo"));
+			factory.setMessageConverter(new RecordMessageConverter() {
+
+				@Override
+				public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment,
+						Consumer<?, ?> consumer, Type payloadType) {
+
+					throw new UnsupportedOperationException();
+				}
+
+				@Override
+				public ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic) {
+					throw new UnsupportedOperationException();				}
+
+			});
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
 				withNoReplyTemplateContainerFactory() {
 
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
@@ -1425,7 +1459,7 @@ public class EnableKafkaIntegrationTests {
 
 		volatile Integer partition;
 
-		volatile ConsumerRecord<?, ?> record;
+		volatile ConsumerRecord<?, ?> capturedRecord;
 
 		volatile Acknowledgment ack;
 
@@ -1502,12 +1536,13 @@ public class EnableKafkaIntegrationTests {
 		private final AtomicBoolean reposition3 = new AtomicBoolean();
 
 		@KafkaListener(id = "baz", topicPartitions = @TopicPartition(topic = "${topicThree:annotated3}",
-				partitions = "${zero:0}"), errorHandler = "listen3ErrorHandler")
+				partitions = "${zero:0}"), errorHandler = "listen3ErrorHandler",
+				containerFactory = "factoryWithBadConverter")
 		public void listen3(ConsumerRecord<?, ?> record) {
 			if (this.reposition3.compareAndSet(false, true)) {
 				throw new RuntimeException("reposition");
 			}
-			this.record = record;
+			this.capturedRecord = record;
 			this.latch3.countDown();
 		}
 
@@ -1537,7 +1572,7 @@ public class EnableKafkaIntegrationTests {
 								relativeToCurrent = "${zzz:true}"))
 		}, clientIdPrefix = "${foo.xxx:clientIdViaAnnotation}")
 		public void listen5(ConsumerRecord<?, ?> record) {
-			this.record = record;
+			this.capturedRecord = record;
 			this.latch5.countDown();
 		}
 

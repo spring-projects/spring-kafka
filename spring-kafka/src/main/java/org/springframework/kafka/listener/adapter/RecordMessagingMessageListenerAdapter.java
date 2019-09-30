@@ -26,6 +26,7 @@ import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.support.GenericMessage;
 
 
 /**
@@ -71,8 +72,17 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	 */
 	@Override
 	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
-		Message<?> message = toMessagingMessage(record, acknowledgment, consumer);
-		logger.debug(() -> "Processing [" + message + "]");
+		Message<?> message;
+		if (isConversionNeeded()) {
+			message = toMessagingMessage(record, acknowledgment, consumer);
+		}
+		else {
+			message = NULL_MESSAGE;
+		}
+		if (logger.isDebugEnabled()) {
+			final Message<?> toLog = message;
+			logger.debug(() -> "Processing [" + toLog + "]");
+		}
 		try {
 			Object result = invokeHandler(record, acknowledgment, message, consumer);
 			if (result != null) {
@@ -82,6 +92,9 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
 			if (this.errorHandler != null) {
 				try {
+					if (message.equals(NULL_MESSAGE)) {
+						message = new GenericMessage<>(record);
+					}
 					Object result = this.errorHandler.handleError(message, e, consumer);
 					if (result != null) {
 						handleResult(result, record, message);
