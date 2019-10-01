@@ -80,8 +80,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 			message = NULL_MESSAGE;
 		}
 		if (logger.isDebugEnabled()) {
-			final Message<?> toLog = message;
-			logger.debug(() -> "Processing [" + toLog + "]");
+			logger.debug("Processing [" + message + "]");
 		}
 		try {
 			Object result = invokeHandler(record, acknowledgment, message, consumer);
