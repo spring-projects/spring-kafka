@@ -30,6 +30,7 @@ import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerConta
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
@@ -56,9 +57,10 @@ public class Application {
 	@Bean
 	public ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
 			ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
-			ConsumerFactory<Object, Object> kafkaConsumerFactory,
-			KafkaTemplate<Object, Object> template) {
-		ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+			ConsumerFactory<Object, Object> kafkaConsumerFactory) {
+
+		ConcurrentKafkaListenerContainerFactory<Object, Object> factory =
+				new ConcurrentKafkaListenerContainerFactory<>();
 		configurer.configure(factory, kafkaConsumerFactory);
 		factory.setBatchListener(true);
 		factory.setMessageConverter(batchConverter());
@@ -92,8 +94,13 @@ public class Application {
 	}
 
 	@Bean
-	public NewTopic topic() {
-		return new NewTopic("topic2", 1, (short) 1);
+	public NewTopic topic2() {
+		return TopicBuilder.name("topic2").partitions(1).replicas(1).build();
+	}
+
+	@Bean
+	public NewTopic topic3() {
+		return TopicBuilder.name("topic3").partitions(1).replicas(1).build();
 	}
 
 }

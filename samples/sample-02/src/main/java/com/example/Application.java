@@ -34,6 +34,7 @@ import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
+import org.springframework.util.backoff.FixedBackOff;
 
 import com.common.Bar2;
 import com.common.Foo2;
@@ -53,7 +54,7 @@ public class Application {
 		ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
 		configurer.configure(factory, kafkaConsumerFactory);
 		factory.setErrorHandler(new SeekToCurrentErrorHandler(
-				new DeadLetterPublishingRecoverer(template), 3));
+				new DeadLetterPublishingRecoverer(template), new FixedBackOff(0L, 2)));
 		return factory;
 	}
 
