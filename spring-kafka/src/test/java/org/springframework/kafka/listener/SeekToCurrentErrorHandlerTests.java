@@ -24,6 +24,7 @@ import static org.mockito.Mockito.times;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -45,9 +46,15 @@ public class SeekToCurrentErrorHandlerTests {
 	@Test
 	public void testClassifier() {
 		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
-		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler((r, t) -> recovered.set(r));
+		AtomicBoolean recovererShouldFail = new AtomicBoolean(false);
+		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler((r, t) -> {
+			if (recovererShouldFail.getAndSet(false)) {
+				throw new RuntimeException("test recoverer failure");
+			}
+			recovered.set(r);
+		});
 		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
-		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 0, 1L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
 		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
 		IllegalStateException illegalState = new IllegalStateException();
 		Consumer<?, ?> consumer = mock(Consumer.class);
@@ -59,11 +66,16 @@ public class SeekToCurrentErrorHandlerTests {
 		assertThat(recovered.get()).isSameAs(record1);
 		handler.addNotRetryableException(IllegalStateException.class);
 		recovered.set(null);
+		recovererShouldFail.set(true);
+		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
+			handler.handle(illegalState, records, consumer, mock(MessageListenerContainer.class)));
 		handler.handle(illegalState, records, consumer, mock(MessageListenerContainer.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		InOrder inOrder = inOrder(consumer);
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // not recovered so seek
-		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 0), 1L); // 2x recovered seek next
+		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
+		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed
+		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verifyNoMoreInteractions();
 	}
 

@@ -76,7 +76,8 @@ public final class SeekUtils {
 					skipped.set(test);
 				}
 				catch (Exception ex) {
-					logger.error(ex, "Failed to determine if this record should be recovererd, including in seeks");
+					logger.error(ex, "Failed to determine if this record (" + record
+							+ ") should be recovererd, including in seeks");
 					skipped.set(false);
 				}
 				if (skipped.get()) {

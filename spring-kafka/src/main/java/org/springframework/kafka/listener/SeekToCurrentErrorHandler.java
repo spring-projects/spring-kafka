@@ -58,6 +58,8 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 
 	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
 
+	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> NEVER_SKIP_PREDICATE = (r, e) -> false;
+
 	protected static final LogAccessor LOGGER =
 			new LogAccessor(LogFactory.getLog(SeekToCurrentErrorHandler.class)); // NOSONAR visibility
 
@@ -289,7 +291,13 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 			return this.failureTracker::skip;
 		}
 		else {
-			this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
+			try {
+				this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
+			}
+			catch (Exception ex) {
+				LOGGER.error(ex, () -> "Recovery of record (" + records.get(0) + ") failed");
+				return NEVER_SKIP_PREDICATE;
+			}
 			return ALWAYS_SKIP_PREDICATE;
 		}
 	}
