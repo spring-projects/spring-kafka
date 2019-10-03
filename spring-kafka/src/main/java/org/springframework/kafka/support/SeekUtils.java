@@ -71,7 +71,14 @@ public final class SeekUtils {
 		AtomicBoolean skipped = new AtomicBoolean();
 		records.forEach(record -> {
 			if (recoverable && first.get()) {
-				skipped.set(skipper.test(record, exception));
+				try {
+					boolean test = skipper.test(record, exception);
+					skipped.set(test);
+				}
+				catch (Exception ex) {
+					logger.error(ex, "Failed to determine if this record should be recovererd, including in seeks");
+					skipped.set(false);
+				}
 				if (skipped.get()) {
 					logger.debug(() -> "Skipping seek of: " + record);
 				}

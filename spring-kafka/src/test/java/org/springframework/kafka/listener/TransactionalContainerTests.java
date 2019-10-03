@@ -536,10 +536,14 @@ public class TransactionalContainerTests {
 		container.setBeanName("testMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
 		final KafkaTemplate<Object, Object> dlTemplate = spy(new KafkaTemplate<>(pf));
+		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
 
 			@Override
 			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+				if (recovererShouldFail.getAndSet(false)) {
+					throw new RuntimeException("test recoverer failure");
+				}
 				super.accept(record, exception);
 				recoverLatch.countDown();
 			}
@@ -590,8 +594,8 @@ public class TransactionalContainerTests {
 		assertThat(headers.get("baz")).isEqualTo("qux".getBytes());
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		verify(afterRollbackProcessor, times(3)).isProcessInTransaction();
-		verify(afterRollbackProcessor, times(3)).process(any(), any(), any(), anyBoolean());
+		verify(afterRollbackProcessor, times(4)).isProcessInTransaction();
+		verify(afterRollbackProcessor, times(4)).process(any(), any(), any(), anyBoolean());
 		verify(afterRollbackProcessor).clearThreadState();
 		verify(dlTemplate).send(any(ProducerRecord.class));
 		verify(dlTemplate).sendOffsetsToTransaction(
@@ -632,8 +636,11 @@ public class TransactionalContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testRollbackNoRetries");
+		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
 		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = (rec, ex) -> {
-			throw new RuntimeException("arbp fail");
+			if (recovererShouldFail.getAndSet(false)) {
+				throw new RuntimeException("arbp fail");
+			}
 		};
 		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
 				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 0L)));

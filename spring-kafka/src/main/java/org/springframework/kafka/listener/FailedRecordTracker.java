@@ -76,7 +76,7 @@ class FailedRecordTracker {
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
 		if (this.noRetries) {
-			recover(record, exception);
+			this.recoverer.accept(record, exception);
 			return true;
 		}
 		Map<TopicPartition, FailedRecord> map = this.failures.get();
@@ -101,21 +101,12 @@ class FailedRecordTracker {
 			return false;
 		}
 		else {
-			recover(record, exception);
+			this.recoverer.accept(record, exception);
 			map.remove(topicPartition);
 			if (map.isEmpty()) {
 				this.failures.remove();
 			}
 			return true;
-		}
-	}
-
-	private void recover(ConsumerRecord<?, ?> record, Exception exception) {
-		try {
-			this.recoverer.accept(record, exception);
-		}
-		catch (Exception ex) {
-			this.logger.error(ex, "Recoverer threw exception");
 		}
 	}
 

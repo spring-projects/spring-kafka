@@ -1813,6 +1813,8 @@ public SeekToCurrentErrorHandler eh() {
 
 However, see the note at the beginning of this section; you can avoid using the `RetryTemplate` altogether.
 
+IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+
 [[events]]
 ===== Listener Consumer Lifecycle Events
 
@@ -3588,6 +3590,8 @@ Generally, you should configure the `BackOff` to never return `STOP`.
 However, since this error handler has no mechanism to "recover" after retries are exhausted, if the `BackOffExecution` returns `STOP`, the previous interval will be used for all subsequent delays.
 Again, the maximum delay must be less than the `max.poll.interval.ms` consumer property.
 
+IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.
@@ -3637,6 +3641,8 @@ See also <<dead-letters>>.
 Starting with version 2.2.5, the `DefaultAfterRollbackProcessor` can be invoked in a new transaction (started after the failed transaction rolls back).
 Then, if you are using the `DeadLetterPublishingRecoverer` to publish a failed record, the processor will send the recovered record's offset in the original topic/partition to the transaction.
 To enable this feature, set the `commitRecovered` and `kafkaTemplate` properties on the `DefaultAfterRollbackProcessor`.
+
+IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
 
 [[dead-letters]]
 ===== Publishing Dead-letter Records
@@ -3703,6 +3709,8 @@ public DeadLetterPublishingRecoverer publisher(KafkaTemplate<?, ?> stringTemplat
 
 The publisher uses the map keys to locate a template that is suitable for the `value()` about to be published.
 A `LinkedHashMap` is recommended so that the keys are examined in order.
+
+IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
 
 Starting with version 2.3, the recoverer can also be used with Kafka Streams - see <<streams-deser-recovery>> for more information.
 
