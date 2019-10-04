@@ -1,0 +1,222 @@
+/*
+ * Copyright 2019 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.kafka.listener;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
+
+import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+
+import org.springframework.classify.BinaryExceptionClassifier;
+import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.lang.Nullable;
+import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.messaging.handler.invocation.MethodArgumentResolutionException;
+import org.springframework.util.Assert;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.FixedBackOff;
+
+/**
+ * Common super class for classes that deal with failing to consume a consumer record.
+ *
+ * @author Gary Russell
+ * @since 2.3.1
+ *
+ */
+public abstract class FailedRecordProcessor {
+
+	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
+
+	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> NEVER_SKIP_PREDICATE = (r, e) -> false;
+
+	protected static final LogAccessor LOGGER =
+			new LogAccessor(LogFactory.getLog(SeekToCurrentErrorHandler.class)); // NOSONAR
+
+	private final FailedRecordTracker failureTracker;
+
+	private BinaryExceptionClassifier classifier;
+
+	private boolean commitRecovered;
+
+	protected FailedRecordProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff) {
+		this.failureTracker = new FailedRecordTracker(recoverer, backOff, LOGGER);
+		this.classifier = configureDefaultClassifier();
+	}
+
+	/**
+	 * TODO: remove when the deprecated dependent CTORs are removed.
+	 * @param recoverer the recoverer.
+	 * @param maxFailures the max failures.
+	 */
+	FailedRecordProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
+		this.failureTracker = new FailedRecordTracker(recoverer, new FixedBackOff(0L, maxFailures - 1), LOGGER);
+		this.classifier = configureDefaultClassifier();
+	}
+
+	/**
+	 * Return the exception classifier.
+	 * @return the classifier.
+	 */
+	protected BinaryExceptionClassifier getClassifier() {
+		return this.classifier;
+	}
+
+	/**
+	 * Set an exception classifier to determine whether the exception should cause a retry
+	 * (until exhaustion) or not. If not, we go straight to the recoverer. By default,
+	 * the following exceptions will not be retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried.
+	 * The classifier's {@link BinaryExceptionClassifier#setTraverseCauses(boolean) traverseCauses}
+	 * will be set to true because the container always wraps exceptions in a
+	 * {@link ListenerExecutionFailedException}.
+	 * This replaces the default classifier.
+	 * @param classifier the classifier.
+	 */
+	public void setClassifier(BinaryExceptionClassifier classifier) {
+		Assert.notNull(classifier, "'classifier' + cannot be null");
+		classifier.setTraverseCauses(true);
+		this.classifier = classifier;
+	}
+
+	/**
+	 * Whether the offset for a recovered record should be committed.
+	 * @return true to commit recovered record offsets.
+	 */
+	protected boolean isCommitRecovered() {
+		return this.commitRecovered;
+	}
+
+	/**
+	 * Set to true to commit the offset for a recovered record.
+	 * @param commitRecovered true to commit.
+	 */
+	public void setCommitRecovered(boolean commitRecovered) {
+		this.commitRecovered = commitRecovered;
+	}
+
+	/**
+	 * Add an exception type to the default list; if and only if an external classifier
+	 * has not been provided. By default, the following exceptions will not be retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried.
+	 * @param exceptionType the exception type.
+	 * @see #removeNotRetryableException(Class)
+	 * @see #setClassifier(BinaryExceptionClassifier)
+	 */
+	public void addNotRetryableException(Class<? extends Exception> exceptionType) {
+		Assert.isTrue(this.classifier instanceof ExtendedBinaryExceptionClassifier,
+				"Cannot add exception types to a supplied classifier");
+		((ExtendedBinaryExceptionClassifier) this.classifier).getClassified().put(exceptionType, false);
+	}
+
+	/**
+	 * Remove an exception type from the configured list; if and only if an external
+	 * classifier has not been provided. By default, the following exceptions will not be
+	 * retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried.
+	 * @param exceptionType the exception type.
+	 * @return true if the removal was successful.
+	 * @see #addNotRetryableException(Class)
+	 * @see #setClassifier(BinaryExceptionClassifier)
+	 */
+	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
+		Assert.isTrue(this.classifier instanceof ExtendedBinaryExceptionClassifier,
+				"Cannot remove exception types from a supplied classifier");
+		return ((ExtendedBinaryExceptionClassifier) this.classifier).getClassified().remove(exceptionType);
+	}
+
+	protected BiPredicate<ConsumerRecord<?, ?>, Exception> getSkipPredicate(List<ConsumerRecord<?, ?>> records,
+			Exception thrownException) {
+
+		if (getClassifier().classify(thrownException)) {
+			return this.failureTracker::skip;
+		}
+		else {
+			try {
+				this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
+			}
+			catch (Exception ex) {
+				LOGGER.error(ex, () -> "Recovery of record (" + records.get(0) + ") failed");
+				return NEVER_SKIP_PREDICATE;
+			}
+			return ALWAYS_SKIP_PREDICATE;
+		}
+	}
+
+	public void clearThreadState() {
+		this.failureTracker.clearThreadState();
+	}
+
+	private static BinaryExceptionClassifier configureDefaultClassifier() {
+		Map<Class<? extends Throwable>, Boolean> classified = new HashMap<>();
+		classified.put(DeserializationException.class, false);
+		classified.put(MessageConversionException.class, false);
+		classified.put(MethodArgumentResolutionException.class, false);
+		classified.put(NoSuchMethodException.class, false);
+		classified.put(ClassCastException.class, false);
+		ExtendedBinaryExceptionClassifier defaultClassifier = new ExtendedBinaryExceptionClassifier(classified, true);
+		defaultClassifier.setTraverseCauses(true);
+		return defaultClassifier;
+	}
+
+	/**
+	 * Extended to provide visibility to the current classified exceptions.
+	 *
+	 * @author Gary Russell
+	 *
+	 */
+	@SuppressWarnings("serial")
+	private static class ExtendedBinaryExceptionClassifier extends BinaryExceptionClassifier {
+
+
+		ExtendedBinaryExceptionClassifier(Map<Class<? extends Throwable>, Boolean> typeMap, boolean defaultValue) {
+			super(typeMap, defaultValue);
+		}
+
+		@Override
+		protected Map<Class<? extends Throwable>, Boolean> getClassified() { // NOSONAR worthless override
+			return super.getClassified();
+		}
+
+	}
+
+}

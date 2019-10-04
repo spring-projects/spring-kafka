@@ -20,13 +20,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
@@ -49,14 +47,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 1.3.5
  *
  */
-public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcessor<K, V> {
-
-	private static final LogAccessor LOGGER =
-			new LogAccessor(LogFactory.getLog(DefaultAfterRollbackProcessor.class));
-
-	private final FailedRecordTracker failureTracker;
-
-	private boolean commitRecovered;
+public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor implements AfterRollbackProcessor<K, V> {
 
 	private KafkaTemplate<K, V> kafkaTemplate;
 
@@ -126,7 +117,8 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 			int maxFailures) {
 
-		this.failureTracker = new FailedRecordTracker(recoverer, new FixedBackOff(0L, maxFailures - 1), LOGGER);
+		// Remove super CTOR when this is removed.
+		super(recoverer, maxFailures);
 	}
 
 	/**
@@ -139,7 +131,7 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 			BackOff backOff) {
 
-		this.failureTracker = new FailedRecordTracker(recoverer, backOff, LOGGER);
+		super(recoverer, backOff);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -147,8 +139,9 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
 			boolean recoverable) {
 
-		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable, this.failureTracker::skip, LOGGER)
-				&& this.kafkaTemplate != null && this.kafkaTemplate.isTransactional()) {
+		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable,
+				getSkipPredicate((List) records, exception), LOGGER)
+					&& isCommitRecovered() && this.kafkaTemplate != null && this.kafkaTemplate.isTransactional()) {
 			ConsumerRecord<K, V> skipped = records.get(0);
 			this.kafkaTemplate.sendOffsetsToTransaction(
 					Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
@@ -158,10 +151,11 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 
 	@Override
 	public boolean isProcessInTransaction() {
-		return this.commitRecovered;
+		return isCommitRecovered();
 	}
 
 	/**
+	 * {@inheritDoc}
 	 * Set to true to and the container will run the
 	 * {@link #process(List, Consumer, Exception, boolean)} method in a transaction and,
 	 * if a record is skipped and recovered, we will send its offset to the transaction.
@@ -172,8 +166,9 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 * @see #process(List, Consumer, Exception, boolean)
 	 * @see #setKafkaTemplate(KafkaTemplate)
 	 */
+	@Override
 	public void setCommitRecovered(boolean commitRecovered) {
-		this.commitRecovered = commitRecovered;
+		super.setCommitRecovered(commitRecovered); // NOSONAR enhanced javadoc
 	}
 
 	/**
@@ -185,11 +180,6 @@ public class DefaultAfterRollbackProcessor<K, V> implements AfterRollbackProcess
 	 */
 	public void setKafkaTemplate(KafkaTemplate<K, V> kafkaTemplate) {
 		this.kafkaTemplate = kafkaTemplate;
-	}
-
-	@Override
-	public void clearThreadState() {
-		this.failureTracker.clearThreadState();
 	}
 
 }

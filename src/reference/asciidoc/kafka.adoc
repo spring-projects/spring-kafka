@@ -3644,6 +3644,34 @@ To enable this feature, set the `commitRecovered` and `kafkaTemplate` properties
 
 IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
 
+Starting with version 2.3.1, similar to the `SeekToCurrentErrorHandler`, the `DefaultAfterRollbackProcessor` considers certain exceptions to be fatal, and retries are skipped for such exceptions; the recoverer is invoked on the first failure.
+The exceptions that are considered fatal, by default, are:
+
+* `DeserializationException`
+* `MessageConversionException`
+* `MethodArgumentResolutionException`
+* `NoSuchMethodException`
+* `ClassCastException`
+
+since these exceptions are unlikely to be resolved on a retried delivery.
+
+You can add more exception types to the not-retryable category, or completely replace the `BinaryExceptionClassifier` with your own configured classifier.
+See the Javadocs for `DefaultAfterRollbackProcessor` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
+
+Here is an example that adds `IllegalArgumentException` to the not-retryable exceptions:
+
+====
+[source, java]
+----
+@Bean
+public DefaultAfterRollbackProcessor errorHandler(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
+    DefaultAfterRollbackProcessor processor = new DefaultAfterRollbackProcessor(recoverer);
+    processor.addNotRetryableException(IllegalArgumentException.class);
+    return processor;
+}
+----
+====
+
 [[dead-letters]]
 ===== Publishing Dead-letter Records
 
