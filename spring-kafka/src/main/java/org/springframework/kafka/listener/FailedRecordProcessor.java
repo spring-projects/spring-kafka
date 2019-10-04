@@ -81,7 +81,7 @@ public abstract class FailedRecordProcessor {
 	}
 
 	/**
-	 * Set an exception classifier to determine whether the exception should cause a retry
+	 * Set an exception classifications to determine whether the exception should cause a retry
 	 * (until exhaustion) or not. If not, we go straight to the recoverer. By default,
 	 * the following exceptions will not be retried:
 	 * <ul>
@@ -92,15 +92,17 @@ public abstract class FailedRecordProcessor {
 	 * <li>{@link ClassCastException}</li>
 	 * </ul>
 	 * All others will be retried.
-	 * The classifier's {@link BinaryExceptionClassifier#setTraverseCauses(boolean) traverseCauses}
-	 * will be set to true because the container always wraps exceptions in a
-	 * {@link ListenerExecutionFailedException}.
-	 * This replaces the default classifier.
-	 * @param classifier the classifier.
+	 * When calling this method, the defaults will not be applied.
+	 * @param classifications the classifications.
+	 * @param defaultValue whether or not to retry non-matching exceptions.
+	 * @see BinaryExceptionClassifier#BinaryExceptionClassifier(Map, boolean)
 	 */
-	public void setClassifier(BinaryExceptionClassifier classifier) {
-		Assert.notNull(classifier, "'classifier' + cannot be null");
-		classifier.setTraverseCauses(true);
+	public void setClassifications(Map<Class<? extends Throwable>, Boolean> classifications, boolean defaultValue) {
+		Assert.notNull(classifications, "'classifications' + cannot be null");
+		this.classifier = new ExtendedBinaryExceptionClassifier(classifications, defaultValue);
+	}
+
+	protected void setClassifier(BinaryExceptionClassifier classifier) {
 		this.classifier = classifier;
 	}
 
@@ -133,7 +135,7 @@ public abstract class FailedRecordProcessor {
 	 * All others will be retried.
 	 * @param exceptionType the exception type.
 	 * @see #removeNotRetryableException(Class)
-	 * @see #setClassifier(BinaryExceptionClassifier)
+	 * @see #setClassifications(Map, boolean)
 	 */
 	public void addNotRetryableException(Class<? extends Exception> exceptionType) {
 		Assert.isTrue(this.classifier instanceof ExtendedBinaryExceptionClassifier,
@@ -156,7 +158,7 @@ public abstract class FailedRecordProcessor {
 	 * @param exceptionType the exception type.
 	 * @return true if the removal was successful.
 	 * @see #addNotRetryableException(Class)
-	 * @see #setClassifier(BinaryExceptionClassifier)
+	 * @see #setClassifications(Map, boolean)
 	 */
 	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
 		Assert.isTrue(this.classifier instanceof ExtendedBinaryExceptionClassifier,
@@ -194,7 +196,6 @@ public abstract class FailedRecordProcessor {
 		classified.put(NoSuchMethodException.class, false);
 		classified.put(ClassCastException.class, false);
 		ExtendedBinaryExceptionClassifier defaultClassifier = new ExtendedBinaryExceptionClassifier(classified, true);
-		defaultClassifier.setTraverseCauses(true);
 		return defaultClassifier;
 	}
 
@@ -205,11 +206,11 @@ public abstract class FailedRecordProcessor {
 	 *
 	 */
 	@SuppressWarnings("serial")
-	private static class ExtendedBinaryExceptionClassifier extends BinaryExceptionClassifier {
-
+	private static final class ExtendedBinaryExceptionClassifier extends BinaryExceptionClassifier {
 
 		ExtendedBinaryExceptionClassifier(Map<Class<? extends Throwable>, Boolean> typeMap, boolean defaultValue) {
 			super(typeMap, defaultValue);
+			setTraverseCauses(true);
 		}
 
 		@Override

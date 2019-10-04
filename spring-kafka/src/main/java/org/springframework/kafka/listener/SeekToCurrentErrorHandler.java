@@ -27,10 +27,15 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.SeekUtils;
+import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.lang.Nullable;
+import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.messaging.handler.invocation.MethodArgumentResolutionException;
+import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -139,6 +144,33 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	@Override
 	public void setCommitRecovered(boolean commitRecovered) { // NOSONAR enhanced javadoc
 		super.setCommitRecovered(commitRecovered);
+	}
+
+	/**
+	 * Set an exception classifier to determine whether the exception should cause a retry
+	 * (until exhaustion) or not. If not, we go straight to the recoverer. By default,
+	 * the following exceptions will not be retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried.
+	 * The classifier's {@link BinaryExceptionClassifier#setTraverseCauses(boolean) traverseCauses}
+	 * will be set to true because the container always wraps exceptions in a
+	 * {@link ListenerExecutionFailedException}.
+	 * This replaces the default classifier.
+	 * @param classifier the classifier.
+	 * @since 2.3
+	 * @deprecated in favor of {@link #setClassifications(Map, boolean)}.
+	 */
+	@Deprecated
+	public void setClassifier(BinaryExceptionClassifier classifier) {
+		Assert.notNull(classifier, "'classifier' + cannot be null");
+		classifier.setTraverseCauses(true);
+		super.setClassifier(classifier);
 	}
 
 	@Override
