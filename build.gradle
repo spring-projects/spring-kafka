@@ -14,11 +14,24 @@ plugins {
 	id 'base'
 	id 'project-report'
 	id 'idea'
+	id 'com.gradle.build-scan' version '2.4.2'
 	id 'org.sonarqube' version '2.7.1'
 	id 'org.asciidoctor.convert' version '1.6.1'
 	id 'org.ajoberstar.grgit' version '3.1.1'
 	id 'io.spring.nohttp' version '0.0.3.RELEASE'
 	id 'io.spring.dependency-management' version '1.0.8.RELEASE' apply false
+}
+
+if (System.getenv('GRADLE_ENTERPRISE_URL')) {
+	apply from: "$rootDir/gradle/build-scan-user-data.gradle"
+	buildScan {
+		captureTaskInputFiles = true
+		obfuscation {
+			ipAddresses { addresses -> addresses.collect { address -> '0.0.0.0'} }
+		}
+		publishAlways()
+		server = System.getenv('GRADLE_ENTERPRISE_URL')
+	}
 }
 
 apply plugin: 'io.spring.nohttp'
