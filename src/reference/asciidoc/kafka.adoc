@@ -1879,9 +1879,10 @@ public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 In each of these cases, an event is published once per minute while the container is idle.
 
 In addition, if the broker is unreachable, the consumer `poll()` method does not exit, so no messages are received and idle events cannot be generated.
-To solve this issue, the container publishes a `NonResponsiveConsumerEvent` if a poll does not return within 3x the `pollInterval` property.
+To solve this issue, the container publishes a `NonResponsiveConsumerEvent` if a poll does not return within `3x` the `pollTimeout` property.
 By default, this check is performed once every 30 seconds in each container.
-You can modify this behavior by setting the `monitorInterval` and `noPollThreshold` properties in the `ContainerProperties` when configuring the listener container.
+You can modify this behavior by setting the `monitorInterval` (default 30 seconds) and `noPollThreshold` (default 3.0) properties in the `ContainerProperties` when configuring the listener container.
+The `noPollThreshold` should be greater than `1.0` to avoid getting spurious events due to a race condition.
 Receiving such an event lets you stop the containers, thus waking the consumer so that it can terminate.
 
 ====== Event Consumption

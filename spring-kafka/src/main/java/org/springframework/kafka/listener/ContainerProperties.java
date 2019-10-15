@@ -450,6 +450,8 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * If the time since the last poll / {@link #getPollTimeout() poll timeout}
 	 * exceeds this value, a NonResponsiveConsumerEvent is published.
+	 * This value should be more than 1.0 to avoid a race condition that can cause
+	 * spurious events to be published.
 	 * Default {@value #DEFAULT_NO_POLL_THRESHOLD}.
 	 * @param noPollThreshold the threshold
 	 * @since 1.3.1
