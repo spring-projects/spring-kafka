@@ -1,27 +1,22 @@
-[[kafka-streams]]
+[[streams-kafka-streams]]
 === Kafka Streams Support
 
-==== Introduction
-
-Starting with _version 1.1.4_, Spring for Apache Kafka provides first class support for https://kafka.apache.org/documentation/streams[Kafka Streams].
-For using it from a Spring application, the `kafka-streams` jar must be present on classpath.
-It is an optional dependency of the `spring-kafka` project and isn't downloaded transitively.
+Starting with version 1.1.4, Spring for Apache Kafka provides first-class support for https://kafka.apache.org/documentation/streams[Kafka Streams].
+To use it from a Spring application, the `kafka-streams` jar must be present on classpath.
+It is an optional dependency of the `spring-kafka` project and is not downloaded transitively.
 
 ==== Basics
 
-The reference Apache Kafka Streams documentation suggests this way of using the API:
+The reference Apache Kafka Streams documentation suggests the following way of using the API:
 
+====
 [source, java]
 ----
 // Use the builders to define the actual processing topology, e.g. to specify
 // from which input topics to read, which stream operations (filter, map, etc.)
 // should be called, and so on.
 
-KStreamBuilder builder = ...;  // when using the Kafka Streams DSL
-//
-// OR
-//
-TopologyBuilder builder = ...; // when using the Processor API
+StreamsBuilder builder = ...;  // when using the Kafka Streams DSL
 
 // Use the configuration to tell your application where the Kafka cluster is,
 // which serializers/deserializers to use by default, to specify security settings,
@@ -36,91 +31,288 @@ streams.start();
 // Stop the Kafka Streams instance
 streams.close();
 ----
+====
 
-So, we have two main components: `KStreamBuilder` (which extends `TopologyBuilder` as well) with an API to build `KStream` (or `KTable`) instances and `KafkaStreams` to manage their lifecycle.
-Note: all `KStream` instances exposed to a `KafkaStreams` instance by a single `KStreamBuilder` will be started and stopped at the same time, even if they have a fully different logic.
-In other words all our streams defined by a `KStreamBuilder` are tied with a single lifecycle control.
-Once a `KafkaStreams` instance has been closed via `streams.close()` it cannot be restarted, and a new `KafkaStreams` instance to restart stream processing must be created instead.
+So, we have two main components:
+
+* `StreamsBuilder`: With an API to build `KStream` (or `KTable`) instances.
+* `KafkaStreams`: To manage the lifecycle of those instances.
+
+NOTE: All `KStream` instances exposed to a `KafkaStreams` instance by a single `StreamsBuilder` are started and stopped at the same time, even if they have different logic.
+In other words, all streams defined by a `StreamsBuilder` are tied with a single lifecycle control.
+Once a `KafkaStreams` instance has been closed by `streams.close()`, it cannot be restarted.
+Instead, a new `KafkaStreams` instance to restart stream processing must be created.
 
 ==== Spring Management
 
-To simplify the usage of Kafka Streams from the Spring application context perspective and utilize the lifecycle management via container, the Spring for Apache Kafka introduces `KStreamBuilderFactoryBean`.
-This is an `AbstractFactoryBean` implementation to expose a `KStreamBuilder` singleton instance as a bean:
+To simplify using Kafka Streams from the Spring application context perspective and use the lifecycle management through a container, the Spring for Apache Kafka introduces `StreamsBuilderFactoryBean`.
+This is an `AbstractFactoryBean` implementation to expose a `StreamsBuilder` singleton instance as a bean.
+The following example creates such a bean:
 
+====
 [source, java]
 ----
 @Bean
-public FactoryBean<KStreamBuilder> myKStreamBuilder(StreamsConfig streamsConfig) {
-    return new KStreamBuilderFactoryBean(streamsConfig);
+public FactoryBean<StreamsBuilderFactoryBean> myKStreamBuilder(KafkaStreamsConfiguration streamsConfig) {
+    return new StreamsBuilderFactoryBean(streamsConfig);
 }
 ----
+====
 
-The `KStreamBuilderFactoryBean` also implements `SmartLifecycle` to manage lifecycle of an internal `KafkaStreams` instance.
-Similar to the Kafka Streams API, the `KStream` instances must be defined before starting the `KafkaStreams`, and that also applies for the Spring API for Kafka Streams.
-Therefore we have to declare `KStream` s on the `KStreamBuilder` before the application context is refreshed, when we use default `autoStartup = true` on the `KStreamBuilderFactoryBean`.
-For example, `KStream` can be just as a regular bean definition, meanwhile the Kafka Streams API is used without any impacts:
+IMPORTANT: Starting with version 2.2, the stream configuration is now provided as a `KafkaStreamsConfiguration` object rather than a `StreamsConfig`.
 
+The `StreamsBuilderFactoryBean` also implements `SmartLifecycle` to manage the lifecycle of an internal `KafkaStreams` instance.
+Similar to the Kafka Streams API, you must define the `KStream` instances before you start the `KafkaStreams`.
+That also applies for the Spring API for Kafka Streams.
+Therefore, when you use default `autoStartup = true` on the `StreamsBuilderFactoryBean`, you must declare `KStream` instances on the `StreamsBuilder` before the application context is refreshed.
+For example, `KStream` can be a regular bean definition, while the Kafka Streams API is used without any impacts.
+The following example shows how to do so:
+
+====
 [source, java]
 ----
 @Bean
-public KStream<?, ?> kStream(KStreamBuilder kStreamBuilder) {
+public KStream<?, ?> kStream(StreamsBuilder kStreamBuilder) {
     KStream<Integer, String> stream = kStreamBuilder.stream(STREAMING_TOPIC1);
     // Fluent KStream API
     return stream;
 }
 ----
+====
 
-If you would like to control lifecycle manually (e.g. stop and start by some condition), you can reference the `KStreamBuilderFactoryBean` bean directly using factory bean (`&`) http://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-factory-extension-factorybean[prefix].
-Since `KStreamBuilderFactoryBean` utilize its internal `KafkaStreams` instance, it is safe to stop and restart it again - a new `KafkaStreams` is created on each `start()`.
-Also consider using different `KStreamBuilderFactoryBean` s, if you would like to control lifecycles for `KStream` instances separately.
+If you would like to control the lifecycle manually (for example, stopping and starting by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly by using the factory bean (`&`) https://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-factory-extension-factorybean[prefix].
+Since `StreamsBuilderFactoryBean` use its internal `KafkaStreams` instance, it is safe to stop and restart it again.
+A new `KafkaStreams` is created on each `start()`.
+You might also consider using different `StreamsBuilderFactoryBean` instances, if you would like to control the lifecycles for `KStream` instances separately.
 
-You can specify `KafkaStreams.StateListener` and `Thread.UncaughtExceptionHandler` options on the `KStreamBuilderFactoryBean` which are delegated to the internal `KafkaStreams` instance.
-That internal `KafkaStreams` instance can be accessed via `KStreamBuilderFactoryBean.getKafkaStreams()` if you need to perform some `KafkaStreams` operations directly.
+You also can specify `KafkaStreams.StateListener`, `Thread.UncaughtExceptionHandler`, and `StateRestoreListener` options on the `StreamsBuilderFactoryBean`, which are delegated to the internal `KafkaStreams` instance.
+Also, apart from setting those options indirectly on `StreamsBuilderFactoryBean`, starting with _version 2.1.5_, you can use a `KafkaStreamsCustomizer` callback interface to configure an inner `KafkaStreams` instance.
+Note that `KafkaStreamsCustomizer` overrides the options provided by `StreamsBuilderFactoryBean`.
+If you need to perform some `KafkaStreams` operations directly, you can access that internal `KafkaStreams` instance by using `StreamsBuilderFactoryBean.getKafkaStreams()`.
+You can autowire `StreamsBuilderFactoryBean` bean by type, but you should be sure to use the full type in the bean definition, as the following example shows:
 
-==== JSON Serdes
-
-For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring Kafka provides a `JsonSerde` implementation using JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes, the serialization/deserialization section>>.
-The `JsonSerde` provides the same configuration options via its constructor (target type and/or `ObjectMapper`).
-In the following example we use the `JsonSerde` to serialize and deserialize the `Foo` payload of a Kafka stream - the `JsonSerde` can be used in a similar fashion wherever an instance is required.
-
+====
 [source,java]
 ----
-stream.through(Serdes.Integer(), new JsonSerde<>(Foo.class), "foos");
+@Bean
+public StreamsBuilderFactoryBean myKStreamBuilder(KafkaStreamsConfiguration streamsConfig) {
+    return new StreamsBuilderFactoryBean(streamsConfig);
+}
+...
+@Autowired
+private StreamsBuilderFactoryBean myKStreamBuilderFactoryBean;
 ----
+====
 
+Alternatively, you can add `@Qualifier` for injection by name if you use interface bean definition.
+The following example shows how to do so:
+
+====
+[source,java]
+----
+@Bean
+public FactoryBean<StreamsBuilder> myKStreamBuilder(KafkaStreamsConfiguration streamsConfig) {
+    return new StreamsBuilderFactoryBean(streamsConfig);
+}
+...
+@Autowired
+@Qualifier("&myKStreamBuilder")
+private StreamsBuilderFactoryBean myKStreamBuilderFactoryBean;
+----
+====
+
+[[serde]]
+==== Streams JSON Serialization and Deserialization
+
+For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes>>.
+The `JsonSerde` implementation provides the same configuration options through its constructor (target type or `ObjectMapper`).
+In the following example, we use the `JsonSerde` to serialize and deserialize the `Cat` payload of a Kafka stream (the `JsonSerde` can be used in a similar fashion wherever an instance is required):
+
+====
+[source,java]
+----
+stream.through(Serdes.Integer(), new JsonSerde<>(Cat.class), "cats");
+----
+====
+
+When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
+
+====
+[source, java]
+----
+stream.through(new JsonSerde<>(MyKeyType.class)
+        .forKeys()
+        .noTypeInfo(),
+    new JsonSerde<>(MyValueType.class)
+        .noTypeInfo(),
+    "myTypes");
+----
+====
+
+==== Using `KafkaStreamsBrancher`
+
+The `KafkaStreamBrancher` class introduces a more convenient way to build conditional branches on top of `KStream`.
+
+Consider the following example that does not use `KafkaStreamBrancher`:
+
+====
+[source,java]
+----
+KStream<String, String>[] branches = builder.stream("source").branch(
+      (key, value) -> value.contains("A"),
+      (key, value) -> value.contains("B"),
+      (key, value) -> true
+     );
+branches[0].to("A");
+branches[1].to("B");
+branches[2].to("C");
+----
+====
+
+The following example uses `KafkaStreamBrancher`:
+
+====
+[source,java]
+----
+new KafkaStreamsBrancher<String, String>()
+   .branch((key, value) -> value.contains("A"), ks -> ks.to("A"))
+   .branch((key, value) -> value.contains("B"), ks -> ks.to("B"))
+   //default branch should not necessarily be defined in the end of the chain!
+   .defaultBranch(ks -> ks.to("C"))
+   .onTopOf(builder.stream("source"));
+   //onTopOf method returns the provided stream so we can continue with method chaining
+----
+====
+
+[[streams-config]]
 ==== Configuration
 
-To configure the Kafka Streams environment, the `KStreamBuilderFactoryBean` requires a `Map` of particular properties or a `StreamsConfig` instance.
-See Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs[documentation] for all possible options.
+To configure the Kafka Streams environment, the `StreamsBuilderFactoryBean` requires a `KafkaStreamsConfiguration` instance.
+See the Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs[documentation] for all possible options.
 
-To avoid boilerplate code for most cases, especially when you develop micro services, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which should be placed alongside with `@Configuration`.
-Only you need is to declare `StreamsConfig` bean with the `defaultKafkaStreamsConfig` name.
-A `KStreamBuilder` bean with the `defaultKStreamBuilder` name will be declare in the application context automatically.
-Any additional `KStreamBuilderFactoryBean` beans can be declared and used as well.
+IMPORTANT: Starting with version 2.2, the stream configuration is now provided as a `KafkaStreamsConfiguration` object, rather than as a `StreamsConfig`.
+
+To avoid boilerplate code for most cases, especially when you develop microservices, Spring for Apache Kafka provides the `@EnableKafkaStreams` annotation, which you should place on a `@Configuration` class.
+All you need is to declare a `KafkaStreamsConfiguration` bean named `defaultKafkaStreamsConfig`.
+A `StreamsBuilderFactoryBean` bean, named `defaultKafkaStreamsBuilder`, is automatically declared in the application context.
+You can declare and use any additional `StreamsBuilderFactoryBean` beans as well.
+Starting with version 2.3, you can perform additional customization of that bean, by providing a bean that implements `StreamsBuilderFactoryBeanCustomizer`.
+There must only be one such bean, or one must be marked `@Primary`.
+
+By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
+Starting with version 2.1.2, the factory bean has additional constructors, taking a `CleanupConfig` object that has properties to let you control whether the `cleanUp()` method is called during `start()` or `stop()` or neither.
+
+[[streams-header-enricher]]
+==== Header Enricher
+
+Version 2.3 added the `HeaderEnricher` implementation of `Transformer`.
+This can be used to add headers within the stream processing; the header values are SpEL expressions; the root object of the expression evaluation has 3 properties:
+
+* `context` - the `ProcessorContext`, allowing access to the current record metadata
+* `key` - the key of the current record
+* `value` - the value of the current record
+
+The expressions must return a `byte[]` or a `String` (which will be converted to `byte[]` using `UTF-8`).
+
+To use the enricher within a stream:
+
+====
+[source, java]
+----
+.transform(() -> enricher)
+----
+====
+
+The transformer does not change the `key` or `value`; it simply adds headers.
+
+[[streams-messaging]]
+==== `MessagingTransformer`
+
+Version 2.3 added the `MessagingTransformer` this allows a Kafka Streams topology to interact with a Spring Messaging component, such as a Spring Integration flow.
+The transformer requires an implementation of `MessagingFunction`.
+
+====
+[source, java]
+----
+@FunctionalInterface
+public interface MessagingFunction {
+
+	Message<?> exchange(Message<?> message);
+
+}
+----
+====
+
+Spring Integration automatically provides an implementation using its `GatewayProxyFactoryBean`.
+It also requires a `MessagingMessageConverter` to convert the key, value and metadata (including headers) to/from a Spring Messaging `Message<?>`.
+See <<streams-integration>> for more information.
+
+[[streams-deser-recovery]]
+==== Recovery from Deserialization Exceptions
+
+Version 2.3 introduced the `RecoveringDeserializationExceptionHandler` which can take some action when a deserialization exception occurs.
+Refer to the Kafka documentation about `DeserializationExceptionHandler`, of which the `RecoveringDeserializationExceptionHandler` is an implementation.
+The `RecoveringDeserializationExceptionHandler` is configured with a `ConsumerRecordRecoverer` implementation.
+The framework provides the `DeadLetterPublishingRecoverer` which sends the failed record to a dead-letter topic.
+See <<dead-letters>> for more information about this recoverer.
+
+To configure the recoverer, add the following properties to your streams configuration:
+
+====
+[source, java]
+----
+@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+public KafkaStreamsConfiguration kStreamsConfigs() {
+    Map<String, Object> props = new HashMap<>();
+    ...
+    props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+            RecoveringDeserializationExceptionHandler.class);
+    props.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, recoverer());
+    ...
+    return new KafkaStreamsConfiguration(props);
+}
+
+@Bean
+public DeadLetterPublishingRecoverer recoverer() {
+    return new DeadLetterPublishingRecoverer(kafkaTemplate(),
+            (record, ex) -> new TopicPartition("recovererDLQ", -1));
+}
+----
+====
+
+Of course, the `recoverer()` bean can be your own implementation of `ConsumerRecordRecoverer`.
 
 ==== Kafka Streams Example
 
-Putting it all together:
+The following example combines all the topics we have covered in this chapter:
 
+====
 [source, java]
 ----
 @Configuration
 @EnableKafka
 @EnableKafkaStreams
-public static class KafkaStreamsConfiguration {
+public static class KafkaStreamsConfig {
 
     @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-    public StreamsConfig kStreamsConfigs() {
+    public KafkaStreamsConfiguration kStreamsConfigs() {
         Map<String, Object> props = new HashMap<>();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
         props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
         props.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         props.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG, WallclockTimestampExtractor.class.getName());
-        return new StreamsConfig(props);
+        return new KafkaStreamsConfiguration(props);
     }
 
     @Bean
-    public KStream<Integer, String> kStream(KStreamBuilder kStreamBuilder) {
+    public StreamsBuilderFactoryBeanCustomizer customizer() {
+        return fb -> fb.setStateListener((newState, oldState) -> {
+            System.out.println("State transition from " + oldState + " to " + newState);
+        });
+    }
+
+    @Bean
+    public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
         KStream<Integer, String> stream = kStreamBuilder.stream("streamingTopic1");
         stream
                 .mapValues(String::toUpperCase)
@@ -140,3 +332,4 @@ public static class KafkaStreamsConfiguration {
 
 }
 ----
+====

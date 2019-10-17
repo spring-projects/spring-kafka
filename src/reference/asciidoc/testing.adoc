@@ -1,36 +1,40 @@
 [[testing]]
 === Testing Applications
 
-==== Introduction
-
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
 ==== JUnit
 
-`o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties:
+`o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties.
+The following listing shows those method signatures:
 
+====
 [source, java]
 ----
 /**
  * Set up test properties for an {@code <Integer, String>} consumer.
  * @param group the group id.
  * @param autoCommit the auto commit.
- * @param embeddedKafka a {@link KafkaEmbedded} instance.
+ * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
  * @return the properties.
  */
 public static Map<String, Object> consumerProps(String group, String autoCommit,
-                                       KafkaEmbedded embeddedKafka) { ... }
+                                       EmbeddedKafkaBroker embeddedKafka) { ... }
 
 /**
  * Set up test properties for an {@code <Integer, String>} producer.
- * @param embeddedKafka a {@link KafkaEmbedded} instance.
+ * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
  * @return the properties.
  */
-public static Map<String, Object> senderProps(KafkaEmbedded embeddedKafka) { ... }
+public static Map<String, Object> senderProps(EmbeddedKafkaBroker embeddedKafka) { ... }
 ----
+====
 
-A JUnit `@Rule` is provided that creates an embedded kafka server.
+A JUnit 4 `@Rule` wrapper for the `EmbeddedKafkaBroker` is provided to create an embedded Kafka and an embedded Zookeeper server.
+(See <<embedded-kafka-annotation>> for information about using `@EmbeddedKafka` with JUnit 5).
+The following listing shows the signatures of those methods:
 
+====
 [source, java]
 ----
 /**
@@ -39,7 +43,7 @@ A JUnit `@Rule` is provided that creates an embedded kafka server.
  * @param controlledShutdown passed into TestUtils.createBrokerConfig.
  * @param topics the topics to create (2 partitions per).
  */
-public KafkaEmbedded(int count, boolean controlledShutdown, String... topics) { ... }
+public EmbeddedKafkaRule(int count, boolean controlledShutdown, String... topics) { ... }
 
 /**
  *
@@ -49,11 +53,14 @@ public KafkaEmbedded(int count, boolean controlledShutdown, String... topics) { 
  * @param partitions partitions per topic.
  * @param topics the topics to create.
  */
-public KafkaEmbedded(int count, boolean controlledShutdown, int partitions, String... topics) { ... }
+public EmbeddedKafkaRule(int count, boolean controlledShutdown, int partitions, String... topics) { ... }
 ----
+====
 
-The embedded kafka class has a utility method allowing you to consume for all the topics it created:
+The `EmbeddedKafkaBroker` class has a utility method that lets you consume for all the topics it created.
+The following example shows how to use it:
 
+====
 [source, java]
 ----
 Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false", embeddedKafka);
@@ -62,9 +69,12 @@ DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactor
 Consumer<Integer, String> consumer = cf.createConsumer();
 embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
 ----
+====
 
-The `KafkaTestUtils` has some utility methods to fetch results from the consumer:
+The `KafkaTestUtils` has some utility methods to fetch results from the consumer.
+The following listing shows those method signatures:
 
+====
 [source, java]
 ----
 /**
@@ -83,9 +93,11 @@ public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consume
  */
 public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer) { ... }
 ----
+====
 
-Usage:
+The following example shows how to use `KafkaTestUtils`:
 
+====
 [source, java]
 ----
 ...
@@ -93,16 +105,96 @@ template.sendDefault(0, 2, "bar");
 ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consumer, "topic");
 ...
 ----
+====
 
-When the embedded server is started by JUnit, it sets a system property `spring.embedded.kafka.brokers` to the address of the broker(s).
-A convenient constant `KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS` is provided for this property.
+When the embedded Kafka and embedded Zookeeper server are started by the `EmbeddedKafkaBroker`, a system property named `spring.embedded.kafka.brokers` is set to the address of the Kafka brokers and a system property named `spring.embedded.zookeeper.connect` is set to the address of Zookeeper.
+Convenient constants (`EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS` and `EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT`) are provided for this property.
 
+With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)`, you can provide additional properties for the Kafka servers.
+See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
+
+==== Configuring Topics
+
+The following example configuration creates topics called `cat` and `hat` with five partitions, a topic called `thing1` with 10 partitions, and a topic called `thing2` with 15 partitions:
+
+====
+[source, java]
+----
+public class MyTests {
+
+    @ClassRule
+    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "cat", "hat");
+
+    @Test
+    public void test() {
+        embeddedKafkaRule.getEmbeddedKafka()
+              .addTopics(new NewTopic("thing1", 10, (short) 1), new NewTopic("thing2", 15, (short) 1));
+        ...
+      }
+
+}
+----
+====
+
+==== Using the Same Brokers for Multiple Test Classes
+
+There is no built-in support for doing so, but you can use the same broker for multiple test classes with something similar to the following:
+
+====
+[source, java]
+----
+public final class EmbeddedKafkaHolder {
+
+    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false);
+
+    private static boolean started;
+
+    public static EmbeddedKafkaRule getEmbeddedKafka() {
+        if (!started) {
+            try {
+                embeddedKafka.before();
+            }
+            catch (Exception e) {
+                throw new KafkaException(e);
+            }
+            started = true;
+        }
+        return embeddedKafka;
+    }
+
+    private EmbeddedKafkaHolder() {
+        super();
+    }
+
+}
+----
+====
+
+Then, in each test class, you can use something similar to the following:
+
+====
+[source, java]
+----
+static {
+    EmbeddedKafkaHolder.getEmbeddedKafka().addTopics(topic1, topic2);
+}
+
+private static EmbeddedKafkaRule embeddedKafka = EmbeddedKafkaHolder.getEmbeddedKafka();
+----
+====
+
+IMPORTANT: The preceding example provides no mechanism for shutting down the brokers when all tests are complete.
+This could be a problem if, say, you run your tests in a Gradle daemon.
+You should not use this technique in such a situation, or you should use something to call `destroy()` on the `EmbeddedKafkaBroker` when your tests are complete.
+
+[[embedded-kafka-annotation]]
 ==== @EmbeddedKafka Annotation
-It is generally recommended to use the rule as a `@ClassRule` to avoid starting/stopping the broker between tests (and use a different topic for each test).
-Starting with _version 2.0_, if you are using Spring's test application context caching, you can also declare a `KafkaEmbedded` bean, so a single broker can be used across multiple test classes.
-The JUnit `ExternalResource` `before()/after()` lifecycle is wrapped to the `afterPropertiesSet()` and `destroy()` Spring infrastructure hooks.
-For convenience a test class level `@EmbeddedKafka` annotation is provided with the purpose to register `KafkaEmbedded` bean:
+We generally recommend that you use the rule as a `@ClassRule` to avoid starting and stopping the broker between tests (and use a different topic for each test).
+Starting with version 2.0, if you use Spring's test application context caching, you can also declare a `EmbeddedKafkaBroker` bean, so a single broker can be used across multiple test classes.
+For convenience, we provide a test class-level annotation called `@EmbeddedKafka` to register the `EmbeddedKafkaBroker` bean.
+The following example shows how to use it:
 
+====
 [source, java]
 ----
 @RunWith(SpringRunner.class)
@@ -114,43 +206,187 @@ For convenience a test class level `@EmbeddedKafka` annotation is provided with 
 public class KafkaStreamsTests {
 
     @Autowired
-    private KafkaEmbedded kafkaEmbedded;
+    private EmbeddedKafkaBroker embeddedKafka;
 
-	@Test
-	public void someTest() {
-	    Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "true", this.kafkaEmbedded);
+    @Test
+    public void someTest() {
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "true", this.embeddedKafka);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
         Consumer<Integer, String> consumer = cf.createConsumer();
         this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, KafkaStreamsTests.STREAMING_TOPIC2);
         ConsumerRecords<Integer, String> replies = KafkaTestUtils.getRecords(consumer);
         assertThat(replies.count()).isGreaterThanOrEqualTo(1);
-	}
+    }
 
     @Configuration
     @EnableKafkaStreams
     public static class KafkaStreamsConfiguration {
 
-        @Value("${" + KafkaEmbedded.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
+        @Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
         private String brokerAddresses;
 
         @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-        public StreamsConfig kStreamsConfigs() {
+        public KafkaStreamsConfiguration kStreamsConfigs() {
             Map<String, Object> props = new HashMap<>();
             props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
             props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
-            return new StreamsConfig(props);
+            return new KafkaStreamsConfiguration(props);
         }
 
     }
 
 }
 ----
+====
+
+Starting with version 2.2.4, you can also use the `@EmbeddedKafka` annotation to specify the Kafka ports property.
+
+The following example sets the `topics`, `brokerProperties`, and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
+
+====
+[source, java]
+----
+@TestPropertySource(locations = "classpath:/test.properties")
+@EmbeddedKafka(topics = { "any-topic", "${kafka.topics.another-topic}" },
+        brokerProperties = { "log.dir=${kafka.broker.logs-dir}",
+                            "listeners=PLAINTEXT://localhost:${kafka.broker.port}",
+                            "auto.create.topics.enable=${kafka.broker.topics-enable:true}" }
+        brokerPropertiesLocation = "classpath:/broker.properties")
+----
+====
+
+In the preceding example, the property placeholders `${kafka.topics.another-topic}`, `${kafka.broker.logs-dir}`, and `${kafka.broker.port}` are resolved from the Spring `Environment`.
+In addition, the broker properties are loaded from the `broker.properties` classpath resource specified by the `brokerPropertiesLocation`.
+Property placeholders are resolved for the `brokerPropertiesLocation` URL and for any property placeholders found in the resource.
+Properties defined by `brokerProperties` override properties found in `brokerPropertiesLocation`.
+
+You can use the `@EmbeddedKafka` annotation with JUnit 4 or JUnit 5.
+
+[[embedded-kafka-junit5]]
+==== @EmbeddedKafka Annotation with JUnit5
+
+Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit5.
+When used with the `@SpringJunitConfig` annotation, the embedded broker is added to the test application context.
+You can auto wire the broker into your test, at the class or method level, to get the broker address list.
+
+When *not* using the spring test context, the `EmbdeddedKafkaCondition` creates a broker; the condition includes a parameter resolver so you can access the broker in your test method...
+
+====
+[source, java]
+----
+@EmbeddedKafka
+public class EmbeddedKafkaConditionTests {
+
+	@Test
+	public void test(EmbeddedKafkaBroker broker) {
+		String brokerList = broker.getBrokersAsString();
+        ...
+	}
+
+}
+----
+====
+
+A stand-alone (not Spring test context) broker will be created if the class annotated with `@EmbeddedBroker` is not also annotated (or meta annotated) with `ExtendedWith(SpringExtension.class)`.
+`@SpringJunitConfig` and `@SpringBootTest` are so meta annotated and the context-based broker will be used when either of those annotations are also present.
+
+IMPORTANT: When there is a Spring test application context available, the topics and broker properties can contain property placeholders, which will be resolved as long as the property is defined somewhere.
+If there is no Spring context available, these placeholders won't be resolved.
+
+==== Embedded Broker in `@SpringBootTest` Annotations
+
+https://start.spring.io/[Spring Initializr] now automatically adds the `spring-kafka-test` dependency in test scope to the project configuration.
+
+[IMPORTANT]
+====
+If your application uses the Kafka binder in `spring-cloud-stream` and if you want to use an embedded broker for tests, you must remove the `spring-cloud-stream-test-support` dependency, because it replaces the real binder with a test binder for test cases.
+If you wish some tests to use the test binder and some to use the embedded broker, tests that use the real binder need to disable the test binder by excluding the binder auto configuration in the test class.
+The following example shows how to do so:
+
+=====
+[source, java]
+----
+@RunWith(SpringRunner.class)
+@SpringBootTest(properties = "spring.autoconfigure.exclude="
+    + "org.springframework.cloud.stream.test.binder.TestSupportBinderAutoConfiguration")
+public class MyApplicationTests {
+    ...
+}
+----
+=====
+====
+
+There are several ways to use an embedded broker in a Spring Boot application test.
+
+They include:
+
+* <<kafka-testing-junit4-class-rule>>
+* <<kafka-testing-embeddedkafka-annotation>>
+
+[[kafka-testing-junit4-class-rule]]
+===== JUnit4 Class Rule
+
+The following example shows how to use a JUnit4 class rule to create an embedded broker:
+
+====
+[source, java]
+----
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class MyApplicationTests {
+
+    @ClassRule
+    public static EmbeddedKafkaRule broker = new EmbeddedKafkaRule(1,
+        false, "someTopic")
+            .brokerListProperty("spring.kafka.bootstrap-servers");
+    }
+
+    @Autowired
+    private KafkaTemplate<String, String> template;
+
+    @Test
+    public void test() {
+        ...
+    }
+
+}
+----
+====
+
+Notice that, since this is a Spring Boot application, we override the broker list property to set Boot's property.
+
+[[kafka-testing-embeddedkafka-annotation]]
+===== `@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean
+
+The following example shows how to use an `@EmbeddedKafka` Annotation to create an embedded broker:
+
+====
+[source, java]
+----
+@RunWith(SpringRunner.class)
+@EmbeddedKafka(topics = "someTopic",
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers")
+public class MyApplicationTests {
+
+    @Autowired
+    private KafkaTemplate<String, String> template;
+
+    @Test
+    public void test() {
+        ...
+    }
+
+}
+----
+====
+
 
 ==== Hamcrest Matchers
 
 The `o.s.kafka.test.hamcrest.KafkaMatchers` provides the following matchers:
 
+====
 [source, java]
 ----
 /**
@@ -174,7 +410,7 @@ public static <V> Matcher<ConsumerRecord<?, V>> hasValue(V value) { ... }
 public static Matcher<ConsumerRecord<?, ?>> hasPartition(int partition) { ... }
 
 /**
- * Matcher testing the timestamp of a {@link ConsumerRecord} asssuming the topic has been set with
+ * Matcher testing the timestamp of a {@link ConsumerRecord} assuming the topic has been set with
  * {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}.
  *
  * @param ts timestamp of the consumer record.
@@ -194,9 +430,13 @@ public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(TimestampType type, lon
   return new ConsumerRecordTimestampMatcher(type, ts);
 }
 ----
+====
 
 ==== AssertJ Conditions
 
+You can use the following AssertJ conditions:
+
+====
 [source, java]
 ----
 /**
@@ -236,11 +476,13 @@ public static Condition<ConsumerRecord<?, ?>> timestamp(TimestampType type, long
   return new ConsumerRecordTimestampCondition(type, value);
 }
 ----
+====
 
 ==== Example
 
-Putting it all together:
+The following example brings together most of the topics covered in this chapter:
 
+====
 [source, java]
 ----
 public class KafkaTemplateTests {
@@ -248,12 +490,12 @@ public class KafkaTemplateTests {
     private static final String TEMPLATE_TOPIC = "templateTopic";
 
     @ClassRule
-    public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, TEMPLATE_TOPIC);
+    public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, TEMPLATE_TOPIC);
 
     @Test
     public void testTemplate() throws Exception {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false",
-            embeddedKafka);
+            embeddedKafka.getEmbeddedKafka());
         DefaultKafkaConsumerFactory<Integer, String> cf =
                             new DefaultKafkaConsumerFactory<Integer, String>(consumerProps);
         ContainerProperties containerProperties = new ContainerProperties(TEMPLATE_TOPIC);
@@ -262,8 +504,8 @@ public class KafkaTemplateTests {
         final BlockingQueue<ConsumerRecord<Integer, String>> records = new LinkedBlockingQueue<>();
         container.setupMessageListener(new MessageListener<Integer, String>() {
 
-        	@Override
-        	public void onMessage(ConsumerRecord<Integer, String> record) {
+            @Override
+            public void onMessage(ConsumerRecord<Integer, String> record) {
                 System.out.println(record);
                 records.add(record);
             }
@@ -271,9 +513,9 @@ public class KafkaTemplateTests {
         });
         container.setBeanName("templateTests");
         container.start();
-        ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+        ContainerTestUtils.waitForAssignment(container, embeddedKafka.getEmbeddedKafka().getPartitionsPerTopic());
         Map<String, Object> senderProps =
-                            KafkaTestUtils.senderProps(embeddedKafka.getBrokersAsString());
+                            KafkaTestUtils.senderProps(embeddedKafka.getEmbeddedKafka().getBrokersAsString());
         ProducerFactory<Integer, String> pf =
                             new DefaultKafkaProducerFactory<Integer, String>(senderProps);
         KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -294,23 +536,24 @@ public class KafkaTemplateTests {
 
 }
 ----
+====
 
-The above uses the hamcrest matchers; with `AssertJ`, the final part looks like this...
+The preceding example uses the Hamcrest matchers.
+With `AssertJ`, the final part looks like the following code:
 
+====
 [source, java]
 ----
-...
-        assertThat(records.poll(10, TimeUnit.SECONDS)).has(value("foo"));
-        template.sendDefault(0, 2, "bar");
-        ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
-        assertThat(received).has(key(2));
-        assertThat(received).has(partition(0));
-        assertThat(received).has(value("bar"));
-        template.send(TEMPLATE_TOPIC, 0, 2, "baz");
-        received = records.poll(10, TimeUnit.SECONDS);
-        assertThat(received).has(key(2));
-        assertThat(received).has(partition(0));
-        assertThat(received).has(value("baz"));
-    }
-}
+assertThat(records.poll(10, TimeUnit.SECONDS)).has(value("foo"));
+template.sendDefault(0, 2, "bar");
+ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
+assertThat(received).has(key(2));
+assertThat(received).has(partition(0));
+assertThat(received).has(value("bar"));
+template.send(TEMPLATE_TOPIC, 0, 2, "baz");
+received = records.poll(10, TimeUnit.SECONDS);
+assertThat(received).has(key(2));
+assertThat(received).has(partition(0));
+assertThat(received).has(value("baz"));
 ----
+====

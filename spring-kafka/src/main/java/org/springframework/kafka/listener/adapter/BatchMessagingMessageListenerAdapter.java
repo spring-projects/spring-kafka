@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,13 +22,12 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.kafka.listener.BatchAcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
-import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.messaging.Message;
@@ -59,9 +58,7 @@ import org.springframework.messaging.support.MessageBuilder;
 public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements BatchAcknowledgingConsumerAwareMessageListener<K, V> {
 
-	private static final Message<KafkaNull> NULL_MESSAGE = new GenericMessage<>(KafkaNull.INSTANCE);
-
-	private BatchMessageConverter messageConverter = new BatchMessagingMessageConverter();
+	private BatchMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
 
 	private KafkaListenerErrorHandler errorHandler;
 
@@ -79,7 +76,10 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param messageConverter the converter.
 	 */
 	public void setBatchMessageConverter(BatchMessageConverter messageConverter) {
-		this.messageConverter = messageConverter;
+		this.batchMessageConverter = messageConverter;
+		if (messageConverter.getRecordMessageConverter() != null) {
+			setMessageConverter(messageConverter.getRecordMessageConverter());
+		}
 	}
 
 	/**
@@ -89,13 +89,24 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * being able to convert {@link org.springframework.messaging.Message}.
 	 */
 	protected final BatchMessageConverter getBatchMessageConverter() {
-		return this.messageConverter;
+		return this.batchMessageConverter;
+	}
+
+	@Override
+	public boolean wantsPollResult() {
+		return isConsumerRecords();
+	}
+
+	@Override
+	public void onMessage(ConsumerRecords<K, V> records, Acknowledgment acknowledgment, Consumer<K, V> consumer) {
+		invoke(records, acknowledgment, consumer, NULL_MESSAGE);
 	}
 
 	/**
-	 * Kafka {@link MessageListener} entry point.
-	 * <p> Delegate the message to the target listener method,
-	 * with appropriate conversion of the message argument.
+	 * Kafka {@link org.springframework.kafka.listener.MessageListener} entry point.
+	 * <p>
+	 * Delegate the message to the target listener method, with appropriate conversion of
+	 * the message argument.
 	 * @param records the incoming list of Kafka {@link ConsumerRecord}.
 	 * @param acknowledgment the acknowledgment.
 	 * @param consumer the consumer.
@@ -118,16 +129,21 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		else {
 			message = NULL_MESSAGE; // optimization since we won't need any conversion to invoke
 		}
-		if (logger.isDebugEnabled()) {
-			logger.debug("Processing [" + message + "]");
-		}
+		logger.debug(() -> "Processing [" + message + "]");
+		invoke(records, acknowledgment, consumer, message);
+	}
+
+	protected void invoke(Object records, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+			final Message<?> messageArg) {
+
+		Message<?> message = messageArg;
 		try {
 			Object result = invokeHandler(records, acknowledgment, message, consumer);
 			if (result != null) {
 				handleResult(result, records, message);
 			}
 		}
-		catch (ListenerExecutionFailedException e) {
+		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
 			if (this.errorHandler != null) {
 				try {
 					if (message.equals(NULL_MESSAGE)) {
@@ -139,7 +155,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 					}
 				}
 				catch (Exception ex) {
-					throw new ListenerExecutionFailedException(createMessagingErrorMessage(
+					throw new ListenerExecutionFailedException(createMessagingErrorMessage(// NOSONAR stack trace loss
 							"Listener error handler threw an exception for the incoming message",
 							message.getPayload()), ex);
 				}

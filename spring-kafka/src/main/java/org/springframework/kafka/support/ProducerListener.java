@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
 /**
@@ -30,6 +31,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  *
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @author Endika Guti?rrez
  *
  * @see org.apache.kafka.clients.producer.Callback
  */
@@ -37,28 +39,56 @@ public interface ProducerListener<K, V> {
 
 	/**
 	 * Invoked after the successful send of a message (that is, after it has been acknowledged by the broker).
+	 * @param producerRecord the actual sent record
+	 * @param recordMetadata the result of the successful send operation
+	 */
+	default void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata) {
+		onSuccess(producerRecord.topic(), producerRecord.partition(),
+				producerRecord.key(), producerRecord.value(), recordMetadata);
+	}
+
+	/**
+	 * Invoked after the successful send of a message (that is, after it has been acknowledged by the broker).
+	 * If the method receiving the ProducerRecord is overridden, this method won't be called
 	 * @param topic the destination topic
 	 * @param partition the destination partition (could be null)
 	 * @param key the key of the outbound message
 	 * @param value the payload of the outbound message
 	 * @param recordMetadata the result of the successful send operation
 	 */
-	void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata);
+	default void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata) {
+	}
 
 	/**
 	 * Invoked after an attempt to send a message has failed.
+	 * @param producerRecord the failed record
+	 * @param exception the exception thrown
+	 */
+	default void onError(ProducerRecord<K, V> producerRecord, Exception exception) {
+		onError(producerRecord.topic(), producerRecord.partition(),
+				producerRecord.key(), producerRecord.value(), exception);
+	}
+
+	/**
+	 * Invoked after an attempt to send a message has failed.
+	 * If the method receiving the ProducerRecord is overridden, this method won't be called
 	 * @param topic the destination topic
 	 * @param partition the destination partition (could be null)
 	 * @param key the key of the outbound message
 	 * @param value the payload of the outbound message
 	 * @param exception the exception thrown
 	 */
-	void onError(String topic, Integer partition, K key, V value, Exception exception);
+	default void onError(String topic, Integer partition, K key, V value, Exception exception) {
+	}
 
 	/**
 	 * Return true if this listener is interested in success as well as failure.
+	 * @deprecated the result of this method will be ignored.
 	 * @return true to express interest in successful sends.
 	 */
-	boolean isInterestedInSuccess();
+	@Deprecated
+	default boolean isInterestedInSuccess() {
+		return false;
+	}
 
 }

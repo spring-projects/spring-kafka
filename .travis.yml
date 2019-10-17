@@ -1,3 +1,4 @@
+dist: trusty
 language: java
 jdk: oraclejdk8
 install: true
@@ -7,5 +8,7 @@ cache:
   directories:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
+env:
+    - GRADLE_ENTERPRISE_URL=https://ge.spring.io/
 script:
   - ./gradlew check --no-daemon

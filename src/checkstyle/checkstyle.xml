@@ -1,15 +1,17 @@
 <?xml version="1.0"?>
-<!DOCTYPE module PUBLIC "-//Puppy Crawl//DTD Check Configuration 1.2//EN" "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
+<!DOCTYPE module PUBLIC
+		"-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+		"https://checkstyle.org/dtds/configuration_1_3.dtd">
 <module name="Checker">
 
 	<module name="SuppressionFilter">
-		<property name="file" value="src/checkstyle/checkstyle-suppressions.xml" />
+		<property name="file" value="src/checkstyle/checkstyle-suppressions.xml"/>
 	</module>
 
 	<!-- Root Checks -->
 	<module name="RegexpHeader">
-		<property name="headerFile" value="src/checkstyle/checkstyle-header.txt" />
-		<property name="fileExtensions" value="java" />
+		<property name="headerFile" value="src/checkstyle/checkstyle-header.txt"/>
+		<property name="fileExtensions" value="java"/>
 	</module>
 	<module name="NewlineAtEndOfFile">
 		<property name="lineSeparator" value="lf"/>
@@ -20,62 +22,64 @@
 
 		<!-- Annotations -->
 		<module name="AnnotationUseStyle">
-			<property name="elementStyle" value="compact" />
+			<property name="elementStyle" value="compact"/>
 		</module>
-		<module name="MissingOverride" />
-		<module name="PackageAnnotation" />
+		<module name="MissingOverride"/>
+		<module name="PackageAnnotation"/>
 		<module name="AnnotationLocation">
 			<property name="allowSamelineSingleParameterlessAnnotation"
-				value="false" />
+					  value="false"/>
 		</module>
 
 		<!-- Block Checks -->
 		<module name="EmptyBlock">
-			<property name="option" value="text" />
+			<property name="option" value="text"/>
 		</module>
-		<module name="LeftCurly" />
+		<module name="LeftCurly"/>
 		<module name="RightCurly">
-			<property name="option" value="alone" />
+			<property name="option" value="alone"/>
 		</module>
-		<module name="NeedBraces" />
-		<module name="AvoidNestedBlocks" />
+		<module name="NeedBraces"/>
+		<module name="AvoidNestedBlocks"/>
 
 		<!-- Class Design -->
-		<module name="FinalClass" />
-		<module name="InterfaceIsType" />
-		<module name="HideUtilityClassConstructor" />
-		<module name="MutableException" />
-		<module name="InnerTypeLast" />
-		<module name="OneTopLevelClass" />
+		<module name="FinalClass"/>
+		<module name="InterfaceIsType"/>
+		<module name="HideUtilityClassConstructor"/>
+		<module name="MutableException"/>
+		<module name="InnerTypeLast"/>
+		<module name="OneTopLevelClass"/>
 
 		<!-- Coding -->
-		<module name="CovariantEquals" />
-		<module name="EmptyStatement" />
-		<module name="EqualsHashCode" />
-		<module name="InnerAssignment" />
-		<module name="SimplifyBooleanExpression" />
-		<module name="SimplifyBooleanReturn" />
-		<module name="StringLiteralEquality" />
+		<module name="CovariantEquals"/>
+		<module name="EmptyStatement"/>
+		<module name="EqualsHashCode"/>
+		<module name="InnerAssignment"/>
+		<module name="SimplifyBooleanExpression"/>
+		<module name="SimplifyBooleanReturn"/>
+		<module name="StringLiteralEquality"/>
 		<module name="NestedForDepth">
-			<property name="max" value="3" />
+			<property name="max" value="3"/>
 		</module>
 		<module name="NestedIfDepth">
-			<property name="max" value="4" />
+			<property name="max" value="4"/>
 		</module>
 		<module name="NestedTryDepth">
-			<property name="max" value="3" />
+			<property name="max" value="3"/>
 		</module>
-		<module name="MultipleVariableDeclarations" />
+		<module name="MultipleVariableDeclarations"/>
 		<module name="RequireThis">
-			<property name="checkMethods" value="false" />
+			<property name="validateOnlyOverlapping" value="false"/>
+			<property name="checkMethods" value="false"/>
 		</module>
-		<module name="OneStatementPerLine" />
+		<module name="OneStatementPerLine"/>
 
 		<!-- Imports -->
-		<module name="AvoidStarImport" />
+		<module name="AvoidStarImport"/>
 		<module name="AvoidStaticImport">
 			<property name="excludes"
-				value="org.assertj.core.api.Assertions.*,
+					  value="org.assertj.core.api.Assertions.*,
+				org.junit.jupiter.api.Assertions.*,
 				org.junit.Assert.*,
 				org.junit.Assume.*,
 				org.junit.internal.matchers.ThrowableMessageMatcher.*,
@@ -85,19 +89,19 @@
 				org.mockito.BDDMockito.*,
 				org.mockito.ArgumentMatchers.*,
 				org.springframework.kafka.test.hamcrest.KafkaMatchers.*,
-				org.springframework.kafka.test.assertj.KafkaConditions.*" />
+				org.springframework.kafka.test.assertj.KafkaConditions.*"/>
 		</module>
-		<module name="IllegalImport" />
-		<module name="RedundantImport" />
+		<module name="IllegalImport"/>
+		<module name="RedundantImport"/>
 		<module name="UnusedImports">
-			<property name="processJavadoc" value="true" />
+			<property name="processJavadoc" value="true"/>
 		</module>
 		<module name="ImportOrder">
-			<property name="groups" value="java,/^javax?\./,org,org.springframework,*" />
-			<property name="ordered" value="true" />
-			<property name="separated" value="true" />
-			<property name="option" value="top" />
-			<property name="sortStaticImportsAlphabetically" value="true" />
+			<property name="groups" value="java,/^javax?\./,org,org.springframework,*"/>
+			<property name="ordered" value="true"/>
+			<property name="separated" value="true"/>
+			<property name="option" value="top"/>
+			<property name="sortStaticImportsAlphabetically" value="true"/>
 		</module>
 
 		<!-- Javadoc Comments -->
@@ -106,7 +110,7 @@
 			<property name="authorFormat" value=".+\s.+"/>
 		</module>
 		<module name="JavadocMethod">
-			<property name="allowMissingJavadoc" value="true" />
+			<property name="allowMissingJavadoc" value="true"/>
 		</module>
 		<module name="JavadocVariable">
 			<property name="scope" value="public"/>
@@ -114,73 +118,73 @@
 		<module name="JavadocStyle">
 			<property name="checkEmptyJavadoc" value="true"/>
 		</module>
-		<module name="NonEmptyAtclauseDescription" />
+		<module name="NonEmptyAtclauseDescription"/>
 		<module name="JavadocTagContinuationIndentation">
 			<property name="offset" value="0"/>
 		</module>
 		<module name="AtclauseOrder">
 			<property name="target" value="CLASS_DEF, INTERFACE_DEF, ENUM_DEF"/>
-		<property name="tagOrder" value="@param, @author, @since, @see, @version, @serial, @deprecated"/>
+			<property name="tagOrder" value="@param, @author, @since, @see, @version, @serial, @deprecated"/>
 		</module>
 		<module name="AtclauseOrder">
 			<property name="target" value="METHOD_DEF, CTOR_DEF, VARIABLE_DEF"/>
-		<property name="tagOrder" value="@param, @return, @throws, @since, @deprecated, @see"/>
+			<property name="tagOrder" value="@param, @return, @throws, @since, @deprecated, @see"/>
 		</module>
 
 		<!-- Miscellaneous -->
 		<module name="CommentsIndentation">
-			<property name="tokens" value="BLOCK_COMMENT_BEGIN" />
+			<property name="tokens" value="BLOCK_COMMENT_BEGIN"/>
 		</module>
-		<module name="UpperEll" />
-		<module name="ArrayTypeStyle" />
-		<module name="OuterTypeFilename" />
+		<module name="UpperEll"/>
+		<module name="ArrayTypeStyle"/>
+		<module name="OuterTypeFilename"/>
 
 		<!-- Modifiers -->
-		<module name="RedundantModifier" />
+		<module name="RedundantModifier"/>
 
 		<!-- Regexp -->
 		<module name="RegexpSinglelineJava">
-			<property name="format" value="^\t* +\t*\S" />
+			<property name="format" value="^\t* +\t*\S"/>
 			<property name="message"
-				value="Line has leading space characters; indentation should be performed with tabs only." />
-			<property name="ignoreComments" value="true" />
+					  value="Line has leading space characters; indentation should be performed with tabs only."/>
+			<property name="ignoreComments" value="true"/>
 		</module>
- 		<module name="RegexpSinglelineJava">
- 			<property name="maximum" value="0"/>
- 			<property name="format" value="org\.mockito\..*Mockito\.(when|doThrow|doAnswer)" />
- 			<property name="message"
- 				value="Please use BDDMockito instead of Mockito.(when|doThrow|doAnswer)." />
- 			<property name="ignoreComments" value="true" />
- 		</module>
 		<module name="RegexpSinglelineJava">
 			<property name="maximum" value="0"/>
-			<property name="format" value="org\.junit\.Assert\.assert" />
+			<property name="format" value="org\.mockito\..*Mockito\.(when|doThrow|doAnswer)"/>
 			<property name="message"
-				value="Please use AssertJ imports." />
-			<property name="ignoreComments" value="true" />
+					  value="Please use BDDMockito instead of Mockito.(when|doThrow|doAnswer)."/>
+			<property name="ignoreComments" value="true"/>
+		</module>
+		<module name="RegexpSinglelineJava">
+			<property name="maximum" value="0"/>
+			<property name="format" value="org\.junit\.Assert\.assert"/>
+			<property name="message"
+					  value="Please use AssertJ imports."/>
+			<property name="ignoreComments" value="true"/>
 		</module>
 		<module name="Regexp">
-			<property name="format" value="[ \t]+$" />
-			<property name="illegalPattern" value="true" />
-			<property name="message" value="Trailing whitespace" />
+			<property name="format" value="[ \t]+$"/>
+			<property name="illegalPattern" value="true"/>
+			<property name="message" value="Trailing whitespace"/>
 		</module>
 		<module name="Regexp">
-			<property name="format" value="System.(out|err).print" />
-			<property name="illegalPattern" value="true" />
-			<property name="message" value="System.out or .err" />
+			<property name="format" value="System.(out|err).print"/>
+			<property name="illegalPattern" value="true"/>
+			<property name="message" value="System.out or .err"/>
 		</module>
 
 		<!-- Whitespace -->
-		<module name="GenericWhitespace" />
-		<module name="MethodParamPad" />
-		<module name="NoWhitespaceAfter" >
+		<module name="GenericWhitespace"/>
+		<module name="MethodParamPad"/>
+		<module name="NoWhitespaceAfter">
 			<property name="tokens" value="BNOT, DEC, DOT, INC, LNOT, UNARY_MINUS, UNARY_PLUS, ARRAY_DECLARATOR"/>
 		</module>
-		<module name="NoWhitespaceBefore" />
-		<module name="ParenPad" />
-		<module name="TypecastParenPad" />
-		<module name="WhitespaceAfter" />
-		<module name="WhitespaceAround" />
+		<module name="NoWhitespaceBefore"/>
+		<module name="ParenPad"/>
+		<module name="TypecastParenPad"/>
+		<module name="WhitespaceAfter"/>
+		<module name="WhitespaceAround"/>
 
 	</module>
 </module>

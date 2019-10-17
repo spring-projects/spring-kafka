@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+	<Appenders>
+		<Console name="STDOUT" target="SYSTEM_OUT">
+			<PatternLayout pattern="%d %p [%t] [%c] - %m%n" />
+		</Console>
+	</Appenders>
+	<Loggers>
+		<Logger name="org.springframework.kafka.test" level="warn"/>
+		<Logger name="org.apache.kafka.clients" level="warn"/>
+		<Logger name="org.apache.kafka.clients.NetworkClient" level="error"/>
+		<Logger name="org.apache.kafka.common.network.Selector" level="error"/>
+		<Logger name="kafka.server.ReplicaFetcherThread" level="error"/>
+		<Logger name="kafka.server.LogDirFailureChannel" level="fatal"/>
+		<Logger name="kafka.server.BrokerMetadataCheckpoint" level="error"/>
+		<Logger name="kafka.utils.CoreUtils$" level="error"/>
+		<Logger name="org.apache.kafka.clients.producer.internals.TransactionManager" level="warn"/>
+		<Logger name="org.apache.zookeeper.server.ZooKeeperServer" level="fatal"/>
+		<Root level="warn">
+			<AppenderRef ref="STDOUT" />
+		</Root>
+	</Loggers>
+</Configuration>

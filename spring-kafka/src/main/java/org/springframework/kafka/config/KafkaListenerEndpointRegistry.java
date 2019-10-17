@@ -1,11 +1,11 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.BeansException;
@@ -38,6 +37,8 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -67,17 +68,18 @@ import org.springframework.util.StringUtils;
 public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifecycle, ApplicationContextAware,
 		ApplicationListener<ContextRefreshedEvent> {
 
-	protected final Log logger = LogFactory.getLog(getClass()); //NOSONAR
+	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); //NOSONAR
 
 	private final Map<String, MessageListenerContainer> listenerContainers =
 			new ConcurrentHashMap<String, MessageListenerContainer>();
 
-	private int phase = Integer.MAX_VALUE;
+	private int phase = AbstractMessageListenerContainer.DEFAULT_PHASE;
 
 	private ConfigurableApplicationContext applicationContext;
 
 	private boolean contextRefreshed;
 
+	private volatile boolean running;
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -111,9 +113,26 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	/**
 	 * Return the managed {@link MessageListenerContainer} instance(s).
 	 * @return the managed {@link MessageListenerContainer} instance(s).
+	 * @see #getAllListenerContainers()
 	 */
 	public Collection<MessageListenerContainer> getListenerContainers() {
 		return Collections.unmodifiableCollection(this.listenerContainers.values());
+	}
+
+	/**
+	 * Return all {@link MessageListenerContainer} instances including those managed by
+	 * this registry and those declared as beans in the application context.
+	 * Prototype-scoped containers will be included. Lazy beans that have not yet been
+	 * created will not be initialized by a call to this method.
+	 * @return the {@link MessageListenerContainer} instance(s).
+	 * @since 2.2.5
+	 * @see #getListenerContainers()
+	 */
+	public Collection<MessageListenerContainer> getAllListenerContainers() {
+		List<MessageListenerContainer> containers = new ArrayList<>();
+		containers.addAll(getListenerContainers());
+		containers.addAll(this.applicationContext.getBeansOfType(MessageListenerContainer.class, true, false).values());
+		return containers;
 	}
 
 	/**
@@ -191,10 +210,11 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		}
 
 		int containerPhase = listenerContainer.getPhase();
-		if (containerPhase < Integer.MAX_VALUE) {  // a custom phase value
-			if (this.phase < Integer.MAX_VALUE && this.phase != containerPhase) {
-				throw new IllegalStateException("Encountered phase mismatch between container factory definitions: " +
-						this.phase + " vs " + containerPhase);
+		if (listenerContainer.isAutoStartup() &&
+				containerPhase != AbstractMessageListenerContainer.DEFAULT_PHASE) {  // a custom phase value
+			if (this.phase != AbstractMessageListenerContainer.DEFAULT_PHASE && this.phase != containerPhase) {
+				throw new IllegalStateException("Encountered phase mismatch between container "
+						+ "factory definitions: " + this.phase + " vs " + containerPhase);
 			}
 			this.phase = listenerContainer.getPhase();
 		}
@@ -211,7 +231,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 					((DisposableBean) listenerContainer).destroy();
 				}
 				catch (Exception ex) {
-					this.logger.warn("Failed to destroy message listener container", ex);
+					this.logger.warn(ex, "Failed to destroy message listener container");
 				}
 			}
 		}
@@ -235,6 +255,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			startIfNecessary(listenerContainer);
 		}
+		this.running = true;
 	}
 
 	@Override
@@ -242,30 +263,31 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			listenerContainer.stop();
 		}
+		this.running = false;
 	}
 
 	@Override
 	public void stop(Runnable callback) {
-		Collection<MessageListenerContainer> listenerContainers = getListenerContainers();
-		AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainers.size(), callback);
-		for (MessageListenerContainer listenerContainer : listenerContainers) {
-			if (listenerContainer.isRunning()) {
-				listenerContainer.stop(aggregatingCallback);
+		Collection<MessageListenerContainer> listenerContainersToStop = getListenerContainers();
+		if (listenerContainersToStop.size() > 0) {
+			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(), callback);
+			for (MessageListenerContainer listenerContainer : listenerContainersToStop) {
+				if (listenerContainer.isRunning()) {
+					listenerContainer.stop(aggregatingCallback);
+				}
+				else {
+					aggregatingCallback.run();
+				}
 			}
-			else {
-				aggregatingCallback.run();
-			}
+		}
+		else {
+			callback.run();
 		}
 	}
 
 	@Override
 	public boolean isRunning() {
-		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
-			if (listenerContainer.isRunning()) {
-				return true;
-			}
-		}
-		return false;
+		return this.running;
 	}
 
 

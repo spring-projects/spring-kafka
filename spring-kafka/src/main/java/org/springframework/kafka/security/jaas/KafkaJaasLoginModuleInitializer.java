@@ -1,11 +1,11 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,9 +37,14 @@ import org.springframework.util.Assert;
  * @author Marius Bogoevici
  * @author Gary Russell
  *
- * @since 2.0
+ * @since 1.3
  */
 public class KafkaJaasLoginModuleInitializer implements SmartInitializingSingleton, DisposableBean {
+
+	/**
+	 * The key for the kafka client configuration entry.
+	 */
+	public static final String KAFKA_CLIENT_CONTEXT_NAME = "KafkaClient";
 
 	/**
 	 * Control flag values for login configuration.
@@ -136,7 +141,7 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 					this.loginModule,
 					this.controlFlag,
 					this.options);
-			configurationEntries.put(JaasUtils.LOGIN_CONTEXT_CLIENT,
+			configurationEntries.put(KAFKA_CLIENT_CONTEXT_NAME,
 					new AppConfigurationEntry[] { kafkaClientConfigurationEntry });
 			Configuration.setConfiguration(new InternalConfiguration(configurationEntries));
 			// Workaround for a 0.9 client issue where even if the Configuration is
@@ -151,7 +156,7 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 	}
 
 	@Override
-	public void destroy() throws Exception {
+	public void destroy() {
 		if (this.ignoreJavaLoginConfigParamSystemProperty) {
 			System.clearProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM);
 		}

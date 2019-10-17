@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,8 @@ package org.springframework.kafka.support;
 import java.util.Objects;
 
 import org.apache.kafka.common.TopicPartition;
+
+import org.springframework.lang.Nullable;
 
 /**
  * A configuration container to represent a topic name, partition number and, optionally,
@@ -35,10 +37,14 @@ import org.apache.kafka.common.TopicPartition;
  * {@link #isRelativeToCurrent()}.</li>
  * </ul>
  * Offsets are applied when the container is {@code start()}ed.
+ * This class is also used for deferred seek operations.
  *
  * @author Artem Bilan
  * @author Gary Russell
+ *
+ * @deprecated in favor of {@code TopicPartitionOffset}.
  */
+@Deprecated
 public class TopicPartitionInitialOffset {
 
 	/**
@@ -54,7 +60,13 @@ public class TopicPartitionInitialOffset {
 		/**
 		 * Seek to the end.
 		 */
-		END
+		END,
+
+		/**
+		 * Seek to the time stamp.
+		 */
+		TIMESTAMP
+
 	}
 
 	private final TopicPartition topicPartition;
@@ -109,11 +121,41 @@ public class TopicPartitionInitialOffset {
 	 * @param topic the topic.
 	 * @param partition the partition.
 	 * @param position {@link SeekPosition}.
-	 * @since 2.0
+	 * @since 1.3
 	 */
 	public TopicPartitionInitialOffset(String topic, int partition, SeekPosition position) {
 		this.topicPartition = new TopicPartition(topic, partition);
 		this.initialOffset = null;
+		this.relativeToCurrent = false;
+		this.position = position;
+	}
+
+	/**
+	 * Construct an instance with the provided {@link SeekPosition}.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param offset the offset from the seek position.
+	 * @param position {@link SeekPosition}.
+	 * @since 2.3
+	 */
+	public TopicPartitionInitialOffset(String topic, int partition, Long offset, @Nullable SeekPosition position) {
+		this.topicPartition = new TopicPartition(topic, partition);
+		this.initialOffset = offset;
+		this.relativeToCurrent = false;
+		this.position = position;
+	}
+
+	/**
+	 * Construct an instance with the provided {@link SeekPosition}.
+	 * @param topicPartition the topic/partition.
+	 * @param offset the offset from the seek position (or timestamp for
+	 * {@link SeekPosition#TIMESTAMP}).
+	 * @param position {@link SeekPosition}.
+	 * @since 2.3
+	 */
+	public TopicPartitionInitialOffset(TopicPartition topicPartition, Long offset, @Nullable SeekPosition position) {
+		this.topicPartition = topicPartition;
+		this.initialOffset = offset;
 		this.relativeToCurrent = false;
 		this.position = position;
 	}
@@ -167,6 +209,32 @@ public class TopicPartitionInitialOffset {
 				", relativeToCurrent=" + this.relativeToCurrent +
 				(this.position == null ? "" : (", position=" + this.position.name())) +
 				'}';
+	}
+
+	/**
+	 * API not intended for use outside of the framework.
+	 * @param offset the offset.
+	 * @return the offset.
+	 * @since 2.3
+	 */
+	public static TopicPartitionInitialOffset fromTPO(TopicPartitionOffset offset) {
+		return new TopicPartitionInitialOffset(offset.getTopicPartition(), offset.getOffset(),
+				offset.getPosition() == null
+						? null
+						: SeekPosition.valueOf(offset.getPosition().name()));
+	}
+
+	/**
+	 * API not intended for use outside of the framework.
+	 * @param offset the offset.
+	 * @return the offset.
+	 * @since 2.3
+	 */
+	public static TopicPartitionOffset toTPO(TopicPartitionInitialOffset offset) {
+		return new TopicPartitionOffset(offset.topicPartition(), offset.initialOffset(),
+				offset.getPosition() == null
+						? null
+						: TopicPartitionOffset.SeekPosition.valueOf(offset.getPosition().name()));
 	}
 
 }

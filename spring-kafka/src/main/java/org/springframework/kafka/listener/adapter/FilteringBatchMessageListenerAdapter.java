@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -79,27 +79,37 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 				iterator.remove();
 			}
 		}
-		if (consumerRecords.size() > 0 || this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
-				|| this.delegateType.equals(ListenerType.CONSUMER_AWARE)
+		boolean consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
+						|| this.delegateType.equals(ListenerType.CONSUMER_AWARE);
+		/*
+		 *  An empty list goes to the listener if ackDiscarded is false and the listener can ack
+		 *  either through the acknowledgment
+		 */
+		if (consumerRecords.size() > 0 || consumerAware
 				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
-			switch (this.delegateType) {
-				case ACKNOWLEDGING_CONSUMER_AWARE:
-					this.delegate.onMessage(consumerRecords, acknowledgment, consumer);
-					break;
-				case ACKNOWLEDGING:
-					this.delegate.onMessage(consumerRecords, acknowledgment);
-					break;
-				case CONSUMER_AWARE:
-					this.delegate.onMessage(consumerRecords, consumer);
-					break;
-				case SIMPLE:
-					this.delegate.onMessage(consumerRecords);
-			}
+			invokeDelegate(consumerRecords, acknowledgment, consumer);
 		}
 		else {
 			if (this.ackDiscarded && acknowledgment != null) {
 				acknowledgment.acknowledge();
 			}
+		}
+	}
+
+	private void invokeDelegate(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
+		switch (this.delegateType) {
+			case ACKNOWLEDGING_CONSUMER_AWARE:
+				this.delegate.onMessage(consumerRecords, acknowledgment, consumer);
+				break;
+			case ACKNOWLEDGING:
+				this.delegate.onMessage(consumerRecords, acknowledgment);
+				break;
+			case CONSUMER_AWARE:
+				this.delegate.onMessage(consumerRecords, consumer);
+				break;
+			case SIMPLE:
+				this.delegate.onMessage(consumerRecords);
 		}
 	}
 

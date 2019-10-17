@@ -1,4 +1,65 @@
+////
+[[deps-for-21x]]
+== Override Dependencies to use the 2.1.x kafka-clients with an Embedded Broker
+
+When you use `spring-kafka-test` (version 2.2.x) with the 2.1.x `kafka-clients` jar, you need to override certain transitive dependencies, as follows:
+
+====
+[source, xml]
+----
+<dependency>
+    <groupId>org.springframework.kafka</groupId>
+    <artifactId>spring-kafka</artifactId>
+    <version>${spring.kafka.version}</version>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework.kafka</groupId>
+    <artifactId>spring-kafka-test</artifactId>
+    <version>${spring.kafka.version}</version>
+    <exclusions>
+        <exclusion>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.11</artifactId>
+        </exclusion>
+    </exclusions>
+    <scope>test</scope>
+</dependency>
+
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka-clients</artifactId>
+    <version>2.1.1</version>
+</dependency>
+
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka-clients</artifactId>
+    <version>2.1.1</version>
+    <classifier>test</classifier>
+</dependency>
+
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka_2.12</artifactId>
+    <version>2.1.1</version>
+    <scope>test</scope>
+</dependency>
+
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka_2.12</artifactId>
+    <version>2.1.1</version>
+    <classifier>test</classifier>
+    <scope>test</scope>
+</dependency>
+----
+====
+Note that when switching to scala 2.12 (recommended for 2.1.x and higher), the 2.11 version must be excluded from spring-kafka-test.
+////
+
+[appendix]
 [[history]]
 == Change History
 
-include::./changes-1.0-1.1.adoc[]
+include::./changes-since-1.0.adoc[]

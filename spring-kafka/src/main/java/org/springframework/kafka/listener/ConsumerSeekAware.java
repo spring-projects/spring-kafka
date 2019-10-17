@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.apache.kafka.common.TopicPartition;
@@ -37,14 +38,29 @@ public interface ConsumerSeekAware {
 	 * containers listeners should store the callback in a {@code ThreadLocal}.
 	 * @param callback the callback.
 	 */
-	void registerSeekCallback(ConsumerSeekCallback callback);
+	default void registerSeekCallback(ConsumerSeekCallback callback) {
+		// do nothing
+	}
 
 	/**
 	 * When using group management, called when partition assignments change.
 	 * @param assignments the new assignments and their current offsets.
 	 * @param callback the callback to perform an initial seek after assignment.
 	 */
-	void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
+	default void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		// do nothing
+	}
+
+	/**
+	 * When using group management, called when partition assignments are revoked.
+	 * Listeners should discard any callback saved from
+	 * {@link #registerSeekCallback(ConsumerSeekCallback)} on this thread.
+	 * @param partitions the partitions that have been revoked.
+	 * @since 2.3
+	 */
+	default void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+		// do nothing
+	}
 
 	/**
 	 * If the container is configured to emit idle container events, this method is called
@@ -52,7 +68,9 @@ public interface ConsumerSeekAware {
 	 * @param assignments the new assignments and their current offsets.
 	 * @param callback the callback to perform a seek.
 	 */
-	void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
+	default void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		// do nothing
+	}
 
 	/**
 	 * A callback that a listener can invoke to seek to a specific offset.
@@ -84,6 +102,38 @@ public interface ConsumerSeekAware {
 		 * @param partition the partition.
 		 */
 		void seekToEnd(String topic, int partition);
+
+		/**
+		 * Queue a seek to a position relative to the start or end of the current position.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 * @param offset the offset; positive values are relative to the start, negative
+		 * values are relative to the end, unless toCurrent is true.
+		 * @param toCurrent true for the offset to be relative to the current position rather
+		 * than the beginning or end.
+		 * @since 2.3
+		 */
+		void seekRelative(String topic, int partition, long offset, boolean toCurrent);
+
+		/**
+		 * Seek to the first offset greater than or equal to the time stamp.
+		 * Use {@link #seekToTimestamp(Collection, long)} when seeking multiple partitions
+		 * because the offset lookup is blocking.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 * @param timestamp the time stamp.
+		 * @since 2.3
+		 * @see #seekToTimestamp(Collection, long)
+		 */
+		void seekToTimestamp(String topic, int partition, long timestamp);
+
+		/**
+		 * Seek to the first offset greater than or equal to the time stamp.
+		 * @param topicPartitions the topic/partitions.
+		 * @param timestamp the time stamp.
+		 * @since 2.3
+		 */
+		void seekToTimestamp(Collection<TopicPartition> topicPartitions, long timestamp);
 
 	}
 

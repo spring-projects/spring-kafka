@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,13 +18,21 @@ package org.springframework.kafka.listener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.listener.config.ContainerProperties;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
 
 /**
@@ -42,10 +50,9 @@ import org.springframework.util.Assert;
  * @author Murali Reddy
  * @author Jerome Mirc
  * @author Artem Bilan
+ * @author Vladimir Tsanev
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
-
-	private final ConsumerFactory<K, V> consumerFactory;
 
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
 
@@ -58,11 +65,11 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
 	 */
-	public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
+	public ConcurrentMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
-		super(containerProperties);
+
+		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		this.consumerFactory = consumerFactory;
 	}
 
 	public int getConcurrency() {
@@ -89,17 +96,48 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		return Collections.unmodifiableList(this.containers);
 	}
 
+	@Override
+	public Collection<TopicPartition> getAssignedPartitions() {
+		return this.containers.stream()
+				.map(KafkaMessageListenerContainer::getAssignedPartitions)
+				.filter(Objects::nonNull)
+				.flatMap(Collection::stream)
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public boolean isContainerPaused() {
+		boolean paused = isPaused();
+		if (paused) {
+			for (AbstractMessageListenerContainer<K, V> container : this.containers) {
+				if (!container.isContainerPaused()) {
+					return false;
+				}
+			}
+		}
+		return paused;
+	}
+
+	@Override
+	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
+		Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
+		for (KafkaMessageListenerContainer<K, V> container : this.containers) {
+			metrics.putAll(container.metrics());
+		}
+		return Collections.unmodifiableMap(metrics);
+	}
+
 	/*
 	 * Under lifecycle lock.
 	 */
 	@Override
 	protected void doStart() {
 		if (!isRunning()) {
+			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
-			TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
-			if (topicPartitions != null
-					&& this.concurrency > topicPartitions.length) {
-				this.logger.warn("When specific partitions are provided, the concurrency must be less than or "
+			TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitionsToAssign();
+			if (topicPartitions != null && this.concurrency > topicPartitions.length) {
+				this.logger.warn(() -> "When specific partitions are provided, the concurrency must be less than or "
 						+ "equal to the number of partitions; reduced from " + this.concurrency + " to "
 						+ topicPartitions.length);
 				this.concurrency = topicPartitions.length;
@@ -109,38 +147,50 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container;
 				if (topicPartitions == null) {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, containerProperties);
+					container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, containerProperties);
 				}
 				else {
-					container = new KafkaMessageListenerContainer<>(this.consumerFactory, containerProperties,
-							partitionSubset(containerProperties, i));
+					container = new KafkaMessageListenerContainer<>(this, this.consumerFactory,
+							containerProperties, partitionSubset(containerProperties, i));
 				}
-				if (getBeanName() != null) {
-					container.setBeanName(getBeanName() + "-" + i);
-				}
+				String beanName = getBeanName();
+				container.setBeanName((beanName != null ? beanName : "consumer") + "-" + i);
+				container.setApplicationContext(getApplicationContext());
 				if (getApplicationEventPublisher() != null) {
 					container.setApplicationEventPublisher(getApplicationEventPublisher());
 				}
 				container.setClientIdSuffix("-" + i);
+				container.setGenericErrorHandler(getGenericErrorHandler());
+				container.setAfterRollbackProcessor(getAfterRollbackProcessor());
+				container.setRecordInterceptor(getRecordInterceptor());
+				container.setEmergencyStop(() -> {
+					stop(() -> {
+						// NOSONAR
+					});
+					publishContainerStoppedEvent();
+				});
+				if (isPaused()) {
+					container.pause();
+				}
 				container.start();
 				this.containers.add(container);
 			}
 		}
 	}
 
-	private TopicPartitionInitialOffset[] partitionSubset(ContainerProperties containerProperties, int i) {
-		TopicPartitionInitialOffset[] topicPartitions = containerProperties.getTopicPartitions();
+	private TopicPartitionOffset[] partitionSubset(ContainerProperties containerProperties, int i) {
+		TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitionsToAssign();
 		if (this.concurrency == 1) {
 			return topicPartitions;
 		}
 		else {
 			int numPartitions = topicPartitions.length;
 			if (numPartitions == this.concurrency) {
-				return new TopicPartitionInitialOffset[] { topicPartitions[i] };
+				return new TopicPartitionOffset[] { topicPartitions[i] };
 			}
 			else {
 				int perContainer = numPartitions / this.concurrency;
-				TopicPartitionInitialOffset[] subset;
+				TopicPartitionOffset[] subset;
 				if (i == this.concurrency - 1) {
 					subset = Arrays.copyOfRange(topicPartitions, i * perContainer, topicPartitions.length);
 				}
@@ -167,20 +217,27 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				if (container.isRunning()) {
-					container.stop(new Runnable() {
-
-						@Override
-						public void run() {
-							if (count.decrementAndGet() <= 0) {
-								callback.run();
-							}
+					container.stop(() -> {
+						if (count.decrementAndGet() <= 0) {
+							callback.run();
 						}
-
 					});
 				}
 			}
 			this.containers.clear();
 		}
+	}
+
+	@Override
+	public void pause() {
+		super.pause();
+		this.containers.forEach(AbstractMessageListenerContainer::pause);
+	}
+
+	@Override
+	public void resume() {
+		super.resume();
+		this.containers.forEach(AbstractMessageListenerContainer::resume);
 	}
 
 	@Override

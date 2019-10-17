@@ -1,11 +1,11 @@
 /*
- * Copyright 2014-2017 the original author or authors.
+ * Copyright 2014-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.regex.Pattern;
+
+import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
@@ -30,6 +33,7 @@ import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.expression.BeanFactoryResolver;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.BatchMessageListener;
@@ -39,12 +43,15 @@ import org.springframework.kafka.listener.adapter.FilteringBatchMessageListenerA
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
-import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 
 /**
  * Base model for a Kafka listener endpoint.
@@ -54,11 +61,14 @@ import org.springframework.util.Assert;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
+ * @author Artem Bilan
  *
  * @see MethodKafkaListenerEndpoint
  */
 public abstract class AbstractKafkaListenerEndpoint<K, V>
 		implements KafkaListenerEndpoint, BeanFactoryAware, InitializingBean {
+
+	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
 	private String id;
 
@@ -68,7 +78,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private Pattern topicPattern;
 
-	private final Collection<TopicPartitionInitialOffset> topicPartitions = new ArrayList<>();
+	private final Collection<TopicPartitionOffset> topicPartitions = new ArrayList<>();
 
 	private BeanFactory beanFactory;
 
@@ -88,9 +98,21 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private RecoveryCallback<? extends Object> recoveryCallback;
 
+	private boolean statefulRetry;
+
 	private boolean batchListener;
 
-	private KafkaTemplate<K, V> replyTemplate;
+	private KafkaTemplate<?, ?> replyTemplate;
+
+	private String clientIdPrefix;
+
+	private Integer concurrency;
+
+	private Boolean autoStartup;
+
+	private ReplyHeadersConfigurer replyHeadersConfigurer;
+
+	private Properties consumerProperties;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -129,9 +151,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	/**
 	 * Set the group id to override the {@code group.id} property in the
-	 * connectionFactory.
+	 * ContainerFactory.
 	 * @param groupId the group id.
-	 * @since 2.0
+	 * @since 1.3
 	 */
 	public void setGroupId(String groupId) {
 		this.groupId = groupId;
@@ -146,7 +168,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Set the topics to use. Either these or 'topicPattern' or 'topicPartitions'
 	 * should be provided, but not a mixture.
 	 * @param topics to set.
-	 * @see #setTopicPartitions(TopicPartitionInitialOffset...)
+	 * @see #setTopicPartitions(TopicPartitionOffset...)
 	 * @see #setTopicPattern(Pattern)
 	 */
 	public void setTopics(String... topics) {
@@ -169,10 +191,29 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Either this or 'topic' or 'topicPattern'
 	 * should be provided, but not a mixture.
 	 * @param topicPartitions to set.
+	 * @deprecated in favor of {@link #setTopicPartitions(TopicPartitionOffset...)}.
 	 * @see #setTopics(String...)
 	 * @see #setTopicPattern(Pattern)
 	 */
-	public void setTopicPartitions(TopicPartitionInitialOffset... topicPartitions) {
+	@Deprecated
+	public void setTopicPartitions(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
+		Assert.notNull(topicPartitions, "'topics' must not be null");
+		this.topicPartitions.clear();
+		Arrays.stream(topicPartitions)
+				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
+				.forEach(this.topicPartitions::add);
+	}
+
+	/**
+	 * Set the topicPartitions to use.
+	 * Either this or 'topic' or 'topicPattern'
+	 * should be provided, but not a mixture.
+	 * @param topicPartitions to set.
+	 * @since 2.3
+	 * @see #setTopics(String...)
+	 * @see #setTopicPattern(Pattern)
+	 */
+	public void setTopicPartitions(TopicPartitionOffset... topicPartitions) {
 		Assert.notNull(topicPartitions, "'topics' must not be null");
 		this.topicPartitions.clear();
 		this.topicPartitions.addAll(Arrays.asList(topicPartitions));
@@ -181,17 +222,18 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	/**
 	 * Return the topicPartitions for this endpoint.
 	 * @return the topicPartitions for this endpoint.
+	 * @since 2.3
 	 */
 	@Override
-	public Collection<TopicPartitionInitialOffset> getTopicPartitions() {
-		return Collections.unmodifiableCollection(this.topicPartitions);
+	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
+		return this.topicPartitions.toArray(new TopicPartitionOffset[0]);
 	}
 
 	/**
 	 * Set the topic pattern to use. Cannot be used with
 	 * topics or topicPartitions.
 	 * @param topicPattern the pattern
-	 * @see #setTopicPartitions(TopicPartitionInitialOffset...)
+	 * @see #setTopicPartitions(TopicPartitionOffset...)
 	 * @see #setTopics(String...)
 	 */
 	public void setTopicPattern(Pattern topicPattern) {
@@ -243,15 +285,15 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @param replyTemplate the template.
 	 * @since 2.0
 	 */
-	public void setReplyTemplate(KafkaTemplate<K, V> replyTemplate) {
+	public void setReplyTemplate(KafkaTemplate<?, ?> replyTemplate) {
 		this.replyTemplate = replyTemplate;
 	}
 
-	protected KafkaTemplate<K, V> getReplyTemplate() {
+	protected KafkaTemplate<?, ?> getReplyTemplate() {
 		return this.replyTemplate;
 	}
 
-	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
+	protected RecordFilterStrategy<? super K, ? super V> getRecordFilterStrategy() {
 		return this.recordFilterStrategy;
 	}
 
@@ -259,8 +301,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Set a {@link RecordFilterStrategy} implementation.
 	 * @param recordFilterStrategy the strategy implementation.
 	 */
-	public void setRecordFilterStrategy(RecordFilterStrategy<K, V> recordFilterStrategy) {
-		this.recordFilterStrategy = recordFilterStrategy;
+	@SuppressWarnings("unchecked")
+	public void setRecordFilterStrategy(RecordFilterStrategy<? super K, ? super V> recordFilterStrategy) {
+		this.recordFilterStrategy = (RecordFilterStrategy<K, V>) recordFilterStrategy;
 	}
 
 	protected boolean isAckDiscarded() {
@@ -268,8 +311,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy)
-	 * recordFilterStrategy} is in use.
+	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy)} is in use.
 	 * @param ackDiscarded the ackDiscarded.
 	 */
 	public void setAckDiscarded(boolean ackDiscarded) {
@@ -293,18 +335,107 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)
-	 * retryTemplate}.
+	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)}.
 	 * @param recoveryCallback the callback.
 	 */
 	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
 	}
 
+	protected boolean isStatefulRetry() {
+		return this.statefulRetry;
+	}
+
+	/**
+	 * When using a {@link RetryTemplate}, set to true to enable stateful retry. Use in
+	 * conjunction with a
+	 * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler} when retry can
+	 * take excessive time; each failure goes back to the broker, to keep the Consumer
+	 * alive.
+	 * @param statefulRetry true to enable stateful retry.
+	 * @since 2.1.3
+	 */
+	public void setStatefulRetry(boolean statefulRetry) {
+		this.statefulRetry = statefulRetry;
+	}
+
+	@Override
+	public String getClientIdPrefix() {
+		return this.clientIdPrefix;
+	}
+
+	/**
+	 * Set the client id prefix; overrides the client id in the consumer configuration
+	 * properties.
+	 * @param clientIdPrefix the prefix.
+	 * @since 2.1.1
+	 */
+	public void setClientIdPrefix(String clientIdPrefix) {
+		this.clientIdPrefix = clientIdPrefix;
+	}
+
+	@Override
+	public Integer getConcurrency() {
+		return this.concurrency;
+	}
+
+	/**
+	 * Set the concurrency for this endpoint's container.
+	 * @param concurrency the concurrency.
+	 * @since 2.2
+	 */
+	public void setConcurrency(Integer concurrency) {
+		this.concurrency = concurrency;
+	}
+
+	@Override
+	public Boolean getAutoStartup() {
+		return this.autoStartup;
+	}
+
+	/**
+	 * Set the autoStartup for this endpoint's container.
+	 * @param autoStartup the autoStartup.
+	 * @since 2.2
+	 */
+	public void setAutoStartup(Boolean autoStartup) {
+		this.autoStartup = autoStartup;
+	}
+
+	/**
+	 * Set a configurer which will be invoked when creating a reply message.
+	 * @param replyHeadersConfigurer the configurer.
+	 * @since 2.2
+	 */
+	public void setReplyHeadersConfigurer(ReplyHeadersConfigurer replyHeadersConfigurer) {
+		this.replyHeadersConfigurer = replyHeadersConfigurer;
+	}
+
+	@Override
+	@Nullable
+	public Properties getConsumerProperties() {
+		return this.consumerProperties;
+	}
+
+	/**
+	 * Set the consumer properties that will be merged with the consumer properties
+	 * provided by the consumer factory; properties here will supersede any with the same
+	 * name(s) in the consumer factory.
+	 * {@code group.id} and {@code client.id} are ignored.
+	 * @param consumerProperties the properties.
+	 * @since 2.1.4
+	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
+	 * @see #setGroupId(String)
+	 * @see #setClientIdPrefix(String)
+	 */
+	public void setConsumerProperties(Properties consumerProperties) {
+		this.consumerProperties = consumerProperties;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		boolean topicsEmpty = getTopics().isEmpty();
-		boolean topicPartitionsEmpty = getTopicPartitions().isEmpty();
+		boolean topicPartitionsEmpty = ObjectUtils.isEmpty(getTopicPartitionsToAssign());
 		if (!topicsEmpty && !topicPartitionsEmpty) {
 			throw new IllegalStateException("Topics or topicPartitions must be provided but not both for " + this);
 		}
@@ -328,23 +459,37 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * specified container.
 	 * @param container the {@link MessageListenerContainer} to create a {@link MessageListener}.
 	 * @param messageConverter the message converter - may be null.
-	 * @return a a {@link MessageListener} instance.
+	 * @return a {@link MessageListener} instance.
 	 */
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			MessageConverter messageConverter);
 
 	@SuppressWarnings("unchecked")
 	private void setupMessageListener(MessageListenerContainer container, MessageConverter messageConverter) {
-		Object messageListener = createMessageListener(container, messageConverter);
-		Assert.state(messageListener != null, "Endpoint [" + this + "] must provide a non null message listener");
+		MessagingMessageListenerAdapter<K, V> adapter = createMessageListener(container, messageConverter);
+		if (this.replyHeadersConfigurer != null) {
+			adapter.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
+		}
+		Object messageListener = adapter;
+		Assert.state(messageListener != null,
+				() -> "Endpoint [" + this + "] must provide a non null message listener");
+		Assert.state(this.retryTemplate == null || !this.batchListener,
+				"A 'RetryTemplate' is not supported with a batch listener; consider configuring the container "
+				+ "with a suitably configured 'SeekToCurrentBatchErrorHandler' instead");
 		if (this.retryTemplate != null) {
 			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
-					this.retryTemplate, (RecoveryCallback<Object>) this.recoveryCallback);
+					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
 		}
 		if (this.recordFilterStrategy != null) {
 			if (this.batchListener) {
-				messageListener = new FilteringBatchMessageListenerAdapter<>(
-						(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy, this.ackDiscarded);
+				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {
+					this.logger.warn(() -> "Filter strategy ignored when consuming 'ConsumerRecords'"
+							+ (this.id != null ? " id: " + this.id : ""));
+				}
+				else {
+					messageListener = new FilteringBatchMessageListenerAdapter<>(
+							(BatchMessageListener<K, V>) messageListener, this.recordFilterStrategy, this.ackDiscarded);
+				}
 			}
 			else {
 				messageListener = new FilteringMessageListenerAdapter<>((MessageListener<K, V>) messageListener,

@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.springframework.context.annotation.Import;
-import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 
 /**
  * Enable default Kafka Streams components. To be used on
@@ -35,20 +34,20 @@ import org.springframework.kafka.core.KStreamBuilderFactoryBean;
  * &#064;EnableKafkaStreams
  * public class AppConfig {
  *
- * 	&#064;Bean(name = KStreamDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
- *  public StreamsConfig kStreamsConfigs() {
+ * 	&#064;Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+ *  public KafkaStreamsConfiguration kStreamsConfigs() {
  *     ...
  *  }
  * 	// other &#064;Bean definitions
  * }
  * </pre>
  *
- * That {@link KafkaStreamsDefaultConfiguration#DEFAULT_STREAMS_CONFIG_BEAN_NAME} is required
- * to declare {@link KStreamBuilderFactoryBean} with the
- * {@link KafkaStreamsDefaultConfiguration#DEFAULT_KSTREAM_BUILDER_BEAN_NAME}.
+ * That {@link KafkaStreamsDefaultConfiguration#DEFAULT_STREAMS_CONFIG_BEAN_NAME} is
+ * required to declare {@link org.springframework.kafka.config.StreamsBuilderFactoryBean}
+ * with the {@link KafkaStreamsDefaultConfiguration#DEFAULT_STREAMS_BUILDER_BEAN_NAME}.
  * <p>
- * Also to enable Kafka Streams feature you should be sure that the {@code kafka-streams} jar is
- * on classpath.
+ * Also to enable Kafka Streams feature you should be sure that the {@code kafka-streams}
+ * jar is on classpath.
  *
  * @author Artem Bilan
  *

@@ -1,41 +1,47 @@
 [[quick-tour]]
 === Quick Tour for the Impatient
 
-==== Introduction
+This is the five-minute tour to get started with Spring Kafka.
 
-This is the 5 minute tour to get started with Spring Kafka.
+Prerequisites: You must install and run Apache Kafka.
+Then you must grab the spring-kafka JAR and all of its dependencies.
+The easiest way to do that is to declare a dependency in your build tool.
+The following example shows how to do so with Maven:
 
-Prerequisites: install and run Apache Kafka
-Then grab the spring-kafka JAR and all of its dependencies - the easiest way to do that is to declare a dependency in
-your build tool, e.g. for Maven:
-
+====
 [source,xml,subs="+attributes"]
 ----
 <dependency>
   <groupId>org.springframework.kafka</groupId>
   <artifactId>spring-kafka</artifactId>
-  <version>{spring-kafka-version}</version>
+  <version>{project-version}</version>
 </dependency>
 ----
+====
 
-And for Gradle:
+The following example shows how to do so with Gradle:
 
+====
 [source,groovy,subs="+attributes"]
 ----
-compile 'org.springframework.kafka:spring-kafka:{spring-kafka-version}'
+compile 'org.springframework.kafka:spring-kafka:{project-version}'
 ----
+====
 
 [[compatibility]]
-===== Compatibility
+==== Compatibility
 
-- Apache Kafka 0.10.2.0
-- Spring Franework 5.0.x
-- Minimum Java version: 8
+This quick tour works with the following versions:
 
-===== Very, Very Quick
+* Apache Kafka Clients 2.2.0
+* Spring Framework 5.2.x
+* Minimum Java version: 8
 
-Using plain Java to send and receive a message:
+==== A Very, Very Quick Example
 
+As the following example shows, you can use plain Java to send and receive a message:
+
+====
 [source,java]
 ----
 @Test
@@ -114,11 +120,14 @@ private Map<String, Object> senderProps() {
     return props;
 }
 ----
+====
 
-===== With Java Configuration
+==== With Java Configuration
 
-A similar example but with Spring configuration in Java:
+You can do the same work as appears in the previous example with Spring configuration in Java.
+The following example shows how to do so:
 
+====
 [source,java]
 ----
 @Autowired
@@ -199,12 +208,14 @@ public class Listener {
 
 }
 ----
+====
 
-===== Even Quicker, with Spring Boot
+==== Even Quicker, with Spring Boot
 
-The following Spring Boot application sends 3 messages to a topic, receives them, and stops.
+Spring Boot can make things even simpler.
+The following Spring Boot application sends three messages to a topic, receives them, and stops:
 
-.Application
+====
 [source, java]
 ----
 @SpringBootApplication
@@ -238,14 +249,19 @@ public class Application implements CommandLineRunner {
 
 }
 ----
+====
 
-Boot takes care of most of the configuration; when using a local broker, the only properties we need are:
+Boot takes care of most of the configuration.
+When we use a local broker, the only properties we need are the following:
 
 .application.properties
+====
 [source]
 ----
 spring.kafka.consumer.group-id=foo
 spring.kafka.consumer.auto-offset-reset=earliest
 ----
+====
 
-The first because we are using group management to assign topic partitions to consumers so we need a group, the second to ensure the new consumer group will get the messages we just sent, because the container might start after the sends have completed.
+We need the first property because we are using group management to assign topic partitions to consumers, so we need a group.
+The second property ensures the new consumer group gets the messages we sent, because the container might start after the sends have completed.

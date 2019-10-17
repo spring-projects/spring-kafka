@@ -1,8 +1,19 @@
 [[spring-kafka-reference]]
-
 = Spring for Apache Kafka
+:toc: left
+:toclevels: 4
+:numbered:
+:icons: font
+:hide-uri-scheme:
+Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant
 
-:toc:
+ifdef::backend-html5[]
+*{project-version}*
+endif::[]
+
+(C) 2016 - 2019 by Pivotal Software, Inc.
+
+Copies of this document may be made for your own use and for distribution to others, provided that you do not charge any fee for such copies and further provided that each copy contains this Copyright Notice, whether distributed in print or electronically.
 
 == Preface
 
@@ -17,12 +28,9 @@ include::./whats-new.adoc[]
 
 == Introduction
 
-This first part of the reference documentation is a high-level overview of Spring for Apache Kafka and the underlying
-concepts and some code snippets that will get you up and running as quickly as possible.
+This first part of the reference documentation is a high-level overview of Spring for Apache Kafka and the underlying concepts and some code snippets that can help you get up and running as quickly as possible.
 
 include::quick-tour.adoc[]
-
-// include::whats-new.adoc[]
 
 == Reference
 
@@ -35,9 +43,14 @@ include::streams.adoc[]
 
 include::testing.adoc[]
 
+[[tips-n-tricks]]
+== Tips, Tricks and Examples
+
+include::tips.adoc[]
+
 == Spring Integration
 
-This part of the reference shows how to use the `spring-integration-kafka` module of Spring Integration.
+This part of the reference guide shows how to use the `spring-integration-kafka` module of Spring Integration.
 
 include::si-kafka.adoc[]
 
@@ -45,11 +58,10 @@ include::si-kafka.adoc[]
 
 == Other Resources
 
-In addition to this reference documentation, there exist a number of other resources that may help you learn about
-Spring and Apache Kafka.
+In addition to this reference documentation, we recommend a number of other resources that may help you learn about Spring and Apache Kafka.
 
 - https://kafka.apache.org/[Apache Kafka Project Home Page]
-- http://projects.spring.io/spring-kafka/[Spring for Apache Kafka Home Page]
+- https://projects.spring.io/spring-kafka/[Spring for Apache Kafka Home Page]
 - https://github.com/spring-projects/spring-kafka[Spring for Apache Kafka GitHub Repository]
 - https://github.com/spring-projects/spring-integration-kafka[Spring Integration Kafka Extension GitHub Repository]
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,10 @@ import org.hamcrest.Matcher;
  *
  */
 public final class KafkaMatchers {
+
+	private static final String UNCHECKED = "unchecked";
+
+	private static final String IS_SPACE = "is ";
 
 	private KafkaMatchers() {
 		// private ctor
@@ -62,11 +66,11 @@ public final class KafkaMatchers {
 	}
 
 	/**
-	 * Matcher testing the timestamp of a {@link ConsumerRecord} asssuming the topic has been set with
+	 * Matcher testing the timestamp of a {@link ConsumerRecord} assuming the topic has been set with
 	 * {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}.
 	 * @param ts timestamp of the consumer record.
 	 * @return a Matcher that matches the timestamp in a consumer record.
-	 * @since 2.0
+	 * @since 1.3
 	 */
 	public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(long ts) {
 		return hasTimestamp(TimestampType.CREATE_TIME, ts);
@@ -77,7 +81,7 @@ public final class KafkaMatchers {
 	 * @param type timestamp type of the record
 	 * @param ts timestamp of the consumer record.
 	 * @return a Matcher that matches the timestamp in a consumer record.
-	 * @since 2.0
+	 * @since 1.3
 	 */
 	public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(TimestampType type, long ts) {
 		return new ConsumerRecordTimestampMatcher(type, ts);
@@ -100,13 +104,13 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<K, Object> record = (ConsumerRecord<K, Object>) item;
 			boolean matches = record != null
 					&& ((record.key() == null && this.key == null)
 					|| record.key().equals(this.key));
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}
@@ -129,11 +133,11 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, V> record = (ConsumerRecord<Object, V>) item;
 			boolean matches = record != null && record.value().equals(this.payload);
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}
@@ -156,11 +160,11 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, Object> record = (ConsumerRecord<Object, Object>) item;
 			boolean matches = record != null && record.partition() == this.partition;
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}
@@ -180,14 +184,14 @@ public final class KafkaMatchers {
 
 		@Override
 		protected boolean matches(Object item, Description mismatchDescription) {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, Object> record = (ConsumerRecord<Object, Object>) item;
 
 			boolean matches = record != null &&
 					(record.timestampType() == this.type && record.timestamp() == this.ts);
 
 			if (!matches) {
-				mismatchDescription.appendText("is ").appendValue(record);
+				mismatchDescription.appendText(IS_SPACE).appendValue(record);
 			}
 			return matches;
 		}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,9 +28,43 @@ package org.springframework.kafka.support;
 public interface Acknowledgment {
 
 	/**
-	 * Invoked when the message for which the acknowledgment has been created has been processed.
-	 * Calling this method implies that all the previous messages in the partition have been processed already.
+	 * Invoked when the record or batch for which the acknowledgment has been created has
+	 * been processed. Calling this method implies that all the previous messages in the
+	 * partition have been processed already.
 	 */
 	void acknowledge();
+
+	/**
+	 * Negatively acknowledge the current record - discard remaining records from the poll
+	 * and re-seek all partitions so that this record will be redelivered after the sleep
+	 * time. Must be called on the consumer thread.
+	 * <p>
+	 * <b>When using group management,
+	 * {@code sleep + time spent processing the previous messages from the poll} must be
+	 * less than the consumer {@code max.poll.interval.ms} property, to avoid a
+	 * rebalance.</b>
+	 * @param sleep the time to sleep.
+	 * @since 2.3
+	 */
+	default void nack(long sleep) {
+		throw new UnsupportedOperationException("nack(sleep) is not supported by this Acknowledgment");
+	}
+
+	/**
+	 * Negatively acknowledge the record at an index in a batch - commit the offset(s) of
+	 * records before the index and re-seek the partitions so that the record at the index
+	 * and subsequent records will be redelivered after the sleep time. Must be called on
+	 * the consumer thread.
+	 * <p>
+	 * <b>When using group management,
+	 * {@code sleep + time spent processing the records before the index} must be less
+	 * than the consumer {@code max.poll.interval.ms} property, to avoid a rebalance.</b>
+	 * @param index the index of the failed record in the batch.
+	 * @param sleep the time to sleep.
+	 * @since 2.3
+	 */
+	default void nack(int index, long sleep) {
+		throw new UnsupportedOperationException("nack(index, sleep) is not supported by this Acknowledgment");
+	}
 
 }

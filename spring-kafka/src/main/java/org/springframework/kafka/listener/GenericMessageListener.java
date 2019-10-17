@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,10 +49,8 @@ public interface GenericMessageListener<T> {
 	}
 
 	/**
-	 * Invoked with data from kafka and provides access to the {@link Consumer}
-	 * for operations such as pause/resume. Invoked with null data when a poll
-	 * returns no data (enabling resume). The default implementation throws
-	 * {@link UnsupportedOperationException}.
+	 * Invoked with data from kafka and provides access to the {@link Consumer}. The
+	 * default implementation throws {@link UnsupportedOperationException}.
 	 * @param data the data to be processed.
 	 * @param consumer the consumer.
 	 * @since 2.0
@@ -62,10 +60,8 @@ public interface GenericMessageListener<T> {
 	}
 
 	/**
-	 * Invoked with data from kafka and provides access to the {@link Consumer}
-	 * for operations such as pause/resume. Invoked with null data when a poll
-	 * returns no data (enabling resume). The default implementation throws
-	 * {@link UnsupportedOperationException}.
+	 * Invoked with data from kafka and provides access to the {@link Consumer}. The
+	 * default implementation throws {@link UnsupportedOperationException}.
 	 * @param data the data to be processed.
 	 * @param acknowledgment the acknowledgment.
 	 * @param consumer the consumer.

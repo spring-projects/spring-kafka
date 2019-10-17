@@ -1,11 +1,11 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,20 +21,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.security.auth.login.AppConfigurationEntry;
 
-import org.apache.kafka.common.network.LoginType;
-import org.apache.kafka.common.security.JaasUtils;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.apache.kafka.common.security.JaasContext;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer.ControlFlag;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import com.sun.security.auth.login.ConfigFile;
 
@@ -42,32 +41,31 @@ import com.sun.security.auth.login.ConfigFile;
  * @author Marius Bogoevici
  * @author Gary Russell
  *
- * @since 2.0
+ * @since 1.3
  */
 @SuppressWarnings("restriction")
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 public class KafkaJaasLoginModuleInitializerTests {
 
 	@Test
 	public void testConfigurationParsedCorrectlyWithKafkaClient() throws Exception {
 		ConfigFile configFile = new ConfigFile(new ClassPathResource("jaas-sample-kafka-only.conf").getURI());
 		final AppConfigurationEntry[] kafkaConfigurationArray = configFile
-				.getAppConfigurationEntry(JaasUtils.LOGIN_CONTEXT_CLIENT);
+				.getAppConfigurationEntry(KafkaJaasLoginModuleInitializer.KAFKA_CLIENT_CONTEXT_NAME);
 
 		javax.security.auth.login.Configuration configuration = javax.security.auth.login.Configuration
 				.getConfiguration();
 
 		final AppConfigurationEntry[] kafkaConfiguration = configuration
-				.getAppConfigurationEntry(JaasUtils.LOGIN_CONTEXT_CLIENT);
+				.getAppConfigurationEntry(KafkaJaasLoginModuleInitializer.KAFKA_CLIENT_CONTEXT_NAME);
 		assertThat(kafkaConfiguration).hasSize(1);
 		assertThat(kafkaConfiguration[0].getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
 
-		javax.security.auth.login.Configuration jaasConfig =
-				JaasUtils.jaasConfig(LoginType.CLIENT, Collections.emptyMap());
-		AppConfigurationEntry[] appConfigurationEntry =
-				jaasConfig.getAppConfigurationEntry(JaasUtils.LOGIN_CONTEXT_CLIENT);
-		assertThat(appConfigurationEntry).hasSize(1);
-		assertThat(appConfigurationEntry[0].getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
+		JaasContext context = JaasContext.loadClientContext(Collections.emptyMap());
+
+		List<AppConfigurationEntry> appConfigurationEntries = context.configurationEntries();
+		assertThat(appConfigurationEntries).hasSize(1);
+		assertThat(appConfigurationEntries.get(0).getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
 	}
 
 	@Configuration

@@ -1,11 +1,11 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,8 +31,9 @@ import org.apache.kafka.common.TopicPartition;
  * @author Gary Russell
  *
  */
-@SuppressWarnings("serial")
 public class ListenerContainerIdleEvent extends KafkaEvent {
+
+	private static final long serialVersionUID = 1L;
 
 	private final long idleTime;
 
@@ -40,15 +41,64 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 
 	private final List<TopicPartition> topicPartitions;
 
+	private final boolean paused;
+
 	private transient Consumer<?, ?> consumer;
 
+	/**
+	 * Construct an instance with the provided arguments.
+	 * @param source the container.
+	 * @param idleTime the idle time.
+	 * @param id the container id.
+	 * @param topicPartitions the topics/partitions currently assigned.
+	 * @param consumer the consumer.
+	 * @deprecated in favor of
+	 * {@link #ListenerContainerIdleEvent(Object, long, String, Collection, Consumer, boolean)}
+	 */
+	@Deprecated
 	public ListenerContainerIdleEvent(Object source, long idleTime, String id,
 			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
-		super(source);
+		this(source, idleTime, id, topicPartitions, consumer, false);
+	}
+
+	/**
+	 * Construct an instance with the provided arguments.
+	 * @param source the container.
+	 * @param idleTime the idle time.
+	 * @param id the container id.
+	 * @param topicPartitions the topics/partitions currently assigned.
+	 * @param consumer the consumer.
+	 * @param paused true if the consumer is paused.
+	 * @since 2.1.5
+	 */
+	@Deprecated
+	public ListenerContainerIdleEvent(Object source, long idleTime, String id,
+			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer, boolean paused) {
+
+		this(source, null, idleTime, id, topicPartitions, consumer, paused); // NOSONAR
+	}
+
+	/**
+	 * Construct an instance with the provided arguments.
+	 * @param source the container instance that generated the event.
+	 * @param container the container or the parent container if the container is a child.
+	 * @param idleTime the idle time.
+	 * @param id the container id.
+	 * @param topicPartitions the topics/partitions currently assigned.
+	 * @param consumer the consumer.
+	 * @param paused true if the consumer is paused.
+	 * @since 2.2.1
+	 */
+	public ListenerContainerIdleEvent(Object source, Object container,
+			long idleTime, String id,
+			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer, boolean paused) {
+
+		super(source, container);
 		this.idleTime = idleTime;
 		this.listenerId = id;
-		this.topicPartitions = new ArrayList<>(topicPartitions);
+		this.topicPartitions = topicPartitions == null ? null : new ArrayList<>(topicPartitions);
 		this.consumer = consumer;
+		this.paused = paused;
 	}
 
 	/**
@@ -64,11 +114,11 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	 * @return the TopicPartition list.
 	 */
 	public Collection<TopicPartition> getTopicPartitions() {
-		return Collections.unmodifiableList(this.topicPartitions);
+		return this.topicPartitions == null ? null : Collections.unmodifiableList(this.topicPartitions);
 	}
 
 	/**
-	 * The id of the listener (if {@code @RabbitListener}) or the container bean name.
+	 * The id of the listener (if {@code @KafkaListener}) or the container bean name.
 	 * @return the id.
 	 */
 	public String getListenerId() {
@@ -85,11 +135,21 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 		return this.consumer;
 	}
 
+	/**
+	 * Return true if the consumer was paused at the time the idle event was published.
+	 * @return paused.
+	 * @since 2.1.5
+	 */
+	public boolean isPaused() {
+		return this.paused;
+	}
+
 	@Override
 	public String toString() {
 		return "ListenerContainerIdleEvent [idleTime="
-				+ ((float) this.idleTime / 1000) + "s, listenerId=" + this.listenerId
+				+ ((float) this.idleTime / 1000) + "s, listenerId=" + this.listenerId // NOSONAR magic #
 				+ ", container=" + getSource()
+				+ ", paused=" + this.paused
 				+ ", topicPartitions=" + this.topicPartitions + "]";
 	}
 

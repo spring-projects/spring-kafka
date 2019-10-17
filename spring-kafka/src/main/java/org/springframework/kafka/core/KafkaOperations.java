@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,10 +19,13 @@ package org.springframework.kafka.core;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
@@ -79,7 +82,7 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 2.0
+	 * @since 1.3
 	 */
 	ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
@@ -118,9 +121,17 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 2.0
+	 * @since 1.3
 	 */
 	ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
+
+	/**
+	 * Send the provided {@link ProducerRecord}.
+	 * @param record the record.
+	 * @return a Future for the {@link SendResult}.
+	 * @since 1.3
+	 */
+	ListenableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record);
 
 	/**
 	 * Send a message with routing information in message headers. The message payload
@@ -158,20 +169,77 @@ public interface KafkaOperations<K, V> {
 	<T> T execute(ProducerCallback<K, V, T> callback);
 
 	/**
+	 * Execute some arbitrary operation(s) on the operations and return the result.
+	 * The operations are invoked within a local transaction and do not participate
+	 * in a global transaction (if present).
+	 * @param callback the callback.
+	 * @param <T> the result type.
+	 * @return the result.
+	 * @since 1.1
+	 */
+	<T> T executeInTransaction(OperationsCallback<K, V, T> callback);
+
+	/**
 	 * Flush the producer.
 	 */
 	void flush();
+
+	/**
+	 * When running in a transaction, send the consumer offset(s) to the transaction. The
+	 * group id is obtained from
+	 * {@link org.springframework.kafka.support.KafkaUtils#getConsumerGroupId()}. It is
+	 * not necessary to call this method if the operations are invoked on a listener
+	 * container thread (and the listener container is configured with a
+	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}) since
+	 * the container will take care of sending the offsets to the transaction.
+	 * @param offsets The offsets.
+	 * @since 1.3
+	 */
+	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets);
+
+	/**
+	 * When running in a transaction, send the consumer offset(s) to the transaction. It
+	 * is not necessary to call this method if the operations are invoked on a listener
+	 * container thread (and the listener container is configured with a
+	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}) since
+	 * the container will take care of sending the offsets to the transaction.
+	 * @param offsets The offsets.
+	 * @param consumerGroupId the consumer's group.id.
+	 * @since 1.3
+	 */
+	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId);
+
+	/**
+	 * Return true if the implementation supports transactions (has a transaction-capable
+	 * producer factory).
+	 * @return true or false.
+	 * @since 2.3
+	 */
+	boolean isTransactional();
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @param <T> the return type.
-	 * @since 1.1
+	 * @since 1.3
 	 */
 	interface ProducerCallback<K, V, T> {
 
 		T doInKafka(Producer<K, V> producer);
+
+	}
+
+	/**
+	 * A callback for executing arbitrary operations on the {@link KafkaOperations}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param <T> the return type.
+	 * @since 1.3
+	 */
+	interface OperationsCallback<K, V, T> {
+
+		T doInOperations(KafkaOperations<K, V> operations);
 
 	}
 
