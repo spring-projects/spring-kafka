@@ -73,6 +73,7 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
@@ -1282,10 +1283,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			if (record.key() instanceof DeserializationException) {
 				throw (DeserializationException) record.key();
 			}
-			if (record.value() == null && this.checkNullValueForExceptions) {
+			boolean notDltRecord = record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC) == null;
+			if (record.value() == null && this.checkNullValueForExceptions && notDltRecord) {
 				checkDeser(record, ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
-			if (record.key() == null && this.checkNullKeyForExceptions) {
+			if (record.key() == null && this.checkNullKeyForExceptions && notDltRecord) {
 				checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			doInvokeOnMessage(record);

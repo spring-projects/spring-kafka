@@ -32,7 +32,6 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.ExtendedDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
@@ -106,7 +105,8 @@ public class ErrorHandlingDeserializerTests {
 		Object result = ehd.deserialize("topic", headers, "foo".getBytes());
 		assertThat(result).isNull();
 		Header deser = headers.lastHeader(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER);
-		assertThat(new ObjectInputStream(new ByteArrayInputStream(deser.value())).readObject()).isInstanceOf(DeserializationException.class);
+		assertThat(new ObjectInputStream(new ByteArrayInputStream(deser.value())).readObject())
+				.isInstanceOf(DeserializationException.class);
 		ehd.close();
 	}
 
@@ -174,8 +174,9 @@ public class ErrorHandlingDeserializerTests {
 			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
 			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
-			props.put(ErrorHandlingDeserializer2.KEY_DESERIALIZER_CLASS, FailSometimesDeserializer.class);
-			props.put(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_CLASS, FailSometimesDeserializer.class.getName());
+			props.put(ErrorHandlingDeserializer2.KEY_DESERIALIZER_CLASS, FailWhenPayloadIsFailDeserializer.class);
+			props.put(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_CLASS,
+					FailWhenPayloadIsFailDeserializer.class.getName());
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 
@@ -184,8 +185,9 @@ public class ErrorHandlingDeserializerTests {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(TOPIC + ".g2", "false", embeddedKafka());
 			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return new DefaultKafkaConsumerFactory<>(props,
-					new ErrorHandlingDeserializer2<String>(new FailSometimesDeserializer()).keyDeserializer(true),
-					new ErrorHandlingDeserializer2<String>(new FailSometimesDeserializer()));
+					new ErrorHandlingDeserializer2<String>(new FailWhenPayloadIsFailDeserializer())
+							.keyDeserializer(true),
+					new ErrorHandlingDeserializer2<String>(new FailWhenPayloadIsFailDeserializer()));
 		}
 
 		@Bean
@@ -204,32 +206,6 @@ public class ErrorHandlingDeserializerTests {
 		public String toString() {
 			return "Config [goodCount=" + this.goodCount.get() + ", keyErrorCount=" + this.keyErrorCount.get()
 					+ ", valueErrorCount=" + this.valueErrorCount.get() + "]";
-		}
-
-	}
-
-	public static class FailSometimesDeserializer implements ExtendedDeserializer<String> {
-
-		@Override
-		public void configure(Map<String, ?> configs, boolean isKey) {
-		}
-
-		@Override
-		public String deserialize(String topic, byte[] data) {
-			return new String(data);
-		}
-
-		@Override
-		public void close() {
-		}
-
-		@Override
-		public String deserialize(String topic, Headers headers, byte[] data) {
-			String string = new String(data);
-			if ("fail".equals(string)) {
-				throw new RuntimeException("fail");
-			}
-			return string;
 		}
 
 	}
