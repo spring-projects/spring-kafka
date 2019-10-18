@@ -68,8 +68,15 @@ public abstract class FailedRecordProcessor {
 	 * @param maxFailures the max failures.
 	 */
 	FailedRecordProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
-		this.failureTracker = new FailedRecordTracker(recoverer, new FixedBackOff(0L, maxFailures - 1), LOGGER);
+		this.failureTracker = new FailedRecordTracker(recoverer, maxFailuresToBackOff(maxFailures), LOGGER);
 		this.classifier = configureDefaultClassifier();
+	}
+
+	private static FixedBackOff maxFailuresToBackOff(int maxFailures) {
+		if (maxFailures < 0) {
+			return new FixedBackOff();
+		}
+		return new FixedBackOff(0L, maxFailures == 0 ? 0 : maxFailures - 1);
 	}
 
 	/**
