@@ -54,7 +54,7 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 
 	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 
-	private boolean ackAfterHandle;
+	private boolean ackAfterHandle = true;
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
