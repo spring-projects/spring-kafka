@@ -1736,11 +1736,9 @@ IMPORTANT: The `FilteringBatchMessageListenerAdapter` is ignored if your `@Kafka
 [[retrying-deliveries]]
 ===== Retrying Deliveries
 
-If your listener throws an exception, the default behavior is to invoke the `ErrorHandler`, if configured, or logged otherwise.
+If your listener throws an exception, the default behavior is to invoke the <<error-handlers>>, if configured, or logged otherwise.
 
-NOTE: Two error handler interfaces (`ErrorHandler` and `BatchErrorHandler`) are provided.
-You must configure the appropriate type to match the <<message-listeners,message listener>>.
-
+NOTE:
 To retry deliveries, a convenient listener adapter `RetryingMessageListenerAdapter`  is provided.
 
 You can configure it with a `RetryTemplate` and `RecoveryCallback<Void>` - see the https://github.com/spring-projects/spring-retry[spring-retry] project for information about these components.
@@ -3400,7 +3398,21 @@ This resets each topic/partition in the batch to the lowest offset in the batch.
 
 NOTE: The preceding two examples are simplistic implementations, and you would probably want more checking in the error handler.
 
+[[error-handlers]]
 ===== Container Error Handlers
+
+Two error handler interfaces (`ErrorHandler` and `BatchErrorHandler`) are provided.
+You must configure the appropriate type to match the <<message-listeners,message listener>>.
+
+By default, errors are simply logged when transactions are not being used.
+When transactions are being used, no error handlers are configured, by default, so that the exception will roll back the transaction.
+If you provide a custom error handler when using transactions, it must throw an exception if you want the transaction rolled back.
+
+Starting with version 2.3.2, these interfaces have a default method `isAckAfterHandle()` which is called by the container to determine whether the offset(s) should be committed if the error handler returns without throwing an exception.
+This returns false by default, for backwards compatibility.
+In most cases, however, we expect that the offset should be committed.
+For example, the <<seek-to-current, `SeekToCurrentErrorHandler`>> returns `true` if a record is recovered (after any retries, if so configured).
+In a future release, we expect to change this default to `true`.
 
 You can specify a global error handler to be used for all listeners in the container factory.
 The following example shows how to do so:
@@ -3440,6 +3452,8 @@ public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer,
 ====
 
 By default, if an annotated listener method throws an exception, it is thrown to the container, and the message is handled according to the container configuration.
+
+If you are using Spring Boot, you simply need to add the error handler as a `@Bean` and boot will add it to the auto-configured factory.
 
 ===== Consumer-Aware Container Error Handlers
 
@@ -3592,6 +3606,9 @@ However, since this error handler has no mechanism to "recover" after retries ar
 Again, the maximum delay must be less than the `max.poll.interval.ms` consumer property.
 
 IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+
+Starting with version 2.3.2, after a record has been recovered, its offset will be committed (if one of the container `AckMode` s is configured).
+To revert to the previous behavior, set the error handler's `ackAfterHandle` property to false.
 
 ===== Container Stopping Error Handlers
 

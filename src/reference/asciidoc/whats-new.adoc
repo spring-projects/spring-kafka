@@ -70,6 +70,8 @@ The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disab
 
 The `SeekToCurrentErrorHandler` and `SeekToCurrentBatchErrorHandler` can now be configured to apply a `BackOff` (thread sleep) between delivery attempts.
 
+Starting with version 2.3.2, recovered records' offsets will be committed when the error handler returns after recovering a failed record.
+
 See <<seek-to-current>> for more information.
 
 The `DeadLetterPublishingRecoverer`, when used in conjunction with an `ErrorHandlingDeserializer2`, now sets the payload of the message sent to the dead-letter topic, to the original value that could not be deserialized.
