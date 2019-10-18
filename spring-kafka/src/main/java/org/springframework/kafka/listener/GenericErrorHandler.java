@@ -56,4 +56,15 @@ public interface GenericErrorHandler<T> {
 		// NOSONAR
 	}
 
+	/**
+	 * Return true if the offset should be committed for a handled error (no exception
+	 * thrown).
+	 * @return true to commit.
+	 * @since 2.3.2
+	 */
+	default boolean isAckAfterHandle() {
+		// TODO: Default true in the next release.
+		return false;
+	}
+
 }

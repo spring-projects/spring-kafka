@@ -1264,14 +1264,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
-				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
+				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && producer == null;
+				if (acked) {
 					this.acks.addAll(getHighestOffsetRecords(records));
 				}
 				if (this.batchErrorHandler == null) {
 					throw e;
 				}
 				try {
-					invokeBatchErrorHandler(records, producer, e);
+					invokeBatchErrorHandler(records, e);
+					// unlikely, but possible, that a batch error handler "handles" the error
+					if ((!acked && !this.autoCommit && this.batchErrorHandler.isAckAfterHandle()) || producer != null) {
+						if (!acked) {
+							this.acks.addAll(getHighestOffsetRecords(records));
+						}
+						if (producer != null) {
+							sendOffsetsToTransaction(producer);
+						}
+					}
 				}
 				catch (RuntimeException ee) {
 					this.logger.error(ee, "Error handler threw an exception");
@@ -1376,20 +1386,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
-				@SuppressWarnings(RAW_TYPES) @Nullable Producer producer, RuntimeException e) {
-
+		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records, RuntimeException e) {
 			if (this.batchErrorHandler instanceof ContainerAwareBatchErrorHandler) {
 				this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
 						KafkaMessageListenerContainer.this.container);
 			}
 			else {
 				this.batchErrorHandler.handle(decorateException(e), records, this.consumer);
-			}
-			// if the handler handled the error (no exception), go ahead and commit
-			if (producer != null) {
-				this.acks.addAll(getHighestOffsetRecords(records));
-				sendOffsetsToTransaction(producer);
 			}
 		}
 
@@ -1536,7 +1539,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
-				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
+				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && producer == null;
+				if (acked) {
 					ackCurrent(record);
 				}
 				if (this.errorHandler == null) {
@@ -1544,6 +1548,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				try {
 					invokeErrorHandler(record, producer, iterator, e);
+					if ((!acked && !this.autoCommit && this.errorHandler.isAckAfterHandle()) || producer != null) {
+						ackCurrent(record, producer);
+					}
 				}
 				catch (RuntimeException ee) {
 					this.logger.error(ee, "Error handler threw an exception");
@@ -1628,9 +1635,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				this.errorHandler.handle(decorateException(e), record, this.consumer);
-			}
-			if (producer != null) {
-				ackCurrent(record, producer);
 			}
 		}
 
