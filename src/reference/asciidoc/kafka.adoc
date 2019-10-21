@@ -2217,7 +2217,9 @@ This is to properly support fencing zombies, https://www.confluent.io/blog/trans
 This new behavior was added in versions 1.3.7, 2.0.6, 2.1.10, and 2.2.0.
 If you wish to revert to the previous behavior, you can set the `producerPerConsumerPartition` property on the `DefaultKafkaProducerFactory` to `false`.
 
-NOTE: While transactions are supported with batch listeners, zombie fencing cannot be supported because a batch may contain records from multiple topics or partitions.
+NOTE: While transactions are supported with batch listeners, by default, zombie fencing is not supported because a batch may contain records from multiple topics or partitions.
+However, starting with version 2.3.2, zombie fencing is supported if you set the container property `subBatchPerPartition` to true.
+In that case, the batch listener is invoked once per partition received from the last poll, as if each poll only returned records for a single partition.
 
 Also see <<transaction-id-prefix>>.
 

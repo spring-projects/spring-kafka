@@ -64,6 +64,9 @@ See <<micrometer>> for more information.
 The containers now publish additional consumer lifecyle events relating to startup.
 See <<events>> for more information.
 
+Transactional batch listeners can now support zombie fencing.
+See <<transactions>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.
