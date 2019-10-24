@@ -213,5 +213,4 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.afterPropertiesSet();
 		assertThat(pf.getTransactionIdPrefix()).isEqualTo("abc");
 	}
-
 }
