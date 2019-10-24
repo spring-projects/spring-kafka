@@ -31,6 +31,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -188,6 +189,29 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.closeThreadBoundProducer();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNull();
 		verify(producer).close(any(Duration.class));
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public void testTransactionIdPrefixFallback() {
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>());
+		pf.setTransactionIdPrefix("abc");
+		pf.afterPropertiesSet();
+		assertThat(pf.getTransactionIdPrefix()).isEqualTo("abc");
+
+		// when no transactionIdPrefix is supplied on the factory, verify that
+		// ProducerConfig.TRANSACTIONAL_ID_CONFIG is used as a fallback
+		HashMap<Object, Object> config = new HashMap<>();
+		config.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "xyz");
+		pf = new DefaultKafkaProducerFactory(config);
+		pf.afterPropertiesSet();
+		assertThat(pf.getTransactionIdPrefix()).isEqualTo("xyz");
+
+		// both are supplied, setTransactionIdPrefix() wins
+		pf = new DefaultKafkaProducerFactory(config);
+		pf.setTransactionIdPrefix("abc");
+		pf.afterPropertiesSet();
+		assertThat(pf.getTransactionIdPrefix()).isEqualTo("abc");
 	}
 
 }

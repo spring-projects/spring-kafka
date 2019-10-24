@@ -50,6 +50,7 @@ import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
@@ -106,7 +107,7 @@ import org.springframework.util.StringUtils;
  * @author Chris Gilbert
  */
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, ApplicationContextAware,
-		ApplicationListener<ContextStoppedEvent>, DisposableBean {
+		ApplicationListener<ContextStoppedEvent>, DisposableBean, InitializingBean {
 
 	/**
 	 * The default close timeout duration as 30 seconds.
@@ -182,14 +183,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		this.configs = new HashMap<>(configs);
 		this.keySerializerSupplier = keySerializerSupplier == null ? () -> null : keySerializerSupplier;
 		this.valueSerializerSupplier = valueSerializerSupplier == null ? () -> null : valueSerializerSupplier;
-
-		String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
-		if (StringUtils.hasText(txId)) {
-			setTransactionIdPrefix(txId);
-			LOGGER.info(() -> "If 'setTransactionIdPrefix()' is not going to be configured, "
-					+ "the existing 'transactional.id' config with value: '" + txId
-					+ "' will be suffixed for concurrent transactions support.");
-		}
 	}
 
 	@Override
@@ -505,6 +498,19 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		if (tlProducer != null) {
 			tlProducer.getDelegate().close(this.physicalCloseTimeout);
 			this.threadBoundProducers.remove();
+		}
+	}
+
+	@Override
+	public void afterPropertiesSet() {
+		if (StringUtils.isEmpty(this.transactionIdPrefix)) {
+			// if no transactionIdPrefix is configured fallback to supplied ProducerConfig if applicable
+			String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
+			if (StringUtils.hasText(txId)) {
+				LOGGER.info(() -> "Using supplied ProducerConfig.TRANSACTIONAL_ID_CONFIG value as "
+						+ "transactionIdPrefix");
+				setTransactionIdPrefix(txId);
+			}
 		}
 	}
 
