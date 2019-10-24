@@ -35,6 +35,7 @@ import org.mockito.InOrder;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * @author Gary Russell
@@ -79,4 +80,17 @@ public class SeekToCurrentErrorHandlerTests {
 		inOrder.verifyNoMoreInteractions();
 	}
 
+	@SuppressWarnings("deprecation")
+	@Test
+	public void testDeprecatedCtor() {
+		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler(-1);
+		assertThat(KafkaTestUtils.getPropertyValue(handler, "failureTracker.backOff.maxAttempts"))
+				.isEqualTo(Long.MAX_VALUE);
+		handler = new SeekToCurrentErrorHandler(0);
+		assertThat(KafkaTestUtils.getPropertyValue(handler, "failureTracker.backOff.maxAttempts"))
+				.isEqualTo(0L);
+		handler = new SeekToCurrentErrorHandler(10);
+		assertThat(KafkaTestUtils.getPropertyValue(handler, "failureTracker.backOff.maxAttempts"))
+				.isEqualTo(9L);
+	}
 }

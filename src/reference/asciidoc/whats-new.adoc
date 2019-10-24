@@ -64,11 +64,16 @@ See <<micrometer>> for more information.
 The containers now publish additional consumer lifecyle events relating to startup.
 See <<events>> for more information.
 
+Transactional batch listeners can now support zombie fencing.
+See <<transactions>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.
 
 The `SeekToCurrentErrorHandler` and `SeekToCurrentBatchErrorHandler` can now be configured to apply a `BackOff` (thread sleep) between delivery attempts.
+
+Starting with version 2.3.2, recovered records' offsets will be committed when the error handler returns after recovering a failed record.
 
 See <<seek-to-current>> for more information.
 

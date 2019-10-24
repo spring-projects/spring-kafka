@@ -180,6 +180,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private Duration consumerStartTimout = DEFAULT_CONSUMER_START_TIMEOUT;
 
+	private boolean subBatchPerPartition;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -590,6 +592,23 @@ public class ContainerProperties extends ConsumerProperties {
 		this.consumerStartTimout = consumerStartTimout;
 	}
 
+	public boolean isSubBatchPerPartition() {
+		return this.subBatchPerPartition;
+	}
+
+	/**
+	 * When using a batch message listener whether to dispatch records by partition (with
+	 * a transaction for each sub batch if transactions are in use) or the complete batch
+	 * received by the {@code poll()}. Useful when using transactions to enable zombie
+	 * fencing, by using a {code transactional.id} that is unique for each
+	 * group/topic/partition.
+	 * @param subBatchPerPartition true for a separate transaction for each partition.
+	 * @since 2.3.2
+	 */
+	public void setSubBatchPerPartition(boolean subBatchPerPartition) {
+		this.subBatchPerPartition = subBatchPerPartition;
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
@@ -611,6 +630,7 @@ public class ContainerProperties extends ConsumerProperties {
 				+ ", monitorInterval=" + this.monitorInterval
 				+ (this.scheduler != null ? ", scheduler=" + this.scheduler : "")
 				+ ", noPollThreshold=" + this.noPollThreshold
+				+ ", subBatchPerPartition=" + this.subBatchPerPartition
 				+ "]";
 	}
 

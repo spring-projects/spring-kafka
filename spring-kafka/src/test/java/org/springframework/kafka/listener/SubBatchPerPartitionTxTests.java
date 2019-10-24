@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
@@ -57,6 +58,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.test.annotation.DirtiesContext;
@@ -64,12 +66,12 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
- * @since 2.0.1
+ * @since 2.3.2
  *
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class SeekToCurrentOnErrorBatchModeTXTests {
+public class SubBatchPerPartitionTxTests {
 
 	private static final String CONTAINER_ID = "container";
 
@@ -104,31 +106,11 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.producer).beginTransaction();
 		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
-		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(1L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
-		inOrder.verify(this.producer).commitTransaction();
-		offsets.clear();
 		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(2L));
-		inOrder.verify(this.producer).beginTransaction();
 		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
 		inOrder.verify(this.producer).commitTransaction();
-		offsets.clear();
-		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(1L));
-		inOrder.verify(this.producer).beginTransaction();
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
-		inOrder.verify(this.producer).commitTransaction();
-		inOrder.verify(this.producer).beginTransaction();
-		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 1), 1L);
-		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 2), 0L);
-		inOrder.verify(this.producer).abortTransaction();
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
-		inOrder.verify(this.producer).beginTransaction();
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
-		inOrder.verify(this.producer).commitTransaction();
-		offsets.clear();
-		offsets.put(new TopicPartition("foo", 2), new OffsetAndMetadata(1L));
 		inOrder.verify(this.producer).beginTransaction();
 		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
 		inOrder.verify(this.producer).commitTransaction();
@@ -137,10 +119,9 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 		inOrder.verify(this.producer).beginTransaction();
 		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
 		inOrder.verify(this.producer).commitTransaction();
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		assertThat(this.config.count).isEqualTo(7);
-		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
-				{ "foo", "bar", "baz", "qux", "qux", "fiz", "buz" });
+		inOrder.verify(this.consumer, atLeastOnce()).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "qux", "fiz", "buz");
+		assertThat(this.config.transactionSuffix).isNotNull();
 	}
 
 	@Configuration
@@ -149,21 +130,19 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 
 		private final List<String> contents = new ArrayList<>();
 
-		private final CountDownLatch pollLatch = new CountDownLatch(3);
+		private final CountDownLatch pollLatch = new CountDownLatch(2);
 
-		private final CountDownLatch deliveryLatch = new CountDownLatch(7);
+		private final CountDownLatch deliveryLatch = new CountDownLatch(3);
 
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		private int count;
+		private volatile String transactionSuffix;
 
 		@KafkaListener(id = CONTAINER_ID, topics = "foo")
-		public void foo(String in) {
-			this.contents.add(in);
+		public void foo(List<String> in) {
+			this.contents.addAll(in);
 			this.deliveryLatch.countDown();
-			if (++this.count == 4) { // part 1, offset 1, first time
-				throw new RuntimeException("foo");
-			}
+			this.transactionSuffix = TransactionSupport.getTransactionIdSuffix();
 		}
 
 		@SuppressWarnings({ "rawtypes" })
@@ -185,7 +164,7 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 			final TopicPartition topicPartition2 = new TopicPartition("foo", 2);
 			willAnswer(i -> {
 				((ConsumerRebalanceListener) i.getArgument(1)).onPartitionsAssigned(
-						Collections.singletonList(topicPartition1));
+						Arrays.asList(topicPartition0, topicPartition1, topicPartition2));
 				return null;
 			}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 			Map<TopicPartition, List<ConsumerRecord>> records1 = new LinkedHashMap<>();
@@ -198,23 +177,17 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 			records1.put(topicPartition2, Arrays.asList(
 					new ConsumerRecord("foo", 2, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "fiz"),
 					new ConsumerRecord("foo", 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "buz")));
-			Map<TopicPartition, List<ConsumerRecord>> records2 = new LinkedHashMap<>(records1);
-			records2.remove(topicPartition0);
-			records2.put(topicPartition1, Arrays.asList(
-					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "qux")));
 			final AtomicInteger which = new AtomicInteger();
 			willAnswer(i -> {
 				this.pollLatch.countDown();
 				switch (which.getAndIncrement()) {
 					case 0:
 						return new ConsumerRecords(records1);
-					case 1:
-						return new ConsumerRecords(records2);
 					default:
 						try {
-							Thread.sleep(1000);
+							Thread.sleep(100);
 						}
-						catch (InterruptedException e) {
+						catch (@SuppressWarnings("unused") InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
 						return new ConsumerRecords(Collections.emptyMap());
@@ -232,10 +205,10 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
-			factory.setErrorHandler(new SeekToCurrentErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.BATCH);
 			factory.getContainerProperties().setTransactionManager(tm());
+			factory.setBatchListener(true);
+			factory.getContainerProperties().setSubBatchPerPartition(true);
 			return factory;
 		}
 

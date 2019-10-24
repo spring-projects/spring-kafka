@@ -54,6 +54,8 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 
 	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 
+	private boolean ackAfterHandle = true;
+
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
 	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
@@ -166,6 +168,7 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	 * @since 2.3
 	 * @deprecated in favor of {@link #setClassifications(Map, boolean)}.
 	 */
+	@Override
 	@Deprecated
 	public void setClassifier(BinaryExceptionClassifier classifier) {
 		Assert.notNull(classifier, "'classifier' + cannot be null");
@@ -203,6 +206,20 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 						+ container.getContainerProperties().getAckMode());
 			}
 		}
+	}
+
+	@Override
+	public boolean isAckAfterHandle() {
+		return this.ackAfterHandle;
+	}
+
+	/**
+	 * Set to false to tell the container to NOT commit the offset for a recovered record.
+	 * @param ackAfterHandle false to suppress committing the offset.
+	 * @since 2.3.2
+	 */
+	public void setAckAfterHandle(boolean ackAfterHandle) {
+		this.ackAfterHandle = ackAfterHandle;
 	}
 
 }
