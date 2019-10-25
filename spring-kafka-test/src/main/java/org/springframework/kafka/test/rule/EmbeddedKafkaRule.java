@@ -32,7 +32,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
  *
  * @see EmbeddedKafkaBroker
  */
-public class EmbeddedKafkaRule extends ExternalResource implements TestRule {
+public class EmbeddedKafkaRule extends ExternalResource {
 
 	private final EmbeddedKafkaBroker embeddedKafka;
 
