@@ -102,6 +102,7 @@ public class KafkaTemplateTransactionTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		senderProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "my.transaction.");
+		senderProps.put(ProducerConfig.CLIENT_ID_CONFIG, "customClientId");
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
@@ -116,6 +117,7 @@ public class KafkaTemplateTransactionTests {
 		template.executeInTransaction(kt -> kt.send(LOCAL_TX_IN_TOPIC, "one"));
 		ConsumerRecord<String, String> singleRecord = KafkaTestUtils.getSingleRecord(consumer, LOCAL_TX_IN_TOPIC);
 		template.executeInTransaction(t -> {
+			pf.createProducer("testCustomClientIdIsUnique").close();
 			t.sendDefault("foo", "bar");
 			t.sendDefault("baz", "qux");
 			t.sendOffsetsToTransaction(Collections.singletonMap(
@@ -144,7 +146,7 @@ public class KafkaTemplateTransactionTests {
 		template.executeInTransaction(t -> {
 			assertThat(KafkaTestUtils.getPropertyValue(
 					KafkaTestUtils.getPropertyValue(template, "producers", ThreadLocal.class).get(),
-					"delegate.transactionManager.transactionalId")).isEqualTo("tx.template.override.1");
+					"delegate.transactionManager.transactionalId")).isEqualTo("tx.template.override.2");
 			return null;
 		});
 		assertThat(pf.getCache("tx.template.override.")).hasSize(1);

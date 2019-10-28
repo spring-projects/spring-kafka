@@ -123,6 +123,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final Map<String, CloseSafeProducer<K, V>> consumerProducers = new HashMap<>();
 
+	private final AtomicInteger clientIdCounter = new AtomicInteger();
+
 	private Supplier<Serializer<K>> keySerializerSupplier;
 
 	private Supplier<Serializer<V>> valueSerializerSupplier;
@@ -138,6 +140,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	private boolean producerPerThread;
 
 	private ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers;
+
+	private String clientIdPrefix;
 
 	private volatile CloseSafeProducer<K, V> producer;
 
@@ -182,6 +186,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		this.configs = new HashMap<>(configs);
 		this.keySerializerSupplier = keySerializerSupplier == null ? () -> null : keySerializerSupplier;
 		this.valueSerializerSupplier = valueSerializerSupplier == null ? () -> null : valueSerializerSupplier;
+		if (this.clientIdPrefix == null && configs.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String) {
+			this.clientIdPrefix = (String) configs.get(ProducerConfig.CLIENT_ID_CONFIG);
+		}
 
 		String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		if (StringUtils.hasText(txId)) {
@@ -393,7 +400,17 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @return the producer.
 	 */
 	protected Producer<K, V> createKafkaProducer() {
-		return new KafkaProducer<>(this.configs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
+		if (this.clientIdPrefix == null) {
+			return new KafkaProducer<>(this.configs, this.keySerializerSupplier.get(),
+					this.valueSerializerSupplier.get());
+		}
+		else {
+			Map<String, Object> newConfigs = new HashMap<>(this.configs);
+			newConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
+					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
+			return new KafkaProducer<>(newConfigs, this.keySerializerSupplier.get(),
+					this.valueSerializerSupplier.get());
+		}
 	}
 
 	protected Producer<K, V> createTransactionalProducerForPartition() {
@@ -460,6 +477,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		Producer<K, V> newProducer;
 		Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
 		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, prefix + suffix);
+		if (this.clientIdPrefix != null) {
+			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
+					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
+		}
 		newProducer = new KafkaProducer<>(newProducerConfigs, this.keySerializerSupplier
 				.get(), this.valueSerializerSupplier.get());
 		newProducer.initTransactions();
