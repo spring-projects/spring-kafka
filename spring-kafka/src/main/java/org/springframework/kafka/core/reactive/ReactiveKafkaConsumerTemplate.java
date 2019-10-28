@@ -146,8 +146,20 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		return doOnConsumer(consumer -> consumer.position(partition));
 	}
 
+	/**
+	 * Get the committed {@link OffsetAndMetadata} for the partition.
+	 * @param partition the partition.
+	 * @return the {@link OffsetAndMetadata}.
+	 * @deprecated in favor of {@link #committed(Set)}.
+	 */
+	@Deprecated
+	@SuppressWarnings("deprecation")
 	public Mono<OffsetAndMetadata> committed(TopicPartition partition) {
 		return doOnConsumer(consumer -> consumer.committed(partition));
+	}
+
+	public Mono<Map<TopicPartition, OffsetAndMetadata>> committed(Set<TopicPartition> partitions) {
+		return doOnConsumer(consumer -> consumer.committed(partitions));
 	}
 
 	public Flux<PartitionInfo> partitionsFromConsumerFor(String topic) {

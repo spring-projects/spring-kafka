@@ -56,6 +56,10 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	@Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 		partitions.forEach(tp -> this.callbacks.remove(tp));
+	}
+
+	@Override
+	public void unregisterSeekCallback() {
 		this.callbackForThread.remove();
 	}
 

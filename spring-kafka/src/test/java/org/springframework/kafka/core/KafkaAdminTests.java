@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.admin.AdminClient;
@@ -82,16 +83,29 @@ public class KafkaAdminTests {
 	}
 
 	@Test
-	public void testAddTopics() throws Exception {
+	public void testAddTopicsAndAddPartitions() throws Exception {
 		AdminClient adminClient = AdminClient.create(this.admin.getConfig());
 		DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
-		topics.all().get();
-		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", 2);
-		new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", 3);
-		this.admin.initialize();
-		topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
 		Map<String, TopicDescription> results = topics.all().get();
-		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 3));
+		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 1));
+		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(4));
+		new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", Optional.of(3));
+		this.admin.initialize();
+		int n = 0;
+		TopicDescription bar = results.values().stream()
+			.filter(td -> td.name().equals("bar"))
+			.findFirst()
+			.get();
+		while (n++ < 100 && bar.partitions().size() == 1) {
+			Thread.sleep(100);
+			topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
+			results = topics.all().get();
+			bar = results.values().stream()
+					.filter(tp -> tp.name().equals("bar"))
+					.findFirst()
+					.get();
+		}
+		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 4 : 3));
 		adminClient.close(Duration.ofSeconds(10));
 	}
 

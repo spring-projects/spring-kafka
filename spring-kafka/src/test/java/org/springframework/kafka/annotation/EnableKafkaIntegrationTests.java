@@ -304,7 +304,7 @@ public class EnableKafkaIntegrationTests {
 		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
 				TopicPartitionOffset[].class)[3];
 		assertThat(offset.isRelativeToCurrent()).isTrue();
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.coordinator.groupId"))
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.groupId"))
 				.isEqualTo("fiz");
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.clientId"))
 				.isEqualTo("clientIdViaAnnotation-0");
@@ -329,7 +329,7 @@ public class EnableKafkaIntegrationTests {
 
 		MessageListenerContainer rebalanceContainer = (MessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(rebalanceConcurrentContainer, "containers", List.class).get(0);
-		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.coordinator.groupId"))
+		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.groupId"))
 				.isNotEqualTo("rebalanceListener");
 		String clientId = KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.clientId",
 				String.class);
@@ -424,7 +424,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(buzConcurrentContainer).isNotNull();
 		MessageListenerContainer buzContainer = (MessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(buzConcurrentContainer, "containers", List.class).get(0);
-		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.coordinator.groupId"))
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.groupId"))
 				.isEqualTo("buz.explicitGroupId");
 	}
 
@@ -512,6 +512,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.listen12Consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
 						.getPropertyValue(this.registry.getListenerContainer("list3"), "containers", List.class).get(0),
 				"listenerConsumer.consumer"));
+		assertThat(this.config.listen12Latch.await(10, TimeUnit.SECONDS)).isNotNull();
 		assertThat(this.config.listen12Exception).isNotNull();
 		assertThat(this.config.listen12Message.getPayload()).isInstanceOf(List.class);
 		List<?> errorPayload = (List<?>) this.config.listen12Message.getPayload();
@@ -1307,12 +1308,15 @@ public class EnableKafkaIntegrationTests {
 
 		private Message<?> listen12Message;
 
+		private final CountDownLatch listen12Latch = new CountDownLatch(1);
+
 		@Bean
 		public ConsumerAwareListenerErrorHandler listen12ErrorHandler() {
 			return (m, e, c) -> {
 				this.listen12Exception = e;
 				this.listen12Message = m;
 				resetAllOffsets(m, c);
+				this.listen12Latch.countDown();
 				return null;
 			};
 		}
@@ -1651,12 +1655,12 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "list3", topics = "annotated16", containerFactory = "batchFactory",
 				errorHandler = "listen12ErrorHandler")
 		public void listen12(List<ConsumerRecord<Integer, String>> list, Consumer<?, ?> consumer) {
-			if (this.reposition12.compareAndSet(false, true)) {
-				throw new RuntimeException("reposition");
-			}
 			this.payload = list;
 			this.listen12Consumer = consumer;
 			this.latch12.countDown();
+			if (this.reposition12.compareAndSet(false, true)) {
+				throw new RuntimeException("reposition");
+			}
 		}
 
 		@KafkaListener(id = "list4", topics = "annotated17", containerFactory = "batchManualFactory")
@@ -1729,19 +1733,28 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(id = "batchAckListener", topics = { "annotated26", "annotated27" },
 				containerFactory = "batchFactory")
-		public void batchAckListener(List<String> in,
-				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
-				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
+		public void batchAckListener(@SuppressWarnings("unused") List<String> in,
+				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitionsHeader,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topicsHeader,
 				Consumer<?, ?> consumer) {
-			for (int i = 0; i < topics.size(); i++) {
+
+			for (int i = 0; i < topicsHeader.size(); i++) {
 				this.latch17.countDown();
-				String topic = topics.get(i);
-				if ("annotated26".equals(topic) && consumer.committed(
-						new org.apache.kafka.common.TopicPartition(topic, partitions.get(i))).offset() == 1) {
+				String inTopic = topicsHeader.get(i);
+				if ("annotated26".equals(inTopic) && consumer.committed(Collections.singleton(
+						new org.apache.kafka.common.TopicPartition(inTopic, partitionsHeader.get(i))))
+							.values()
+							.iterator()
+							.next()
+							.offset() == 1) {
 					this.latch18.countDown();
 				}
-				else if ("annotated27".equals(topic) && consumer.committed(
-						new org.apache.kafka.common.TopicPartition(topic, partitions.get(i))).offset() == 3) {
+				else if ("annotated27".equals(inTopic) && consumer.committed(Collections.singleton(
+						new org.apache.kafka.common.TopicPartition(inTopic, partitionsHeader.get(i))))
+							.values()
+							.iterator()
+							.next()
+							.offset() == 3) {
 					this.latch18.countDown();
 				}
 			}

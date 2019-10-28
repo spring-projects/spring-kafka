@@ -18,17 +18,21 @@ package org.springframework.kafka.streams.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.Properties;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.TestInputTopic;
+import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.test.ConsumerRecordFactory;
+import org.apache.kafka.streams.test.TestRecord;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
@@ -67,12 +71,13 @@ public class MessagingTransformerTests {
 		config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9999");
 		TopologyTestDriver driver = new TopologyTestDriver(builder.build(), config);
 
-		ConsumerRecordFactory<String, String> recordFactory = new ConsumerRecordFactory<>(new StringSerializer(),
+		TestInputTopic<String, String> inputTopic = driver.createInputTopic(INPUT, new StringSerializer(),
 				new StringSerializer());
-		ConsumerRecord<byte[], byte[]> consumerRecord = recordFactory.create(INPUT, "key", "value");
-		consumerRecord.headers().add(new RecordHeader("fiz", "buz".getBytes()));
-		driver.pipeInput(consumerRecord);
-		ProducerRecord<byte[], byte[]> result = driver.readOutput(OUTPUT);
+		Headers headers = new RecordHeaders(Collections.singletonList(new RecordHeader("fiz", "buz".getBytes())));
+		inputTopic.pipeInput(new TestRecord<>("key", "value", headers));
+		TestOutputTopic<byte[], byte[]> outputTopic = driver.createOutputTopic(OUTPUT, new ByteArrayDeserializer(),
+				new ByteArrayDeserializer());
+		TestRecord<byte[], byte[]> result = outputTopic.readRecord();
 		assertThat(result.value()).isEqualTo("bar".getBytes());
 		assertThat(result.headers().lastHeader("fiz").value()).isEqualTo("buz".getBytes());
 		assertThat(result.headers().lastHeader("baz").value()).isEqualTo("qux".getBytes());

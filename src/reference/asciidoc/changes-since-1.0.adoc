@@ -1,5 +1,157 @@
 [[migration]]
-=== Changes between 2.1 and 2.2
+=== Changes Between 2.2 and 2.3
+
+This section covers the changes made from version 2.2 to version 2.3.
+
+Also see <<new-in-sik>>.
+
+==== Tips, Tricks and Examples
+
+A new chapter <<tips-n-tricks>> has been added.
+Please submit GitHub issues and/or pull requests for additional entries in that chapter.
+
+[[kafka-client-2.2]]
+==== Kafka Client Version
+
+This version requires the 2.3.0 `kafka-clients` or higher.
+
+==== Class/Package Changes
+
+`TopicPartitionInitialOffset` is deprecated in favor of `TopicPartitionOffset`.
+
+==== Configuration Changes
+
+Starting with version 2.3.4, the `missingTopicsFatal` container property is false by default.
+When this is true, the application fails to start if the broker is down; many users were affected by this change; given that Kafka is a high-availability platform, we did not anticipate that starting an application with no active brokers would be a common use case.
+
+==== Producer and Consumer Factory Changes
+
+The `DefaultKafkaProducerFactory` can now be configured to create a producer per thread.
+You can also provide `Supplier<Serializer>` instances in the constructor as an alternative to either configured classes (which require no-arg constructors), or constructing with `Serializer` instances, which are then shared between all Producers.
+See <<producer-factory>> for more information.
+
+The same option is available with `Supplier<Deserializer>` instances in `DefaultKafkaConsumerFactory`.
+See <<kafka-container>> for more information.
+
+==== Listener Container Changes
+
+Previously, error handlers received `ListenerExecutionFailedException` (with the actual listener exception as the `cause`) when the listener was invoked using a listener adapter (such as `@KafkaListener` s).
+Exceptions thrown by native `GenericMessageListener` s were passed to the error handler unchanged.
+Now a `ListenerExecutionFailedException` is always the argument (with the actual listener exception as the `cause`), which provides access to the container's `group.id` property.
+
+Because the listener container has it's own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
+It now sets it to false automatically unless specifically set in the consumer factory or the container's consumer property overrides.
+
+The `ackOnError` property is now `false` by default.
+See <<seek-to-current>> for more information.
+
+It is now possible to obtain the consumer's `group.id` property in the listener method.
+See <<listener-group-id>> for more information.
+
+The container has a new property `recordInterceptor` allowing records to be inspected or modified before invoking the listener.
+A `CompositeRecordInterceptor` is also provided in case you need to invoke multiple interceptors.
+See <<message-listener-container>> for more information.
+
+The `ConsumerSeekAware` has new methods allowing you to perform seeks relative to the beginning, end, or current position and to seek to the first offset greater than or equal to a time stamp.
+See <<seek>> for more information.
+
+A convenience class `AbstractConsumerSeekAware` is now provided to simplify seeking.
+See <<seek>> for more information.
+
+The `ContainerProperties` provides an `idleBetweenPolls` option to let the main loop in the listener container to sleep between `KafkaConsumer.poll()` calls.
+See its JavaDocs and <<kafka-container>> for more information.
+
+When using `AckMode.MANUAL` (or `MANUAL_IMMEDIATE`) you can now cause a redelivery by calling `nack` on the `Acknowledgment`.
+See <<committing-offsets>> for more information.
+
+Listener performance can now be monitored using Micrometer `Timer` s.
+See <<micrometer>> for more information.
+
+The containers now publish additional consumer lifecyle events relating to startup.
+See <<events>> for more information.
+
+Transactional batch listeners can now support zombie fencing.
+See <<transactions>> for more information.
+
+The listener container factory can now be configured with a `ContainerCustomizer` to further configure each container after it has been created and configured.
+See <<container-factory>> for more information.
+
+==== ErrorHandler Changes
+
+The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.
+
+The `SeekToCurrentErrorHandler` and `SeekToCurrentBatchErrorHandler` can now be configured to apply a `BackOff` (thread sleep) between delivery attempts.
+
+Starting with version 2.3.2, recovered records' offsets will be committed when the error handler returns after recovering a failed record.
+
+See <<seek-to-current>> for more information.
+
+The `DeadLetterPublishingRecoverer`, when used in conjunction with an `ErrorHandlingDeserializer2`, now sets the payload of the message sent to the dead-letter topic, to the original value that could not be deserialized.
+Previously, it was `null` and user code needed to extract the `DeserializationException` from the message headers.
+See <<dead-letters>> for more information.
+
+==== TopicBuilder
+
+A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` `@Bean` s for automatic topic provisioning.
+See <<configuring-topics>> for more information.
+
+==== Kafka Streams Changes
+
+You can now perform additional configuration of the `StreamsBuilderFactoryBean` created by `@EnableKafkaStreams`.
+See <<streams-config, Streams Configuration>> for more information.
+
+A `RecoveringDeserializationExceptionHandler` is now provided which allows records with deserialization errors to be recovered.
+It can be used in conjunction with a `DeadLetterPublishingRecoverer` to send these records to a dead-letter topic.
+See <<streams-deser-recovery>> for more information.
+
+The `HeaderEnricher` transformer has been provided, using SpEL to generate the header values.
+See <<streams-header-enricher>> for more information.
+
+The `MessagingTransformer` has been provided.
+This allows a Kafka streams topology to interact with a spring-messaging component, such as a Spring Integration flow.
+See <<streams-messaging>> and <<streams-integration>> for more information.
+
+==== JSON Component Changes
+
+Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.
+The `JsonDeserializer` now provides `TypeReference`-based constructors for better handling of target generic container types.
+Also a `JacksonMimeTypeModule` has been introduced for serialization of `org.springframework.util.MimeType` to plain string.
+See its JavaDocs and <<serdes>> for more information.
+
+A `ByteArrayJsonMessageConverter` has been provided as well as a new super class for all Json converters, `JsonMessageConverter`.
+Also, a `StringOrBytesSerializer` is now available; it can serialize `byte[]`, `Bytes` and `String` values in `ProducerRecord` s.
+See <<messaging-message-conversion>> for more information.
+
+The `JsonSerializer`, `JsonDeserializer` and `JsonSerde` now have fluent APIs to make programmatic configuration simpler.
+See the javadocs, <<serdes>>, and <<serde>> for more informaion.
+
+==== ReplyingKafkaTemplate
+
+When a reply times out, the future is completed exceptionally with a `KafkaReplyTimeoutException` instead of a `KafkaException`.
+
+Also, an overloaded `sendAndReceive` method is now provided that allows specifying the reply timeout on a per message basis.
+
+==== AggregatingReplyingKafkaTemplate
+
+Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
+See <<aggregating-request-reply>> for more information.
+
+==== Transaction Changes
+
+You can now override the producer factory's `transactionIdPrefix` on the `KafkaTemplate` and `KafkaTransactionManager`.
+See <<transaction-id-prefix>> for more information.
+
+==== New Delegating Serializer/Deserializer
+
+The framework now provides a delegating `Serializer` and `Deserializer`, utilizing a header to enable producing and consuming records with multiple key/value types.
+See <<delegating-serialization>> for more information.
+
+==== New Retrying Deserializer
+
+The framework now provides a delegating `RetryingDeserializer`, to retry serialization when transient errors such as network problems might occur.
+See <<retrying-deserialization>> for more information.
+
+=== Changes Between 2.1 and 2.2
 
 [[kafka-client-2.0]]
 ==== Kafka Client Version
@@ -110,7 +262,7 @@ When a transaction is started by the listener container, the `transactional.id` 
 This change allows proper fencing of zombies, https://www.confluent.io/blog/transactions-apache-kafka/[as described here].
 
 
-=== Changes between 2.0 and 2.1
+=== Changes Between 2.0 and 2.1
 
 [[kafka-client-1.0]]
 ==== Kafka Client Version
@@ -247,11 +399,11 @@ Support for configuring Kerberos is now provided.
 See <<kerberos>> for more information.
 
 
-=== Changes between 1.1 and 1.2
+=== Changes Between 1.1 and 1.2
 
 This version uses the 0.10.2.x client.
 
-=== Changes between 1.0 and 1.1
+=== Changes Between 1.0 and 1.1
 
 ==== Kafka Client
 

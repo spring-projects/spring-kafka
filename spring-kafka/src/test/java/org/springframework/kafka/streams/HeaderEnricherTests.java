@@ -22,13 +22,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.TestInputTopic;
+import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.test.ConsumerRecordFactory;
+import org.apache.kafka.streams.test.TestRecord;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.expression.Expression;
@@ -64,10 +66,12 @@ public class HeaderEnricherTests {
 		config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9999");
 		TopologyTestDriver driver = new TopologyTestDriver(builder.build(), config);
 
-		ConsumerRecordFactory<String, String> recordFactory = new ConsumerRecordFactory<>(new StringSerializer(),
+		TestInputTopic<String, String> inputTopic = driver.createInputTopic(INPUT, new StringSerializer(),
 				new StringSerializer());
-		driver.pipeInput(recordFactory.create(INPUT, "key", "value"));
-		ProducerRecord<byte[], byte[]> result = driver.readOutput(OUTPUT);
+		inputTopic.pipeInput("key", "value");
+		TestOutputTopic<String, String> outputTopic = driver.createOutputTopic(OUTPUT, new StringDeserializer(),
+				new StringDeserializer());
+		TestRecord<String, String> result = outputTopic.readRecord();
 		assertThat(result.headers().lastHeader("foo")).isNotNull();
 		assertThat(result.headers().lastHeader("foo").value()).isEqualTo("bar".getBytes());
 		assertThat(result.headers().lastHeader("spel")).isNotNull();

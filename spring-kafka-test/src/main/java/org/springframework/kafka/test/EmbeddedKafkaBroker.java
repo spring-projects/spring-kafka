@@ -34,8 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.exception.ZkInterruptedException;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -66,7 +64,6 @@ import kafka.server.KafkaServer;
 import kafka.server.NotRunning;
 import kafka.utils.CoreUtils;
 import kafka.utils.TestUtils;
-import kafka.utils.ZKStringSerializer$;
 import kafka.zk.ZkFourLetterWords;
 import kafka.zookeeper.ZooKeeperClient;
 
@@ -132,8 +129,6 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	private String brokerListProperty;
 
 	private volatile ZooKeeperClient zooKeeperClient;
-
-	private volatile ZkClient zkClient;
 
 	public EmbeddedKafkaBroker(int count) {
 		this(count, false);
@@ -298,7 +293,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				scala.Option.apply(null),
 				scala.Option.apply(null),
 				scala.Option.apply(null),
-				true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false);
+				true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false,
+				this.partitionsPerTopic, (short) this.count);
 	}
 
 	/**
@@ -395,18 +391,10 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				// do nothing
 			}
 		}
-		try {
-			synchronized (this) {
-				if (this.zooKeeperClient != null) {
-					this.zooKeeperClient.close();
-				}
-				if (this.zkClient != null) {
-					this.zkClient.close();
-				}
+		synchronized (this) {
+			if (this.zooKeeperClient != null) {
+				this.zooKeeperClient.close();
 			}
-		}
-		catch (ZkInterruptedException e) {
-			// do nothing
 		}
 		try {
 			this.zookeeper.shutdown();
@@ -431,20 +419,6 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public EmbeddedZookeeper getZookeeper() {
 		return this.zookeeper;
-	}
-
-	/**
-	 * Return the ZkClient.
-	 * @return the client.
-	 * @deprecated in favor of {@link #getZooKeeperClient()}.
-	 */
-	@Deprecated
-	public synchronized ZkClient getZkClient() {
-		if (this.zkClient == null) {
-			this.zkClient = new ZkClient(this.zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-					ZKStringSerializer$.MODULE$);
-		}
-		return this.zkClient;
 	}
 
 	/**

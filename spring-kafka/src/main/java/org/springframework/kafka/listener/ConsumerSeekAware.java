@@ -73,6 +73,15 @@ public interface ConsumerSeekAware {
 	}
 
 	/**
+	 * Called when the listener consumer terminates allowing implementations to clean up
+	 * state, such as thread locals.
+	 * @since 2.4
+	 */
+	default void unregisterSeekCallback() {
+		// do nothing
+	}
+
+	/**
 	 * A callback that a listener can invoke to seek to a specific offset.
 	 */
 	interface ConsumerSeekCallback {

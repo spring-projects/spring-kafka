@@ -1111,6 +1111,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			if (this.consumerSeekAwareListener != null) {
 				this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
+				this.consumerSeekAwareListener.unregisterSeekCallback();
 			}
 			this.logger.info(() -> getGroupId() + ": Consumer stopped");
 			publishConsumerStoppedEvent();
@@ -2181,6 +2182,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (ListenerConsumer.this.consumerSeekAwareListener != null) {
 						ListenerConsumer.this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
 					}
+					if (ListenerConsumer.this.assignedPartitions != null) {
+						ListenerConsumer.this.assignedPartitions.removeAll(partitions);
+					}
 				}
 				finally {
 					if (ListenerConsumer.this.kafkaTxManager != null) {
@@ -2196,7 +2200,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
 							+ "consumer paused again, so the initial poll() will never return any records");
 				}
-				ListenerConsumer.this.assignedPartitions = partitions;
+				ListenerConsumer.this.assignedPartitions = new LinkedList<>(partitions);
 				if (!ListenerConsumer.this.autoCommit) {
 					// Commit initial positions - this is generally redundant but
 					// it protects us from the case when another consumer starts
@@ -2269,6 +2273,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				else {
 					this.userListener.onPartitionsAssigned(partitions);
 				}
+			}
+
+			@Override
+			public void onPartitionsLost(Collection<TopicPartition> partitions) {
+				if (this.consumerAwareListener != null) {
+					this.consumerAwareListener.onPartitionsLost(ListenerConsumer.this.consumer, partitions);
+				}
+				else {
+					this.userListener.onPartitionsLost(partitions);
+				}
+				onPartitionsRevoked(partitions);
 			}
 
 		}

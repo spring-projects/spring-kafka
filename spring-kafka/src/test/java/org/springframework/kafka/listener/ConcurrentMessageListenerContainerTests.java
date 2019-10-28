@@ -238,13 +238,11 @@ public class ConcurrentMessageListenerContainerTests {
 		consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
 		containerProps.setKafkaConsumerProperties(consumerProperties);
 		final CountDownLatch rebalancePartitionsAssignedLatch = new CountDownLatch(2);
-		final CountDownLatch rebalancePartitionsRevokedLatch = new CountDownLatch(2);
 		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 				ConcurrentMessageListenerContainerTests.this.logger.info("In test, partitions revoked:" + partitions);
-				rebalancePartitionsRevokedLatch.countDown();
 			}
 
 			@Override
@@ -274,7 +272,6 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(rebalancePartitionsAssignedLatch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(rebalancePartitionsRevokedLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		for (String threadName : listenerThreadNames) {
 			assertThat(threadName).contains("-C-");
 		}

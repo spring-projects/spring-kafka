@@ -54,6 +54,16 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	}
 
 	/**
+	 * The same as {@link #onPartitionsLost(Collection)} with an additional consumer parameter.
+	 * @param consumer the consumer.
+	 * @param partitions the partitions.
+	 * @since 2.4
+	 */
+	default void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		// do nothing
+	}
+
+	/**
 	 * The same as {@link #onPartitionsAssigned(Collection)} with the additional consumer
 	 * parameter.
 	 * @param consumer the consumer.
@@ -70,6 +80,11 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 
 	@Override
 	default void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+		throw new UnsupportedOperationException("Listener container should never call this");
+	}
+
+	@Override
+	default void onPartitionsLost(Collection<TopicPartition> partitions) {
 		throw new UnsupportedOperationException("Listener container should never call this");
 	}
 

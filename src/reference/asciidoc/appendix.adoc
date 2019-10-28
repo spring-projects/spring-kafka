@@ -1,8 +1,7 @@
-////
-[[deps-for-21x]]
-== Override Dependencies to use the 2.1.x kafka-clients with an Embedded Broker
+[[deps-for-24x]]
+== Override Spring Boot Dependencies to use Spring for Apache Kafka 2.4
 
-When you use `spring-kafka-test` (version 2.2.x) with the 2.1.x `kafka-clients` jar, you need to override certain transitive dependencies, as follows:
+When you use `spring-kafka-test` (version 2.4.x) with Spring Boot, you need to override certain Boot managed dependencies, as follows:
 
 **maven**
 
@@ -19,39 +18,34 @@ When you use `spring-kafka-test` (version 2.2.x) with the 2.1.x `kafka-clients` 
     <groupId>org.springframework.kafka</groupId>
     <artifactId>spring-kafka-test</artifactId>
     <version>{project-version}</version>
-    <exclusions>
-        <exclusion>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_2.11</artifactId>
-        </exclusion>
-    </exclusions>
     <scope>test</scope>
 </dependency>
 
 <dependency>
     <groupId>org.apache.kafka</groupId>
     <artifactId>kafka-clients</artifactId>
-    <version>2.1.1</version>
+    <version>2.4.0</version>
 </dependency>
 
 <dependency>
     <groupId>org.apache.kafka</groupId>
     <artifactId>kafka-clients</artifactId>
-    <version>2.1.1</version>
+    <version>2.4.0</version>
     <classifier>test</classifier>
-</dependency>
-
-<dependency>
-    <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka_2.12</artifactId>
-    <version>2.1.1</version>
     <scope>test</scope>
 </dependency>
 
 <dependency>
     <groupId>org.apache.kafka</groupId>
     <artifactId>kafka_2.12</artifactId>
-    <version>2.1.1</version>
+    <version>2.4.0</version>
+    <scope>test</scope>
+</dependency>
+
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka_2.12</artifactId>
+    <version>2.4.0</version>
     <classifier>test</classifier>
     <scope>test</scope>
 </dependency>
@@ -79,7 +73,8 @@ dependencies {
 ----
 ====
 
-Note that when switching to scala 2.12 (recommended for 2.1.x and higher), the 2.11 version must be excluded from spring-kafka-test.
+The test scope dependencies are only needed if you are using the embedded Kafka broker in tests.
+
 ////
 
 [appendix]
