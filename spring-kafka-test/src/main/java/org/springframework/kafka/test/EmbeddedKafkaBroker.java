@@ -70,6 +70,7 @@ import kafka.utils.CoreUtils;
 import kafka.utils.TestUtils;
 import kafka.utils.ZKStringSerializer$;
 import kafka.zk.ZkFourLetterWords;
+import kafka.zookeeper.ZooKeeperClient;
 
 /**
  * An embedded Kafka Broker(s) and Zookeeper manager.
@@ -104,6 +105,10 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private static final Duration DEFAULT_ADMIN_TIMEOUT = Duration.ofSeconds(10);
 
+	private static final int ZK_CONNECTION_TIMEOUT = 6000;
+
+	private static final int ZK_SESSION_TIMEOUT = 6000;
+
 	private final int count;
 
 	private final boolean controlledShutdown;
@@ -118,8 +123,6 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private EmbeddedZookeeper zookeeper;
 
-	private ZkClient zookeeperClient;
-
 	private String zkConnect;
 
 	private int zkPort;
@@ -129,6 +132,10 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	private Duration adminTimeout = DEFAULT_ADMIN_TIMEOUT;
 
 	private String brokerListProperty;
+
+	private volatile ZooKeeperClient zooKeeperClient;
+
+	private volatile ZkClient zkClient;
 
 	public EmbeddedKafkaBroker(int count) {
 		this(count, false);
@@ -257,12 +264,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		catch (IOException | InterruptedException e) {
 			throw new IllegalStateException("Failed to create embedded Zookeeper", e);
 		}
-		int zkConnectionTimeout = 6000; // NOSONAR magic #
-		int zkSessionTimeout = 6000; // NOSONAR magic #
-
 		this.zkConnect = LOOPBACK + ":" + this.zookeeper.getPort();
-		this.zookeeperClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
-				ZKStringSerializer$.MODULE$);
 		this.kafkaServers.clear();
 		for (int i = 0; i < this.count; i++) {
 			Properties brokerConfigProperties = createBrokerProperties(i);
@@ -396,7 +398,14 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			}
 		}
 		try {
-			this.zookeeperClient.close();
+			synchronized (this) {
+				if (this.zooKeeperClient != null) {
+					this.zooKeeperClient.close();
+				}
+				if (this.zkClient != null) {
+					this.zkClient.close();
+				}
+			}
 		}
 		catch (ZkInterruptedException e) {
 			// do nothing
@@ -426,8 +435,31 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		return this.zookeeper;
 	}
 
-	public ZkClient getZkClient() {
-		return this.zookeeperClient;
+	/**
+	 * Return the ZkClient.
+	 * @return the client.
+	 * @deprecated in favor of {@link #getZooKeeperClient()}.
+	 */
+	@Deprecated
+	public synchronized ZkClient getZkClient() {
+		if (this.zkClient == null) {
+			this.zkClient = new ZkClient(this.zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
+					ZKStringSerializer$.MODULE$);
+		}
+		return this.zkClient;
+	}
+
+	/**
+	 * Return the ZooKeeperClient.
+	 * @return the client.
+	 * @since 2.3.2
+	 */
+	public synchronized ZooKeeperClient getZooKeeperClient() {
+		if (this.zooKeeperClient == null) {
+			this.zooKeeperClient = new ZooKeeperClient(this.zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
+					1, Time.SYSTEM, "embeddedKafkaZK", "embeddedKafkaZK");
+		}
+		return this.zooKeeperClient;
 	}
 
 	public String getZookeeperConnectionString() {
