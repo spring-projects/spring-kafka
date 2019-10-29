@@ -186,9 +186,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		if (StringUtils.hasText(txId)) {
 			setTransactionIdPrefix(txId);
-			LOGGER.info(() -> "If 'setTransactionIdPrefix()' is not going to be configured, "
-					+ "the existing 'transactional.id' config with value: '" + txId
-					+ "' will be suffixed for concurrent transactions support.");
 		}
 	}
 
