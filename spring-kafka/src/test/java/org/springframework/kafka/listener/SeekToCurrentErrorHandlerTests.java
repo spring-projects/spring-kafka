@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -30,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.SerializationException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -93,4 +95,13 @@ public class SeekToCurrentErrorHandlerTests {
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "failureTracker.backOff.maxAttempts"))
 				.isEqualTo(9L);
 	}
+
+	@Test
+	void testSerializationException() {
+		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler();
+		SerializationException thrownException = new SerializationException();
+		assertThatIllegalStateException().isThrownBy(() -> handler.handle(thrownException, null, null, null))
+				.withCause(thrownException);
+	}
+
 }
