@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -101,6 +102,15 @@ public class SeekToCurrentErrorHandlerTests {
 		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler();
 		SerializationException thrownException = new SerializationException();
 		assertThatIllegalStateException().isThrownBy(() -> handler.handle(thrownException, null, null, null))
+				.withCause(thrownException);
+	}
+
+	@Test
+	void testNotRetryableWithNoRecords() {
+		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler();
+		ClassCastException thrownException = new ClassCastException();
+		assertThatIllegalStateException().isThrownBy(
+					() -> handler.handle(thrownException, Collections.emptyList(), null, null))
 				.withCause(thrownException);
 	}
 

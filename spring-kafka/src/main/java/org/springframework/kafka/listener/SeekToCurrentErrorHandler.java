@@ -37,6 +37,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.invocation.MethodArgumentResolutionException;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -181,10 +182,17 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
-		if (thrownException instanceof SerializationException) {
-			throw new IllegalStateException("This error handler cannot process 'SerializationException's directly, "
-					+ "please consider configuring an 'ErrorHandlingDeserializer2' in the value and/or key "
-					+ "deserializer", thrownException);
+		if (ObjectUtils.isEmpty(records)) {
+			if (thrownException instanceof SerializationException) {
+				throw new IllegalStateException("This error handler cannot process 'SerializationException's directly; "
+						+ "please consider configuring an 'ErrorHandlingDeserializer2' in the value and/or key "
+						+ "deserializer", thrownException);
+			}
+			else {
+				throw new IllegalStateException("This error handler cannot process '"
+						+ thrownException.getClass().getName()
+						+ "'s; no record information is available", thrownException);
+			}
 		}
 
 		if (!SeekUtils.doSeeks(records, consumer, thrownException, true, getSkipPredicate(records, thrownException),
