@@ -293,7 +293,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		catch (Exception e) {
 			logger.error(e, () -> "Could not load class for header: " + header.key());
 		}
-		if (String.class.equals(type) && header.value().length > 0 && header.value()[0] != '"') {
+		if (String.class.equals(type) && (header.value().length == 0 || header.value()[0] != '"')) {
 			headers.put(header.key(), new String(header.value(), getCharset()));
 		}
 		else {

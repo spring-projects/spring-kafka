@@ -181,34 +181,42 @@ public class DefaultKafkaHeaderMapperTests {
 		Map<String, Object> headersMap = new HashMap<>();
 		headersMap.put("thisOnesAString", "foo");
 		headersMap.put("thisOnesBytes", "bar");
+		headersMap.put("thisOnesEmpty", "");
 		headersMap.put("alwaysRaw", "baz".getBytes());
 		MessageHeaders headers = new MessageHeaders(headersMap);
 		Headers target = new RecordHeaders();
 		mapper.fromHeaders(headers, target);
 		assertThat(target).containsExactlyInAnyOrder(
 				new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
-						"{\"thisOnesAString\":\"java.lang.String\"}".getBytes()),
+						("{\"thisOnesEmpty\":\"java.lang.String\","
+						+ "\"thisOnesAString\":\"java.lang.String\"}").getBytes()),
 				new RecordHeader("thisOnesAString", "foo".getBytes()),
 				new RecordHeader("alwaysRaw", "baz".getBytes()),
+				new RecordHeader("thisOnesEmpty", "".getBytes()),
 				new RecordHeader("thisOnesBytes", "bar".getBytes()));
 		headersMap.clear();
 		target.add(new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
-						("{\"thisOnesAString\":\"java.lang.String\","
+						("{\"thisOnesEmpty\":\"java.lang.String\","
+						+ "\"thisOnesAString\":\"java.lang.String\","
 						+ "\"backwardCompatible\":\"java.lang.String\"}").getBytes()));
 		target.add(new RecordHeader("backwardCompatible", "\"qux\"".getBytes()));
 		mapper.toHeaders(target, headersMap);
 		assertThat(headersMap).contains(
 				entry("thisOnesAString", "foo"),
+				entry("thisOnesEmpty", ""),
 				entry("thisOnesBytes", "bar".getBytes()),
 				entry("alwaysRaw", "baz".getBytes()),
 				entry("backwardCompatible", "qux"));
+		// Now with String encoding
 		mapper.setEncodeStrings(true);
 		target = new RecordHeaders();
 		mapper.fromHeaders(headers, target);
 		assertThat(target).containsExactlyInAnyOrder(
 				new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
-						"{\"thisOnesAString\":\"java.lang.String\"}".getBytes()),
+						("{\"thisOnesEmpty\":\"java.lang.String\","
+						+ "\"thisOnesAString\":\"java.lang.String\"}").getBytes()),
 				new RecordHeader("thisOnesAString", "\"foo\"".getBytes()),
+				new RecordHeader("thisOnesEmpty", "\"\"".getBytes()),
 				new RecordHeader("alwaysRaw", "baz".getBytes()),
 				new RecordHeader("thisOnesBytes", "bar".getBytes()));
 	}
