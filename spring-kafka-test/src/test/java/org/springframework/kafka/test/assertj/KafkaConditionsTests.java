@@ -39,6 +39,8 @@ public class KafkaConditionsTests {
 		assertThat(record).has(keyValue(null, "foo"));
 		record = new ConsumerRecord<>("topic", 42, 0, null, null);
 		assertThat(record).has(keyValue(null, null));
+		assertThat(record).doesNotHave(keyValue(23, null));
+		assertThat(record).doesNotHave(keyValue(null, "foo"));
 		record = null;
 		assertThat(record).doesNotHave(keyValue(null, null));
 	}
