@@ -34,12 +34,23 @@ public final class KafkaConditions {
 	}
 
 	/**
-	 * @param key the key
+	 * @param key the key.
 	 * @param <K> the type.
 	 * @return a Condition that matches the key in a consumer record.
 	 */
 	public static <K> Condition<ConsumerRecord<K, ?>> key(K key) {
 		return new ConsumerRecordKeyCondition<>(key);
+	}
+
+	/**
+	 * @param key the key.
+	 * @param value the value.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return a Condition that matches the key in a consumer record.
+	 */
+	public static <K, V> Condition<ConsumerRecord<K, V>> keyValue(K key, V value) {
+		return new ConsumerRecordKeyValueCondition<K, V>(key, value);
 	}
 
 	/**
@@ -106,7 +117,27 @@ public final class KafkaConditions {
 
 		@Override
 		public boolean matches(ConsumerRecord<?, V> value) {
-			return value != null && value.value().equals(this.payload);
+			return value != null
+					&& (value.value() == null && this.payload == null || value.value().equals(this.payload));
+		}
+
+	}
+
+	public static class ConsumerRecordKeyValueCondition<K, V> extends Condition<ConsumerRecord<K, V>> {
+
+		private final ConsumerRecordKeyCondition<K> keyCondition;
+
+		private final ConsumerRecordValueCondition<V> valueCondition;
+
+		public ConsumerRecordKeyValueCondition(K key, V value) {
+			super("a ConsumerRecord with 'key' " + key + " and 'value' " + value);
+			this.keyCondition = new ConsumerRecordKeyCondition<>(key);
+			this.valueCondition = new ConsumerRecordValueCondition<>(value);
+		}
+
+		@Override
+		public boolean matches(ConsumerRecord<K, V> value) {
+			return this.keyCondition.matches(value) && this.valueCondition.matches(value);
 		}
 
 	}
