@@ -69,6 +69,12 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					"org.springframework.util"
 			);
 
+	private static final List<String> DEFAULT_TO_STRING_CLASSES =
+			Arrays.asList(
+					"org.springframework.util.MimeType",
+					"org.springframework.http.MediaType"
+			);
+
 	/**
 	 * Header name for java types of other headers.
 	 */
@@ -78,7 +84,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	private final Set<String> trustedPackages = new LinkedHashSet<>(DEFAULT_TRUSTED_PACKAGES);
 
-	private final Set<String> toStringClasses = new LinkedHashSet<>();
+	private final Set<String> toStringClasses = new LinkedHashSet<>(DEFAULT_TO_STRING_CLASSES);
 
 	private boolean encodeStrings;
 
@@ -234,18 +240,19 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				}
 				else {
 					try {
-						Object value = valueToAdd;
 						String className = valueToAdd.getClass().getName();
+						boolean encodeToJson = this.encodeStrings;
 						if (this.toStringClasses.contains(className)) {
 							valueToAdd = valueToAdd.toString();
 							className = JAVA_LANG_STRING;
+							encodeToJson = true;
 						}
-						if (!this.encodeStrings && valueToAdd instanceof String) {
+						if (!encodeToJson && valueToAdd instanceof String) {
 							target.add(new RecordHeader(key, ((String) valueToAdd).getBytes(getCharset())));
 							className = JAVA_LANG_STRING;
 						}
 						else {
-							target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(value)));
+							target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
 						}
 						jsonHeaders.put(key, className);
 					}

@@ -51,7 +51,7 @@ import org.springframework.util.MimeTypeUtils;
 public class DefaultKafkaHeaderMapperTests {
 
 	@Test
-	public void testTrustedAndNot() {
+	void testTrustedAndNot() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		mapper.addToStringClasses(Bar.class.getName());
 		MimeType utf8Text = new MimeType(MimeTypeUtils.TEXT_PLAIN, StandardCharsets.UTF_8);
@@ -77,7 +77,7 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(headers.get("baz")).isEqualTo("qux");
 		assertThat(headers.get("fix")).isInstanceOf(NonTrustedHeaderType.class);
 		assertThat(headers.get("linkedMVMap")).isInstanceOf(LinkedMultiValueMap.class);
-		assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isEqualTo(utf8Text);
+		assertThat(MimeType.valueOf(headers.get(MessageHeaders.CONTENT_TYPE).toString())).isEqualTo(utf8Text);
 		assertThat(headers.get("simpleContentType")).isEqualTo(MimeTypeUtils.TEXT_PLAIN_VALUE);
 		assertThat(headers.get(MessageHeaders.REPLY_CHANNEL)).isNull();
 		assertThat(headers.get(MessageHeaders.ERROR_CHANNEL)).isEqualTo("errors");
@@ -99,7 +99,7 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testDeserializedNonTrusted() {
+	void testDeserializedNonTrusted() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		Message<String> message = MessageBuilder.withPayload("foo")
 				.setHeader("fix", new Foo())
@@ -131,7 +131,7 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testMimeTypeInHeaders() {
+	void testMimeTypeInHeaders() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		MessageHeaders headers = new MessageHeaders(
 				Collections.singletonMap("foo",
@@ -147,7 +147,7 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testSpecificStringConvert() {
+	void testSpecificStringConvert() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesAString", true);
@@ -173,7 +173,7 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testJsonStringConvert() {
+	void testJsonStringConvert() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesBytes", false);
@@ -189,14 +189,14 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(target).containsExactlyInAnyOrder(
 				new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
 						("{\"thisOnesEmpty\":\"java.lang.String\","
-						+ "\"thisOnesAString\":\"java.lang.String\"}").getBytes()),
+								+ "\"thisOnesAString\":\"java.lang.String\"}").getBytes()),
 				new RecordHeader("thisOnesAString", "foo".getBytes()),
 				new RecordHeader("alwaysRaw", "baz".getBytes()),
 				new RecordHeader("thisOnesEmpty", "".getBytes()),
 				new RecordHeader("thisOnesBytes", "bar".getBytes()));
 		headersMap.clear();
 		target.add(new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
-						("{\"thisOnesEmpty\":\"java.lang.String\","
+				("{\"thisOnesEmpty\":\"java.lang.String\","
 						+ "\"thisOnesAString\":\"java.lang.String\","
 						+ "\"backwardCompatible\":\"java.lang.String\"}").getBytes()));
 		target.add(new RecordHeader("backwardCompatible", "\"qux\"".getBytes()));
@@ -214,7 +214,7 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(target).containsExactlyInAnyOrder(
 				new RecordHeader(DefaultKafkaHeaderMapper.JSON_TYPES,
 						("{\"thisOnesEmpty\":\"java.lang.String\","
-						+ "\"thisOnesAString\":\"java.lang.String\"}").getBytes()),
+								+ "\"thisOnesAString\":\"java.lang.String\"}").getBytes()),
 				new RecordHeader("thisOnesAString", "\"foo\"".getBytes()),
 				new RecordHeader("thisOnesEmpty", "\"\"".getBytes()),
 				new RecordHeader("alwaysRaw", "baz".getBytes()),
@@ -222,7 +222,7 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testAlwaysStringConvert() {
+	void testAlwaysStringConvert() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		mapper.setMapAllStringsOut(true);
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
@@ -280,14 +280,11 @@ public class DefaultKafkaHeaderMapperTests {
 			}
 			Foo other = (Foo) obj;
 			if (this.bar == null) {
-				if (other.bar != null) {
-					return false;
-				}
+				return other.bar == null;
 			}
-			else if (!this.bar.equals(other.bar)) {
-				return false;
+			else {
+				return this.bar.equals(other.bar);
 			}
-			return true;
 		}
 
 	}
