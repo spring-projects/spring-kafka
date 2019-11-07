@@ -150,12 +150,13 @@ public final class KafkaTestUtils {
 	 * @since 2.0
 	 */
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
-		ConsumerRecords<K, V> received = getRecords(consumer, timeout);
-		Iterator<ConsumerRecord<K, V>> iterator = received.records(topic).iterator();
-		assertThat(iterator.hasNext()).as("No records found for topic").isTrue();
-		iterator.next();
-		assertThat(iterator.hasNext()).as("More than one record for topic found").isFalse();
-		if (received.count() > 1) {
+		long expire = System.currentTimeMillis() + timeout;
+		ConsumerRecords<K, V> received;
+		Iterator<ConsumerRecord<K, V>> iterator;
+		long remaining = timeout;
+		do {
+			received = getRecords(consumer, remaining);
+			iterator = received.records(topic).iterator();
 			Map<TopicPartition, Long> reset = new HashMap<>();
 			received.forEach(rec -> {
 				if (!rec.topic().equals(topic)) {
@@ -163,7 +164,18 @@ public final class KafkaTestUtils {
 				}
 			});
 			reset.forEach((tp, off) -> consumer.seek(tp, off));
+			try {
+				Thread.sleep(50);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			remaining = expire - System.currentTimeMillis();
 		}
+		while (!iterator.hasNext() && remaining > 0);
+		assertThat(iterator.hasNext()).as("No records found for topic").isTrue();
+		iterator.next();
+		assertThat(iterator.hasNext()).as("More than one record for topic found").isFalse();
 		return received.records(topic).iterator().next();
 	}
 

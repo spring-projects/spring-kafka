@@ -17,6 +17,7 @@
 package org.springframework.kafka.test.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.Map;
 
@@ -26,6 +27,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.AssertionFailedError;
 
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -35,7 +37,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
  * @since 2.2.7
  *
  */
-@EmbeddedKafka(topics = { "singleTopic1", "singleTopic2", "singleTopic3" })
+@EmbeddedKafka(topics = { "singleTopic1", "singleTopic2", "singleTopic3", "singleTopic4", "singleTopic5" })
 public class KafkaTestUtilsTests {
 
 	@Test
@@ -51,6 +53,26 @@ public class KafkaTestUtilsTests {
 		broker.consumeFromAllEmbeddedTopics(consumer);
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic1");
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic2");
+		consumer.close();
+	}
+
+	@Test
+	void testGetSingleWithMoreThatOneTopicRecordNotThereYet(EmbeddedKafkaBroker broker) {
+		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
+		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
+		producer.send(new ProducerRecord<>("singleTopic4", 1, "foo"));
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests", "false", broker);
+		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
+		broker.consumeFromEmbeddedTopics(consumer, "singleTopic4", "singleTopic5");
+		long t1 = System.currentTimeMillis();
+		assertThatExceptionOfType(AssertionFailedError.class).isThrownBy(() ->
+			KafkaTestUtils.getSingleRecord(consumer, "singleTopic5", 2000L));
+		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(2000L);
+		producer.send(new ProducerRecord<>("singleTopic5", 1, "foo"));
+		producer.close();
+		KafkaTestUtils.getSingleRecord(consumer, "singleTopic4");
+		KafkaTestUtils.getSingleRecord(consumer, "singleTopic5");
 		consumer.close();
 	}
 
