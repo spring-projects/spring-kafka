@@ -16,9 +16,11 @@
 
 package org.springframework.kafka.core;
 
+import static org.assertj.core.api.Assertions.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
+import static org.springframework.kafka.test.assertj.KafkaConditions.keyValue;
 import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
 import static org.springframework.kafka.test.assertj.KafkaConditions.timestamp;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
@@ -114,21 +116,15 @@ public class KafkaTemplateTests {
 
 		template.sendDefault(0, 2, "bar");
 		ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
-		assertThat(received).has(key(2));
-		assertThat(received).has(partition(0));
-		assertThat(received).has(value("bar"));
+		assertThat(received).has(allOf(keyValue(2, "bar"), partition(0)));
 
 		template.send(INT_KEY_TOPIC, 0, 2, "baz");
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
-		assertThat(received).has(key(2));
-		assertThat(received).has(partition(0));
-		assertThat(received).has(value("baz"));
+		assertThat(received).has(allOf(keyValue(2, "baz"), partition(0)));
 
 		template.send(INT_KEY_TOPIC, 0, null, "qux");
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
-		assertThat(received).has(key((Integer) null));
-		assertThat(received).has(partition(0));
-		assertThat(received).has(value("qux"));
+		assertThat(received).has(allOf(keyValue(null, "qux"), partition(0)));
 
 		template.send(MessageBuilder.withPayload("fiz")
 				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
@@ -136,18 +132,14 @@ public class KafkaTemplateTests {
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
-		assertThat(received).has(key(2));
-		assertThat(received).has(partition(0));
-		assertThat(received).has(value("fiz"));
+		assertThat(received).has(allOf(keyValue(2, "fiz"), partition(0)));
 
 		template.send(MessageBuilder.withPayload("buz")
 				.setHeader(KafkaHeaders.PARTITION_ID, 0)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
-		assertThat(received).has(key(2));
-		assertThat(received).has(partition(0));
-		assertThat(received).has(value("buz"));
+		assertThat(received).has(allOf(keyValue(2, "buz"), partition(0)));
 
 		Map<MetricName, ? extends Metric> metrics = template.execute(Producer::metrics);
 		assertThat(metrics).isNotNull();

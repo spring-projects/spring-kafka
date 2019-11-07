@@ -16,15 +16,17 @@
 
 package org.springframework.kafka.test.assertj;
 
+import static org.assertj.core.api.Assertions.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.kafka.test.assertj.KafkaConditions.keyValue;
+import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 
 /**
  * @author Gary Russell
- * @since 2.3.4
+ * @since 2.2.12
  *
  */
 public class KafkaConditionsTests {
@@ -32,7 +34,7 @@ public class KafkaConditionsTests {
 	@Test
 	void testKeyValue() {
 		ConsumerRecord<Integer, String> record = new ConsumerRecord<>("topic", 42, 0, 23, "foo");
-		assertThat(record).has(keyValue(23, "foo"));
+		assertThat(record).has(allOf(keyValue(23, "foo"), partition(42)));
 		record = new ConsumerRecord<>("topic", 42, 0, 23, null);
 		assertThat(record).has(keyValue(23, null));
 		record = new ConsumerRecord<>("topic", 42, 0, null, "foo");

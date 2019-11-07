@@ -43,23 +43,24 @@ public final class KafkaConditions {
 	}
 
 	/**
-	 * @param key the key.
-	 * @param value the value.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @return a Condition that matches the key in a consumer record.
-	 */
-	public static <K, V> Condition<ConsumerRecord<K, V>> keyValue(K key, V value) {
-		return new ConsumerRecordKeyValueCondition<K, V>(key, value);
-	}
-
-	/**
 	 * @param value the value.
 	 * @param <V> the type.
 	 * @return a Condition that matches the value in a consumer record.
 	 */
 	public static <V> Condition<ConsumerRecord<?, V>> value(V value) {
 		return new ConsumerRecordValueCondition<>(value);
+	}
+
+	/**
+	 * @param key the key.
+	 * @param value the value.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return a Condition that matches the key in a consumer record.
+	 * @since 2.2.12
+	 */
+	public static <K, V> Condition<ConsumerRecord<K, V>> keyValue(K key, V value) {
+		return new ConsumerRecordKeyValueCondition<K, V>(key, value);
 	}
 
 	/**
