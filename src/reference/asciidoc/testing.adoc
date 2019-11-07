@@ -454,6 +454,16 @@ public static <K> Condition<ConsumerRecord<K, ?>> key(K key) { ... }
 public static <V> Condition<ConsumerRecord<?, V>> value(V value) { ... }
 
 /**
+ * @param key the key.
+ * @param value the value.
+ * @param <K> the key type.
+ * @param <V> the value type.
+ * @return a Condition that matches the key in a consumer record.
+ * @since 2.2.12
+ */
+public static <K, V> Condition<ConsumerRecord<K, V>> keyValue(K key, V value) { ... }
+
+/**
  * @param partition the partition.
  * @return a Condition that matches the partition in a consumer record.
  */
@@ -547,13 +557,13 @@ With `AssertJ`, the final part looks like the following code:
 assertThat(records.poll(10, TimeUnit.SECONDS)).has(value("foo"));
 template.sendDefault(0, 2, "bar");
 ConsumerRecord<Integer, String> received = records.poll(10, TimeUnit.SECONDS);
+// using individual assertions
 assertThat(received).has(key(2));
-assertThat(received).has(partition(0));
 assertThat(received).has(value("bar"));
+assertThat(received).has(partition(0));
 template.send(TEMPLATE_TOPIC, 0, 2, "baz");
 received = records.poll(10, TimeUnit.SECONDS);
-assertThat(received).has(key(2));
-assertThat(received).has(partition(0));
-assertThat(received).has(value("baz"));
+// using allOf()
+assertThat(received).has(allOf(keyValue(2, "baz"), partition(0)));
 ----
 ====
