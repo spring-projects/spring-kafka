@@ -888,7 +888,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			while (isRunning()) {
 				try {
 					pollAndInvoke();
-					idleBetweenPollIfNecessary();
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
 					// Ignore, we're stopping or applying immediate foreign acks
@@ -929,6 +928,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!this.autoCommit && !this.isRecordAck) {
 				processCommits();
 			}
+			idleBetweenPollIfNecessary();
 			if (this.seeks.size() > 0) {
 				processSeeks();
 			}
