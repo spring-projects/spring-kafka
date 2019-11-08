@@ -1981,8 +1981,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Override
+		public void seekToBeginning(Collection<TopicPartition> partitions) {
+			this.seeks.addAll(partitions.stream()
+					.map(tp -> new TopicPartitionOffset(tp.topic(), tp.partition(), SeekPosition.BEGINNING))
+					.collect(Collectors.toList()));
+		}
+
+		@Override
 		public void seekToEnd(String topic, int partition) {
 			this.seeks.add(new TopicPartitionOffset(topic, partition, SeekPosition.END));
+		}
+
+		@Override
+		public void seekToEnd(Collection<TopicPartition> partitions) {
+			this.seeks.addAll(partitions.stream()
+					.map(tp -> new TopicPartitionOffset(tp.topic(), tp.partition(), SeekPosition.END))
+					.collect(Collectors.toList()));
 		}
 
 		@Override
@@ -2243,9 +2257,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
+			public void seekToBeginning(Collection<TopicPartition> partitions) {
+				ListenerConsumer.this.consumer.seekToBeginning(partitions);
+			}
+
+			@Override
 			public void seekToEnd(String topic, int partition) {
 				ListenerConsumer.this.consumer.seekToEnd(
 						Collections.singletonList(new TopicPartition(topic, partition)));
+			}
+
+			@Override
+			public void seekToEnd(Collection<TopicPartition> partitions) {
+				ListenerConsumer.this.consumer.seekToEnd(partitions);
 			}
 
 			@Override

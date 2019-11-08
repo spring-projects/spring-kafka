@@ -2031,7 +2031,11 @@ void seek(String topic, int partition, long offset);
 
 void seekToBeginning(String topic, int partition);
 
+void seekToBeginning(Collection=<TopicPartitions> partitions);
+
 void seekToEnd(String topic, int partition);
+
+void seekToEnd(Collection=<TopicPartitions> partitions);
 
 void seekRelative(String topic, int partition, long offset, boolean toCurrent);
 
@@ -2055,6 +2059,24 @@ When called from other locations, the container will gather all timestamp seek r
 
 You can also perform seek operations from `onIdleContainer()` when an idle container is detected.
 See <<idle-containers>> for how to enable idle container detection.
+
+NOTE: The `seekToBeginning` method that accepts a collection is useful, for example, when processing a compacted topic and you wish to seek to the beginning every time the application is started:
+
+====
+[source, java]
+----
+public class MyListener extends AbstractConsumerSeekAware {
+
+...
+
+    @Override
+	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+		callback.seekToBeginning(assignments.keySet());
+	}
+
+}
+----
+====
 
 To arbitrarily seek at runtime, use the callback reference from the `registerSeekCallback` for the appropriate thread.
 

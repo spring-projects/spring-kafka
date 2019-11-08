@@ -31,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.withSettings;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -40,6 +41,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -1289,12 +1292,16 @@ public class KafkaMessageListenerContainerTests {
 
 			@Override
 			public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+				callback.seekToEnd(assignments.keySet());
+				callback.seekToBeginning(assignments.keySet());
 				assignedLatch.countDown();
 			}
 
 			@Override
 			public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 				idleLatch.countDown();
+				callback.seekToBeginning(assignments.keySet());
+				callback.seekToEnd(assignments.keySet());
 				assignments.forEach((tp, off) -> {
 					callback.seekToBeginning(tp.topic(), tp.partition());
 					callback.seekToEnd(tp.topic(), tp.partition());
@@ -2258,19 +2265,22 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop rebalance after failed record");
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked" })
 	@Test
-	public void testPauseResume() throws Exception {
+	public void testPauseResumeAndConsumerSeekAware() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
-		Consumer<Integer, String> consumer = mock(Consumer.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class, withSettings().verboseLogging());
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
-		Map<String, Object> cfProps = new HashMap<>();
+		Map<String, Object> cfProps = new LinkedHashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		records.put(new TopicPartition("foo", 1), Arrays.asList(
+				new ConsumerRecord<>("foo", 1, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 1, 1L, 1, "bar")));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
 		AtomicBoolean first = new AtomicBoolean(true);
@@ -2284,7 +2294,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 			return first.getAndSet(false) ? consumerRecords : emptyRecords;
 		});
-		final CountDownLatch commitLatch = new CountDownLatch(3);
+		final CountDownLatch commitLatch = new CountDownLatch(5); // assignment + 4
 		willAnswer(i -> {
 			commitLatch.countDown();
 			return null;
@@ -2312,7 +2322,35 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
-		containerProps.setMessageListener((MessageListener) r -> { });
+		class Listener extends AbstractConsumerSeekAware implements MessageListener<String, String> {
+
+			@Override
+			public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+				super.onPartitionsAssigned(assignments, callback);
+				callback.seekToEnd(assignments.keySet());
+				assignments.keySet().forEach(tp -> callback.seekToEnd(tp.topic(), tp.partition()));
+				callback.seekToBeginning(assignments.keySet());
+				assignments.keySet().forEach(tp -> callback.seekToBeginning(tp.topic(), tp.partition()));
+			}
+
+			@Override
+			public void onMessage(ConsumerRecord<String, String> data) {
+				if (data.partition() == 0 && data.offset() == 0) {
+					TopicPartition topicPartition = new TopicPartition(data.topic(), data.partition());
+					getSeekCallbackFor(topicPartition).seekToBeginning(records.keySet());
+					Iterator<TopicPartition> iterator = records.keySet().iterator();
+					getSeekCallbackFor(topicPartition).seekToBeginning(Collections.singletonList(iterator.next()));
+					getSeekCallbackFor(topicPartition).seekToBeginning(Collections.singletonList(iterator.next()));
+					getSeekCallbackFor(topicPartition).seekToEnd(records.keySet());
+					iterator = records.keySet().iterator();
+					getSeekCallbackFor(topicPartition).seekToEnd(Collections.singletonList(iterator.next()));
+					getSeekCallbackFor(topicPartition).seekToEnd(Collections.singletonList(iterator.next()));
+				}
+			}
+
+		}
+		Listener messageListener = new Listener();
+		containerProps.setMessageListener(messageListener);
 		containerProps.setMissingTopicsFatal(false);
 		Properties consumerProps = new Properties();
 		consumerProps.setProperty(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "42000");
@@ -2334,7 +2372,33 @@ public class KafkaMessageListenerContainerTests {
 		});
 		container.start();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		verify(consumer, times(3)).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
+		InOrder inOrder = inOrder(consumer);
+		inOrder.verify(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
+
+		// seeks performed directly during assignment
+		inOrder.verify(consumer).seekToEnd(records.keySet());
+		Iterator<TopicPartition> iterator = records.keySet().iterator();
+		inOrder.verify(consumer).seekToEnd(Collections.singletonList(iterator.next()));
+		inOrder.verify(consumer).seekToEnd(Collections.singletonList(iterator.next()));
+		inOrder.verify(consumer).seekToBeginning(records.keySet());
+		iterator = records.keySet().iterator();
+		inOrder.verify(consumer).seekToBeginning(Collections.singletonList(iterator.next()));
+		inOrder.verify(consumer).seekToBeginning(Collections.singletonList(iterator.next()));
+
+		// seeks performed after calls to listener and commits - seeks done individually, even when collection
+		inOrder.verify(consumer, times(4)).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
+		iterator = records.keySet().iterator();
+		inOrder.verify(consumer).seekToBeginning(Collections.singletonList(iterator.next()));
+		inOrder.verify(consumer).seekToBeginning(Collections.singletonList(iterator.next()));
+		iterator = records.keySet().iterator();
+		inOrder.verify(consumer).seekToBeginning(Collections.singletonList(iterator.next()));
+		inOrder.verify(consumer).seekToBeginning(Collections.singletonList(iterator.next()));
+		iterator = records.keySet().iterator();
+		inOrder.verify(consumer).seekToEnd(Collections.singletonList(iterator.next()));
+		inOrder.verify(consumer).seekToEnd(Collections.singletonList(iterator.next()));
+		iterator = records.keySet().iterator();
+		inOrder.verify(consumer).seekToEnd(Collections.singletonList(iterator.next()));
+		inOrder.verify(consumer).seekToEnd(Collections.singletonList(iterator.next()));
 		assertThat(container.isContainerPaused()).isFalse();
 		container.pause();
 		assertThat(container.isPaused()).isTrue();
@@ -2346,7 +2410,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		verify(consumer, times(4)).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
+		verify(consumer, times(6)).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

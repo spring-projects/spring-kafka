@@ -96,12 +96,34 @@ public interface ConsumerSeekAware {
 		void seekToBeginning(String topic, int partition);
 
 		/**
+		 * Queue a seekToBeginning operation to the consumer for each
+		 * {@link TopicPartition}. The seek will occur after any pending offset commits.
+		 * The consumer must be currently assigned the specified partition(s).
+		 * @param partitions the {@link TopicPartition}s.
+		 * @since 2.3.4
+		 */
+		default void seekToBeginning(Collection<TopicPartition> partitions) {
+			throw new UnsupportedOperationException();
+		}
+
+		/**
 		 * Queue a seekToEnd operation to the consumer. The seek will occur after any pending
 		 * offset commits. The consumer must be currently assigned the specified partition.
 		 * @param topic the topic.
 		 * @param partition the partition.
 		 */
 		void seekToEnd(String topic, int partition);
+
+		/**
+		 * Queue a seekToEnd operation to the consumer for each {@link TopicPartition}.
+		 * The seek will occur after any pending offset commits. The consumer must be
+		 * currently assigned the specified partition(s).
+		 * @param partitions the {@link TopicPartition}s.
+		 * @since 2.3.4
+		 */
+		default void seekToEnd(Collection<TopicPartition> partitions) {
+			throw new UnsupportedOperationException();
+		}
 
 		/**
 		 * Queue a seek to a position relative to the start or end of the current position.
