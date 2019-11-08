@@ -51,6 +51,7 @@ import org.springframework.util.Assert;
  * @author Nurettin Yilmaz
  * @author Denis Washington
  * @author Gary Russell
+ * @author Renato Mefi
  *
  * @since 1.1.4
  */
@@ -75,6 +76,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private final CleanupConfig cleanupConfig;
 
 	private KafkaStreamsCustomizer kafkaStreamsCustomizer;
+
+	private KafkaStreamsTopologyCustomizer kafkaStreamsTopologyCustomizer;
 
 	private KafkaStreams.StateListener stateListener;
 
@@ -232,6 +235,18 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		this.kafkaStreamsCustomizer = kafkaStreamsCustomizer; // NOSONAR (sync)
 	}
 
+	/**
+	 * Specify a {@link KafkaStreamsTopologyCustomizer} to customize a {@link Topology}
+	 * instance during {@link #start()}.
+	 * @param kafkaStreamsTopologyCustomizer the {@link KafkaStreamsTopologyCustomizer} to use.
+	 * @since 2.4.0
+	 */
+	public void setKafkaStreamsTopologyCustomizer(
+			KafkaStreamsTopologyCustomizer kafkaStreamsTopologyCustomizer) {
+		Assert.notNull(kafkaStreamsCustomizer, "'kafkaStreamsTopologyCustomizer' must not be null");
+		this.kafkaStreamsTopologyCustomizer = kafkaStreamsTopologyCustomizer; // NOSONAR (sync)
+	}
+
 	public void setStateListener(KafkaStreams.StateListener stateListener) {
 		this.stateListener = stateListener; // NOSONAR (sync)
 	}
@@ -311,6 +326,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				Assert.state(this.properties != null,
 						"streams configuration properties must not be null");
 				Topology topology = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
+				if (this.kafkaStreamsTopologyCustomizer != null) {
+					this.kafkaStreamsTopologyCustomizer.customize(topology);
+				}
 				LOGGER.debug(() -> topology.describe().toString());
 				this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);

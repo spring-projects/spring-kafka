@@ -89,6 +89,7 @@ public class KafkaStreamsCustomizerTests {
 			StreamsBuilderFactoryBean streamsBuilderFactoryBean =
 					new StreamsBuilderFactoryBean(kStreamsConfigs());
 			streamsBuilderFactoryBean.setKafkaStreamsCustomizer(customizer());
+			streamsBuilderFactoryBean.setKafkaStreamsTopologyCustomizer(topologyCustomizer());
 			return streamsBuilderFactoryBean;
 		}
 
@@ -105,6 +106,10 @@ public class KafkaStreamsCustomizerTests {
 
 		private KafkaStreamsCustomizer customizer() {
 			return kafkaStreams -> kafkaStreams.setStateListener(STATE_LISTENER);
+		}
+
+		private KafkaStreamsTopologyCustomizer topologyCustomizer() {
+			return topology -> topology.addSource("fake-source", "fake-source-topic");
 		}
 
 	}
