@@ -309,6 +309,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	/**
 	 * Set a customizer used to further configure a container after it has been created.
 	 * @param containerCustomizer the customizer.
+	 * @since 2.3.4
 	 */
 	public void setContainerCustomizer(ContainerCustomizer<K, V, C> containerCustomizer) {
 		this.containerCustomizer = containerCustomizer;
