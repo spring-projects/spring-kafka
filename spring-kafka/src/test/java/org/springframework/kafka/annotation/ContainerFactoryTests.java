@@ -19,6 +19,8 @@ package org.springframework.kafka.annotation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -44,11 +46,14 @@ public class ContainerFactoryTests {
 		factory.setConsumerFactory(cf);
 		factory.setPhase(42);
 		factory.getContainerProperties().setAckCount(123);
+		AtomicBoolean customized = new AtomicBoolean();
+		factory.setContainerCustomizer(container -> customized.set(true));
 		ConcurrentMessageListenerContainer<String, String> container = factory.createContainer("foo");
 		assertThat(container.isAutoStartup()).isFalse();
 		assertThat(container.getPhase()).isEqualTo(42);
 		assertThat(container.getContainerProperties().getAckCount()).isEqualTo(123);
 		assertThat(KafkaTestUtils.getPropertyValue(container, "concurrency", Integer.class)).isEqualTo(22);
+		assertThat(customized).isTrue();
 	}
 
 }

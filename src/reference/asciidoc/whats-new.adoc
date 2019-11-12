@@ -67,6 +67,9 @@ See <<events>> for more information.
 Transactional batch listeners can now support zombie fencing.
 See <<transactions>> for more information.
 
+The listener container factory can now be configured with a `ContainerCustomizer` to further configure each container after it has been created and configured.
+See <<container-factory>> for more information.
+
 ==== ErrorHandler Changes
 
 The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.

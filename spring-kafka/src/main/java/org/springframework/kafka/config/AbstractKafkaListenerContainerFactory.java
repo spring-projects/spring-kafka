@@ -107,6 +107,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private ApplicationContext applicationContext;
 
+	private ContainerCustomizer<K, V, C> containerCustomizer;
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -305,6 +306,14 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.recordInterceptor = recordInterceptor;
 	}
 
+	/**
+	 * Set a customizer used to further configure a container after it has been created.
+	 * @param containerCustomizer the customizer.
+	 */
+	public void setContainerCustomizer(ContainerCustomizer<K, V, C> containerCustomizer) {
+		this.containerCustomizer = containerCustomizer;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		if (this.errorHandler != null) {
@@ -392,6 +401,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 						instance.getContainerProperties()::setKafkaConsumerProperties);
 	}
 
+	private void customizeContainer(C instance) {
+		if (this.containerCustomizer != null) {
+			this.containerCustomizer.configure(instance);
+		}
+	}
+
 	/**
 	 * {@inheritDoc}
 	 * @deprecated in favor of {@link #createContainer(TopicPartitionOffset[])}
@@ -416,6 +431,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		};
 		C container = createContainerInstance(endpoint);
 		initializeContainer(container, endpoint);
+		customizeContainer(container);
 		return container;
 	}
 
@@ -431,6 +447,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		};
 		C container = createContainerInstance(endpoint);
 		initializeContainer(container, endpoint);
+		customizeContainer(container);
 		return container;
 	}
 
@@ -446,6 +463,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		};
 		C container = createContainerInstance(endpoint);
 		initializeContainer(container, endpoint);
+		customizeContainer(container);
 		return container;
 	}
 
