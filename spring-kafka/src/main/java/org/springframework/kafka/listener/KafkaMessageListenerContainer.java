@@ -132,7 +132,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
 			"io.micrometer.core.instrument.MeterRegistry", KafkaMessageListenerContainer.class.getClassLoader());
 
-	private final AbstractMessageListenerContainer<K, V> container;
+	private final AbstractMessageListenerContainer<K, V> thisOrParentContainer;
 
 	private final TopicPartitionOffset[] topicPartitions;
 
@@ -205,7 +205,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		this.container = container == null ? this : container;
+		this.thisOrParentContainer = container == null ? this : container;
 		if (topicPartitions != null) {
 			this.topicPartitions = Arrays.stream(topicPartitions)
 					.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
@@ -230,7 +230,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		this.container = container == null ? this : container;
+		this.thisOrParentContainer = container == null ? this : container;
 		if (topicPartitions != null) {
 			this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);
 		}
@@ -379,28 +379,28 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private void publishIdleContainerEvent(long idleTime, Consumer<?, ?> consumer, boolean paused) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(this,
-					this.container, idleTime, getBeanName(), getAssignedPartitions(), consumer, paused));
+					this.thisOrParentContainer, idleTime, getBeanName(), getAssignedPartitions(), consumer, paused));
 		}
 	}
 
 	private void publishNonResponsiveConsumerEvent(long timeSinceLastPoll, Consumer<?, ?> consumer) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(
-					new NonResponsiveConsumerEvent(this, this.container, timeSinceLastPoll,
+					new NonResponsiveConsumerEvent(this, this.thisOrParentContainer, timeSinceLastPoll,
 							getBeanName(), getAssignedPartitions(), consumer));
 		}
 	}
 
 	private void publishConsumerPausedEvent(Collection<TopicPartition> partitions) {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerPausedEvent(this, this.container,
+			getApplicationEventPublisher().publishEvent(new ConsumerPausedEvent(this, this.thisOrParentContainer,
 					Collections.unmodifiableCollection(partitions)));
 		}
 	}
 
 	private void publishConsumerResumedEvent(Collection<TopicPartition> partitions) {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerResumedEvent(this, this.container,
+			getApplicationEventPublisher().publishEvent(new ConsumerResumedEvent(this, this.thisOrParentContainer,
 					Collections.unmodifiableCollection(partitions)));
 		}
 	}
@@ -409,7 +409,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		try {
 			if (getApplicationEventPublisher() != null) {
 				getApplicationEventPublisher().publishEvent(
-						new ConsumerStoppingEvent(this, this.container, consumer, getAssignedPartitions()));
+						new ConsumerStoppingEvent(this, this.thisOrParentContainer, consumer, getAssignedPartitions()));
 			}
 		}
 		catch (Exception e) {
@@ -419,32 +419,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private void publishConsumerStoppedEvent() {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.container));
+			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer));
 		}
 	}
 
 	private void publishConsumerStartingEvent() {
 		this.startLatch.countDown();
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerStartingEvent(this, this.container));
+			getApplicationEventPublisher().publishEvent(new ConsumerStartingEvent(this, this.thisOrParentContainer));
 		}
 	}
 
 	private void publishConsumerStartedEvent() {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerStartedEvent(this, this.container));
+			getApplicationEventPublisher().publishEvent(new ConsumerStartedEvent(this, this.thisOrParentContainer));
 		}
 	}
 
 	private void publishConsumerFailedToStart() {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerFailedToStartEvent(this, this.container));
+			getApplicationEventPublisher().publishEvent(new ConsumerFailedToStartEvent(this, this.thisOrParentContainer));
 		}
 	}
 
 	@Override
 	protected AbstractMessageListenerContainer<?, ?> parentOrThis() {
-		return this.container;
+		return this.thisOrParentContainer;
 	}
 
 	@Override
@@ -659,6 +659,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
 				// update the property so we can use it directly from code elsewhere
 				this.containerProperties.setSyncCommitTimeout(this.syncCommitTimeout);
+				if (KafkaMessageListenerContainer.this.thisOrParentContainer != null) {
+					KafkaMessageListenerContainer.this.thisOrParentContainer
+							.getContainerProperties()
+							.setSyncCommitTimeout(this.syncCommitTimeout);
+				}
 			}
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
 			this.micrometerHolder = obtainMicrometerHolder();
@@ -1108,11 +1113,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			try {
 				if (!this.isBatchListener && this.errorHandler != null) {
 					this.errorHandler.handle(e, Collections.emptyList(), this.consumer,
-							KafkaMessageListenerContainer.this.container);
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
 				}
 				else if (this.isBatchListener && this.batchErrorHandler != null) {
 					this.batchErrorHandler.handle(e, new ConsumerRecords<K, V>(Collections.emptyMap()), this.consumer,
-							KafkaMessageListenerContainer.this);
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
 				}
 				else {
 					this.logger.error(e, "Consumer exception");
@@ -1431,7 +1436,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records, RuntimeException e) {
 			if (this.batchErrorHandler instanceof ContainerAwareBatchErrorHandler) {
 				this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
-						KafkaMessageListenerContainer.this.container);
+						KafkaMessageListenerContainer.this.thisOrParentContainer);
 			}
 			else {
 				this.batchErrorHandler.handle(decorateException(e), records, this.consumer);
@@ -1672,7 +1677,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					records.add(iterator.next());
 				}
 				this.errorHandler.handle(decorateException(e), records, this.consumer,
-						KafkaMessageListenerContainer.this.container);
+						KafkaMessageListenerContainer.this.thisOrParentContainer);
 			}
 			else {
 				this.errorHandler.handle(decorateException(e), record, this.consumer);

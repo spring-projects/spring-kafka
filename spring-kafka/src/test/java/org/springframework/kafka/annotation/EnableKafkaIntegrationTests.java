@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -341,8 +342,16 @@ public class EnableKafkaIntegrationTests {
 		MessageListenerContainer listenerContainer = registry.getListenerContainer("manualStart");
 		assertThat(listenerContainer).isNotNull();
 		assertThat(listenerContainer.isRunning()).isFalse();
+		assertThat(listenerContainer.getContainerProperties().getSyncCommitTimeout()).isNull();
 		this.registry.start();
 		assertThat(listenerContainer.isRunning()).isTrue();
+		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer)
+				.getContainers()
+				.get(0)
+				.getContainerProperties().getSyncCommitTimeout())
+				.isEqualTo(Duration.ofSeconds(60));
+		assertThat(listenerContainer.getContainerProperties().getSyncCommitTimeout())
+				.isEqualTo(Duration.ofSeconds(60));
 		listenerContainer.stop();
 		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.syncCommits", Boolean.class))
 				.isFalse();

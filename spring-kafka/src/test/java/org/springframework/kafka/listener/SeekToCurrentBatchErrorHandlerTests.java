@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
@@ -36,6 +38,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -95,7 +98,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 	 */
 	@SuppressWarnings("unchecked")
 	@Test
-	public void discardRemainingRecordsFromPollAndSeek() throws Exception {
+	void discardRemainingRecordsFromPollAndSeek() throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
@@ -121,7 +124,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 	}
 
 	@Test
-	public void testBackOff() {
+	void testBackOff() {
 		SeekToCurrentBatchErrorHandler eh = new SeekToCurrentBatchErrorHandler();
 		eh.setBackOff(new FixedBackOff(10L, 3));
 		@SuppressWarnings("rawtypes")
@@ -134,6 +137,46 @@ public class SeekToCurrentBatchErrorHandlerTests {
 				.hasCause(ex);
 		}
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(100L);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void verifyCorrectContainer() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		AtomicBoolean first = new AtomicBoolean(true);
+		willAnswer(invocation -> {
+			if (first.getAndSet(false)) {
+				throw new IllegalStateException("intentional");
+			}
+			Thread.sleep(50);
+			return new ConsumerRecords(Collections.emptyMap());
+		}).given(consumer).poll(any());
+		given(consumerFactory.createConsumer(anyString(), anyString(), anyString(),
+				eq(KafkaTestUtils.defaultPropertyOverrides())))
+						.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((BatchMessageListener) record -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
+				containerProperties);
+		AtomicReference<MessageListenerContainer> parent = new AtomicReference<>();
+		CountDownLatch latch = new CountDownLatch(1);
+		container.setBatchErrorHandler(new ContainerAwareBatchErrorHandler() {
+
+			@Override
+			public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+					MessageListenerContainer container) {
+
+				parent.set(container);
+				latch.countDown();
+			}
+		});
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		assertThat(parent.get()).isSameAs(container);
 	}
 
 	@Configuration
@@ -233,6 +276,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 			});
 			factory.setBatchListener(true);
 			factory.getContainerProperties().setTransactionManager(tm());
+			factory.setMissingTopicsFatal(false);
 			return factory;
 		}
 
