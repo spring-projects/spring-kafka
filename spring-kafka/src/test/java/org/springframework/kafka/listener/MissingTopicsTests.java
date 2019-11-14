@@ -51,9 +51,11 @@ public class MissingTopicsTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("notexisting");
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
+		containerProps.setMissingTopicsFatal(true);
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testMissing1");
+
 		try {
 			container.start();
 			fail("Expected exception");
@@ -69,6 +71,7 @@ public class MissingTopicsTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("notexisting");
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
+		containerProps.setMissingTopicsFatal(true);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testMissing2");
