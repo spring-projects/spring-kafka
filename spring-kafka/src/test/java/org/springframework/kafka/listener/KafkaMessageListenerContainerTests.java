@@ -31,7 +31,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.withSettings;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -2269,7 +2268,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testPauseResumeAndConsumerSeekAware() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
-		Consumer<Integer, String> consumer = mock(Consumer.class, withSettings().verboseLogging());
+		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new LinkedHashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
@@ -2294,11 +2293,11 @@ public class KafkaMessageListenerContainerTests {
 			}
 			return first.getAndSet(false) ? consumerRecords : emptyRecords;
 		});
-		final CountDownLatch commitLatch = new CountDownLatch(5); // assignment + 4
+		final CountDownLatch seekLatch = new CountDownLatch(7);
 		willAnswer(i -> {
-			commitLatch.countDown();
+			seekLatch.countDown();
 			return null;
-		}).given(consumer).commitSync(anyMap(), any());
+		}).given(consumer).seekToEnd(any());
 		given(consumer.assignment()).willReturn(records.keySet());
 		final CountDownLatch pauseLatch1 = new CountDownLatch(2); // consumer, event publisher
 		final CountDownLatch pauseLatch2 = new CountDownLatch(2); // consumer, consumer
@@ -2371,7 +2370,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 		});
 		container.start();
-		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(seekLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(consumer);
 		inOrder.verify(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
 
