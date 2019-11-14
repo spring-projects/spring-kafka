@@ -18,6 +18,11 @@ This version requires the 2.3.0 `kafka-clients` or higher.
 
 `TopicPartitionInitialOffset` is deprecated in favor of `TopicPartitionOffset`.
 
+==== Configuration Changes
+
+Starting with version 2.3.4, the `missingTopicsFatal` container property is false by default.
+When this is true, the application fails to start if the broker is down; many users were affected by this change; given that Kafka is a high-availability platform, we did not anticipate that starting an application with no active brokers would be a common use case.
+
 ==== Producer and Consumer Factory Changes
 
 The `DefaultKafkaProducerFactory` can now be configured to create a producer per thread.

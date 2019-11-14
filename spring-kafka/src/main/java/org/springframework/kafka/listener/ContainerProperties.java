@@ -172,7 +172,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean logContainerConfig;
 
-	private boolean missingTopicsFatal = true;
+	private boolean missingTopicsFatal = false;
 
 	private long idleBetweenPolls;
 
@@ -482,7 +482,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	/**
 	 * If true, the container won't start if any of the configured topics are not present
-	 * on the broker. Does not apply when topic patterns are configured. Default true;
+	 * on the broker. Does not apply when topic patterns are configured. Default false.
 	 * @return the missingTopicsFatal.
 	 * @since 2.2
 	 */
