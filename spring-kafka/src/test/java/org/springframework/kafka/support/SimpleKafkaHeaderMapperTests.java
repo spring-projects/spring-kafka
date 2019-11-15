@@ -38,7 +38,7 @@ public class SimpleKafkaHeaderMapperTests {
 
 	@Test
 	public void testSpecificStringConvert() {
-		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper("*");
+		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesAString", true);
 		rawMappedHeaders.put("thisOnesBytes", false);
@@ -64,7 +64,7 @@ public class SimpleKafkaHeaderMapperTests {
 
 	@Test
 	public void testNotStringConvert() {
-		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper("*");
+		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesBytes", false);
 		mapper.setRawMappedHeaders(rawMappedHeaders);
@@ -87,7 +87,7 @@ public class SimpleKafkaHeaderMapperTests {
 
 	@Test
 	public void testAlwaysStringConvert() {
-		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper("*");
+		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
 		mapper.setMapAllStringsOut(true);
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesBytes", false);
@@ -111,4 +111,22 @@ public class SimpleKafkaHeaderMapperTests {
 				entry("neverConverted", "baz".getBytes()));
 	}
 
+	@Test
+	public void testDefaultHeaderPatterns() {
+		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
+		mapper.setMapAllStringsOut(true);
+		Map<String, Object> headersMap = new HashMap<>();
+		headersMap.put(MessageHeaders.ID, "foo".getBytes());
+		headersMap.put(MessageHeaders.TIMESTAMP, "bar");
+		headersMap.put("thisOnePresent", "baz");
+		MessageHeaders headers = new MessageHeaders(headersMap);
+		Headers target = new RecordHeaders();
+		mapper.fromHeaders(headers, target);
+		assertThat(target).contains(
+				new RecordHeader("thisOnePresent", "baz".getBytes()));
+		headersMap.clear();
+		mapper.toHeaders(target, headersMap);
+		assertThat(headersMap).contains(
+				entry("thisOnePresent", "baz".getBytes()));
+	}
 }

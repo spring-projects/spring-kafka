@@ -45,7 +45,9 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * consumer/producer records.
 	 */
 	public SimpleKafkaHeaderMapper() {
-		super();
+		super("!" + MessageHeaders.ID,
+			  "!" + MessageHeaders.TIMESTAMP,
+			  "*");
 	}
 
 	/**
