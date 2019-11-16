@@ -46,8 +46,8 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 */
 	public SimpleKafkaHeaderMapper() {
 		super("!" + MessageHeaders.ID,
-			  "!" + MessageHeaders.TIMESTAMP,
-			  "*");
+				"!" + MessageHeaders.TIMESTAMP,
+				"*");
 	}
 
 	/**
