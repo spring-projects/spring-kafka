@@ -1,4 +1,4 @@
-=== What's New in 2.3 Since 2.2
+=== What's New in 2.4 Since 2.3
 
 This section covers the changes made from version 2.3 to version 2.4.
 
