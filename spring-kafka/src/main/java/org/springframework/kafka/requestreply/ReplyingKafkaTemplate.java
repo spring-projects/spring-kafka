@@ -74,7 +74,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private final GenericMessageListenerContainer<K, R> replyContainer;
 
-	private final ConcurrentMap<CorrelationKey, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
+	protected final ConcurrentMap<CorrelationKey, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
 
 	private final byte[] replyTopic;
 

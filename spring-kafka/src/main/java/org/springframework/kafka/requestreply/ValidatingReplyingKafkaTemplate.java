@@ -81,14 +81,14 @@ public class ValidatingReplyingKafkaTemplate<K, V, R> extends ReplyingKafkaTempl
 	/**
 	 * Filter out records that do not pass the validation predicate.
 	 * <p>
-	 * This does an initial filter to make sure only the ones with a correlation ID defined is processed.  This does
-	 * <b>not</b> check whether the correlation ID is something that needs to be considered as {@code futures} is not
-	 * accessible and it is relying on the super class to perform the extra test.
+	 * This does an initial filter to make sure only the ones with a correlation ID defined is processed and
+     * ensure that the correlation ID is inside the {@code futures} collection.
 	 */
 	@Override
 	public void onMessage(List<ConsumerRecord<K, R>> data) {
 		super.onMessage(data.stream()
 			.filter(record -> record.headers().lastHeader(KafkaHeaders.CORRELATION_ID) != null)
+			.filter(record -> this.futures.containsKey(new CorrelationKey(record.headers().lastHeader(KafkaHeaders.CORRELATION_ID))))
 			.filter(record -> this.validationPredicate.test(record.key(), record.value()))
 			.collect(Collectors.toList()));
 	}
