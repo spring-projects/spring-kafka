@@ -95,7 +95,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	private Function<ProducerRecord<K, V>, CorrelationKey> correlationStrategy =
 			ReplyingKafkaTemplate::defaultCorrelationIdStrategy;
 
-	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
+	protected String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
 
 	private String replyTopicHeaderName = KafkaHeaders.REPLY_TOPIC;
 

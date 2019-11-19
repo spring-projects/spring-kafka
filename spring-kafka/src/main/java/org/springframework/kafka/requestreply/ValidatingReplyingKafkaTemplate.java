@@ -24,7 +24,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
-import org.springframework.kafka.support.KafkaHeaders;
 
 /**
  * This is a {@link ReplyingKafkaTemplate} that adds a simple validation semantic so it can take multiple responses and
@@ -87,8 +86,8 @@ public class ValidatingReplyingKafkaTemplate<K, V, R> extends ReplyingKafkaTempl
 	@Override
 	public void onMessage(List<ConsumerRecord<K, R>> data) {
 		super.onMessage(data.stream()
-			.filter(record -> record.headers().lastHeader(KafkaHeaders.CORRELATION_ID) != null)
-			.filter(record -> this.futures.containsKey(new CorrelationKey(record.headers().lastHeader(KafkaHeaders.CORRELATION_ID))))
+			.filter(record -> record.headers().lastHeader(this.correlationHeaderName) != null)
+			.filter(record -> this.futures.containsKey(new CorrelationKey(record.headers().lastHeader(this.correlationHeaderName).value())))
 			.filter(record -> this.validationPredicate.test(record.key(), record.value()))
 			.collect(Collectors.toList()));
 	}
