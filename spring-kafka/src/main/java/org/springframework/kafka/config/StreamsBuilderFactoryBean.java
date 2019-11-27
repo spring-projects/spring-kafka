@@ -126,7 +126,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Set {@link StreamsConfig} on this factory.
+	 * Set the streams configuration {@link Properties} on this factory.
 	 * @param streamsConfig the streams configuration.
 	 * @since 2.2
 	 */
