@@ -20,6 +20,11 @@ Instead, the listener container will call that method after it has called `onPar
 
 See the IMPORTANT note at the end of <<rebalance-listeners>> for more information.
 
+[[x24-eh]]
+==== GenericErrorHandler
+
+The `isAckAfterHandle()` default implementation now returns true by default.
+
 === Migration Guide
 
 * This release is essentially the same as the 2.3.x line, except it has been compiled against the 2.4 `kafka-clients` jar, due to a binary incompatibility.

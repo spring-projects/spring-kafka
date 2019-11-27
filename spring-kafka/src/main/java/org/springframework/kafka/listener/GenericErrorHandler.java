@@ -63,8 +63,7 @@ public interface GenericErrorHandler<T> {
 	 * @since 2.3.2
 	 */
 	default boolean isAckAfterHandle() {
-		// TODO: Default true in the next release.
-		return false;
+		return true;
 	}
 
 }
