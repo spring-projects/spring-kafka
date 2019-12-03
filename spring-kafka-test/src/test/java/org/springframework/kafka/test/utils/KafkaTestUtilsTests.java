@@ -27,7 +27,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
-import org.opentest4j.AssertionFailedError;
 
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -66,7 +65,7 @@ public class KafkaTestUtilsTests {
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromEmbeddedTopics(consumer, "singleTopic4", "singleTopic5");
 		long t1 = System.currentTimeMillis();
-		assertThatExceptionOfType(AssertionFailedError.class).isThrownBy(() ->
+		assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() ->
 			KafkaTestUtils.getSingleRecord(consumer, "singleTopic5", 2000L));
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(2000L);
 		producer.send(new ProducerRecord<>("singleTopic5", 1, "foo"));

@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -546,11 +544,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * @param topicsToConsume the topics.
 	 */
 	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topicsToConsume) {
-		HashSet<String> diff = new HashSet<>(Arrays.asList(topicsToConsume));
-		diff.removeAll(new HashSet<>(this.topics));
-		assertThat(this.topics)
-				.as("topic(s):'" + diff + "' are not in embedded topic list")
-				.containsAll(new HashSet<>(Arrays.asList(topicsToConsume)));
+		List<String> notEmbedded = Arrays.stream(topicsToConsume)
+				.filter(topic -> !this.topics.contains(topic))
+				.collect(Collectors.toList());
+		if (notEmbedded.size() > 0) {
+			throw new IllegalStateException("topic(s):'" + notEmbedded + "' are not in embedded topic list");
+		}
 		final AtomicBoolean assigned = new AtomicBoolean();
 		consumer.subscribe(Arrays.asList(topicsToConsume), new ConsumerRebalanceListener() {
 
@@ -580,9 +579,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 					.collect(Collectors.toList()));
 			consumer.seekToBeginning(records.partitions());
 		}
-		assertThat(assigned.get())
-				.as("Failed to be assigned partitions from the embedded topics")
-				.isTrue();
+		if (!assigned.get()) {
+			throw new IllegalStateException("Failed to be assigned partitions from the embedded topics");
+		}
 		logger.debug("Subscription Initiated");
 	}
 

@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.test.utils;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -167,15 +165,19 @@ public final class KafkaTestUtils {
 			try {
 				Thread.sleep(50); // NOSONAR magic#
 			}
-			catch (InterruptedException e) {
+			catch (@SuppressWarnings("unused") InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
 			remaining = expire - System.currentTimeMillis();
 		}
 		while (!iterator.hasNext() && remaining > 0);
-		assertThat(iterator.hasNext()).as("No records found for topic").isTrue();
+		if (!iterator.hasNext()) {
+			throw new IllegalStateException("No records found for topic");
+		}
 		iterator.next();
-		assertThat(iterator.hasNext()).as("More than one record for topic found").isFalse();
+		if (iterator.hasNext()) {
+			throw new IllegalStateException("More than one record for topic found");
+		}
 		return received.records(topic).iterator().next();
 	}
 
@@ -267,7 +269,9 @@ public final class KafkaTestUtils {
 				// map to same format as send metadata toString()
 				.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
 				.collect(Collectors.toList()));
-		assertThat(received).as("null received from consumer.poll()").isNotNull();
+		if (received == null) {
+			throw new IllegalStateException("null received from consumer.poll()");
+		}
 		return received;
 	}
 
