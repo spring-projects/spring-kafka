@@ -41,6 +41,10 @@ public final class ContainerTestUtils {
 	 * Wait until the container has the required number of assigned partitions.
 	 * @param container the container.
 	 * @param partitions the number of partitions.
+	 * @throws IllegalStateException if the operation cannot be completed (since 2.3.4) as
+	 * expected.
+	 * @throws ContainerTestUtilsException if the call to the container's
+	 * getAssignedPartitions() method fails.
 	 */
 	public static void waitForAssignment(Object container, int partitions) {
 		if (container.getClass().getSimpleName().contains("KafkaMessageListenerContainer")) {

@@ -129,7 +129,7 @@ public final class KafkaTestUtils {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the record.
-	 * @throws org.junit.ComparisonFailure if exactly one record is not received.
+	 * @throws IllegalStateException if exactly one record is not received.
 	 * @see #getSingleRecord(Consumer, String, long)
 	 */
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic) {
@@ -144,7 +144,7 @@ public final class KafkaTestUtils {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the record.
-	 * @throws org.junit.ComparisonFailure if exactly one record is not received.
+	 * @throws IllegalStateException if exactly one record is not received.
 	 * @since 2.0
 	 */
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
@@ -258,6 +258,7 @@ public final class KafkaTestUtils {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the records.
+	 * @throws IllegalStateException if the poll returns null (since 2.3.4).
 	 * @since 2.0
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
