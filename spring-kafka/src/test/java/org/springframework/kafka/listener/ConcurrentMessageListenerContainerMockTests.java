@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,16 +46,21 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaResourceHolder;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * @author Gary Russell
@@ -351,6 +357,82 @@ public class ConcurrentMessageListenerContainerMockTests {
 		verify(consumer).seek(tp2, 92L);
 		verify(consumer).seek(tp3, 92L);
 		container.stop();
+	}
+
+	@Test
+	@DisplayName("Intercept after tx start")
+	void testInterceptAfterTx() throws InterruptedException {
+		testIntercept(false);
+	}
+
+	@Test
+	@DisplayName("Intercept before tx start")
+	void testInterceptBeforeTx() throws InterruptedException {
+		testIntercept(true);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testIntercept(boolean beforeTx) throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		ConsumerRecord record = new ConsumerRecord("foo", 0, 0L, "bar", "baz");
+		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record)));
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean first = new AtomicBoolean(true);
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			return first.getAndSet(false) ? records : empty;
+		}).given(consumer).poll(any());
+		List<TopicPartition> assignments = Arrays.asList(tp0);
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+				.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(any())).willReturn(0L);
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener) rec -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		KafkaAwareTransactionManager tm = mock(KafkaAwareTransactionManager.class);
+		ProducerFactory pf = mock(ProducerFactory.class);
+		given(tm.getProducerFactory()).willReturn(pf);
+		Producer producer = mock(Producer.class);
+		given(pf.createProducer()).willReturn(producer);
+		containerProperties.setTransactionManager(tm);
+		List<String> order = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(3);
+		willAnswer(inv -> {
+			order.add("tx");
+			TransactionSynchronizationManager.bindResource(pf,
+					new KafkaResourceHolder<>(producer, Duration.ofSeconds(5L)));
+			latch.countDown();
+			return null;
+		}).given(tm).getTransaction(any());
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
+				containerProperties);
+		container.setRecordInterceptor(rec -> {
+			order.add("interceptor");
+			latch.countDown();
+			return rec;
+		});
+		container.setInterceptBeforeTx(beforeTx);
+		container.start();
+		try {
+			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			if (beforeTx) {
+				assertThat(order).containsExactly("tx", "interceptor", "tx"); // first one is on assignment
+			}
+			else {
+				assertThat(order).containsExactly("tx", "tx", "interceptor");
+			}
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {

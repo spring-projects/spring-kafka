@@ -163,6 +163,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				container.setGenericErrorHandler(getGenericErrorHandler());
 				container.setAfterRollbackProcessor(getAfterRollbackProcessor());
 				container.setRecordInterceptor(getRecordInterceptor());
+				container.setInterceptBeforeTx(isInterceptBeforeTx());
 				container.setEmergencyStop(() -> {
 					stop(() -> {
 						// NOSONAR

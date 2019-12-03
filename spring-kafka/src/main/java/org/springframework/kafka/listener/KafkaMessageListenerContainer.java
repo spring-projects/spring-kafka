@@ -547,7 +547,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Duration syncCommitTimeout;
 
-		private final RecordInterceptor<K, V> recordInterceptor = getRecordInterceptor();
+		private final RecordInterceptor<K, V> recordInterceptor = !isInterceptBeforeTx()
+				? getRecordInterceptor()
+				: null;
+
+		private final RecordInterceptor<K, V> earlyRecordInterceptor = isInterceptBeforeTx()
+				? getRecordInterceptor()
+				: null;
 
 		private final ConsumerSeekCallback seekCallback = new InitialOrIdleSeekCallback();
 
@@ -1460,7 +1466,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
-				final ConsumerRecord<K, V> record = iterator.next();
+				final ConsumerRecord<K, V> record = checkEarlyIntercept(iterator.next());
+				if (record == null) {
+					continue;
+				}
 				this.logger.trace(() -> "Processing " + record);
 				try {
 					TransactionSupport
@@ -1532,7 +1541,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void doInvokeWithRecords(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
-				final ConsumerRecord<K, V> record = iterator.next();
+				final ConsumerRecord<K, V> record = checkEarlyIntercept(iterator.next());
+				if (record == null) {
+					continue;
+				}
 				this.logger.trace(() -> "Processing " + record);
 				doInvokeRecordListener(record, null, iterator);
 				if (this.nackSleep >= 0) {
@@ -1540,6 +1552,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					break;
 				}
 			}
+		}
+
+		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> nextArg) {
+			ConsumerRecord<K, V> next = nextArg;
+			if (this.earlyRecordInterceptor != null) {
+				next = this.earlyRecordInterceptor.intercept(next);
+				if (next == null) {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug("RecordInterceptor returned null, skipping: " + next);
+					}
+				}
+			}
+			return next;
 		}
 
 		private void handleNack(final ConsumerRecords<K, V> records, final ConsumerRecord<K, V> record) {

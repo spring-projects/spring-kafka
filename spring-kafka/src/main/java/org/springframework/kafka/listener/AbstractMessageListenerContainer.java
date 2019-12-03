@@ -95,6 +95,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private RecordInterceptor<K, V> recordInterceptor;
 
+	private boolean interceptBeforeTx;
+
 	private volatile boolean running = false;
 
 	private volatile boolean paused;
@@ -303,9 +305,24 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Does not apply to batch listeners.
 	 * @param recordInterceptor the interceptor.
 	 * @since 2.2.7
+	 * @see #setInterceptBeforeTx(boolean)
 	 */
 	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
 		this.recordInterceptor = recordInterceptor;
+	}
+
+	protected boolean isInterceptBeforeTx() {
+		return this.interceptBeforeTx;
+	}
+
+	/**
+	 * When true, invoke the interceptor before the transaction starts.
+	 * @param interceptBeforeTx true to intercept before the transaction.
+	 * @since 2.3.4
+	 * @see #setRecordInterceptor(RecordInterceptor)
+	 */
+	public void setInterceptBeforeTx(boolean interceptBeforeTx) {
+		this.interceptBeforeTx = interceptBeforeTx;
 	}
 
 	@Override

@@ -657,6 +657,11 @@ The interceptor is not invoked when the listener is a <<batch-listners, batch li
 
 Starting with version 2.3, the `CompositeRecordInterceptor` can be used to invoke multiple interceptors.
 
+By default, when using transactions, the interceptor is invoked after the transaction has started.
+Startubg with version 2.3.4, you can set the listener container's `interceptBeforeTx` property to invoke the interceptor before the transaction has started instead.
+
+No interceptor is provided for batch listeners because Kafka already provides a `ConsumerInterceptor`.
+
 [[kafka-container]]
 ====== Using `KafkaMessageListenerContainer`
 
