@@ -261,20 +261,18 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 
 	@Override
 	public void stop() {
+		this.running = false;
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			listenerContainer.stop();
 		}
-		this.running = false;
 	}
 
 	@Override
 	public void stop(Runnable callback) {
+		this.running = false;
 		Collection<MessageListenerContainer> listenerContainersToStop = getListenerContainers();
 		if (listenerContainersToStop.size() > 0) {
-			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(), () -> {
-				this.running = false;
-				callback.run();
-			});
+			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(), callback);
 			for (MessageListenerContainer listenerContainer : listenerContainersToStop) {
 				if (listenerContainer.isRunning()) {
 					listenerContainer.stop(aggregatingCallback);
@@ -285,7 +283,6 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 			}
 		}
 		else {
-			this.running = false;
 			callback.run();
 		}
 	}
