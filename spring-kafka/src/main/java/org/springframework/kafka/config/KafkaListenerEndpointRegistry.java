@@ -60,6 +60,7 @@ import org.springframework.util.StringUtils;
  * @author Juergen Hoeller
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Asi Bross
  *
  * @see KafkaListenerEndpoint
  * @see MessageListenerContainer
@@ -268,14 +269,12 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 
 	@Override
 	public void stop(Runnable callback) {
-		Runnable callbackWrap = () -> {
-			this.running = false;
-			callback.run();
-		};
-
 		Collection<MessageListenerContainer> listenerContainersToStop = getListenerContainers();
 		if (listenerContainersToStop.size() > 0) {
-			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(), callbackWrap);
+			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(), () -> {
+				this.running = false;
+				callback.run();
+			});
 			for (MessageListenerContainer listenerContainer : listenerContainersToStop) {
 				if (listenerContainer.isRunning()) {
 					listenerContainer.stop(aggregatingCallback);
@@ -286,7 +285,8 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 			}
 		}
 		else {
-			callbackWrap.run();
+			this.running = false;
+			callback.run();
 		}
 	}
 
