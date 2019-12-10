@@ -26,7 +26,7 @@ public static Map<String, Object> consumerProps(String group, String autoCommit,
  * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
  * @return the properties.
  */
-public static Map<String, Object> senderProps(EmbeddedKafkaBroker embeddedKafka) { ... }
+public static Map<String, Object> producerProps(EmbeddedKafkaBroker embeddedKafka) { ... }
 ----
 ====
 
