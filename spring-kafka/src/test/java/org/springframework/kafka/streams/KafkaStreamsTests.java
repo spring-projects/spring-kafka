@@ -181,7 +181,7 @@ public class KafkaStreamsTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.senderProps(this.brokerAddresses);
+			return KafkaTestUtils.producerProps(this.brokerAddresses);
 		}
 
 		@Bean

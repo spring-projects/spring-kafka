@@ -191,7 +191,7 @@ public class KafkaStreamsJsonSerializationTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			Map<String, Object> senderProps = KafkaTestUtils.senderProps(this.brokerAddresses);
+			Map<String, Object> senderProps = KafkaTestUtils.producerProps(this.brokerAddresses);
 			senderProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 			senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 			return senderProps;

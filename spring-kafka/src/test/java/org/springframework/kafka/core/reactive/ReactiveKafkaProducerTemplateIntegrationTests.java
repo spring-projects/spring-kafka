@@ -109,7 +109,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 
 	private SenderOptions<Integer, String> setupSenderOptionsWithDefaultTopic() {
 		Map<String, Object> senderProps =
-				KafkaTestUtils.senderProps(EmbeddedKafkaCondition.getBroker().getBrokersAsString());
+				KafkaTestUtils.producerProps(EmbeddedKafkaCondition.getBroker().getBrokersAsString());
 		return SenderOptions.create(senderProps);
 	}
 

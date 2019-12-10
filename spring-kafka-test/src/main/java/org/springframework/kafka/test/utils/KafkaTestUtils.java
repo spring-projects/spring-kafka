@@ -82,7 +82,7 @@ public final class KafkaTestUtils {
 	 * @return the properties.
 	 */
 	public static Map<String, Object> producerProps(EmbeddedKafkaBroker embeddedKafka) {
-		return senderProps(embeddedKafka.getBrokersAsString());
+		return producerProps(embeddedKafka.getBrokersAsString());
 	}
 
 
@@ -109,8 +109,9 @@ public final class KafkaTestUtils {
 	 * Set up test properties for an {@code <Integer, String>} producer.
 	 * @param brokers the bootstrapServers property.
 	 * @return the properties.
+	 * @since 2.3.5
 	 */
-	public static Map<String, Object> senderProps(String brokers) {
+	public static Map<String, Object> producerProps(String brokers) {
 		Map<String, Object> props = new HashMap<>();
 		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
 		props.put(ProducerConfig.RETRIES_CONFIG, 0);
@@ -120,6 +121,17 @@ public final class KafkaTestUtils {
 		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
 		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		return props;
+	}
+
+	/**
+	 * Set up test properties for an {@code <Integer, String>} producer.
+	 * @param brokers the bootstrapServers property.
+	 * @return the properties.
+	 * @deprecated in favor of {@link #producerProps(String)}.
+	 */
+	@Deprecated
+	public static Map<String, Object> senderProps(String brokers) {
+		return producerProps(brokers);
 	}
 
 	/**
