@@ -523,11 +523,12 @@ public class KafkaTemplateTests {
         });
         container.setBeanName("templateTests");
         container.start();
-        ContainerTestUtils.waitForAssignment(container, embeddedKafka.getEmbeddedKafka().getPartitionsPerTopic());
-        Map<String, Object> senderProps =
-                            KafkaTestUtils.senderProps(embeddedKafka.getEmbeddedKafka().getBrokersAsString());
+        ContainerTestUtils.waitForAssignment(container,
+                            embeddedKafka.getEmbeddedKafka().getPartitionsPerTopic());
+        Map<String, Object> producerProps =
+                            KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka());
         ProducerFactory<Integer, String> pf =
-                            new DefaultKafkaProducerFactory<Integer, String>(senderProps);
+                            new DefaultKafkaProducerFactory<Integer, String>(producerProps);
         KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
         template.setDefaultTopic(TEMPLATE_TOPIC);
         template.sendDefault("foo");
