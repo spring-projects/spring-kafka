@@ -42,6 +42,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
@@ -616,6 +617,19 @@ public class ConcurrentMessageListenerContainerTests {
 				containerProps);
 		container.setConcurrency(2);
 		container.setBeanName("testAckOnError");
+		container.setErrorHandler(new LoggingErrorHandler() {
+
+			@Override
+			public void handle(Exception thrownException, ConsumerRecord<?, ?> record) {
+				// nothing
+			}
+
+			@Override
+			public boolean isAckAfterHandle() {
+				return false;
+			}
+
+		});
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
