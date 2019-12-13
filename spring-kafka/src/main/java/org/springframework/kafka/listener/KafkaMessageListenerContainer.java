@@ -53,6 +53,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.context.ApplicationContext;
@@ -908,6 +909,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.logger.error(nofpe, "No offset and no reset policy");
 					break;
 				}
+				catch (AuthorizationException ae) {
+					this.fatalError = true;
+					ListenerConsumer.this.logger.error(ae, "Authorization Exception");
+					break;
+				}
 				catch (Exception e) {
 					handleConsumerException(e);
 				}
@@ -1091,7 +1097,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				this.logger.error("No offset and no reset policy; stopping container");
+				this.logger.error("Fatal consumer exception; stopping container");
 				KafkaMessageListenerContainer.this.stop();
 			}
 			this.monitorTask.cancel(true);

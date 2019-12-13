@@ -48,6 +48,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.GroupAuthorizationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -146,6 +147,35 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(errorContainer.get()).isSameAs(container);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void testConsumerExitWhenNotAuthorized() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		willAnswer(invocation -> {
+			Thread.sleep(100);
+			throw new GroupAuthorizationException("grp");
+		}).given(consumer).poll(any());
+		CountDownLatch latch = new CountDownLatch(1);
+		willAnswer(invocation -> {
+			latch.countDown();
+			return null;
+		}).given(consumer).close();
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener) record -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		containerProperties.setShutdownTimeout(10);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).close();
 		container.stop();
 	}
 
