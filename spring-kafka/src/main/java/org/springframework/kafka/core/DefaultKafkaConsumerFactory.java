@@ -22,11 +22,13 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.Deserializer;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
@@ -56,6 +58,8 @@ import org.springframework.util.StringUtils;
  * @author Chris Gilbert
  */
 public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
+
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaConsumerFactory.class));
 
 	private final Map<String, Object> configs;
 
@@ -179,6 +183,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 							: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
 		}
 		if (properties != null) {
+			checkForUnsupportedProps(properties);
 			properties.stringPropertyNames()
 					.stream()
 					.filter(name -> !name.equals(ConsumerConfig.CLIENT_ID_CONFIG)
@@ -186,6 +191,15 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 					.forEach(name -> modifiedConfigs.put(name, properties.getProperty(name)));
 		}
 		return createKafkaConsumer(modifiedConfigs);
+	}
+
+	private void checkForUnsupportedProps(Properties properties) {
+		properties.forEach((key, value) -> {
+			if (!(key instanceof String) || !(value instanceof String)) {
+				LOGGER.warn(() -> "Property override for '" + key.toString()
+					+ "' ignored, only <String, String> properties are supported; value is a(n) " + value.getClass());
+			}
+		});
 	}
 
 	protected KafkaConsumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
