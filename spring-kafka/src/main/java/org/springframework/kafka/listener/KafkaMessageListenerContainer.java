@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -53,6 +54,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.context.ApplicationContext;
@@ -121,6 +123,7 @@ import io.micrometer.core.instrument.Timer.Sample;
  * @author Chen Binbin
  * @author Yang Qiju
  * @author Tom van den Berge
+ * @author Lukasz Kaminski
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> {
@@ -571,6 +574,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private long last = System.currentTimeMillis();
 
+		private Duration authErrorPauseTime = this.containerProperties.getAuthErrorPauseTime();
+
 		private boolean fatalError;
 
 		private boolean taskSchedulerExplicitlySet;
@@ -908,6 +913,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.logger.error(nofpe, "No offset and no reset policy");
 					break;
 				}
+				catch (TopicAuthorizationException e) {
+					this.logger.error(e, "Cannot access topic, pausing for " + authErrorPauseTime.getSeconds() + " seconds");
+					pauseFor(authErrorPauseTime);
+				}
 				catch (Exception e) {
 					handleConsumerException(e);
 				}
@@ -922,6 +931,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			wrapUp();
+		}
+
+		private void pauseFor(Duration pauseDuration) {
+			pause();
+			checkPaused();
+			Instant resumeTime = Instant.now().plus(pauseDuration);
+			Runnable resumeTask = () -> {
+				resume();
+				checkResumed();
+			};
+			taskScheduler.schedule(resumeTask, resumeTime);
 		}
 
 		private void initAssignedPartitions() {

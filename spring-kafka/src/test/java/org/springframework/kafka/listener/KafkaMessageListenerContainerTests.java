@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -66,6 +67,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.junit.jupiter.api.BeforeAll;
@@ -110,6 +112,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Martin Dam
  * @author Artem Bilan
  * @author Loic Talhouarne
+ * @author Lukasz Kaminski
  */
 @EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
 		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,
@@ -2652,6 +2655,50 @@ public class KafkaMessageListenerContainerTests {
 		first.set(true);
 		container.start();
 		assertThat(behl.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+	}
+
+	@SuppressWarnings( {"unchecked", "rawtypes"})
+	@Test
+	void testPauseOnTopicAuthorizationException() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+
+		willThrow(TopicAuthorizationException.class)
+				.given(consumer).poll(any());
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset(topic1, 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setIdleEventInterval(100L);
+		containerProps.setMessageListener((MessageListener) r -> {
+		});
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setAuthErrorPauseTime(Duration.ofSeconds(2));
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+
+		CountDownLatch paused = new CountDownLatch(1);
+		CountDownLatch resumed = new CountDownLatch(1);
+
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerPausedEvent) {
+				paused.countDown();
+			}
+			if (e instanceof ConsumerResumedEvent) {
+				resumed.countDown();
+			}
+		});
+
+		container.start();
+		assertThat(paused.await(5, TimeUnit.SECONDS)).isTrue();
+		assertThat(resumed.await(5, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 	}
 

@@ -38,6 +38,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  * @author Artem Yakshin
  * @author Johnny Lim
+ * @author Lukasz Kaminski
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -108,6 +109,8 @@ public class ContainerProperties extends ConsumerProperties {
 	public static final float DEFAULT_NO_POLL_THRESHOLD = 3f;
 
 	private static final Duration DEFAULT_CONSUMER_START_TIMEOUT = Duration.ofSeconds(30);
+
+	private static final Duration DEFAULT_AUTH_ERROR_PAUSE_TIME = Duration.ofSeconds(30);
 
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
@@ -181,6 +184,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private Duration consumerStartTimout = DEFAULT_CONSUMER_START_TIMEOUT;
 
 	private boolean subBatchPerPartition;
+
+	private Duration authErrorPauseTime = DEFAULT_AUTH_ERROR_PAUSE_TIME;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -607,6 +612,14 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setSubBatchPerPartition(boolean subBatchPerPartition) {
 		this.subBatchPerPartition = subBatchPerPartition;
+	}
+
+	public Duration getAuthErrorPauseTime() {
+		return authErrorPauseTime;
+	}
+
+	public void setAuthErrorPauseTime(Duration authErrorPauseTime) {
+		this.authErrorPauseTime = authErrorPauseTime;
 	}
 
 	@Override
