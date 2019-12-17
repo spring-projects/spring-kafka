@@ -38,6 +38,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  * @author Artem Yakshin
  * @author Johnny Lim
+ * @author Lukasz Kaminski
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -181,6 +182,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private Duration consumerStartTimout = DEFAULT_CONSUMER_START_TIMEOUT;
 
 	private boolean subBatchPerPartition;
+
+	private Duration authorizationExceptionRetryInterval;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -600,13 +603,31 @@ public class ContainerProperties extends ConsumerProperties {
 	 * When using a batch message listener whether to dispatch records by partition (with
 	 * a transaction for each sub batch if transactions are in use) or the complete batch
 	 * received by the {@code poll()}. Useful when using transactions to enable zombie
-	 * fencing, by using a {code transactional.id} that is unique for each
+	 * fencing, by using a {@code transactional.id} that is unique for each
 	 * group/topic/partition.
 	 * @param subBatchPerPartition true for a separate transaction for each partition.
 	 * @since 2.3.2
 	 */
 	public void setSubBatchPerPartition(boolean subBatchPerPartition) {
 		this.subBatchPerPartition = subBatchPerPartition;
+	}
+
+	public Duration getAuthorizationExceptionRetryInterval() {
+		return this.authorizationExceptionRetryInterval;
+	}
+
+	/**
+	 * Set the interval between retries after {@code AuthorizationException} is thrown
+	 * by {@code KafkaConsumer}. By default the field is null and retries are disabled.
+	 * In such case the container will be stopped.
+	 *
+	 * The interval must be less than {@code max.poll.interval.ms} consumer property.
+	 *
+	 * @param authorizationExceptionRetryInterval the duration between retries
+	 * @since 2.4.0
+	 */
+	public void setAuthorizationExceptionRetryInterval(Duration authorizationExceptionRetryInterval) {
+		this.authorizationExceptionRetryInterval = authorizationExceptionRetryInterval;
 	}
 
 	@Override
@@ -631,6 +652,7 @@ public class ContainerProperties extends ConsumerProperties {
 				+ (this.scheduler != null ? ", scheduler=" + this.scheduler : "")
 				+ ", noPollThreshold=" + this.noPollThreshold
 				+ ", subBatchPerPartition=" + this.subBatchPerPartition
+				+ ", authorizationExceptionRetryInterval=" + this.authorizationExceptionRetryInterval
 				+ "]";
 	}
 

@@ -757,6 +757,11 @@ It does not apply if the container is configured to listen to a topic pattern (r
 Previously, the container threads looped within the `consumer.poll()` method waiting for the topic to appear while logging many messages.
 Aside from the logs, there was no indication that there was a problem.
 
+As of version 2.4.0, a new container property called `authorizationExceptionRetryInterval` has been introduced. This causes the container to retry fetching messages after getting any `AuthorizationException` from `KafkaConsumer`. This can happen when, for example, given user is denied access to read certain topic.
+Defining `authorizationExceptionRetryInterval` should help the application to recover as soon as proper permissions are granted.
+
+NOTE: By default, no interval is configured - authorization errors are considered fatal, which causes the container to stop.
+
 [[using-ConcurrentMessageListenerContainer]]
 ====== Using `ConcurrentMessageListenerContainer`
 

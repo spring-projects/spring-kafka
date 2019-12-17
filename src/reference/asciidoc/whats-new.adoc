@@ -33,6 +33,11 @@ It is now called after a timeout (as well as when records arrive); the second pa
 
 See <<aggregating-request-reply>> for more information.
 
+==== Listener Container
+
+The `ContainerProperties` provides an `authorizationExceptionRetryInterval` option to let the listener container to retry after `AuthorizationException` is thrown by `KafkaConsumer`.
+See its JavaDocs and <<kafka-container>> for more information.
+
 === Migration Guide
 
 * This release is essentially the same as the 2.3.x line, except it has been compiled against the 2.4 `kafka-clients` jar, due to a binary incompatibility.

@@ -122,6 +122,7 @@ import io.micrometer.core.instrument.Timer.Sample;
  * @author Chen Binbin
  * @author Yang Qiju
  * @author Tom van den Berge
+ * @author Lukasz Kaminski
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> {
@@ -568,6 +569,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
+		private Duration authorizationExceptionRetryInterval = this.containerProperties.getAuthorizationExceptionRetryInterval();
+
 		private int count;
 
 		private long last = System.currentTimeMillis();
@@ -910,9 +913,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					break;
 				}
 				catch (AuthorizationException ae) {
-					this.fatalError = true;
-					ListenerConsumer.this.logger.error(ae, "Authorization Exception");
-					break;
+					if (this.authorizationExceptionRetryInterval == null) {
+						ListenerConsumer.this.logger.error(ae, "Authorization Exception and no authorizationExceptionRetryInterval set");
+						this.fatalError = true;
+						break;
+					}
+					else {
+						ListenerConsumer.this.logger.error(ae, "Authorization Exception, retrying in " + this.authorizationExceptionRetryInterval.toMillis() + " ms");
+						// We can't pause/resume here, as KafkaConsumer doesn't take pausing
+						// into account when committing, hence risk of being flooded with
+						// GroupAuthorizationExceptions.
+						// see: https://github.com/spring-projects/spring-kafka/pull/1337
+						sleepFor(this.authorizationExceptionRetryInterval);
+					}
 				}
 				catch (Exception e) {
 					handleConsumerException(e);
@@ -949,7 +962,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.seeks.size() > 0) {
 				processSeeks();
 			}
-			checkPaused();
+			pauseConsumerIfNecessary();
 			this.lastPoll = System.currentTimeMillis();
 			this.polling.set(true);
 			ConsumerRecords<K, V> records = doPoll();
@@ -963,7 +976,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				return;
 			}
-			checkResumed();
+			resumeConsumerIfNeccessary();
 			debugRecords(records);
 			if (records != null && records.count() > 0) {
 				if (this.containerProperties.getIdleEventInterval() != null) {
@@ -1020,7 +1033,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void checkPaused() {
+		private void sleepFor(Duration duration) {
+			try {
+				TimeUnit.MILLISECONDS.sleep(duration.toMillis());
+			}
+			catch (InterruptedException e) {
+				this.logger.error(e, "Interrupted while sleeping");
+			}
+		}
+
+		private void pauseConsumerIfNecessary() {
 			if (!this.consumerPaused && isPaused()) {
 				this.consumer.pause(this.consumer.assignment());
 				this.consumerPaused = true;
@@ -1029,7 +1051,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void checkResumed() {
+		private void resumeConsumerIfNeccessary() {
 			if (this.consumerPaused && !isPaused()) {
 				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
 				Set<TopicPartition> paused = this.consumer.paused();
