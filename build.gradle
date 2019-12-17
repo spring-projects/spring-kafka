@@ -90,7 +90,6 @@ allprojects {
 		if (version.endsWith('BUILD-SNAPSHOT')) {
 			maven { url 'https://repo.spring.io/libs-snapshot' }
 		}
-		mavenLocal()
 	}
 
 }
