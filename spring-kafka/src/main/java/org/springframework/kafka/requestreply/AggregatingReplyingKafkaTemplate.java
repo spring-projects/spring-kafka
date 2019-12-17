@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -74,7 +75,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 
 	private final Map<TopicPartition, Long> offsets = new HashMap<>();
 
-	private final Predicate<Collection<ConsumerRecord<K, R>>> releaseStrategy;
+	private final BiPredicate<List<ConsumerRecord<K, R>>, Boolean> releaseStrategy;
 
 	private Duration commitTimeout = Duration.ofSeconds(DEFAULT_COMMIT_TIMEOUT);
 
@@ -86,10 +87,31 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	 * @param producerFactory the producer factory.
 	 * @param replyContainer the reply container.
 	 * @param releaseStrategy the release strategy.
+	 * @deprecated in favor of
+	 * {@link #AggregatingReplyingKafkaTemplate(ProducerFactory, GenericMessageListenerContainer, BiPredicate)}
 	 */
+	@Deprecated
 	public AggregatingReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, Collection<ConsumerRecord<K, R>>> replyContainer,
 			Predicate<Collection<ConsumerRecord<K, R>>> releaseStrategy) {
+
+		this(producerFactory, replyContainer, (records, timeout) -> timeout || releaseStrategy.test(records));
+	}
+
+	/**
+	 * Construct an instance using the provided parameter arguments. The releaseStrategy
+	 * is consulted to determine when a collection is "complete".
+	 * @param producerFactory the producer factory.
+	 * @param replyContainer the reply container.
+	 * @param releaseStrategy the release strategy which is a {@link BiPredicate} which is
+	 * passed the current list and a boolean to indicate if this is for a normal delivery
+	 * or a timeout (when {@link #setReturnPartialOnTimeout(boolean)} is true. The
+	 * predicate may modify the list of records.
+	 * @since 2.3.5
+	 */
+	public AggregatingReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
+			GenericMessageListenerContainer<K, Collection<ConsumerRecord<K, R>>> replyContainer,
+			BiPredicate<List<ConsumerRecord<K, R>>, Boolean> releaseStrategy) {
 
 		super(producerFactory, replyContainer);
 		Assert.notNull(releaseStrategy, "'releaseStrategy' cannot be null");
@@ -133,7 +155,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 						List<ConsumerRecord<K, R>> list = addToCollection(record, correlationId).stream()
 								.map(RecordHolder::getRecord)
 								.collect(Collectors.toList());
-						if (this.releaseStrategy.test(list)) {
+						if (this.releaseStrategy.test(list, false)) {
 							ConsumerRecord<K, Collection<ConsumerRecord<K, R>>> done =
 									new ConsumerRecord<>(AGGREGATED_RESULTS_TOPIC, 0, 0L, null, list);
 							done.headers()
@@ -164,12 +186,12 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 			List<ConsumerRecord<K, R>> list = removed.stream()
 					.map(RecordHolder::getRecord)
 					.collect(Collectors.toList());
-			future.set(new ConsumerRecord<>(PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC, 0, 0L, null, list));
-			return true;
+			if (this.releaseStrategy.test(list, true)) {
+				future.set(new ConsumerRecord<>(PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC, 0, 0L, null, list));
+				return true;
+			}
 		}
-		else {
-			return false;
-		}
+		return false;
 	}
 
 	private void checkOffsetsAndCommitIfNecessary(List<ConsumerRecord<K, R>> list, Consumer<?, ?> consumer) {

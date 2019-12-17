@@ -7,7 +7,7 @@ Also see <<new-in-sik>>.
 [[kafka-client-2.4]]
 ==== Kafka Client Version
 
-This version requires the 2.4.0 `kafka-clients` or higher.
+This version requires the 2.4.0 `kafka-clients` or higher and supports the new incremental rebalancing feature.
 
 [[x24-carl]]
 ==== ConsumerAwareRabalanceListener
@@ -24,6 +24,14 @@ See the IMPORTANT note at the end of <<rebalance-listeners>> for more informatio
 ==== GenericErrorHandler
 
 The `isAckAfterHandle()` default implementation now returns true by default.
+
+[[x24-agg]]
+==== AggregatingReplyingKafkaTemplate
+
+The `releastStrategy` is now a `BiConsumer`.
+It is now called after a timeout (as well as when records arrive); the second parameter is `true` in the case of a call after a timeout.
+
+See <<aggregating-request-reply>> for more information.
 
 === Migration Guide
 

@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -295,7 +296,7 @@ public class ReplyingKafkaTemplateTests {
 	@Test
 	public void testAggregateNormal() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
-				new TopicPartitionOffset(D_REPLY, 0), 2);
+				new TopicPartitionOffset(D_REPLY, 0), 2, new AtomicInteger());
 		try {
 			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(D_REQUEST, null, null, null, "foo");
@@ -324,7 +325,7 @@ public class ReplyingKafkaTemplateTests {
 	@Disabled("time sensitive")
 	public void testAggregateTimeout() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
-				new TopicPartitionOffset(E_REPLY, 0), 3);
+				new TopicPartitionOffset(E_REPLY, 0), 3, new AtomicInteger());
 		try {
 			template.setDefaultReplyTimeout(Duration.ofSeconds(5));
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(E_REQUEST, null, null, null, "foo");
@@ -357,8 +358,9 @@ public class ReplyingKafkaTemplateTests {
 	@Test
 	@Disabled("time sensitive")
 	public void testAggregateTimeoutPartial() throws Exception {
+		AtomicInteger releaseCount = new AtomicInteger();
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
-				new TopicPartitionOffset(F_REPLY, 0), 3);
+				new TopicPartitionOffset(F_REPLY, 0), 3, releaseCount);
 		template.setReturnPartialOnTimeout(true);
 		try {
 			template.setDefaultReplyTimeout(Duration.ofSeconds(5));
@@ -377,6 +379,7 @@ public class ReplyingKafkaTemplateTests {
 			assertThat(value2).isNotSameAs(value1);
 			assertThat(consumerRecord.topic())
 					.isEqualTo(AggregatingReplyingKafkaTemplate.PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC);
+			assertThat(releaseCount.get()).isEqualTo(2);
 		}
 		finally {
 			template.stop();
@@ -400,7 +403,8 @@ public class ReplyingKafkaTemplateTests {
 			correlation.set(rec.headers().lastHeader(KafkaHeaders.CORRELATION_ID).value());
 			return null;
 		}).given(producer).send(any(), any());
-		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(pf, container, coll -> true);
+		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(pf, container,
+				(list, timeout) -> true);
 		template.setDefaultReplyTimeout(Duration.ofSeconds(30));
 		template.start();
 		List<ConsumerRecord> records = new ArrayList<>();
@@ -475,7 +479,7 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	public AggregatingReplyingKafkaTemplate<Integer, String, String> aggregatingTemplate(
-			TopicPartitionOffset topic, int releaseSize) {
+			TopicPartitionOffset topic, int releaseSize, AtomicInteger releaseCount) {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		containerProperties.setAckMode(AckMode.MANUAL_IMMEDIATE);
@@ -488,7 +492,11 @@ public class ReplyingKafkaTemplateTests {
 				new KafkaMessageListenerContainer<>(cf, containerProperties);
 		container.setBeanName(this.testName);
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template =
-				new AggregatingReplyingKafkaTemplate<>(this.config.pf(), container, coll -> coll.size() == releaseSize);
+				new AggregatingReplyingKafkaTemplate<>(this.config.pf(), container,
+						(list, timeout) -> {
+							releaseCount.incrementAndGet();
+							return list.size() == releaseSize;
+						});
 		template.setSharedReplyTopic(true);
 		template.start();
 		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(1);
