@@ -342,6 +342,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * {@link Producer}(s).
 	 * @since 2.2
 	 */
+	@Override
 	public void reset() {
 		try {
 			destroy();

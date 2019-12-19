@@ -79,4 +79,12 @@ public interface ProducerFactory<K, V> {
 		// NOSONAR
 	}
 
+	/**
+	 * Reset any state in the factory, if supported.
+	 * @since 2.4
+	 */
+	default void reset() {
+		// NOSONAR
+	}
+
 }

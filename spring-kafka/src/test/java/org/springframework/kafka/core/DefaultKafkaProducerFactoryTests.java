@@ -110,7 +110,7 @@ public class DefaultKafkaProducerFactoryTests {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void testResetSingle() {
 		final Producer producer = mock(Producer.class);
-		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+		ProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override
 			protected Producer createKafkaProducer() {
