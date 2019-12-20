@@ -107,6 +107,8 @@ import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.ProjectingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -153,7 +155,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
-		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle" })
+		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
+		"annotated38", "annotated38reply" })
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
@@ -803,6 +806,40 @@ public class EnableKafkaIntegrationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(this.seekOnIdleListener, "callbacks", Map.class)).hasSize(0);
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testReplyingBatchListenerReturnCollection() {
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplyingBatchListenerReturnCollection");
+		consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+		ConsumerFactory<Integer, Object> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, Object> consumer = cf.createConsumer();
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated38reply");
+		template.send("annotated38", 0, 0, "FoO");
+		template.send("annotated38", 0, 0, "BaR");
+		template.flush();
+		ConsumerRecords replies = KafkaTestUtils.getRecords(consumer);
+		assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+		Iterator<ConsumerRecord<?, ?>> iterator = replies.iterator();
+		Object value = iterator.next().value();
+		assertThat(value).isInstanceOf(List.class);
+		List list = (List) value;
+		assertThat(list).hasSizeGreaterThanOrEqualTo(1);
+		assertThat(list.get(0)).isEqualTo("FOO");
+		if (list.size() > 1) {
+			assertThat(list.get(1)).isEqualTo("BAR");
+		}
+		else {
+			replies = KafkaTestUtils.getRecords(consumer);
+			assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+			iterator = replies.iterator();
+			list = (List) iterator.next();
+			assertThat(list).hasSize(1);
+			assertThat(list.get(0)).isEqualTo("BAR");
+		}
+		consumer.close();
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -851,7 +888,7 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setRecordFilterStrategy(recordFilter());
-			factory.setReplyTemplate(partitionZeroReplyingTemplate());
+			factory.setReplyTemplate(partitionZeroReplyTemplate());
 			factory.setErrorHandler((ConsumerAwareErrorHandler) (t, d, c) -> {
 				this.globalErrorThrowable = t;
 				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
@@ -868,7 +905,7 @@ public class EnableKafkaIntegrationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setRecordFilterStrategy(recordFilter());
-			factory.setReplyTemplate(partitionZeroReplyingTemplate());
+			factory.setReplyTemplate(partitionZeroReplyTemplate());
 			factory.setErrorHandler((ConsumerAwareErrorHandler) (t, d, c) -> {
 				this.globalErrorThrowable = t;
 				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
@@ -988,7 +1025,19 @@ public class EnableKafkaIntegrationTests {
 			factory.setBatchListener(true);
 			factory.setRecordFilterStrategy(recordFilter());
 			// always send to the same partition so the replies are in order for the test
-			factory.setReplyTemplate(partitionZeroReplyingTemplate());
+			factory.setReplyTemplate(partitionZeroReplyTemplate());
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> batchJsonReplyFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			factory.setBatchListener(true);
+			factory.setRecordFilterStrategy(recordFilter());
+			// always send to the same partition so the replies are in order for the test
+			factory.setReplyTemplate(partitionZeroReplyJsonTemplate());
 			return factory;
 		}
 
@@ -1018,7 +1067,7 @@ public class EnableKafkaIntegrationTests {
 			factory.setBatchListener(true);
 			factory.setRecordFilterStrategy(recordFilter());
 			// always send to the same partition so the replies are in order for the test
-			factory.setReplyTemplate(partitionZeroReplyingTemplate());
+			factory.setReplyTemplate(partitionZeroReplyTemplate());
 			factory.setMissingTopicsFatal(false);
 			return factory;
 		}
@@ -1169,6 +1218,13 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		public ProducerFactory<Integer, Object> jsonProducerFactory() {
+			Map<String, Object> producerConfigs = producerConfigs();
+			producerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+			return new DefaultKafkaProducerFactory<>(producerConfigs);
+		}
+
+		@Bean
 		public ProducerFactory<Integer, String> txProducerFactory() {
 			DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(producerConfigs());
 			pf.setTransactionIdPrefix("tx-");
@@ -1198,12 +1254,25 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
-		public KafkaTemplate<Integer, String> partitionZeroReplyingTemplate() {
+		public KafkaTemplate<Integer, String> partitionZeroReplyTemplate() {
 			// reply always uses the no-partition, no-key method; subclasses can be used
 			return new KafkaTemplate<Integer, String>(producerFactory(), true) {
 
 				@Override
 				public ListenableFuture<SendResult<Integer, String>> send(String topic, String data) {
+					return super.send(topic, 0, null, data);
+				}
+
+			};
+		}
+
+		@Bean
+		public KafkaTemplate<Integer, Object> partitionZeroReplyJsonTemplate() {
+			// reply always uses the no-partition, no-key method; subclasses can be used
+			return new KafkaTemplate<Integer, Object>(jsonProducerFactory(), true) {
+
+				@Override
+				public ListenableFuture<SendResult<Integer, Object>> send(String topic, Object data) {
 					return super.send(topic, 0, null, data);
 				}
 
@@ -1729,6 +1798,15 @@ public class EnableKafkaIntegrationTests {
 		@SendTo("annotated24reply")
 		public Collection<String> replyingBatchListenerWithErrorHandler(List<String> in) {
 			throw new RuntimeException("return this");
+		}
+
+		@KafkaListener(id = "replyingBatchListenerCollection", topics = "annotated38",
+				containerFactory = "batchJsonReplyFactory", splitIterables = false)
+		@SendTo("annotated38reply")
+		public Collection<String> replyingBatchListenerCollection(List<String> in) {
+			return in.stream()
+					.map(String::toUpperCase)
+					.collect(Collectors.toList());
 		}
 
 		@KafkaListener(id = "batchAckListener", topics = { "annotated26", "annotated27" },

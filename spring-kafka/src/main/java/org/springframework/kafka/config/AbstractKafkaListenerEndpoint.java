@@ -114,6 +114,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private Properties consumerProperties;
 
+	private boolean splitIterables = true;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -433,6 +435,21 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
+	public boolean isSplitIterables() {
+		return this.splitIterables;
+	}
+
+	/**
+	 * Set to false to disable splitting {@link Iterable} reply values into separate
+	 * records.
+	 * @param splitIterables false to disable; default true.
+	 * @since 2.3.5
+	 */
+	public void setSplitIterables(boolean splitIterables) {
+		this.splitIterables = splitIterables;
+	}
+
+	@Override
 	public void afterPropertiesSet() {
 		boolean topicsEmpty = getTopics().isEmpty();
 		boolean topicPartitionsEmpty = ObjectUtils.isEmpty(getTopicPartitionsToAssign());
@@ -470,6 +487,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		if (this.replyHeadersConfigurer != null) {
 			adapter.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
 		}
+		adapter.setSplitIterables(this.splitIterables);
 		Object messageListener = adapter;
 		Assert.state(messageListener != null,
 				() -> "Endpoint [" + this + "] must provide a non null message listener");

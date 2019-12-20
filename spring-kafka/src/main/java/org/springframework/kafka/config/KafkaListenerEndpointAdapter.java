@@ -87,4 +87,9 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 			MessageConverter messageConverter) {
 	}
 
+	@Override
+	public boolean isSplitIterables() {
+		return true;
+	}
+
 }

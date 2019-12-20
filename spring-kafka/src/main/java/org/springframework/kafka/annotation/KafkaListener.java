@@ -244,4 +244,13 @@ public @interface KafkaListener {
 	 */
 	String[] properties() default {};
 
+	/**
+	 * When false and the return type is a {@link Iterable} return the result as the value
+	 * of a single reply record instead of individual records for each element. Default
+	 * true. Ignored if the reply is of type {@code Iterable<Message<?>>}.
+	 * @return false to create a single reply record.
+	 * @since 2.3.5
+	 */
+	boolean splitIterables() default true;
+
 }

@@ -1744,6 +1744,11 @@ public KafkaListenerErrorHandler voidSendToErrorHandler() {
 See <<annotation-error-handling>> for more information.
 ====
 
+NOTE: If a listener method returns an `Iterable`, by default a record for each element as the value is sent.
+Starting with version 2.3.5, set the `splitIterables` property on `@KafkaListener` to `false` and the entire result will be sent as the value of a single `ProducerRecord`.
+This requires a suitable serializer in the reply template's producer configuration.
+However, if the reply is `Iterable<Message<?>>` the property is ignored and each message is sent separately.
+
 ===== Filtering Messages
 
 In certain scenarios, such as rebalancing, a message that has already been processed may be redelivered.

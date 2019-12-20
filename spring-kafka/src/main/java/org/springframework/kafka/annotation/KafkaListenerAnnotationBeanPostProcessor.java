@@ -437,6 +437,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			endpoint.setAutoStartup(resolveExpressionAsBoolean(autoStartup, "autoStartup"));
 		}
 		resolveKafkaProperties(endpoint, kafkaListener.properties());
+		endpoint.setSplitIterables(kafkaListener.splitIterables());
 
 		KafkaListenerContainerFactory<?> factory = null;
 		String containerFactoryBeanName = resolve(kafkaListener.containerFactory());

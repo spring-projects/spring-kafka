@@ -23,6 +23,7 @@ import java.lang.reflect.WildcardType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -122,6 +123,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private boolean messageReturnType;
 
 	private ReplyHeadersConfigurer replyHeadersConfigurer;
+
+	private boolean splitIterables = true;
 
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
@@ -250,6 +253,25 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	public void setReplyHeadersConfigurer(ReplyHeadersConfigurer replyHeadersConfigurer) {
 		this.replyHeadersConfigurer = replyHeadersConfigurer;
+	}
+
+	/**
+	 * When true, {@link Iterable} return results will be split into discrete records.
+	 * @return true to split.
+	 * @since 2.3.5
+	 */
+	protected boolean isSplitIterables() {
+		return this.splitIterables;
+	}
+
+	/**
+	 * Set to false to disable splitting {@link Iterable} reply values into separate
+	 * records.
+	 * @param splitIterables false to disable; default true.
+	 * @since 2.3.5
+	 */
+	public void setSplitIterables(boolean splitIterables) {
+		this.splitIterables = splitIterables;
 	}
 
 	@Override
@@ -406,15 +428,25 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			this.replyTemplate.send((Message<?>) result);
 		}
 		else {
-			if (result instanceof Collection) {
-				((Collection<V>) result).forEach(v -> {
-					if (v instanceof Message) {
-						this.replyTemplate.send((Message<?>) v);
-					}
-					else {
-						this.replyTemplate.send(topic, v);
-					}
-				});
+			if (result instanceof Iterable) {
+				Iterator<?> iterator = ((Iterable<?>) result).iterator();
+				boolean iterableOfMessages = false;
+				if (iterator.hasNext()) {
+					iterableOfMessages = iterator.next() instanceof Message;
+				}
+				if (iterableOfMessages || this.splitIterables) {
+					((Collection<V>) result).forEach(v -> {
+						if (v instanceof Message) {
+							this.replyTemplate.send((Message<?>) v);
+						}
+						else {
+							this.replyTemplate.send(topic, v);
+						}
+					});
+				}
+				else {
+					sendSingleResult(result, topic, source);
+				}
 			}
 			else {
 				sendSingleResult(result, topic, source);

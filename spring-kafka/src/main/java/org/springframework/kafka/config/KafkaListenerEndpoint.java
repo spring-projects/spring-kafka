@@ -144,4 +144,11 @@ public interface KafkaListenerEndpoint {
 	 */
 	void setupListenerContainer(MessageListenerContainer listenerContainer, MessageConverter messageConverter);
 
+	/**
+	 * When true, {@link Iterable} return results will be split into discrete records.
+	 * @return true to split.
+	 * @since 2.3.5
+	 */
+	boolean isSplitIterables();
+
 }
