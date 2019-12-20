@@ -42,7 +42,7 @@ See its JavaDocs and <<kafka-container>> for more information.
 
 The `@KafkaListener` annotation has a new property `splitIterables`; default true.
 When a replying listener returns an `Iterable` this property controls whether the return result is sent as a single record or a record for each element is sent.
-See <<>> for more information.
+See <<annotation-send-to>> for more information.
 
 === Migration Guide
 
