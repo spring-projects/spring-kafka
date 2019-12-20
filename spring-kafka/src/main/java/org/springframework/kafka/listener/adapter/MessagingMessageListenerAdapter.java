@@ -435,7 +435,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					iterableOfMessages = iterator.next() instanceof Message;
 				}
 				if (iterableOfMessages || this.splitIterables) {
-					((Collection<V>) result).forEach(v -> {
+					((Iterable<V>) result).forEach(v -> {
 						if (v instanceof Message) {
 							this.replyTemplate.send((Message<?>) v);
 						}
