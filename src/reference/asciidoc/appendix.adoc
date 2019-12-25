@@ -61,13 +61,13 @@ dependencies {
 
 	implementation 'org.springframework.kafka:spring-kafka:{project-version}'
 
-	implementation 'org.apache.kafka:kafka-clients:2.1.1'
+	implementation 'org.apache.kafka:kafka-clients:2.4.0'
 	testImplementation ('org.springframework.kafka:spring-kafka-test:{project-version}') {
 		exclude module: 'kafka_2.11'
 	}
-	testImplementation 'org.apache.kafka:kafka-clients:2.1.1:test'
-	testImplementation 'org.apache.kafka:kafka_2.12:2.1.1'
-	testImplementation 'org.apache.kafka:kafka_2.12:2.1.1:test'
+	testImplementation 'org.apache.kafka:kafka-clients:2.4.0:test'
+	testImplementation 'org.apache.kafka:kafka_2.12:2.4.0'
+	testImplementation 'org.apache.kafka:kafka_2.12:2.4.0:test'
 
 }
 ----
