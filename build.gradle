@@ -16,12 +16,18 @@ plugins {
 	id 'idea'
 	id 'org.sonarqube' version '2.7.1'
 	id 'org.asciidoctor.convert' version '1.6.1'
-	id 'org.ajoberstar.grgit' version '3.1.1'
+	id 'org.ajoberstar.grgit' version '3.1.1' apply false
 	id 'io.spring.nohttp' version '0.0.3.RELEASE'
 	id 'io.spring.dependency-management' version '1.0.8.RELEASE' apply false
 }
 
 apply plugin: 'io.spring.nohttp'
+
+def gitPresent = new File('.git').exists()
+
+if(gitPresent) {
+	apply plugin: 'org.ajoberstar.grgit'
+}
 
 description = 'Spring Kafka'
 
@@ -35,7 +41,7 @@ ext {
 	docResourcesVersion = '0.1.0.RELEASE'
 
 
-	if (grgit != null) {
+	if (gitPresent) {
 		modifiedFiles =
 			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
 	}
@@ -171,8 +177,8 @@ subprojects { subproject ->
 
 
 	task updateCopyrights {
-		onlyIf { grgit != null && !System.getenv('TRAVIS') && !System.getenv('bamboo_buildKey') }
-		if (grgit != null) {
+		onlyIf { gitPresent && !System.getenv('TRAVIS') && !System.getenv('bamboo_buildKey') }
+		if (gitPresent) {
 			inputs.files(modifiedFiles.filter { f -> f.path.contains(subproject.name) })
 		}
 		outputs.dir('build')
