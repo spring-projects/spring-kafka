@@ -34,8 +34,11 @@ ext {
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
 	docResourcesVersion = '0.1.0.RELEASE'
 
-	modifiedFiles =
+
+	if (grgit != null) {
+		modifiedFiles =
 			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
+	}
 
 	assertjVersion = '3.14.0'
 	googleJsr305Version = '3.0.2'
@@ -168,8 +171,10 @@ subprojects { subproject ->
 
 
 	task updateCopyrights {
-		onlyIf { !System.getenv('TRAVIS') && !System.getenv('bamboo_buildKey') }
-		inputs.files(modifiedFiles.filter { f -> f.path.contains(subproject.name) })
+		onlyIf { grgit != null && !System.getenv('TRAVIS') && !System.getenv('bamboo_buildKey') }
+		if (grgit != null) {
+			inputs.files(modifiedFiles.filter { f -> f.path.contains(subproject.name) })
+		}
 		outputs.dir('build')
 
 		doLast {
