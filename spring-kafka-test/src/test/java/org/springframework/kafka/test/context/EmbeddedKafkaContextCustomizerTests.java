@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ public class EmbeddedKafkaContextCustomizerTests {
 	private EmbeddedKafka annotationFromSecondClass;
 
 	@BeforeEach
-	public void beforeEachTest() {
+	void beforeEachTest() {
 		annotationFromFirstClass = AnnotationUtils.findAnnotation(TestWithEmbeddedKafka.class, EmbeddedKafka.class);
 		annotationFromSecondClass =
 				AnnotationUtils.findAnnotation(SecondTestWithEmbeddedKafka.class, EmbeddedKafka.class);
@@ -56,7 +56,7 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 
 	@Test
-	public void testHashCode() {
+	void testHashCode() {
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode()).isNotEqualTo(0);
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode())
 				.isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass).hashCode());
@@ -64,14 +64,14 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 
 	@Test
-	public void testEquals() {
+	void testEquals() {
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass))
 				.isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass));
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass)).isNotEqualTo(new Object());
 	}
 
 	@Test
-	public void testPorts() {
+	void testPorts() {
 		EmbeddedKafka annotationWithPorts =
 				AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaPorts.class, EmbeddedKafka.class);
 		EmbeddedKafkaContextCustomizer customizer = new EmbeddedKafkaContextCustomizer(annotationWithPorts);
@@ -85,6 +85,21 @@ public class EmbeddedKafkaContextCustomizerTests {
 				.isEqualTo("127.0.0.1:" + annotationWithPorts.ports()[0]);
 		assertThat(KafkaTestUtils.getPropertyValue(factoryStub.getBroker(), "brokerListProperty"))
 				.isEqualTo("my.bss.prop");
+	}
+
+	@Test
+	void testMulti() {
+		EmbeddedKafka annotationWithPorts =
+				AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaMulti.class, EmbeddedKafka.class);
+		EmbeddedKafkaContextCustomizer customizer = new EmbeddedKafkaContextCustomizer(annotationWithPorts);
+		ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
+		BeanFactoryStub factoryStub = new BeanFactoryStub();
+		given(context.getBeanFactory()).willReturn(factoryStub);
+		given(context.getEnvironment()).willReturn(mock(ConfigurableEnvironment.class));
+		customizer.customizeContext(context, null);
+
+		assertThat(factoryStub.getBroker().getBrokersAsString())
+			.matches("127.0.0.1:[0-9]+,127.0.0.1:[0-9]+");
 	}
 
 
@@ -103,6 +118,10 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 	}
 
+	@EmbeddedKafka(count = 2)
+	private class TestWithEmbeddedKafkaMulti {
+
+	}
 	@SuppressWarnings("serial")
 	private class BeanFactoryStub extends DefaultListableBeanFactory {
 

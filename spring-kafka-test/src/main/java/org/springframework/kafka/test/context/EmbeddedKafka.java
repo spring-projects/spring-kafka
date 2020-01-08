@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ public @interface EmbeddedKafka {
 	 * @return ports for brokers.
 	 * @since 2.2.4
 	 */
-	int[] ports() default {0};
+	int[] ports() default { 0 };
 
 	/**
 	 * Set the port on which the embedded Zookeeper should listen;

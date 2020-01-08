@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,11 +66,15 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 						.map(environment::resolvePlaceholders)
 						.toArray(String[]::new);
 
+		int[] ports = this.embeddedKafka.ports();
+		if (this.embeddedKafka.count() > 1 && ports.length == 1 && ports[0] == 0) {
+			ports = new int[this.embeddedKafka.count()];
+		}
 		EmbeddedKafkaBroker embeddedKafkaBroker = new EmbeddedKafkaBroker(this.embeddedKafka.count(),
 					this.embeddedKafka.controlledShutdown(),
 					this.embeddedKafka.partitions(),
 					topics)
-				.kafkaPorts(this.embeddedKafka.ports())
+				.kafkaPorts(ports)
 				.zkPort(this.embeddedKafka.zookeeperPort());
 
 		Properties properties = new Properties();
