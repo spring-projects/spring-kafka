@@ -139,7 +139,7 @@ public interface KafkaStreamsInfrastructureCustomizer {
 
 Default no-op implementations are provided to avoid having to implement both methods if one is not required.
 
-A `CompositeKafkaStreamsInfrastructureCustomizer` if you need multiple customizers.
+A `CompositeKafkaStreamsInfrastructureCustomizer` is provided, for when you need to apply multiple customizers.
 
 [[serde]]
 ==== Streams JSON Serialization and Deserialization
