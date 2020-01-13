@@ -43,6 +43,7 @@ In other words, all streams defined by a `StreamsBuilder` are tied with a single
 Once a `KafkaStreams` instance has been closed by `streams.close()`, it cannot be restarted.
 Instead, a new `KafkaStreams` instance to restart stream processing must be created.
 
+[[streams-spring]]
 ==== Spring Management
 
 To simplify using Kafka Streams from the Spring application context perspective and use the lifecycle management through a container, the Spring for Apache Kafka introduces `StreamsBuilderFactoryBean`.
@@ -120,6 +121,25 @@ public FactoryBean<StreamsBuilder> myKStreamBuilder(KafkaStreamsConfiguration st
 private StreamsBuilderFactoryBean myKStreamBuilderFactoryBean;
 ----
 ====
+
+Starting with version 2.4.1, the factory bean has a new property `infrastructureCustomizer` with type `KafkaStreamsInfrastructureCustomizer`; this allows customization of the `StreamsBuilder` (e.g. to add a state store) and/or the `Topology` before the stream is created.
+
+====
+[source, java]
+----
+public interface KafkaStreamsInfrastructureCustomizer {
+
+	void configureBuilder(StreamsBuilder builder);
+
+	void configureTopology(Topology topology);
+
+}
+----
+====
+
+Default no-op implementations are provided to avoid having to implement both methods if one is not required.
+
+A `CompositeKafkaStreamsInfrastructureCustomizer` if you need multiple customizers.
 
 [[serde]]
 ==== Streams JSON Serialization and Deserialization

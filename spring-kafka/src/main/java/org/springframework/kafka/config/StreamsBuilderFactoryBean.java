@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private final CleanupConfig cleanupConfig;
 
+	private KafkaStreamsInfrastructureCustomizer infrastructureCustomizer = new KafkaStreamsInfrastructureCustomizer() {
+	};
+
 	private KafkaStreamsCustomizer kafkaStreamsCustomizer;
 
 	private KafkaStreams.StateListener stateListener;
@@ -142,6 +145,16 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public void setClientSupplier(KafkaClientSupplier clientSupplier) {
 		Assert.notNull(clientSupplier, "'clientSupplier' must not be null");
 		this.clientSupplier = clientSupplier; // NOSONAR (sync)
+	}
+
+	/**
+	 * Set a customizer to configure the builder and/or topology before creating the stream.
+	 * @param infrastructureCustomizer the customizer
+	 * @since 2.4.1
+	 */
+	public void setInfrastructureCustomizer(KafkaStreamsInfrastructureCustomizer infrastructureCustomizer) {
+		Assert.notNull(infrastructureCustomizer, "'infrastructureCustomizer' must not be null");
+		this.infrastructureCustomizer = infrastructureCustomizer;
 	}
 
 	/**
@@ -233,7 +246,10 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			try {
 				Assert.state(this.properties != null,
 						"streams configuration properties must not be null");
-				Topology topology = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
+				StreamsBuilder builder = getObject();
+				this.infrastructureCustomizer.configureBuilder(builder);
+				Topology topology = builder.build(this.properties); // NOSONAR: getObject() cannot return null
+				this.infrastructureCustomizer.configureTopology(topology);
 				LOGGER.debug(() -> topology.describe().toString());
 				this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);

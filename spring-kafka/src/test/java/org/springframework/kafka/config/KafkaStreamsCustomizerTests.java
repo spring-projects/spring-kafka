@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.junit.jupiter.api.Test;
@@ -61,6 +64,9 @@ public class KafkaStreamsCustomizerTests {
 	@Autowired
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
+	@Autowired
+	private KafkaStreamsConfig config;
+
 	@Test
 	public void testKafkaStreamsCustomizer(@Autowired KafkaStreamsConfiguration configuration,
 			@Autowired KafkaStreamsConfig config) {
@@ -74,12 +80,18 @@ public class KafkaStreamsCustomizerTests {
 				.isEqualTo(Foo.class);
 		assertThat(properties.get(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG))
 			.isEqualTo(1000);
+		assertThat(this.config.builderConfigured.get()).isTrue();
+		assertThat(this.config.topologyConfigured.get()).isTrue();
 	}
 
 	@Configuration
 	@EnableKafka
 	@EnableKafkaStreams
 	public static class KafkaStreamsConfig {
+
+		final AtomicBoolean builderConfigured = new AtomicBoolean();
+
+		final AtomicBoolean topologyConfigured = new AtomicBoolean();
 
 		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
@@ -89,6 +101,20 @@ public class KafkaStreamsCustomizerTests {
 			StreamsBuilderFactoryBean streamsBuilderFactoryBean =
 					new StreamsBuilderFactoryBean(kStreamsConfigs());
 			streamsBuilderFactoryBean.setKafkaStreamsCustomizer(customizer());
+			streamsBuilderFactoryBean.setInfrastructureCustomizer(new KafkaStreamsInfrastructureCustomizer() {
+
+				@SuppressWarnings("unchecked")
+				@Override
+				public void configureBuilder(StreamsBuilder builder) {
+					KafkaStreamsConfig.this.builderConfigured.set(true);
+				}
+
+				@Override
+				public void configureTopology(Topology topology) {
+					KafkaStreamsConfig.this.topologyConfigured.set(true);
+				}
+
+			});
 			return streamsBuilderFactoryBean;
 		}
 

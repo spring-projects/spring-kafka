@@ -44,6 +44,12 @@ The `@KafkaListener` annotation has a new property `splitIterables`; default tru
 When a replying listener returns an `Iterable` this property controls whether the return result is sent as a single record or a record for each element is sent.
 See <<annotation-send-to>> for more information.
 
+==== Kafka Streams
+
+The `StreamsBuilderFactoryBean` accepts a new property `KafkaStreamsInfrastructureCustomizer`.
+This allows configuration of the builder and/or topology before the stream is created.
+See <<streams-spring>> for more information.
+
 === Migration Guide
 
 * This release is essentially the same as the 2.3.x line, except it has been compiled against the 2.4 `kafka-clients` jar, due to a binary incompatibility.
