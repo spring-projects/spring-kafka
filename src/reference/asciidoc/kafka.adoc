@@ -2745,7 +2745,8 @@ A `JacksonMimeTypeModule` can be registered as a bean in the application context
 Also starting with version 2.3, the `JsonDeserializer` provides `TypeReference`-based constructors for better handling of target generic container types.
 
 Starting with version 2.1, you can convey type information in record `Headers`, allowing the handling of multiple types.
-In addition, you can configure the serializer and deserializer by using the following Kafka properties:
+In addition, you can configure the serializer and deserializer by using the following Kafka properties.
+They have no effect if you have provided `Serializer` and `Deserializer` instances for `KafkaConsumer` and `KafkaProducer`, respectively.
 
 * `JsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to disable this feature on the `JsonSerializer` (sets the `addTypeInfo` property).
 * `JsonSerializer.TYPE_MAPPINGS` (default `empty`): See <<serdes-mapping-types>>.

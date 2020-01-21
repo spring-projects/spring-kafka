@@ -113,6 +113,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Artem Bilan
  * @author Loic Talhouarne
  * @author Lukasz Kaminski
+ * @author Ray Chuan Tay
  */
 @EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
 		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,
@@ -175,6 +176,8 @@ public class KafkaMessageListenerContainerTests {
 	public static final String topic22 = "testTopic22";
 
 	public static final String topic23 = "testTopic23";
+
+	public static final String topic24 = "testTopic24";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -1891,6 +1894,47 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		pf.destroy();
 		this.logger.info("Stop JSON1");
+	}
+
+	@Test
+	public void testJsonSerDeWithInstanceDoesNotUseConfiguration() throws Exception {
+		this.logger.info("Start JSON1a");
+		Class<Foo1> consumerConfigValueDefaultType = Foo1.class;
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, consumerConfigValueDefaultType);
+		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props, null, new JsonDeserializer<>(Foo.class));
+		ContainerProperties containerProps = new ContainerProperties(topic24);
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<ConsumerRecord<?, ?>> received = new AtomicReference<>();
+		containerProps.setMessageListener((MessageListener<Integer, Foo>) record -> {
+			KafkaMessageListenerContainerTests.this.logger.info("json: " + record);
+			received.set(record);
+			latch.countDown();
+		});
+
+		KafkaMessageListenerContainer<Integer, Foo> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testJson1a");
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic24);
+		template.sendDefault(0, new Foo("bar"));
+		template.flush();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(received.get().value())
+				.isInstanceOf(Foo.class)
+				.isNotInstanceOf(consumerConfigValueDefaultType);
+		container.stop();
+		pf.destroy();
+		this.logger.info("Stop JSON1a");
 	}
 
 	@Test
