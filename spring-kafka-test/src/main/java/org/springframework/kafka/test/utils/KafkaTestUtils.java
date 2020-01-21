@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
 package org.springframework.kafka.test.utils;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -266,7 +268,8 @@ public final class KafkaTestUtils {
 	/**
 	 * Poll the consumer for records.
 	 * @param consumer the consumer.
-	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to
+	 * {@link Consumer#poll(long)}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the records.
@@ -274,18 +277,53 @@ public final class KafkaTestUtils {
 	 * @since 2.0
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
+		return getRecords(consumer, timeout, -1);
+	}
+
+	/**
+	 * Poll the consumer for records.
+	 * @param consumer the consumer.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to
+	 * {@link Consumer#poll(long)}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param minRecords wait until the timeout or at least this number of receords are
+	 * received.
+	 * @return the records.
+	 * @throws IllegalStateException if the poll returns null.
+	 * @since 2.4.2
+	 */
+	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout, int minRecords) {
 		logger.debug("Polling...");
-		ConsumerRecords<K, V> received = consumer.poll(Duration.ofMillis(timeout));
-		logger.debug(() -> "Received: " + received.count() + ", "
-				+ received.partitions().stream()
-				.flatMap(p -> received.records(p).stream())
-				// map to same format as send metadata toString()
-				.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-				.collect(Collectors.toList()));
-		if (received == null) {
-			throw new IllegalStateException("null received from consumer.poll()");
+		Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
+		long remaining = timeout;
+		int count = 0;
+		do {
+			long t1 = System.currentTimeMillis();
+			ConsumerRecords<K, V> received = consumer.poll(Duration.ofMillis(remaining));
+			logger.debug(() -> "Received: " + received.count() + ", "
+					+ received.partitions().stream()
+					.flatMap(p -> received.records(p).stream())
+					// map to same format as send metadata toString()
+					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
+					.collect(Collectors.toList()));
+			if (received == null) {
+				throw new IllegalStateException("null received from consumer.poll()");
+			}
+			if (minRecords < 0) {
+				return received;
+			}
+			else {
+				count += received.count();
+				received.partitions().forEach(tp -> {
+					List<ConsumerRecord<K, V>> recs = records.computeIfAbsent(tp, part -> new ArrayList<>());
+					recs.addAll(received.records(tp));
+				});
+				remaining -= System.currentTimeMillis() - t1;
+			}
 		}
-		return received;
+		while (count < minRecords && remaining > 0);
+		return new ConsumerRecords<>(records);
 	}
 
 	/**
