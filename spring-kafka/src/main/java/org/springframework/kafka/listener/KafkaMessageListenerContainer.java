@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -567,9 +567,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean subBatchPerPartition = this.containerProperties.isSubBatchPerPartition();
 
-		private Map<TopicPartition, OffsetMetadata> definedPartitions;
+		private final Duration authorizationExceptionRetryInterval =
+				this.containerProperties.getAuthorizationExceptionRetryInterval();
 
-		private Duration authorizationExceptionRetryInterval = this.containerProperties.getAuthorizationExceptionRetryInterval();
+		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
 
@@ -1439,7 +1440,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					processCommits();
 				}
 				SeekUtils.doSeeks(toSeek, this.consumer, null, true, (rec, ex) -> false, this.logger);
-				this.nackSleep = -1;
+				nackSleepAndReset();
 			}
 		}
 
@@ -1607,6 +1608,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			SeekUtils.doSeeks(list, this.consumer, null, true, (rec, ex) -> false, this.logger);
+			nackSleepAndReset();
+		}
+
+		private void nackSleepAndReset() {
 			try {
 				Thread.sleep(this.nackSleep);
 			}

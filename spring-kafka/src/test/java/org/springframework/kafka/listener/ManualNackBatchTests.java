@@ -91,6 +91,7 @@ public class ManualNackBatchTests {
 	@Test
 	public void discardRemainingRecordsFromPollAndSeek() throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.replayTime).isBetween(50L, 30_000L);
 		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
@@ -117,24 +118,27 @@ public class ManualNackBatchTests {
 	@EnableKafka
 	public static class Config {
 
-		private final List<String> contents = new ArrayList<>();
+		final List<String> contents = new ArrayList<>();
 
-		private final CountDownLatch pollLatch = new CountDownLatch(3);
+		final CountDownLatch pollLatch = new CountDownLatch(3);
 
-		private final CountDownLatch deliveryLatch = new CountDownLatch(2);
+		final CountDownLatch deliveryLatch = new CountDownLatch(2);
 
-		private final CountDownLatch commitLatch = new CountDownLatch(2);
+		final CountDownLatch commitLatch = new CountDownLatch(2);
 
-		private final CountDownLatch closeLatch = new CountDownLatch(1);
+		final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		private final AtomicBoolean fail = new AtomicBoolean(true);
+		final AtomicBoolean fail = new AtomicBoolean(true);
+
+		volatile long replayTime;
 
 		@KafkaListener(id = CONTAINER_ID, topics = "foo")
 		public void foo(List<String> in, Acknowledgment ack) {
 			contents.addAll(in);
+			this.replayTime = System.currentTimeMillis() - this.replayTime;
 			this.deliveryLatch.countDown();
 			if (this.fail.getAndSet(false)) {
-				ack.nack(3, 0);
+				ack.nack(3, 50);
 			}
 			else {
 				ack.acknowledge();
