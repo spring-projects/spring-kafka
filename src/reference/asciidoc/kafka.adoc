@@ -194,11 +194,9 @@ The following listing shows the definition of the `ProducerListener` interface:
 ----
 public interface ProducerListener<K, V> {
 
-    void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata);
+    void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata);
 
-    void onError(String topic, Integer partition, K key, V value, Exception exception);
-
-    boolean isInterestedInSuccess();
+    void onError(ProducerRecord<K, V> producerRecord, Exception exception)
 
 }
 ----
@@ -206,10 +204,7 @@ public interface ProducerListener<K, V> {
 
 By default, the template is configured with a `LoggingProducerListener`, which logs errors and does nothing when the send is successful.
 
-`onSuccess` is called only if `isInterestedInSuccess` returns `true`.
-
-For convenience, the abstract `ProducerListenerAdapter` is provided in case you want to implement only one of the methods.
-It returns `false` for `isInterestedInSuccess`.
+For convenience, default method implementations are provided in case you want to implement only one of the methods.
 
 Notice that the send methods return a `ListenableFuture<SendResult>`.
 You can register a callback with the listener to receive the result of the send asynchronously.

@@ -55,7 +55,9 @@ public interface ProducerListener<K, V> {
 	 * @param key the key of the outbound message
 	 * @param value the payload of the outbound message
 	 * @param recordMetadata the result of the successful send operation
+	 * @deprecated in favor of {@link #onSuccess(ProducerRecord, RecordMetadata)}.
 	 */
+	@Deprecated
 	default void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata) {
 	}
 
@@ -77,7 +79,9 @@ public interface ProducerListener<K, V> {
 	 * @param key the key of the outbound message
 	 * @param value the payload of the outbound message
 	 * @param exception the exception thrown
+	 * @deprecated in favor of {@link #onError(ProducerRecord, Exception)}.
 	 */
+	@Deprecated
 	default void onError(String topic, Integer partition, K key, V value, Exception exception) {
 	}
 
