@@ -1475,19 +1475,24 @@ public class EnableKafkaIntegrationTests {
 				}
 
 			});
-			registrar.setMethodArgumentResolver(new HandlerMethodArgumentResolver() {
+			registrar.setMethodArgumentResolver(
 
-				@Override
-				public boolean supportsParameter(MethodParameter parameter) {
-					return CustomMethodArgument.class.isAssignableFrom(parameter.getParameterType());
-				}
+					Collections.singletonList(new HandlerMethodArgumentResolver() {
 
-				@Override
-				public Object resolveArgument(MethodParameter parameter, Message<?> message) {
-					return new CustomMethodArgument((String) message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC));
-				}
+						@Override
+						public boolean supportsParameter(MethodParameter parameter) {
+							return CustomMethodArgument.class.isAssignableFrom(parameter.getParameterType());
+						}
 
-			});
+						@Override
+						public Object resolveArgument(MethodParameter parameter, Message<?> message) {
+							return new CustomMethodArgument((String) message.getHeaders()
+																			.get(KafkaHeaders.RECEIVED_TOPIC));
+						}
+
+					})
+
+			);
 
 		}
 
