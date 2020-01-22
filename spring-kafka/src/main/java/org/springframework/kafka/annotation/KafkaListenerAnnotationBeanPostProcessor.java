@@ -812,6 +812,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 			List<HandlerMethodArgumentResolver> customArgumentsResolver =
 					new ArrayList<>(KafkaListenerAnnotationBeanPostProcessor.this.registrar.getCustomMethodArgumentResolvers());
+			// Has to be at the end - look at PayloadMethodArgumentResolver documentation
 			customArgumentsResolver.add(new KafkaNullAwarePayloadArgumentResolver(messageConverter, validator));
 			defaultFactory.setCustomArgumentResolvers(customArgumentsResolver);
 
