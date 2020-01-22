@@ -1475,7 +1475,7 @@ public class EnableKafkaIntegrationTests {
 				}
 
 			});
-			registrar.setMethodArgumentResolver(
+			registrar.setCustomMethodArgumentResolvers(
 
 					Collections.singletonList(new HandlerMethodArgumentResolver() {
 

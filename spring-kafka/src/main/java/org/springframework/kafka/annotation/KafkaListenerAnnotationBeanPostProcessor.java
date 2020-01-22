@@ -831,7 +831,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			argumentResolvers.add(new MessageMethodArgumentResolver(messageConverter));
 
 			// Custom argument resolution
-			argumentResolvers.addAll(KafkaListenerAnnotationBeanPostProcessor.this.registrar.getMethodArgumentResolvers());
+			argumentResolvers.addAll(KafkaListenerAnnotationBeanPostProcessor.this.registrar.getCustomMethodArgumentResolvers());
 
 			// it has to be at the end
 			argumentResolvers.add(new KafkaNullAwarePayloadArgumentResolver(messageConverter, validator));
