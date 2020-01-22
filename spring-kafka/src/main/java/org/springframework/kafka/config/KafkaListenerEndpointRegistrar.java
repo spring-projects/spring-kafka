@@ -45,7 +45,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 
 	private final List<KafkaListenerEndpointDescriptor> endpointDescriptors = new ArrayList<>();
 
-	private final List<HandlerMethodArgumentResolver> methodArgumentResolvers = new ArrayList<>();
+	private final List<HandlerMethodArgumentResolver> customMethodArgumentResolvers = new ArrayList<>();
 
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
@@ -85,7 +85,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * @since 2.5
 	 */
 	public List<HandlerMethodArgumentResolver> getCustomMethodArgumentResolvers() {
-		return this.methodArgumentResolvers;
+		return this.customMethodArgumentResolvers;
 	}
 
 	/**
@@ -95,7 +95,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * @since 2.5
 	 */
 	public void setCustomMethodArgumentResolvers(List<HandlerMethodArgumentResolver> methodArgumentResolvers) {
-		this.methodArgumentResolvers.addAll(methodArgumentResolvers);
+		this.customMethodArgumentResolvers.addAll(methodArgumentResolvers);
 	}
 
 	/**
