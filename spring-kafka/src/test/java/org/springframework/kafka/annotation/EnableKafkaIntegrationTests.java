@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,6 +68,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.web.JsonPath;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -121,6 +122,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
@@ -156,7 +158,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
-		"annotated38", "annotated38reply" })
+		"annotated38", "annotated38reply", "annotated39"})
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
@@ -841,6 +843,13 @@ public class EnableKafkaIntegrationTests {
 		consumer.close();
 	}
 
+	@Test
+	public void testCustomMethodArgumentResovlerListener() throws InterruptedException {
+		template.send("annotated39","foo");
+		assertThat(this.listener.customMethodArgumentResolverLatch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.customMethodArgument.topic).isEqualTo("annotated39");
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -1466,8 +1475,21 @@ public class EnableKafkaIntegrationTests {
 				}
 
 			});
-		}
+			registrar.setMethodArgumentResolver(new HandlerMethodArgumentResolver() {
 
+				@Override
+				public boolean supportsParameter(MethodParameter parameter) {
+					return CustomMethodArgument.class.isAssignableFrom(parameter.getParameterType());
+				}
+
+				@Override
+				public Object resolveArgument(MethodParameter parameter, Message<?> message) {
+					return new CustomMethodArgument((String) message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC));
+				}
+
+			});
+
+		}
 
 		@Bean
 		public KafkaListenerErrorHandler consumeMultiMethodException(MultiListenerBean listener) {
@@ -1540,6 +1562,8 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch projectionLatch = new CountDownLatch(1);
 
+		final CountDownLatch customMethodArgumentResolverLatch = new CountDownLatch(1);
+
 		volatile Integer partition;
 
 		volatile ConsumerRecord<?, ?> capturedRecord;
@@ -1583,6 +1607,8 @@ public class EnableKafkaIntegrationTests {
 		volatile String username;
 
 		volatile String name;
+
+		volatile CustomMethodArgument customMethodArgument;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
@@ -1874,6 +1900,12 @@ public class EnableKafkaIntegrationTests {
 			this.username = sample.getUsername();
 			this.name = sample.getName();
 			this.projectionLatch.countDown();
+		}
+
+		@KafkaListener(id = "customMethodArgumentResolver", topics = "annotated39")
+		public void customMethodArgumentResolverListener(String data, CustomMethodArgument customMethodArgument) {
+			this.customMethodArgument = customMethodArgument;
+			this.customMethodArgumentResolverLatch.countDown();
 		}
 
 		@Override
@@ -2189,6 +2221,16 @@ public class EnableKafkaIntegrationTests {
 
 		@JsonPath("$.user.name")
 		String getName();
+
+	}
+
+	static class CustomMethodArgument {
+
+		final String topic;
+
+		CustomMethodArgument(String topic) {
+			this.topic = topic;
+		}
 
 	}
 

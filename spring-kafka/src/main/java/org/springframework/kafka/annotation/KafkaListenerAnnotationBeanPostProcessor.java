@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2019 the original author or authors.
+ * Copyright 2014-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,6 +116,7 @@ import org.springframework.validation.Validator;
  * @author Dariusz Szablinski
  * @author Venil Noronha
  * @author Dimitri Penner
+ * @author Filip Halemba
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -828,7 +829,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			final GenericMessageConverter messageConverter =
 					new GenericMessageConverter(this.defaultFormattingConversionService);
 			argumentResolvers.add(new MessageMethodArgumentResolver(messageConverter));
+
+			// Custom argument resolution
+			argumentResolvers.addAll(KafkaListenerAnnotationBeanPostProcessor.this.registrar.getMethodArgumentResolvers());
+
+			// it has to be at the end
 			argumentResolvers.add(new KafkaNullAwarePayloadArgumentResolver(messageConverter, validator));
+
 			defaultFactory.setArgumentResolvers(argumentResolvers);
 
 			defaultFactory.afterPropertiesSet();

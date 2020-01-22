@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2019 the original author or authors.
+ * Copyright 2014-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ import java.util.List;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.util.Assert;
 import org.springframework.validation.Validator;
 
@@ -35,12 +37,15 @@ import org.springframework.validation.Validator;
  * @author Juergen Hoeller
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Filip Halemba
  *
  * @see org.springframework.kafka.annotation.KafkaListenerConfigurer
  */
 public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, InitializingBean {
 
 	private final List<KafkaListenerEndpointDescriptor> endpointDescriptors = new ArrayList<>();
+
+	private final List<HandlerMethodArgumentResolver> methodArgumentResolvers = new ArrayList<>();
 
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
@@ -72,6 +77,25 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 */
 	public KafkaListenerEndpointRegistry getEndpointRegistry() {
 		return this.endpointRegistry;
+	}
+
+	/**
+	 * Return the {@link List<HandlerMethodArgumentResolver>}.
+	 * @return the {@link List<HandlerMethodArgumentResolver>}.
+	 * @since 2.5
+	 */
+	public List<HandlerMethodArgumentResolver> getMethodArgumentResolvers() {
+		return this.methodArgumentResolvers;
+	}
+
+	/**
+	 * Add custom methods arguments resolver to {@link KafkaListenerAnnotationBeanPostProcessor}
+	 * Default empty list.
+	 * @param methodArgumentResolvers the {@link List<HandlerMethodArgumentResolver>} instance to use.
+	 * @since 2.5
+	 */
+	public void setMethodArgumentResolver(List<HandlerMethodArgumentResolver> methodArgumentResolvers) {
+		this.methodArgumentResolvers.addAll(methodArgumentResolvers);
 	}
 
 	/**
