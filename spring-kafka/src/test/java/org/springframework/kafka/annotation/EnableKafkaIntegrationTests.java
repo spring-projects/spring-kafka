@@ -845,7 +845,7 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testCustomMethodArgumentResovlerListener() throws InterruptedException {
-		template.send("annotated39","foo");
+		template.send("annotated39", "foo");
 		assertThat(this.listener.customMethodArgumentResolverLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.customMethodArgument.topic).isEqualTo("annotated39");
 	}
