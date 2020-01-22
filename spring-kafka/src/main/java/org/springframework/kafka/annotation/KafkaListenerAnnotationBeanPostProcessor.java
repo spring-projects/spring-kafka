@@ -78,10 +78,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
-import org.springframework.messaging.handler.annotation.support.HeaderMethodArgumentResolver;
-import org.springframework.messaging.handler.annotation.support.HeadersMethodArgumentResolver;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
-import org.springframework.messaging.handler.annotation.support.MessageMethodArgumentResolver;
 import org.springframework.messaging.handler.annotation.support.PayloadMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -807,38 +804,19 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				defaultFactory.setValidator(validator);
 			}
 			defaultFactory.setBeanFactory(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory);
-
-			ConfigurableBeanFactory cbf =
-					KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ConfigurableBeanFactory ?
-							(ConfigurableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory :
-							null;
-
-
 			this.defaultFormattingConversionService.addConverter(
 					new BytesToStringConverter(KafkaListenerAnnotationBeanPostProcessor.this.charset));
-
 			defaultFactory.setConversionService(this.defaultFormattingConversionService);
+			GenericMessageConverter messageConverter = new GenericMessageConverter(this.defaultFormattingConversionService);
+			defaultFactory.setMessageConverter(messageConverter);
 
-			List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
-
-			// Annotation-based argument resolution
-			argumentResolvers.add(new HeaderMethodArgumentResolver(this.defaultFormattingConversionService, cbf));
-			argumentResolvers.add(new HeadersMethodArgumentResolver());
-
-			// Type-based argument resolution
-			final GenericMessageConverter messageConverter =
-					new GenericMessageConverter(this.defaultFormattingConversionService);
-			argumentResolvers.add(new MessageMethodArgumentResolver(messageConverter));
-
-			// Custom argument resolution
-			argumentResolvers.addAll(KafkaListenerAnnotationBeanPostProcessor.this.registrar.getCustomMethodArgumentResolvers());
-
-			// Has to be at the end - if not it will try to resolver objects from CustomMethodArgumentResolvers
-			argumentResolvers.add(new KafkaNullAwarePayloadArgumentResolver(messageConverter, validator));
-
-			defaultFactory.setArgumentResolvers(argumentResolvers);
+			List<HandlerMethodArgumentResolver> customArgumentsResolver =
+					new ArrayList<>(KafkaListenerAnnotationBeanPostProcessor.this.registrar.getCustomMethodArgumentResolvers());
+			customArgumentsResolver.add(new KafkaNullAwarePayloadArgumentResolver(messageConverter, validator));
+			defaultFactory.setCustomArgumentResolvers(customArgumentsResolver);
 
 			defaultFactory.afterPropertiesSet();
+
 			return defaultFactory;
 		}
 

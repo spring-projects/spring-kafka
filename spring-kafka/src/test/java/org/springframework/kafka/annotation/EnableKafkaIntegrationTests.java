@@ -847,6 +847,7 @@ public class EnableKafkaIntegrationTests {
 	public void testCustomMethodArgumentResovlerListener() throws InterruptedException {
 		template.send("annotated39", "foo");
 		assertThat(this.listener.customMethodArgumentResolverLatch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.customMethodArgument.body).isEqualTo("foo");
 		assertThat(this.listener.customMethodArgument.topic).isEqualTo("annotated39");
 	}
 
@@ -1486,8 +1487,10 @@ public class EnableKafkaIntegrationTests {
 
 						@Override
 						public Object resolveArgument(MethodParameter parameter, Message<?> message) {
-							return new CustomMethodArgument((String) message.getHeaders()
-																			.get(KafkaHeaders.RECEIVED_TOPIC));
+							return new CustomMethodArgument(
+									(String) message.getPayload(),
+									message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC, String.class)
+							);
 						}
 
 					})
@@ -2231,9 +2234,11 @@ public class EnableKafkaIntegrationTests {
 
 	static class CustomMethodArgument {
 
+		final String body;
 		final String topic;
 
-		CustomMethodArgument(String topic) {
+		CustomMethodArgument(String body, String topic) {
+			this.body = body;
 			this.topic = topic;
 		}
 
