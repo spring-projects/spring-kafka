@@ -93,7 +93,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	/**
 	 * Add custom methods arguments resolvers to {@link KafkaListenerAnnotationBeanPostProcessor}
 	 * Default empty list.
-	 * @param methodArgumentResolvers the list of {@link HandlerMethodArgumentResolver} to use.
+	 * @param methodArgumentResolvers the methodArgumentResolvers to assign.
 	 * @since 2.4.2
 	 */
 	public void setCustomMethodArgumentResolvers(HandlerMethodArgumentResolver... methodArgumentResolvers) {
