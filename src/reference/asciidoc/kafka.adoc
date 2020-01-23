@@ -3163,8 +3163,8 @@ IMPORTANT: Setting a custom `MessageHandlerMethodFactory` on the `KafkaListenerE
 
 ===== Adding custom `HandlerMethodArgumentResolver` to `@KafkaListener`
 
-Starting with version 2.4.2 you are able to add your own `org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver` and resolve custom method parameters.
-All you need is to implement `org.springframework.kafka.annotation.KafkaListenerConfigurer` and use method `setCustomMethodArgumentResolvers()` from class `org.springframework.kafka.configKafkaListenerEndpointRegistrar`.
+Starting with version 2.4.2 you are able to add your own `HandlerMethodArgumentResolver` and resolve custom method parameters.
+All you need is to implement `KafkaListenerConfigurer` and use method `setCustomMethodArgumentResolvers()` from class `KafkaListenerEndpointRegistrar`.
 
 ====
 [source, java]
@@ -3174,7 +3174,23 @@ class CustomKafkaConfig implements KafkaListenerConfigurer {
 
     @Override
     public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
-        registrar.setCustomMethodArgumentResolvers();
+        registrar.setCustomMethodArgumentResolvers(
+        		new HandlerMethodArgumentResolver() {
+
+						@Override
+						public boolean supportsParameter(MethodParameter parameter) {
+							return CustomMethodArgument.class.isAssignableFrom(parameter.getParameterType());
+						}
+
+						@Override
+						public Object resolveArgument(MethodParameter parameter, Message<?> message) {
+							return new CustomMethodArgument(
+									message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC, String.class)
+							);
+						}
+
+					}
+        );
     }
 
 }
