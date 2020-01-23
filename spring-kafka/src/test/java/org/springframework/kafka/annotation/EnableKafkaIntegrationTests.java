@@ -1477,8 +1477,7 @@ public class EnableKafkaIntegrationTests {
 
 			});
 			registrar.setCustomMethodArgumentResolvers(
-
-					Collections.singletonList(new HandlerMethodArgumentResolver() {
+					new HandlerMethodArgumentResolver() {
 
 						@Override
 						public boolean supportsParameter(MethodParameter parameter) {
@@ -1493,8 +1492,7 @@ public class EnableKafkaIntegrationTests {
 							);
 						}
 
-					})
-
+					}
 			);
 
 		}
@@ -2235,6 +2233,7 @@ public class EnableKafkaIntegrationTests {
 	static class CustomMethodArgument {
 
 		final String body;
+
 		final String topic;
 
 		CustomMethodArgument(String body, String topic) {

@@ -17,6 +17,8 @@
 package org.springframework.kafka.config;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.BeanFactory;
@@ -45,7 +47,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 
 	private final List<KafkaListenerEndpointDescriptor> endpointDescriptors = new ArrayList<>();
 
-	private final List<HandlerMethodArgumentResolver> customMethodArgumentResolvers = new ArrayList<>();
+	private List<HandlerMethodArgumentResolver> customMethodArgumentResolvers = new ArrayList<>();
 
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
@@ -82,20 +84,20 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	/**
 	 * Return the list of {@link HandlerMethodArgumentResolver}.
 	 * @return the list of {@link HandlerMethodArgumentResolver}.
-	 * @since 2.5
+	 * @since 2.4.2
 	 */
 	public List<HandlerMethodArgumentResolver> getCustomMethodArgumentResolvers() {
-		return this.customMethodArgumentResolvers;
+		return Collections.unmodifiableList(this.customMethodArgumentResolvers);
 	}
 
 	/**
 	 * Add custom methods arguments resolvers to {@link KafkaListenerAnnotationBeanPostProcessor}
 	 * Default empty list.
 	 * @param methodArgumentResolvers the list of {@link HandlerMethodArgumentResolver} to use.
-	 * @since 2.5
+	 * @since 2.4.2
 	 */
-	public void setCustomMethodArgumentResolvers(List<HandlerMethodArgumentResolver> methodArgumentResolvers) {
-		this.customMethodArgumentResolvers.addAll(methodArgumentResolvers);
+	public void setCustomMethodArgumentResolvers(HandlerMethodArgumentResolver... methodArgumentResolvers) {
+		this.customMethodArgumentResolvers = Arrays.asList(methodArgumentResolvers);
 	}
 
 	/**
