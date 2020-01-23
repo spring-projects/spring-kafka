@@ -3161,6 +3161,26 @@ This lets you further customize listener deserialization without changing the de
 
 IMPORTANT: Setting a custom `MessageHandlerMethodFactory` on the `KafkaListenerEndpointRegistrar` through a `KafkaListenerConfigurer` bean disables this feature.
 
+===== Adding custom `HandlerMethodArgumentResolver` to `@KafkaListener`
+
+Starting with version 2.4.2 you are able to add your own `org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver` and resolve custom method parameters.
+All you need is to implement `org.springframework.kafka.annotation.KafkaListenerConfigurer` and use method `setCustomMethodArgumentResolvers()` from class `org.springframework.kafka.configKafkaListenerEndpointRegistrar`.
+
+====
+[source, java]
+----
+@Configuration
+class CustomKafkaConfig implements KafkaListenerConfigurer {
+
+    @Override
+    public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
+        registrar.setCustomMethodArgumentResolvers();
+    }
+
+}
+----
+====
+
 [[headers]]
 ==== Message Headers
 
