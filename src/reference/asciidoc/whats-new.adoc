@@ -42,7 +42,11 @@ See its JavaDocs and <<kafka-container>> for more information.
 
 The `@KafkaListener` annotation has a new property `splitIterables`; default true.
 When a replying listener returns an `Iterable` this property controls whether the return result is sent as a single record or a record for each element is sent.
-See <<annotation-send-to>> for more information.
+See <<annotation-send-to>> for more information
+
+Batch listeners can now be configured with a `BatchToRecordAdapter`; this allows, for example, the batch to be processed in a transaction while the listener gets one record at a time.
+With the default implementation, a `ConsumerRecordRecoverer` can be used to handle errors within the batch, without aborting the entire batch - this might be useful when using transactions.
+See <<transactions-batch>> for more information.
 
 ==== Kafka Streams
 

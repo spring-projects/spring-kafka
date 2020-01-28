@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2019 the original author or authors.
+ * Copyright 2014-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.RecordInterceptor;
+import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
@@ -104,6 +105,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Boolean missingTopicsFatal;
 
 	private RecordInterceptor<K, V> recordInterceptor;
+
+	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
 	private ApplicationContext applicationContext;
 
@@ -307,6 +310,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Set a {@link BatchToRecordAdapter}.
+	 * @param batchToRecordAdapter the adapter.
+	 * @since 2.4.2
+	 */
+	public void setBatchToRecordAdapter(BatchToRecordAdapter<K, V> batchToRecordAdapter) {
+		this.batchToRecordAdapter = batchToRecordAdapter;
+	}
+
+	/**
 	 * Set a customizer used to further configure a container after it has been created.
 	 * @param containerCustomizer the customizer.
 	 * @since 2.3.4
@@ -356,7 +368,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(this.statefulRetry, aklEndpoint::setStatefulRetry)
 				.acceptIfNotNull(this.batchListener, aklEndpoint::setBatchListener)
 				.acceptIfNotNull(this.replyTemplate, aklEndpoint::setReplyTemplate)
-				.acceptIfNotNull(this.replyHeadersConfigurer, aklEndpoint::setReplyHeadersConfigurer);
+				.acceptIfNotNull(this.replyHeadersConfigurer, aklEndpoint::setReplyHeadersConfigurer)
+				.acceptIfNotNull(this.batchToRecordAdapter, aklEndpoint::setBatchToRecordAdapter);
 	}
 
 	/**

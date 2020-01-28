@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,10 +62,23 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	private KafkaListenerErrorHandler errorHandler;
 
+	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
+
+	/**
+	 * Create an instance with the provided parameters.
+	 * @param bean the listener bean.
+	 * @param method the listener method.
+	 */
 	public BatchMessagingMessageListenerAdapter(Object bean, Method method) {
 		this(bean, method, null);
 	}
 
+	/**
+	 * Create an instance with the provided parameters.
+	 * @param bean the listener bean.
+	 * @param method the listener method.
+	 * @param errorHandler the error handler.
+	 */
 	public BatchMessagingMessageListenerAdapter(Object bean, Method method, KafkaListenerErrorHandler errorHandler) {
 		super(bean, method);
 		this.errorHandler = errorHandler;
@@ -80,6 +93,15 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		if (messageConverter.getRecordMessageConverter() != null) {
 			setMessageConverter(messageConverter.getRecordMessageConverter());
 		}
+	}
+
+	/**
+	 * Set a {@link BatchToRecordAdapter}.
+	 * @param batchToRecordAdapter the adapter.
+	 * @since 2.4.2
+	 */
+	public void setBatchToRecordAdapter(BatchToRecordAdapter<K, V> batchToRecordAdapter) {
+		this.batchToRecordAdapter = batchToRecordAdapter;
 	}
 
 	/**
@@ -115,12 +137,19 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	public void onMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		Message<?> message;
 		if (!isConsumerRecordList()) {
-			if (isMessageList()) {
+			if (isMessageList() || this.batchToRecordAdapter != null) {
 				List<Message<?>> messages = new ArrayList<>(records.size());
 				for (ConsumerRecord<K, V> record : records) {
 					messages.add(toMessagingMessage(record, acknowledgment, consumer));
 				}
-				message = MessageBuilder.withPayload(messages).build();
+				if (this.batchToRecordAdapter == null) {
+					message = MessageBuilder.withPayload(messages).build();
+				}
+				else {
+					logger.debug(() -> "Processing " + messages);
+					this.batchToRecordAdapter.adapt(messages, records, acknowledgment, consumer, this::invoke);
+					return;
+				}
 			}
 			else {
 				message = toMessagingMessage(records, acknowledgment, consumer);

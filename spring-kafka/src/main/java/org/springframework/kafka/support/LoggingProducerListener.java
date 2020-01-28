@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.support;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.util.ObjectUtils;
@@ -64,21 +65,21 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 	}
 
 	@Override
-	public void onError(String topic, Integer partition, K key, V value, Exception exception) {
+	public void onError(ProducerRecord<K, V> record, Exception exception) {
 		LOGGER.error(exception, () -> {
 			StringBuffer logOutput = new StringBuffer();
 			logOutput.append("Exception thrown when sending a message");
 			if (this.includeContents) {
 				logOutput.append(" with key='")
-					.append(toDisplayString(ObjectUtils.nullSafeToString(key), this.maxContentLogged))
+					.append(toDisplayString(ObjectUtils.nullSafeToString(record.key()), this.maxContentLogged))
 					.append("'")
 					.append(" and payload='")
-					.append(toDisplayString(ObjectUtils.nullSafeToString(value), this.maxContentLogged))
+					.append(toDisplayString(ObjectUtils.nullSafeToString(record.value()), this.maxContentLogged))
 					.append("'");
 			}
-			logOutput.append(" to topic ").append(topic);
-			if (partition != null) {
-				logOutput.append(" and partition ").append(partition);
+			logOutput.append(" to topic ").append(record.topic());
+			if (record.partition() != null) {
+				logOutput.append(" and partition ").append(record.partition());
 			}
 			logOutput.append(":");
 			return logOutput.toString();

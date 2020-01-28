@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2019 the original author or authors.
+ * Copyright 2014-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.FilteringBatchMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
@@ -115,6 +116,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private Properties consumerProperties;
 
 	private boolean splitIterables = true;
+
+	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -447,6 +450,19 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setSplitIterables(boolean splitIterables) {
 		this.splitIterables = splitIterables;
+	}
+
+	protected BatchToRecordAdapter<K, V> getBatchToRecordAdapter() {
+		return this.batchToRecordAdapter;
+	}
+
+	/**
+	 * Set a {@link BatchToRecordAdapter}.
+	 * @param batchToRecordAdapter the adapter.
+	 * @since 2.4.2
+	 */
+	public void setBatchToRecordAdapter(BatchToRecordAdapter<K, V> batchToRecordAdapter) {
+		this.batchToRecordAdapter = batchToRecordAdapter;
 	}
 
 	@Override

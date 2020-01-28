@@ -196,7 +196,7 @@ public interface ProducerListener<K, V> {
 
     void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata);
 
-    void onError(ProducerRecord<K, V> producerRecord, Exception exception)
+    void onError(ProducerRecord<K, V> producerRecord, Exception exception);
 
 }
 ----
@@ -2452,6 +2452,68 @@ When using a transaction manager and template for a listener container, you woul
 This value should be the same for all application instances.
 For transactions started by the template (or the transaction manager for `@Transaction`) you should set the property on the template and transaction manager respectively.
 This property must have a different value on each application instance.
+
+[[transactions-batch]]
+===== Transactions with Batch Listeners
+
+When a listener fails while transactions are being used, the `AfterRollbackProcessor` is invoked to take some action after the rollback occurs.
+When using the default `AfterRollbackProcessor` with a record listener, seeks are performed so that the failed record will be redelivered.
+With a batch listener, however, the whole batch will be redelivered because the framework doesn't know which record in the batch failed.
+See <<after-rollback>> for more information.
+
+When using a batch listener, version 2.4.2 introduced an alternative mechanism to deal with failures while processing a batch; the `BatchToRecordAdapter`.
+When a container factory with `batchListener` set to true is configured with a `BatchToRecordAdapter`, the listener is invoked with one record at a time.
+This enables error handling within the batch, while still allowing to abort the entire batch, depending on the exception type.
+A default `BatchToRecordAdapter` is provided, that can be configured with a standard `ConsumerRecordRecoverer` such as the `DeadLetterPublishingRecoverer`.
+The following test case configuration snippet illustrates how to use this feature:
+
+====
+[source, java]
+----
+public static class TestListener {
+
+    final List<String> values = new ArrayList<>();
+
+    @KafkaListener(id = "batchRecordAdapter", topics = "test")
+    public void listen(String data) {
+        values.add(data);
+        if ("bar".equals(data)) {
+            throw new RuntimeException("reject partial");
+        }
+    }
+
+}
+
+@Configuration
+@EnableKafka
+public static class Config {
+
+    ConsumerRecord<?, ?> failed;
+
+    @Bean
+    public TestListener test() {
+        return new TestListener();
+    }
+
+    @Bean
+    public ConsumerFactory<?, ?> consumerFactory() {
+        return mock(ConsumerFactory.class);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
+        factory.setConsumerFactory(consumerFactory());
+        factory.setBatchListener(true);
+        factory.setBatchToRecordAdapter(new DefaultBatchToRecordAdapter<>((record, ex) ->  {
+            this.failed = record;
+        }));
+        return factory;
+    }
+
+}
+----
+====
 
 [[interceptors]]
 ==== Wiring Spring Beans into Producer/Consumer Interceptors
