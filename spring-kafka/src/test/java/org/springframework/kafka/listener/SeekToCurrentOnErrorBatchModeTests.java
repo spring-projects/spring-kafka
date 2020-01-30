@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.withSettings;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -140,7 +139,7 @@ public class SeekToCurrentOnErrorBatchModeTests {
 		@SuppressWarnings({ "rawtypes" })
 		@Bean
 		public ConsumerFactory consumerFactory() {
-			ConsumerFactory consumerFactory = mock(ConsumerFactory.class, withSettings().verboseLogging());
+			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
 			given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
 				.willReturn(consumer);

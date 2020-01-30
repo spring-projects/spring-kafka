@@ -74,6 +74,7 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
@@ -570,6 +571,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final Duration authorizationExceptionRetryInterval =
 				this.containerProperties.getAuthorizationExceptionRetryInterval();
 
+		private final AssignmentCommitOption autoCommitOption = this.containerProperties.getAssignmentCommitOption();
+
+		private final boolean commitCurrentOnAssignment;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -614,6 +619,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.transactionTemplate = determineTransactionTemplate();
 			this.genericListener = listener;
 			this.consumerSeekAwareListener = checkConsumerSeekAware(listener);
+			this.commitCurrentOnAssignment = determineCommitCurrent(consumerProperties);
 			subscribeOrAssignTopics(this.consumer);
 			GenericErrorHandler<?> errHandler = KafkaMessageListenerContainer.this.getGenericErrorHandler();
 			if (listener instanceof BatchMessageListener) {
@@ -678,6 +684,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
 			this.micrometerHolder = obtainMicrometerHolder();
+		}
+
+		private boolean determineCommitCurrent(Properties consumerProperties) {
+			if (AssignmentCommitOption.NEVER.equals(this.autoCommitOption)) {
+				return false;
+			}
+			if (!this.autoCommit && AssignmentCommitOption.ALWAYS.equals(this.autoCommitOption)) {
+				return true;
+			}
+			String autoOffsetReset = consumerProperties.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
+			return !this.autoCommit
+					&& (autoOffsetReset == null || autoOffsetReset.equals("latest"))
+					&& (AssignmentCommitOption.LATEST_ONLY.equals(this.autoCommitOption)
+							|| AssignmentCommitOption.LATEST_ONLY_NO_TX.equals(this.autoCommitOption));
 		}
 
 		private long obtainMaxPollInterval(Properties consumerProperties) {
@@ -2227,7 +2247,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							+ "consumer paused again, so the initial poll() will never return any records");
 				}
 				ListenerConsumer.this.assignedPartitions = new LinkedList<>(partitions);
-				if (!ListenerConsumer.this.autoCommit) {
+				if (ListenerConsumer.this.commitCurrentOnAssignment) {
 					// Commit initial positions - this is generally redundant but
 					// it protects us from the case when another consumer starts
 					// and rebalance would cause it to reset at the end
@@ -2244,51 +2264,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							return;
 						}
 					}
-					ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsetsToCommit);
-					if (ListenerConsumer.this.transactionTemplate != null &&
-							ListenerConsumer.this.kafkaTxManager != null) {
-						try {
-							offsetsToCommit.forEach((partition, offsetAndMetadata) -> {
-								TransactionSupport.setTransactionIdSuffix(
-										zombieFenceTxIdSuffix(partition.topic(), partition.partition()));
-								ListenerConsumer.this.transactionTemplate
-										.execute(new TransactionCallbackWithoutResult() {
-
-											@SuppressWarnings({ UNCHECKED, RAWTYPES })
-											@Override
-											protected void doInTransactionWithoutResult(TransactionStatus status) {
-												KafkaResourceHolder holder =
-														(KafkaResourceHolder) TransactionSynchronizationManager
-																.getResource(
-																		ListenerConsumer.this.kafkaTxManager
-																				.getProducerFactory());
-												if (holder != null) {
-													holder.getProducer()
-															.sendOffsetsToTransaction(
-																	Collections.singletonMap(partition,
-																			offsetAndMetadata),
-																	ListenerConsumer.this.consumerGroupId);
-												}
-											}
-
-										});
-							});
-						}
-						finally {
-							TransactionSupport.clearTransactionIdSuffix();
-						}
-					}
-					else {
-						ContainerProperties containerProps = KafkaMessageListenerContainer.this.getContainerProperties();
-						if (containerProps.isSyncCommits()) {
-							ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
-									containerProps.getSyncCommitTimeout());
-						}
-						else {
-							ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,
-									containerProps.getCommitCallback());
-						}
-					}
+					commitCurrentOffsets(offsetsToCommit);
 				}
 				if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
 					seekPartitions(partitions, false);
@@ -2298,6 +2274,55 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				else {
 					this.userListener.onPartitionsAssigned(partitions);
+				}
+			}
+
+			private void commitCurrentOffsets(Map<TopicPartition, OffsetAndMetadata> offsetsToCommit) {
+				ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsetsToCommit);
+				if (ListenerConsumer.this.transactionTemplate != null
+						&& ListenerConsumer.this.kafkaTxManager != null
+						&& !AssignmentCommitOption.LATEST_ONLY_NO_TX.equals(ListenerConsumer.this.autoCommitOption)) {
+					try {
+						offsetsToCommit.forEach((partition, offsetAndMetadata) -> {
+							TransactionSupport.setTransactionIdSuffix(
+									zombieFenceTxIdSuffix(partition.topic(), partition.partition()));
+							ListenerConsumer.this.transactionTemplate
+									.execute(new TransactionCallbackWithoutResult() {
+
+										@SuppressWarnings({ UNCHECKED, RAWTYPES })
+										@Override
+										protected void doInTransactionWithoutResult(TransactionStatus status) {
+											KafkaResourceHolder holder =
+													(KafkaResourceHolder) TransactionSynchronizationManager
+															.getResource(
+																	ListenerConsumer.this.kafkaTxManager
+																			.getProducerFactory());
+											if (holder != null) {
+												holder.getProducer()
+														.sendOffsetsToTransaction(
+																Collections.singletonMap(partition,
+																		offsetAndMetadata),
+																ListenerConsumer.this.consumerGroupId);
+											}
+										}
+
+									});
+						});
+					}
+					finally {
+						TransactionSupport.clearTransactionIdSuffix();
+					}
+				}
+				else {
+					ContainerProperties containerProps = KafkaMessageListenerContainer.this.getContainerProperties();
+					if (containerProps.isSyncCommits()) {
+						ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
+								containerProps.getSyncCommitTimeout());
+					}
+					else {
+						ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,
+								containerProps.getCommitCallback());
+					}
 				}
 			}
 

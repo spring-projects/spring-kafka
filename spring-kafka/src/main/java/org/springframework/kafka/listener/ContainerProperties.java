@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,6 +94,36 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
+	 * Offset commit behavior during assignment.
+	 * @since 2.3.6
+	 */
+	public enum AssignmentCommitOption {
+
+		/**
+		 * Always commit the current offset during partition assignment.
+		 */
+		ALWAYS,
+
+		/**
+		 * Never commit the current offset during partition assignment.
+		 */
+		NEVER,
+
+		/**
+		 * Commit the current offset during partition assignment when auto.offset.reset is
+		 * 'latest'; transactional if so configured.
+		 */
+		LATEST_ONLY,
+
+		/**
+		 * Commit the current offset during partition assignment when auto.offset.reset is
+		 * 'latest'; use consumer commit even when transactions are being used.
+		 */
+		LATEST_ONLY_NO_TX
+
+	}
+
+	/**
 	 * The default {@link #setShutdownTimeout(long) shutDownTimeout} (ms).
 	 */
 	public static final long DEFAULT_SHUTDOWN_TIMEOUT = 10_000L;
@@ -182,6 +212,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private Duration consumerStartTimout = DEFAULT_CONSUMER_START_TIMEOUT;
 
 	private boolean subBatchPerPartition;
+
+	private AssignmentCommitOption assignmentCommitOption = AssignmentCommitOption.ALWAYS;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -608,6 +640,21 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setSubBatchPerPartition(boolean subBatchPerPartition) {
 		this.subBatchPerPartition = subBatchPerPartition;
+	}
+
+	public AssignmentCommitOption getAssignmentCommitOption() {
+		return this.assignmentCommitOption;
+	}
+
+	/**
+	 * Set the assignment commit option. Default {@link AssignmentCommitOption#ALWAYS}.
+	 * In a future release it will default to {@link AssignmentCommitOption#LATEST_ONLY}.
+	 * @param assignmentCommitOption the option.
+	 * @since 2.3.6
+	 */
+	public void setAssignmentCommitOption(AssignmentCommitOption assignmentCommitOption) {
+		Assert.notNull(assignmentCommitOption, "'assignmentCommitOption' cannot be null");
+		this.assignmentCommitOption = assignmentCommitOption;
 	}
 
 	@Override
