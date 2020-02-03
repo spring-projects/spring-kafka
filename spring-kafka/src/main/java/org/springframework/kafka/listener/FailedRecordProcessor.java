@@ -73,7 +73,7 @@ public abstract class FailedRecordProcessor {
 
 	private static FixedBackOff maxFailuresToBackOff(int maxFailures) {
 		if (maxFailures < 0) {
-			return new FixedBackOff();
+			return new FixedBackOff(0L, FixedBackOff.UNLIMITED_ATTEMPTS);
 		}
 		return new FixedBackOff(0L, maxFailures == 0 ? 0 : maxFailures - 1);
 	}
