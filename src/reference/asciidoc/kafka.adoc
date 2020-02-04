@@ -1343,7 +1343,7 @@ static class MultiListenerBean {
         ...
     }
 
-    @KafkaHandler(isDefault = true`)
+    @KafkaHandler(isDefault = true)
     public void listenDefault(Object object) {
         ...
     }
@@ -2003,7 +2003,7 @@ You should stop the concurrent container instead.
 ====== Current Positions when Idle
 
 Note that you can obtain the current positions when idle is detected by implementing `ConsumerSeekAware` in your listener.
-See `onIdleContainer()` in `<<seek>>.
+See `onIdleContainer()` in <<seek>>.
 
 ===== Topic/Partition Initial Offset
 
