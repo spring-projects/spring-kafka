@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -363,9 +364,9 @@ public class DefaultKafkaConsumerFactoryTests {
 		try {
 			ListenableFuture<SendResult<Integer, String>> future = template.send("txCache2", "foo");
 			future.get(10, TimeUnit.SECONDS);
-			assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", Map.class)).hasSize(0);
 			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
-			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(0);
+			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(1);
+			assertThat((Queue) KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class).get("fooTx.")).hasSize(0);
 		}
 		finally {
 			container.stop();

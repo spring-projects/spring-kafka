@@ -54,6 +54,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthorizationException;
+import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.context.ApplicationContext;
@@ -1299,6 +1300,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				});
 			}
+			catch (ProducerFencedException e) {
+				this.logger.error(e, "Producer fenced during transaction");
+			}
 			catch (RuntimeException e) {
 				this.logger.error(e, "Transaction rolled back");
 				AfterRollbackProcessor<K, V> afterRollbackProcessorToUse =
@@ -1541,6 +1545,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						}
 
 					});
+				}
+				catch (ProducerFencedException e) {
+					this.logger.error(e, "Producer fenced during transaction");
 				}
 				catch (RuntimeException e) {
 					this.logger.error(e, "Transaction rolled back");

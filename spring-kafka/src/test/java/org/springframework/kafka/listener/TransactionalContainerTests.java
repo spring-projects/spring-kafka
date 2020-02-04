@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -60,6 +61,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.BeforeAll;
@@ -667,6 +669,62 @@ public class TransactionalContainerTests {
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		logger.info("Stop testRollbackNoRetries");
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void testNoAfterRollbackWhenFenced() throws Exception {
+		Consumer consumer = mock(Consumer.class);
+		final TopicPartition topicPartition0 = new TopicPartition("foo", 0);
+		final TopicPartition topicPartition1 = new TopicPartition("foo", 1);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
+		recordMap.put(topicPartition0, Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value")));
+		recordMap.put(topicPartition1, Collections.singletonList(new ConsumerRecord<>("foo", 1, 0, "key", "value")));
+		ConsumerRecords records = new ConsumerRecords(recordMap);
+		final AtomicBoolean done = new AtomicBoolean();
+		willAnswer(i -> {
+			if (done.compareAndSet(false, true)) {
+				return records;
+			}
+			else {
+				Thread.sleep(500);
+				return null;
+			}
+		}).given(consumer).poll(any(Duration.class));
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		willReturn(consumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
+		Producer producer = mock(Producer.class);
+		final CountDownLatch closeLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			closeLatch.countDown();
+			return null;
+		}).given(producer).close(any());
+		willThrow(new ProducerFencedException("test")).given(producer).commitTransaction();
+		ProducerFactory pf = mock(ProducerFactory.class);
+		given(pf.transactionCapable()).willReturn(true);
+		given(pf.createProducer(isNull())).willReturn(producer);
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		ContainerProperties props = new ContainerProperties(new TopicPartitionOffset("foo", 0),
+				new TopicPartitionOffset("foo", 1));
+		props.setGroupId("group");
+		props.setTransactionManager(tm);
+		props.setMessageListener((MessageListener) m -> {
+		});
+		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
+		AfterRollbackProcessor arp = mock(AfterRollbackProcessor.class);
+		given(arp.isProcessInTransaction()).willReturn(true);
+		container.setAfterRollbackProcessor(arp);
+		container.setBeanName("rollback");
+		container.start();
+		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		InOrder inOrder = inOrder(producer);
+		inOrder.verify(producer).beginTransaction();
+		inOrder.verify(producer).commitTransaction();
+		inOrder.verify(producer).close(any());
+
+		verify(arp, never()).process(any(), any(), any(), anyBoolean());
+
+		container.stop();
 	}
 
 	@SuppressWarnings("serial")

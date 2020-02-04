@@ -17,8 +17,10 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -32,11 +34,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.errors.ProducerFencedException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextStoppedEvent;
+import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.transaction.CannotCreateTransactionException;
@@ -51,7 +55,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	public void testProducerClosedAfterBadTransition() throws Exception {
+	void testProducerClosedAfterBadTransition() throws Exception {
 		final Producer producer = mock(Producer.class);
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
@@ -108,7 +112,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void testResetSingle() {
+	void testResetSingle() {
 		final Producer producer = mock(Producer.class);
 		ProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
@@ -131,7 +135,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void testResetTx() throws Exception {
+	void testResetTx() throws Exception {
 		final Producer producer = mock(Producer.class);
 		ApplicationContext ctx = mock(ApplicationContext.class);
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
@@ -162,7 +166,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void testThreadLocal() {
+	void testThreadLocal() {
 		final Producer producer = mock(Producer.class);
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
@@ -188,6 +192,30 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.closeThreadBoundProducer();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNull();
 		verify(producer).close(any(Duration.class));
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testCleanUpAfterTxFence() {
+		final Producer producer = mock(Producer.class);
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				return producer;
+			}
+
+		};
+		pf.setTransactionIdPrefix("tx.");
+		TransactionSupport.setTransactionIdSuffix("suffix");
+		Producer aProducer = pf.createProducer();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).hasSize(1);
+		assertThat(aProducer).isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(aProducer, "cache")).isNotNull();
+		willThrow(new ProducerFencedException("test")).given(producer).beginTransaction();
+		assertThatExceptionOfType(ProducerFencedException.class).isThrownBy(() -> aProducer.beginTransaction());
+		aProducer.close();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).hasSize(0);
 	}
 
 }

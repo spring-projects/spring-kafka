@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -402,15 +402,13 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	protected Producer<K, V> createKafkaProducer() {
 		if (this.clientIdPrefix == null) {
-			return new KafkaProducer<>(this.configs, this.keySerializerSupplier.get(),
-					this.valueSerializerSupplier.get());
+			return createRawProducer(this.configs);
 		}
 		else {
 			Map<String, Object> newConfigs = new HashMap<>(this.configs);
 			newConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
 					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
-			return new KafkaProducer<>(newConfigs, this.keySerializerSupplier.get(),
-					this.valueSerializerSupplier.get());
+			return createRawProducer(newConfigs);
 		}
 	}
 
@@ -482,11 +480,14 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
 					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
 		}
-		newProducer = new KafkaProducer<>(newProducerConfigs, this.keySerializerSupplier
-				.get(), this.valueSerializerSupplier.get());
+		newProducer = createRawProducer(newProducerConfigs);
 		newProducer.initTransactions();
-		return new CloseSafeProducer<>(newProducer, this.cache.get(prefix), remover,
+		return new CloseSafeProducer<>(newProducer, getCache(prefix), remover,
 				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG));
+	}
+
+	protected Producer<K, V> createRawProducer(Map<String, Object> configs) {
+		return new KafkaProducer<>(configs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
 	}
 
 	@Nullable
@@ -573,6 +574,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			this.cache = cache;
 			this.removeConsumerProducer = removeConsumerProducer;
 			this.txId = txId;
+			LOGGER.debug(() -> "Created new Producer: " + this);
 		}
 
 		Producer<K, V> getDelegate() {
@@ -649,13 +651,19 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public void abortTransaction() throws ProducerFencedException {
 			LOGGER.debug(() -> toString() + " abortTransaction()");
-			try {
-				this.delegate.abortTransaction();
+			if (this.txFailed != null) {
+				LOGGER.debug(() -> "abortTransaction ignored - previous txFailed: " + this.txFailed.getMessage()
+					+ ": " + this);
 			}
-			catch (RuntimeException e) {
-				LOGGER.error(e, () -> "Abort failed: " + this);
-				this.txFailed = e;
-				throw e;
+			else {
+				try {
+					this.delegate.abortTransaction();
+				}
+				catch (RuntimeException e) {
+					LOGGER.error(e, () -> "Abort failed: " + this);
+					this.txFailed = e;
+					throw e;
+				}
 			}
 		}
 
