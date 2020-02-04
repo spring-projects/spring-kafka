@@ -107,6 +107,7 @@ public class ContainerStoppingBatchErrorHandlerTests {
 		assertThat(two).isSameAs(this.config.springManagedContainer());
 		assertThat(one.getListenerId()).isEqualTo(CONTAINER_ID);
 		assertThat(two.getListenerId()).isEqualTo("springManagedContainer");
+		assertThat(this.config.customized).isEqualTo(2);
 	}
 
 	@Configuration
@@ -122,6 +123,8 @@ public class ContainerStoppingBatchErrorHandlerTests {
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
 
 		private final CountDownLatch commitLatch = new CountDownLatch(3);
+
+		private volatile int customized;
 
 		@KafkaListener(id = CONTAINER_ID, topics = "foo")
 		public void foo(List<String> in) {
@@ -212,6 +215,7 @@ public class ContainerStoppingBatchErrorHandlerTests {
 
 			});
 			factory.setBatchListener(true);
+			factory.setContainerCustomizer(container -> this.customized++);
 			return factory;
 		}
 
