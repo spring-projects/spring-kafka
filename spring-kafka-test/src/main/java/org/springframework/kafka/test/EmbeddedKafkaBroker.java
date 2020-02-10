@@ -77,6 +77,7 @@ import kafka.zookeeper.ZooKeeperClient;
  * @author Kamill Sokol
  * @author Elliot Kennedy
  * @author Nakul Mishra
+ * @author Pawel Lozinski
  *
  * @since 2.2
  */
@@ -254,13 +255,21 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	/**
-	 * Set timeouts for the client to the embedded Zookeeper.
+	 * Set connection timeout for the client to the embedded Zookeeper.
 	 * @param zkConnectionTimeout the connection timeout,
+	 * @return the {@link EmbeddedKafkaBroker}.
+	 */
+	public EmbeddedKafkaBroker zkConnectionTimeout(int zkConnectionTimeout) {
+		this.zkConnectionTimeout = zkConnectionTimeout;
+		return this;
+	}
+
+	/**
+	 * Set session timeout for the client to the embedded Zookeeper.
 	 * @param zkSessionTimeout the session timeout.
 	 * @return the {@link EmbeddedKafkaBroker}.
 	 */
-	public EmbeddedKafkaBroker setZkClientTimeouts(int zkConnectionTimeout, int zkSessionTimeout) {
-		this.zkConnectionTimeout = zkConnectionTimeout;
+	public EmbeddedKafkaBroker zkSessionTimeout(int zkSessionTimeout) {
 		this.zkSessionTimeout = zkSessionTimeout;
 		return this;
 	}

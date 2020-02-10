@@ -58,6 +58,7 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
  * @author Zach Olauson
  * @author Gary Russell
  * @author Sergio Lourenco
+ * @author Pawel Lozinski
  *
  * @since 1.3
  *

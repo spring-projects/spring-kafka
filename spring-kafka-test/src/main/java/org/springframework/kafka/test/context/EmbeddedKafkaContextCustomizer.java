@@ -42,6 +42,7 @@ import org.springframework.util.StringUtils;
  * @author Zach Olauson
  * @author Oleg Artyomov
  * @author Sergio Lourenco
+ * @author Pawel Lozinski
  *
  * @since 1.3
  */
@@ -73,7 +74,8 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 					topics)
 				.kafkaPorts(ports)
 				.zkPort(this.embeddedKafka.zookeeperPort())
-				.setZkClientTimeouts(this.embeddedKafka.zkConnectionTimeout(), this.embeddedKafka.zkSessionTimeout());
+				.zkConnectionTimeout(this.embeddedKafka.zkConnectionTimeout())
+				.zkSessionTimeout(this.embeddedKafka.zkSessionTimeout());
 
 		Properties properties = new Properties();
 
