@@ -26,6 +26,7 @@ import java.lang.annotation.Target;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.core.annotation.AliasFor;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 
 /**
@@ -154,6 +155,18 @@ public @interface EmbeddedKafka {
 	 * @see org.springframework.kafka.test.EmbeddedKafkaBroker#brokerListProperty(String)
 	 */
 	String bootstrapServersProperty() default "";
+
+	/**
+	 * Timeout for internal ZK client connection.
+	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ZK_CONNECTION_TIMEOUT}.
+	 */
+	int zkConnectionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_CONNECTION_TIMEOUT;
+
+	/**
+	 * Timeout for internal ZK client session.
+	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ZK_SESSION_TIMEOUT}.
+	 */
+	int zkSessionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_SESSION_TIMEOUT;
 
 }
 

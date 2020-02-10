@@ -121,7 +121,8 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 		}
 		broker = new EmbeddedKafkaBroker(embedded.count(), embedded.controlledShutdown(), embedded.topics())
 				.zkPort(embedded.zookeeperPort())
-				.kafkaPorts(ports);
+				.kafkaPorts(ports)
+				.setZkClientTimeouts(embedded.zkConnectionTimeout(), embedded.zkSessionTimeout());
 		Properties properties = new Properties();
 
 		for (String pair : embedded.brokerProperties()) {

@@ -75,7 +75,8 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 					this.embeddedKafka.partitions(),
 					topics)
 				.kafkaPorts(ports)
-				.zkPort(this.embeddedKafka.zookeeperPort());
+				.zkPort(this.embeddedKafka.zookeeperPort())
+				.setZkClientTimeouts(this.embeddedKafka.zkConnectionTimeout(), this.embeddedKafka.zkSessionTimeout());
 
 		Properties properties = new Properties();
 
