@@ -100,9 +100,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private static final Duration DEFAULT_ADMIN_TIMEOUT = Duration.ofSeconds(10);
 
-	private static final int DEFAULT_ZK_CONNECTION_TIMEOUT = 6000;
+	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = 6000;
 
-	private static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
+	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
 
 	private final int count;
 
@@ -257,10 +257,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * Set timeouts for the client to the embedded Zookeeper.
 	 * @param zkConnectionTimeout the connection timeout,
 	 * @param zkSessionTimeout the session timeout.
+	 * @return the {@link EmbeddedKafkaBroker}.
 	 */
-	public void setZkClientTimeouts(int zkConnectionTimeout, int zkSessionTimeout) {
+	public EmbeddedKafkaBroker setZkClientTimeouts(int zkConnectionTimeout, int zkSessionTimeout) {
 		this.zkConnectionTimeout = zkConnectionTimeout;
 		this.zkSessionTimeout = zkSessionTimeout;
+		return this;
 	}
 
 	@Override
