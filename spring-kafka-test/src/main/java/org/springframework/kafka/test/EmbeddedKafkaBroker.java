@@ -457,7 +457,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	@Deprecated
 	public synchronized ZkClient getZkClient() {
 		if (this.zkClient == null) {
-			this.zkClient = new ZkClient(this.zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
+			this.zkClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
 					ZKStringSerializer$.MODULE$);
 		}
 		return this.zkClient;
