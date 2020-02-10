@@ -160,12 +160,14 @@ public @interface EmbeddedKafka {
 	/**
 	 * Timeout for internal ZK client connection.
 	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ZK_CONNECTION_TIMEOUT}.
+	 * @since 2.4
 	 */
 	int zkConnectionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_CONNECTION_TIMEOUT;
 
 	/**
 	 * Timeout for internal ZK client session.
 	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ZK_SESSION_TIMEOUT}.
+	 * @since 2.4
 	 */
 	int zkSessionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_SESSION_TIMEOUT;
 
