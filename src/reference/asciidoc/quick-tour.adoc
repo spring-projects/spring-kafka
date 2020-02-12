@@ -85,7 +85,7 @@ public void testAutoCommit() throws Exception {
     container.start();
     Thread.sleep(1000); // wait a bit for the container to start
     KafkaTemplate<Integer, String> template = createTemplate();
-    template.setDefaultTopic(topic1);
+    template.setDefaultTopic("topic1");
     template.sendDefault(0, "foo");
     template.sendDefault(2, "bar");
     template.sendDefault(0, "baz");
