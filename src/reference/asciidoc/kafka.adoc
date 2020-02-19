@@ -829,7 +829,7 @@ Previously, the Kafka default (`true`) was used if the property was not set.
 
 The consumer `poll()` method returns one or more `ConsumerRecords`.
 The `MessageListener` is called for each record.
-The following lists describes the action taken by the container for each `AckMode`:
+The following lists describes the action taken by the container for each `AckMode` (when transactions are not being used):
 
 * `RECORD`: Commit the offset when the listener returns after processing the record.
 * `BATCH`: Commit the offset when all the records returned by the `poll()` have been processed.
@@ -839,6 +839,8 @@ The following lists describes the action taken by the container for each `AckMod
 * `MANUAL`: The message listener is responsible to `acknowledge()` the `Acknowledgment`.
 After that, the same semantics as `BATCH` are applied.
 * `MANUAL_IMMEDIATE`: Commit the offset immediately when the `Acknowledgment.acknowledge()` method is called by the listener.
+
+When using <<transactions, transactions>>, the offset(s) are sent to the transaction and the semantics are equivalent to `RECORD` or `BATCH`, depending on the listener type (record or batch).
 
 NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener` or a `BatchAcknowledgingMessageListener`.
 See <<message-listeners, Message Listeners>>.

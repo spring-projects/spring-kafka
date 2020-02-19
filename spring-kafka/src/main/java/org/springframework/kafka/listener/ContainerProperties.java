@@ -287,7 +287,11 @@ public class ContainerProperties extends ConsumerProperties {
 	 * <li>MANUAL: Listener is responsible for acking - use a
 	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}.
 	 * </ul>
+	 * Ignored when transactions are being used. Transactional consumers commit offsets
+	 * with semantics equivalent to {@code RECORD} or {@code BATCH}, depending on
+	 * the listener type.
 	 * @param ackMode the {@link AckMode}; default BATCH.
+	 * @see #setTransactionManager(PlatformTransactionManager)
 	 */
 	public void setAckMode(AckMode ackMode) {
 		Assert.notNull(ackMode, "'ackMode' cannot be null");
