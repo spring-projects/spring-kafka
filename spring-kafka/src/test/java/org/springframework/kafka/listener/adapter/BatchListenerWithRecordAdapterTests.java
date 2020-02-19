@@ -57,20 +57,46 @@ public class BatchListenerWithRecordAdapterTests {
 		records.add(barRecord);
 		records.add(new ConsumerRecord<String, String>("foo", 0, 2, null, "baz"));
 		adapter.onMessage(records, null, null);
-		assertThat(foo.values).contains("foo", "bar", "baz");
+		assertThat(foo.values1).contains("foo", "bar", "baz");
 		assertThat(config.failed).isSameAs(barRecord);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testFullRecord(@Autowired KafkaListenerEndpointRegistry registry, @Autowired TestListener foo,
+			@Autowired Config config) {
+
+		config.failed = null;
+		BatchMessagingMessageListenerAdapter<String, String> adapter =
+				(BatchMessagingMessageListenerAdapter<String, String>) registry
+					.getListenerContainer("batchRecordAdapterFullRecord").getContainerProperties().getMessageListener();
+		List<ConsumerRecord<String, String>> records = new ArrayList<>();
+		records.add(new ConsumerRecord<String, String>("foo", 0, 0, null, "foo"));
+		ConsumerRecord<String, String> barRecord = new ConsumerRecord<String, String>("foo", 0, 1, null, "bar");
+		records.add(barRecord);
+		records.add(new ConsumerRecord<String, String>("foo", 0, 2, null, "baz"));
+		adapter.onMessage(records, null, null);
+		assertThat(foo.values2).contains("foo", "bar", "baz");
+		assertThat(config.failed).isNull();
 	}
 
 	public static class TestListener {
 
-		final List<String> values = new ArrayList<>();
+		final List<String> values1 = new ArrayList<>();
+
+		final List<String> values2 = new ArrayList<>();
 
 		@KafkaListener(id = "batchRecordAdapter", topics = "foo", autoStartup = "false")
-		public void listen(String data) {
-			values.add(data);
+		public void listen1(String data) {
+			values1.add(data);
 			if ("bar".equals(data)) {
 				throw new RuntimeException("reject partial");
 			}
+		}
+
+		@KafkaListener(id = "batchRecordAdapterFullRecord", topics = "foo", autoStartup = "false")
+		public void listen2(ConsumerRecord<Integer, String> data) {
+			values2.add(data.value());
 		}
 
 	}

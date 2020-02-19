@@ -61,12 +61,12 @@ public interface BatchToRecordAdapter<K, V> {
 
 		/**
 		 * Handle each message.
-		 * @param records the records.
+		 * @param record the record.
 		 * @param ack the acknowledgment.
 		 * @param consumer the consumer.
 		 * @param message the message.
 		 */
-		void invoke(List<ConsumerRecord<K, V>> records, Acknowledgment ack, Consumer<?, ?> consumer,
+		void invoke(ConsumerRecord<K, V> record, Acknowledgment ack, Consumer<?, ?> consumer,
 				Message<?> message);
 
 	}

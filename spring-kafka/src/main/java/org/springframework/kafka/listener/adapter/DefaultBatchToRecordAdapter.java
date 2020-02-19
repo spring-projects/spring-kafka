@@ -68,7 +68,7 @@ public class DefaultBatchToRecordAdapter<K, V> implements BatchToRecordAdapter<K
 		for (int i = 0; i < messages.size(); i++) {
 			Message<?> message = messages.get(i);
 			try {
-				callback.invoke(records, ack, consumer, message);
+				callback.invoke(records.get(i), ack, consumer, message);
 			}
 			catch (Exception e) {
 				this.recoverer.accept(records.get(i), e);
