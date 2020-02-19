@@ -299,6 +299,8 @@ IMPORTANT: When `producerPerThread` is `true`, user code **must** call `closeThr
 This will physically close the producer and remove it from the `ThreadLocal`.
 Calling `reset()` or `destroy()` will not clean up these producers.
 
+Also see <<tx-template-mixed>>.
+
 When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in <<kafka-template>>), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer` s share the same instances).
 Alternatively you can provide `Supplier<Serializer>` s (starting with version 2.3) that will be used to obtain separate `Serializer` instances for each `Producer`:
 
@@ -2452,6 +2454,16 @@ When using a transaction manager and template for a listener container, you woul
 This value should be the same for all application instances.
 For transactions started by the template (or the transaction manager for `@Transaction`) you should set the property on the template and transaction manager respectively.
 This property must have a different value on each application instance.
+
+[[tx-template-mixed]]
+===== `KafkaTemplate` Transactional and non-Transactional Publishing
+
+Normally, when a `KafkaTemplate` is transactional (configured with a transaction-capable producer factory), transactions are required.
+The transaction can be started by a `TransactionTemplate`, a `@Transactional` method, calling `executeInTransaction`, or by a listener container, when configured with a `KafkaTransactionManager`.
+Any attempt to use the template outside the scope of a transaction results in the template throwing an `IllegalStateException`.
+Starting with version 2.4.3, you can set the template's `allowNonTransactional` property to `true`.
+In that case, the template will allow the operation to run without a transaction, by calling the `ProducerFactory` 's `createNonTransactionalProducer()` method; the producer will be cached, or thread-bound, as normal for reuse.
+See <<producer-factory>>.
 
 [[transactions-batch]]
 ===== Transactions with Batch Listeners

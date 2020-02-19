@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +82,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	private String transactionIdPrefix;
 
 	private Duration closeTimeout = ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT;
+
+	private boolean allowNonTransactional;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -179,6 +181,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	public void setCloseTimeout(Duration closeTimeout) {
 		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");
 		this.closeTimeout = closeTimeout;
+	}
+
+	/**
+	 * Set to true to allow a non-transactional send when the template is transactional.
+	 * @param allowNonTransactional true to allow.
+	 * @since 2.4.3
+	 */
+	public void setAllowNonTransactional(boolean allowNonTransactional) {
+		this.allowNonTransactional = allowNonTransactional;
 	}
 
 	/**
@@ -390,14 +401,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	 * RecordMetadata}.
 	 */
 	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
-		if (this.transactional) {
-			Assert.state(inTransaction(),
-					"No transaction is in process; "
-						+ "possible solutions: run the template operation within the scope of a "
-						+ "template.executeInTransaction() operation, start a transaction with @Transactional "
-						+ "before invoking the template method, "
-						+ "run in a transaction started by a listener container when consuming a record");
-		}
 		final Producer<K, V> producer = getTheProducer();
 		this.logger.trace(() -> "Sending: " + producerRecord);
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
@@ -450,7 +453,20 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 	}
 
 	private Producer<K, V> getTheProducer() {
-		if (this.transactional) {
+		boolean transactionalProducer = this.transactional;
+		if (transactionalProducer) {
+			boolean inTransaction = inTransaction();
+			Assert.state(this.allowNonTransactional || inTransaction,
+					"No transaction is in process; "
+						+ "possible solutions: run the template operation within the scope of a "
+						+ "template.executeInTransaction() operation, start a transaction with @Transactional "
+						+ "before invoking the template method, "
+						+ "run in a transaction started by a listener container when consuming a record");
+			if (!inTransaction) {
+				transactionalProducer = false;
+			}
+		}
+		if (transactionalProducer) {
 			Producer<K, V> producer = this.producers.get();
 			if (producer != null) {
 				return producer;
@@ -459,8 +475,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 					.getTransactionalResourceHolder(this.producerFactory, this.transactionIdPrefix, this.closeTimeout);
 			return holder.getProducer();
 		}
+		else if (this.allowNonTransactional) {
+			return this.producerFactory.createNonTransactionalProducer();
+		}
 		else {
-			return this.producerFactory.createProducer(this.transactionIdPrefix);
+			return this.producerFactory.createProducer();
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,8 +29,9 @@ import org.apache.kafka.clients.producer.Producer;
 public interface ProducerFactory<K, V> {
 
 	/**
-	 * Create a producer.
+	 * Create a producer which will be transactional if the factory is so configured.
 	 * @return the producer.
+	 * @see #transactionCapable()
 	 */
 	Producer<K, V> createProducer();
 
@@ -41,6 +42,16 @@ public interface ProducerFactory<K, V> {
 	 * @since 2.3
 	 */
 	default Producer<K, V> createProducer(@SuppressWarnings("unused") String txIdPrefix) {
+		throw new UnsupportedOperationException("This factory does not support this method");
+	}
+
+	/**
+	 * Create a non-transactional producer.
+	 * @return the producer.
+	 * @since 2.4.3
+	 * @see #transactionCapable()
+	 */
+	default Producer<K, V> createNonTransactionalProducer() {
 		throw new UnsupportedOperationException("This factory does not support this method");
 	}
 

@@ -193,9 +193,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		if (StringUtils.hasText(txId)) {
 			setTransactionIdPrefix(txId);
-			LOGGER.info(() -> "If 'setTransactionIdPrefix()' is not going to be configured, "
+			LOGGER.info(() -> "If 'setTransactionIdPrefix()' is not configured, "
 					+ "the existing 'transactional.id' config with value: '" + txId
-					+ "' will be suffixed for concurrent transactions support.");
+					+ "' will be suffixed for concurrent transaction support.");
+			this.configs.remove(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		}
 	}
 
@@ -370,6 +371,15 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	@Override
 	public Producer<K, V> createProducer(@Nullable String txIdPrefixArg) {
 		String txIdPrefix = txIdPrefixArg == null ? this.transactionIdPrefix : txIdPrefixArg;
+		return doCreateProducer(txIdPrefix);
+	}
+
+	@Override
+	public Producer<K, V> createNonTransactionalProducer() {
+		return doCreateProducer(null);
+	}
+
+	private Producer<K, V> doCreateProducer(@Nullable String txIdPrefix) {
 		if (txIdPrefix != null) {
 			if (this.producerPerConsumerPartition) {
 				return createTransactionalProducerForPartition(txIdPrefix);

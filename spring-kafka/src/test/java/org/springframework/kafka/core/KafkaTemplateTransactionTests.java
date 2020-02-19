@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -524,6 +524,30 @@ public class KafkaTemplateTransactionTests {
 		finally {
 			TransactionSupport.clearTransactionIdSuffix();
 		}
+	}
+
+	@Test
+	void testNonTxWithTx() {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(this.embeddedKafka);
+		senderProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "tx.");
+		senderProps.put(ProducerConfig.RETRIES_CONFIG, 2);
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setKeySerializer(new StringSerializer());
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true);
+		template.executeInTransaction(tmp -> tmp.execute(prod -> {
+			assertThat(KafkaTestUtils.getPropertyValue(prod, "delegate.transactionManager.transactionalId"))
+					.isEqualTo("tx.0");
+			return null;
+		}));
+		assertThatIllegalStateException().isThrownBy(() -> template.execute(prod -> {
+			return null;
+		}));
+		template.setAllowNonTransactional(true);
+		template.execute(prod -> {
+			assertThat(KafkaTestUtils.getPropertyValue(prod, "delegate.transactionManager.transactionalId")).isNull();
+			return null;
+		});
+		pf.destroy();
 	}
 
 	@Configuration

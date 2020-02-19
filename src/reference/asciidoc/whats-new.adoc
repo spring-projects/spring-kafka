@@ -25,6 +25,12 @@ See the IMPORTANT note at the end of <<rebalance-listeners>> for more informatio
 
 The `isAckAfterHandle()` default implementation now returns true by default.
 
+[[x24-template]]
+==== KafkaTemplate
+
+The `KafkaTemplate` now supports non-transactional publishing alongside transactional.
+See <<tx-template-mixed>> for more information.
+
 [[x24-agg]]
 ==== AggregatingReplyingKafkaTemplate
 
