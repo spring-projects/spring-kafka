@@ -52,7 +52,7 @@ _you should see branches on origin as well as upstream, including 'master' and '
 
 == A Day in the Life of a Contributor
 
-* _Always_ work on topic branches (Typically use the Jira ticket ID as the branch name).
+* _Always_ work on topic branches (Typically use the GitHub issue ID as the branch name).
   - For example, to create and switch to a new branch for issue GH-123: `git checkout -b GH-123`
 * You might be working on several different topic branches at any given time, but when at a stopping point for one of those branches, commit (a local operation).
 * Please follow the "Commit Guidelines" described in
@@ -246,11 +246,11 @@ Make sure that all tests pass prior to submitting your pull request.
 
 == Mention your pull request on the associated GitHub issue
 
-Add a comment to the associated JIRA issue(s) linking to your new pull request.
+Add a comment to the associated GitHub issue(s) linking to your new pull request.
 
-== Provide a Link to the JIRA issue in the Associated Pull Request
+== Provide a Link to the GitHub issue in the Associated Pull Request
 
-Add a JIRA issue link to your first commit comment of the pull request on the last line, so your commit message
+Add a GitHub issue link to your first commit comment of the pull request on the last line, so your commit message
 may look like this:
 
 ----
