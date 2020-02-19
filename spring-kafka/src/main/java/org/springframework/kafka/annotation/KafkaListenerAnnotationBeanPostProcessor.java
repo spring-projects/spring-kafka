@@ -42,7 +42,6 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanExpressionContext;
-import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.Scope;
@@ -142,10 +141,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final KafkaListenerEndpointRegistrar registrar = new KafkaListenerEndpointRegistrar();
 
-	private BeanExpressionResolver resolver = new StandardBeanExpressionResolver();
-
-	private BeanExpressionContext expressionContext;
-
 	private Charset charset = StandardCharsets.UTF_8;
 
 	private KafkaEndpointPropertyResolver propertyResolver = new KafkaEndpointPropertyResolver();
@@ -195,10 +190,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
+		this.propertyResolver.setBeanFactory(beanFactory);
 		if (beanFactory instanceof ConfigurableListableBeanFactory) {
-			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
-			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory,
-					this.listenerScope);
+			ConfigurableListableBeanFactory configurableListableBeanFactory = (
+					ConfigurableListableBeanFactory) beanFactory;
+			BeanExpressionContext expressionContext = new BeanExpressionContext(
+					configurableListableBeanFactory, this.listenerScope);
+			this.propertyResolver.setExpressionContext(expressionContext);
+			this.propertyResolver.setResolver(configurableListableBeanFactory.getBeanExpressionResolver());
+		} else {
+			this.propertyResolver.setResolver(new StandardBeanExpressionResolver());
 		}
 	}
 
@@ -216,9 +217,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	@Override
 	public void afterSingletonsInstantiated() {
 		this.registrar.setBeanFactory(this.beanFactory);
-		this.propertyResolver.setBeanFactory(this.beanFactory);
-		this.propertyResolver.setResolver(this.resolver);
-		this.propertyResolver.setExpressionContext(this.expressionContext);
 
 		if (this.beanFactory instanceof ListableBeanFactory) {
 			Map<String, KafkaListenerConfigurer> instances =
