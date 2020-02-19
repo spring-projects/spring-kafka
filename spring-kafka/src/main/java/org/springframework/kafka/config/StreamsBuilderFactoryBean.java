@@ -224,7 +224,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			Assert.state(this.properties != null,
 					"streams configuration properties must not be null");
 		}
-		return new StreamsBuilder();
+		StreamsBuilder builder = new StreamsBuilder();
+		this.infrastructureCustomizer.configureBuilder(builder);
+		return builder;
 	}
 
 	@Override
@@ -246,9 +248,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			try {
 				Assert.state(this.properties != null,
 						"streams configuration properties must not be null");
-				StreamsBuilder builder = getObject();
-				this.infrastructureCustomizer.configureBuilder(builder);
-				Topology topology = builder.build(this.properties); // NOSONAR: getObject() cannot return null
+				Topology topology = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
 				this.infrastructureCustomizer.configureTopology(topology);
 				LOGGER.debug(() -> topology.describe().toString());
 				this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);

@@ -25,16 +25,21 @@ import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.state.StoreBuilder;
+import org.apache.kafka.streams.state.Stores;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -44,7 +49,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-
 
 /**
  * @author Nurettin Yilmaz
@@ -75,11 +79,11 @@ public class KafkaStreamsCustomizerTests {
 		assertThat(STATE_LISTENER.getCurrentState()).isEqualTo(state);
 		Properties properties = configuration.asProperties();
 		assertThat(properties.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG))
-			.isEqualTo(Collections.singletonList(config.brokerAddresses));
+				.isEqualTo(Collections.singletonList(config.broker.getBrokersAsString()));
 		assertThat(properties.get(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG))
 				.isEqualTo(Foo.class);
 		assertThat(properties.get(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG))
-			.isEqualTo(1000);
+				.isEqualTo(1000);
 		assertThat(this.config.builderConfigured.get()).isTrue();
 		assertThat(this.config.topologyConfigured.get()).isTrue();
 	}
@@ -93,13 +97,12 @@ public class KafkaStreamsCustomizerTests {
 
 		final AtomicBoolean topologyConfigured = new AtomicBoolean();
 
-		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
-		private String brokerAddresses;
+		@Autowired
+		EmbeddedKafkaBroker broker;
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 		public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder() {
-			StreamsBuilderFactoryBean streamsBuilderFactoryBean =
-					new StreamsBuilderFactoryBean(kStreamsConfigs());
+			StreamsBuilderFactoryBean streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kStreamsConfigs());
 			streamsBuilderFactoryBean.setKafkaStreamsCustomizer(customizer());
 			streamsBuilderFactoryBean.setInfrastructureCustomizer(new KafkaStreamsInfrastructureCustomizer() {
 
@@ -107,6 +110,11 @@ public class KafkaStreamsCustomizerTests {
 				@Override
 				public void configureBuilder(StreamsBuilder builder) {
 					KafkaStreamsConfig.this.builderConfigured.set(true);
+					StoreBuilder<?> storeBuilder = Stores.keyValueStoreBuilder(
+							Stores.persistentKeyValueStore("testStateStore"),
+							Serdes.Integer(),
+							Serdes.String());
+					builder.addStateStore(storeBuilder);
 				}
 
 				@Override
@@ -122,17 +130,40 @@ public class KafkaStreamsCustomizerTests {
 		public KafkaStreamsConfiguration kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
-			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, Collections.singletonList(this.brokerAddresses));
+			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
+					Collections.singletonList(this.broker.getBrokersAsString()));
 			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, Foo.class);
 			props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 1000);
 			return new KafkaStreamsConfiguration(props);
 		}
 
-
 		private KafkaStreamsCustomizer customizer() {
 			return kafkaStreams -> kafkaStreams.setStateListener(STATE_LISTENER);
 		}
 
+		@Bean
+		public KStream<String, String> testStream(StreamsBuilder kStreamBuilder) {
+			KStream<String, String> stream = kStreamBuilder.stream("test_topic");
+
+			stream
+					.transform(() -> new Transformer<String, String, KeyValue<String, String>>() {
+						@Override
+						public void init(ProcessorContext context) {
+						}
+
+						@Override
+						public KeyValue<String, String> transform(String key, String value) {
+							return null;
+						}
+
+						@Override
+						public void close() {
+						}
+					}, "testStateStore")
+					.to("test_output");
+
+			return stream;
+		}
 	}
 
 	static class TestStateListener implements KafkaStreams.StateListener {
