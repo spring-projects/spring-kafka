@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -331,7 +331,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (configs.containsKey(TRUSTED_PACKAGES)
 				&& configs.get(TRUSTED_PACKAGES) instanceof String) {
 			this.typeMapper.addTrustedPackages(
-					StringUtils.commaDelimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES)));
+					StringUtils.delimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES), ",", " \r\n\f\t"));
 		}
 		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
 				&& this.typeMapper instanceof AbstractJavaTypeMapper) {

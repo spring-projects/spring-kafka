@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -73,7 +75,7 @@ public class JsonSerializationTests {
 	private String topic;
 
 	@BeforeEach
-	public void init() {
+	void init() {
 		entity = new DummyEntity();
 		entity.intValue = 19;
 		entity.longValue = 7L;
@@ -108,7 +110,7 @@ public class JsonSerializationTests {
 	 * 3. Check the result with the source entity.
 	 */
 	@Test
-	public void testDeserializeSerializedEntityEquals() {
+	void testDeserializeSerializedEntityEquals() {
 		assertThat(jsonReader.deserialize(topic, jsonWriter.serialize(topic, entity))).isEqualTo(entity);
 		Headers headers = new RecordHeaders();
 		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity.class.getName().getBytes());
@@ -121,7 +123,7 @@ public class JsonSerializationTests {
 	 * 3. Check the result with the source entity array.
 	 */
 	@Test
-	public void testDeserializeSerializedEntityArrayEquals() {
+	void testDeserializeSerializedEntityArrayEquals() {
 		assertThat(jsonArrayReader.deserialize(topic, jsonWriter.serialize(topic, entityArray))).isEqualTo(entityArray);
 		Headers headers = new RecordHeaders();
 		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity[].class.getName().getBytes());
@@ -134,7 +136,7 @@ public class JsonSerializationTests {
 	 * 3. Fails with SerializationException.
 	 */
 	@Test
-	public void testDeserializeSerializedDummyException() {
+	void testDeserializeSerializedDummyException() {
 		assertThatExceptionOfType(SerializationException.class)
 				.isThrownBy(() -> jsonReader.deserialize(topic, stringWriter.serialize(topic, "dummy")))
 				.withMessageStartingWith("Can't deserialize data [")
@@ -149,27 +151,27 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	public void testSerializedStringNullEqualsNull() {
+	void testSerializedStringNullEqualsNull() {
 		assertThat(stringWriter.serialize(topic, null)).isEqualTo(null);
 	}
 
 	@Test
-	public void testSerializedJsonNullEqualsNull() {
+	void testSerializedJsonNullEqualsNull() {
 		assertThat(jsonWriter.serialize(topic, null)).isEqualTo(null);
 	}
 
 	@Test
-	public void testDeserializedStringNullEqualsNull() {
+	void testDeserializedStringNullEqualsNull() {
 		assertThat(stringReader.deserialize(topic, null)).isEqualTo(null);
 	}
 
 	@Test
-	public void testDeserializedJsonNullEqualsNull() {
+	void testDeserializedJsonNullEqualsNull() {
 		assertThat(jsonReader.deserialize(topic, null)).isEqualTo(null);
 	}
 
 	@Test
-	public void testExtraFieldIgnored() {
+	void testExtraFieldIgnored() {
 		JsonDeserializer<DummyEntity> deser = new JsonDeserializer<>(DummyEntity.class);
 		assertThat(deser.deserialize(topic, "{\"intValue\":1,\"extra\":2}".getBytes()))
 				.isInstanceOf(DummyEntity.class);
@@ -177,7 +179,7 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	public void testDeserTypeHeadersConfig() {
+	void testDeserTypeHeadersConfig() {
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.INFERRED);
@@ -198,7 +200,7 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	public void testDeserializerTypeInference() {
+	void testDeserializerTypeInference() {
 		JsonSerializer<List<String>> ser = new JsonSerializer<>();
 		JsonDeserializer<List<String>> de = new JsonDeserializer<>(List.class);
 		List<String> dummy = Arrays.asList("foo", "bar", "baz");
@@ -208,7 +210,7 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	public void testDeserializerTypeReference() {
+	void testDeserializerTypeReference() {
 		JsonSerializer<List<DummyEntity>> ser = new JsonSerializer<>();
 		JsonDeserializer<List<DummyEntity>> de = new JsonDeserializer<>(new TypeReference<List<DummyEntity>>() { });
 		List<DummyEntity> dummy = Arrays.asList(this.entityArray);
@@ -218,7 +220,7 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	public void testPreExistingHeaders() {
+	void testPreExistingHeaders() {
 		JsonSerializer<? super Foo> ser = new JsonSerializer<>();
 		Headers headers = new RecordHeaders();
 		ser.serialize("", headers, new Foo());
@@ -233,7 +235,7 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	public void testDontUseTypeHeaders() {
+	void testDontUseTypeHeaders() {
 		JsonSerializer<? super Foo> ser = new JsonSerializer<>();
 		Headers headers = new RecordHeaders();
 		byte[] data = ser.serialize("", headers, new Bar());
@@ -245,6 +247,16 @@ public class JsonSerializationTests {
 		assertThat(headers.headers(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)).hasSize(1);
 		ser.close();
 		deser.close();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testParseTrustedPackages() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		Map<String, Object> props = Collections.singletonMap(JsonDeserializer.TRUSTED_PACKAGES, "foo, bar, \tbaz");
+		deser.configure(props, false);
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
+				.contains("foo", "bar", "baz");
 	}
 
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {
