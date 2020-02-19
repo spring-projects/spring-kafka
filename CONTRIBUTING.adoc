@@ -250,8 +250,11 @@ Add a comment to the associated GitHub issue(s) linking to your new pull request
 
 == Provide a Link to the GitHub issue in the Associated Pull Request
 
-Add a GitHub issue link to your first commit comment of the pull request on the last line, so your commit message
-may look like this:
+There are multiple ways to link a Pull Request to a GitHub issue as described
+https://help.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue[here].
+
+One way would be to add a GitHub issue link to your first commit comment of the pull request on the second line,
+so your commit message may look like this:
 
 ----
     GH-1: Add Contribution Guidelines
@@ -262,3 +265,8 @@ may look like this:
     * mention Contribution Guidelines in the `README.md`
     * mention CODE_OF_CONDUCT in the `README.md`
 ----
+
+Also by using specific
+https://help.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword[keywords]
+you can link to a GitHub issue like so:
+    Closes #10
