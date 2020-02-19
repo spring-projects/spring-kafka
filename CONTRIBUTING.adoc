@@ -269,4 +269,5 @@ so your commit message may look like this:
 Also by using specific
 https://help.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword[keywords]
 you can link to a GitHub issue like so:
+
     Closes #10
