@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -149,7 +149,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
 				deserEx == null ? null : deserEx.getData(), isKey);
 		KafkaTemplate<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
-		if (this.transactional && !kafkaTemplate.inTransaction()) {
+		if (this.transactional && !kafkaTemplate.inTransaction() && !kafkaTemplate.isAllowNonTransactional()) {
 			kafkaTemplate.executeInTransaction(t -> {
 				publish(outRecord, t);
 				return null;
@@ -235,8 +235,11 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 				record.timestampType().toString().getBytes(StandardCharsets.UTF_8)));
 		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_EXCEPTION_FQCN,
 				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)));
-		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE,
-				exception.getMessage().getBytes(StandardCharsets.UTF_8)));
+		String message = exception.getMessage();
+		if (message != null) {
+			kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE,
+					exception.getMessage().getBytes(StandardCharsets.UTF_8)));
+		}
 		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE,
 				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)));
 	}

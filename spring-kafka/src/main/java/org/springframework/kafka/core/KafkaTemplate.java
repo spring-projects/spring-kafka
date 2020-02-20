@@ -192,6 +192,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		this.allowNonTransactional = allowNonTransactional;
 	}
 
+	@Override
+	public boolean isAllowNonTransactional() {
+		return this.allowNonTransactional;
+	}
+
 	/**
 	 * Return the producer factory used by this template.
 	 * @return the factory.

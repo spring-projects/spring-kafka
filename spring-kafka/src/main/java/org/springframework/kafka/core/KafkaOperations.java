@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -216,6 +216,15 @@ public interface KafkaOperations<K, V> {
 	 * @since 2.3
 	 */
 	boolean isTransactional();
+
+	/**
+	 * Return true if this template, when transactional, allows non-transactional operations.
+	 * @return true to allow.
+	 * @since 2.4.3
+	 */
+	default boolean isAllowNonTransactional() {
+		return false;
+	}
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.
