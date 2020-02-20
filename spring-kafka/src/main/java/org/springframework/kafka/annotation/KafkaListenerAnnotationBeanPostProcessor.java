@@ -198,7 +198,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					configurableListableBeanFactory, this.listenerScope);
 			this.propertyResolver.setExpressionContext(expressionContext);
 			this.propertyResolver.setResolver(configurableListableBeanFactory.getBeanExpressionResolver());
-		} else {
+		}
+		else {
 			this.propertyResolver.setResolver(new StandardBeanExpressionResolver());
 		}
 	}

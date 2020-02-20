@@ -16,7 +16,16 @@
 
 package org.springframework.kafka.support;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
+
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
@@ -28,14 +37,6 @@ import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 
 /**
  * A property resolver that overrides
@@ -338,8 +339,7 @@ public class KafkaEndpointPropertyResolver {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
-										   List<TopicPartitionOffset> result) {
+	private void resolvePartitionAsInteger(String topic, Object resolvedValue, List<TopicPartitionOffset> result) {
 		if (resolvedValue instanceof String[]) {
 			for (Object object : (String[]) resolvedValue) {
 				resolvePartitionAsInteger(topic, object, result);
