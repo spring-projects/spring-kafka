@@ -16,8 +16,13 @@ It provides the following components:
 * <<si-inbound-pollable>>
 * <<si-outbound-gateway>>
 * <<si-inbound-gateway>>
+* <<si-channels>>
 
 [[new-in-sik]]
+==== What's new in Spring Integration for Apache Kafka (version 3.3 - pre-release)
+
+* <<si-channels>>
+
 ==== What's new in Spring Integration for Apache Kafka (version 3.2)
 
 * The pollable `KafkaMessageSource` now implements `Pausable` so the consumer can be `paused` and `resumed`.
@@ -613,6 +618,119 @@ See <<container-factory>> and <<si-inbound>> for examples.
 ====
 
 See the XML schema for a description of each property.
+
+[[si-channels]]
+==== Channels Backed by Kafka Topics
+
+Spring Integration for Apache Kafka version 3.3 (still under development) introduces channels backed by a Kafka topic for persistence.
+
+Each channel requires a `KafkaTemplate` for the sending side and either a listener container factory (for subscribable channels) or a `KafkaMessageSource` for a pollable channel.
+
+===== Java DSL Configuration
+
+====
+[source, java]
+----
+@Bean
+public IntegrationFlow flowWithSubscribable(KafkaTemplate<Integer, String> template,
+        ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
+
+    return IntegrationFlows.from(...)
+            ...
+            .channel(Kafka.channel(template, containerFactory, "someTopic1").groupId("group1"))
+            ...
+            .get();
+}
+
+@Bean
+public IntegrationFlow flowWithPubSub(KafkaTemplate<Integer, String> template,
+        ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
+
+    return IntegrationFlows.from(...)
+            ...
+            .publishSubscribeChannel(Kafka.publishSubscribeChannel(
+                            template, containerFactory, "someTopic2").groupId("group2"),
+                pubsub -> pubsub
+                            .subscribe(subflow -> ...)
+                            .subscribe(subflow -> ...))
+            .get();
+}
+
+@Bean
+public IntegrationFlow flowWithPollable(KafkaTemplate<Integer, String> template,
+        KafkaMessageSource<Integer, String> source) {
+
+    return IntegrationFlows.from(...)
+            ...
+            .channel(Kafka.pollableChannel(template, source, "someTopic3").greoupId("group3"))
+            .handle(...,  e -> e.poller(...))
+            ...
+            .get();
+}
+----
+====
+
+===== Java Configuration
+
+====
+[source, java]
+----
+/**
+ * Channel for a single subscriber.
+ **/
+@Bean
+SubscribableKafkaChannel pointToPoint(KafkaTemplate<String, String> template,
+    KafkaListenerContainerFactory<String, String> factory)
+
+    SubscribableKafkaChannel channel =
+        new SubscribableKafkaChannel(template, factory, "topicA");
+    channel.setGroupId("group1");
+    return channel;
+}
+
+/**
+ * Channel for multiple subscribers.
+ **/
+@Bean
+SubscribableKafkaChannel pubsub(KafkaTemplate<String, String> template,
+    KafkaListenerContainerFactory<String, String> factory)
+
+    SubscribableKafkaChannel channel =
+        new SubscribableKafkaChannel(template, factory, "topicB", true);
+    channel.setGroupId("group2");
+    return channel;
+}
+
+/**
+ * Pollable channel (topic is configured on the source)
+ **/
+@Bean
+PollableKafkaChannel pollable(KafkaTemplate<String, String> template,
+    KafkaMessageSource<String, String> source)
+
+    PollableKafkaChannel channel =
+        new PollableKafkaChannel(template, source);
+    channel.setGroupId("group3");
+    return channel;
+}
+----
+====
+
+===== XML Configuration
+
+====
+[source, xml]
+----
+<int-kafka:channel kafka-template="template" id="ptp" topic="ptpTopic" group-id="ptpGroup"
+    container-factory="containerFactory" />
+
+<int-kafka:pollable-channel kafka-template="template" id="pollable" message-source="source"
+    group-id = "pollableGroup"/>
+
+<int-kafka:publish-subscribe-channel kafka-template="template" id="pubSub" topic="pubSubTopic"
+    group-id="pubSubGroup" container-factory="containerFactory" />
+----
+====
 
 [[message-conversion]]
 ==== Message Conversion
