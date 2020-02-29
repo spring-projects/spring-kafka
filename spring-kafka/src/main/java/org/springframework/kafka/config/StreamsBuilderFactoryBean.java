@@ -93,6 +93,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private volatile boolean running;
 
+	private Topology topology;
+
 	/**
 	 * Default constructor that creates the factory without configuration
 	 * {@link Properties}. It is the factory user's responsibility to properly set
@@ -190,6 +192,15 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		this.closeTimeout = Duration.ofSeconds(closeTimeout); // NOSONAR (sync)
 	}
 
+	/**
+	 * Providing access to the associated {@link Topology} of this {@link StreamsBuilderFactoryBean}.
+	 * @return {@link Topology} object
+	 * @since 2.4.4
+	 */
+	public Topology getTopology() {
+		return this.topology;
+	}
+
 	@Override
 	public Class<?> getObjectType() {
 		return StreamsBuilder.class;
@@ -250,6 +261,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 						"streams configuration properties must not be null");
 				Topology topology = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
 				this.infrastructureCustomizer.configureTopology(topology);
+				this.topology = topology;
 				LOGGER.debug(() -> topology.describe().toString());
 				this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);

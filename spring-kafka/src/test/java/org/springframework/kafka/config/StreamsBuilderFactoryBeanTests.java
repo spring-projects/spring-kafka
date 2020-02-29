@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Artem Bilan
  * @author Gary Russell
  * @author Denis Washington
+ * @author Soby Chacko
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -99,6 +100,7 @@ public class StreamsBuilderFactoryBeanTests {
 		streamsBuilderFactoryBean.start();
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
+		assertThat(streamsBuilderFactoryBean.getTopology()).isNotNull();
 	}
 
 	@Configuration
