@@ -62,6 +62,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.BeforeAll;
@@ -261,8 +262,11 @@ public class TransactionalContainerTests {
 				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
 		props.setTransactionManager(tm);
+		props.setDeliveryAttemptHeader(true);
 		final KafkaTemplate template = new KafkaTemplate(pf);
-		props.setMessageListener((MessageListener) m -> {
+		AtomicReference<Header> delivery = new AtomicReference();
+		props.setMessageListener((MessageListener<?, ?>) m -> {
+			delivery.set(m.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT));
 			template.send("bar", "baz");
 			throw new RuntimeException("fail");
 		});
@@ -285,6 +289,7 @@ public class TransactionalContainerTests {
 		verify(consumer, never()).commitSync(anyMap(), any());
 		container.stop();
 		verify(pf, times(1)).createProducer(isNull());
+		assertThat(delivery.get()).isNotNull();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })

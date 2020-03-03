@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MessageConversionException;
@@ -42,7 +43,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.3.1
  *
  */
-public abstract class FailedRecordProcessor {
+public abstract class FailedRecordProcessor implements DeliveryAttemptAware {
 
 	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
 
@@ -126,6 +127,11 @@ public abstract class FailedRecordProcessor {
 	 */
 	public void setCommitRecovered(boolean commitRecovered) {
 		this.commitRecovered = commitRecovered;
+	}
+
+	@Override
+	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
+		return this.failureTracker.deliveryAttempt(topicPartitionOffset);
 	}
 
 	/**

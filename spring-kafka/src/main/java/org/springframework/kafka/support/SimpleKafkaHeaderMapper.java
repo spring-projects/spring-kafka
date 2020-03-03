@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 import org.apache.kafka.common.header.Headers;
@@ -68,16 +69,25 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@Override
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		headers.forEach((key, value) -> {
-			Object valueToAdd = headerValueToAddOut(key, value);
-			if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
-				target.add(new RecordHeader(key, (byte[]) valueToAdd));
+			if (key != KafkaHeaders.DELIVERY_ATTEMPT) {
+				Object valueToAdd = headerValueToAddOut(key, value);
+				if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
+					target.add(new RecordHeader(key, (byte[]) valueToAdd));
+				}
 			}
 		});
 	}
 
 	@Override
 	public void toHeaders(Headers source, Map<String, Object> target) {
-		source.forEach(header -> target.put(header.key(), headerValueToAddIn(header)));
+		source.forEach(header -> {
+			if (header.key().equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
+				target.put(header.key(), ByteBuffer.wrap(header.value()).getInt());
+			}
+			else {
+				target.put(header.key(), headerValueToAddIn(header));
+			}
+		});
 	}
 
 }

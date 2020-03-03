@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -245,6 +247,20 @@ public class DefaultKafkaHeaderMapperTests {
 				entry("thisOnesAString", "foo".getBytes()),
 				entry("thisOnesBytes", "bar".getBytes()),
 				entry("alwaysRaw", "baz".getBytes()));
+	}
+
+	@Test
+	void deliveryAttempt() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		byte[] delivery = new byte[4];
+		ByteBuffer.wrap(delivery).putInt(42);
+		Headers headers = new RecordHeaders(new Header[] { new RecordHeader(KafkaHeaders.DELIVERY_ATTEMPT, delivery) });
+		Map<String, Object> springHeaders = new HashMap<>();
+		mapper.toHeaders(headers, springHeaders);
+		assertThat(springHeaders.get(KafkaHeaders.DELIVERY_ATTEMPT)).isEqualTo(42);
+		headers = new RecordHeaders();
+		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
+		assertThat(headers.lastHeader(KafkaHeaders.DELIVERY_ATTEMPT)).isNull();
 	}
 
 	public static final class Foo {

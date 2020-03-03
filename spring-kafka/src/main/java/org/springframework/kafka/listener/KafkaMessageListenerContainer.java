@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,6 +57,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.log.LogAccessor;
@@ -77,6 +79,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.SeekUtils;
@@ -576,6 +579,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean commitCurrentOnAssignment;
 
+		private final DeliveryAttemptAware deliveryAttemptAware;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -685,6 +690,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
 			this.micrometerHolder = obtainMicrometerHolder();
+			this.deliveryAttemptAware = setupDeliveryAttemptAware();
+		}
+
+		private DeliveryAttemptAware setupDeliveryAttemptAware() {
+			DeliveryAttemptAware aware = null;
+			if (this.containerProperties.isDeliveryAttemptHeader()) {
+				if (this.transactionManager != null) {
+					if (getAfterRollbackProcessor() instanceof DeliveryAttemptAware) {
+						aware = (DeliveryAttemptAware) getAfterRollbackProcessor();
+					}
+				}
+				else {
+					if (this.errorHandler instanceof DeliveryAttemptAware) {
+						aware = (DeliveryAttemptAware) this.errorHandler;
+					}
+				}
+			}
+			return aware;
 		}
 
 		private boolean determineCommitCurrent(Properties consumerProperties) {
@@ -1708,6 +1731,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			if (record.key() == null && this.checkNullKeyForExceptions) {
 				checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
+			}
+			if (this.deliveryAttemptAware != null) {
+				byte[] buff = new byte[4];
+				ByteBuffer bb = ByteBuffer.wrap(buff);
+				bb.putInt(this.deliveryAttemptAware
+						.deliveryAttempt(
+								new TopicPartitionOffset(record.topic(), record.partition(), record.offset())));
+				record.headers().add(new RecordHeader(KafkaHeaders.DELIVERY_ATTEMPT, buff));
 			}
 			doInvokeOnMessage(record);
 			if (this.nackSleep < 0) {

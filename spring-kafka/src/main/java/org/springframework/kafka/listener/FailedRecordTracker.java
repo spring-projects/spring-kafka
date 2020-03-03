@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,14 @@ package org.springframework.kafka.listener;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
@@ -87,6 +89,9 @@ class FailedRecordTracker {
 			failedRecord = new FailedRecord(record.offset(), this.backOff.start());
 			map.put(topicPartition, failedRecord);
 		}
+		else {
+			failedRecord.getDeliveryAttempts().incrementAndGet();
+		}
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
 		if (nextBackOff != BackOffExecution.STOP) {
 			try {
@@ -115,11 +120,31 @@ class FailedRecordTracker {
 		return this.recoverer;
 	}
 
+	/**
+	 * Return the number of the next delivery attempt for this topic/partition/offsete.
+	 * @param topicPartitionOffset the topic/partition/offset.
+	 * @return the delivery attempt.
+	 * @since 2.5
+	 */
+	int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
+		Map<TopicPartition, FailedRecord> map = this.failures.get();
+		if (map == null) {
+			return 1;
+		}
+		FailedRecord failedRecord = map.get(topicPartitionOffset.getTopicPartition());
+		if (failedRecord == null || failedRecord.getOffset() != topicPartitionOffset.getOffset()) {
+			return 1;
+		}
+		return failedRecord.getDeliveryAttempts().get() + 1;
+	}
+
 	private static final class FailedRecord {
 
 		private final long offset;
 
 		private final BackOffExecution backOffExecution;
+
+		private final AtomicInteger deliveryAttempts = new AtomicInteger(1);
 
 		FailedRecord(long offset, BackOffExecution backOffExecution) {
 			this.offset = offset;
@@ -132,6 +157,10 @@ class FailedRecordTracker {
 
 		BackOffExecution getBackOffExecution() {
 			return this.backOffExecution;
+		}
+
+		AtomicInteger getDeliveryAttempts() {
+			return this.deliveryAttempts;
 		}
 
 	}

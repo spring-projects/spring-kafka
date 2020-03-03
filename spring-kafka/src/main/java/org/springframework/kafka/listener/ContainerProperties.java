@@ -25,6 +25,7 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
@@ -214,6 +215,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean subBatchPerPartition;
 
 	private AssignmentCommitOption assignmentCommitOption = AssignmentCommitOption.ALWAYS;
+
+	private boolean deliveryAttemptHeader;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -661,6 +664,22 @@ public class ContainerProperties extends ConsumerProperties {
 	public void setAssignmentCommitOption(AssignmentCommitOption assignmentCommitOption) {
 		Assert.notNull(assignmentCommitOption, "'assignmentCommitOption' cannot be null");
 		this.assignmentCommitOption = assignmentCommitOption;
+	}
+
+
+	public boolean isDeliveryAttemptHeader() {
+		return this.deliveryAttemptHeader;
+	}
+
+	/**
+	 * Set to true to populate the {@link KafkaHeaders#DELIVERY_ATTEMPT} header when the
+	 * error handler or after rollback processor implements {@code DeliveryAttemptAware}.
+	 * There is a small overhead so this is false by default.
+	 * @param deliveryAttemptHeader true to populate
+	 * @since 2.5
+	 */
+	public void setDeliveryAttemptHeader(boolean deliveryAttemptHeader) {
+		this.deliveryAttemptHeader = deliveryAttemptHeader;
 	}
 
 	@Override

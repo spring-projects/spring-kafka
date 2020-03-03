@@ -19,9 +19,11 @@ package org.springframework.kafka.support;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -129,4 +131,19 @@ public class SimpleKafkaHeaderMapperTests {
 		assertThat(headersMap).contains(
 				entry("thisOnePresent", "baz".getBytes()));
 	}
+
+	@Test
+	void deliveryAttempt() {
+		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
+		byte[] delivery = new byte[4];
+		ByteBuffer.wrap(delivery).putInt(42);
+		Headers headers = new RecordHeaders(new Header[] { new RecordHeader(KafkaHeaders.DELIVERY_ATTEMPT, delivery) });
+		Map<String, Object> springHeaders = new HashMap<>();
+		mapper.toHeaders(headers, springHeaders);
+		assertThat(springHeaders.get(KafkaHeaders.DELIVERY_ATTEMPT)).isEqualTo(42);
+		headers = new RecordHeaders();
+		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
+		assertThat(headers.lastHeader(KafkaHeaders.DELIVERY_ATTEMPT)).isNull();
+	}
+
 }

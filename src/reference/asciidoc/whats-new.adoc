@@ -3,3 +3,9 @@
 This section covers the changes made from version 2.4 to version 2.5.
 
 Also see <<new-in-sik>>.
+
+[[x25-delivery]]
+==== Delivery Attempts Header
+
+There is now an option to to add a header which tracks delivery attempts when using certain error handlers and after rollback processors.
+See <<>> for more information.

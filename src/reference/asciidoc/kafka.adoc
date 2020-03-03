@@ -3776,6 +3776,8 @@ IMPORTANT: If the recoverer fails (throws an exception), the record will be incl
 Starting with version 2.3.2, after a record has been recovered, its offset will be committed (if one of the container `AckMode` s is configured).
 To revert to the previous behavior, set the error handler's `ackAfterHandle` property to false.
 
+Also see <<delivery-header>>.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.
@@ -3855,6 +3857,33 @@ public DefaultAfterRollbackProcessor errorHandler(BiConsumer<ConsumerRecord<?, ?
 }
 ----
 ====
+
+Also see <<delivery-header>>.
+
+[[delivery-header]]
+===== Delivery Attempts Header
+
+The following applies to record listeners only, not batch listeners.
+
+Starting with version 2.5, when using an `ErrorHandler` or `AfterRollbackProcessor` that implements `DeliveryAttemptAware`, it is possible to enable the addition of the `KafkaHeaders.DELIVERY_ATTEMPT` header (`kafka_deliveryAttempt`) to the record.
+The value of this header is an incrementing integer starting at 1.
+When receiving a raw `ConsumerRecord<?, ?>` the integer is in a `byte[4]`.
+
+====
+[source, java]
+----
+int delivery = ByteBuffer.wrap(record.headers()
+    .lastHeader(KafkaHeaders.DELIVERY_ATTEMPT).value())
+    .getInt()
+----
+====
+
+When using `@KafkaListener` with the `DefaultKafkaHeaderMapper` or `SimpleKafkaHeaderMapper`, it can be obtained by adding `@Header(KafkaHeaders.DELIVERY_ATTEMPT) int delivery` as a parameter to the listener method.
+
+To enable population of this header, set the container property `deliveryAttemptHeader` to `true`.
+It is disabled by default to avoid the (small) overhead of looking up the state for each record and adding the header.
+
+The `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor` support this feature.
 
 [[dead-letters]]
 ===== Publishing Dead-letter Records

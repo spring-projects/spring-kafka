@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,9 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -116,32 +118,35 @@ public class SeekToCurrentOnErrorRecordModeTests {
 				Collections.singletonMap(new TopicPartition("foo", 2), new OffsetAndMetadata(2L)),
 				Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		assertThat(this.config.count).isEqualTo(7);
-		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
-				{ "foo", "bar", "baz", "qux", "qux", "fiz", "buz" });
+		assertThat(this.config.count).isEqualTo(8);
+		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "qux", "qux", "fiz", "buz");
+		assertThat(this.config.deliveries).contains(1, 1, 1, 1, 2, 3, 1, 1);
 	}
 
 	@Configuration
 	@EnableKafka
 	public static class Config {
 
-		private final List<String> contents = new ArrayList<>();
+		final List<String> contents = new ArrayList<>();
 
-		private final CountDownLatch pollLatch = new CountDownLatch(3);
+		final List<Integer> deliveries = new ArrayList<>();
 
-		private final CountDownLatch deliveryLatch = new CountDownLatch(7);
+		final CountDownLatch pollLatch = new CountDownLatch(3);
 
-		private final CountDownLatch closeLatch = new CountDownLatch(1);
+		final CountDownLatch deliveryLatch = new CountDownLatch(8);
 
-		private final CountDownLatch commitLatch = new CountDownLatch(7);
+		final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		private int count;
+		final CountDownLatch commitLatch = new CountDownLatch(7);
+
+		int count;
 
 		@KafkaListener(topics = "foo", groupId = "grp")
-		public void foo(String in) {
+		public void foo(String in, @Header(KafkaHeaders.DELIVERY_ATTEMPT) int delivery) {
 			this.contents.add(in);
+			this.deliveries.add(delivery);
 			this.deliveryLatch.countDown();
-			if (++this.count == 4) { // part 1, offset 1, first time
+			if (++this.count == 4 || this.count == 5) { // part 1, offset 1, first and second times
 				throw new RuntimeException("foo");
 			}
 		}
@@ -189,6 +194,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 					case 0:
 						return new ConsumerRecords(records1);
 					case 1:
+					case 2:
 						return new ConsumerRecords(records2);
 					default:
 						try {
@@ -219,6 +225,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 			factory.getContainerProperties().setAckOnError(false);
 			factory.setErrorHandler(new SeekToCurrentErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
+			factory.getContainerProperties().setDeliveryAttemptHeader(true);
 			return factory;
 		}
 

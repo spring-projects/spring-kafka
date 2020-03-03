@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.support;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -233,7 +234,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		final Map<String, String> jsonHeaders = new HashMap<>();
 		final ObjectMapper headerObjectMapper = getObjectMapper();
 		headers.forEach((key, rawValue) -> {
-			if (matches(key, rawValue)) {
+			if (!key.equals(KafkaHeaders.DELIVERY_ATTEMPT) && matches(key, rawValue)) {
 				Object valueToAdd = headerValueToAddOut(key, rawValue);
 				if (valueToAdd instanceof byte[]) {
 					target.add(new RecordHeader(key, (byte[]) valueToAdd));
@@ -276,7 +277,10 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	public void toHeaders(Headers source, final Map<String, Object> headers) {
 		final Map<String, String> jsonTypes = decodeJsonTypes(source);
 		source.forEach(header -> {
-			if (!(header.key().equals(JSON_TYPES))) {
+			if (header.key().equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
+				headers.put(header.key(), ByteBuffer.wrap(header.value()).getInt());
+			}
+			else if (!(header.key().equals(JSON_TYPES))) {
 				if (jsonTypes != null && jsonTypes.containsKey(header.key())) {
 					String requestedType = jsonTypes.get(header.key());
 					populateJsonValueHeader(header, requestedType, headers);
