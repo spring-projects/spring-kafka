@@ -648,11 +648,19 @@ public IntegrationFlow flowWithPubSub(KafkaTemplate<Integer, String> template,
 
     return IntegrationFlows.from(...)
             ...
-            .publishSubscribeChannel(Kafka.publishSubscribeChannel(
-                            template, containerFactory, "someTopic2").groupId("group2"),
+            .publishSubscribeChannel(pubSub(template, containerFactory),
                 pubsub -> pubsub
                             .subscribe(subflow -> ...)
                             .subscribe(subflow -> ...))
+            .get();
+}
+
+@Bean
+public BroadcastCapableChannel pubSub(KafkaTemplate<Integer, String> template,
+        ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
+
+    return Kafka.publishSubscribeChannel(template, containerFactory, "someTopic2")
+            .groupId("group2")
             .get();
 }
 
