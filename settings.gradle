@@ -1,18 +1,20 @@
-plugins {
-	id 'com.gradle.enterprise' version '3.0'
+pluginManagement {
+	repositories {
+		gradlePluginPortal()
+		maven { url 'https://repo.spring.io/plugins-release' }
+	}
 }
 
-if (System.getenv('GRADLE_ENTERPRISE_URL')) {
-	gradleEnterprise {
-		apply from: "$rootDir/gradle/build-scan-user-data.gradle"
-		buildScan {
-			captureTaskInputFiles = true
-			obfuscation {
-				ipAddresses { addresses -> addresses.collect { address -> '0.0.0.0'} }
-			}
-			publishOnFailure()
-			server = System.getenv('GRADLE_ENTERPRISE_URL')
-		}
+plugins {
+	id 'com.gradle.enterprise' version '3.1.1'
+	id "io.spring.gradle-enterprise-conventions" version "0.0.2"
+}
+
+gradleEnterprise {
+	apply from: "$rootDir/gradle/build-scan-user-data.gradle"
+	buildScan {
+		captureTaskInputFiles = true
+		publishOnFailure()
 	}
 }
 
