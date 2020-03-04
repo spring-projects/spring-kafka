@@ -9,3 +9,9 @@ Also see <<new-in-sik>>.
 
 There is now an option to to add a header which tracks delivery attempts when using certain error handlers and after rollback processors.
 See <<>> for more information.
+
+[[x25-message-return]]
+==== @KafkaListener Improvements
+
+Default reply headers will now be populated automatically if needed when a `@KafkaListener` return type is `Message<?>`.
+See <<reply-message>> for more information.

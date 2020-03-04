@@ -493,6 +493,45 @@ These header names are used by the `@KafkaListener` infrastructure to route the 
 Starting with version 2.3, you can customize the header names - the template has 3 properties `correlationHeaderName`, `replyTopicHeaderName`, and `replyPartitionHeaderName`.
 This is useful if your server is not a Spring application (or does not use the `@KafkaListener`).
 
+[[reply-message]]
+===== Reply Type Message<?>
+
+When the `@KafkaListener` returns a `Message<?>`, with versions before 2.5, it was necessary to populate the reply topic and correlation id headers.
+In this example, we use the reply topic header from the request:
+
+====
+[source, java]
+----
+@KafkaListener(id = "requestor", topics = "request")
+@SendTo
+public Message<?> messageReturn(String in) {
+    return MessageBuilder.withPayload(in.toUpperCase())
+            .setHeader(KafkaHeaders.TOPIC, replyTo)
+            .setHeader(KafkaHeaders.MESSAGE_KEY, 42)
+            .setHeader(KafkaHeaders.CORRELATION_ID, correlation)
+            .build();
+}
+----
+====
+
+This also shows how to set a key on the reply record.
+
+Starting with version 2.5, the framework will detect if these headers are missing and populate them with the topic - either the topic determined from the `@SendTo` value or the incoming `KafkaHeaders.REPLY_TOPIC` header (if present).
+It will also echo the incoming `KafkaHeaders.CORRELATION_ID` and `KafkaHeaders.REPLY_PARTITION`, if present.
+
+====
+[source, java]
+----
+@KafkaListener(id = "requestor", topics = "request")
+@SendTo  // default REPLY_TOPIC header
+public Message<?> messageReturn(String in) {
+    return MessageBuilder.withPayload(in.toUpperCase())
+            .setHeader(KafkaHeaders.MESSAGE_KEY, 42)
+            .build();
+}
+----
+====
+
 [[aggregating-request-reply]]
 ===== Aggregating Multiple Replies
 

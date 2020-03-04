@@ -46,6 +46,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
@@ -101,7 +102,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		ReplyingKafkaTemplateTests.D_REPLY, ReplyingKafkaTemplateTests.D_REQUEST,
 		ReplyingKafkaTemplateTests.E_REPLY, ReplyingKafkaTemplateTests.E_REQUEST,
 		ReplyingKafkaTemplateTests.F_REPLY, ReplyingKafkaTemplateTests.F_REQUEST,
-		ReplyingKafkaTemplateTests.G_REPLY, ReplyingKafkaTemplateTests.G_REQUEST })
+		ReplyingKafkaTemplateTests.G_REPLY, ReplyingKafkaTemplateTests.G_REQUEST,
+		ReplyingKafkaTemplateTests.H_REPLY, ReplyingKafkaTemplateTests.H_REQUEST })
 public class ReplyingKafkaTemplateTests {
 
 	public static final String A_REPLY = "aReply";
@@ -131,6 +133,10 @@ public class ReplyingKafkaTemplateTests {
 	public static final String G_REPLY = "gReply";
 
 	public static final String G_REQUEST = "gRequest";
+
+	public static final String H_REPLY = "hReply";
+
+	public static final String H_REQUEST = "hRequest";
 
 	@Autowired
 	private EmbeddedKafkaBroker embeddedKafka;
@@ -189,6 +195,28 @@ public class ReplyingKafkaTemplateTests {
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
 			assertThat(consumerRecord.value()).isEqualTo("FOO");
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@Test
+	public void testMessageReturnNoHeadersProvidedByListener() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(H_REPLY);
+		try {
+			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(H_REQUEST, "foo");
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, H_REPLY.getBytes()));
+			byte[] four = new byte[4];
+			four[3] = 4;
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_PARTITION, four));
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("FOO");
+			assertThat(consumerRecord.partition()).isEqualTo(4);
 		}
 		finally {
 			template.stop();
@@ -535,6 +563,7 @@ public class ReplyingKafkaTemplateTests {
 		@Bean
 		public DefaultKafkaProducerFactory<Integer, String> pf() {
 			Map<String, Object> producerProps = KafkaTestUtils.producerProps(this.embeddedKafka);
+			producerProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 5000L);
 			return new DefaultKafkaProducerFactory<>(producerProps);
 		}
 
@@ -628,6 +657,15 @@ public class ReplyingKafkaTemplateTests {
 					in.getHeaders().get("custom.correlation.id", byte[].class)));
 			template().send(record);
 		}
+
+		@KafkaListener(id = H_REQUEST, topics = H_REQUEST)
+		@SendTo  // default REPLY_TOPIC header
+		public Message<?> messageReturn(String in) {
+			return MessageBuilder.withPayload(in.toUpperCase())
+					.setHeader(KafkaHeaders.MESSAGE_KEY, 42)
+					.build();
+		}
+
 	}
 
 	@KafkaListener(topics = C_REQUEST, groupId = C_REQUEST)
@@ -637,6 +675,7 @@ public class ReplyingKafkaTemplateTests {
 		@KafkaHandler
 		public Message<?> listen1(String in, @Header(KafkaHeaders.REPLY_TOPIC) byte[] replyTo,
 				@Header(KafkaHeaders.CORRELATION_ID) byte[] correlation) {
+
 			return MessageBuilder.withPayload(in.toUpperCase())
 					.setHeader(KafkaHeaders.TOPIC, replyTo)
 					.setHeader(KafkaHeaders.MESSAGE_KEY, 42)
