@@ -1,73 +1,62 @@
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.artifactory'
 
-ext.optionalDeps = []
-ext.providedDeps = []
-
-ext.optional = { optionalDeps << it }
-ext.provided = { providedDeps << it }
-
-install {
-	repositories.mavenInstaller {
-		customizePom(pom, project)
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			pom {
+				afterEvaluate {
+					name = project.description
+					description = project.description
+				}
+				url = linkScmUrl
+				organization {
+					name = 'Spring IO'
+					url = 'https://spring.io/projects/spring-kafka'
+				}
+				licenses {
+					license {
+						name = 'Apache License, Version 2.0'
+						url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+						distribution = 'repo'
+					}
+				}
+				scm {
+					url = linkScmUrl
+					connection = linkScmConnection
+					developerConnection = linkScmDevConnection
+				}
+				developers {
+					developer {
+						id = 'garyrussell'
+						name = 'Gary Russell'
+						email = 'grussell@pivotal.io'
+						roles = ["project lead"]
+					}
+					developer {
+						id = 'abilan'
+						name = 'Artem Bilan'
+						email = 'abilan@pivotal.io'
+						roles = ["contributor"]
+					}
+				}
+				issueManagement {
+					system = 'GitHub'
+					url = linkIssue
+				}
+			}
+			versionMapping {
+				usage('java-api') {
+					fromResolutionResult()
+				}
+				usage('java-runtime') {
+					fromResolutionResult()
+				}
+			}
+		}
 	}
 }
 
-def customizePom(pom, gradleProject) {
-	pom.whenConfigured { generatedPom ->
-
-		// sort to make pom dependencies order consistent to ease comparison of older poms
-		generatedPom.dependencies = generatedPom.dependencies.sort { dep ->
-			"$dep.scope:$dep.groupId:$dep.artifactId"
-		}
-
-		def managedVersions = dependencyManagement.managedVersions
-		generatedPom.dependencies.findAll{dep -> !dep.version }.each { dep ->
-			dep.version = managedVersions["${dep.groupId}:${dep.artifactId}"]
-		}
-
-		// respect 'optional' and 'provided' dependencies
-		gradleProject.optionalDeps.each { dep ->
-			generatedPom.dependencies.find { it.artifactId == dep.name }?.optional = true
-		}
-		gradleProject.providedDeps.each { dep ->
-			generatedPom.dependencies.find { it.artifactId == dep.name }?.scope = 'provided'
-		}
-
-		// eliminate test-scoped dependencies (no need in maven central poms)
-		generatedPom.dependencies.removeAll { dep ->
-			dep.scope == 'test'
-		}
-
-		// add all items necessary for maven central publication
-		generatedPom.project {
-			name = gradleProject.description
-			description = gradleProject.description
-			url = linkHomepage
-			organization {
-				name = 'SpringIO'
-				url = 'https://spring.io'
-			}
-			licenses {
-				license {
-					name 'The Apache Software License, Version 2.0'
-					url 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-					distribution 'repo'
-				}
-			}
-
-			scm {
-				url = linkScmUrl
-				connection = 'scm:git:' + linkScmConnection
-				developerConnection = 'scm:git:' + linkScmDevConnection
-			}
-
-			developers {
-				developer {
-					id = 'grussell'
-					name = 'Gary Russell'
-					email = 'grussell@pivotal.io'
-				}
-			}
-		}
-	}
+artifactoryPublish {
+	publications(publishing.publications.mavenJava)
 }

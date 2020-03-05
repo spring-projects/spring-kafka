@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.3.50'
+	ext.kotlinVersion = '1.3.61'
 	repositories {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
@@ -19,6 +19,7 @@ plugins {
 	id 'org.ajoberstar.grgit' version '4.0.1' apply false
 	id 'io.spring.nohttp' version '0.0.4.RELEASE'
 	id 'io.spring.dependency-management' version '1.0.9.RELEASE' apply false
+	id 'com.jfrog.artifactory' version '4.13.0' apply false
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -104,7 +105,7 @@ allprojects {
 }
 
 subprojects { subproject ->
-
+	apply plugin: 'java-library'
 	apply plugin: 'java'
 	apply from: "${rootProject.projectDir}/publish-maven.gradle"
 	apply plugin: 'eclipse'
@@ -113,6 +114,17 @@ subprojects { subproject ->
 	apply plugin: 'checkstyle'
 	apply plugin: 'kotlin'
 	apply plugin: 'kotlin-spring'
+
+	java {
+		withJavadocJar()
+		withSourcesJar()
+		registerFeature('optional') {
+			usingSourceSet(sourceSets.main)
+		}
+		registerFeature('provided') {
+			usingSourceSet(sourceSets.main)
+		}
+	}
 
 	compileJava {
 		sourceCompatibility = 1.8
@@ -128,23 +140,24 @@ subprojects { subproject ->
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 	jacoco {
-		toolVersion = '0.8.4'
+		toolVersion = '0.8.5'
 	}
 
 	// dependencies that are common across all java projects
 	dependencies {
 		compileOnly "com.google.code.findbugs:jsr305:$googleJsr305Version"
-		testCompile 'org.junit.jupiter:junit-jupiter-api'
-		testRuntime 'org.junit.jupiter:junit-jupiter-engine'
-		testRuntime 'org.junit.platform:junit-platform-launcher'
+		testImplementation 'org.junit.jupiter:junit-jupiter-api'
+		testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+		testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 		// To avoid compiler warnings about @API annotations in JUnit code
 		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
-		testRuntime "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+		testRuntimeOnly "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
 
-		testCompile 'org.jetbrains.kotlin:kotlin-reflect'
-		testCompile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+		testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
+		testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+		optionalApi "org.assertj:assertj-core:$assertjVersion"
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -175,6 +188,26 @@ subprojects { subproject ->
 
 	build.dependsOn jacocoTestReport
 
+	publishing {
+		publications {
+			mavenJava(MavenPublication) {
+				suppressAllPomMetadataWarnings()
+				from components.java
+				pom.withXml {
+					def pomDeps = asNode().dependencies.first()
+					subproject.configurations.providedImplementation.allDependencies.each { dep ->
+						pomDeps.remove(pomDeps.'*'.find { it.artifactId.text() == dep.name })
+						pomDeps.appendNode('dependency').with {
+							it.appendNode('groupId', dep.group)
+							it.appendNode('artifactId', dep.name)
+							it.appendNode('version', dep.version)
+							it.appendNode('scope', 'provided')
+						}
+					}
+				}
+			}
+		}
+	}
 
 	task updateCopyrights {
 		onlyIf { gitPresent && !System.getenv('TRAVIS') && !System.getenv('bamboo_buildKey') }
@@ -209,20 +242,10 @@ subprojects { subproject ->
 
 	compileKotlin.dependsOn updateCopyrights
 
-	task sourcesJar(type: Jar) {
-		classifier = 'sources'
-		from sourceSets.main.allJava
-	}
-
-	task javadocJar(type: Jar) {
-		classifier = 'javadoc'
-		from javadoc
-	}
-
 	jar {
 		manifest {
 			attributes(
-					'Implementation-Version': version,
+					'Implementation-Version': archiveVersion,
 					'Created-By': "JDK ${System.properties['java.version']} (${System.properties['java.specification.vendor']})",
 					'Implementation-Title': subproject.name,
 					'Implementation-Vendor-Id': subproject.group,
@@ -240,44 +263,38 @@ subprojects { subproject ->
 		}
 	}
 
-	artifacts {
-		archives sourcesJar
-		archives javadocJar
-	}
-
 }
 
 project ('spring-kafka') {
 	description = 'Spring Kafka Support'
 
 	dependencies {
-		compile 'org.springframework:spring-context'
-		compile 'org.springframework:spring-messaging'
-		compile 'org.springframework:spring-tx'
-		compile ("org.springframework.retry:spring-retry:$springRetryVersion") {
+		api 'org.springframework:spring-context'
+		api 'org.springframework:spring-messaging'
+		api 'org.springframework:spring-tx'
+		api ("org.springframework.retry:spring-retry:$springRetryVersion") {
 			exclude group: 'org.springframework'
 		}
-		compile "org.apache.kafka:kafka-clients:$kafkaVersion"
-		compile ("org.apache.kafka:kafka-streams:$kafkaVersion", optional)
+		api "org.apache.kafka:kafka-clients:$kafkaVersion"
+		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
 
-		compile ('com.fasterxml.jackson.core:jackson-core', optional)
-		compile ('com.fasterxml.jackson.core:jackson-databind', optional)
+		optionalApi 'com.fasterxml.jackson.core:jackson-core'
+		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
 
 		// Spring Data projection message binding support
-		compile ("org.springframework.data:spring-data-commons:$springDataCommonsVersion") {
-			optional(it)
+		optionalApi ("org.springframework.data:spring-data-commons:$springDataCommonsVersion") {
 			exclude group: 'org.springframework'
 		}
-		compile ("com.jayway.jsonpath:json-path:$jaywayJsonPathVersion", optional)
+		optionalApi "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
 
-		compile ('io.projectreactor:reactor-core', optional)
-		compile ('io.projectreactor.kafka:reactor-kafka', optional)
-		compile ("io.micrometer:micrometer-core:$micrometerVersion", optional)
+		optionalApi 'io.projectreactor:reactor-core'
+		optionalApi 'io.projectreactor.kafka:reactor-kafka'
+		optionalApi "io.micrometer:micrometer-core:$micrometerVersion"
 
-		testCompile project (':spring-kafka-test')
-		testCompile ('io.projectreactor:reactor-test')
-		testCompile "org.mockito:mockito-junit-jupiter:$mockitoVersion"
-		testCompile "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
+		testImplementation project (':spring-kafka-test')
+		testImplementation 'io.projectreactor:reactor-test'
+		testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
+		testImplementation "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
 	}
 }
 
@@ -285,26 +302,24 @@ project ('spring-kafka-test') {
 	description = 'Spring Kafka Test Support'
 
 	dependencies {
-		compile 'org.springframework:spring-context'
-		compile 'org.springframework:spring-test'
-		compile ("org.springframework.retry:spring-retry:$springRetryVersion") {
+		api 'org.springframework:spring-context'
+		api 'org.springframework:spring-test'
+		api ("org.springframework.retry:spring-retry:$springRetryVersion") {
 			exclude group: 'org.springframework'
 		}
 
-		compile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-		compile "org.apache.kafka:kafka-streams:$kafkaVersion"
-		compile "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
-		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
-		compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
-		compile 'org.junit.jupiter:junit-jupiter-api'
-		compile ("org.hamcrest:hamcrest-core:$hamcrestVersion", optional)
-		compile ("org.mockito:mockito-core:$mockitoVersion", optional)
-		compile ("junit:junit:$junit4Version") {
-			optional(it)
+		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
+		api "org.apache.kafka:kafka-streams:$kafkaVersion"
+		api "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
+		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
+		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
+		api 'org.junit.jupiter:junit-jupiter-api'
+		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
+		optionalApi "org.mockito:mockito-core:$mockitoVersion"
+		optionalApi ("junit:junit:$junit4Version") {
 			exclude group: 'org.hamcrest', module: 'hamcrest-core'
 		}
-		compile ("org.assertj:assertj-core:$assertjVersion", optional)
-		compile ("org.apache.logging.log4j:log4j-core:$log4jVersion", optional)
+		optionalApi "org.apache.logging.log4j:log4j-core:$log4jVersion"
 	}
 }
 
@@ -410,8 +425,8 @@ task api(type: Javadoc) {
 
 task docsZip(type: Zip, dependsOn: [reference]) {
 	group = 'Distribution'
-	classifier = 'docs'
-	description = "Builds -${classifier} archive containing api and reference " +
+	archiveClassifier = 'docs'
+	description = "Builds -${archiveClassifier} archive containing api and reference " +
 			"for deployment at static.spring.io/spring-kafka/docs."
 
 	from('src/dist') {
@@ -434,8 +449,8 @@ task docsZip(type: Zip, dependsOn: [reference]) {
 
 task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 	group = 'Distribution'
-	classifier = 'dist'
-	description = "Builds -${classifier} archive, containing all jars and docs, " +
+	archiveClassifier = 'dist'
+	description = "Builds -${archiveClassifier} archive, containing all jars and docs, " +
 			"suitable for community download page."
 
 	ext.baseDir = "${project.name}-${project.version}"
@@ -468,4 +483,15 @@ artifacts {
 task dist(dependsOn: assemble) {
 	group = 'Distribution'
 	description = 'Builds -dist, -docs distribution archives.'
+}
+
+apply from: "${rootProject.projectDir}/publish-maven.gradle"
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			artifact docsZip
+			artifact distZip
+		}
+	}
 }
