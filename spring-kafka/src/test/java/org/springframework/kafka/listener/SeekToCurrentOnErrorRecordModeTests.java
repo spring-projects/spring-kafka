@@ -131,7 +131,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 
 		final List<Integer> deliveries = new ArrayList<>();
 
-		final CountDownLatch pollLatch = new CountDownLatch(3);
+		final CountDownLatch pollLatch = new CountDownLatch(4);
 
 		final CountDownLatch deliveryLatch = new CountDownLatch(8);
 
@@ -198,7 +198,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 						return new ConsumerRecords(records2);
 					default:
 						try {
-							Thread.sleep(1000);
+							Thread.sleep(500);
 						}
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
