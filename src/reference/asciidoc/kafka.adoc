@@ -921,6 +921,7 @@ When `nack()` is called, offsets will be committed for records before the index 
 This is an improvement over the `SeekToCurrentBatchErrorHandler`, which can only seek the entire batch for redelivery.
 
 See <<seek-to-current>> for more information.
+Also see <<retrying-batch-eh>>.
 
 IMPORTANT: When using partition assignment via group management, it is important to ensure the `sleep` argument (plus the time spent processing records from the previous poll) is less than the consumer `max.poll.interval.ms` property.
 
@@ -3792,6 +3793,7 @@ public SeekToCurrentErrorHandler errorHandler(BiConsumer<ConsumerRecord<?, ?>, E
 
 The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch, so the whole batch is replayed.
 Also see <<committing-offsets>> for an alternative.
+Also see <<retrying-batch-eh>>.
 This error handler does not support recovery, because the framework cannot know which message in the batch is failing.
 
 After seeking, an exception that wraps the `ListenerExecutionFailedException` is thrown.
@@ -3809,6 +3811,7 @@ The `SeekToCurrentBatchErrorHandler` can also be configured with a `BackOff` to 
 Generally, you should configure the `BackOff` to never return `STOP`.
 However, since this error handler has no mechanism to "recover" after retries are exhausted, if the `BackOffExecution` returns `STOP`, the previous interval will be used for all subsequent delays.
 Again, the maximum delay must be less than the `max.poll.interval.ms` consumer property.
+Also see <<retrying-batch-eh>>.
 
 IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
 
@@ -3816,6 +3819,18 @@ Starting with version 2.3.2, after a record has been recovered, its offset will 
 To revert to the previous behavior, set the error handler's `ackAfterHandle` property to false.
 
 Also see <<delivery-header>>.
+
+[[retrying-batch-eh]]
+===== Retrying Batch Error Handler
+
+As discussed above, the `SeekToCurrentBatchErrorHandler` has no mechanism to recover after a certain number of failures.
+One reason for this is there is no guarantee that, when a batch is redelivered, the batch has the same number of records and/or the redelivered records are in the same order.
+It is impossible, therefore, to maintain retry state for a batch.
+The `RetryingBatchErrorHandler` takes a different approach.
+If a batch listener throws an exception, and this error handler is configured, the retries are performed from the in-memory batch of records.
+In order to avoid a rebalance during an extended retry sequence, the error handler pauses, polls, and resumes the consumer before sleeping for the back off, for each retry, and calls the listener again.
+If/when retries are exhausted, the `ConsumerRecordRecoverer` is called for each record in the batch.
+If the recoverer throws an exception, a `SeekToCurrentErrorHandler` is invoked so that the batch of records will be redelivered on the next poll.
 
 ===== Container Stopping Error Handlers
 

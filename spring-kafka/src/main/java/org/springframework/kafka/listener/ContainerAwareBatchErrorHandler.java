@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 package org.springframework.kafka.listener;
+
+import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -38,5 +40,23 @@ public interface ContainerAwareBatchErrorHandler extends ConsumerAwareBatchError
 	@Override
 	void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container);
+
+	/**
+	 * Handle the exception.
+	 * @param thrownException the exception.
+	 * @param data the consumer records.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 * @param invokeListener a callback to re-invoke the listener.
+	 * @throws InterruptedException if the thread is interrupted.
+	 * @since 2.3.7
+	 */
+	@Override
+	@SuppressWarnings("unused")
+	default void handle(Exception thrownException, ConsumerRecords<?, ?> data,
+			Consumer<?, ?> consumer, MessageListenerContainer container, Supplier<Boolean> invokeListener) {
+
+		handle(thrownException, data, consumer, container);
+	}
 
 }

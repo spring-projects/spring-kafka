@@ -1404,7 +1404,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					throw e;
 				}
 				try {
-					invokeBatchErrorHandler(records, e);
+					invokeBatchErrorHandler(records, recordList, e);
 					// unlikely, but possible, that a batch error handler "handles" the error
 					if ((!acked && !this.autoCommit && this.batchErrorHandler.isAckAfterHandle()) || producer != null) {
 						this.acks.addAll(getHighestOffsetRecords(records));
@@ -1449,18 +1449,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void invokeBatchOnMessage(final ConsumerRecords<K, V> records, // NOSONAR - Cyclomatic Complexity
-				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings(RAW_TYPES) Producer producer) throws InterruptedException {
+				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings(RAW_TYPES) Producer producer)
+						throws InterruptedException {
 
-			if (this.wantsFullRecords) {
-				this.batchListener.onMessage(records,
-						this.isAnyManualAck
-								? new ConsumerBatchAcknowledgment(records)
-								: null,
-						this.consumer);
-			}
-			else {
-				doInvokeBatchOnMessage(records, recordList);
-			}
+			invokeBatchOnMessage(records, recordList);
 			List<ConsumerRecord<?, ?>> toSeek = null;
 			if (this.nackSleep >= 0) {
 				int index = 0;
@@ -1491,6 +1483,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		private void invokeBatchOnMessage(final ConsumerRecords<K, V> records,
+				@Nullable List<ConsumerRecord<K, V>> recordList) {
+
+			if (this.wantsFullRecords) {
+				this.batchListener.onMessage(records,
+						this.isAnyManualAck
+								? new ConsumerBatchAcknowledgment(records)
+								: null,
+						this.consumer);
+			}
+			else {
+				doInvokeBatchOnMessage(records, recordList);
+			}
+		}
+
 		private void doInvokeBatchOnMessage(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList) {
 
@@ -1516,10 +1523,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records, RuntimeException e) {
+		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
+				@Nullable List<ConsumerRecord<K, V>> list, RuntimeException e) {
+
 			if (this.batchErrorHandler instanceof ContainerAwareBatchErrorHandler) {
 				this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer);
+						KafkaMessageListenerContainer.this.thisOrParentContainer,
+						() -> {
+							invokeBatchOnMessage(records, list);
+							return true;
+						});
 			}
 			else {
 				this.batchErrorHandler.handle(decorateException(e), records, this.consumer);

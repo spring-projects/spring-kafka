@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,33 +16,29 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.function.Supplier;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 /**
- * An error handler that has access to the consumer, for example to adjust
- * offsets after an error.
+ * A batch error handler that is capable of invoking the listener during error handling.
  *
  * @author Gary Russell
- * @since 2.0
+ * @since 2.3.7
  *
  */
-@FunctionalInterface
-public interface ConsumerAwareBatchErrorHandler extends BatchErrorHandler {
-
-	@Override
-	default void handle(Exception thrownException, ConsumerRecords<?, ?> data) {
-		throw new UnsupportedOperationException("Container should never call this");
-	}
-
-	@Override
-	void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer);
+public interface ListenerInvokingBatchErrorHandler extends ContainerAwareBatchErrorHandler {
 
 	@Override
 	default void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		handle(thrownException, data, consumer);
+		throw new UnsupportedOperationException("Container should never call this");
 	}
+
+	@Override
+	void handle(Exception thrownException, ConsumerRecords<?, ?> records,
+			Consumer<?, ?> consumer, MessageListenerContainer container, Supplier<Boolean> invokeListener);
 
 }
