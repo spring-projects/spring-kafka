@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.function.Supplier;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
@@ -28,6 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
  * @since 2.3.7
  *
  */
+@FunctionalInterface
 public interface ListenerInvokingBatchErrorHandler extends ContainerAwareBatchErrorHandler {
 
 	@Override
@@ -39,6 +38,6 @@ public interface ListenerInvokingBatchErrorHandler extends ContainerAwareBatchEr
 
 	@Override
 	void handle(Exception thrownException, ConsumerRecords<?, ?> records,
-			Consumer<?, ?> consumer, MessageListenerContainer container, Supplier<Boolean> invokeListener);
+			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener);
 
 }

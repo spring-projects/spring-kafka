@@ -64,14 +64,14 @@ public class RetryingBatchErrorHandlerTests {
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		eh.handle(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;
-			return false;
+			throw new RuntimeException();
 		});
 		assertThat(this.invoked).isEqualTo(3);
 		assertThat(recovered).hasSize(2);
-		verify(consumer, times(3)).pause(any());
+		verify(consumer).pause(any());
 		verify(consumer, times(3)).poll(any());
-		verify(consumer, times(3)).resume(any());
-		verify(consumer, times(6)).assignment();
+		verify(consumer).resume(any());
+		verify(consumer, times(2)).assignment();
 		verifyNoMoreInteractions(consumer);
 	}
 
@@ -90,10 +90,7 @@ public class RetryingBatchErrorHandlerTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
-		eh.handle(new RuntimeException(), records, consumer, container, () -> {
-			this.invoked++;
-			return true;
-		});
+		eh.handle(new RuntimeException(), records, consumer, container, () -> this.invoked++);
 		assertThat(this.invoked).isEqualTo(1);
 		assertThat(recovered).hasSize(0);
 		verify(consumer).pause(any());
@@ -120,16 +117,16 @@ public class RetryingBatchErrorHandlerTests {
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
-			eh.handle(new RuntimeException(), records, consumer, container, () -> {
-				this.invoked++;
-				return false;
+		eh.handle(new RuntimeException(), records, consumer, container, () -> {
+			this.invoked++;
+			throw new RuntimeException();
 		}));
 		assertThat(this.invoked).isEqualTo(3);
 		assertThat(recovered).hasSize(1);
-		verify(consumer, times(3)).pause(any());
+		verify(consumer).pause(any());
 		verify(consumer, times(3)).poll(any());
-		verify(consumer, times(3)).resume(any());
-		verify(consumer, times(6)).assignment();
+		verify(consumer).resume(any());
+		verify(consumer, times(2)).assignment();
 		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
 		verify(consumer).seek(new TopicPartition("foo", 1), 0L);
 	}

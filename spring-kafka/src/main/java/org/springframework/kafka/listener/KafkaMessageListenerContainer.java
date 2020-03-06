@@ -1526,17 +1526,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
 				@Nullable List<ConsumerRecord<K, V>> list, RuntimeException e) {
 
-			if (this.batchErrorHandler instanceof ContainerAwareBatchErrorHandler) {
-				this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer,
-						() -> {
-							invokeBatchOnMessage(records, list);
-							return true;
-						});
-			}
-			else {
-				this.batchErrorHandler.handle(decorateException(e), records, this.consumer);
-			}
+			this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
+					KafkaMessageListenerContainer.this.thisOrParentContainer,
+					() -> invokeBatchOnMessage(records, list));
 		}
 
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {

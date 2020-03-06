@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.function.Supplier;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
@@ -54,7 +52,7 @@ public interface ContainerAwareBatchErrorHandler extends ConsumerAwareBatchError
 	@Override
 	@SuppressWarnings("unused")
 	default void handle(Exception thrownException, ConsumerRecords<?, ?> data,
-			Consumer<?, ?> consumer, MessageListenerContainer container, Supplier<Boolean> invokeListener) {
+			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		handle(thrownException, data, consumer, container);
 	}

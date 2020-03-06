@@ -3828,9 +3828,10 @@ One reason for this is there is no guarantee that, when a batch is redelivered, 
 It is impossible, therefore, to maintain retry state for a batch.
 The `RetryingBatchErrorHandler` takes a different approach.
 If a batch listener throws an exception, and this error handler is configured, the retries are performed from the in-memory batch of records.
-In order to avoid a rebalance during an extended retry sequence, the error handler pauses, polls, and resumes the consumer before sleeping for the back off, for each retry, and calls the listener again.
+In order to avoid a rebalance during an extended retry sequence, the error handler pauses the consumer, polls it before  sleeping for the back off, for each retry, and calls the listener again.
 If/when retries are exhausted, the `ConsumerRecordRecoverer` is called for each record in the batch.
-If the recoverer throws an exception, a `SeekToCurrentErrorHandler` is invoked so that the batch of records will be redelivered on the next poll.
+If the recoverer throws an exception, or the thread is interrupted during its sleep, a `SeekToCurrentErrorHandler` is invoked so that the batch of records will be redelivered on the next poll.
+Before exiting, regardless of the outcome, the consumer is resumed.
 
 ===== Container Stopping Error Handlers
 

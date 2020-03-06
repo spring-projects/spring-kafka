@@ -18,7 +18,6 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -82,43 +81,46 @@ public class RetryingBatchErrorHandler implements ListenerInvokingBatchErrorHand
 
 	@Override
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> records,
-			Consumer<?, ?> consumer, MessageListenerContainer container, Supplier<Boolean> invokeListener) {
+			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		BackOffExecution execution = this.backOff.start();
 		long nextBackOff = execution.nextBackOff();
 		String failed = null;
-		while (nextBackOff != BackOffExecution.STOP) {
-			consumer.pause(consumer.assignment());
-			consumer.poll(Duration.ZERO);
-			consumer.resume(consumer.assignment());
-			try {
-				Thread.sleep(nextBackOff);
-			}
-			catch (InterruptedException e1) {
-				Thread.currentThread().interrupt();
-				this.seeker.handle(thrownException, records, consumer, container);
-				throw new KafkaException("Interrupted during retry", e1);
-			}
-			try {
-				if (invokeListener.get()) {
+		consumer.pause(consumer.assignment());
+		try {
+			while (nextBackOff != BackOffExecution.STOP) {
+				consumer.poll(Duration.ZERO);
+				try {
+					Thread.sleep(nextBackOff);
+				}
+				catch (InterruptedException e1) {
+					Thread.currentThread().interrupt();
+					this.seeker.handle(thrownException, records, consumer, container);
+					throw new KafkaException("Interrupted during retry", e1);
+				}
+				try {
+					invokeListener.run();
 					return;
 				}
+				catch (Exception e) {
+					if (failed == null) {
+						failed = tpos(records);
+					}
+					String toLog = failed;
+					LOGGER.debug(e, () -> "Retry failed for: " + toLog);
+				}
+				nextBackOff = execution.nextBackOff();
+			}
+			try {
+				this.recoverer.accept(records, thrownException);
 			}
 			catch (Exception e) {
-				if (failed == null) {
-					failed = tpos(records);
-				}
-				String toLog = failed;
-				LOGGER.debug(e, () -> "Retry failed for: " + toLog);
+				LOGGER.error(e, () -> "Recoverer threw an exception; re-seeking batch");
+				this.seeker.handle(thrownException, records, consumer, container);
 			}
-			nextBackOff = execution.nextBackOff();
 		}
-		try {
-			this.recoverer.accept(records, thrownException);
-		}
-		catch (Exception e) {
-			LOGGER.error(e, () -> "Recoverer threw an exception; re-seeking batch");
-			this.seeker.handle(thrownException, records, consumer, container);
+		finally {
+			consumer.resume(consumer.assignment());
 		}
 	}
 
