@@ -138,7 +138,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	}
 
 	/**
-	 * Set to true to retain a Java serialized Deserialization exception header. By
+	 * Set to true to retain a Java serialized {@link DeserializationException} header. By
 	 * default, such headers are removed from the published record, unless both key and
 	 * value deserialization exceptions occur, in which case, the DLT_* headers are
 	 * created from the value exception and the key exception header is retained.
