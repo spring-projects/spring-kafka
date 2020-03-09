@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.apache.kafka.common.header.Headers;
@@ -91,17 +90,6 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 
 	public ErrorHandlingDeserializer(Deserializer<T> delegate) {
 		this.delegate = setupDelegate(delegate);
-	}
-
-	/**
-	 * Provide an alternative supplying mechanism when deserialization fails.
-	 * @param failedDeserializationFunction the {@link BiFunction} to use.
-	 * @deprecated since 2.2.8 in favor of {@link #setFailedDeserializationFunction(Function)}.
-	 */
-	@Deprecated
-	public void setFailedDeserializationFunction(BiFunction<byte[], Headers, T> failedDeserializationFunction) {
-		setFailedDeserializationFunction((failed) ->
-				failedDeserializationFunction.apply(failed.getData(), failed.getHeaders()));
 	}
 
 	/**
