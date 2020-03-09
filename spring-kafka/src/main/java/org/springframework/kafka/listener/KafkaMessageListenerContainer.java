@@ -87,7 +87,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.SchedulingAwareRunnable;
@@ -864,8 +864,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean checkDeserializer(Object deser) {
 			return deser instanceof Class
-					? ErrorHandlingDeserializer2.class.isAssignableFrom((Class<?>) deser)
-					: deser instanceof String && deser.equals(ErrorHandlingDeserializer2.class.getName());
+					? ErrorHandlingDeserializer.class.isAssignableFrom((Class<?>) deser)
+					: deser instanceof String && deser.equals(ErrorHandlingDeserializer.class.getName());
 		}
 
 		protected void checkConsumer() {
@@ -1732,10 +1732,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				throw (DeserializationException) record.key();
 			}
 			if (record.value() == null && this.checkNullValueForExceptions) {
-				checkDeser(record, ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+				checkDeser(record, ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			if (record.key() == null && this.checkNullKeyForExceptions) {
-				checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
+				checkDeser(record, ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			if (this.deliveryAttemptAware != null) {
 				byte[] buff = new byte[4]; // NOSONAR (magic #)

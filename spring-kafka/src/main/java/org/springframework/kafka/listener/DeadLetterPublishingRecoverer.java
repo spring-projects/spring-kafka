@@ -29,15 +29,15 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
@@ -58,22 +58,24 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
 		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
 
-	private final KafkaTemplate<Object, Object> template;
+	private final KafkaOperations<Object, Object> template;
 
-	private final Map<Class<?>, KafkaTemplate<?, ?>> templates;
+	private final Map<Class<?>, KafkaOperations<?, ?>> templates;
 
 	private final boolean transactional;
 
 	private final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver;
+
+	private boolean retainExceptionHeader;
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
 	 * function that returns a TopicPartition based on the original topic (appended with ".DLT")
 	 * from the failed record, and the same partition as the failed record. Therefore the
 	 * dead-letter topic must have at least as many partitions as the original topic.
-	 * @param template the {@link KafkaTemplate} to use for publishing.
+	 * @param template the {@link KafkaOperations} to use for publishing.
 	 */
-	public DeadLetterPublishingRecoverer(KafkaTemplate<? extends Object, ? extends Object> template) {
+	public DeadLetterPublishingRecoverer(KafkaOperations<? extends Object, ? extends Object> template) {
 		this(template, DEFAULT_DESTINATION_RESOLVER);
 	}
 
@@ -82,10 +84,10 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * that receives the failed consumer record and the exception and returns a
 	 * {@link TopicPartition}. If the partition in the {@link TopicPartition} is less than
 	 * 0, no partition is set when publishing to the topic.
-	 * @param template the {@link KafkaTemplate} to use for publishing.
+	 * @param template the {@link KafkaOperations} to use for publishing.
 	 * @param destinationResolver the resolving function.
 	 */
-	public DeadLetterPublishingRecoverer(KafkaTemplate<? extends Object, ? extends Object> template,
+	public DeadLetterPublishingRecoverer(KafkaOperations<? extends Object, ? extends Object> template,
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 		this(Collections.singletonMap(Object.class, template), destinationResolver);
 	}
@@ -99,9 +101,9 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * template to use for objects (producer record values) of that type. A
 	 * {@link java.util.LinkedHashMap} is recommended when there is more than one
 	 * template, to ensure the map is traversed in order.
-	 * @param templates the {@link KafkaTemplate}s to use for publishing.
+	 * @param templates the {@link KafkaOperations}s to use for publishing.
 	 */
-	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaTemplate<? extends Object, ? extends Object>> templates) {
+	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaOperations<? extends Object, ? extends Object>> templates) {
 		this(templates, DEFAULT_DESTINATION_RESOLVER);
 	}
 
@@ -113,16 +115,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * classes and the value the corresponding template to use for objects (producer
 	 * record values) of that type. A {@link java.util.LinkedHashMap} is recommended when
 	 * there is more than one template, to ensure the map is traversed in order.
-	 * @param templates the {@link KafkaTemplate}s to use for publishing.
+	 * @param templates the {@link KafkaOperations}s to use for publishing.
 	 * @param destinationResolver the resolving function.
 	 */
 	@SuppressWarnings("unchecked")
-	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaTemplate<? extends Object, ? extends Object>> templates,
+	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaOperations<? extends Object, ? extends Object>> templates,
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 
 		Assert.isTrue(!ObjectUtils.isEmpty(templates), "At least one template is required");
 		Assert.notNull(destinationResolver, "The destinationResolver cannot be null");
-		this.template = templates.size() == 1 ? (KafkaTemplate<Object, Object>) templates.values().iterator().next() : null;
+		this.template = templates.size() == 1
+				? (KafkaOperations<Object, Object>) templates.values().iterator().next()
+				: null;
 		this.templates = templates;
 		this.transactional = templates.values().iterator().next().isTransactional();
 		Boolean tx = this.transactional;
@@ -133,22 +137,40 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 		this.destinationResolver = destinationResolver;
 	}
 
+	/**
+	 * Set to true to retain a Java serialized Deserialization exception header. By
+	 * default, such headers are removed from the published record, unless both key and
+	 * value deserialization exceptions occur, in which case, the DLT_* headers are
+	 * created from the value exception and the key exception header is retained.
+	 * @param retainExceptionHeader true to retain the
+	 * @since 2.5
+	 */
+	public void setRetainExceptionHeader(boolean retainExceptionHeader) {
+		this.retainExceptionHeader = retainExceptionHeader;
+	}
+
 	@Override
 	public void accept(ConsumerRecord<?, ?> record, Exception exception) {
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
-		RecordHeaders headers = new RecordHeaders(record.headers().toArray());
-		enhanceHeaders(headers, record, exception);
 		boolean isKey = false;
 		DeserializationException deserEx = ListenerUtils.getExceptionFromHeader(record,
-				ErrorHandlingDeserializer2.VALUE_DESERIALIZER_EXCEPTION_HEADER, LOGGER);
+				ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, LOGGER);
 		if (deserEx == null) {
 			deserEx = ListenerUtils.getExceptionFromHeader(record,
-					ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER, LOGGER);
+					ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, LOGGER);
 			isKey = true;
 		}
+		Headers headers;
+		if (deserEx == null || this.retainExceptionHeader) {
+			headers = new RecordHeaders(record.headers().toArray());
+		}
+		else {
+			headers = deserEx.getHeaders();
+		}
+		enhanceHeaders(headers, record, exception);
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
 				deserEx == null ? null : deserEx.getData(), isKey);
-		KafkaTemplate<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
+		KafkaOperations<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
 		if (this.transactional && !kafkaTemplate.inTransaction() && !kafkaTemplate.isAllowNonTransactional()) {
 			kafkaTemplate.executeInTransaction(t -> {
 				publish(outRecord, t);
@@ -161,7 +183,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private KafkaTemplate<Object, Object> findTemplateForValue(Object value) {
+	private KafkaOperations<Object, Object> findTemplateForValue(Object value) {
 		if (this.template != null) {
 			return this.template;
 		}
@@ -170,10 +192,10 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 			.filter((k) -> k.isAssignableFrom(value.getClass()))
 			.findFirst();
 		if (key.isPresent()) {
-			return (KafkaTemplate<Object, Object>) this.templates.get(key.get());
+			return (KafkaOperations<Object, Object>) this.templates.get(key.get());
 		}
 		LOGGER.warn(() -> "Failed to find a template for " + value.getClass() + " attempting to use the last entry");
-		return (KafkaTemplate<Object, Object>) this.templates.values()
+		return (KafkaOperations<Object, Object>) this.templates.values()
 				.stream()
 				.reduce((first,  second) -> second)
 				.get();
@@ -195,7 +217,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * @see KafkaHeaders
 	 */
 	protected ProducerRecord<Object, Object> createProducerRecord(ConsumerRecord<?, ?> record,
-			TopicPartition topicPartition, RecordHeaders headers, @Nullable byte[] data, boolean isKey) {
+			TopicPartition topicPartition, Headers headers, @Nullable byte[] data, boolean isKey) {
 
 		return new ProducerRecord<>(topicPartition.topic(),
 				topicPartition.partition() < 0 ? null : topicPartition.partition(),
@@ -222,7 +244,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 		}
 	}
 
-	private void enhanceHeaders(RecordHeaders kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {
+	private void enhanceHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {
 		kafkaHeaders.add(
 				new RecordHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC, record.topic().getBytes(StandardCharsets.UTF_8)));
 		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION,

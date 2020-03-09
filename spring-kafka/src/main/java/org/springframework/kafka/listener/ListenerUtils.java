@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package org.springframework.kafka.listener;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -29,7 +27,6 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -87,10 +84,8 @@ public final class ListenerUtils {
 			try {
 				DeserializationException ex = (DeserializationException) new ObjectInputStream(
 						new ByteArrayInputStream(header.value())).readObject();
-				Headers headers = new RecordHeaders(Arrays.stream(record.headers().toArray())
-						.filter(h -> !h.key()
-								.startsWith(ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX))
-						.collect(Collectors.toList()));
+				Headers headers = new RecordHeaders(record.headers().toArray());
+				headers.remove(headerName);
 				ex.setHeaders(headers);
 				return ex;
 			}

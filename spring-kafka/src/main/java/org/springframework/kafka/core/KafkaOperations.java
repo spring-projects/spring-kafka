@@ -227,6 +227,16 @@ public interface KafkaOperations<K, V> {
 	}
 
 	/**
+	 * Return true if the template is currently running in a transaction on the calling
+	 * thread.
+	 * @return true if a transaction is running.
+	 * @since 2.5
+	 */
+	default boolean inTransaction() {
+		return false;
+	}
+
+	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.

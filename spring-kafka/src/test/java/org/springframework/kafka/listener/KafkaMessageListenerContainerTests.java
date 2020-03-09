@@ -94,7 +94,7 @@ import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapte
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -2029,8 +2029,8 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-		ErrorHandlingDeserializer2<Foo1> errorHandlingDeserializer =
-				new ErrorHandlingDeserializer2<>(new JsonDeserializer<>(Foo1.class, false));
+		ErrorHandlingDeserializer<Foo1> errorHandlingDeserializer =
+				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(Foo1.class, false));
 
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props,
 				new IntegerDeserializer(), errorHandlingDeserializer);

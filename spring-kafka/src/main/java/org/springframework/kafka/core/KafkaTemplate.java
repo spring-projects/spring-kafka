@@ -446,11 +446,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 
 
 	/**
-	 * Return true if the template is currently running in a transaction on the
-	 * calling thread.
+	 * Return true if the template is currently running in a transaction on the calling
+	 * thread.
 	 * @return true if a transaction is running.
 	 * @since 2.2.1
 	 */
+	@Override
 	public boolean inTransaction() {
 		return this.transactional && (this.producers.get() != null
 				|| TransactionSynchronizationManager.getResource(this.producerFactory) != null

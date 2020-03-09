@@ -3122,24 +3122,24 @@ When used as the parameter to a `@KafkaListener` method, the interface type is a
 ===== Using `ErrorHandlingDeserializer`
 
 When a deserializer fails to deserialize a message, Spring has no way to handle the problem, because it occurs before the `poll()` returns.
-To solve this problem, version 2.2 introduced the `ErrorHandlingDeserializer2`.
+To solve this problem, the `ErrorHandlingDeserializer` has been introduced.
 This deserializer delegates to a real deserializer (key or value).
-If the delegate fails to deserialize the record content, the `ErrorHandlingDeserializer2` returns a `null` value and a `DeserializationException` in a header that contains the cause and the raw bytes.
+If the delegate fails to deserialize the record content, the `ErrorHandlingDeserializer` returns a `null` value and a `DeserializationException` in a header that contains the cause and the raw bytes.
 When you use a record-level `MessageListener`, if the `ConsumerRecord` contains a `DeserializationException` header for either the key or value, the container's `ErrorHandler` is called with the failed `ConsumerRecord`.
 The record is not passed to the listener.
 
-Alternatively, you can configure the `ErrorHandlingDeserializer2` to create a custom value by providing a `failedDeserializationFunction`, which is a `Function<FailedDeserializationInfo, T>`.
+Alternatively, you can configure the `ErrorHandlingDeserializer` to create a custom value by providing a `failedDeserializationFunction`, which is a `Function<FailedDeserializationInfo, T>`.
 This function is invoked to create an instance of `T`, which is passed to the listener in the usual fashion.
 An object of type `FailedDeserializationInfo`, which contains all the contextual information is provided to the function.
 You can find the `DeserializationException` (as a serialized Java object) in headers.
-See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/ErrorHandlingDeserializer2.html[Javadoc] for the `ErrorHandlingDeserializer2` for more information.
+See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/ErrorHandlingDeserializer.html[Javadoc] for the `ErrorHandlingDeserializer` for more information.
 
 CAUTION: When you use a `BatchMessageListener`, you must provide a `failedDeserializationFunction`.
 Otherwise, the batch of records are not type safe.
 
-You can use the `DefaultKafkaConsumerFactory` constructor that takes key and value `Deserializer` objects and wire in appropriate `ErrorHandlingDeserializer2` instances that you have configured with the proper delegates.
+You can use the `DefaultKafkaConsumerFactory` constructor that takes key and value `Deserializer` objects and wire in appropriate `ErrorHandlingDeserializer` instances that you have configured with the proper delegates.
 Alternatively, you can use consumer configuration properties (which are used by the `ErrorHandlingDeserializer`) to instantiate the delegates.
-The property names are `ErrorHandlingDeserializer2.KEY_DESERIALIZER_CLASS` and `ErrorHandlingDeserializer2.VALUE_DESERIALIZER_CLASS`.
+The property names are `ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS` and `ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS`.
 The property value can be a class or class name.
 The following example shows how to set these properties:
 
@@ -3147,8 +3147,8 @@ The following example shows how to set these properties:
 [source, java]
 ----
 ... // other props
-props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
-props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
+props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
 props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, JsonDeserializer.class);
 props.put(JsonDeserializer.KEY_DEFAULT_TYPE, "com.example.MyKey")
 props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
@@ -3194,9 +3194,9 @@ The preceding example uses the following configuration:
 [source, java]
 ----
 ...
-consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer2.class);
-consumerProps.put(ErrorHandlingDeserializer2.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
-consumerProps.put(ErrorHandlingDeserializer2.VALUE_FUNCTION, FailedFooProvider.class);
+consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+consumerProps.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+consumerProps.put(ErrorHandlingDeserializer.VALUE_FUNCTION, FailedFooProvider.class);
 ...
 ----
 ====
@@ -3983,7 +3983,7 @@ The record sent to the dead-letter topic is enhanced with the following headers:
 * `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE`: The original timestamp type.
 
 
-Starting with version 2.3, when used in conjunction with an `ErrorHandlingDeserializer2`, the publisher will restore the record `value()`, in the dead-letter producer record, to the original value that failed to be deserialized.
+Starting with version 2.3, when used in conjunction with an `ErrorHandlingDeserializer`, the publisher will restore the record `value()`, in the dead-letter producer record, to the original value that failed to be deserialized.
 Previously, the `value()` was null and user code had to decode the `DeserializationException` from the message headers.
 In addition, you can provide multiple `KafkaTemplate` s to the publisher; this might be needed, for example, if you want to publish the `byte[]` from a `DeserializationException`, as well as values using a different serializer from records that were deserialized successfully.
 Here is an example of configuring the publisher with `KafkaTemplate` s that use a `String` and `byte[]` serializer:
@@ -4009,6 +4009,10 @@ A `LinkedHashMap` is recommended so that the keys are examined in order.
 IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
 
 Starting with version 2.3, the recoverer can also be used with Kafka Streams - see <<streams-deser-recovery>> for more information.
+
+The `ErrorHandlingDeserializer` adds the deserialization exception(s) in headers `ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER` and `ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER` (using java serialization).
+By default, these headers are not retained in the message published to the dead letter topic, unless both the key and value fail deserialization.
+In that case, the `DLT_*` headers are based on the value deserialization and the key `DeserializationException` is retained in the header.
 
 [[kerberos]]
 ==== Kerberos

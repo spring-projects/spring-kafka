@@ -16,19 +16,35 @@
 
 package org.springframework.kafka.listener;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.UncheckedIOException;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaOperations.OperationsCallback;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -95,4 +111,70 @@ public class DeadLetterPublishingRecovererTests {
 		verify(template).send(any(ProducerRecord.class));
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void valueHeaderStripped() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, header(false)));
+		headers.add(new RecordHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, header(true)));
+		willReturn(new SettableListenableFuture<Object>()).given(template).send(any(ProducerRecord.class));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
+				0L, 0, 0, "bar", "baz", headers);
+		recoverer.accept(record, new RuntimeException());
+		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(captor.capture());
+		headers = captor.getValue().headers();
+		assertThat(headers.lastHeader(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(headers.lastHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void keyHeaderStripped() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, header(true)));
+		willReturn(new SettableListenableFuture<Object>()).given(template).send(any(ProducerRecord.class));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
+				0L, 0, 0, "bar", "baz", headers);
+		recoverer.accept(record, new RuntimeException());
+		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(captor.capture());
+		headers = captor.getValue().headers();
+		assertThat(headers.lastHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void headersNotStripped() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setRetainExceptionHeader(true);
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, header(false)));
+		headers.add(new RecordHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, header(true)));
+		willReturn(new SettableListenableFuture<Object>()).given(template).send(any(ProducerRecord.class));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
+				0L, 0, 0, "bar", "baz", headers);
+		recoverer.accept(record, new RuntimeException());
+		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(captor.capture());
+		headers = captor.getValue().headers();
+		assertThat(headers.lastHeader(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
+		assertThat(headers.lastHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
+	}
+
+	private byte[] header(boolean isKey) {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			new ObjectOutputStream(baos).writeObject(new DeserializationException("test", new byte[0], isKey, null));
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+		return baos.toByteArray();
+	}
 }

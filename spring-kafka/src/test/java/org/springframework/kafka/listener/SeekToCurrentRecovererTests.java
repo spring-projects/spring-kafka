@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,10 +54,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
@@ -90,7 +91,7 @@ public class SeekToCurrentRecovererTests {
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props, null,
-				new ErrorHandlingDeserializer2<>(new JsonDeserializer<>(String.class)));
+				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(String.class)));
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setPollTimeout(10_000);
 
@@ -117,7 +118,7 @@ public class SeekToCurrentRecovererTests {
 		container.setBeanName("testSeekMaxFailures");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
 		final AtomicReference<String> failedGroupId = new AtomicReference<>();
-		Map<Class<?>, KafkaTemplate<?, ?>> templates = new LinkedHashMap<>();
+		Map<Class<?>, KafkaOperations<?, ?>> templates = new LinkedHashMap<>();
 		templates.put(String.class, template);
 		templates.put(byte[].class, new KafkaTemplate<>(dltPf));
 		DeadLetterPublishingRecoverer recoverer =

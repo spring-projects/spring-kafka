@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,10 +41,29 @@ public class DeserializationException extends KafkaException {
 
 	private final boolean isKey;
 
-	public DeserializationException(String message, byte[] data, boolean isKey, Throwable cause) {
-		this(message, null, data, isKey, cause);
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message the message.
+	 * @param data the data (value or key).
+	 * @param isKey true if the exception occurred while deserializing the key.
+	 * @param cause the cause.
+	 */
+	public DeserializationException(String message, byte[] data, boolean isKey, Throwable cause) { // NOSONAR array reference
+		super(message, cause);
+		this.data = data; // NOSONAR array reference
+		this.isKey = isKey;
 	}
 
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message the message.
+	 * @param headers the headers.
+	 * @param data the data (value or key).
+	 * @param isKey true if the exception occurred while deserializing the key.
+	 * @param cause the cause.
+	 * @deprecated Headers are not set during construction.
+	 */
+	@Deprecated
 	public DeserializationException(String message, @Nullable Headers headers, byte[] data, // NOSONAR array reference
 			boolean isKey, Throwable cause) {
 
@@ -54,19 +73,36 @@ public class DeserializationException extends KafkaException {
 		this.isKey = isKey;
 	}
 
+	/**
+	 * Get the headers.
+	 * @return the headers.
+	 */
 	@Nullable
 	public Headers getHeaders() {
 		return this.headers;
 	}
 
+	/**
+	 * Set the headers.
+	 * @param headers the headers.
+	 */
 	public void setHeaders(@Nullable Headers headers) {
 		this.headers = headers;
 	}
 
+	/**
+	 * Get the data that failed deserialization (value or key).
+	 * @return the data.
+	 */
 	public byte[] getData() {
 		return this.data; // NOSONAR array reference
 	}
 
+	/**
+	 * True if deserialization of the key failed, otherwise deserialization of the value
+	 * failed.
+	 * @return true for the key.
+	 */
 	public boolean isKey() {
 		return this.isKey;
 	}
