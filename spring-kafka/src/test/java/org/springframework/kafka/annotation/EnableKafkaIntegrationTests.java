@@ -244,13 +244,21 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.topic).isEqualTo("annotated2");
 		assertThat(this.listener.receivedGroupId).isEqualTo("bar");
 
+		assertThat(this.meterRegistry.get("spring.kafka.template")
+				.tag("name", "template")
+				.tag("extraTag", "bar")
+				.tag("result", "success")
+				.timer()
+				.count())
+						.isGreaterThan(0L);
+
 		assertThat(this.meterRegistry.get("spring.kafka.listener")
-			.tag("name", "bar-0")
-			.tag("extraTag", "foo")
-			.tag("result", "success")
-			.timer()
-			.count())
-		.isEqualTo(2L);
+				.tag("name", "bar-0")
+				.tag("extraTag", "foo")
+				.tag("result", "success")
+				.timer()
+				.count())
+						.isEqualTo(2L);
 
 		template.send("annotated3", 0, "foo");
 		template.flush();
@@ -1256,7 +1264,9 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public KafkaTemplate<Integer, String> template() {
-			return new KafkaTemplate<>(producerFactory());
+			KafkaTemplate<Integer, String> kafkaTemplate = new KafkaTemplate<>(producerFactory());
+			kafkaTemplate.setMicrometerTags(Collections.singletonMap("extraTag", "bar"));
+			return kafkaTemplate;
 		}
 
 		@Bean

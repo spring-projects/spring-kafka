@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
 
+import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.messaging.Message;
+import org.springframework.util.ClassUtils;
 
 /**
  * Utility methods.
@@ -32,6 +34,12 @@ import org.springframework.messaging.Message;
  *
  */
 public final class KafkaUtils {
+
+	/**
+	 * True if micrometer is on the class path.
+	 */
+	public static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
+			"io.micrometer.core.instrument.MeterRegistry", KafkaMessageListenerContainer.class.getClassLoader());
 
 	private static ThreadLocal<String> groupIds = new ThreadLocal<>();
 

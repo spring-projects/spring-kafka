@@ -59,7 +59,6 @@ import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
-import org.springframework.context.ApplicationContext;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
@@ -86,6 +85,7 @@ import org.springframework.kafka.support.SeekUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.TransactionSupport;
+import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -99,14 +99,8 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
-
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.Timer.Builder;
-import io.micrometer.core.instrument.Timer.Sample;
 
 /**
  * Single-threaded Message listener container using the Java {@link Consumer} supporting
@@ -135,9 +129,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private static final String UNUSED = "unused";
 
 	private static final int DEFAULT_ACK_TIME = 5000;
-
-	private static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
-			"io.micrometer.core.instrument.MeterRegistry", KafkaMessageListenerContainer.class.getClassLoader());
 
 	private final AbstractMessageListenerContainer<K, V> thisOrParentContainer;
 
@@ -890,8 +881,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private MicrometerHolder obtainMicrometerHolder() {
 			MicrometerHolder holder = null;
 			try {
-				if (MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()) {
+				if (KafkaUtils.MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()) {
 					holder = new MicrometerHolder(getApplicationContext(), getBeanName(),
+							"spring.kafka.listener", "Kafka Listener Timer",
 							this.containerProperties.getMicrometerTags());
 				}
 			}
@@ -1444,7 +1436,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void failureTimer(@Nullable Object sample) {
 			if (sample != null) {
-				this.micrometerHolder.failure(sample);
+				this.micrometerHolder.failure(sample, "ListenerExecutionFailedException");
 			}
 		}
 
@@ -2538,64 +2530,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.callback != null) {
 				this.callback.run();
 			}
-		}
-
-	}
-
-	private static final class MicrometerHolder {
-
-		private final Set<Timer> meters = ConcurrentHashMap.newKeySet();
-
-		private final MeterRegistry registry;
-
-		private final Timer successTimer;
-
-		private final Timer failTimer;
-
-		MicrometerHolder(@Nullable ApplicationContext context, String name, Map<String, String> tags) {
-			if (context == null) {
-				throw new IllegalStateException("No micrometer registry present");
-			}
-			Map<String, MeterRegistry> registries = context.getBeansOfType(MeterRegistry.class, false, false);
-			if (registries.size() == 1) {
-				this.registry = registries.values().iterator().next();
-				this.successTimer = buildTimer(true, name, "none", tags);
-				this.failTimer = buildTimer(false, name, "ListenerExecutionFailedException", tags);
-			}
-			else {
-				throw new IllegalStateException("No micrometer registry present");
-			}
-		}
-
-		Object start() {
-			return Timer.start(this.registry);
-		}
-
-		void success(Object sample) {
-			((Sample) sample).stop(this.successTimer);
-		}
-
-		void failure(Object sample) {
-			((Sample) sample).stop(this.failTimer);
-		}
-
-		private Timer buildTimer(boolean result, String name, String exception, Map<String, String> tags) {
-			Builder builder = Timer.builder("spring.kafka.listener")
-				.description("Kafka Listener Timer")
-				.tag("name", name)
-				.tag("result", result ? "success" : "failure")
-				.tag("exception", exception);
-			if (tags != null && !tags.isEmpty()) {
-				tags.entrySet().forEach(entry -> builder.tag(entry.getKey(), entry.getValue()));
-			}
-			Timer registeredTimer = builder.register(this.registry);
-			this.meters.add(registeredTimer);
-			return registeredTimer;
-		}
-
-		void destroy() {
-			this.meters.forEach(this.registry::remove);
-			this.meters.clear();
 		}
 
 	}

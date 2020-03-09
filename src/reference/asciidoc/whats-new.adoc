@@ -15,3 +15,9 @@ See <<>> for more information.
 
 Default reply headers will now be populated automatically if needed when a `@KafkaListener` return type is `Message<?>`.
 See <<reply-message>> for more information.
+
+[[x25-template]]
+==== KafkaTemplate Changes
+
+The `KafkaTemplate` can now maintain micrometer timers.
+See <<micrometer>> for more information.
