@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,38 +93,46 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * this container.
 	 */
 	public List<KafkaMessageListenerContainer<K, V>> getContainers() {
-		return Collections.unmodifiableList(this.containers);
+		synchronized (this.lifecycleMonitor) {
+			return Collections.unmodifiableList(new ArrayList<>(this.containers));
+		}
 	}
 
 	@Override
 	public Collection<TopicPartition> getAssignedPartitions() {
-		return this.containers.stream()
-				.map(KafkaMessageListenerContainer::getAssignedPartitions)
-				.filter(Objects::nonNull)
-				.flatMap(Collection::stream)
-				.collect(Collectors.toList());
+		synchronized (this.lifecycleMonitor) {
+			return this.containers.stream()
+					.map(KafkaMessageListenerContainer::getAssignedPartitions)
+					.filter(Objects::nonNull)
+					.flatMap(Collection::stream)
+					.collect(Collectors.toList());
+		}
 	}
 
 	@Override
 	public boolean isContainerPaused() {
-		boolean paused = isPaused();
-		if (paused) {
-			for (AbstractMessageListenerContainer<K, V> container : this.containers) {
-				if (!container.isContainerPaused()) {
-					return false;
+		synchronized (this.lifecycleMonitor) {
+			boolean paused = isPaused();
+			if (paused) {
+				for (AbstractMessageListenerContainer<K, V> container : this.containers) {
+					if (!container.isContainerPaused()) {
+						return false;
+					}
 				}
 			}
+			return paused;
 		}
-		return paused;
 	}
 
 	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
-		Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
-		for (KafkaMessageListenerContainer<K, V> container : this.containers) {
-			metrics.putAll(container.metrics());
+		synchronized (this.lifecycleMonitor) {
+			Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
+			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
+				metrics.putAll(container.metrics());
+			}
+			return Collections.unmodifiableMap(metrics);
 		}
-		return Collections.unmodifiableMap(metrics);
 	}
 
 	/*
@@ -231,14 +239,18 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public void pause() {
-		super.pause();
-		this.containers.forEach(AbstractMessageListenerContainer::pause);
+		synchronized (this.lifecycleMonitor) {
+			super.pause();
+			this.containers.forEach(AbstractMessageListenerContainer::pause);
+		}
 	}
 
 	@Override
 	public void resume() {
-		super.resume();
-		this.containers.forEach(AbstractMessageListenerContainer::resume);
+		synchronized (this.lifecycleMonitor) {
+			super.resume();
+			this.containers.forEach(AbstractMessageListenerContainer::resume);
+		}
 	}
 
 	@Override
