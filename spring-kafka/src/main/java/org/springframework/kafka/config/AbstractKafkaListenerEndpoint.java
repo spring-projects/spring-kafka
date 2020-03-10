@@ -196,24 +196,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Either this or 'topic' or 'topicPattern'
 	 * should be provided, but not a mixture.
 	 * @param topicPartitions to set.
-	 * @deprecated in favor of {@link #setTopicPartitions(TopicPartitionOffset...)}.
-	 * @see #setTopics(String...)
-	 * @see #setTopicPattern(Pattern)
-	 */
-	@Deprecated
-	public void setTopicPartitions(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
-		Assert.notNull(topicPartitions, "'topics' must not be null");
-		this.topicPartitions.clear();
-		Arrays.stream(topicPartitions)
-				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
-				.forEach(this.topicPartitions::add);
-	}
-
-	/**
-	 * Set the topicPartitions to use.
-	 * Either this or 'topic' or 'topicPattern'
-	 * should be provided, but not a mixture.
-	 * @param topicPartitions to set.
 	 * @since 2.3
 	 * @see #setTopics(String...)
 	 * @see #setTopicPattern(Pattern)

@@ -25,7 +25,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.TopicPartitionOffset;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -34,25 +33,6 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  */
 public class FailedRecordProcessorTests {
-
-	@Test
-	void testDefaultBackOff() {
-		FailedRecordProcessor frp = new FailedRecordProcessor(null, 1) {
-		};
-		assertThat(KafkaTestUtils.getPropertyValue(frp, "failureTracker.backOff.interval", Long.class)).isEqualTo(0L);
-		assertThat(KafkaTestUtils.getPropertyValue(frp, "failureTracker.backOff.maxAttempts", Long.class))
-				.isEqualTo(0L);
-		frp = new FailedRecordProcessor(null, 0) {
-		};
-		assertThat(KafkaTestUtils.getPropertyValue(frp, "failureTracker.backOff.interval", Long.class)).isEqualTo(0L);
-		assertThat(KafkaTestUtils.getPropertyValue(frp, "failureTracker.backOff.maxAttempts", Long.class))
-				.isEqualTo(0L);
-		frp = new FailedRecordProcessor(null, -1) {
-		};
-		assertThat(KafkaTestUtils.getPropertyValue(frp, "failureTracker.backOff.interval", Long.class)).isEqualTo(0L);
-		assertThat(KafkaTestUtils.getPropertyValue(frp, "failureTracker.backOff.maxAttempts", Long.class))
-				.isEqualTo(Long.MAX_VALUE);
-	}
 
 	@Test
 	void deliveryAttempts() {

@@ -34,7 +34,6 @@ import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.invocation.MethodArgumentResolutionException;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
-import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * Common super class for classes that deal with failing to consume a consumer record.
@@ -60,23 +59,6 @@ public abstract class FailedRecordProcessor implements DeliveryAttemptAware {
 	protected FailedRecordProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff) {
 		this.failureTracker = new FailedRecordTracker(recoverer, backOff, this.logger);
 		this.classifier = configureDefaultClassifier();
-	}
-
-	/**
-	 * TODO: remove when the deprecated dependent CTORs are removed.
-	 * @param recoverer the recoverer.
-	 * @param maxFailures the max failures.
-	 */
-	FailedRecordProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
-		this.failureTracker = new FailedRecordTracker(recoverer, maxFailuresToBackOff(maxFailures), this.logger);
-		this.classifier = configureDefaultClassifier();
-	}
-
-	private static FixedBackOff maxFailuresToBackOff(int maxFailures) {
-		if (maxFailures < 0) {
-			return new FixedBackOff(0L, FixedBackOff.UNLIMITED_ATTEMPTS);
-		}
-		return new FixedBackOff(0L, maxFailures == 0 ? 0 : maxFailures - 1);
 	}
 
 	/**
@@ -107,10 +89,6 @@ public abstract class FailedRecordProcessor implements DeliveryAttemptAware {
 	public void setClassifications(Map<Class<? extends Throwable>, Boolean> classifications, boolean defaultValue) {
 		Assert.notNull(classifications, "'classifications' + cannot be null");
 		this.classifier = new ExtendedBinaryExceptionClassifier(classifications, defaultValue);
-	}
-
-	protected void setClassifier(BinaryExceptionClassifier classifier) {
-		this.classifier = classifier;
 	}
 
 	/**

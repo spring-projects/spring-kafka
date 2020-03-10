@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,20 +116,6 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	public void setCloseTimeout(Duration closeTimeout) {
 		Assert.notNull(closeTimeout, "'closeTimeout' cannot be null");
 		this.closeTimeout = closeTimeout;
-	}
-
-	/**
-	 * Return the producer factory.
-	 * @return the producer factory.
-	 * @deprecated - in a future release {@link KafkaAwareTransactionManager} will not be
-	 * a sub interface of
-	 * {@link org.springframework.transaction.support.ResourceTransactionManager
-	 * ResourceTransactionManager}. TODO: Remove in 3.0
-	 */
-	@Deprecated
-	@Override
-	public Object getResourceFactory() {
-		return getProducerFactory();
 	}
 
 	@SuppressWarnings(UNCHECKED)

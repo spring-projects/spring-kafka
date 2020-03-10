@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ import org.mockito.InOrder;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * @author Gary Russell
@@ -81,20 +80,6 @@ public class SeekToCurrentErrorHandlerTests {
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed
 		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verifyNoMoreInteractions();
-	}
-
-	@SuppressWarnings("deprecation")
-	@Test
-	public void testDeprecatedCtor() {
-		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler(-1);
-		assertThat(KafkaTestUtils.getPropertyValue(handler, "failureTracker.backOff.maxAttempts"))
-				.isEqualTo(Long.MAX_VALUE);
-		handler = new SeekToCurrentErrorHandler(0);
-		assertThat(KafkaTestUtils.getPropertyValue(handler, "failureTracker.backOff.maxAttempts"))
-				.isEqualTo(0L);
-		handler = new SeekToCurrentErrorHandler(10);
-		assertThat(KafkaTestUtils.getPropertyValue(handler, "failureTracker.backOff.maxAttempts"))
-				.isEqualTo(9L);
 	}
 
 	@Test

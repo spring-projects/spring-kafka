@@ -3788,8 +3788,8 @@ The exceptions that are considered fatal, by default, are:
 
 since these exceptions are unlikely to be resolved on a retried delivery.
 
-You can add more exception types to the not-retryable category, or completely replace the `BinaryExceptionClassifier` with your own configured classifier.
-See the Javadocs for `SeekToCurrentErrorHandler` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
+You can add more exception types to the not-retryable category, or completely replace the map of classified exceptions.
+See the Javadocs for `SeekToCurrentErrorHandler.setClassifications()` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
 
 Here is an example that adds `IllegalArgumentException` to the not-retryable exceptions:
 
@@ -3911,8 +3911,8 @@ The exceptions that are considered fatal, by default, are:
 
 since these exceptions are unlikely to be resolved on a retried delivery.
 
-You can add more exception types to the not-retryable category, or completely replace the `BinaryExceptionClassifier` with your own configured classifier.
-See the Javadocs for `DefaultAfterRollbackProcessor` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
+You can add more exception types to the not-retryable category, or completely replace the map of classified exceptions.
+See the Javadocs for `SeekToCurrentErrorHandler.setClassifications()` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
 
 Here is an example that adds `IllegalArgumentException` to the not-retryable exceptions:
 

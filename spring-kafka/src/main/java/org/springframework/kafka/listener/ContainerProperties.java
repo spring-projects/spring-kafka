@@ -17,7 +17,6 @@
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -243,27 +242,6 @@ public class ContainerProperties extends ConsumerProperties {
 	 * Create properties for a container that will assign itself the provided topic
 	 * partitions.
 	 * @param topicPartitions the topic partitions.
-	 * @deprecated in favor of {@link #ContainerProperties(TopicPartitionOffset...)}.
-	 */
-	@Deprecated
-	public ContainerProperties(org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
-		super(convertTopicPartitions(topicPartitions));
-	}
-
-	@Deprecated
-	private static TopicPartitionOffset[] convertTopicPartitions(
-			org.springframework.kafka.support.TopicPartitionInitialOffset[] topicPartitions) {
-
-		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		return Arrays.stream(topicPartitions)
-				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
-				.toArray(TopicPartitionOffset[]::new);
-	}
-
-	/**
-	 * Create properties for a container that will assign itself the provided topic
-	 * partitions.
-	 * @param topicPartitions the topic partitions.
 	 */
 	public ContainerProperties(TopicPartitionOffset... topicPartitions) {
 		super(topicPartitions);
@@ -392,22 +370,6 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setAckOnError(boolean ackOnError) {
 		this.ackOnError = ackOnError;
-	}
-
-	/**
-	 * Return the topics/partitions to be manually assigned.
-	 * @deprecated in favor of {@link #getTopicPartitionsToAssign()}.
-	 * @return the topics/partitions.
-	 */
-	@Deprecated
-	@Nullable
-	public org.springframework.kafka.support.TopicPartitionInitialOffset[] getTopicPartitions() {
-		TopicPartitionOffset[] topicPartitionsToAssign = getTopicPartitionsToAssign();
-		return topicPartitionsToAssign != null
-				? Arrays.stream(topicPartitionsToAssign)
-				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::fromTPO)
-				.toArray(org.springframework.kafka.support.TopicPartitionInitialOffset[]::new)
-				: null;
 	}
 
 	public AckMode getAckMode() {
@@ -541,40 +503,6 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setMissingTopicsFatal(boolean missingTopicsFatal) {
 		this.missingTopicsFatal = missingTopicsFatal;
-	}
-
-	/**
-	 * Get the consumer properties that will be merged with the consumer properties
-	 * provided by the consumer factory; properties here will supersede any with the same
-	 * name(s) in the consumer factory.
-	 * {@code group.id} and {@code client.id} are ignored.
-	 * @return the properties.
-	 * @since 2.2.4
-	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
-	 * @see #setGroupId(String)
-	 * @see #setClientId(String)
-	 * @deprecated in favor of {@link #getKafkaConsumerProperties()}.
-	 */
-	@Deprecated
-	public Properties getConsumerProperties() {
-		return getKafkaConsumerProperties();
-	}
-
-	/**
-	 * Set the consumer properties that will be merged with the consumer properties
-	 * provided by the consumer factory; properties here will supersede any with the same
-	 * name(s) in the consumer factory.
-	 * {@code group.id} and {@code client.id} are ignored.
-	 * @param consumerProperties the properties.
-	 * @since 2.2.4
-	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
-	 * @see #setGroupId(String)
-	 * @see #setClientId(String)
-	 * @deprecated in favor of {@link #setKafkaConsumerProperties(Properties)}.
-	 */
-	@Deprecated
-	public void setConsumerProperties(Properties consumerProperties) {
-		setKafkaConsumerProperties(consumerProperties);
 	}
 
 	/**

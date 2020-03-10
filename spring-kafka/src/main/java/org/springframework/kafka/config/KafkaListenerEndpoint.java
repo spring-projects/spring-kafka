@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,9 @@
 
 package org.springframework.kafka.config;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Properties;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -66,18 +63,6 @@ public interface KafkaListenerEndpoint {
 	 * @return the topics for this endpoint.
 	 */
 	Collection<String> getTopics();
-
-	/**
-	 * Return the topicPartitions for this endpoint.
-	 * @return the topicPartitions for this endpoint.
-	 * @deprecated in favor of {@link #getTopicPartitionsToAssign()}.
-	 */
-	@Deprecated
-	default Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> getTopicPartitions() {
-		return Arrays.stream(getTopicPartitionsToAssign())
-				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::fromTPO)
-				.collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
-	}
 
 	/**
 	 * Return the topicPartitions for this endpoint.

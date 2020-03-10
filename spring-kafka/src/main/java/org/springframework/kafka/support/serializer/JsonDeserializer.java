@@ -60,22 +60,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private static final String KEY_DEFAULT_TYPE_STRING = "spring.json.key.default.type";
 
-	private static final String DEPRECATED_DEFAULT_VALUE_TYPE = "spring.json.default.value.type";
-
-	/**
-	 * Kafka config property for the default key type if no header.
-	 * @deprecated in favor of {@link #KEY_DEFAULT_TYPE}
-	 */
-	@Deprecated
-	public static final String DEFAULT_KEY_TYPE = KEY_DEFAULT_TYPE_STRING;
-
-	/**
-	 * Kafka config property for the default value type if no header.
-	 * @deprecated in favor of {@link #VALUE_DEFAULT_TYPE}
-	 */
-	@Deprecated
-	public static final String DEFAULT_VALUE_TYPE = DEPRECATED_DEFAULT_VALUE_TYPE;
-
 	/**
 	 * Kafka config property for the default key type if no header.
 	 */
@@ -357,10 +341,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			JavaType javaType = null;
 			if (isKey && configs.containsKey(KEY_DEFAULT_TYPE)) {
 				javaType = setupTargetType(configs, KEY_DEFAULT_TYPE);
-			}
-			// TODO don't forget to remove these code after DEFAULT_VALUE_TYPE being removed.
-			else if (!isKey && configs.containsKey(DEPRECATED_DEFAULT_VALUE_TYPE)) {
-				javaType = setupTargetType(configs, DEPRECATED_DEFAULT_VALUE_TYPE);
 			}
 			else if (!isKey && configs.containsKey(VALUE_DEFAULT_TYPE)) {
 				javaType = setupTargetType(configs, VALUE_DEFAULT_TYPE);

@@ -126,17 +126,6 @@ public final class KafkaTestUtils {
 	}
 
 	/**
-	 * Set up test properties for an {@code <Integer, String>} producer.
-	 * @param brokers the bootstrapServers property.
-	 * @return the properties.
-	 * @deprecated in favor of {@link #producerProps(String)}.
-	 */
-	@Deprecated
-	public static Map<String, Object> senderProps(String brokers) {
-		return producerProps(brokers);
-	}
-
-	/**
 	 * Poll the consumer, expecting a single record for the specified topic.
 	 * @param consumer the consumer.
 	 * @param topic the topic.

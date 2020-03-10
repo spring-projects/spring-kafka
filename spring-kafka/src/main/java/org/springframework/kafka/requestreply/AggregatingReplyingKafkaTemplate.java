@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiPredicate;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -80,23 +79,6 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	private Duration commitTimeout = Duration.ofSeconds(DEFAULT_COMMIT_TIMEOUT);
 
 	private boolean returnPartialOnTimeout;
-
-	/**
-	 * Construct an instance using the provided parameter arguments. The releaseStrategy
-	 * is consulted to determine when a collection is "complete".
-	 * @param producerFactory the producer factory.
-	 * @param replyContainer the reply container.
-	 * @param releaseStrategy the release strategy.
-	 * @deprecated in favor of
-	 * {@link #AggregatingReplyingKafkaTemplate(ProducerFactory, GenericMessageListenerContainer, BiPredicate)}
-	 */
-	@Deprecated
-	public AggregatingReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
-			GenericMessageListenerContainer<K, Collection<ConsumerRecord<K, R>>> replyContainer,
-			Predicate<Collection<ConsumerRecord<K, R>>> releaseStrategy) {
-
-		this(producerFactory, replyContainer, (records, timeout) -> timeout || releaseStrategy.test(records));
-	}
 
 	/**
 	 * Construct an instance using the provided parameter arguments. The releaseStrategy

@@ -158,22 +158,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	/**
-	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions/initialOffsets.
-	 * @param consumerFactory the consumer factory.
-	 * @param containerProperties the container properties.
-	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
-	 * @deprecated - the topicPartitions should be provided in the
-	 * {@link ContainerProperties}.
-	 */
-	@Deprecated
-	public KafkaMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
-			ContainerProperties containerProperties, TopicPartitionOffset... topicPartitions) {
-
-		this(null, consumerFactory, containerProperties, topicPartitions);
-	}
-
-	/**
 	 * Construct an instance with the supplied configuration properties.
 	 * @param container a delegating container (if this is a sub-container).
 	 * @param consumerFactory the consumer factory.
@@ -184,34 +168,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ContainerProperties containerProperties) {
 
 		this(container, consumerFactory, containerProperties, (TopicPartitionOffset[]) null);
-	}
-
-	/**
-	 * Construct an instance with the supplied configuration properties and specific
-	 * topics/partitions/initialOffsets.
-	 * @param container a delegating container (if this is a sub-container).
-	 * @param consumerFactory the consumer factory.
-	 * @param containerProperties the container properties.
-	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
-	 * @deprecated in favor of
-	 * {@link #KafkaMessageListenerContainer(AbstractMessageListenerContainer, ConsumerFactory, ContainerProperties, TopicPartitionOffset...)}
-	 */
-	@Deprecated
-	KafkaMessageListenerContainer(AbstractMessageListenerContainer<K, V> container,
-			ConsumerFactory<? super K, ? super V> consumerFactory, ContainerProperties containerProperties,
-			org.springframework.kafka.support.TopicPartitionInitialOffset... topicPartitions) {
-
-		super(consumerFactory, containerProperties);
-		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
-		this.thisOrParentContainer = container == null ? this : container;
-		if (topicPartitions != null) {
-			this.topicPartitions = Arrays.stream(topicPartitions)
-					.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
-					.toArray(TopicPartitionOffset[]::new);
-		}
-		else {
-			this.topicPartitions = containerProperties.getTopicPartitionsToAssign();
-		}
 	}
 
 	/**

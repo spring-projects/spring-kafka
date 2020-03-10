@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,10 @@ public class ChainedKafkaTransactionManager<K, V> extends ChainedTransactionMana
 
 	private final KafkaAwareTransactionManager<K, V> kafkaTransactionManager;
 
+	/**
+	 * Construct an instance with the provided {@link PlatformTransactionManager}s.
+	 * @param transactionManagers the transaction managers.
+	 */
 	@SuppressWarnings("unchecked")
 	public ChainedKafkaTransactionManager(PlatformTransactionManager... transactionManagers) {
 		super(transactionManagers);
@@ -53,20 +57,6 @@ public class ChainedKafkaTransactionManager<K, V> extends ChainedTransactionMana
 	@Override
 	public ProducerFactory<K, V> getProducerFactory() {
 		return this.kafkaTransactionManager.getProducerFactory();
-	}
-
-	/**
-	 * Return the producer factory.
-	 * @return the producer factory.
-	 * @deprecated - in a future release {@link KafkaAwareTransactionManager} will not be
-	 * a sub interface of
-	 * {@link org.springframework.transaction.support.ResourceTransactionManager}.
-	 * TODO: Remove in 3.0
-	 */
-	@Deprecated
-	@Override
-	public Object getResourceFactory() {
-		return getProducerFactory();
 	}
 
 }

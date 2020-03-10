@@ -421,18 +421,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		}
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @deprecated in favor of {@link #createContainer(TopicPartitionOffset[])}
-	 */
-	@Deprecated
-	@Override
-	public C createContainer(Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> topicPartitions) {
-		return createContainer(topicPartitions.stream()
-				.map(org.springframework.kafka.support.TopicPartitionInitialOffset::toTPO)
-				.toArray(TopicPartitionOffset[]::new));
-	}
-
 	@Override
 	public C createContainer(TopicPartitionOffset... topicsAndPartitions) {
 		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -151,29 +151,6 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		Assert.notNull(scheduler, "'scheduler' cannot be null");
 		this.scheduler = scheduler;
 		this.schedulerSet = true;
-	}
-
-	/**
-	 * Return the reply timeout used if no replyTimeout is provided in the
-	 * {@link #sendAndReceive(ProducerRecord, Duration)} call.
-	 * @return the timeout.
-	 * @deprecated in favor of {@link #getDefaultReplyTimeout()}.
-	 */
-	@Deprecated
-	protected long getReplyTimeout() {
-		return this.defaultReplyTimeout.toMillis();
-	}
-
-	/**
-	 * Set the reply timeout used if no replyTimeout is provided in the
-	 * {@link #sendAndReceive(ProducerRecord, Duration)} call.
-	 * @param replyTimeout the timeout.
-	 * @deprecated in favor of {@link #setDefaultReplyTimeout(Duration)}.
-	 */
-	@Deprecated
-	public void setReplyTimeout(long replyTimeout) {
-		Assert.isTrue(replyTimeout >= 0, "'replyTimeout' must be >= 0");
-		this.defaultReplyTimeout = Duration.ofMillis(replyTimeout);
 	}
 
 	/**
@@ -394,18 +371,6 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		if (!this.schedulerSet) {
 			((ThreadPoolTaskScheduler) this.scheduler).destroy();
 		}
-	}
-
-	/**
-	 * Subclasses can override this to generate custom correlation ids.
-	 * The default implementation is a 16 byte representation of a UUID.
-	 * @param record the record.
-	 * @return the key.
-	 * @deprecated in favor of {@link #setCorrelationIdStrategy(Function)}.
-	 */
-	@Deprecated
-	protected CorrelationKey createCorrelationId(ProducerRecord<K, V> record) {
-		return this.correlationStrategy.apply(record);
 	}
 
 	private static <K, V> CorrelationKey defaultCorrelationIdStrategy(

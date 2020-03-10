@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +28,10 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.SerializationException;
 
-import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.backoff.BackOff;
 
@@ -66,24 +64,6 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
-	 * 'maxFailures' have occurred for a topic/partition/offset.
-	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
-	 * @deprecated in favor of {@link #SeekToCurrentErrorHandler(BackOff)}.
-	 * <b>IMPORTANT</b> When using a
-	 * {@link org.springframework.util.backoff.FixedBackOff}, the maxAttempts property
-	 * represents retries (one less than maxFailures). To retry indefinitely, use a fixed
-	 * or exponential {@link BackOff} configured appropriately. To use the other
-	 * constructor with the semantics of this one, with maxFailures equal to 3, use
-	 * {@code new SeekToCurrentErrorHandler(new FixedBackOff(0L, 2L)}.
-	 * @since 2.2.1
-	 */
-	@Deprecated
-	public SeekToCurrentErrorHandler(int maxFailures) {
-		this(null, maxFailures);
-	}
-
-	/**
-	 * Construct an instance with the default recoverer which simply logs the record after
 	 * the backOff returns STOP for a topic/partition/offset.
 	 * @param backOff the {@link BackOff}.
 	 * @since 2.3
@@ -101,26 +81,6 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	 */
 	public SeekToCurrentErrorHandler(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
 		this(recoverer, SeekUtils.DEFAULT_BACK_OFF);
-	}
-
-	/**
-	 * Construct an instance with the provided recoverer which will be called after
-	 * maxFailures have occurred for a topic/partition/offset.
-	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
-	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
-	 * @deprecated in favor of {@link #SeekToCurrentErrorHandler(BiConsumer, BackOff)}.
-	 * <b>IMPORTANT</b> When using a
-	 * {@link org.springframework.util.backoff.FixedBackOff}, the maxAttempts property
-	 * represents retries (one less than maxFailures). To retry indefinitely, use a fixed
-	 * or exponential {@link BackOff} configured appropriately. To use the other
-	 * constructor with the semantics of this one, with maxFailures equal to 3, use
-	 * {@code new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 2L)}.
-	 * @since 2.2
-	 */
-	@Deprecated
-	public SeekToCurrentErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures) {
-		// Remove super CTOR when this is removed.
-		super(recoverer, maxFailures);
 	}
 
 	/**
@@ -145,34 +105,6 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	@Override
 	public void setCommitRecovered(boolean commitRecovered) { // NOSONAR enhanced javadoc
 		super.setCommitRecovered(commitRecovered);
-	}
-
-	/**
-	 * Set an exception classifier to determine whether the exception should cause a retry
-	 * (until exhaustion) or not. If not, we go straight to the recoverer. By default,
-	 * the following exceptions will not be retried:
-	 * <ul>
-	 * <li>{@link org.springframework.kafka.support.serializer.DeserializationException}</li>
-	 * <li>{@link org.springframework.messaging.converter.MessageConversionException}</li>
-	 * <li>{@link org.springframework.messaging.handler.invocation.MethodArgumentResolutionException}</li>
-	 * <li>{@link NoSuchMethodException}</li>
-	 * <li>{@link ClassCastException}</li>
-	 * </ul>
-	 * All others will be retried.
-	 * The classifier's {@link BinaryExceptionClassifier#setTraverseCauses(boolean) traverseCauses}
-	 * will be set to true because the container always wraps exceptions in a
-	 * {@link ListenerExecutionFailedException}.
-	 * This replaces the default classifier.
-	 * @param classifier the classifier.
-	 * @since 2.3
-	 * @deprecated in favor of {@link #setClassifications(Map, boolean)}.
-	 */
-	@Override
-	@Deprecated
-	public void setClassifier(BinaryExceptionClassifier classifier) {
-		Assert.notNull(classifier, "'classifier' + cannot be null");
-		classifier.setTraverseCauses(true);
-		super.setClassifier(classifier);
 	}
 
 	@Override

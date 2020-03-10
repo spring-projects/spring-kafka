@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import java.time.Duration;
 
 import org.apache.kafka.clients.producer.Producer;
 
-import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.transaction.support.ResourceHolderSynchronization;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -114,38 +113,6 @@ public final class ProducerFactoryUtils {
 		if (resourceHolder != null) {
 			resourceHolder.close();
 		}
-	}
-
-	/**
-	 * Set the group id for the consumer bound to this thread.
-	 * @param groupId the group id.
-	 * @deprecated in favor of {@link KafkaUtils#setConsumerGroupId(String)}.
-	 * @since 1.3
-	 */
-	@Deprecated
-	public static void setConsumerGroupId(String groupId) {
-		KafkaUtils.setConsumerGroupId(groupId);
-	}
-
-	/**
-	 * Get the group id for the consumer bound to this thread.
-	 * @return the group id.
-	 * @deprecated in favor of {@link KafkaUtils#getConsumerGroupId()}.
-	 * @since 1.3
-	 */
-	@Deprecated
-	public static String getConsumerGroupId() {
-		return KafkaUtils.getConsumerGroupId();
-	}
-
-	/**
-	 * Clear the group id for the consumer bound to this thread.
-	 * @deprecated in favor of {@link KafkaUtils#clearConsumerGroupId()}.
-	 * @since 1.3
-	 */
-	@Deprecated
-	public static void clearConsumerGroupId() {
-		KafkaUtils.clearConsumerGroupId();
 	}
 
 	private static <K, V> void bindResourceToTransaction(KafkaResourceHolder<K, V> resourceHolder,

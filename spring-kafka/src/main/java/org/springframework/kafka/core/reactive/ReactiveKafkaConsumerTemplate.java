@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,18 +144,6 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 
 	public Mono<Long> position(TopicPartition partition) {
 		return doOnConsumer(consumer -> consumer.position(partition));
-	}
-
-	/**
-	 * Get the committed {@link OffsetAndMetadata} for the partition.
-	 * @param partition the partition.
-	 * @return the {@link OffsetAndMetadata}.
-	 * @deprecated in favor of {@link #committed(Set)}.
-	 */
-	@Deprecated
-	@SuppressWarnings("deprecation")
-	public Mono<OffsetAndMetadata> committed(TopicPartition partition) {
-		return doOnConsumer(consumer -> consumer.committed(partition));
 	}
 
 	public Mono<Map<TopicPartition, OffsetAndMetadata>> committed(Set<TopicPartition> partitions) {

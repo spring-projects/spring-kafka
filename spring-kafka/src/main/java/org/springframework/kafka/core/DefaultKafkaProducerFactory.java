@@ -27,7 +27,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -353,16 +352,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 	}
 
-	/**
-	 * NoOp.
-	 * @return always true.
-	 * @deprecated {@link org.springframework.context.Lifecycle} is no longer implemented.
-	 */
-	@Deprecated
-	public boolean isRunning() {
-		return true;
-	}
-
 	@Override
 	public Producer<K, V> createProducer() {
 		return createProducer(this.transactionIdPrefix);
@@ -680,13 +669,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public void close() {
 			close(null);
-		}
-
-		@Override
-		@SuppressWarnings("deprecation")
-		@Deprecated
-		public void close(long timeout, @Nullable TimeUnit unit) {
-			close(unit == null ? null : Duration.ofMillis(unit.toMillis(timeout)));
 		}
 
 		@Override

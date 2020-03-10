@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,24 +62,6 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
-	 * 'maxFailures' have occurred for a topic/partition/offset.
-	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
-	 * @deprecated in favor of {@link #DefaultAfterRollbackProcessor(BackOff)}.
-	 * <b>IMPORTANT</b> When using a
-	 * {@link org.springframework.util.backoff.FixedBackOff}, the maxAttempts property
-	 * represents retries (one less than maxFailures). To retry indefinitely, use a fixed
-	 * or exponential {@link BackOff} configured appropriately. To use the other
-	 * constructor with the semantics of this one, with maxFailures equal to 3, use
-	 * {@code new DefaultAfterRollbackProcessor(new FixedBackOff(0L, 2L)}.
-	 * @since 2.2.1
-	 */
-	@Deprecated
-	public DefaultAfterRollbackProcessor(int maxFailures) {
-		this(null, maxFailures);
-	}
-
-	/**
-	 * Construct an instance with the default recoverer which simply logs the record after
 	 * the backOff returns STOP for a topic/partition/offset.
 	 * @param backOff the {@link BackOff}.
 	 * @since 2.3
@@ -97,28 +79,6 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 	 */
 	public DefaultAfterRollbackProcessor(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
 		this(recoverer, SeekUtils.DEFAULT_BACK_OFF);
-	}
-
-	/**
-	 * Construct an instance with the provided recoverer which will be called after
-	 * maxFailures have occurred for a topic/partition/offset.
-	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
-	 * @param maxFailures the maxFailures; a negative value is treated as infinity.
-	 * @deprecated in favor of {@link #DefaultAfterRollbackProcessor(BackOff)}.
-	 * <b>IMPORTANT</b> When using a
-	 * {@link org.springframework.util.backoff.FixedBackOff}, the maxAttempts property
-	 * represents retries (one less than maxFailures). To retry indefinitely, use a fixed
-	 * or exponential {@link BackOff} configured appropriately. To use the other
-	 * constructor with the semantics of this one, with maxFailures equal to 3, use
-	 * {@code new DefaultAfterRollbackProcessor(recoverer, new FixedBackOff(0L, 2L)}.
-	 * @since 2.2
-	 */
-	@Deprecated
-	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
-			int maxFailures) {
-
-		// Remove super CTOR when this is removed.
-		super(recoverer, maxFailures);
 	}
 
 	/**

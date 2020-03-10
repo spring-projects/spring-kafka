@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.config;
 
-import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.springframework.kafka.listener.MessageListenerContainer;
@@ -41,18 +40,6 @@ public interface KafkaListenerContainerFactory<C extends MessageListenerContaine
 	 * @return the created container
 	 */
 	C createListenerContainer(KafkaListenerEndpoint endpoint);
-
-	/**
-	 * Create and configure a container without a listener; used to create containers that
-	 * are not used for KafkaListener annotations. Containers created using this method
-	 * are not added to the listener endpoint registry.
-	 * @param topicPartitions the topicPartitions to assign.
-	 * @deprecated in favor of {@link #createContainer(TopicPartitionOffset[])}.
-	 * @return the container.
-	 * @since 2.2
-	 */
-	@Deprecated
-	C createContainer(Collection<org.springframework.kafka.support.TopicPartitionInitialOffset> topicPartitions);
 
 	/**
 	 * Create and configure a container without a listener; used to create containers that
