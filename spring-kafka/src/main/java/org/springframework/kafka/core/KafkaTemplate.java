@@ -32,6 +32,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.log.LogAccessor;
@@ -66,7 +67,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Biju Kunjummen
  * @author Endika Guti?rrez
  */
-public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware {
+public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
+		DisposableBean {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass())); //NOSONAR
 
@@ -96,7 +98,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private boolean allowNonTransactional;
 
-	private boolean micrometerEnabled = true;
+	private volatile boolean micrometerEnabled = true;
 
 	private volatile MicrometerHolder micrometerHolder;
 
@@ -563,6 +565,13 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			this.micrometerEnabled = false;
 		}
 		return holder;
+	}
+
+	@Override
+	public void destroy() {
+		if (this.micrometerHolder != null) {
+			this.micrometerHolder.destroy();
+		}
 	}
 
 	@SuppressWarnings("serial")

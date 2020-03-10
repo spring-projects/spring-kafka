@@ -21,7 +21,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
 
-import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.messaging.Message;
 import org.springframework.util.ClassUtils;
 
@@ -39,7 +38,7 @@ public final class KafkaUtils {
 	 * True if micrometer is on the class path.
 	 */
 	public static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
-			"io.micrometer.core.instrument.MeterRegistry", KafkaMessageListenerContainer.class.getClassLoader());
+			"io.micrometer.core.instrument.MeterRegistry", KafkaUtils.class.getClassLoader());
 
 	private static ThreadLocal<String> groupIds = new ThreadLocal<>();
 
