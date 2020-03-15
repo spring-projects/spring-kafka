@@ -2844,6 +2844,42 @@ constructors to accept `Serializer` and `Deserializer` instances for `keys` and 
 When you use this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (through constructors or setter methods) to inject custom `Serializer` and `Deserializer` instances into the target `Producer` or `Consumer`.
 Also, you can pass in `Supplier<Serializer>` or `Supplier<Deserializer>` instances through constructors - these `Supplier` s are called on creation of each `Producer` or `Consumer`.
 
+===== String serialization
+
+Since version 2.5, Spring Kafka provides `ToStringSerializer` and `ParseStringDeserializer` classes that uses String representation of entities. They relies on methods `toString` and `parse`:
+
+====
+[source, java]
+----
+ToStringSerializer<Thing> thingSerializer = new ToStringSerializer<>();
+//...
+ParseStringDeserializer<Thing> deserializer = new ParseStringDeserializer<>(Thing::parse);
+----
+====
+
+By default `ToStringSerializer` is configured to convey type information about serialized entity in record `Headers`. This information can be used by `ParseStringDeserializer` on the receiving side.
+
+* `ToStringSerializer.ADD_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to disable this feature on the `ToStringSerializer` (sets the `addTypeInfo` property).
+
+====
+[source, java]
+----
+ParseStringDeserializer<Object> deserializer = new ParseStringDeserializer<>((str, headers) -> {
+	byte[] header = headers.lastHeader(ToStringSerializer.VALUE_TYPE).value();
+	String entityType = new String(header);
+
+	if (entityType.contains("Thing")) {
+		return Thing.parse(str);
+	}
+	else {
+		// ...parsing logic
+	}
+});
+----
+====
+
+You can configure which encoding serializer/deserializer uses by `setCharset`. By default it is `UTF-8`.
+
 ===== JSON
 
 Spring for Apache Kafka also provides `JsonSerializer` and `JsonDeserializer` implementations that are based on the
