@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +78,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -129,21 +131,28 @@ public class TransactionalContainerTests {
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, false);
+		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKCTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(true, false);
+		testConsumeAndProduceTransactionGuts(true, false, AckMode.RECORD);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionHandleError() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, true);
+		testConsumeAndProduceTransactionGuts(false, true, AckMode.RECORD);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionKTMManual() throws Exception {
+		testConsumeAndProduceTransactionGuts(false, false, AckMode.MANUAL_IMMEDIATE);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError) throws Exception {
+	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError, AckMode ackMode)
+			throws Exception {
+
 		Consumer consumer = mock(Consumer.class);
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
 		willAnswer(i -> {
@@ -153,6 +162,7 @@ public class TransactionalContainerTests {
 		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(topicPartition,
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))));
+		ConsumerRecords empty = new ConsumerRecords(Collections.emptyMap());
 		final AtomicBoolean done = new AtomicBoolean();
 		willAnswer(i -> {
 			if (done.compareAndSet(false, true)) {
@@ -160,7 +170,7 @@ public class TransactionalContainerTests {
 			}
 			else {
 				Thread.sleep(500);
-				return null;
+				return empty;
 			}
 		}).given(consumer).poll(any(Duration.class));
 		ConsumerFactory cf = mock(ConsumerFactory.class);
@@ -184,15 +194,38 @@ public class TransactionalContainerTests {
 			ptm = new ChainedKafkaTransactionManager(new SomeOtherTransactionManager(), tm);
 		}
 		ContainerProperties props = new ContainerProperties("foo");
+		props.setAckMode(ackMode);
 		props.setGroupId("group");
 		props.setTransactionManager(ptm);
 		final KafkaTemplate template = new KafkaTemplate(pf);
-		props.setMessageListener((MessageListener) m -> {
-			template.send("bar", "baz");
-			if (handleError) {
-				throw new RuntimeException("fail");
+		if (AckMode.MANUAL_IMMEDIATE.equals(ackMode)) {
+			class AckListener implements AcknowledgingMessageListener {
+				// not a lambda https://bugs.openjdk.java.net/browse/JDK-8074381
+
+				@Override
+				public void onMessage(ConsumerRecord data, Acknowledgment acknowledgment) {
+					template.send("bar", "baz");
+					if (handleError) {
+						throw new RuntimeException("fail");
+					}
+					acknowledgment.acknowledge();
+				}
+
+				@Override
+				public void onMessage(Object data) {
+				}
+
 			}
-		});
+			props.setMessageListener(new AckListener());
+		}
+		else {
+			props.setMessageListener((MessageListener) m -> {
+				template.send("bar", "baz");
+				if (handleError) {
+					throw new RuntimeException("fail");
+				}
+			});
+		}
 		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
 		container.setBeanName("commit");
 		if (handleError) {
