@@ -1245,7 +1245,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					invokeBatchListenerInTx(records, recordList);
 				}
 				else {
-					doInvokeBatchListener(records, recordList, null);
+					doInvokeBatchListener(records, recordList);
 				}
 			}
 		}
@@ -1270,7 +1270,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 										.getProducer(); // NOSONAR nullable
 							ListenerConsumer.this.producer = producer;
 						}
-						RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
+						RuntimeException aborted = doInvokeBatchListener(records, recordList);
 						if (aborted != null) {
 							throw aborted;
 						}
@@ -1335,22 +1335,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * Actually invoke the batch listener.
 		 * @param records the records (needed to invoke the error handler)
 		 * @param recordList the list of records (actually passed to the listener).
-		 * @param producer the producer - only if we're running in a transaction, null
-		 * otherwise.
 		 * @return an exception.
 		 * @throws Error an error.
 		 */
 		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records, // NOSONAR
-				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings(RAW_TYPES) Producer producer) {
+				List<ConsumerRecord<K, V>> recordList) {
 
 			Object sample = startMicrometerSample();
 			try {
-				invokeBatchOnMessage(records, recordList, producer);
+				invokeBatchOnMessage(records, recordList);
 				successTimer(sample);
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
-				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && producer == null;
+				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && this.producer == null;
 				if (acked) {
 					this.acks.addAll(getHighestOffsetRecords(records));
 				}
@@ -1360,10 +1358,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				try {
 					invokeBatchErrorHandler(records, recordList, e);
 					// unlikely, but possible, that a batch error handler "handles" the error
-					if ((!acked && !this.autoCommit && this.batchErrorHandler.isAckAfterHandle()) || producer != null) {
+					if ((!acked && !this.autoCommit && this.batchErrorHandler.isAckAfterHandle())
+							|| this.producer != null) {
 						this.acks.addAll(getHighestOffsetRecords(records));
-						if (producer != null) {
-							sendOffsetsToTransaction(producer);
+						if (this.producer != null) {
+							sendOffsetsToTransaction();
 						}
 					}
 				}
@@ -1403,10 +1402,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void invokeBatchOnMessage(final ConsumerRecords<K, V> records, // NOSONAR - Cyclomatic Complexity
-				List<ConsumerRecord<K, V>> recordList, @SuppressWarnings(RAW_TYPES) Producer producer)
-						throws InterruptedException {
+				List<ConsumerRecord<K, V>> recordList) throws InterruptedException {
 
-			invokeBatchOnMessage(records, recordList);
+			invokeBatchOnMessageWithRecordsOrList(records, recordList);
 			List<ConsumerRecord<?, ?>> toSeek = null;
 			if (this.nackSleep >= 0) {
 				int index = 0;
@@ -1420,12 +1418,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 			}
-			if (producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
+			if (this.producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
 				for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
 					this.acks.put(record);
 				}
-				if (producer != null) {
-					sendOffsetsToTransaction(producer);
+				if (this.producer != null) {
+					sendOffsetsToTransaction();
 				}
 			}
 			if (toSeek != null) {
@@ -1437,7 +1435,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void invokeBatchOnMessage(final ConsumerRecords<K, V> records,
+		private void invokeBatchOnMessageWithRecordsOrList(final ConsumerRecords<K, V> records,
 				@Nullable List<ConsumerRecord<K, V>> recordList) {
 
 			if (this.wantsFullRecords) {
@@ -1482,7 +1480,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
 					KafkaMessageListenerContainer.this.thisOrParentContainer,
-					() -> invokeBatchOnMessage(records, list));
+					() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 		}
 
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
@@ -1521,7 +1519,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 												.getProducer(); // NOSONAR
 								ListenerConsumer.this.producer = producer;
 							}
-							RuntimeException aborted = doInvokeRecordListener(record, producer, iterator);
+							RuntimeException aborted = doInvokeRecordListener(record, iterator);
 							if (aborted != null) {
 								throw aborted;
 							}
@@ -1586,7 +1584,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					continue;
 				}
 				this.logger.trace(() -> "Processing " + record);
-				doInvokeRecordListener(record, null, iterator);
+				doInvokeRecordListener(record, iterator);
 				if (this.nackSleep >= 0) {
 					handleNack(records, record);
 					break;
@@ -1634,25 +1632,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		/**
 		 * Actually invoke the listener.
 		 * @param record the record.
-		 * @param producer the producer - only if we're running in a transaction, null
-		 * otherwise.
 		 * @param iterator the {@link ConsumerRecords} iterator - used only if a
 		 * {@link RemainingRecordsErrorHandler} is being used.
 		 * @return an exception.
 		 * @throws Error an error.
 		 */
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> record, // NOSONAR
-				@SuppressWarnings(RAW_TYPES) Producer producer, Iterator<ConsumerRecord<K, V>> iterator) {
+				Iterator<ConsumerRecord<K, V>> iterator) {
 
 			Object sample = startMicrometerSample();
 
 			try {
-				invokeOnMessage(record, producer);
+				invokeOnMessage(record);
 				successTimer(sample);
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
-				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && producer == null;
+				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && this.producer == null;
 				if (acked) {
 					ackCurrent(record);
 				}
@@ -1660,9 +1656,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					throw e;
 				}
 				try {
-					invokeErrorHandler(record, producer, iterator, e);
-					if ((!acked && !this.autoCommit && this.errorHandler.isAckAfterHandle()) || producer != null) {
-						ackCurrent(record, producer);
+					invokeErrorHandler(record, iterator, e);
+					if ((!acked && !this.autoCommit && this.errorHandler.isAckAfterHandle())
+							|| this.producer != null) {
+						ackCurrent(record);
 					}
 				}
 				catch (RuntimeException ee) {
@@ -1677,8 +1674,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return null;
 		}
 
-		private void invokeOnMessage(final ConsumerRecord<K, V> record,
-				@SuppressWarnings(RAWTYPES) @Nullable Producer producer) {
+		private void invokeOnMessage(final ConsumerRecord<K, V> record) {
 
 			if (record.value() instanceof DeserializationException) {
 				throw (DeserializationException) record.value();
@@ -1702,7 +1698,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			doInvokeOnMessage(record);
 			if (this.nackSleep < 0 && !this.isManualImmediateAck) {
-				ackCurrent(record, producer);
+				ackCurrent(record);
 			}
 		}
 
@@ -1739,11 +1735,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void invokeErrorHandler(final ConsumerRecord<K, V> record,
-				@SuppressWarnings(RAWTYPES) @Nullable Producer producer,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException e) {
 
 			if (this.errorHandler instanceof RemainingRecordsErrorHandler) {
-				if (producer == null) {
+				if (this.producer == null) {
 					processCommits();
 				}
 				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
@@ -1779,17 +1774,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		public void ackCurrent(final ConsumerRecord<K, V> record) {
-			ackCurrent(record, null);
-		}
-
-		public void ackCurrent(final ConsumerRecord<K, V> record,
-				@SuppressWarnings(RAW_TYPES) @Nullable Producer producer) {
 
 			if (this.isRecordAck) {
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 						Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 								new OffsetAndMetadata(record.offset() + 1));
-				if (producer == null) {
+				if (this.producer == null) {
 					this.commitLogger.log(() -> "Committing: " + offsetsToCommit);
 					if (this.syncCommits) {
 						this.consumer.commitSync(offsetsToCommit, this.syncCommitTimeout);
@@ -1802,12 +1792,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.acks.add(record);
 				}
 			}
-			else if (producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
+			else if (this.producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
 				this.acks.add(record);
 			}
-			if (producer != null) {
+			if (this.producer != null) {
 				try {
-					sendOffsetsToTransaction(producer);
+					sendOffsetsToTransaction();
 				}
 				catch (Exception e) {
 					this.logger.error(e, "Send offsets to transaction failed");
@@ -1816,11 +1806,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@SuppressWarnings({ UNCHECKED, RAW_TYPES })
-		private void sendOffsetsToTransaction(Producer producer) {
+		private void sendOffsetsToTransaction() {
 			handleAcks();
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
 			this.commitLogger.log(() -> "Sending offsets to transaction: " + commits);
-			producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+			this.producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
 		}
 
 		private void processCommits() {
