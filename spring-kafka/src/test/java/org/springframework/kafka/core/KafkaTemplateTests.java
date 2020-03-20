@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,12 @@ package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.keyValue;
 import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
@@ -26,6 +31,7 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.timestamp;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +44,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -51,6 +58,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.CompositeProducerListener;
@@ -65,6 +73,7 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
@@ -356,6 +365,38 @@ public class KafkaTemplateTests {
 		localConsumer.close();
 		pf.createProducer().close();
 		pf.destroy();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void testMessageFlush() {
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Producer producer = mock(Producer.class);
+		given(pf.createProducer()).willReturn(producer);
+		ListenableFuture future = mock(ListenableFuture.class);
+		willReturn(future).given(producer).send(any(ProducerRecord.class), any(Callback.class));
+		KafkaTemplate template = new KafkaTemplate(pf);
+		template.setDefaultTopic("defaultTopic");
+		template.send(new GenericMessage<>("foo", Collections.singletonMap(KafkaHeaders.FLUSH, Boolean.TRUE)));
+		InOrder inOrder = inOrder(producer);
+		inOrder.verify(producer).send(any(ProducerRecord.class), any(Callback.class));
+		inOrder.verify(producer).flush();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void testMessageNoFlush() {
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Producer producer = mock(Producer.class);
+		given(pf.createProducer()).willReturn(producer);
+		ListenableFuture future = mock(ListenableFuture.class);
+		willReturn(future).given(producer).send(any(ProducerRecord.class), any(Callback.class));
+		KafkaTemplate template = new KafkaTemplate(pf);
+		template.setDefaultTopic("defaultTopic");
+		template.send(new GenericMessage<>("foo"));
+		InOrder inOrder = inOrder(producer);
+		inOrder.verify(producer).send(any(ProducerRecord.class), any(Callback.class));
+		inOrder.verify(producer, never()).flush();
 	}
 
 }

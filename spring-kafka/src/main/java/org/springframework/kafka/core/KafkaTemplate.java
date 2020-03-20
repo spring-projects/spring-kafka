@@ -65,7 +65,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Igor Stepanov
  * @author Artem Bilan
  * @author Biju Kunjummen
- * @author Endika Guti?rrez
+ * @author Endika Gutiérrez
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		DisposableBean {
@@ -315,9 +315,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				producerRecord.headers().add(KafkaHeaders.CORRELATION_ID, correlationId);
 			}
 		}
-		return doSend((ProducerRecord<K, V>) producerRecord);
+		return doSend((ProducerRecord<K, V>) producerRecord,
+				Boolean.TRUE.equals(message.getHeaders().get(KafkaHeaders.FLUSH, Boolean.class)));
 	}
-
 
 	@Override
 	public List<PartitionInfo> partitionsFor(String topic) {
@@ -454,6 +454,18 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * RecordMetadata}.
 	 */
 	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
+		return doSend(producerRecord, false);
+	}
+
+	/**
+	 * Send the producer record.
+	 * @param producerRecord the producer record.
+	 * @param flush true to flush after send.
+	 * @return a Future for the {@link org.apache.kafka.clients.producer.RecordMetadata
+	 * RecordMetadata}.
+	 * @since 2.5
+	 */
+	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord, boolean flush) {
 		final Producer<K, V> producer = getTheProducer();
 		this.logger.trace(() -> "Sending: " + producerRecord);
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
@@ -465,7 +477,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			sample = this.micrometerHolder.start();
 		}
 		producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample));
-		if (this.autoFlush) {
+		if (flush || this.autoFlush) {
 			flush();
 		}
 		this.logger.trace(() -> "Sent: " + producerRecord);

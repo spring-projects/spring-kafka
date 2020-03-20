@@ -78,9 +78,9 @@ private KafkaAdmin admin;
 ----
 ====
 
-==== Sending Messages
+==== Sending Records
 
-This section covers how to send messages.
+This section covers how to send records.
 
 [[kafka-template]]
 ===== Using `KafkaTemplate`
@@ -3094,6 +3094,16 @@ Again, using `byte[]` or `Bytes` is more efficient because they avoid a `String`
 
 For convenience, starting with version 2.3, the framework also provides a `StringOrBytesSerializer` which can serialize all three value types so it can be used with any of the message converters.
 ====
+
+When using the `KafkaTemplate.send(Message<?> message)` variant of the `send` method, the destination topic must be configured as a default on the template or it must be provided in the `KafkaHeaders.TOPIC` header.
+The following headers are used for outbound messages:
+
+* `KafkaHeaders.TOPIC` - the destination topic.
+* `KafkaHeaders.PARTITION` - the destination partition.
+* `KafkaHeaders.MESSAGE_KEY` - the `key` property of the `ProducerRecord`.
+* `KafkaHeaders.FLUSH` - flush the producer after the `send()`.
+
+Flushing after sending several messages might be useful if you are using the `linger.ms` and `batch.size` Kafka producer properties; just set the header to `Boolean.TRUE` on the last message and an incomplete batch will be sent immediately.
 
 [[data-projection]]
 ====== Using Spring Data Projection Interfaces

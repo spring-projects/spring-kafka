@@ -201,4 +201,11 @@ public abstract class KafkaHeaders {
 	 */
 	public static final String DELIVERY_ATTEMPT = PREFIX + "deliveryAttempt";
 
+	/**
+	 * For outbound messages, flush the producer after the send. Set to
+	 * {@link Boolean#TRUE} or {@link Boolean#FALSE}.
+	 * @since 2.5
+	 */
+	public static final String FLUSH = PREFIX + "flush";
+
 }
