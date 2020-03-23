@@ -23,6 +23,8 @@ It provides the following components:
 
 * <<si-channels>>
 
+* You can now optionally flush the producer after a send; see <<si-outbound>> for more information.
+
 ==== What's new in Spring Integration for Apache Kafka (version 3.2)
 
 * The pollable `KafkaMessageSource` now implements `Pausable` so the consumer can be `paused` and `resumed`.
@@ -86,6 +88,10 @@ IMPORTANT: If your application uses transactions and the same channel adapter is
 The prefix used by container-initiated transactions (the producer factory or transaction manager property) must be the same on all application instances.
 The prefix used for producer-only transactions must be unique on all application instances.
 
+Starting with version 3.3, you can configure a `flushExpression` which must resolve to a boolean value.
+Flushing after sending several messages might be useful if you are using the `linger.ms` and `batch.size` Kafka producer properties; the expression should evaluate to `Boolean.TRUE` on the last message and an incomplete batch will be sent immediately.
+By default, the expression looks for a `Boolean` value in the `KafkaIntegrationHeaders.FLUSH` header (`kafka_flush`).
+The flush will occur if the value is `true` and not if it's `false` or the header is absent.
 
 ===== Java Configuration
 
