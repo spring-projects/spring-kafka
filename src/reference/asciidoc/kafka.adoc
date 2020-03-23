@@ -1068,6 +1068,9 @@ You can use the following header names to retrieve the headers of the message:
 * `KafkaHeaders.RECEIVED_TIMESTAMP`
 * `KafkaHeaders.TIMESTAMP_TYPE`
 
+Starting with version 2.5 the `RECEIVED_MESSAGE_KEY` is not present if the incoming record has a `null` key; previously the header was populated with a `null` value.
+This change is to make the framework consistent with `spring-messaging` conventions where `null` valued headers are not present.
+
 The following example shows how to use the headers:
 
 ====
@@ -1075,7 +1078,7 @@ The following example shows how to use the headers:
 ----
 @KafkaListener(id = "qux", topicPattern = "myTopic1")
 public void listen(@Payload String foo,
-        @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
+        @Header(name = KafkaHeaders.RECEIVED_MESSAGE_KEY, required = false) Integer key,
         @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
         @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
         @Header(KafkaHeaders.RECEIVED_TIMESTAMP) long ts

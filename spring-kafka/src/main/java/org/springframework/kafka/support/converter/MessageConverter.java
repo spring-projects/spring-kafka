@@ -35,22 +35,38 @@ import org.springframework.lang.Nullable;
  */
 public interface MessageConverter {
 
+	/**
+	 * Get the thread bound group id.
+	 * @return the group id.
+	 */
 	@Nullable
 	static String getGroupId() {
 		return KafkaUtils.getConsumerGroupId();
 	}
 
+	/**
+	 * Set up the common headers.
+	 * @param acknowledgment the acknowledgment.
+	 * @param consumer the consumer.
+	 * @param rawHeaders the raw headers map.
+	 * @param theKey the key.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param offset the offfset.
+	 * @param timestampType the timestamp type.
+	 * @param timestamp the timestamp.
+	 */
 	default void commonHeaders(Acknowledgment acknowledgment, Consumer<?, ?> consumer, Map<String, Object> rawHeaders,
-			Object theKey, Object topic, Object partition, Object offset,
+			@Nullable Object theKey, Object topic, Object partition, Object offset,
 			@Nullable Object timestampType, Object timestamp) {
 
-		rawHeaders.put(KafkaHeaders.RECEIVED_MESSAGE_KEY, theKey);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topic);
 		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, partition);
 		rawHeaders.put(KafkaHeaders.OFFSET, offset);
 		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampType);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamp);
 		JavaUtils.INSTANCE
+			.acceptIfNotNull(KafkaHeaders.RECEIVED_MESSAGE_KEY, theKey, (key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.GROUP_ID, MessageConverter.getGroupId(),
 					(key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment, (key, val) -> rawHeaders.put(key, val))

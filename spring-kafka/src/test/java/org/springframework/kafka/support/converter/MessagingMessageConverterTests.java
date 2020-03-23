@@ -43,4 +43,14 @@ public class MessagingMessageConverterTests {
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo("bar");
 	}
 
+	@Test
+	void dontMapNullKey() {
+		MessagingMessageConverter converter = new MessagingMessageConverter();
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, null, "baz");
+		Message<?> message = converter.toMessage(record, null, null, null);
+		assertThat(message.getPayload()).isEqualTo("baz");
+		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
+		assertThat(message.getHeaders().containsKey(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isFalse();
+	}
+
 }

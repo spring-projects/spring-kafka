@@ -11,10 +11,12 @@ There is now an option to to add a header which tracks delivery attempts when us
 See <<>> for more information.
 
 [[x25-message-return]]
-==== @KafkaListener Improvements
+==== @KafkaListener Changes
 
 Default reply headers will now be populated automatically if needed when a `@KafkaListener` return type is `Message<?>`.
 See <<reply-message>> for more information.
+
+The `KafkaHeaders.RECEIVED_MESSAGE_KEY` is no longer populated with a `null` value when the incoming record has a `null` key; the header is omitted altogether.
 
 [[x25-template]]
 ==== KafkaTemplate Changes
