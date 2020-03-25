@@ -1197,7 +1197,6 @@ public class EnableKafkaIntegrationTests {
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps =
 					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", this.embeddedKafka);
-			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return consumerProps;
 		}
 

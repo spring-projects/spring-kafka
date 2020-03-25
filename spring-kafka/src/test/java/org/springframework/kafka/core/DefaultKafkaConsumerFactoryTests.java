@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -306,7 +306,6 @@ public class DefaultKafkaConsumerFactoryTests {
 		pfTx.setTransactionIdPrefix("fooTx.");
 		KafkaTemplate<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache1Group", "false", this.embeddedKafka);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		ContainerProperties containerProps = new ContainerProperties("txCache1");
 		CountDownLatch latch = new CountDownLatch(1);
@@ -347,7 +346,6 @@ public class DefaultKafkaConsumerFactoryTests {
 		pfTx.setTransactionIdPrefix("fooTx.");
 		KafkaTemplate<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache2Group", "false", this.embeddedKafka);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		ContainerProperties containerProps = new ContainerProperties("txCache2");
 		CountDownLatch latch = new CountDownLatch(1);

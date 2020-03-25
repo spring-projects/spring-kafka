@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import java.util.Map;
 import javax.net.ServerSocketFactory;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -72,7 +71,6 @@ public class AddressableEmbeddedBrokerTests {
 	@Test
 	public void testLateStartedConsumer() {
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(TEST_EMBEDDED, "false", this.broker);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		Consumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		this.broker.consumeFromAnEmbeddedTopic(consumer, TEST_EMBEDDED);
 
@@ -82,7 +80,6 @@ public class AddressableEmbeddedBrokerTests {
 		KafkaTestUtils.getSingleRecord(consumer, TEST_EMBEDDED);
 
 		consumerProps = KafkaTestUtils.consumerProps("another" + TEST_EMBEDDED, "false", this.broker);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		Consumer<Integer, String> consumer2 = new KafkaConsumer<>(consumerProps);
 		this.broker.consumeFromAnEmbeddedTopic(consumer2, TEST_EMBEDDED);
 		KafkaTestUtils.getSingleRecord(consumer2, TEST_EMBEDDED);

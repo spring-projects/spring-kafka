@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -386,7 +386,6 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "qux");
 		template.flush();
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testManualExisting", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic7);
 		final CountDownLatch latch = new CountDownLatch(8);
@@ -438,7 +437,6 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(2, "qux");
 		template.flush();
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testManualExistingSync", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic8);
 		containerProps.setSyncCommits(true);

@@ -108,7 +108,6 @@ public class KafkaTemplateTransactionTests {
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testLocalTx", "false", embeddedKafka);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		consumerProps.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		cf.setKeyDeserializer(new StringDeserializer());
@@ -164,7 +163,6 @@ public class KafkaTemplateTransactionTests {
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGlobalTx", "false", embeddedKafka);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		cf.setKeyDeserializer(new StringDeserializer());
 		Consumer<String, String> consumer = cf.createConsumer();

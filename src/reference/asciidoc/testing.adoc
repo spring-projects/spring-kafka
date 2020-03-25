@@ -3,6 +3,7 @@
 
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
+[[junit]]
 ==== JUnit
 
 `o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties.
@@ -29,6 +30,11 @@ public static Map<String, Object> consumerProps(String group, String autoCommit,
 public static Map<String, Object> producerProps(EmbeddedKafkaBroker embeddedKafka) { ... }
 ----
 ====
+
+NOTE: Starting with version 2.5, the `consumerProps` method sets the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` to `earliest`.
+This is because, in most cases, you want the consumer to consume any messages sent in a test case.
+The `ConsumerConfig` default is `latest` which means that messages already sent by a test, before the consumer starts, will not receive those records.
+To revert to the previous behavior, set the property to `latest` after calling the method.
 
 A JUnit 4 `@Rule` wrapper for the `EmbeddedKafkaBroker` is provided to create an embedded Kafka and an embedded Zookeeper server.
 (See <<embedded-kafka-annotation>> for information about using `@EmbeddedKafka` with JUnit 5).

@@ -72,7 +72,6 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 	@Test
 	public void testRetriesAndDlt() throws InterruptedException {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("retryBatch", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setPollTimeout(10_000);
@@ -140,7 +139,6 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 	@Test
 	public void testRetriesCantRecover() throws InterruptedException {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("retryBatch2", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 		containerProps.setPollTimeout(10_000);

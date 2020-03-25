@@ -190,7 +190,6 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testDelegateType() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("delegate", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic3);
 		containerProps.setShutdownTimeout(60_000L);
@@ -320,7 +319,6 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testListenerTypes() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("lt1", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic4);
 
@@ -921,7 +919,6 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Start batch ack");
 
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test6", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic7);
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -990,7 +987,6 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Start batch listener");
 
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test8", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic8);
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) messages -> {
@@ -1069,7 +1065,6 @@ public class KafkaMessageListenerContainerTests {
 		template.flush();
 
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test9", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic9);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -1131,7 +1126,6 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Start batch listener errors");
 
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test9", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic10);
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) messages -> {
@@ -1861,7 +1855,6 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeConfiguredType() throws Exception {
 		this.logger.info("Start JSON1");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Foo.class);
 		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -1945,7 +1938,6 @@ public class KafkaMessageListenerContainerTests {
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Bar, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 
@@ -1967,7 +1959,6 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaProducerFactory<Bar, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Bar, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic2);
@@ -1989,7 +1980,6 @@ public class KafkaMessageListenerContainerTests {
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 		props.put(JsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo1.class.getName() + " , bar:" + Bar1.class.getName());
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic20);
 
@@ -2028,7 +2018,6 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeIgnoreTypeHeadersInbound() throws Exception {
 		this.logger.info("Start JSON4");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 		ErrorHandlingDeserializer<Foo1> errorHandlingDeserializer =
 				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(Foo1.class, false));
@@ -2070,7 +2059,6 @@ public class KafkaMessageListenerContainerTests {
 	public void testStaticAssign() throws Exception {
 		this.logger.info("Start static");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset[] {
@@ -2116,7 +2104,6 @@ public class KafkaMessageListenerContainerTests {
 	public void testPatternAssign() throws Exception {
 		this.logger.info("Start pattern");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testpattern", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(Pattern.compile(topic23 + ".*"));
@@ -2510,7 +2497,6 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch consumeLatch = new CountDownLatch(2);
 
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test19", "false", embeddedKafka);
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
 		props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 3_000);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic19);

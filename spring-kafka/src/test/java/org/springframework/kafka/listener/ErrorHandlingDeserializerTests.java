@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -170,7 +170,6 @@ public class ErrorHandlingDeserializerTests {
 		@Bean
 		public ConsumerFactory<String, String> cf() {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(TOPIC + ".g1", "false", embeddedKafka());
-			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class.getName());
 			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
 			props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, FailSometimesDeserializer.class);
@@ -181,7 +180,6 @@ public class ErrorHandlingDeserializerTests {
 		@Bean
 		public ConsumerFactory<String, String> cfWithExplicitDeserializers() {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(TOPIC + ".g2", "false", embeddedKafka());
-			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return new DefaultKafkaConsumerFactory<>(props,
 					new ErrorHandlingDeserializer<String>(new FailSometimesDeserializer()).keyDeserializer(true),
 					new ErrorHandlingDeserializer<String>(new FailSometimesDeserializer()));

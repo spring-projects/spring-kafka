@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.Map;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -49,7 +48,6 @@ public class KafkaTestUtilsTests {
 		producer.send(new ProducerRecord<>("singleTopic2", 1, "foo"));
 		producer.close();
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests1", "false", broker);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromAllEmbeddedTopics(consumer);
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic1");
@@ -63,7 +61,6 @@ public class KafkaTestUtilsTests {
 		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
 		producer.send(new ProducerRecord<>("singleTopic4", 1, "foo"));
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests2", "false", broker);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromEmbeddedTopics(consumer, "singleTopic4", "singleTopic5");
 		long t1 = System.currentTimeMillis();
@@ -105,7 +102,6 @@ public class KafkaTestUtilsTests {
 		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
 		producer.send(new ProducerRecord<>("multiTopic1", 0, 1, "foo"));
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests3", "false", broker);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromAnEmbeddedTopic(consumer, "multiTopic1");
 		new Thread(() -> {

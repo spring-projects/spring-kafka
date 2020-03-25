@@ -41,7 +41,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -469,9 +468,7 @@ public class ReplyingKafkaTemplateTests {
 			}
 
 		});
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false",
-				embeddedKafka);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
@@ -489,9 +486,7 @@ public class ReplyingKafkaTemplateTests {
 	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionOffset topic) {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false",
-				embeddedKafka);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
@@ -510,9 +505,7 @@ public class ReplyingKafkaTemplateTests {
 
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		containerProperties.setAckMode(AckMode.MANUAL_IMMEDIATE);
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false",
-				embeddedKafka);
-		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, Collection<ConsumerRecord<Integer, String>>> cf =
 				new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, Collection<ConsumerRecord<Integer, String>>> container =
@@ -570,7 +563,6 @@ public class ReplyingKafkaTemplateTests {
 		@Bean
 		public DefaultKafkaConsumerFactory<Integer, String> cf() {
 			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("serverSide", "false", this.embeddedKafka);
-			consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return new DefaultKafkaConsumerFactory<>(consumerProps);
 		}
 

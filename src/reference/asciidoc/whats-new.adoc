@@ -23,3 +23,9 @@ The `KafkaHeaders.RECEIVED_MESSAGE_KEY` is no longer populated with a `null` val
 
 The `KafkaTemplate` can now maintain micrometer timers.
 See <<micrometer>> for more information.
+
+[[x25-testing]]
+==== Testing Changes
+
+The `KafkaTestUtils.consumerProps()` helper record now sets `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` to `earliest` by default.
+See <<junit>> for more information.

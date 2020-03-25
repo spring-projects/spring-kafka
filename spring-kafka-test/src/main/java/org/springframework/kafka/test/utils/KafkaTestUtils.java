@@ -62,7 +62,6 @@ public final class KafkaTestUtils {
 	private static Properties defaults;
 
 	private KafkaTestUtils() {
-		// private ctor
 	}
 
 	/**
@@ -87,7 +86,6 @@ public final class KafkaTestUtils {
 		return producerProps(embeddedKafka.getBrokersAsString());
 	}
 
-
 	/**
 	 * Set up test properties for an {@code <Integer, String>} consumer.
 	 * @param brokers the bootstrapServers property.
@@ -104,6 +102,7 @@ public final class KafkaTestUtils {
 		props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "60000");
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		return props;
 	}
 
@@ -203,7 +202,6 @@ public final class KafkaTestUtils {
 
 		Map<String, Object> consumerConfig = consumerProps(brokerAddresses, group, "false");
 		consumerConfig.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
-		consumerConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		try (KafkaConsumer consumer = new KafkaConsumer(consumerConfig)) {
 			TopicPartition topicPart = new TopicPartition(topic, partition);
 			consumer.assign(Collections.singletonList(topicPart));
