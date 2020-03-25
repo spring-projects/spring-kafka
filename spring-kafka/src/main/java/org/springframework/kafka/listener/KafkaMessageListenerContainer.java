@@ -1525,6 +1525,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				catch (ProducerFencedException e) {
 					this.logger.error(e, "Producer fenced during transaction");
+					break;
 				}
 				catch (RuntimeException e) {
 					this.logger.error(e, "Transaction rolled back");

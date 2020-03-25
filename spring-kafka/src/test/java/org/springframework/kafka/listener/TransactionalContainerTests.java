@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
@@ -720,7 +721,9 @@ public class TransactionalContainerTests {
 		recordMap.put(topicPartition1, Collections.singletonList(new ConsumerRecord<>("foo", 1, 0, "key", "value")));
 		ConsumerRecords records = new ConsumerRecords(recordMap);
 		final AtomicBoolean done = new AtomicBoolean();
+		final CountDownLatch pollLatch = new CountDownLatch(2);
 		willAnswer(i -> {
+			pollLatch.countDown();
 			if (done.compareAndSet(false, true)) {
 				return records;
 			}
@@ -732,11 +735,6 @@ public class TransactionalContainerTests {
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		willReturn(consumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
 		Producer producer = mock(Producer.class);
-		final CountDownLatch closeLatch = new CountDownLatch(1);
-		willAnswer(i -> {
-			closeLatch.countDown();
-			return null;
-		}).given(producer).close(any());
 		willThrow(new ProducerFencedException("test")).given(producer).commitTransaction();
 		ProducerFactory pf = mock(ProducerFactory.class);
 		given(pf.transactionCapable()).willReturn(true);
@@ -746,7 +744,9 @@ public class TransactionalContainerTests {
 				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
 		props.setTransactionManager(tm);
+		AtomicInteger deliveryCount = new AtomicInteger();
 		props.setMessageListener((MessageListener) m -> {
+			deliveryCount.incrementAndGet();
 		});
 		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
 		AfterRollbackProcessor arp = mock(AfterRollbackProcessor.class);
@@ -754,11 +754,13 @@ public class TransactionalContainerTests {
 		container.setAfterRollbackProcessor(arp);
 		container.setBeanName("rollback");
 		container.start();
-		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(producer);
 		inOrder.verify(producer).beginTransaction();
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).close(any());
+		inOrder.verifyNoMoreInteractions();
+		assertThat(deliveryCount.get()).isEqualTo(1);
 
 		verify(arp, never()).process(any(), any(), any(), anyBoolean());
 
