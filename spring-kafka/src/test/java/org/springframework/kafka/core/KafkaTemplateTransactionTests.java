@@ -250,7 +250,7 @@ public class KafkaTemplateTransactionTests {
 
 	@Test
 	public void testTransactionSynchronization() {
-		MockProducer<String, String> producer = new MockProducer<>();
+		MockProducer<String, String> producer = spy(new MockProducer<>());
 		producer.initTransactions();
 
 		@SuppressWarnings("unchecked")
@@ -261,7 +261,7 @@ public class KafkaTemplateTransactionTests {
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
 
-		ResourcelessTransactionManager tm = new ResourcelessTransactionManager();
+		ResourcelessTransactionManager tm = spy(new ResourcelessTransactionManager());
 
 		new TransactionTemplate(tm)
 				.execute(s -> {
@@ -272,6 +272,14 @@ public class KafkaTemplateTransactionTests {
 		assertThat(producer.history()).containsExactly(new ProducerRecord<>(STRING_KEY_TOPIC, "foo", "bar"));
 		assertThat(producer.transactionCommitted()).isTrue();
 		assertThat(producer.closed()).isTrue();
+
+		InOrder inOrder = inOrder(producer, tm);
+		inOrder.verify(tm).doBegin(any(), any());
+		inOrder.verify(producer).beginTransaction();
+		inOrder.verify(producer).send(any(), any());
+		inOrder.verify(tm).doCommit(any());
+		inOrder.verify(producer).commitTransaction();
+		inOrder.verify(producer).close(any());
 	}
 
 	@Test

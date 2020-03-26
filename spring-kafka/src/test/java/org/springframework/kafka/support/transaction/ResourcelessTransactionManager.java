@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,12 +29,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class ResourcelessTransactionManager extends AbstractPlatformTransactionManager {
 
 	@Override
-	protected void doBegin(Object transaction, TransactionDefinition definition) throws TransactionException {
+	public void doBegin(Object transaction, TransactionDefinition definition) throws TransactionException {
 		((ResourcelessTransaction) transaction).begin();
 	}
 
 	@Override
-	protected void doCommit(DefaultTransactionStatus status) throws TransactionException {
+	public void doCommit(DefaultTransactionStatus status) throws TransactionException {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Committing resourceless transaction on [" + status.getTransaction() + "]");
 		}
