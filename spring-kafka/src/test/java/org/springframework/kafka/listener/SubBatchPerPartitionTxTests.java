@@ -90,7 +90,7 @@ public class SubBatchPerPartitionTxTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void threeTransactions() throws Exception {
+	public void threeTransactionsForThreeSubBatches() throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
@@ -201,8 +201,6 @@ public class SubBatchPerPartitionTxTests {
 			factory.getContainerProperties().setAckMode(AckMode.BATCH);
 			factory.getContainerProperties().setTransactionManager(tm());
 			factory.setBatchListener(true);
-			// true by default for a transactional container since 2.5
-//			factory.getContainerProperties().setSubBatchPerPartition(true);
 			return factory;
 		}
 

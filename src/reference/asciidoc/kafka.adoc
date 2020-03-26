@@ -1920,7 +1920,6 @@ CommitOption
 |LATEST_ONLY _NO_TX
 |Whether or not to commit the initial position on assignment; by default, the initial offset will only be committed if the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` is `latest` and it won't run in a transaction even if there is a transaction manager present.
 See the javadocs for `ContainerProperties.AssignmentCommitOption` for more information about the available options.
-In 2.3 and 2.4, the default was `ALWAYS` to retain the previous default before it was configurable.
 
 |authorizationException
 RetryInterval
