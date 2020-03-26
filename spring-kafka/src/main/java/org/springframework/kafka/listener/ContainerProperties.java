@@ -140,6 +140,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private static final Duration DEFAULT_CONSUMER_START_TIMEOUT = Duration.ofSeconds(30);
 
+	private static final int DEFAULT_ACK_TIME = 5000;
+
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
 	/**
@@ -162,14 +164,14 @@ public class ContainerProperties extends ConsumerProperties {
 	 * committed when {@link AckMode#COUNT} or {@link AckMode#COUNT_TIME} is being
 	 * used.
 	 */
-	private int ackCount;
+	private int ackCount = 1;
 
 	/**
 	 * The time (ms) after which outstanding offsets should be committed when
 	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be
 	 * larger than
 	 */
-	private long ackTime;
+	private long ackTime = DEFAULT_ACK_TIME;
 
 	/**
 	 * The message listener; must be a {@link org.springframework.kafka.listener.MessageListener}
@@ -211,9 +213,9 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private Duration consumerStartTimout = DEFAULT_CONSUMER_START_TIMEOUT;
 
-	private boolean subBatchPerPartition;
+	private Boolean subBatchPerPartition;
 
-	private AssignmentCommitOption assignmentCommitOption = AssignmentCommitOption.ALWAYS;
+	private AssignmentCommitOption assignmentCommitOption = AssignmentCommitOption.LATEST_ONLY_NO_TX;
 
 	private boolean deliveryAttemptHeader;
 
@@ -365,9 +367,11 @@ public class ContainerProperties extends ConsumerProperties {
 	 * rolled back unless an error handler is provided that handles the error and exits
 	 * normally; in which case the offsets are sent to the transaction and the transaction
 	 * is committed.
+	 * @deprecated in favor of {@code GenericErrorHandler.isAckAfterHandle()}.
 	 * @param ackOnError whether the container should acknowledge messages that throw
 	 * exceptions.
 	 */
+	@Deprecated
 	public void setAckOnError(boolean ackOnError) {
 		this.ackOnError = ackOnError;
 	}
@@ -562,7 +566,22 @@ public class ContainerProperties extends ConsumerProperties {
 		this.consumerStartTimout = consumerStartTimout;
 	}
 
+	/**
+	 * Return whether to split batches by partition.
+	 * @return subBatchPerPartition.
+	 * @since 2.3.2
+	 */
 	public boolean isSubBatchPerPartition() {
+		return this.subBatchPerPartition == null ? false : this.subBatchPerPartition;
+	}
+
+	/**
+	 * Return whether to split batches by partition; null if not set.
+	 * @return subBatchPerPartition.
+	 * @since 2.5
+	 */
+	@Nullable
+	public Boolean getSubBatchPerPartition() {
 		return this.subBatchPerPartition;
 	}
 
@@ -572,6 +591,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * received by the {@code poll()}. Useful when using transactions to enable zombie
 	 * fencing, by using a {@code transactional.id} that is unique for each
 	 * group/topic/partition.
+	 * Defaults to true when using transactions and false when not.
 	 * @param subBatchPerPartition true for a separate transaction for each partition.
 	 * @since 2.3.2
 	 */
@@ -584,8 +604,8 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set the assignment commit option. Default {@link AssignmentCommitOption#ALWAYS}.
-	 * In a future release it will default to {@link AssignmentCommitOption#LATEST_ONLY}.
+	 * Set the assignment commit option. Default
+	 * {@link AssignmentCommitOption#LATEST_ONLY_NO_TX}.
 	 * @param assignmentCommitOption the option.
 	 * @since 2.3.6
 	 */
@@ -593,7 +613,6 @@ public class ContainerProperties extends ConsumerProperties {
 		Assert.notNull(assignmentCommitOption, "'assignmentCommitOption' cannot be null");
 		this.assignmentCommitOption = assignmentCommitOption;
 	}
-
 
 	public boolean isDeliveryAttemptHeader() {
 		return this.deliveryAttemptHeader;

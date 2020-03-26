@@ -1889,6 +1889,272 @@ However, see the note at the beginning of this section; you can avoid using the 
 
 IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
 
+[[container-props]]
+==== Listener Container Properties
+
+.`ContainerProperties` Properties
+[cols="6l,3,16", options="header"]
+|===
+| Property
+| Default
+| Description
+
+|ackCount
+|1
+|The number of records before committing pending offsets when the `ackMode` is `COUNT` or `COUNT_TIME`.
+
+|ackMode
+|BATCH
+|Controls how often offsets are committed - see <<committing-offsets>>.
+
+|ackOnError
+|`false`
+|[DEPRECATED in favor of `ErrorHandler.isAckAfterHandle()`]
+
+|ackTime
+|5000
+|The time in milliseconds after which pending offsets are committed when the `ackMode` is `TIME` or `COUNT_TIME`.
+
+|assignment
+CommitOption
+|LATEST_ONLY _NO_TX
+|Whether or not to commit the initial position on assignment; by default, the initial offset will only be committed if the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` is `latest` and it won't run in a transaction even if there is a transaction manager present.
+See the javadocs for `ContainerProperties.AssignmentCommitOption` for more information about the available options.
+In 2.3 and 2.4, the default was `ALWAYS` to retain the previous default before it was configurable.
+
+|authorizationException
+RetryInterval
+|`null`
+|When not null, a `Duration` to sleep between polls when an `AuthorizationException` is thrown by the Kafka client.
+When null, such exceptions are considered fatal and the container will stop.
+
+|clientId
+|(empty string)
+|A prefix for the `client.id` consumer property.
+Overrides the consumer factory `client.id` property; in a concurrent container, `-n` is added as a suffix for each consumer instance.
+
+|commitCallback
+|`null`
+|When present and `syncCommits` is `false` a callback invoked after the commit completes.
+
+|commitLogLevel
+|DEBUG
+|The logging level for logs pertaining to committing offsets.
+
+|consumerRebalanceListener
+|`null`
+|A rebalance listener; see <<rebalance-listeners>>.
+
+|consumerStartTimout
+|30s
+|The time to wait for the consumer to start before logging an error; this might happen if, say, you use a task executor with insufficient threads.
+
+|consumerTaskExecutor
+|`SimpleAsync` `TaskExecutor`
+|A task executor to run the consumer threads.
+The default executor creates threads named `<name>-C-n`; with the `KafkaMessageListenerContainer`, the name is the bean name; with the `ConcurrentMessageListenerContainer` the name is the bean name suffixed with `-n` where n is incremented for each child container.
+
+|deliveryAttemptHeader
+|`false`
+|See <<delivery-header>>.
+
+|groupId
+|`null`
+|Overrides the consumer `group.id` property; automatically set by the `@KafkaListener` `id` or `groupId` property.
+
+|idleBetweenPolls
+|0
+|Used to slow down deliveries by sleeping the thread between polls.
+The time to process a batch of records plus this value must be less than the `max.poll.interval.ms` consumer property.
+
+|idleEventInterval
+|`null`
+|When set, enables publication of `ListenerContainerIdleEvent` s, see <<events>> and <<idle-containers>>.
+
+|kafkaConsumerProperties
+|None
+|Used to override any arbitrary consumer properties configured on the consumer factory.
+
+|logContainerConfig
+|`false`
+|Set to true to log at INFO level all container properties.
+
+|messageListener
+|`null`
+|The message listener.
+
+|micrometerEnabled
+|`true`
+|Whether or not to maintain Micrometer timers for the consumer threads.
+
+|missingTopicsFatal
+|`false`
+|When true prevents the container from starting if the confifgured topic(s) are not present on the broker.
+
+|monitorInterval
+|30s
+|How often to check the state of the consumer threads for `NonResponsiveConsumerEvent` s.
+See `noPollThreshold` and `pollTimeout`.
+
+|noPollThreshold
+|3.0
+|Multiplied by `pollTimeOut` to determine whether to publish a `NonResponsiveConsumerEvent`.
+See `monitorInterval`.
+
+|pollTimeout
+|5000
+|The timeout passed into `Consumer.poll()`.
+
+|scheduler
+|`ThreadPool` `TaskScheduler`
+|A scheduler on which to run the consumer monitor task.
+
+|shutdownTimeout
+|10000
+|The maximum time in ms to block the `stop()` method until all consumers stop and before publishing the container stopped event.
+
+|subBatchPerPartition
+|See desc.
+|When using a batch listener, if this is `true`, the listener is called with the results of the poll split into sub batches, one per partition.
+Default `false` except when using transactions - see <<transactions>>.
+
+|syncCommitTimeout
+|`null`
+|The timeout to use when `syncCommits` is `true`.
+When not set, the container will attempt to determine the `default.api.timeout.ms` consumer property and use that; otherwise it will use 60 seconds.
+
+|syncCommits
+|`true`
+|Whether to use sync or async commits for offsets; see `commitCallback`.
+
+|topics
+topicPattern
+topicPartitions
+|n/a
+|The configured topics, topic pattern or explicitly assigned topics/partitions.
+Mutually exclusive; at least one must be provided; enforced by `ContainerProperties` constructors.
+
+|transactionManager
+|`null`
+|See <<transactions>>.
+|===
+
+.`AbstractListenerContainer` Properties
+[cols="6l,3,16", options="header"]
+|===
+| Property
+| Default
+| Description
+
+|afterRollback
+Processor
+|`DefaultAfter`
+`Rollback`
+`Processor`
+|An `AfterRollbackProcessor` to invoke after a transaction is rolled back.
+
+|applicationEventPublisher
+|application context
+|The event publisher.
+
+|batchError
+Handler
+|See desc.
+|An error handler for a batch listener; defaults to a `BatchLoggingErrorHandler` or `null` if transactions are being used (errors are handled by the `AfterRollbackProcessor`).
+
+|beanName
+|bean name
+|The bean name of the container; suffixed with `-n` for child containers.
+
+|containerProperties
+|`Container`
+`Properties`
+|The container properties instance.
+
+|errorHandler
+|See desc.
+|An error handler for a record listener; defaults to a `LoggingErrorHandler` or `null` if transactions are being used (errors are handled by the `AfterRollbackProcessor`).
+
+|genericErrorHandler
+|See desc.
+|Either a batch or record error handler - see `batchErrorHandler` and `errorHandler`.
+
+|groupId
+|See desc.
+|The `containerProperties.groupId`, if present, otherwise the `group.id` property from the consumer factory.
+
+|intercept
+BeforeTx
+|`false`
+|Determines whether the `recordInterceptor` is called before or after a transaction starts.
+
+|listenerId
+|See desc.
+|The bean name for user-configured containers or the `id` attribute of `@KafkaListener` s.
+
+|pause
+Requested
+|n/a
+|True if a consumer pause has been requested (read only).
+
+|record
+Interceptor
+|`null`
+|Set a `RecordInterceptor` to call before invoking the listener; does not apply to batch listeners.
+Also see `interceptBeforeTx`.
+
+|topicCheck
+Timeout
+|30s
+|When the `missingTopicsFatal` container property is `true`, how long to wait, in seconds, for the `describeTopics` operation to complete.
+|===
+
+.`KafkaMessageListenerContainer` Properties
+[cols="6l,3,16", options="header"]
+|===
+| Property
+| Default
+| Description
+
+|assigned
+Partitions
+|n/a
+|The partitions currently assigned to this container (explicitly or not) (read only).
+
+|clientId
+Suffix
+|`null`
+|Used by the concurrent container to give each child container's consumer a unique `client.id`.
+
+|containerPaused
+|n/a
+|True if pause has been requested and the consumer has actually paused.
+|===
+
+.`ConcurrentMessageListenerContainer` Properties
+[cols="6l,3,16", options="header"]
+|===
+| Property
+| Default
+| Description
+
+|assigned
+Partitions
+|n/a
+|The aggregate of partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not) (read only).
+
+|concurrency
+|1
+|The number of child `KafkaMessageListenerContainer` s to manage.
+
+|containerPaused
+|n/a
+|True if pause has been requested and all child containers' consumer has actually paused.
+
+|containers
+|n/a
+|A reference to all child `KafkaMessageListenerContainer` s.
+|===
 [[events]]
 ==== Application Events
 
@@ -2392,6 +2658,7 @@ If you wish to revert to the previous behavior, you can set the `producerPerCons
 NOTE: While transactions are supported with batch listeners, by default, zombie fencing is not supported because a batch may contain records from multiple topics or partitions.
 However, starting with version 2.3.2, zombie fencing is supported if you set the container property `subBatchPerPartition` to true.
 In that case, the batch listener is invoked once per partition received from the last poll, as if each poll only returned records for a single partition.
+This is `true` by default since version 2.5 when transactions are enabled; set it to `false` if you are using transactions but are not concerned about zombie fencing.
 
 Also see <<transaction-id-prefix>>.
 

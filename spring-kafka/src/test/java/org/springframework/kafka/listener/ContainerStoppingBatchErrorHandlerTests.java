@@ -196,7 +196,6 @@ public class ContainerStoppingBatchErrorHandlerTests {
 		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
 			factory.setBatchErrorHandler(new ContainerStoppingBatchErrorHandler() {
 
 				@Override

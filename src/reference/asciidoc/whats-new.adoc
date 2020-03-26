@@ -18,6 +18,15 @@ See <<reply-message>> for more information.
 
 The `KafkaHeaders.RECEIVED_MESSAGE_KEY` is no longer populated with a `null` value when the incoming record has a `null` key; the header is omitted altogether.
 
+[[x25-container]]
+==== Listener Container Changes
+
+The `assignmentCommitOption` container property is now `LATEST_ONLY_NO_TX` by default.
+See <<container-props>> for more information.
+
+The `subBatchPerPartition` container property is now `true` by default when using transactions.
+See <<transactions>> for more information.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 

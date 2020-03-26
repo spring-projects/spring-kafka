@@ -218,7 +218,6 @@ public class SubBatchPerPartitionTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
 			factory.setBatchListener(true);
 			factory.getContainerProperties().setMissingTopicsFatal(false);
 			factory.getContainerProperties().setSubBatchPerPartition(true);
@@ -230,7 +229,6 @@ public class SubBatchPerPartitionTests {
 		public ConcurrentKafkaListenerContainerFactory filteredFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
 			factory.setBatchListener(true);
 			factory.getContainerProperties().setMissingTopicsFatal(false);
 			factory.getContainerProperties().setSubBatchPerPartition(true);

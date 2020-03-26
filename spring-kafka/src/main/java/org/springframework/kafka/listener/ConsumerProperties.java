@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ public class ConsumerProperties {
 	/**
 	 * Topics/partitions/initial offsets.
 	 */
-	private final TopicPartitionOffset[] topicPartitionsToAssign;
+	private final TopicPartitionOffset[] topicPartitions;
 
 	/**
 	 * The max time to block in the consumer waiting for records.
@@ -107,7 +107,7 @@ public class ConsumerProperties {
 		Assert.notEmpty(topics, "An array of topics must be provided");
 		this.topics = topics.clone();
 		this.topicPattern = null;
-		this.topicPartitionsToAssign = null;
+		this.topicPartitions = null;
 	}
 
 	/**
@@ -122,7 +122,7 @@ public class ConsumerProperties {
 	public ConsumerProperties(Pattern topicPattern) {
 		this.topics = null;
 		this.topicPattern = topicPattern;
-		this.topicPartitionsToAssign = null;
+		this.topicPartitions = null;
 	}
 
 	/**
@@ -134,9 +134,13 @@ public class ConsumerProperties {
 		this.topics = null;
 		this.topicPattern = null;
 		Assert.notEmpty(topicPartitions, "An array of topicPartitions must be provided");
-		this.topicPartitionsToAssign = Arrays.copyOf(topicPartitions, topicPartitions.length);
+		this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);
 	}
 
+	/**
+	 * Return the configured topics.
+	 * @return the topics.
+	 */
 	@Nullable
 	public String[] getTopics() {
 		return this.topics != null
@@ -144,15 +148,35 @@ public class ConsumerProperties {
 				: null;
 	}
 
+	/**
+	 * Return the configured topic pattern.
+	 * @return the topic pattern.
+	 */
 	@Nullable
 	public Pattern getTopicPattern() {
 		return this.topicPattern;
 	}
 
+	/**
+	 * Return the configured {@link TopicPartitionOffset}s.
+	 * @deprecated in favor of {@link #getTopicPartitions()}.
+	 * @return the topics/partitions.
+	 */
+	@Deprecated
 	@Nullable
 	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
-		return this.topicPartitionsToAssign != null
-				? Arrays.copyOf(this.topicPartitionsToAssign, this.topicPartitionsToAssign.length)
+		return getTopicPartitions();
+	}
+
+	/**
+	 * Return the configured {@link TopicPartitionOffset}s.
+	 * @return the topics/partitions.
+	 * @since 2.5
+	 */
+	@Nullable
+	public TopicPartitionOffset[] getTopicPartitions() {
+		return this.topicPartitions != null
+				? Arrays.copyOf(this.topicPartitions, this.topicPartitions.length)
 				: null;
 	}
 
@@ -349,8 +373,8 @@ public class ConsumerProperties {
 	private String renderTopics() {
 		return (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
 				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
-				+ (this.topicPartitionsToAssign != null
-						? ", topicPartitions=" + Arrays.toString(this.topicPartitionsToAssign)
+				+ (this.topicPartitions != null
+						? ", topicPartitions=" + Arrays.toString(this.topicPartitions)
 						: "");
 	}
 

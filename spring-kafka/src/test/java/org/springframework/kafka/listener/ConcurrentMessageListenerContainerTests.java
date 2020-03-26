@@ -612,7 +612,6 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(ContainerProperties.AckMode.RECORD);
-		containerProps.setAckOnError(false);
 		ConcurrentMessageListenerContainer<Integer, String> container = new ConcurrentMessageListenerContainer<>(cf,
 				containerProps);
 		container.setConcurrency(2);
@@ -682,6 +681,7 @@ public class ConcurrentMessageListenerContainerTests {
 		testAckOnErrorWithManualImmediateGuts(topic11, false);
 	}
 
+	@SuppressWarnings("deprecation")
 	private void testAckOnErrorWithManualImmediateGuts(String topic, boolean ackOnError) throws Exception {
 		logger.info("Start ack on error with ManualImmediate ack mode");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testMan" + ackOnError, "false", embeddedKafka);

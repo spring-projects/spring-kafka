@@ -215,9 +215,7 @@ public class ManualNackBatchTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
 			factory.setBatchListener(true);
-			factory.getContainerProperties().setMissingTopicsFatal(false);
 			factory.getContainerProperties().setAckMode(AckMode.MANUAL);
 			return factory;
 		}

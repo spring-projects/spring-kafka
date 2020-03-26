@@ -189,7 +189,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);
 		}
 		else {
-			this.topicPartitions = containerProperties.getTopicPartitionsToAssign();
+			this.topicPartitions = containerProperties.getTopicPartitions();
 		}
 	}
 
@@ -517,7 +517,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final AtomicBoolean polling = new AtomicBoolean();
 
-		private final boolean subBatchPerPartition = this.containerProperties.isSubBatchPerPartition();
+		private final boolean subBatchPerPartition;
 
 		private final Duration authorizationExceptionRetryInterval =
 				this.containerProperties.getAuthorizationExceptionRetryInterval();
@@ -640,6 +640,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
 			this.micrometerHolder = obtainMicrometerHolder();
 			this.deliveryAttemptAware = setupDeliveryAttemptAware();
+			this.subBatchPerPartition = setupSubBatchPerPartition();
+		}
+
+		private boolean setupSubBatchPerPartition() {
+			Boolean subBatching = this.containerProperties.getSubBatchPerPartition();
+			return subBatching == null ? this.transactionManager != null : subBatching;
 		}
 
 		private DeliveryAttemptAware setupDeliveryAttemptAware() {

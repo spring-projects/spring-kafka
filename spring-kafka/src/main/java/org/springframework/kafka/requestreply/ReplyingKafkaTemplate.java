@@ -121,7 +121,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		ContainerProperties properties = this.replyContainer.getContainerProperties();
 		String tempReplyTopic = null;
 		byte[] tempReplyPartition = null;
-		TopicPartitionOffset[] topicPartitionsToAssign = properties.getTopicPartitionsToAssign();
+		TopicPartitionOffset[] topicPartitionsToAssign = properties.getTopicPartitions();
 		String[] topics = properties.getTopics();
 		if (topics != null && topics.length == 1) {
 			tempReplyTopic = topics[0];

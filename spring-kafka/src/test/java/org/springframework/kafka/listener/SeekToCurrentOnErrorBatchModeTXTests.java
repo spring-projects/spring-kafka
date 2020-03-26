@@ -232,7 +232,6 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
 			factory.setErrorHandler(new SeekToCurrentErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.BATCH);
 			factory.getContainerProperties().setTransactionManager(tm());

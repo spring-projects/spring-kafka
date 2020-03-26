@@ -191,7 +191,6 @@ public class RemainingRecordsErrorHandlerTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
 			factory.setErrorHandler(new RemainingRecordsErrorHandler() {
 
 				@Override

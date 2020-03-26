@@ -201,7 +201,8 @@ public class SubBatchPerPartitionTxTests {
 			factory.getContainerProperties().setAckMode(AckMode.BATCH);
 			factory.getContainerProperties().setTransactionManager(tm());
 			factory.setBatchListener(true);
-			factory.getContainerProperties().setSubBatchPerPartition(true);
+			// true by default for a transactional container since 2.5
+//			factory.getContainerProperties().setSubBatchPerPartition(true);
 			return factory;
 		}
 

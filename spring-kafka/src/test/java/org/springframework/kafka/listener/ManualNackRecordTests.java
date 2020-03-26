@@ -209,7 +209,6 @@ public class ManualNackRecordTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.getContainerProperties().setAckOnError(false);
 			factory.setErrorHandler(new SeekToCurrentErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.MANUAL);
 			factory.getContainerProperties().setMissingTopicsFatal(false);

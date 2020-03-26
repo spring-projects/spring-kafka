@@ -120,21 +120,24 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		else if (containerProperties.getTopicPattern() != null) {
 			this.containerProperties = new ContainerProperties(containerProperties.getTopicPattern());
 		}
-		else if (containerProperties.getTopicPartitionsToAssign() != null) {
-			this.containerProperties = new ContainerProperties(containerProperties.getTopicPartitionsToAssign());
+		else if (containerProperties.getTopicPartitions() != null) {
+			this.containerProperties = new ContainerProperties(containerProperties.getTopicPartitions());
 		}
 		else {
 			throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
 		}
 
 		BeanUtils.copyProperties(containerProperties, this.containerProperties,
-				"topics", "topicPartitions", "topicPattern", "ackCount", "ackTime");
+				"topics", "topicPartitions", "topicPattern", "ackCount", "ackTime", "subBatchPerPartition");
 
 		if (containerProperties.getAckCount() > 0) {
 			this.containerProperties.setAckCount(containerProperties.getAckCount());
 		}
 		if (containerProperties.getAckTime() > 0) {
 			this.containerProperties.setAckTime(containerProperties.getAckTime());
+		}
+		if (containerProperties.getSubBatchPerPartition() != null) {
+			this.containerProperties.setSubBatchPerPartition(containerProperties.getSubBatchPerPartition());
 		}
 		if (this.containerProperties.getConsumerRebalanceListener() == null) {
 			this.containerProperties.setConsumerRebalanceListener(createSimpleLoggingConsumerRebalanceListener());
@@ -343,7 +346,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				if (client != null) {
 					String[] topics = this.containerProperties.getTopics();
 					if (topics == null) {
-						topics = Arrays.stream(this.containerProperties.getTopicPartitionsToAssign())
+						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
 								.map(TopicPartitionOffset::getTopic)
 								.toArray(String[]::new);
 					}
@@ -377,7 +380,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	public void checkGroupId() {
-		if (this.containerProperties.getTopicPartitionsToAssign() == null) {
+		if (this.containerProperties.getTopicPartitions() == null) {
 			boolean hasGroupIdConsumerConfig = true; // assume true for non-standard containers
 			if (this.consumerFactory != null) { // we always have one for standard containers
 				Object groupIdConfig = this.consumerFactory.getConfigurationProperties()

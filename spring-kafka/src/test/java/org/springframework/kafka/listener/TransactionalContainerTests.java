@@ -80,6 +80,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -198,6 +199,7 @@ public class TransactionalContainerTests {
 		props.setAckMode(ackMode);
 		props.setGroupId("group");
 		props.setTransactionManager(ptm);
+		props.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		if (AckMode.MANUAL_IMMEDIATE.equals(ackMode)) {
 			class AckListener implements AcknowledgingMessageListener {
@@ -367,6 +369,7 @@ public class TransactionalContainerTests {
 				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
 		props.setTransactionManager(tm);
+		props.setSubBatchPerPartition(false);
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		props.setMessageListener((BatchMessageListener) recordlist -> {
 			template.send("bar", "baz");

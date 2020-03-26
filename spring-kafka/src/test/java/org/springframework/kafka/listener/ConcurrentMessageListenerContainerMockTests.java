@@ -58,6 +58,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
+import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -392,17 +393,29 @@ public class ConcurrentMessageListenerContainerMockTests {
 	@Test
 	@DisplayName("Intercept after tx start")
 	void testInterceptAfterTx() throws InterruptedException {
-		testIntercept(false);
+		testIntercept(false, AssignmentCommitOption.ALWAYS);
 	}
 
 	@Test
 	@DisplayName("Intercept before tx start")
 	void testInterceptBeforeTx() throws InterruptedException {
-		testIntercept(true);
+		testIntercept(true, AssignmentCommitOption.ALWAYS);
+	}
+
+	@Test
+	@DisplayName("Intercept after tx start no initial commit")
+	void testInterceptAfterTx1() throws InterruptedException {
+		testIntercept(false, null);
+	}
+
+	@Test
+	@DisplayName("Intercept before tx start no initial commit")
+	void testInterceptBeforeTx1() throws InterruptedException {
+		testIntercept(true, null);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	void testIntercept(boolean beforeTx) throws InterruptedException {
+	void testIntercept(boolean beforeTx, AssignmentCommitOption option) throws InterruptedException {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
 		TopicPartition tp0 = new TopicPartition("foo", 0);
@@ -427,6 +440,9 @@ public class ConcurrentMessageListenerContainerMockTests {
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) rec -> { });
 		containerProperties.setMissingTopicsFatal(false);
+		if (option != null) {
+			containerProperties.setAssignmentCommitOption(option);
+		}
 		KafkaAwareTransactionManager tm = mock(KafkaAwareTransactionManager.class);
 		ProducerFactory pf = mock(ProducerFactory.class);
 		given(tm.getProducerFactory()).willReturn(pf);
@@ -434,7 +450,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		given(pf.createProducer()).willReturn(producer);
 		containerProperties.setTransactionManager(tm);
 		List<String> order = new ArrayList<>();
-		CountDownLatch latch = new CountDownLatch(3);
+		CountDownLatch latch = new CountDownLatch(option == null ? 2 : 3);
 		willAnswer(inv -> {
 			order.add("tx");
 			TransactionSynchronizationManager.bindResource(pf,
@@ -454,10 +470,20 @@ public class ConcurrentMessageListenerContainerMockTests {
 		try {
 			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 			if (beforeTx) {
-				assertThat(order).containsExactly("tx", "interceptor", "tx"); // first one is on assignment
+				if (option == null) {
+					assertThat(order).containsExactly("interceptor", "tx");
+				}
+				else {
+					assertThat(order).containsExactly("tx", "interceptor", "tx"); // first one is on assignment
+				}
 			}
 			else {
-				assertThat(order).containsExactly("tx", "tx", "interceptor");
+				if (option == null) {
+					assertThat(order).containsExactly("tx", "interceptor");
+				}
+				else {
+					assertThat(order).containsExactly("tx", "tx", "interceptor");
+				}
 			}
 		}
 		finally {

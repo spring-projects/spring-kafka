@@ -515,7 +515,6 @@ public class KafkaMessageListenerContainerTests {
 		});
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
-		containerProps.setAckOnError(false);
 		containerProps.setIdleBetweenPolls(1000L);
 		//		containerProps.setCommitLogLevel(LogIfLevelEnabled.Level.WARN);
 
@@ -930,7 +929,6 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.BATCH);
 		containerProps.setPollTimeout(100);
-		containerProps.setAckOnError(false);
 
 		CountDownLatch stubbingComplete = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
@@ -999,7 +997,6 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.BATCH);
 		containerProps.setPollTimeout(100);
-		containerProps.setAckOnError(false);
 
 		CountDownLatch stubbingComplete = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
@@ -1083,7 +1080,6 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
 		containerProps.setPollTimeout(100);
-		containerProps.setAckOnError(false);
 
 		CountDownLatch stubbingComplete = new CountDownLatch(1);
 		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
@@ -1126,6 +1122,7 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop batch listener manual");
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testBatchListenerErrors() throws Exception {
 		logger.info("Start batch listener errors");
@@ -1319,7 +1316,6 @@ public class KafkaMessageListenerContainerTests {
 		Listener messageListener = new Listener();
 		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
-		containerProps.setAckOnError(false);
 		containerProps.setIdleEventInterval(10L);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProps);
@@ -1389,7 +1385,6 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
-		containerProps.setAckOnError(false);
 		containerProps.setIdleEventInterval(60000L);
 
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
@@ -2530,7 +2525,6 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.BATCH);
 		containerProps.setPollTimeout(100);
-		containerProps.setAckOnError(false);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
