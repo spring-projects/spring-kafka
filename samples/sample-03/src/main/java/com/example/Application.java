@@ -18,6 +18,7 @@ package com.example;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
@@ -26,12 +27,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
-import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -40,6 +39,7 @@ import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import com.common.Foo2;
 
 /**
+ * Sample showing a batch listener and transactions.
  *
  * @author Gary Russell
  * @since 2.2.1
@@ -48,23 +48,15 @@ import com.common.Foo2;
 @SpringBootApplication
 public class Application {
 
-	private final Logger logger = LoggerFactory.getLogger(Application.class);
+	private final Logger LOGGER = LoggerFactory.getLogger(Application.class);
 
-	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
-	}
+	private final static CountDownLatch LATCH = new CountDownLatch(1);
 
-	@Bean
-	public ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
-			ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
-			ConsumerFactory<Object, Object> kafkaConsumerFactory) {
-
-		ConcurrentKafkaListenerContainerFactory<Object, Object> factory =
-				new ConcurrentKafkaListenerContainerFactory<>();
-		configurer.configure(factory, kafkaConsumerFactory);
-		factory.setBatchListener(true);
-		factory.setMessageConverter(batchConverter());
-		return factory;
+	public static void main(String[] args) throws InterruptedException {
+		ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
+		LATCH.await();
+		Thread.sleep(5_000);
+		context.close();
 	}
 
 	@Bean
@@ -82,15 +74,16 @@ public class Application {
 
 	@KafkaListener(id = "fooGroup2", topics = "topic2")
 	public void listen1(List<Foo2> foos) throws IOException {
-		logger.info("Received: " + foos);
+		LOGGER.info("Received: " + foos);
 		foos.forEach(f -> kafkaTemplate.send("topic3", f.getFoo().toUpperCase()));
-		logger.info("Messages sent, hit Enter to commit tx");
+		LOGGER.info("Messages sent, hit Enter to commit tx");
 		System.in.read();
 	}
 
 	@KafkaListener(id = "fooGroup3", topics = "topic3")
 	public void listen2(List<String> in) {
-		logger.info("Received: " + in);
+		LOGGER.info("Received: " + in);
+		LATCH.countDown();
 	}
 
 	@Bean

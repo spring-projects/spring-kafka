@@ -20,13 +20,13 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
@@ -37,6 +37,7 @@ import org.springframework.util.backoff.FixedBackOff;
 import com.common.Foo2;
 
 /**
+ * Sample shows use of a dead letter topic.
  *
  * @author Gary Russell
  * @since 2.2.1
@@ -47,20 +48,19 @@ public class Application {
 
 	private final Logger logger = LoggerFactory.getLogger(Application.class);
 
+	private final TaskExecutor exec = new SimpleAsyncTaskExecutor();
+
 	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
+		SpringApplication.run(Application.class, args).close();
 	}
 
+	/*
+	 * Boot will autowire this into the container factory.
+	 */
 	@Bean
-	public ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
-			ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
-			ConsumerFactory<Object, Object> kafkaConsumerFactory,
-			KafkaTemplate<Object, Object> template) {
-		ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-		configurer.configure(factory, kafkaConsumerFactory);
-		factory.setErrorHandler(new SeekToCurrentErrorHandler(
-				new DeadLetterPublishingRecoverer(template), new FixedBackOff(0L, 2))); // dead-letter after 3 tries
-		return factory;
+	public SeekToCurrentErrorHandler errorHandler(KafkaTemplate<Object, Object> template) {
+		return new SeekToCurrentErrorHandler(
+				new DeadLetterPublishingRecoverer(template), new FixedBackOff(1000L, 2));
 	}
 
 	@Bean
@@ -74,11 +74,13 @@ public class Application {
 		if (foo.getFoo().startsWith("fail")) {
 			throw new RuntimeException("failed");
 		}
+		this.exec.execute(() -> System.out.println("Hit Enter to terminate..."));
 	}
 
 	@KafkaListener(id = "dltGroup", topics = "topic1.DLT")
 	public void dltListen(String in) {
 		logger.info("Received from DLT: " + in);
+		this.exec.execute(() -> System.out.println("Hit Enter to terminate..."));
 	}
 
 	@Bean
@@ -89,6 +91,14 @@ public class Application {
 	@Bean
 	public NewTopic dlt() {
 		return new NewTopic("topic1.DLT", 1, (short) 1);
+	}
+
+	@Bean
+	public ApplicationRunner runner() {
+		return args -> {
+			System.out.println("Hit Enter to terminate...");
+			System.in.read();
+		};
 	}
 
 }

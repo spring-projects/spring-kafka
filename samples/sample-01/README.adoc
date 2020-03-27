@@ -12,7 +12,9 @@ Console:
 
 `2018-11-05 10:03:40.216  INFO 39766 --- [ fooGroup-0-C-1] com.example.Application                  : Received: Foo2 [foo=bar]`
 
-The consumer is configured with a `SeekToCurrentErrorHandler` which replays failed messages up to 3 times and, after retries are exhausted, sends a bad message to a dead-letter topic.
+The consumer is configured with a `SeekToCurrentErrorHandler` which replays failed messages up to 2 times, each after a 1 second delay and, after retries are exhausted, sends a bad message to a dead-letter topic.
+
+`$ curl -X POST http://localhost:8080/send/foo/fail`
 
 A second `@KafkaListener` consumes the raw JSON from the message.
 

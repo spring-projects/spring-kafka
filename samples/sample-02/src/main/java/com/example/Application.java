@@ -23,10 +23,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
@@ -39,6 +36,13 @@ import org.springframework.util.backoff.FixedBackOff;
 import com.common.Bar2;
 import com.common.Foo2;
 
+/**
+ * Sample shows use of a multi-method listener.
+ *
+ * @author Gary Russell
+ * @since 2.2.1
+ *
+ */
 @SpringBootApplication
 public class Application {
 
@@ -46,16 +50,13 @@ public class Application {
 		SpringApplication.run(Application.class, args);
 	}
 
+	/*
+	 * Boot will autowire this into the container factory.
+	 */
 	@Bean
-	public ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
-			ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
-			ConsumerFactory<Object, Object> kafkaConsumerFactory,
-			KafkaTemplate<Object, Object> template) {
-		ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-		configurer.configure(factory, kafkaConsumerFactory);
-		factory.setErrorHandler(new SeekToCurrentErrorHandler(
-				new DeadLetterPublishingRecoverer(template), new FixedBackOff(0L, 2)));
-		return factory;
+	public SeekToCurrentErrorHandler errorHandler(KafkaTemplate<Object, Object> template) {
+		return new SeekToCurrentErrorHandler(
+				new DeadLetterPublishingRecoverer(template), new FixedBackOff(1000L, 2));
 	}
 
 	@Bean

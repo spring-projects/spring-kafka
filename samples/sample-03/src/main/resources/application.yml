@@ -6,3 +6,5 @@ spring:
     consumer:
       properties:
         isolation.level: read_committed
+    listener:
+      type: batch
