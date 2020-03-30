@@ -173,6 +173,26 @@ public KafkaTemplate<Integer, String> kafkaTemplate() {
 ----
 ====
 
+Starting with version 2.5, you can now override the factory's `ProducerConfig` properties to create templates with different producer configurations from the same factory.
+
+====
+[source, java]
+----
+@Bean
+public KafkaTemplate<String, String> stringTemplate(ProducerFactory<String, String> pf) {
+    return new KafkaTemplate<>(pf);
+}
+
+@Bean
+public KafkaTemplate<String, byte[]> bytesTemplate(ProducerFactory<String, byte[]> pf) {
+    return new KafkaTemplate<>(pf,
+            Collections.singletonMap(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class));
+}
+----
+====
+
+Note that a bean of type `ProducerFactory<?, ?>` (such as the one auto-configured by Spring Boot) can be referenced with different narrowed generic types.
+
 You can also configure the template by using standard `<bean/>` definitions.
 
 Then, to use the template, you can invoke one of its methods.

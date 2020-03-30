@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,8 @@ import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
@@ -68,11 +71,13 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Endika Guti?rrez
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
-		DisposableBean {
+		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass())); //NOSONAR
 
 	private final ProducerFactory<K, V> producerFactory;
+
+	private final boolean customProducerFactory;
 
 	private final boolean autoFlush;
 
@@ -81,6 +86,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private final ThreadLocal<Producer<K, V>> producers = new ThreadLocal<>();
 
 	private final Map<String, String> micrometerTags = new HashMap<>();
+
+	private final Map<String, Object> configOverrides;
 
 	private String beanName = "kafkaTemplate";
 
@@ -111,6 +118,19 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	/**
+	 * Create an instance using the supplied producer factory and properties, with
+	 * autoFlush false. If the configOverrides is not null or empty, a new
+	 * {@link DefaultKafkaProducerFactory} will be created with merged producer properties
+	 * with the overrides being applied after the supplied factory's properties.
+	 * @param producerFactory the producer factory.
+	 * @param configOverrides producer configuration properties to override.
+	 * @since 2.5
+	 */
+	public KafkaTemplate(ProducerFactory<K, V> producerFactory, @Nullable Map<String, Object> configOverrides) {
+		this(producerFactory, false, configOverrides);
+	}
+
+	/**
 	 * Create an instance using the supplied producer factory and autoFlush setting.
 	 * <p>
 	 * Set autoFlush to {@code true} if you have configured the producer's
@@ -122,10 +142,42 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * @see Producer#flush()
 	 */
 	public KafkaTemplate(ProducerFactory<K, V> producerFactory, boolean autoFlush) {
-		this.producerFactory = producerFactory;
+		this(producerFactory, autoFlush, null);
+	}
+
+	/**
+	 * Create an instance using the supplied producer factory and autoFlush setting.
+	 * <p>
+	 * Set autoFlush to {@code true} if you have configured the producer's
+	 * {@code linger.ms} to a non-default value and wish send operations on this template
+	 * to occur immediately, regardless of that setting, or if you wish to block until the
+	 * broker has acknowledged receipt according to the producer's {@code acks} property.
+	 * If the configOverrides is not null or empty, a new
+	 * {@link DefaultKafkaProducerFactory} will be created with merged producer properties
+	 * with the overrides being applied after the supplied factory's properties.
+	 * @param producerFactory the producer factory.
+	 * @param autoFlush true to flush after each send.
+	 * @param configOverrides producer configuration properties to override.
+	 * @since 2.5
+	 * @see Producer#flush()
+	 */
+	public KafkaTemplate(ProducerFactory<K, V> producerFactory, boolean autoFlush,
+			@Nullable Map<String, Object> configOverrides) {
+
 		this.autoFlush = autoFlush;
 		this.transactional = producerFactory.transactionCapable();
 		this.micrometerEnabled = KafkaUtils.MICROMETER_PRESENT;
+		this.configOverrides = configOverrides == null ? Collections.emptyMap() : new HashMap<>(configOverrides);
+		this.customProducerFactory = this.configOverrides.size() > 0;
+		if (this.customProducerFactory) {
+			Map<String, Object> configs = new HashMap<>(producerFactory.getConfigurationProperties());
+			configs.putAll(configOverrides);
+			this.producerFactory = new DefaultKafkaProducerFactory<>(configs,
+					producerFactory.getKeySerializerSupplier(), producerFactory.getValueSerializerSupplier());
+		}
+		else {
+			this.producerFactory = producerFactory;
+		}
 	}
 
 	@Override
@@ -136,6 +188,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) {
 		this.applicationContext = applicationContext;
+		if (this.customProducerFactory) {
+			((DefaultKafkaProducerFactory<K, V>) this.producerFactory).setApplicationContext(applicationContext);
+		}
 	}
 
 	/**
@@ -250,8 +305,16 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * @return the factory.
 	 * @since 2.2.5
 	 */
+	@Override
 	public ProducerFactory<K, V> getProducerFactory() {
 		return this.producerFactory;
+	}
+
+	@Override
+	public void onApplicationEvent(ContextStoppedEvent event) {
+		if (this.customProducerFactory) {
+			((DefaultKafkaProducerFactory<K, V>) this.producerFactory).onApplicationEvent(event);
+		}
 	}
 
 	@Override
@@ -571,6 +634,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	public void destroy() {
 		if (this.micrometerHolder != null) {
 			this.micrometerHolder.destroy();
+		}
+		if (this.customProducerFactory) {
+			((DefaultKafkaProducerFactory<K, V>) this.producerFactory).destroy();
 		}
 	}
 

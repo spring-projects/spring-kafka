@@ -33,6 +33,9 @@ See <<transactions>> for more information.
 The `KafkaTemplate` can now maintain micrometer timers.
 See <<micrometer>> for more information.
 
+The `KafkaTemplate` can now be configured with `ProducerConfig` properties to override those in the producer factory.
+See <<kafka-template>> for more information.
+
 [[x25-testing]]
 ==== Testing Changes
 

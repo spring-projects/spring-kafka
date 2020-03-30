@@ -276,12 +276,23 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		return this.producerPerConsumerPartition;
 	}
 
+	@Override
+	public Supplier<Serializer<K>> getKeySerializerSupplier() {
+		return this.keySerializerSupplier;
+	}
+
+	@Override
+	public Supplier<Serializer<V>> getValueSerializerSupplier() {
+		return this.valueSerializerSupplier;
+	}
+
 	/**
 	 * Return an unmodifiable reference to the configuration map for this factory.
 	 * Useful for cloning to make a similar factory.
 	 * @return the configs.
 	 * @since 1.3
 	 */
+	@Override
 	public Map<String, Object> getConfigurationProperties() {
 		return Collections.unmodifiableMap(this.configs);
 	}

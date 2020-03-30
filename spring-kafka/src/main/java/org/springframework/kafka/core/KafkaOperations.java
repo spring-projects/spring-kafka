@@ -237,6 +237,15 @@ public interface KafkaOperations<K, V> {
 	}
 
 	/**
+	 * Return the producer factory used by this template.
+	 * @return the factory.
+	 * @since 2.5
+	 */
+	default ProducerFactory<K, V> getProducerFactory() {
+		throw new UnsupportedOperationException("This implementation does not support this operation");
+	}
+
+	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.

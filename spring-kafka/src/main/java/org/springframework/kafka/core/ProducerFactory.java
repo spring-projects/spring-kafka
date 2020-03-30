@@ -16,7 +16,11 @@
 
 package org.springframework.kafka.core;
 
+import java.util.Map;
+import java.util.function.Supplier;
+
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.serialization.Serializer;
 
 /**
  * The strategy to produce a {@link Producer} instance(s).
@@ -96,6 +100,36 @@ public interface ProducerFactory<K, V> {
 	 */
 	default void reset() {
 		// NOSONAR
+	}
+
+	/**
+	 * Return an unmodifiable reference to the configuration map for this factory.
+	 * Useful for cloning to make a similar factory.
+	 * @return the configs.
+	 * @since 2.5
+	 */
+	default Map<String, Object> getConfigurationProperties() {
+		throw new UnsupportedOperationException("This implementation doesn't support this method");
+	}
+
+	/**
+	 * Return a supplier for a value serializer.
+	 * Useful for cloning to make a similar factory.
+	 * @return the supplier.
+	 * @since 2.5
+	 */
+	default Supplier<Serializer<V>> getValueSerializerSupplier() {
+		return () -> null;
+	}
+
+	/**
+	 * Return a supplier for a key serializer.
+	 * Useful for cloning to make a similar factory.
+	 * @return the supplier.
+	 * @since 2.5
+	 */
+	default Supplier<Serializer<K>> getKeySerializerSupplier() {
+		return () -> null;
 	}
 
 }

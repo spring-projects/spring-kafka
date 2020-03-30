@@ -26,6 +26,7 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.timestamp;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,16 +35,19 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.assertj.core.api.Assertions;
@@ -102,7 +106,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testTemplate() {
+	void testTemplate() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -150,7 +154,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testTemplateWithTimestamps() {
+	void testTemplateWithTimestamps() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -178,7 +182,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testWithMessage() {
+	void testWithMessage() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -237,7 +241,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void withListener() throws Exception {
+	void withListener() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -283,7 +287,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void withProducerRecordListener() throws Exception {
+	void withProducerRecordListener() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -307,7 +311,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testWithCallback() throws Exception {
+	void testWithCallback() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -335,7 +339,7 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	public void testTemplateDisambiguation() {
+	void testTemplateDisambiguation() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
@@ -353,6 +357,33 @@ public class KafkaTemplateTests {
 		localConsumer.close();
 		pf.createProducer().close();
 		pf.destroy();
+	}
+
+	@Test
+	void testConfigOverrides() {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		Map<String, Object> overrides = new HashMap<>();
+		overrides.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true, overrides);
+		assertThat(template.getProducerFactory().getConfigurationProperties()
+				.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)).isEqualTo(StringSerializer.class);
+	}
+
+	@Test
+	void testConfigOverridesWithSerializers() {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		Supplier<Serializer<String>> keySerializer = () -> null;
+		Supplier<Serializer<String>> valueSerializer = () -> null;
+		DefaultKafkaProducerFactory<String, String> pf =
+				new DefaultKafkaProducerFactory<>(senderProps, keySerializer, valueSerializer);
+		Map<String, Object> overrides = new HashMap<>();
+		overrides.put(ProducerConfig.CLIENT_ID_CONFIG, "foo");
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true, overrides);
+		assertThat(template.getProducerFactory().getConfigurationProperties()
+				.get(ProducerConfig.CLIENT_ID_CONFIG)).isEqualTo("foo");
+		assertThat(template.getProducerFactory().getKeySerializerSupplier()).isSameAs(keySerializer);
+		assertThat(template.getProducerFactory().getValueSerializerSupplier()).isSameAs(valueSerializer);
 	}
 
 }
