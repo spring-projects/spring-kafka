@@ -305,6 +305,60 @@ public void sendToKafka(final MyOutputData data) {
 ----
 ====
 
+[[routing-template]]
+===== Using `RoutingKafkaTemplate`
+
+Starting with version 2.5, you can use a `RoutingKafkaTemplate` to select the producer at runtime, based on the destination `topic` name.
+
+IMPORTANT: The routing template does **not** support transactions, `execute`, `flush`, or `metrics` operations because the topic is not known for those operations.
+
+The template requires a map of `java.util.regex.Pattern` to `ProducerFactory<Object, Object>` instances.
+This map should be ordered (e.g. a `LinkedHashMap`) because it is traversed in order; you should add more specific patterns at the beginning.
+
+The following simple Spring Boot application provides an example of how to use the same template to send to different topics, each using a different value serializer.
+
+====
+[source, java]
+----
+@SpringBootApplication
+public class Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+	}
+
+	@Bean
+	public RoutingKafkaTemplate routingTemplate(GenericApplicationContext context,
+			ProducerFactory<Object, Object> pf) {
+
+		// Clone the PF with a different Serializer, register with Spring for shutdown
+		Map<String, Object> configs = new HashMap<>(pf.getConfigurationProperties());
+		configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+		DefaultKafkaProducerFactory<Object, Object> bytesPF = new DefaultKafkaProducerFactory<>(configs);
+		context.registerBean(DefaultKafkaProducerFactory.class, "bytesPF", bytesPF);
+
+		Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
+		map.put(Pattern.compile("two"), bytesPF);
+		map.put(Pattern.compile(".+"), pf); // Default PF with StringSerializer
+		return new RoutingKafkaTemplate(map);
+	}
+
+	@Bean
+	public ApplicationRunner runner(RoutingKafkaTemplate routingTemplate) {
+		return args -> {
+			routingTemplate.send("one", "thing1");
+			routingTemplate.send("two", "thing2".getBytes());
+		};
+	}
+
+}
+----
+====
+
+The corresponding `@KafkaListener` s for this example are shown in <<annotation-properties>>.
+
+For another technique to achieve similar results, but with the additional capability of sending different types to the same topic, see <<delegating-serialization>>.
+
 [[producer-factory]]
 ===== Using `DefaultKafkaProducerFactory`
 
@@ -1304,12 +1358,31 @@ The properties are specified as individual strings with the normal Java `Propert
 ====
 [source, java]
 ----
-@KafkaListener(topics = "myTopic", groupId="group", properties= {
+@KafkaListener(topics = "myTopic", groupId = "group", properties = {
     "max.poll.interval.ms:60000",
     ConsumerConfig.MAX_POLL_RECORDS_CONFIG + "=100"
 })
 ----
 ====
+
+The following is an example of the corresponding listeners for the example in <<routing-template>>.
+
+====
+[source, java]
+----
+@KafkaListener(id = "one", topics = "one")
+public void listen1(String in) {
+    System.out.println("1: " + in);
+}
+
+@KafkaListener(id = "two", topics = "two",
+        properties = "value.deserializer:org.apache.kafka.common.serialization.ByteArrayDeserializer")
+public void listen2(byte[] in) {
+    System.out.println("2: " + new String(in));
+}
+----
+====
+
 
 [[listener-group-id]]
 ===== Obtaining the Consumer `group.id`
@@ -3313,6 +3386,10 @@ consumerProps.put(DelegatingDeserializer.SERIALIZATION_SELECTOR_CONFIG,
 ====
 
 Producers would then set the `DelegatingSerializer.SERIALIZATION_SELECTOR` header to `thing1` or `thing2`.
+
+This technique supports sending different types to the same topic (or different topics).
+
+For another technique to send different types to different topics, see <<routing-template>>.
 
 [[retrying-deserialization]]
 ===== Retrying Deserializer

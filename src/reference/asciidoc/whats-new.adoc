@@ -36,6 +36,9 @@ See <<micrometer>> for more information.
 The `KafkaTemplate` can now be configured with `ProducerConfig` properties to override those in the producer factory.
 See <<kafka-template>> for more information.
 
+A `RoutingKafkaTemplate` has now been provided.
+See <<routing-template>> for more information.
+
 [[x25-testing]]
 ==== Testing Changes
 

@@ -164,6 +164,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	public KafkaTemplate(ProducerFactory<K, V> producerFactory, boolean autoFlush,
 			@Nullable Map<String, Object> configOverrides) {
 
+		Assert.notNull(producerFactory, "'producerFactory' cannot be null");
 		this.autoFlush = autoFlush;
 		this.transactional = producerFactory.transactionCapable();
 		this.micrometerEnabled = KafkaUtils.MICROMETER_PRESENT;
@@ -307,6 +308,17 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 */
 	@Override
 	public ProducerFactory<K, V> getProducerFactory() {
+		return this.producerFactory;
+	}
+
+	/**
+	 * Return the producer factory used by this template based on the topic.
+	 * The default implementation returns the only producer factory.
+	 * @param topic the topic.
+	 * @return the factory.
+	 * @since 2.5
+	 */
+	protected ProducerFactory<K, V> getProducerFactory(String topic) {
 		return this.producerFactory;
 	}
 
@@ -517,7 +529,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * RecordMetadata}.
 	 */
 	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
-		final Producer<K, V> producer = getTheProducer();
+		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
 		this.logger.trace(() -> "Sending: " + producerRecord);
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
 		Object sample = null;
@@ -584,6 +596,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private Producer<K, V> getTheProducer() {
+		return getTheProducer(null);
+	}
+
+	protected Producer<K, V> getTheProducer(@SuppressWarnings("unused") @Nullable String topic) {
 		boolean transactionalProducer = this.transactional;
 		if (transactionalProducer) {
 			boolean inTransaction = inTransaction();
@@ -609,8 +625,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		else if (this.allowNonTransactional) {
 			return this.producerFactory.createNonTransactionalProducer();
 		}
-		else {
+		else if (topic == null) {
 			return this.producerFactory.createProducer();
+		}
+		else {
+			return getProducerFactory(topic).createProducer();
 		}
 	}
 
