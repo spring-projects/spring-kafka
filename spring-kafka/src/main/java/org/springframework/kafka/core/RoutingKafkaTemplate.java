@@ -86,8 +86,8 @@ public class RoutingKafkaTemplate extends KafkaTemplate<Object, Object> {
 					break;
 				}
 			}
+			Assert.state(producerFactory != null, "No producer factory found for topic: " + topic);
 		}
-		Assert.state(producerFactory != null, "No producer factory found for topic: " + topic);
 		return producerFactory;
 	}
 
