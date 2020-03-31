@@ -23,7 +23,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -48,7 +48,7 @@ public class RoutingKafkaTemplateTests {
 		ProducerFactory<Object, Object> pf2 = mock(ProducerFactory.class);
 		given(pf1.createProducer()).willReturn(p1);
 		given(pf2.createProducer()).willReturn(p2);
-		Map<Pattern, ProducerFactory<Object, Object>> map = new HashMap<>();
+		Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
 		map.put(Pattern.compile("fo.*"), pf1);
 		map.put(Pattern.compile(".*"), pf2);
 		RoutingKafkaTemplate template = new RoutingKafkaTemplate(map);

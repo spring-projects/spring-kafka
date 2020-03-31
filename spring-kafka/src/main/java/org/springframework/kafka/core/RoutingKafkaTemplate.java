@@ -81,8 +81,7 @@ public class RoutingKafkaTemplate extends KafkaTemplate<Object, Object> {
 		if (producerFactory == null) {
 			for (Entry<Pattern, ProducerFactory<Object, Object>> entry : this.factoryMatchers.entrySet()) {
 				if (entry.getKey().matcher(topic).matches()) {
-					producerFactory = entry.getValue();
-					this.factoryMap.put(topic, producerFactory);
+					producerFactory = this.factoryMap.computeIfAbsent(topic, key -> entry.getValue());
 					break;
 				}
 			}
