@@ -77,16 +77,15 @@ public class RoutingKafkaTemplate extends KafkaTemplate<Object, Object> {
 
 	@Override
 	public ProducerFactory<Object, Object> getProducerFactory(String topic) {
-		ProducerFactory<Object, Object> producerFactory = this.factoryMap.get(topic);
-		if (producerFactory == null) {
+		ProducerFactory<Object, Object> producerFactory = this.factoryMap.computeIfAbsent(topic, key -> {
 			for (Entry<Pattern, ProducerFactory<Object, Object>> entry : this.factoryMatchers.entrySet()) {
 				if (entry.getKey().matcher(topic).matches()) {
-					producerFactory = this.factoryMap.computeIfAbsent(topic, key -> entry.getValue());
-					break;
+					return entry.getValue();
 				}
 			}
-			Assert.state(producerFactory != null, "No producer factory found for topic: " + topic);
-		}
+			return null;
+		});
+		Assert.state(producerFactory != null, "No producer factory found for topic: " + topic);
 		return producerFactory;
 	}
 
