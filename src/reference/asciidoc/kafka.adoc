@@ -233,7 +233,7 @@ The following example shows how to do so:
 ====
 [source, java]
 ----
-ListenableFuture<SendResult<Integer, String>> future = template.send("something");
+ListenableFuture<SendResult<Integer, String>> future = template.send("myTopic", "something");
 future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
 
     @Override
