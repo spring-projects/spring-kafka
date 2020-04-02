@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -317,7 +318,8 @@ public class EnableKafkaIntegrationTests {
 		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
 				TopicPartitionOffset[].class)[3];
 		assertThat(offset.isRelativeToCurrent()).isTrue();
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.groupId"))
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
+						"listenerConsumer.consumer.groupId", Optional.class).get())
 				.isEqualTo("fiz");
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.clientId"))
 				.isEqualTo("clientIdViaAnnotation-0");
@@ -437,7 +439,8 @@ public class EnableKafkaIntegrationTests {
 		assertThat(buzConcurrentContainer).isNotNull();
 		MessageListenerContainer buzContainer = (MessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(buzConcurrentContainer, "containers", List.class).get(0);
-		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.groupId"))
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
+						"listenerConsumer.consumer.groupId", Optional.class).get())
 				.isEqualTo("buz.explicitGroupId");
 	}
 

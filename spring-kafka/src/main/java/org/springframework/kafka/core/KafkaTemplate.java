@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -505,6 +506,17 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	@Override
 	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) {
+		producerForOffsets().sendOffsetsToTransaction(offsets, consumerGroupId);
+	}
+
+	@Override
+	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+			ConsumerGroupMetadata groupMetadata) {
+
+		producerForOffsets().sendOffsetsToTransaction(offsets, groupMetadata);
+	}
+
+	private Producer<K, V> producerForOffsets() {
 		Producer<K, V> producer = this.producers.get();
 		if (producer == null) {
 			@SuppressWarnings("unchecked")
@@ -513,7 +525,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			Assert.isTrue(resourceHolder != null, "No transaction in process");
 			producer = resourceHolder.getProducer();
 		}
-		producer.sendOffsetsToTransaction(offsets, consumerGroupId);
+		return producer;
 	}
 
 	protected void closeProducer(Producer<K, V> producer, boolean inTx) {

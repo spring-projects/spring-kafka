@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -680,6 +681,14 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 			LOGGER.trace(() -> toString() + " sendOffsetsToTransaction(" + offsets + ", " + consumerGroupId + ")");
 			this.delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
+		}
+
+		@Override
+		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+				ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
+
+			LOGGER.trace(() -> toString() + " sendOffsetsToTransaction(" + offsets + ", " + groupMetadata + ")");
+			this.delegate.sendOffsetsToTransaction(offsets, groupMetadata);
 		}
 
 		@Override

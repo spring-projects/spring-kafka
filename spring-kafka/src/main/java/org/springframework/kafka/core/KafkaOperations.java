@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -208,6 +209,19 @@ public interface KafkaOperations<K, V> {
 	 * @since 1.3
 	 */
 	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId);
+
+	/**
+	 * When running in a transaction, send the consumer offset(s) to the transaction. It
+	 * is not necessary to call this method if the operations are invoked on a listener
+	 * container thread (and the listener container is configured with a
+	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}) since
+	 * the container will take care of sending the offsets to the transaction.
+	 * @param offsets The offsets.
+	 * @param groupMetadata the consumer group metadata.
+	 * @since 2.5
+	 * @see Producer#sendOffsetsToTransaction(Map, ConsumerGroupMetadata)
+	 */
+	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata);
 
 	/**
 	 * Return true if the implementation supports transactions (has a transaction-capable
