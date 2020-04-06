@@ -4214,6 +4214,60 @@ If/when retries are exhausted, the `ConsumerRecordRecoverer` is called for each 
 If the recoverer throws an exception, or the thread is interrupted during its sleep, a `SeekToCurrentErrorHandler` is invoked so that the batch of records will be redelivered on the next poll.
 Before exiting, regardless of the outcome, the consumer is resumed.
 
+IMPORTANT: This error handler cannot be used with transactions.
+
+Also see <<recovering-batch-eh>>.
+
+[[recovering-batch-eh]]
+===== Recovering Batch Error Handler
+
+As an alternative to the <<retrying-batch-eh>>, version 2.5 introduced the `RecoveringBatchErrorHandler`.
+This error handler works in conjunction with the listener throwing a `BatchListenerFailedException` providing the index in the batch where the failure occurred.
+If the listener throws a different exception, or the index is out of range, the error handler falls back to invoking a `SeekToCurrentBatchErrorHandler` and the whole batch is retried, with no recovery available.
+The sequence of events is:
+
+* commit the offsets of the records before the index.
+* if retries are not exhausted, perform seeks so that all the remaining records (including the failed record) will be redelivered.
+* if retries are exhausted, attempt recovery of the failed record (default log only) and perform seeks so that the remaining records (excluding the failed record) will be redelivered.
+* if retries are exhausted and recovery fails, perform seeks as if retries are not exhausted.
+
+In all cases, a `BackOff` can be configured to enable a delay between delivery attempts.
+
+Example:
+
+====
+[source, java]
+----
+@Bean
+public RecoveringBatchErrorHandler(KafkaTemplate<String, String> template) {
+    DeadLetterPublishingRecoverer recoverer =
+            new DeadLetterPublishingRecoverer(template);
+    RecoveringBatchErrorHandler errorHandler =
+            new RecoveringBatchErrorHandler(recoverer, new FixedBackOff(3L, 5000));
+}
+----
+====
+
+====
+[source, java]
+----
+@KafkaListener(id = "recovering", topics = "someTopic")
+public void listen(List<ConsumerRecord<String, String>> records) {
+    for (int i = 0; i < records.size(); i++) {
+        try {
+            process(records.get(i));
+        }
+        catch (Exception e) {
+            throw new BatchListenerFailedException("Failed to process", i);
+        }
+    }
+}
+----
+====
+
+
+IMPORTANT: This error handler cannot be used with transactions.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.

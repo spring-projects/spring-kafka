@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +28,19 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class KafkaException extends NestedRuntimeException {
 
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message the message.
+	 */
 	public KafkaException(String message) {
 		super(message);
 	}
 
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message the message.
+	 * @param cause the cause.
+	 */
 	public KafkaException(String message, @Nullable Throwable cause) {
 		super(message, cause);
 	}

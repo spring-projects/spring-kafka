@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,9 +25,17 @@ import java.util.function.BiPredicate;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.SerializationException;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.LoggingCommitCallback;
+import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -48,6 +57,8 @@ public final class SeekUtils {
 	 * {@link #DEFAULT_MAX_FAILURES} - 1 retry attempts.
 	 */
 	public static final FixedBackOff DEFAULT_BACK_OFF = new FixedBackOff(0, DEFAULT_MAX_FAILURES - 1);
+
+	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 
 	private SeekUtils() {
 	}
@@ -89,6 +100,20 @@ public final class SeekUtils {
 			}
 			first.set(false);
 		});
+		seekPartitions(consumer, partitions, logger);
+		return skipped.get();
+	}
+
+	/**
+	 * Perform seek operations on each partition.
+	 * @param consumer the consumer.
+	 * @param partitions the partitions.
+	 * @param logger the logger.
+	 * @since 2.5
+	 */
+	public static void seekPartitions(Consumer<?, ?> consumer, Map<TopicPartition, Long> partitions,
+			LogAccessor logger) {
+
 		partitions.forEach((topicPartition, offset) -> {
 			try {
 				logger.trace(() -> "Seeking: " + topicPartition + " to: " + offset);
@@ -98,7 +123,61 @@ public final class SeekUtils {
 				logger.error(e, () -> "Failed to seek " + topicPartition + " to " + offset);
 			}
 		});
-		return skipped.get();
+	}
+
+	/**
+	 * Seek the remaining records, optionally recovering the first.
+	 * @param thrownException the exception.
+	 * @param records the remaining records.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 * @param commitRecovered true to commit the recovererd record offset.
+	 * @param skipPredicate the skip predicate.
+	 * @param logger the logger.
+	 * @since 2.5
+	 */
+	public static void seekOrRecover(Exception thrownException, List<ConsumerRecord<?, ?>> records,
+			Consumer<?, ?> consumer, MessageListenerContainer container, boolean commitRecovered,
+			BiPredicate<ConsumerRecord<?, ?>, Exception> skipPredicate, LogAccessor logger) {
+
+		if (ObjectUtils.isEmpty(records)) {
+			if (thrownException instanceof SerializationException) {
+				throw new IllegalStateException("This error handler cannot process 'SerializationException's directly; "
+						+ "please consider configuring an 'ErrorHandlingDeserializer2' in the value and/or key "
+						+ "deserializer", thrownException);
+			}
+			else {
+				throw new IllegalStateException("This error handler cannot process '"
+						+ thrownException.getClass().getName()
+						+ "'s; no record information is available", thrownException);
+			}
+		}
+
+		if (!doSeeks(records, consumer, thrownException, true, skipPredicate, logger)) {
+			throw new KafkaException("Seek to current after exception", thrownException);
+		}
+		if (commitRecovered) {
+			if (container.getContainerProperties().getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
+				ConsumerRecord<?, ?> record = records.get(0);
+				Map<TopicPartition, OffsetAndMetadata> offsetToCommit = Collections.singletonMap(
+						new TopicPartition(record.topic(), record.partition()),
+						new OffsetAndMetadata(record.offset() + 1));
+				if (container.getContainerProperties().isSyncCommits()) {
+					consumer.commitSync(offsetToCommit, container.getContainerProperties().getSyncCommitTimeout());
+				}
+				else {
+					OffsetCommitCallback commitCallback = container.getContainerProperties().getCommitCallback();
+					if (commitCallback == null) {
+						commitCallback = LOGGING_COMMIT_CALLBACK;
+					}
+					consumer.commitAsync(offsetToCommit, commitCallback);
+				}
+			}
+			else {
+				logger.warn(() -> "'commitRecovered' ignored, container AckMode must be MANUAL_IMMEDIATE, not "
+						+ container.getContainerProperties().getAckMode());
+			}
+		}
 	}
 
 }

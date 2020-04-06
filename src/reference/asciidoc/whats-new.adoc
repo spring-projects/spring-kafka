@@ -28,6 +28,9 @@ See <<container-props>> for more information.
 The `subBatchPerPartition` container property is now `true` by default when using transactions.
 See <<transactions>> for more information.
 
+A new `RecoveringBatchErrorHandler` is now provided.
+See <<recovering-batch-eh>> for more information.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 
