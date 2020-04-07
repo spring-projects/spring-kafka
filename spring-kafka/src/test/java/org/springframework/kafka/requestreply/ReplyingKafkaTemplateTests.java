@@ -87,6 +87,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -427,7 +428,7 @@ public class ReplyingKafkaTemplateTests {
 		willAnswer(invocation -> {
 			ProducerRecord rec = invocation.getArgument(0);
 			correlation.set(rec.headers().lastHeader(KafkaHeaders.CORRELATION_ID).value());
-			return null;
+			return new SettableListenableFuture<>();
 		}).given(producer).send(any(), any());
 		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(pf, container,
 				(list, timeout) -> true);
