@@ -18,6 +18,7 @@ package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.keyValue;
@@ -46,6 +47,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -55,6 +57,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.CompositeProducerListener;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
@@ -384,6 +387,19 @@ public class KafkaTemplateTests {
 				.get(ProducerConfig.CLIENT_ID_CONFIG)).isEqualTo("foo");
 		assertThat(template.getProducerFactory().getKeySerializerSupplier()).isSameAs(keySerializer);
 		assertThat(template.getProducerFactory().getValueSerializerSupplier()).isSameAs(valueSerializer);
+	}
+
+	@Test
+	void testFutureFailureOnSend() {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			template.send("missing.topic", "foo"))
+				.withCauseExactlyInstanceOf(TimeoutException.class);
+		pf.destroy();
 	}
 
 }

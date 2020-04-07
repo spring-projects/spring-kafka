@@ -20,12 +20,15 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
@@ -38,6 +41,7 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LoggingProducerListener;
@@ -535,7 +539,21 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.micrometerHolder != null) {
 			sample = this.micrometerHolder.start();
 		}
-		producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample));
+		Future<RecordMetadata> sendFuture =
+				producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample));
+		// May be an immediate failure
+		if (sendFuture.isDone()) {
+			try {
+				sendFuture.get();
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new KafkaException("Interrupted", e);
+			}
+			catch (ExecutionException e) {
+				throw new KafkaException("Send failed", e.getCause()); // NOSONAR, stack trace
+			}
+		}
 		if (this.autoFlush) {
 			flush();
 		}
