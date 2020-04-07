@@ -143,7 +143,7 @@ public final class SeekUtils {
 		if (ObjectUtils.isEmpty(records)) {
 			if (thrownException instanceof SerializationException) {
 				throw new IllegalStateException("This error handler cannot process 'SerializationException's directly; "
-						+ "please consider configuring an 'ErrorHandlingDeserializer2' in the value and/or key "
+						+ "please consider configuring an 'ErrorHandlingDeserializer' in the value and/or key "
 						+ "deserializer", thrownException);
 			}
 			else {

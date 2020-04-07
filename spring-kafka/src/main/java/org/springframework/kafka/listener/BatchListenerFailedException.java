@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+
 import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
 
@@ -30,6 +32,8 @@ import org.springframework.lang.Nullable;
 public class BatchListenerFailedException extends KafkaException {
 
 	private static final long serialVersionUID = 1L;
+
+	private final ConsumerRecord<?, ?> record;
 
 	private final int index;
 
@@ -51,6 +55,37 @@ public class BatchListenerFailedException extends KafkaException {
 	public BatchListenerFailedException(String message, @Nullable Throwable cause, int index) {
 		super(message, cause);
 		this.index = index;
+		this.record = null;
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message the message.
+	 * @param record the failed record.
+	 */
+	public BatchListenerFailedException(String message, ConsumerRecord<?, ?> record) {
+		this(message, null, record);
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message the message.
+	 * @param cause the cause.
+	 * @param record the failed record.
+	 */
+	public BatchListenerFailedException(String message, @Nullable Throwable cause, ConsumerRecord<?, ?> record) {
+		super(message, cause);
+		this.record = record;
+		this.index = -1;
+	}
+
+	/**
+	 * Return the failed record.
+	 * @return the record.
+	 */
+	@Nullable
+	public ConsumerRecord<?, ?> getRecord() {
+		return this.record;
 	}
 
 	/**
@@ -63,7 +98,9 @@ public class BatchListenerFailedException extends KafkaException {
 
 	@Override
 	public String getMessage() {
-		return super.getMessage() + " @-" + this.index;
+		return super.getMessage() + (this.record != null
+				? (this.record.topic() + "-" + this.record.partition() + "@" + this.record.offset())
+				: (" @-" + this.index));
 	}
 
 }

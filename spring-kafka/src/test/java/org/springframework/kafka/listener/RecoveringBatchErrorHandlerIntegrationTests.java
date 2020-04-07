@@ -86,11 +86,11 @@ public class RecoveringBatchErrorHandlerIntegrationTests {
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) records -> {
 			data.addAll(records);
 			latch.countDown();
-			for (int i = 0; i < records.size(); i++) {
-				if (records.get(i).value().equals("baz")) {
-					throw new BatchListenerFailedException("fail", i);
+			records.forEach(rec -> {
+				if (rec.value().equals("baz")) {
+					throw new BatchListenerFailedException("fail", rec);
 				}
-			}
+			});
 		});
 
 		KafkaMessageListenerContainer<Integer, String> container =
@@ -154,11 +154,11 @@ public class RecoveringBatchErrorHandlerIntegrationTests {
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) records -> {
 			data.addAll(records);
 			latch.countDown();
-			for (int i = 0; i < records.size(); i++) {
-				if (records.get(i).value().equals("baz")) {
-					throw new BatchListenerFailedException("fail", i);
+			records.forEach(rec -> {
+				if (rec.value().equals("baz")) {
+					throw new BatchListenerFailedException("fail", rec);
 				}
-			}
+			});
 		});
 
 		KafkaMessageListenerContainer<Integer, String> container =

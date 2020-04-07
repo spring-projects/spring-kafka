@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
@@ -48,6 +49,7 @@ import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -112,6 +114,7 @@ public class RecoveringBatchErrorHandlerTests {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
 	void outOfRange() {
 		Consumer mockConsumer = mock(Consumer.class);
 		RecoveringBatchErrorHandler beh = new RecoveringBatchErrorHandler(new FixedBackOff(0, 0));
@@ -119,8 +122,29 @@ public class RecoveringBatchErrorHandlerTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
 				Collections.singletonList(
 						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"))));
-		beh.handle(new BatchListenerFailedException("", 2), records, mockConsumer, null);
-		verify(consumer).seek(tp, 0);
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			beh.handle(new ListenerExecutionFailedException("",
+					new BatchListenerFailedException("", 2)), records, mockConsumer, null))
+				.withMessageStartingWith("Seek to current after exception");
+		verify(mockConsumer).seek(tp, 0L);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void missingRecord() {
+		Consumer mockConsumer = mock(Consumer.class);
+		RecoveringBatchErrorHandler beh = new RecoveringBatchErrorHandler(new FixedBackOff(0, 0));
+		TopicPartition tp = new TopicPartition("foo", 0);
+		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
+				Collections.singletonList(
+						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"))));
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			beh.handle(new ListenerExecutionFailedException("",
+						new BatchListenerFailedException("",
+					new ConsumerRecord("bar", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"))),
+					records, mockConsumer, null))
+				.withMessageStartingWith("Seek to current after exception");
+		verify(mockConsumer).seek(tp, 0L);
 	}
 
 	@Configuration

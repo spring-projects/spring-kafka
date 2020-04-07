@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -33,7 +32,6 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
@@ -42,12 +40,12 @@ import org.springframework.util.backoff.BackOff;
 /**
  * An error handler that seeks to the current offset for each topic in a batch of records.
  * Used to rewind partitions after a message failure so that the batch can be replayed. If
- * the listener throws a {@link BatchListenerFailedException}, and its index is in range,
- * the records before the index will have their offsets committed and the partitions for
- * the remaining records will be repositioned and/or the failed record can be recovered
- * and skipped. If some other exception is thrown, or the index is out of range, error
- * handling is delegated to a {@link SeekToCurrentBatchErrorHandler} with this handler's
- * {@link BackOff}. If the record is recovered, its offset is committed.
+ * the listener throws a {@link BatchListenerFailedException}, with the failed record. The
+ * records before the record will have their offsets committed and the partitions for the
+ * remaining records will be repositioned and/or the failed record can be recovered and
+ * skipped. If some other exception is thrown, or a valid record is not provided in the
+ * exception, error handling is delegated to a {@link SeekToCurrentBatchErrorHandler} with
+ * this handler's {@link BackOff}. If the record is recovered, its offset is committed.
  *
  * @author Gary Russell
  * @since 2.5
@@ -55,8 +53,6 @@ import org.springframework.util.backoff.BackOff;
  */
 public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 		implements ContainerAwareBatchErrorHandler {
-
-	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(RecoveringBatchErrorHandler.class));
 
 	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 
@@ -110,20 +106,38 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 
 		Throwable cause = thrownException.getCause();
 		if (!(cause instanceof BatchListenerFailedException)) {
-			LOGGER.warn(cause, () -> "Expected a BatchListenerFailedException; re-seeking batch");
+			this.logger.warn(cause, () -> "Expected a BatchListenerFailedException; re-seeking batch");
 			this.fallbackHandler.handle(thrownException, data, consumer, container);
 		}
 		else {
-			int index = ((BatchListenerFailedException) cause).getIndex();
+			ConsumerRecord<?, ?> record = ((BatchListenerFailedException) cause).getRecord();
+			int index = record != null ? findIndex(data, record) : ((BatchListenerFailedException) cause).getIndex();
 			if (index < 0 || index >= data.count()) {
-				LOGGER.warn(cause, () -> String.format("Index %d out of range (0 - %d); re-seeking batch", index,
-						data.count() - 1));
+				this.logger.warn(cause, () -> String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
+						record.topic(), record.partition(), record.offset()));
 				this.fallbackHandler.handle(thrownException, data, consumer, container);
 			}
 			else {
 				seekOrRecover(thrownException, data, consumer, container, index);
 			}
 		}
+	}
+
+	private int findIndex(ConsumerRecords<?, ?> data, ConsumerRecord<?, ?> record) {
+		if (record == null) {
+			return -1;
+		}
+		int i = 0;
+		Iterator<?> iterator = data.iterator();
+		while (iterator.hasNext()) {
+			ConsumerRecord<?, ?> candidate = (ConsumerRecord<?, ?>) iterator.next();
+			if (candidate.topic().equals(record.topic()) && candidate.partition() == record.partition()
+					&& candidate.offset() == record.offset()) {
+				break;
+			}
+			i++;
+		}
+		return i;
 	}
 
 	private void seekOrRecover(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,

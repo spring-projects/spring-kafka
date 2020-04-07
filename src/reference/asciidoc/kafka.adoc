@@ -4226,10 +4226,11 @@ This error handler works in conjunction with the listener throwing a `BatchListe
 If the listener throws a different exception, or the index is out of range, the error handler falls back to invoking a `SeekToCurrentBatchErrorHandler` and the whole batch is retried, with no recovery available.
 The sequence of events is:
 
-* commit the offsets of the records before the index.
-* if retries are not exhausted, perform seeks so that all the remaining records (including the failed record) will be redelivered.
-* if retries are exhausted, attempt recovery of the failed record (default log only) and perform seeks so that the remaining records (excluding the failed record) will be redelivered.
-* if retries are exhausted and recovery fails, perform seeks as if retries are not exhausted.
+* Commit the offsets of the records before the index.
+* If retries are not exhausted, perform seeks so that all the remaining records (including the failed record) will be redelivered.
+* If retries are exhausted, attempt recovery of the failed record (default log only) and perform seeks so that the remaining records (excluding the failed record) will be redelivered.
+The recovered record's offset is committed
+* If retries are exhausted and recovery fails, seeks are performed as if retries are not exhausted.
 
 In all cases, a `BackOff` can be configured to enable a delay between delivery attempts.
 
@@ -4243,7 +4244,7 @@ public RecoveringBatchErrorHandler(KafkaTemplate<String, String> template) {
     DeadLetterPublishingRecoverer recoverer =
             new DeadLetterPublishingRecoverer(template);
     RecoveringBatchErrorHandler errorHandler =
-            new RecoveringBatchErrorHandler(recoverer, new FixedBackOff(3L, 5000));
+            new RecoveringBatchErrorHandler(recoverer, new FixedBackOff(2L, 5000));
 }
 ----
 ====
@@ -4253,9 +4254,33 @@ public RecoveringBatchErrorHandler(KafkaTemplate<String, String> template) {
 ----
 @KafkaListener(id = "recovering", topics = "someTopic")
 public void listen(List<ConsumerRecord<String, String>> records) {
+    records.forEach(record -> {
+        try {
+            process(record);
+        }
+        catch (Exception e) {
+            throw new BatchListenerFailedException("Failed to process", record);
+        }
+    });
+}
+----
+====
+
+For example; say 10 records are in the original batch and no more records are added to the topic during the retries, and the failed record is at index `4` in the list.
+After the first delivery fails, the offsets for the first 4 records will be committed; the remaing 6 will be redelivered after 5 seconds.
+Most likely (but not necessarily) the failed record will be at index `0` in the redelivery.
+If it fails again, it will be retried one more time and, if it again fails, it will be sent to a dead letter topic.
+
+When using a POJO batch listener (e.g. `List<Thing>`), and you don't have the full consumer record to add to the exception, you can just add the index of the record that failed:
+
+====
+[source, java]
+----
+@KafkaListener(id = "recovering", topics = "someTopic")
+public void listen(List<ConsumerRecord<Thing>> things) {
     for (int i = 0; i < records.size(); i++) {
         try {
-            process(records.get(i));
+            process(things.get(i));
         }
         catch (Exception e) {
             throw new BatchListenerFailedException("Failed to process", i);
@@ -4264,7 +4289,6 @@ public void listen(List<ConsumerRecord<String, String>> records) {
 }
 ----
 ====
-
 
 IMPORTANT: This error handler cannot be used with transactions.
 
