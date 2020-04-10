@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
@@ -31,11 +32,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.errors.UnknownProducerIdException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -67,7 +71,8 @@ public class DefaultKafkaProducerFactoryTests {
 				producer.initTransactions();
 				BlockingQueue<Producer> cache = getCache(txIdPrefix);
 				Producer cached = cache.poll();
-				return cached == null ? new CloseSafeProducer(producer, cache) : cached;
+				return cached == null ? new CloseSafeProducer(producer, cache,
+						Duration.ofSeconds(1)) : cached;
 			}
 
 		};
@@ -148,7 +153,7 @@ public class DefaultKafkaProducerFactoryTests {
 				producer.initTransactions();
 				BlockingQueue<Producer> cache = getCache(txIdPrefix);
 				Producer cached = cache.poll();
-				return cached == null ? new CloseSafeProducer(producer, cache) : cached;
+				return cached == null ? new CloseSafeProducer(producer, cache, Duration.ofSeconds(1)) : cached;
 			}
 
 		};
@@ -219,6 +224,35 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThatExceptionOfType(ProducerFencedException.class).isThrownBy(() -> aProducer.beginTransaction());
 		aProducer.close();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).hasSize(0);
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testUnknownProducerIdException() {
+		final Producer producer1 = mock(Producer.class);
+		willAnswer(inv -> {
+			((Callback) inv.getArgument(1)).onCompletion(null, new UnknownProducerIdException("test"));
+			return null;
+		}).given(producer1).send(isNull(), any());
+		final Producer producer2 = mock(Producer.class);
+		ProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			private final AtomicBoolean first = new AtomicBoolean(true);
+
+			@Override
+			protected Producer createKafkaProducer() {
+				return this.first.getAndSet(false) ? producer1 : producer2;
+			}
+
+		};
+		final Producer aProducer = pf.createProducer();
+		assertThat(aProducer).isNotNull();
+		aProducer.send(null, (meta, ex) -> { });
+		aProducer.close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
+		verify(producer1).close(any(Duration.class));
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isNotSameAs(aProducer);
 	}
 
 }

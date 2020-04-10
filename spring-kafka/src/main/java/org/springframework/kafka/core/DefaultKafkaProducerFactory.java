@@ -43,6 +43,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.OutOfOrderSequenceException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.Serializer;
@@ -122,6 +123,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final Map<String, CloseSafeProducer<K, V>> consumerProducers = new HashMap<>();
 
+	private final ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers = new ThreadLocal<>();
+
 	private final AtomicInteger clientIdCounter = new AtomicInteger();
 
 	private Supplier<Serializer<K>> keySerializerSupplier;
@@ -137,8 +140,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	private boolean producerPerConsumerPartition = true;
 
 	private boolean producerPerThread;
-
-	private ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers;
 
 	private String clientIdPrefix;
 
@@ -252,7 +253,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	public void setProducerPerThread(boolean producerPerThread) {
 		this.producerPerThread = producerPerThread;
-		this.threadBoundProducers = new ThreadLocal<>();
 	}
 
 	/**
@@ -316,8 +316,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	@SuppressWarnings("resource")
 	@Override
 	public void destroy() {
-		CloseSafeProducer<K, V> producerToClose = this.producer;
-		this.producer = null;
+		CloseSafeProducer<K, V> producerToClose;
+		synchronized (this) {
+			producerToClose = this.producer;
+			this.producer = null;
+		}
 		if (producerToClose != null) {
 			producerToClose.getDelegate().close(this.physicalCloseTimeout);
 		}
@@ -391,19 +394,19 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		if (this.producerPerThread) {
 			CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
 			if (tlProducer == null) {
-				tlProducer = new CloseSafeProducer<>(createKafkaProducer());
+				tlProducer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
+						this.physicalCloseTimeout);
 				this.threadBoundProducers.set(tlProducer);
 			}
 			return tlProducer;
 		}
-		if (this.producer == null) {
-			synchronized (this) {
-				if (this.producer == null) {
-					this.producer = new CloseSafeProducer<>(createKafkaProducer());
-				}
+		synchronized (this) {
+			if (this.producer == null) {
+				this.producer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
+						this.physicalCloseTimeout);
 			}
+			return this.producer;
 		}
-		return this.producer;
 	}
 
 	/**
@@ -459,6 +462,20 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
+	 * Remove the single shared producer and a thread-bound instance if present.
+	 * @param producerToRemove the producer;
+	 * @since 2.2.13
+	 */
+	protected final synchronized void removeProducer(
+			@SuppressWarnings("unused") CloseSafeProducer<K, V> producerToRemove) {
+
+		if (producerToRemove.equals(this.producer)) {
+			this.producer = null;
+		}
+		this.threadBoundProducers.remove();
+	}
+
+	/**
 	 * Subclasses must return a producer from the {@link #getCache()} or a
 	 * new raw producer wrapped in a {@link CloseSafeProducer}.
 	 * @return the producer - cannot be null.
@@ -493,7 +510,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		newProducer = createRawProducer(newProducerConfigs);
 		newProducer.initTransactions();
 		return new CloseSafeProducer<>(newProducer, getCache(prefix), remover,
-				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG));
+				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG), this.physicalCloseTimeout);
 	}
 
 	protected Producer<K, V> createRawProducer(Map<String, Object> configs) {
@@ -556,34 +573,43 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		private final BlockingQueue<CloseSafeProducer<K, V>> cache;
 
-		private final Consumer<CloseSafeProducer<K, V>> removeConsumerProducer;
+		private final Consumer<CloseSafeProducer<K, V>> removeProducer;
 
 		private final String txId;
 
-		private volatile Exception txFailed;
+		private final Duration closeTimeout;
 
-		CloseSafeProducer(Producer<K, V> delegate) {
-			this(delegate, null, null);
+		private volatile Exception producerFailed;
+
+		private volatile boolean closed;
+
+		CloseSafeProducer(Producer<K, V> delegate, Consumer<CloseSafeProducer<K, V>> removeProducer,
+				Duration closeTimeout) {
+
+			this(delegate, null, removeProducer, null, closeTimeout);
 			Assert.isTrue(!(delegate instanceof CloseSafeProducer), "Cannot double-wrap a producer");
 		}
 
-		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache) {
-			this(delegate, cache, null);
+		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
+				Duration closeTimeout) {
+			this(delegate, cache, null, closeTimeout);
 		}
 
-		CloseSafeProducer(Producer<K, V> delegate, @Nullable BlockingQueue<CloseSafeProducer<K, V>> cache,
-				@Nullable Consumer<CloseSafeProducer<K, V>> removeConsumerProducer) {
+		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
+				@Nullable Consumer<CloseSafeProducer<K, V>> removeConsumerProducer, Duration closeTimeout) {
 
-			this(delegate, cache, removeConsumerProducer, null);
+			this(delegate, cache, removeConsumerProducer, null, closeTimeout);
 		}
 
-		CloseSafeProducer(Producer<K, V> delegate, @Nullable BlockingQueue<CloseSafeProducer<K, V>> cache,
-				@Nullable Consumer<CloseSafeProducer<K, V>> removeConsumerProducer, @Nullable String txId) {
+		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
+				@Nullable Consumer<CloseSafeProducer<K, V>> removeProducer, @Nullable String txId,
+				Duration closeTimeout) {
 
 			this.delegate = delegate;
 			this.cache = cache;
-			this.removeConsumerProducer = removeConsumerProducer;
+			this.removeProducer = removeProducer;
 			this.txId = txId;
+			this.closeTimeout = closeTimeout;
 			LOGGER.debug(() -> "Created new Producer: " + this);
 		}
 
@@ -600,7 +626,18 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
 			LOGGER.trace(() -> toString() + " send(" + record + ")");
-			return this.delegate.send(record, callback);
+			return this.delegate.send(record, new Callback() {
+
+				@Override
+				public void onCompletion(RecordMetadata metadata, Exception exception) {
+					if (exception instanceof OutOfOrderSequenceException) {
+						CloseSafeProducer.this.producerFailed = exception;
+						close(CloseSafeProducer.this.closeTimeout);
+					}
+					callback.onCompletion(metadata, exception);
+				}
+
+			});
 		}
 
 		@Override
@@ -632,7 +669,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 			catch (RuntimeException e) {
 				LOGGER.error(e, () -> "beginTransaction failed: " + this);
-				this.txFailed = e;
+				this.producerFailed = e;
 				throw e;
 			}
 		}
@@ -653,7 +690,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 			catch (RuntimeException e) {
 				LOGGER.error(e, () -> "commitTransaction failed: " + this);
-				this.txFailed = e;
+				this.producerFailed = e;
 				throw e;
 			}
 		}
@@ -661,8 +698,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public void abortTransaction() throws ProducerFencedException {
 			LOGGER.debug(() -> toString() + " abortTransaction()");
-			if (this.txFailed != null) {
-				LOGGER.debug(() -> "abortTransaction ignored - previous txFailed: " + this.txFailed.getMessage()
+			if (this.producerFailed != null) {
+				LOGGER.debug(() -> "abortTransaction ignored - previous txFailed: " + this.producerFailed.getMessage()
 					+ ": " + this);
 			}
 			else {
@@ -671,7 +708,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				}
 				catch (RuntimeException e) {
 					LOGGER.error(e, () -> "Abort failed: " + this);
-					this.txFailed = e;
+					this.producerFailed = e;
 					throw e;
 				}
 			}
@@ -685,25 +722,26 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		@Override
 		public void close(@Nullable Duration timeout) {
 			LOGGER.trace(() -> toString() + " close(" + (timeout == null ? "null" : timeout) + ")");
-			if (this.cache != null) {
-				Duration closeTimeout = this.txFailed instanceof TimeoutException
-						? CLOSE_TIMEOUT_AFTER_TX_TIMEOUT
-						: timeout;
-				if (this.txFailed != null) {
-					LOGGER.warn(() -> "Error during transactional operation; producer removed from cache; "
-							+ "possible cause: "
-							+ "broker restarted during transaction: " + this);
-					this.delegate.close(closeTimeout);
-					if (this.removeConsumerProducer != null) {
-						this.removeConsumerProducer.accept(this);
+			if (!this.closed) {
+				if (this.producerFailed != null) {
+					LOGGER.warn(() -> "Error during some operation; producer removed from cache: " + this);
+					this.closed = true;
+					this.delegate.close(this.producerFailed instanceof TimeoutException
+							? CLOSE_TIMEOUT_AFTER_TX_TIMEOUT
+							: timeout);
+					if (this.removeProducer != null) {
+						this.removeProducer.accept(this);
 					}
 				}
 				else {
-					if (this.removeConsumerProducer == null) { // dedicated consumer producers are not cached
+					if (this.cache != null && this.removeProducer == null) { // dedicated consumer producers are not cached
 						synchronized (this) {
 							if (!this.cache.contains(this)
 									&& !this.cache.offer(this)) {
-								this.delegate.close(closeTimeout);
+								this.closed = true;
+								this.delegate.close(this.producerFailed instanceof TimeoutException
+										? CLOSE_TIMEOUT_AFTER_TX_TIMEOUT
+										: timeout);
 							}
 						}
 					}

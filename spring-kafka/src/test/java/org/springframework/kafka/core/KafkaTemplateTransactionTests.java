@@ -381,7 +381,8 @@ public class KafkaTemplateTransactionTests {
 
 			@Override
 			public Producer<String, String> createProducer(String txIdPrefixArg) {
-				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, getCache());
+				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, getCache(),
+						Duration.ofSeconds(1));
 				return closeSafeProducer;
 			}
 
@@ -406,19 +407,22 @@ public class KafkaTemplateTransactionTests {
 		@SuppressWarnings("unchecked")
 		Producer<String, String> producer = mock(Producer.class);
 
-		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<String, String>(Collections.emptyMap()) {
+		DefaultKafkaProducerFactory<String, String> pf =
+				new DefaultKafkaProducerFactory<String, String>(Collections.emptyMap()) {
 
 			@SuppressWarnings("unchecked")
 			@Override
 			public Producer<String, String> createProducer(String txIdPrefixArg) {
 				BlockingQueue<CloseSafeProducer<String, String>> cache = new LinkedBlockingDeque<>(1);
 				try {
-					cache.put(new CloseSafeProducer<>(mock(Producer.class)));
+					cache.put(new CloseSafeProducer<>(mock(Producer.class), this::removeProducer,
+							Duration.ofSeconds(1)));
 				}
 				catch (@SuppressWarnings("unused") InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
-				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, cache);
+				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, cache,
+						Duration.ofSeconds(1));
 				return closeSafeProducer;
 			}
 
