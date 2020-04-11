@@ -336,17 +336,17 @@ public static class KafkaStreamsConfig {
     public KStream<Integer, String> kStream(StreamsBuilder kStreamBuilder) {
         KStream<Integer, String> stream = kStreamBuilder.stream("streamingTopic1");
         stream
-                .mapValues(String::toUpperCase)
+                .mapValues((ValueMapper<String, String>) String::toUpperCase)
                 .groupByKey()
+                .windowedBy(TimeWindows.of(Duration.ofMillis(1000)))
                 .reduce((String value1, String value2) -> value1 + value2,
-                		TimeWindows.of(1000),
-                		"windowStore")
+                        Named.as("windowStore"))
                 .toStream()
                 .map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
                 .filter((i, s) -> s.length() > 40)
                 .to("streamingTopic2");
 
-        stream.print();
+		stream.print(Printed.toSysOut());
 
         return stream;
     }
