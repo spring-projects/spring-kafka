@@ -399,16 +399,30 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public final void stop() {
+		stop(true);
+	}
+
+	/**
+	 * Stop the container.
+	 * @param wait wait for the listener to terminate.
+	 * @since 2.3.8
+	 */
+	public final void stop(boolean wait) {
 		synchronized (this.lifecycleMonitor) {
 			if (isRunning()) {
-				final CountDownLatch latch = new CountDownLatch(1);
-				doStop(latch::countDown);
-				try {
-					latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
-					publishContainerStoppedEvent();
+				if (wait) {
+					final CountDownLatch latch = new CountDownLatch(1);
+					doStop(latch::countDown);
+					try {
+						latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
+						publishContainerStoppedEvent();
+					}
+					catch (@SuppressWarnings("unused") InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
 				}
-				catch (@SuppressWarnings("unused") InterruptedException e) {
-					Thread.currentThread().interrupt();
+				else {
+					doStop(() -> { });
 				}
 			}
 		}
