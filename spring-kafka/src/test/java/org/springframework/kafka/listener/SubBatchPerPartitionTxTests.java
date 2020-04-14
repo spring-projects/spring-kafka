@@ -216,6 +216,7 @@ public class SubBatchPerPartitionTxTests {
 			ProducerFactory pf = mock(ProducerFactory.class);
 			given(pf.createProducer(isNull())).willReturn(producer());
 			given(pf.transactionCapable()).willReturn(true);
+			given(pf.isProducerPerConsumerPartition()).willReturn(true);
 			return pf;
 		}
 

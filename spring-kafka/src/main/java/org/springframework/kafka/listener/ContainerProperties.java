@@ -124,6 +124,25 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
+	 * Mode for exactly once semantics.
+	 *
+	 * @since 2.5
+	 */
+	public enum EOSMode {
+
+		/**
+		 * 'transactional.id' fencing (0.11 - 2.4 brokers).
+		 */
+		ALPHA,
+
+		/**
+		 *  fetch-offset-request fencing (2.5+ brokers).
+		 */
+		BETA,
+
+	}
+
+	/**
 	 * The default {@link #setShutdownTimeout(long) shutDownTimeout} (ms).
 	 */
 	public static final long DEFAULT_SHUTDOWN_TIMEOUT = 10_000L;
@@ -218,6 +237,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private AssignmentCommitOption assignmentCommitOption = AssignmentCommitOption.LATEST_ONLY_NO_TX;
 
 	private boolean deliveryAttemptHeader;
+
+	private EOSMode eosMode;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -590,8 +611,9 @@ public class ContainerProperties extends ConsumerProperties {
 	 * a transaction for each sub batch if transactions are in use) or the complete batch
 	 * received by the {@code poll()}. Useful when using transactions to enable zombie
 	 * fencing, by using a {@code transactional.id} that is unique for each
-	 * group/topic/partition.
-	 * Defaults to true when using transactions and false when not.
+	 * group/topic/partition. Defaults to true when using transactions with
+	 * {@link #setEosMode(EOSMode) EOSMode.ALPHA} and false when not using transactions or
+	 * with {@link #setEosMode(EOSMode) EOSMode.BETA}.
 	 * @param subBatchPerPartition true for a separate transaction for each partition.
 	 * @since 2.3.2
 	 */
@@ -629,6 +651,37 @@ public class ContainerProperties extends ConsumerProperties {
 		this.deliveryAttemptHeader = deliveryAttemptHeader;
 	}
 
+	/**
+	 * Get the exactly once semantics mode.
+	 * @return the mode.
+	 * @since 2.5
+	 * @see #setEosMode(EOSMode)
+	 */
+	public EOSMode getEosMode() {
+		return this.eosMode;
+	}
+
+	/**
+	 * Set the exactly once semantics mode. When {@link EOSMode#ALPHA} a producer per
+	 * group/topic/partition is used (enabling 'transactional.id fencing`).
+	 * {@link EOSMode#BETA} enables fetch-offset-request fencing, and requires brokers 2.5
+	 * or later. In the 2.6 client, the default will be BETA because the 2.6 client can
+	 * automatically fall back to ALPHA.
+	 * @param eosMode the mode; default ALPHA.
+	 * @since 2.5
+	 */
+	public void setEosMode(EOSMode eosMode) {
+		if (eosMode == null) {
+			this.eosMode = EOSMode.ALPHA;
+		}
+		else {
+			this.eosMode = eosMode;
+		}
+		if (this.eosMode.equals(EOSMode.BETA) && this.subBatchPerPartition == null) {
+			this.subBatchPerPartition = false;
+		}
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
@@ -651,6 +704,9 @@ public class ContainerProperties extends ConsumerProperties {
 				+ (this.scheduler != null ? ", scheduler=" + this.scheduler : "")
 				+ ", noPollThreshold=" + this.noPollThreshold
 				+ ", subBatchPerPartition=" + this.subBatchPerPartition
+				+ ", assignmentCommitOption=" + this.assignmentCommitOption
+				+ ", deliveryAttemptHeader=" + this.deliveryAttemptHeader
+				+ ", eosMode=" + this.eosMode
 				+ "]";
 	}
 

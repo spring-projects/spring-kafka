@@ -53,6 +53,7 @@ import java.util.function.BiConsumer;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -81,6 +82,7 @@ import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
+import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -134,27 +136,32 @@ public class TransactionalContainerTests {
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD);
+		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD, EOSMode.ALPHA);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKCTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(true, false, AckMode.RECORD);
+		testConsumeAndProduceTransactionGuts(true, false, AckMode.RECORD, EOSMode.ALPHA);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionHandleError() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, true, AckMode.RECORD);
+		testConsumeAndProduceTransactionGuts(false, true, AckMode.RECORD, EOSMode.ALPHA);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTMManual() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, false, AckMode.MANUAL_IMMEDIATE);
+		testConsumeAndProduceTransactionGuts(false, false, AckMode.MANUAL_IMMEDIATE, EOSMode.ALPHA);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionKTM_BETA() throws Exception {
+		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD, EOSMode.BETA);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError, AckMode ackMode)
-			throws Exception {
+	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError, AckMode ackMode,
+			EOSMode eosMode) throws Exception {
 
 		Consumer consumer = mock(Consumer.class);
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
@@ -186,6 +193,7 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(producer).close(any());
 		ProducerFactory pf = mock(ProducerFactory.class);
+		given(pf.isProducerPerConsumerPartition()).willReturn(true);
 		given(pf.transactionCapable()).willReturn(true);
 		final List<String> transactionalIds = new ArrayList<>();
 		willAnswer(i -> {
@@ -202,6 +210,9 @@ public class TransactionalContainerTests {
 		props.setGroupId("group");
 		props.setTransactionManager(ptm);
 		props.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
+		props.setEosMode(eosMode);
+		ConsumerGroupMetadata consumerGroupMetadata = new ConsumerGroupMetadata("group");
+		given(consumer.groupMetadata()).willReturn(consumerGroupMetadata);
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		if (AckMode.MANUAL_IMMEDIATE.equals(ackMode)) {
 			class AckListener implements AcknowledgingMessageListener {
@@ -240,16 +251,28 @@ public class TransactionalContainerTests {
 		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(producer);
 		inOrder.verify(producer).beginTransaction();
-		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-				new OffsetAndMetadata(0)), "group");
+		if (eosMode.equals(EOSMode.ALPHA)) {
+			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+					new OffsetAndMetadata(0)), "group");
+		}
+		else {
+			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+					new OffsetAndMetadata(0)), consumerGroupMetadata);
+		}
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).close(any());
 		inOrder.verify(producer).beginTransaction();
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		inOrder.verify(producer).send(captor.capture(), any(Callback.class));
 		assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
-		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-				new OffsetAndMetadata(1)), "group");
+		if (eosMode.equals(EOSMode.ALPHA)) {
+			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+					new OffsetAndMetadata(1)), "group");
+		}
+		else {
+			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+					new OffsetAndMetadata(1)), consumerGroupMetadata);
+		}
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).close(any());
 		container.stop();

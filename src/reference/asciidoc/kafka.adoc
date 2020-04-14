@@ -2054,6 +2054,10 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 |`false`
 |See <<delivery-header>>.
 
+|eosMode
+|`ALPHA`
+|Exactly Once Semantics mode; see <<exactly-once>>.
+
 |groupId
 |`null`
 |Overrides the consumer `group.id` property; automatically set by the `@KafkaListener` `id` or `groupId` property.
@@ -2112,7 +2116,7 @@ See `monitorInterval`.
 |subBatchPerPartition
 |See desc.
 |When using a batch listener, if this is `true`, the listener is called with the results of the poll split into sub batches, one per partition.
-Default `false` except when using transactions - see <<transactions>>.
+Default `false` except when using transactions with `EOSMode.ALPHA` - see <<exactly-once>>.
 
 |syncCommitTimeout
 |`null`
@@ -2754,7 +2758,7 @@ If you wish to revert to the previous behavior, you can set the `producerPerCons
 NOTE: While transactions are supported with batch listeners, by default, zombie fencing is not supported because a batch may contain records from multiple topics or partitions.
 However, starting with version 2.3.2, zombie fencing is supported if you set the container property `subBatchPerPartition` to true.
 In that case, the batch listener is invoked once per partition received from the last poll, as if each poll only returned records for a single partition.
-This is `true` by default since version 2.5 when transactions are enabled; set it to `false` if you are using transactions but are not concerned about zombie fencing.
+This is `true` by default since version 2.5 when transactions are enabled with `EOSMode.ALPHA`; set it to `false` if you are using transactions but are not concerned about zombie fencing.
 
 Also see <<transaction-id-prefix>>.
 
@@ -2769,15 +2773,6 @@ You can use the `KafkaTransactionManager` with normal Spring transaction support
 If a transaction is active, any `KafkaTemplate` operations performed within the scope of the transaction use the transaction's `Producer`.
 The manager commits or rolls back the transaction, depending on success or failure.
 You must configure the `KafkaTemplate` to use the same `ProducerFactory` as the transaction manager.
-
-===== Transactional Listener Container and Exactly Once Processing
-
-You can provide a listener container with a `KafkaAwareTransactionManager` instance.
-When so configured, the container starts a transaction before invoking the listener.
-Any `KafkaTemplate` operations performed by the listener participate in the transaction.
-If the listener successfully processes the record (or multiple records, when using a `BatchMessageListener`), the container sends the offsets to the transaction by using `producer.sendOffsetsToTransaction()`), before the transaction manager commits the transaction.
-If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back record(s) can be retrieved on the next poll.
-See <<after-rollback>> for more information and for handling records that repeatedly fail.
 
 ===== Transaction Synchronization
 
@@ -2949,6 +2944,46 @@ public static class Config {
 }
 ----
 ====
+
+[[exactly-once]]
+==== Exactly Once Semantics
+
+You can provide a listener container with a `KafkaAwareTransactionManager` instance.
+When so configured, the container starts a transaction before invoking the listener.
+Any `KafkaTemplate` operations performed by the listener participate in the transaction.
+If the listener successfully processes the record (or multiple records, when using a `BatchMessageListener`), the container sends the offset(s) to the transaction by using `producer.sendOffsetsToTransaction()`), before the transaction manager commits the transaction.
+If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back record(s) can be retrieved on the next poll.
+See <<after-rollback>> for more information and for handling records that repeatedly fail.
+
+Using transactions enables exactly once semantics (EOS).
+
+This means that, for a `read->process-write` sequence, it is guaranteed that the **sequence** is completed exactly once.
+(The read and process are have at least once semantics).
+
+Kafka version 2.5 now supports two EOS modes:
+
+* `ALPHA` - aka `transactional.id` fencing (since version 0.11.0.0)
+* `BETA` - aka fetch-offset-request fencing (since version 2.5)
+
+With mode `ALPHA`, the producer is "fenced" if another instance with the same `transactional.id` is started.
+Spring manages this by using a `Producer` for each `group.id/topic/partition`; when a rebalance occurs a new instance will use the same `transactional.id` and the old producer is fenced.
+
+With mode `BETA`, it is not necessary to have a producer for each `group.id/topic/partition` because consumer metadata is sent along with the offsets to the transaction and the broker can determine if the producer is fenced using that information instead.
+
+To configure the container to use mode `BETA`, set the container property `EOSMode` to `BETA`.
+
+IMPORTANT: With `BETA`, your brokers must be version 2.5 or later, unless you are using `kafka-clients` version 2.6; the producer in that version can automatically fall back to `ALPHA` if the broker does not support `BETA`.
+To enable the fall back in the 2.6 client; set `internal.auto.downgrade.txn.commit=true`.
+
+You should also set the `DefaultKafkaConsumerFactory` `producerPerConsumerPartition` property to `false`, to reduce the number of producers needed.
+
+If your brokers are upgraded to 2.5, you can immediately enable `BETA` mode.
+
+If your brokers are older than 2.5, when the 2.6 client is available, you can enable `BETA` mode. but leave the `producerPerConsumerPartition` to its default `true`.
+When your brokers are upgraded to 2.5 or later, the producer will automatically switch to using mode `BETA`, but the number of producers will remain as before.
+You can then do a rolling upgrade of your application with `producerPerConsumerPartition` set to `false` to reduce the number of producers.
+
+When using `BETA` mode, it is no longer necessary to set the `subBatchPerPartition` to `true`; it will default to `false` when the `EOSMode` is `BETA`.
 
 [[interceptors]]
 ==== Wiring Spring Beans into Producer/Consumer Interceptors

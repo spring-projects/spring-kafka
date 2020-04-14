@@ -216,6 +216,7 @@ public interface KafkaOperations<K, V> {
 	 * container thread (and the listener container is configured with a
 	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}) since
 	 * the container will take care of sending the offsets to the transaction.
+	 * Use with 2.5 brokers or later.
 	 * @param offsets The offsets.
 	 * @param groupMetadata the consumer group metadata.
 	 * @since 2.5

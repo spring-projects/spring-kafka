@@ -79,6 +79,7 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
+import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
@@ -533,6 +534,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final DeliveryAttemptAware deliveryAttemptAware;
 
+		private final EOSMode eosMode = this.containerProperties.getEosMode();
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -556,6 +559,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private ConsumerRecords<K, V> lastBatch;
 
 		private Producer<?, ?> producer;
+
+		private boolean producerPerConsumerPartition;
 
 		private volatile boolean consumerPaused;
 
@@ -739,6 +744,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Nullable
 		private TransactionTemplate determineTransactionTemplate() {
+			if (this.kafkaTxManager != null) {
+				this.producerPerConsumerPartition =
+						this.kafkaTxManager.getProducerFactory().isProducerPerConsumerPartition();
+			}
 			return this.transactionManager != null
 					? new TransactionTemplate(this.transactionManager)
 					: null;
@@ -1253,7 +1262,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					new OffsetAndMetadata(record.offset() + 1));
 			this.commitLogger.log(() -> "Committing: " + commits);
 			if (this.producer != null) {
-				this.producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+				doSendOffsets(this.producer, commits);
 			}
 			else if (this.syncCommits) {
 				this.consumer.commitSync(commits, this.syncCommitTimeout);
@@ -1294,7 +1303,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			try {
 				if (this.subBatchPerPartition) {
 					ConsumerRecord<K, V> record = recordList.get(0);
-					TransactionSupport.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
+					if (this.producerPerConsumerPartition) {
+						TransactionSupport
+								.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
+					}
 				}
 				this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 
@@ -1336,7 +1348,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			finally {
-				if (this.subBatchPerPartition) {
+				if (this.subBatchPerPartition && this.producerPerConsumerPartition) {
 					TransactionSupport.clearTransactionIdSuffix();
 				}
 			}
@@ -1543,8 +1555,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				this.logger.trace(() -> "Processing " + record);
 				try {
-					TransactionSupport
-							.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
+					if (this.producerPerConsumerPartition) {
+						TransactionSupport
+								.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
+					}
 					this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 
 						@Override
@@ -1571,7 +1585,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					recordAfterRollback(iterator, record, e);
 				}
 				finally {
-					TransactionSupport.clearTransactionIdSuffix();
+					if (this.producerPerConsumerPartition) {
+						TransactionSupport.clearTransactionIdSuffix();
+					}
 				}
 				if (this.nackSleep >= 0) {
 					handleNack(records, record);
@@ -1841,12 +1857,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings({ UNCHECKED, RAW_TYPES })
 		private void sendOffsetsToTransaction() {
 			handleAcks();
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
 			this.commitLogger.log(() -> "Sending offsets to transaction: " + commits);
-			this.producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+			doSendOffsets(this.producer, commits);
+		}
+
+		private void doSendOffsets(Producer<?, ?> prod, Map<TopicPartition, OffsetAndMetadata> commits) {
+			if (this.eosMode.equals(EOSMode.ALPHA)) {
+				prod.sendOffsetsToTransaction(commits, this.consumerGroupId);
+			}
+			else {
+				prod.sendOffsetsToTransaction(commits, this.consumer.groupMetadata());
+			}
 		}
 
 		private void processCommits() {
@@ -2308,25 +2332,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						&& !AssignmentCommitOption.LATEST_ONLY_NO_TX.equals(ListenerConsumer.this.autoCommitOption)) {
 					try {
 						offsetsToCommit.forEach((partition, offsetAndMetadata) -> {
-							TransactionSupport.setTransactionIdSuffix(
+							if (ListenerConsumer.this.producerPerConsumerPartition) {
+								TransactionSupport.setTransactionIdSuffix(
 									zombieFenceTxIdSuffix(partition.topic(), partition.partition()));
+							}
 							ListenerConsumer.this.transactionTemplate
 									.execute(new TransactionCallbackWithoutResult() {
 
-										@SuppressWarnings({ UNCHECKED, RAWTYPES })
 										@Override
 										protected void doInTransactionWithoutResult(TransactionStatus status) {
-											KafkaResourceHolder holder =
-													(KafkaResourceHolder) TransactionSynchronizationManager
-															.getResource(
-																	ListenerConsumer.this.kafkaTxManager
-																			.getProducerFactory());
+											KafkaResourceHolder<?, ?> holder =
+													(KafkaResourceHolder<?, ?>) TransactionSynchronizationManager
+															.getResource(ListenerConsumer.this.kafkaTxManager
+																	.getProducerFactory());
 											if (holder != null) {
-												holder.getProducer()
-														.sendOffsetsToTransaction(
-																Collections.singletonMap(partition,
-																		offsetAndMetadata),
-																ListenerConsumer.this.consumerGroupId);
+												doSendOffsets(holder.getProducer(),
+															Collections.singletonMap(partition, offsetAndMetadata));
 											}
 										}
 
