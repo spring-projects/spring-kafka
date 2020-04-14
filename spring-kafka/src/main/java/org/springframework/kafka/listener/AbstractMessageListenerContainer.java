@@ -418,12 +418,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					}
 					catch (@SuppressWarnings("unused") InterruptedException e) {
 						Thread.currentThread().interrupt();
+						publishContainerStoppedEvent();
 					}
 				}
 				else {
-					doStop(() -> { });
+					doStop(() -> {
+						publishContainerStoppedEvent();
+					});
 				}
-				publishContainerStoppedEvent();
 			}
 		}
 	}
