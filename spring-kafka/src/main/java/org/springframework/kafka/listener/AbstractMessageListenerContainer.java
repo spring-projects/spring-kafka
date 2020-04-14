@@ -415,10 +415,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					doStop(latch::countDown);
 					try {
 						latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
+						publishContainerStoppedEvent();
 					}
 					catch (@SuppressWarnings("unused") InterruptedException e) {
 						Thread.currentThread().interrupt();
-						publishContainerStoppedEvent();
 					}
 				}
 				else {
