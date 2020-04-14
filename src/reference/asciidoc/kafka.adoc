@@ -776,6 +776,10 @@ Starting with version 2.3.4, you can set the listener container's `interceptBefo
 
 No interceptor is provided for batch listeners because Kafka already provides a `ConsumerInterceptor`.
 
+Starting with versions 2.3.8, 2.4.6, the `ConcurrentMessageListenerContainer` now supports https://kafka.apache.org/documentation/#static_membership[Static Membership] when the concurrency is greater than one.
+The `group.instance.id` is suffixed with `-n` with `n` starting at `1`.
+This, together with an increased `session.timeout.ms`, can be used to reduce rebalance events, for example, when application instances are restarted.
+
 [[kafka-container]]
 ====== Using `KafkaMessageListenerContainer`
 

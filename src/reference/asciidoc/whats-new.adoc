@@ -31,6 +31,9 @@ See <<transactions>> for more information.
 A new `RecoveringBatchErrorHandler` is now provided.
 See <<recovering-batch-eh>> for more information.
 
+Static group membership is now supported.
+See <<message-listener-container>> for more information.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 
