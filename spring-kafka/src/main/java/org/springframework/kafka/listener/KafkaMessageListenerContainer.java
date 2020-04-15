@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -435,6 +436,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<String, Map<Integer, Long>> offsets = new HashMap<>();
 
+		private final Collection<TopicPartition> assignedPartitions = new LinkedHashSet<>();
+
 		private final GenericMessageListener<?> genericListener;
 
 		private final ConsumerSeekAware consumerSeekAwareListener;
@@ -555,8 +558,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private Producer<?, ?> producer;
 
 		private volatile boolean consumerPaused;
-
-		private volatile Collection<TopicPartition> assignedPartitions;
 
 		private volatile Thread consumerThread;
 
@@ -2269,7 +2270,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
 							+ "consumer paused again, so the initial poll() will never return any records");
 				}
-				ListenerConsumer.this.assignedPartitions = new LinkedList<>(partitions);
+				ListenerConsumer.this.assignedPartitions.addAll(partitions);
 				if (ListenerConsumer.this.commitCurrentOnAssignment) {
 					// Commit initial positions - this is generally redundant but
 					// it protects us from the case when another consumer starts

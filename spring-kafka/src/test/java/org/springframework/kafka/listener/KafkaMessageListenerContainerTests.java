@@ -2771,6 +2771,52 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
+	@SuppressWarnings({ "unchecked" })
+	@Test
+	public void testCooperativeRebalance() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new LinkedHashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		Collection<TopicPartition> topics = new ArrayList<>();
+		TopicPartition topicPartition0 = new TopicPartition("foo", 0);
+		topics.add(topicPartition0);
+		topics.add(new TopicPartition("foo", 1));
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean rebalance = new AtomicBoolean(true);
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		CountDownLatch latch = new CountDownLatch(1);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			if (rebalance.getAndSet(false)) {
+				rebal.get().onPartitionsRevoked(Collections.emptyList());
+				rebal.get().onPartitionsAssigned(topics);
+				rebal.get().onPartitionsRevoked(Collections.singletonList(topicPartition0));
+				rebal.get().onPartitionsAssigned(Collections.emptyList());
+				latch.countDown();
+			}
+			return emptyRecords;
+		});
+		willAnswer(invoc -> {
+			rebal.set(invoc.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
+
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) msg -> { });
+		Properties consumerProps = new Properties();
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.getAssignedPartitions()).hasSize(1);
+		container.stop();
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer = spy(
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
