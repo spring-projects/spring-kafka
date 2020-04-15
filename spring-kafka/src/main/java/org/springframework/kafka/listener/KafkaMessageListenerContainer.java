@@ -58,6 +58,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
@@ -535,6 +536,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final DeliveryAttemptAware deliveryAttemptAware;
 
 		private final EOSMode eosMode = this.containerProperties.getEosMode();
+
+		private final Map<TopicPartition, OffsetAndMetadata> commitsDuringRebalance = new HashMap<>();
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
@@ -1051,8 +1054,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				records = this.consumer.poll(this.pollTimeout);
+				checkRebalanceCommits();
 			}
 			return records;
+		}
+
+		private void checkRebalanceCommits() {
+			if (this.commitsDuringRebalance.size() > 0) {
+				// Attempt to recommit the offsets for partitions that we still own
+				Map<TopicPartition, OffsetAndMetadata> commits = this.commitsDuringRebalance.entrySet()
+						.stream()
+						.filter(entry -> this.assignedPartitions.contains(entry.getKey()))
+						.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
+				this.commitsDuringRebalance.clear();
+				this.logger.debug(() -> "Commit list: " + commits);
+				commitSync(commits);
+			}
 		}
 
 		void wakeIfNecessary() {
@@ -1265,7 +1282,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				doSendOffsets(this.producer, commits);
 			}
 			else if (this.syncCommits) {
-				this.consumer.commitSync(commits, this.syncCommitTimeout);
+				commitSync(commits);
 			}
 			else {
 				this.consumer.commitAsync(commits, this.commitCallback);
@@ -1834,7 +1851,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (this.producer == null) {
 					this.commitLogger.log(() -> "Committing: " + offsetsToCommit);
 					if (this.syncCommits) {
-						this.consumer.commitSync(offsetsToCommit, this.syncCommitTimeout);
+						commitSync(offsetsToCommit);
 					}
 					else {
 						this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
@@ -2065,7 +2082,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.commitLogger.log(() -> "Committing: " + commits);
 				try {
 					if (this.syncCommits) {
-						this.consumer.commitSync(commits, this.syncCommitTimeout);
+						commitSync(commits);
 					}
 					else {
 						this.consumer.commitAsync(commits, this.commitCallback);
@@ -2075,6 +2092,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					// ignore - not polling
 					this.logger.debug("Woken up during commit");
 				}
+			}
+		}
+
+		private void commitSync(Map<TopicPartition, OffsetAndMetadata> commits) {
+			try {
+				this.consumer.commitSync(commits, this.syncCommitTimeout);
+			}
+			catch (RebalanceInProgressException e) {
+				this.logger.debug(e, "Non-fatal commit failure");
+				this.commitsDuringRebalance.putAll(commits);
 			}
 		}
 
@@ -2312,7 +2339,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							return;
 						}
 					}
-					commitCurrentOffsets(offsetsToCommit);
+					if (offsetsToCommit.size() > 0) {
+						commitCurrentOffsets(offsetsToCommit);
+					}
 				}
 				if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
 					seekPartitions(partitions, false);
@@ -2361,8 +2390,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				else {
 					ContainerProperties containerProps = KafkaMessageListenerContainer.this.getContainerProperties();
 					if (containerProps.isSyncCommits()) {
-						ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
-								containerProps.getSyncCommitTimeout());
+						try {
+							ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
+									containerProps.getSyncCommitTimeout());
+						}
+						catch (RebalanceInProgressException e) {
+							// ignore since this is on assignment anyway
+						}
 					}
 					else {
 						ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,

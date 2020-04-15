@@ -34,6 +34,8 @@ See <<recovering-batch-eh>> for more information.
 Static group membership is now supported.
 See <<message-listener-container>> for more information.
 
+When incremental/cooperative rebalancing is configured, if offsets fail to commit with a non-fatal `RebalanceInProgressException`, the container will attempt to re-commit the offsets for the partitions that remain assigned to this instance after the rebalance is completed.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 

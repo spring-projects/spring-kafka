@@ -69,6 +69,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.FencedInstanceIdException;
+import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
@@ -2815,6 +2816,99 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.getAssignedPartitions()).hasSize(1);
 		container.stop();
+	}
+
+	@Test
+	void testCommitRebalanceInProgressBatch() throws Exception {
+		testCommitRebalanceInProgressGuts(AckMode.BATCH, 2, commits -> {
+			assertThat(commits).hasSize(3);
+			assertThat(commits.get(0)).hasSize(2); // assignment
+			assertThat(commits.get(1)).hasSize(2); // batch commit
+			assertThat(commits.get(2)).hasSize(1); // re-commit
+		});
+	}
+
+	@Test
+	void testCommitRebalanceInProgressRecord() throws Exception {
+		testCommitRebalanceInProgressGuts(AckMode.RECORD, 5, commits -> {
+			assertThat(commits).hasSize(6);
+			assertThat(commits.get(0)).hasSize(2); // assignment
+			assertThat(commits.get(1)).hasSize(1); // 4 individual commits
+			assertThat(commits.get(2)).hasSize(1);
+			assertThat(commits.get(3)).hasSize(1);
+			assertThat(commits.get(4)).hasSize(1);
+			assertThat(commits.get(5)).hasSize(1); // re-commit
+			assertThat(commits.get(5).get(new TopicPartition("foo", 1)))
+				.isNotNull()
+				.extracting(om -> om.offset())
+				.isEqualTo(2L);
+		});
+	}
+
+	@SuppressWarnings({ "unchecked" })
+	private void testCommitRebalanceInProgressGuts(AckMode ackMode, int exceptions,
+			java.util.function.Consumer<List<Map<TopicPartition, OffsetAndMetadata>>> verifier) throws Exception {
+
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new LinkedHashMap<>();
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		TopicPartition topicPartition0 = new TopicPartition("foo", 0);
+		records.put(topicPartition0, Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		records.put(new TopicPartition("foo", 1), Arrays.asList(
+				new ConsumerRecord<>("foo", 1, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 1, 1L, 1, "bar")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean first = new AtomicBoolean(true);
+		AtomicInteger rebalance = new AtomicInteger();
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		CountDownLatch latch = new CountDownLatch(2);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			int call = rebalance.getAndIncrement();
+			if (call == 0) {
+				rebal.get().onPartitionsRevoked(Collections.emptyList());
+				rebal.get().onPartitionsAssigned(records.keySet());
+			}
+			else if (call == 1) {
+				rebal.get().onPartitionsRevoked(Collections.singletonList(topicPartition0));
+				rebal.get().onPartitionsAssigned(Collections.emptyList());
+			}
+			latch.countDown();
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+		willAnswer(invoc -> {
+			rebal.set(invoc.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
+		List<Map<TopicPartition, OffsetAndMetadata>> commits = new ArrayList<>();
+		AtomicInteger commitCount = new AtomicInteger();
+		willAnswer(invoc -> {
+			commits.add(invoc.getArgument(0, Map.class));
+			if (commitCount.getAndIncrement() < exceptions) {
+				throw new RebalanceInProgressException();
+			}
+			return null;
+		}).given(consumer).commitSync(any(), any());
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(ackMode);
+		containerProps.setClientId("clientId");
+		containerProps.setIdleEventInterval(100L);
+		containerProps.setMessageListener((MessageListener) msg -> { });
+		Properties consumerProps = new Properties();
+		containerProps.setKafkaConsumerProperties(consumerProps);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		verifier.accept(commits);
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
