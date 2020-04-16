@@ -109,11 +109,6 @@ import org.springframework.util.StringUtils;
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, ApplicationContextAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
-	/**
-	 * The default close timeout duration as 30 seconds.
-	 */
-	public static final Duration DEFAULT_PHYSICAL_CLOSE_TIMEOUT = Duration.ofSeconds(30);
-
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaProducerFactory.class));
 
 	private final Map<String, Object> configs;
@@ -227,6 +222,16 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
+	 * Get the physical close timeout.
+	 * @return the timeout.
+	 * @since 2.5
+	 */
+	@Override
+	public Duration getPhysicalCloseTimeout() {
+		return this.physicalCloseTimeout;
+	}
+
+	/**
 	 * Set a prefix for the {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} config. By
 	 * default a {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} value from configs is used
 	 * as a prefix in the target producer configs.
@@ -239,7 +244,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		enableIdempotentBehaviour();
 	}
 
-	protected String getTransactionIdPrefix() {
+	@Override
+	public @Nullable String getTransactionIdPrefix() {
 		return this.transactionIdPrefix;
 	}
 
@@ -254,6 +260,11 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	public void setProducerPerThread(boolean producerPerThread) {
 		this.producerPerThread = producerPerThread;
+	}
+
+	@Override
+	public boolean isProducerPerThread() {
+		return this.producerPerThread;
 	}
 
 	/**

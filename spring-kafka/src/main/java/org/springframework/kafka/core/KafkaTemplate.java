@@ -174,8 +174,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.customProducerFactory) {
 			Map<String, Object> configs = new HashMap<>(producerFactory.getConfigurationProperties());
 			configs.putAll(configOverrides);
-			this.producerFactory = new DefaultKafkaProducerFactory<>(configs,
+			DefaultKafkaProducerFactory<K, V> newFactory = new DefaultKafkaProducerFactory<>(configs,
 					producerFactory.getKeySerializerSupplier(), producerFactory.getValueSerializerSupplier());
+			newFactory.setPhysicalCloseTimeout((int) producerFactory.getPhysicalCloseTimeout().getSeconds());
+			newFactory.setProducerPerConsumerPartition(producerFactory.isProducerPerConsumerPartition());
+			newFactory.setProducerPerThread(producerFactory.isProducerPerThread());
+			this.producerFactory = newFactory;
 		}
 		else {
 			this.producerFactory = producerFactory;

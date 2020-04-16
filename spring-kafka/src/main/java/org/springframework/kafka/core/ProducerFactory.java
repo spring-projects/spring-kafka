@@ -16,11 +16,14 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.function.Supplier;
 
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.serialization.Serializer;
+
+import org.springframework.lang.Nullable;
 
 /**
  * The strategy to produce a {@link Producer} instance(s).
@@ -31,6 +34,11 @@ import org.apache.kafka.common.serialization.Serializer;
  * @author Gary Russell
  */
 public interface ProducerFactory<K, V> {
+
+	/**
+	 * The default close timeout duration as 30 seconds.
+	 */
+	Duration DEFAULT_PHYSICAL_CLOSE_TIMEOUT = Duration.ofSeconds(30);
 
 	/**
 	 * Create a producer which will be transactional if the factory is so configured.
@@ -130,6 +138,34 @@ public interface ProducerFactory<K, V> {
 	 */
 	default Supplier<Serializer<K>> getKeySerializerSupplier() {
 		return () -> null;
+	}
+
+	/**
+	 * Return true when there is a producer per thread.
+	 * @return the produver per thread.
+	 * @since 2.5
+	 */
+	default boolean isProducerPerThread() {
+		return false;
+	}
+
+	/**
+	 * Return the transaction id prefix.
+	 * @return the prefix or null if not configured.
+	 * @since 2.5
+	 */
+	@Nullable
+	default String getTransactionIdPrefix() {
+		return null;
+	}
+
+	/**
+	 * Get the physical close timeout.
+	 * @return the timeout.
+	 * @since 2.5
+	 */
+	default Duration getPhysicalCloseTimeout() {
+		return DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
 	}
 
 }

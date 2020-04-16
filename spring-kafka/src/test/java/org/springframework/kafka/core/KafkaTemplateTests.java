@@ -26,6 +26,7 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
 import static org.springframework.kafka.test.assertj.KafkaConditions.timestamp;
 import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -366,11 +367,17 @@ public class KafkaTemplateTests {
 	void testConfigOverrides() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setPhysicalCloseTimeout(6);
+		pf.setProducerPerConsumerPartition(false);
+		pf.setProducerPerThread(true);
 		Map<String, Object> overrides = new HashMap<>();
 		overrides.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true, overrides);
 		assertThat(template.getProducerFactory().getConfigurationProperties()
 				.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)).isEqualTo(StringSerializer.class);
+		assertThat(template.getProducerFactory().getPhysicalCloseTimeout()).isEqualTo(Duration.ofSeconds(6));
+		assertThat(template.getProducerFactory().isProducerPerConsumerPartition()).isFalse();
+		assertThat(template.getProducerFactory().isProducerPerThread()).isTrue();
 	}
 
 	@Test
