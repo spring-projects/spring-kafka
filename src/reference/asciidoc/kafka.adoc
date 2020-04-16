@@ -2979,7 +2979,7 @@ You should also set the `DefaultKafkaConsumerFactory` `producerPerConsumerPartit
 
 If your brokers are upgraded to 2.5, you can immediately enable `BETA` mode.
 
-If your brokers are older than 2.5, when the 2.6 client is available, you can enable `BETA` mode. but leave the `producerPerConsumerPartition` to its default `true`.
+If your brokers are older than 2.5, when the 2.6 client is available, you can enable `BETA` mode, but leave the `producerPerConsumerPartition` to its default `true`.
 When your brokers are upgraded to 2.5 or later, the producer will automatically switch to using mode `BETA`, but the number of producers will remain as before.
 You can then do a rolling upgrade of your application with `producerPerConsumerPartition` set to `false` to reduce the number of producers.
 
