@@ -3288,6 +3288,14 @@ ParseStringDeserializer<Object> deserializer = new ParseStringDeserializer<>((st
 
 You can configure the `Charset` used to convert `String` to/from `byte[]` with the default being `UTF-8`.
 
+You can configure the deserializer with the name of the parser method using `ConsumerConfig` properties:
+
+* `ParseStringDeserializer.KEY_PARSER`
+* `ParseStringDeserializer.VALUE_PARSER`
+
+The properties must contain the fully qualified name of the class followed by the method name, separated by a period `.`.
+The method must be static and have a signature of either `(String, Headers)` or `(String)`.
+
 A `ToFromStringSerde` is also provided, for use with Kafka Streams.
 
 ===== JSON

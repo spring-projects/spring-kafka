@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.Map;
+
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
@@ -39,8 +41,7 @@ public class ToFromStringSerde<T> implements Serde<T> {
 	private final ParseStringDeserializer<T> fromStringDeserializer;
 
 	/**
-	 * Construct an instance with the provided properties which must be previously
-	 * configured ({@link #configure(java.util.Map, boolean)} is not called).
+	 * Construct an instance with the provided properties.
 	 * @param toStringSerializer the {@link ToStringSerializer}.
 	 * @param fromStringDeserializer the {@link ParseStringDeserializer}.
 	 */
@@ -51,6 +52,12 @@ public class ToFromStringSerde<T> implements Serde<T> {
 		Assert.notNull(fromStringDeserializer, "'fromStringDeserializer' must not be null.");
 		this.toStringSerializer = toStringSerializer;
 		this.fromStringDeserializer = fromStringDeserializer;
+	}
+
+	@Override
+	public void configure(Map<String, ?> configs, boolean isKey) {
+		this.toStringSerializer.configure(configs, isKey);
+		this.fromStringDeserializer.configure(configs, isKey);
 	}
 
 	@Override

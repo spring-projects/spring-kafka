@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -167,12 +169,59 @@ public class ToStringSerializationTests {
 	}
 
 	@Test
+	@DisplayName("Test simple deserialization without headers via config")
+	public void testSimpleDeserializationViaConfig() {
+
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(ParseStringDeserializer.KEY_PARSER, TestEntity.class.getName() + ".parse");
+		/* Given */
+		ParseStringDeserializer<Object> deserializer = new ParseStringDeserializer<>();
+		deserializer.configure(configs, true);
+		byte[] data = "toto:123:true".getBytes();
+
+		/* When */
+		Object entity = deserializer.deserialize("my-topic", data);
+
+		/* Then */
+		assertThat(entity)
+				.hasFieldOrPropertyWithValue("first", "toto")
+				.hasFieldOrPropertyWithValue("second", 123)
+				.hasFieldOrPropertyWithValue("third", true);
+	}
+
+	@Test
 	@DisplayName("Test deserialization using headers")
 	public void testSerialization_usingHeaders() {
 
 		/* Given */
 		ParseStringDeserializer<Object> deserializer =
 				new ParseStringDeserializer<>(ToStringSerializationTests::parseWithHeaders);
+
+		byte[] data = "toto:123:true".getBytes();
+		Headers headers = new RecordHeaders();
+		headers.add(ToStringSerializer.VALUE_TYPE, DummyEntity.class.getName().getBytes());
+
+		/* When */
+		Object entity = deserializer.deserialize("my-topic", headers, data);
+
+		/* Then */
+		assertThat(entity)
+				.isNotNull()
+				.isInstanceOf(DummyEntity.class)
+				.hasFieldOrPropertyWithValue("stringValue", "toto")
+				.hasFieldOrPropertyWithValue("intValue", 123);
+	}
+
+	@Test
+	@DisplayName("Test deserialization using headers via config")
+	public void testSerialization_usingHeadersViaConfig() {
+
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(ParseStringDeserializer.VALUE_PARSER,
+				"org.springframework.kafka.support.serializer.ToStringSerializationTests.parseWithHeaders");
+		/* Given */
+		ParseStringDeserializer<Object> deserializer = new ParseStringDeserializer<>();
+		deserializer.configure(configs, false);
 
 		byte[] data = "toto:123:true".getBytes();
 		Headers headers = new RecordHeaders();
