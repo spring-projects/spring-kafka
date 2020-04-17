@@ -106,7 +106,7 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 
 		Throwable cause = thrownException.getCause();
 		if (!(cause instanceof BatchListenerFailedException)) {
-			this.logger.warn(cause, () -> "Expected a BatchListenerFailedException; re-seeking batch");
+			this.logger.debug(cause, "Expected a BatchListenerFailedException; re-seeking batch");
 			this.fallbackHandler.handle(thrownException, data, consumer, container);
 		}
 		else {

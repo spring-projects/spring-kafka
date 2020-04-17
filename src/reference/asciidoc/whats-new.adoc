@@ -36,6 +36,9 @@ See <<message-listener-container>> for more information.
 
 When incremental/cooperative rebalancing is configured, if offsets fail to commit with a non-fatal `RebalanceInProgressException`, the container will attempt to re-commit the offsets for the partitions that remain assigned to this instance after the rebalance is completed.
 
+The default error handler is now the `SeekToCurrentErrorHandler` for record listeners and `RecoveringBatchErrorHandler` for batch listeners.
+See <<error-handlers>> for more information.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 

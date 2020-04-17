@@ -2160,7 +2160,7 @@ Processor
 |batchError
 Handler
 |See desc.
-|An error handler for a batch listener; defaults to a `BatchLoggingErrorHandler` or `null` if transactions are being used (errors are handled by the `AfterRollbackProcessor`).
+|An error handler for a batch listener; defaults to a `RecoveringBatchErrorHandler` or `null` if transactions are being used (errors are handled by the `AfterRollbackProcessor`).
 
 |beanName
 |bean name
@@ -2173,7 +2173,7 @@ Handler
 
 |errorHandler
 |See desc.
-|An error handler for a record listener; defaults to a `LoggingErrorHandler` or `null` if transactions are being used (errors are handled by the `AfterRollbackProcessor`).
+|An error handler for a record listener; defaults to a `SeekToCurrentErrorHandler` or `null` if transactions are being used (errors are handled by the `AfterRollbackProcessor`).
 
 |genericErrorHandler
 |See desc.
@@ -3948,8 +3948,6 @@ This section describes how to handle various exceptions that may arise when you 
 
 Starting with version 2.0, the `@KafkaListener` annotation has a new attribute: `errorHandler`.
 
-By default, this attribute is not configured.
-
 You can use the `errorHandler` to provide the bean name of a `KafkaListenerErrorHandler` implementation.
 This functional interface has one method, as the following listing shows:
 
@@ -4035,8 +4033,12 @@ NOTE: The preceding two examples are simplistic implementations, and you would p
 Two error handler interfaces (`ErrorHandler` and `BatchErrorHandler`) are provided.
 You must configure the appropriate type to match the <<message-listeners,message listener>>.
 
-By default, errors are simply logged when transactions are not being used.
+NOTE: Starting with version 2.5, the default error handlers, when transactions are not being used, are the `SeekToCurrentErrorHandler` and `RecoveringBatchErrorHandler` with default configuration.
+See <<seek-to-current>> and <<recovering-batch-eh>>.
+To restore the previous behavior, use the `LoggingErrorHandler` and `BatchLoggingErrorHandler` instead.
+
 When transactions are being used, no error handlers are configured, by default, so that the exception will roll back the transaction.
+Error handling for transactional containers are handled by the <<after-rollback,`AfterRollbackProcessor`>>.
 If you provide a custom error handler when using transactions, it must throw an exception if you want the transaction rolled back.
 
 Starting with version 2.3.2, these interfaces have a default method `isAckAfterHandle()` which is called by the container to determine whether the offset(s) should be committed if the error handler returns without throwing an exception.
@@ -4134,6 +4136,8 @@ The `SeekToCurrentErrorHandler` does exactly this.
 IMPORTANT: `ackOnError` must be `false` (which is the default).
 Otherwise, if the container is stopped after the seek, but before the record is reprocessed, the record will be skipped when the container is restarted.
 
+This is now the default error handler for record listeners.
+
 The container commits any pending offset commits before calling the error handler.
 
 To configure the listener container with this handler, add it to the container factory.
@@ -4149,11 +4153,14 @@ public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerCont
     factory.setConsumerFactory(consumerFactory());
     factory.getContainerProperties().setAckOnError(false);
     factory.getContainerProperties().setAckMode(AckMode.RECORD);
-    factory.setErrorHandler(new SeekToCurrentErrorHandler());
+    factory.setErrorHandler(new SeekToCurrentErrorHandler(new FixedBackOff(1000L, 2L)));
     return factory;
 }
 ----
 ====
+
+This will retry a delivery up to 2 times (3 delivery attempts) with a back off of 1 second, instead of the default configuration (`FixedBackOff(0L, 9)`).
+Failures are simply logged after retries are exhausted.
 
 As an example; if the `poll` returns six records (two from each partition 0, 1, 2) and the listener throws an exception on the fourth record, the container acknowledges the first three messages by committing their offsets.
 The `SeekToCurrentErrorHandler` seeks to offset 1 for partition 1 and offset 0 for partition 2.
@@ -4164,7 +4171,7 @@ If the `AckMode` was `BATCH`, the container commits the offsets for the first tw
 Starting with version 2.2, the `SeekToCurrentErrorHandler` can now recover (skip) a record that keeps failing.
 By default, after ten failures, the failed record is logged (at the `ERROR` level).
 You can configure the handler with a custom recoverer (`BiConsumer`) and maximum failures.
-Setting the `maxFailures` property to a negative number causes infinite retries.
+Using a `FixedBackOff` with `FixedBackOff.UNLIMITED_ATTEMPTS` causes (effectively) infinite retries.
 The following example configures recovery after three tries:
 
 ====
@@ -4263,6 +4270,10 @@ Also see <<recovering-batch-eh>>.
 ===== Recovering Batch Error Handler
 
 As an alternative to the <<retrying-batch-eh>>, version 2.5 introduced the `RecoveringBatchErrorHandler`.
+
+This is now the default error handler for batch listeners.
+The default configuration retries 9 times (10 delivery attempts) with no back off between deliveries.
+
 This error handler works in conjunction with the listener throwing a `BatchListenerFailedException` providing the index in the batch where the failure occurred.
 If the listener throws a different exception, or the index is out of range, the error handler falls back to invoking a `SeekToCurrentBatchErrorHandler` and the whole batch is retried, with no recovery available.
 The sequence of events is:
@@ -4272,6 +4283,9 @@ The sequence of events is:
 * If retries are exhausted, attempt recovery of the failed record (default log only) and perform seeks so that the remaining records (excluding the failed record) will be redelivered.
 The recovered record's offset is committed
 * If retries are exhausted and recovery fails, seeks are performed as if retries are not exhausted.
+
+The default recoverer logs the failed record after retries are exhausted.
+You can use a custom recoverer, or one provided by the framework such as the <<dead-letters,`DeadLetterPublishingRecoverer`>>.
 
 In all cases, a `BackOff` can be configured to enable a delay between delivery attempts.
 
@@ -4443,7 +4457,7 @@ The `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor` support this
 [[dead-letters]]
 ===== Publishing Dead-letter Records
 
-As <<stateful-retry,discussed earlier>>, you can configure the `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor` with a record recoverer when the maximum number of failures is reached for a record.
+As <<stateful-retry,discussed earlier>>, you can configure the `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor` (as well as the `RecoveringBatchErrorHandler`) with a record recoverer when the maximum number of failures is reached for a record.
 The framework provides the `DeadLetterPublishingRecoverer`, which publishes the failed message to another topic.
 The recoverer requires a `KafkaTemplate<Object, Object>`, which is used to send the record.
 You can also, optionally, configure it with a `BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>`, which is called to resolve the destination topic and partition.

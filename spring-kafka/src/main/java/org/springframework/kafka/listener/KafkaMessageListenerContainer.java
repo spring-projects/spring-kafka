@@ -866,12 +866,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		protected BatchErrorHandler determineBatchErrorHandler(GenericErrorHandler<?> errHandler) {
 			return errHandler != null ? (BatchErrorHandler) errHandler
-					: this.transactionManager != null ? null : new BatchLoggingErrorHandler();
+					: this.transactionManager != null ? null : new RecoveringBatchErrorHandler();
 		}
 
 		protected ErrorHandler determineErrorHandler(GenericErrorHandler<?> errHandler) {
 			return errHandler != null ? (ErrorHandler) errHandler
-					: this.transactionManager != null ? null : new LoggingErrorHandler();
+					: this.transactionManager != null ? null : new SeekToCurrentErrorHandler();
 		}
 
 		@Nullable
