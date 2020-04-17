@@ -2294,8 +2294,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					else {
 						this.userListener.onPartitionsRevoked(partitions);
 					}
-					// Wait until now to commit, in case the user listener added acks
-					commitPendingAcks();
+					try {
+						// Wait until now to commit, in case the user listener added acks
+						commitPendingAcks();
+					}
+					catch (Exception e) {
+						ListenerConsumer.this.logger.error(e, () -> "Fatal commit error after revocation "
+								+ partitions);
+					}
 					if (this.consumerAwareListener != null) {
 						this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
 								partitions);
