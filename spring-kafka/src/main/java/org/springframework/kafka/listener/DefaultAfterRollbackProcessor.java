@@ -26,7 +26,6 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 

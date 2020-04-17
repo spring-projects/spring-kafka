@@ -10,6 +10,10 @@ Also see <<new-in-sik>>.
 
 This version requires the 2.5.0 `kafka-clients`.
 
+==== Class/Package Changes
+
+`SeekUtils` has been moved from the `o.s.k.support` package to `o.s.k.listener`.
+
 [[x25-delivery]]
 ==== Delivery Attempts Header
 

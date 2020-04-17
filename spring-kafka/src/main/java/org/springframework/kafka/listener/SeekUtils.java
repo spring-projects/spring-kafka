@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.support;
+package org.springframework.kafka.listener;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -33,8 +33,6 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.listener.LoggingCommitCallback;
-import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.backoff.FixedBackOff;
 

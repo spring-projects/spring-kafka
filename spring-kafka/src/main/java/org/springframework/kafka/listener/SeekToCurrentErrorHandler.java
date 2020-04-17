@@ -23,7 +23,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 
