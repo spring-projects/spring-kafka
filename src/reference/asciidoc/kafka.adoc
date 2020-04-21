@@ -4,6 +4,56 @@
 This section offers detailed explanations of the various concerns that impact using Spring for Apache Kafka.
 For a quick but less detailed introduction, see <<quick-tour>>.
 
+[[connecting]]
+==== Connecting to Kafka
+
+* `KafkaAdmin` - see <<configuring-topics>>
+* `ProducerFactory` - see <<sending-messages>>
+* `ConsumerFactory` - see <<receiving-messages>>
+
+[[factory-listeners]]
+===== Factory Listeners
+
+Starting with version 2.5, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` can be configured with a `Listener` to receive notifications whenever a producer or consumer is created or closed.
+
+====
+.Producer Factory Listener
+[source, java]
+----
+interface Listener<K, V> {
+
+    default void producerAdded(String id, Producer<K, V> producer) {
+    }
+
+    default void producerRemoved(String id, Producer<K, V> producer) {
+    }
+
+}
+----
+====
+
+====
+.Consumer Factory Listener
+[source, java]
+----
+interface Listener<K, V> {
+
+    default void consumerAdded(String id, Consumer<K, V> consumer) {
+    }
+
+    default void consumerRemoved(String id, Consumer<K, V> consumer) {
+    }
+
+}
+----
+====
+
+In each case, the `id` is created by appending the `client-id` property (obtained from the `metrics()` after creation) to the factory `beanName` property, separated by `.`.
+
+These listeners can be used, for example, to create and bind a Micrometer `KafkaClientMetrics` instance when a new client is created (and close it when the client is closed).
+
+The framework provides listeners that do exactly that; see <<micrometer-native>>.
+
 [[configuring-topics]]
 ==== Configuring Topics
 
@@ -2418,7 +2468,7 @@ You should stop the concurrent container instead.
 Note that you can obtain the current positions when idle is detected by implementing `ConsumerSeekAware` in your listener.
 See `onIdleContainer()` in <<seek>>.
 
-===== Topic/Partition Initial Offset
+==== Topic/Partition Initial Offset
 
 There are several ways to set the initial offset for a partition.
 
@@ -2432,7 +2482,7 @@ When you use group management where the broker assigns partitions:
 You can, however, seek to a specific offset during initialization (or at any time thereafter).
 
 [[seek]]
-===== Seeking to a Specific Offset
+==== Seeking to a Specific Offset
 
 In order to seek, your listener must implement `ConsumerSeekAware`, which has the following methods:
 
@@ -2638,7 +2688,7 @@ public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
 ====
 
 [[container-factory]]
-===== Container factory
+==== Container factory
 
 As discussed in <<kafka-listener-annotation>>, a `ConcurrentKafkaListenerContainerFactory` is used to create containers for annotated methods.
 
@@ -2682,7 +2732,7 @@ public KafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory() {
 ====
 
 [[thread-safety]]
-===== Thread Safety
+==== Thread Safety
 
 When using a concurrent message listener container, a single listener instance is invoked on all consumer threads.
 Listeners, therefore, need to be thread-safe, and it is preferable to use stateless listeners.
@@ -2700,6 +2750,9 @@ IMPORTANT: By default, the application context's event multicaster invokes event
 If you change the multicaster to use an async executor, thread cleanup is not effective.
 
 [[micrometer]]
+
+==== Monitoring
+
 ===== Monitoring Listener Performance
 
 Starting with version 2.3, the listener container will automatically create and update Micrometer `Timer` s for the listener, if `Micrometer` is detected on the class path, and a single `MeterRegistry` is present in the application context.
@@ -2731,6 +2784,42 @@ The timers are named `spring.kafka.template` and have the following tags:
 * `exception` : `none` or the exception class name for failures
 
 You can add additional tags using the template's `micrometerTags` property.
+
+[[micrometer-native]]
+===== Micrometer Native Metrics
+
+Starting with version 2.5, the framework provides <<factory-listeners>> to manage Micrometer `KafkaClientMetric` s whenever producers and consumers are created and closed.
+
+To enable this feature, simply add the listeners to your producer and consumer factories:
+
+====
+[source, java]
+----
+@Bean
+public ConsumerFactory<String, String> myConsumerFactory() {
+    Map<String, Object> configs = consumerConfigs();
+    ...
+    DefaultKafkaConsumerFactory<byte[], String> cf = new DefaultKafkaConsumerFactory<>(configs);
+    ...
+    cf.setListener(new MicrometerConsumerListener<String, String>(meterRegistry(),
+            Collections.singletonList(new ImmutableTag("customTag", "customTagValue"))));
+    ...
+    return cf;
+}
+
+@Bean
+public ProducerFactory<String, String> myProducerFactory() {
+    Map<String, Object> configs = producerConfigs();
+    ...
+    DefaultKafkaProducerFactory<byte[], String> pf = new DefaultKafkaProducerFactory<>(configs);
+    ...
+    pf.setListener(new MicrometerProducerListener<byte[], String>(meterRegistry(),
+            Collections.singletonList(new ImmutableTag("customTag", "customTagValue"))));
+    ...
+    return pf;
+}
+----
+====
 
 [[transactions]]
 ==== Transactions

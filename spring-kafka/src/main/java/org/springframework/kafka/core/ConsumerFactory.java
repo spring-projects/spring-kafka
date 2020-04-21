@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,6 +134,37 @@ public interface ConsumerFactory<K, V> {
 	@Nullable
 	default Deserializer<V> getValueDeserializer() {
 		return null;
+	}
+
+	/**
+	 * Called whenever a consumer is added or removed.
+	 *
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 *
+	 * @since 2.5
+	 *
+	 */
+	interface Listener<K, V> {
+
+		/**
+		 * A new consumer was created.
+		 * @param id the consumer id (factory bean name and client.id separated by a
+		 * period).
+		 * @param consumer the consumer.
+		 */
+		default void consumerAdded(String id, Consumer<K, V> consumer) {
+		}
+
+		/**
+		 * An existing consumer was removed.
+		 * @param id the consumer id (factory bean name and client.id separated by a
+		 * period).
+		 * @param consumer the consumer.
+		 */
+		default void consumerRemoved(String id, Consumer<K, V> consumer) {
+		}
+
 	}
 
 }

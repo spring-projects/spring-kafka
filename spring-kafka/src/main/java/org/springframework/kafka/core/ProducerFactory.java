@@ -168,4 +168,35 @@ public interface ProducerFactory<K, V> {
 		return DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
 	}
 
+	/**
+	 * Called whenever a producer is added or removed.
+	 *
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 *
+	 * @since 2.5
+	 *
+	 */
+	interface Listener<K, V> {
+
+		/**
+		 * A new producer was created.
+		 * @param id the producer id (factory bean name and client.id separated by a
+		 * period).
+		 * @param producer the producer.
+		 */
+		default void producerAdded(String id, Producer<K, V> producer) {
+		}
+
+		/**
+		 * An exsting producer was removed.
+		 * @param id the producer id (factory bean name and client.id separated by a
+		 * period).
+		 * @param producer the producer.
+		 */
+		default void producerRemoved(String id, Producer<K, V> producer) {
+		}
+
+	}
+
 }

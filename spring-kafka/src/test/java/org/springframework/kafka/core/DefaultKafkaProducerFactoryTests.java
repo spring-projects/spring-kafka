@@ -28,16 +28,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.UnknownProducerIdException;
 import org.junit.jupiter.api.Test;
@@ -45,6 +49,7 @@ import org.mockito.InOrder;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextStoppedEvent;
+import org.springframework.kafka.core.ProducerFactory.Listener;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
@@ -67,12 +72,8 @@ public class DefaultKafkaProducerFactoryTests {
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override
-			protected Producer createTransactionalProducer(String txIdPrefix) {
-				producer.initTransactions();
-				BlockingQueue<Producer> cache = getCache(txIdPrefix);
-				Producer cached = cache.poll();
-				return cached == null ? new CloseSafeProducer(producer, cache,
-						Duration.ofSeconds(1)) : cached;
+			protected Producer createRawProducer(Map configs) {
+				return producer;
 			}
 
 		};
@@ -97,14 +98,14 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(cache).hasSize(1);
 		Queue queue = (Queue) cache.get("foo");
 		assertThat(queue).hasSize(1);
-		try {
-			transactionTemplate.execute(s -> {
-				return null;
-			});
-		}
-		catch (CannotCreateTransactionException e) {
-			assertThat(e.getCause().getMessage()).contains("Invalid transition");
-		}
+		assertThatExceptionOfType(CannotCreateTransactionException.class)
+				.isThrownBy(() -> {
+					transactionTemplate.execute(s -> {
+						return null;
+					});
+				})
+				.withMessageContaining("Invalid transition");
+
 		assertThat(queue).hasSize(0);
 
 		InOrder inOrder = inOrder(producer);
@@ -125,7 +126,7 @@ public class DefaultKafkaProducerFactoryTests {
 		ProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override
-			protected Producer createKafkaProducer() {
+			protected Producer createRawProducer(Map configs) {
 				return producer;
 			}
 
@@ -149,11 +150,8 @@ public class DefaultKafkaProducerFactoryTests {
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override
-			protected Producer createTransactionalProducer(String txIdPrefix) {
-				producer.initTransactions();
-				BlockingQueue<Producer> cache = getCache(txIdPrefix);
-				Producer cached = cache.poll();
-				return cached == null ? new CloseSafeProducer(producer, cache, Duration.ofSeconds(1)) : cached;
+			protected Producer createRawProducer(Map configs) {
+				return producer;
 			}
 
 		};
@@ -219,7 +217,6 @@ public class DefaultKafkaProducerFactoryTests {
 		Producer aProducer = pf.createProducer();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).hasSize(1);
 		assertThat(aProducer).isNotNull();
-		assertThat(KafkaTestUtils.getPropertyValue(aProducer, "cache")).isNotNull();
 		willThrow(new ProducerFencedException("test")).given(producer).beginTransaction();
 		assertThatExceptionOfType(ProducerFencedException.class).isThrownBy(() -> aProducer.beginTransaction());
 		aProducer.close();
@@ -253,6 +250,94 @@ public class DefaultKafkaProducerFactoryTests {
 		verify(producer1).close(any(Duration.class));
 		Producer bProducer = pf.createProducer();
 		assertThat(bProducer).isNotSameAs(aProducer);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void listener() {
+		Producer producer = mock(Producer.class);
+		Map<MetricName, ? extends Metric> metrics = new HashMap<>();
+		metrics.put(new MetricName("test", "group", "desc", Collections.singletonMap("client-id", "foo-0")), null);
+		given(producer.metrics()).willReturn(metrics);
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(Collections.EMPTY_MAP) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				return producer;
+			}
+
+		};
+		List<String> adds = new ArrayList<>();
+		List<String> removals = new ArrayList<>();
+		pf.setListener(new Listener() {
+
+			@Override
+			public void producerAdded(String id, Producer producer) {
+				adds.add(id);
+			}
+
+			@Override
+			public void producerRemoved(String id, Producer producer) {
+				removals.add(id);
+			}
+
+		});
+		pf.setBeanName("pf");
+
+		pf.createProducer().close();
+		assertThat(adds).hasSize(1);
+		assertThat(adds.get(0)).isEqualTo("pf.foo-0");
+		assertThat(removals).hasSize(0);
+		pf.createProducer().close();
+		assertThat(adds).hasSize(1);
+		assertThat(removals).hasSize(0);
+		pf.reset();
+		assertThat(adds).hasSize(1);
+		assertThat(removals).hasSize(1);
+
+		pf.createProducer("tx").close();
+		assertThat(adds).hasSize(2);
+		assertThat(removals).hasSize(1);
+		pf.createProducer("tx").close();
+		assertThat(adds).hasSize(2);
+		assertThat(removals).hasSize(1);
+		pf.reset();
+		assertThat(adds).hasSize(2);
+		assertThat(removals).hasSize(2);
+
+		TransactionSupport.setTransactionIdSuffix("xx");
+		pf.createProducer("tx").close();
+		assertThat(adds).hasSize(3);
+		assertThat(removals).hasSize(2);
+		pf.createProducer("tx").close();
+		assertThat(adds).hasSize(3);
+		assertThat(removals).hasSize(2);
+		pf.reset();
+		assertThat(adds).hasSize(3);
+		assertThat(removals).hasSize(3);
+
+		pf.setProducerPerConsumerPartition(false);
+		pf.createProducer("tx").close();
+		assertThat(adds).hasSize(4);
+		assertThat(removals).hasSize(3);
+		pf.createProducer("tx").close();
+		assertThat(adds).hasSize(4);
+		assertThat(removals).hasSize(3);
+		pf.reset();
+		assertThat(adds).hasSize(4);
+		assertThat(removals).hasSize(4);
+		TransactionSupport.clearTransactionIdSuffix();
+
+		pf.setProducerPerThread(true);
+		pf.createProducer().close();
+		assertThat(adds).hasSize(5);
+		assertThat(removals).hasSize(4);
+		pf.createProducer().close();
+		assertThat(adds).hasSize(5);
+		assertThat(removals).hasSize(4);
+		pf.closeThreadBoundProducer();
+		assertThat(adds).hasSize(5);
+		assertThat(removals).hasSize(5);
 	}
 
 }

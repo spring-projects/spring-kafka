@@ -80,6 +80,8 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.MicrometerConsumerListener;
+import org.springframework.kafka.core.MicrometerProducerListener;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
@@ -137,6 +139,7 @@ import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
+import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -791,6 +794,17 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.keyLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.convertedKey).isEqualTo("foo");
 		assertThat(this.config.intercepted).isTrue();
+		assertThat(this.meterRegistry.get("kafka.consumer.coordinator.join.total")
+				.tag("consumerTag", "bytesString")
+				.functionCounter()
+				.count())
+					.isGreaterThan(0);
+
+		assertThat(this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
+				.tag("producerTag", "bytesString")
+				.functionCounter()
+				.count())
+					.isGreaterThan(0);
 	}
 
 	@Test
@@ -1186,7 +1200,10 @@ public class EnableKafkaIntegrationTests {
 		public DefaultKafkaConsumerFactory<byte[], String> bytesStringConsumerFactory() {
 			Map<String, Object> configs = consumerConfigs();
 			configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
-			return new DefaultKafkaConsumerFactory<>(configs);
+			DefaultKafkaConsumerFactory<byte[], String> cf = new DefaultKafkaConsumerFactory<>(configs);
+			cf.setListener(new MicrometerConsumerListener<byte[], String>(meterRegistry(),
+					Collections.singletonList(new ImmutableTag("consumerTag", "bytesString"))));
+			return cf;
 		}
 
 		private ConsumerFactory<Integer, String> configuredConsumerFactory(String clientAndGroupId) {
@@ -1257,7 +1274,10 @@ public class EnableKafkaIntegrationTests {
 		public ProducerFactory<byte[], String> bytesStringProducerFactory() {
 			Map<String, Object> configs = producerConfigs();
 			configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
-			return new DefaultKafkaProducerFactory<>(configs);
+			DefaultKafkaProducerFactory<byte[], String> pf = new DefaultKafkaProducerFactory<>(configs);
+			pf.setListener(new MicrometerProducerListener<byte[], String>(meterRegistry(),
+					Collections.singletonList(new ImmutableTag("producerTag", "bytesString"))));
+			return pf;
 		}
 
 		@Bean

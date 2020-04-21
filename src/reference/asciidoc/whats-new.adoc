@@ -5,6 +5,13 @@ For changes in earlier version, see <<history>>.
 
 Also see <<new-in-sik>>.
 
+[[x25-factory-listeners]]
+==== Consumer/Producer Factory Changes
+
+The default consumer and producer factories can now invoke a callback whenever a consumer or producer is created or closed.
+Implementations for native Micrometer metrics are provided.
+See <<factory-listeners>> for more information.
+
 [[x25-kafka-client]]
 ==== Kafka Client Version
 

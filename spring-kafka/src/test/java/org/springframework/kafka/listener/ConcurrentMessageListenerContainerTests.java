@@ -44,7 +44,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -123,7 +122,7 @@ public class ConcurrentMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
 
 			@Override
-			protected KafkaConsumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
 					String clientIdSuffixArg, Properties properties) {
 
 				overrides.set(properties);
@@ -218,7 +217,7 @@ public class ConcurrentMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
 
 			@Override
-			protected KafkaConsumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
 					String clientIdSuffixArg, Properties properties) {
 
 				overrides.set(properties);
@@ -290,7 +289,7 @@ public class ConcurrentMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
 
 			@Override
-			protected KafkaConsumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
 					String clientIdSuffixArg, Properties properties) {
 
 				overrides.set(properties);
