@@ -796,12 +796,14 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.config.intercepted).isTrue();
 		assertThat(this.meterRegistry.get("kafka.consumer.coordinator.join.total")
 				.tag("consumerTag", "bytesString")
+				.tag("spring.id", "bytesStringConsumerFactory.tag-0")
 				.functionCounter()
 				.count())
 					.isGreaterThan(0);
 
 		assertThat(this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
 				.tag("producerTag", "bytesString")
+				.tag("spring.id", "bytesStringProducerFactory.bsPF-1")
 				.functionCounter()
 				.count())
 					.isGreaterThan(0);
@@ -1274,6 +1276,7 @@ public class EnableKafkaIntegrationTests {
 		public ProducerFactory<byte[], String> bytesStringProducerFactory() {
 			Map<String, Object> configs = producerConfigs();
 			configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+			configs.put(ProducerConfig.CLIENT_ID_CONFIG, "bsPF");
 			DefaultKafkaProducerFactory<byte[], String> pf = new DefaultKafkaProducerFactory<>(configs);
 			pf.setListener(new MicrometerProducerListener<byte[], String>(meterRegistry(),
 					Collections.singletonList(new ImmutableTag("producerTag", "bytesString"))));
@@ -1910,7 +1913,7 @@ public class EnableKafkaIntegrationTests {
 			// empty
 		}
 
-		@KafkaListener(id = "bytesKey", topics = "annotated36",
+		@KafkaListener(id = "bytesKey", topics = "annotated36", clientIdPrefix = "tag",
 				containerFactory = "bytesStringListenerContainerFactory")
 		public void bytesKey(String in, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key) {
 			this.convertedKey = key;

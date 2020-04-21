@@ -16,12 +16,15 @@
 
 package org.springframework.kafka.core;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
+import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
@@ -40,7 +43,7 @@ public class MicrometerConsumerListener<K, V> implements ConsumerFactory.Listene
 
 	private final MeterRegistry meterRegistry;
 
-	private final Iterable<Tag> tags;
+	private final List<Tag> tags;
 
 	private final Map<String, KafkaClientMetrics> metrics = new HashMap<>();
 
@@ -57,7 +60,7 @@ public class MicrometerConsumerListener<K, V> implements ConsumerFactory.Listene
 	 * @param meterRegistry the registry.
 	 * @param tags the tags.
 	 */
-	public MicrometerConsumerListener(MeterRegistry meterRegistry, Iterable<Tag> tags) {
+	public MicrometerConsumerListener(MeterRegistry meterRegistry, List<Tag> tags) {
 		this.meterRegistry = meterRegistry;
 		this.tags = tags;
 	}
@@ -65,7 +68,9 @@ public class MicrometerConsumerListener<K, V> implements ConsumerFactory.Listene
 	@Override
 	public synchronized void consumerAdded(String id, Consumer<K, V> consumer) {
 		if (!this.metrics.containsKey(id)) {
-			this.metrics.put(id, new KafkaClientMetrics(consumer, this.tags));
+			List<Tag> consumerTags = new ArrayList<>(this.tags);
+			consumerTags.add(new ImmutableTag("spring.id", id));
+			this.metrics.put(id, new KafkaClientMetrics(consumer, consumerTags));
 			this.metrics.get(id).bindTo(this.meterRegistry);
 		}
 	}

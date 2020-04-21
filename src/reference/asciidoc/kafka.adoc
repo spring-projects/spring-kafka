@@ -2810,6 +2810,7 @@ public ConsumerFactory<String, String> myConsumerFactory() {
 @Bean
 public ProducerFactory<String, String> myProducerFactory() {
     Map<String, Object> configs = producerConfigs();
+    configs.put(ProducerConfig.CLIENT_ID_CONFIG, "myClientId");
     ...
     DefaultKafkaProducerFactory<byte[], String> pf = new DefaultKafkaProducerFactory<>(configs);
     ...
@@ -2818,6 +2819,20 @@ public ProducerFactory<String, String> myProducerFactory() {
     ...
     return pf;
 }
+----
+====
+
+The consumer/producer `id` passed to the listener is added to the meter's tags with tag name `spring.id`.
+
+====
+.An example of obtaining one of the Kafka metrics
+[source, java]
+----
+double count =this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
+				.tag("customTag", "customTagValue")
+				.tag("spring.id", "myProducerFactory.myClientId-1")
+				.functionCounter()
+				.count()
 ----
 ====
 
