@@ -2788,7 +2788,7 @@ You can add additional tags using the template's `micrometerTags` property.
 [[micrometer-native]]
 ===== Micrometer Native Metrics
 
-Starting with version 2.5, the framework provides <<factory-listeners>> to manage Micrometer `KafkaClientMetric` s whenever producers and consumers are created and closed.
+Starting with version 2.5, the framework provides <<factory-listeners>> to manage a Micrometer `KafkaClientMetrics` instance whenever producers and consumers are created and closed.
 
 To enable this feature, simply add the listeners to your producer and consumer factories:
 

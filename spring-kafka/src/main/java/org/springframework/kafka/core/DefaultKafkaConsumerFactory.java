@@ -127,7 +127,6 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 	/**
 	 * Set the key deserializer.
 	 * @param keyDeserializer the deserializer.
-	 * @since 2.5
 	 */
 	public void setKeyDeserializer(@Nullable Deserializer<K> keyDeserializer) {
 		this.keyDeserializerSupplier = () -> keyDeserializer;
@@ -136,7 +135,6 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 	/**
 	 * Set the value deserializer.
 	 * @param valueDeserializer the valuee deserializer.
-	 * @since 2.5
 	 */
 	public void setValueDeserializer(@Nullable Deserializer<V> valueDeserializer) {
 		this.valueDeserializerSupplier = () -> valueDeserializer;
