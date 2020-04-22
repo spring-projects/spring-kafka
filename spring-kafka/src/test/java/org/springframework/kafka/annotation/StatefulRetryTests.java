@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -86,7 +87,7 @@ public class StatefulRetryTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory(embeddedKafka));
-			factory.setErrorHandler(new SeekToCurrentErrorHandler() {
+			SeekToCurrentErrorHandler errorHandler = new SeekToCurrentErrorHandler() {
 
 				@Override
 				public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
@@ -95,7 +96,9 @@ public class StatefulRetryTests {
 					super.handle(thrownException, records, consumer, container);
 				}
 
-			});
+			};
+			errorHandler.setLogLevel(Level.INFO);
+			factory.setErrorHandler(errorHandler);
 			factory.setStatefulRetry(true);
 			factory.setRetryTemplate(new RetryTemplate());
 			factory.setRecoveryCallback(c -> {

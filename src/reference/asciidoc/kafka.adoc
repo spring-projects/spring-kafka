@@ -4191,6 +4191,23 @@ If you provide a custom error handler when using transactions, it must throw an 
 Starting with version 2.3.2, these interfaces have a default method `isAckAfterHandle()` which is called by the container to determine whether the offset(s) should be committed if the error handler returns without throwing an exception.
 Starting with version 2.4, this returns true by default.
 
+Typically, the error handlers provided by the framework will throw an exception when the error is not "handled" (e.g. after performing a seek operation).
+By default, such exceptions are logged by the container at `ERROR` level.
+Starting with version 2.5, all the framework error handlers extend `KafkaExceptionLogLevelAware` which allows you to control the level at which these exceptions are logged.
+
+====
+[source, java]
+----
+/**
+ * Set the level at which the exception thrown by this handler is logged.
+ * @param logLevel the level (default ERROR).
+ */
+public void setLogLevel(KafkaException.Level logLevel) {
+    ...
+}
+----
+====
+
 You can specify a global error handler to be used for all listeners in the container factory.
 The following example shows how to do so:
 

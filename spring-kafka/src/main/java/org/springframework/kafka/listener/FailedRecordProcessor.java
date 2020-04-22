@@ -42,7 +42,7 @@ import org.springframework.util.backoff.BackOff;
  * @since 2.3.1
  *
  */
-public abstract class FailedRecordProcessor implements DeliveryAttemptAware {
+public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware implements DeliveryAttemptAware {
 
 	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
 
@@ -167,7 +167,9 @@ public abstract class FailedRecordProcessor implements DeliveryAttemptAware {
 				this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
 			}
 			catch (Exception ex) {
-				this.logger.error(ex, () -> "Recovery of record (" + records.get(0) + ") failed");
+				if (records.size() > 0) {
+					this.logger.error(ex, () -> "Recovery of record (" + records.get(0) + ") failed");
+				}
 				return NEVER_SKIP_PREDICATE;
 			}
 			return ALWAYS_SKIP_PREDICATE;

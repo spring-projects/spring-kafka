@@ -163,13 +163,13 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 		}
 		if (remaining.size() > 0) {
 			SeekUtils.seekOrRecover(thrownException, remaining, consumer, container, false,
-					getSkipPredicate(remaining, thrownException), this.logger);
+					getSkipPredicate(remaining, thrownException), this.logger, getLogLevel());
 			ConsumerRecord<?, ?> recovered = remaining.get(0);
 			commit(consumer, container,
 					Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
 							new OffsetAndMetadata(recovered.offset() + 1)));
 			if (remaining.size() > 1) {
-				throw new KafkaException("Seek to current after exception", thrownException);
+				throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
 			}
 		}
 	}

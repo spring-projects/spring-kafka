@@ -34,7 +34,8 @@ import org.springframework.util.backoff.BackOffExecution;
  * @since 2.1
  *
  */
-public class SeekToCurrentBatchErrorHandler implements ContainerAwareBatchErrorHandler {
+public class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
+		implements ContainerAwareBatchErrorHandler {
 
 	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static
 
@@ -88,7 +89,7 @@ public class SeekToCurrentBatchErrorHandler implements ContainerAwareBatchErrorH
 			}
 		}
 
-		throw new KafkaException("Seek to current after exception", thrownException);
+		throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
 	}
 
 	@Override

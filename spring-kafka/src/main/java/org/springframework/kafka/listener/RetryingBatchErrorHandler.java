@@ -42,7 +42,8 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.3.7
  *
  */
-public class RetryingBatchErrorHandler implements ListenerInvokingBatchErrorHandler {
+public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
+		implements ListenerInvokingBatchErrorHandler {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(RetryingBatchErrorHandler.class));
 
@@ -96,7 +97,7 @@ public class RetryingBatchErrorHandler implements ListenerInvokingBatchErrorHand
 				catch (InterruptedException e1) {
 					Thread.currentThread().interrupt();
 					this.seeker.handle(thrownException, records, consumer, container);
-					throw new KafkaException("Interrupted during retry", e1);
+					throw new KafkaException("Interrupted during retry", getLogLevel(), e1);
 				}
 				try {
 					invokeListener.run();

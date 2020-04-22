@@ -17,7 +17,9 @@
 package org.springframework.kafka;
 
 import org.springframework.core.NestedRuntimeException;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 
 /**
  * The Spring Kafka specific {@link NestedRuntimeException} implementation.
@@ -29,11 +31,51 @@ import org.springframework.lang.Nullable;
 public class KafkaException extends NestedRuntimeException {
 
 	/**
+	 * The log level for {@link KafkaException}.
+	 * @since 2.5
+	 */
+	public enum Level {
+
+		/**
+		 * Fatal.
+		 */
+		FATAL,
+
+		/**
+		 * Error.
+		 */
+		ERROR,
+
+		/**
+		 * Warn.
+		 */
+		WARN,
+
+		/**
+		 * Info.
+		 */
+		INFO,
+
+		/**
+		 * Debug.
+		 */
+		DEBUG,
+
+		/**
+		 * Trace.
+		 */
+		TRACE
+
+	}
+
+	private final Level logLevel;
+
+	/**
 	 * Construct an instance with the provided properties.
 	 * @param message the message.
 	 */
 	public KafkaException(String message) {
-		super(message);
+		this(message, Level.ERROR, null);
 	}
 
 	/**
@@ -42,7 +84,50 @@ public class KafkaException extends NestedRuntimeException {
 	 * @param cause the cause.
 	 */
 	public KafkaException(String message, @Nullable Throwable cause) {
+		this(message, Level.ERROR, cause);
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message the message.
+	 * @param level the level at which this exception should be logged when using
+	 * {@link #selfLog(String, LogAccessor)}.
+	 * @param cause the cause.
+	 */
+	public KafkaException(String message, Level level, @Nullable Throwable cause) {
 		super(message, cause);
+		Assert.notNull(level, "'level' cannot be null");
+		this.logLevel = level;
+	}
+
+	/**
+	 * Log this exception at its log level.
+	 * @param message the message.
+	 * @param logger the log accessor.
+	 */
+	public void selfLog(String message, LogAccessor logger) {
+		switch (this.logLevel) {
+		case FATAL:
+			logger.fatal(this, message);
+			break;
+		case ERROR:
+			logger.error(this, message);
+			break;
+		case WARN:
+			logger.warn(this, message);
+			break;
+		case INFO:
+			logger.info(this, message);
+			break;
+		case DEBUG:
+			logger.debug(this, message);
+			break;
+		case TRACE:
+			logger.trace(this, message);
+			break;
+		default:
+			logger.error(this, message);
+		}
 	}
 
 }

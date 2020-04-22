@@ -34,7 +34,7 @@ import org.springframework.util.Assert;
  * @since 2.1
  *
  */
-public class ContainerStoppingErrorHandler implements ContainerAwareErrorHandler {
+public class ContainerStoppingErrorHandler extends KafkaExceptionLogLevelAware implements ContainerAwareErrorHandler {
 
 	private final Executor executor;
 
@@ -62,7 +62,7 @@ public class ContainerStoppingErrorHandler implements ContainerAwareErrorHandler
 				break;
 			}
 		}
-		throw new KafkaException("Stopped container", thrownException);
+		throw new KafkaException("Stopped container", getLogLevel(), thrownException);
 	}
 
 }

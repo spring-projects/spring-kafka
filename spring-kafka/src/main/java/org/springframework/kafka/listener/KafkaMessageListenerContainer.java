@@ -1382,8 +1382,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					afterRollbackProcessorToUse.process(recordList, this.consumer, e, false);
 				}
 			}
+			catch (KafkaException ke) {
+				ke.selfLog("AfterRollbackProcessor threw an exception", this.logger);
+			}
 			catch (Exception ex) {
-				this.logger.error(ex, "AfterRollbackProcessor threw exception");
+				this.logger.error(ex, "AfterRollbackProcessor threw an exception");
 			}
 		}
 
@@ -1430,6 +1433,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							sendOffsetsToTransaction();
 						}
 					}
+				}
+				catch (KafkaException ke) {
+					ke.selfLog("Error handler threw an exception", this.logger);
+					return ke;
 				}
 				catch (RuntimeException ee) {
 					this.logger.error(ee, "Error handler threw an exception");
@@ -1638,6 +1645,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				try {
 					afterRollbackProcessorToUse.process(unprocessed, this.consumer, e, true);
 				}
+				catch (KafkaException ke) {
+					ke.selfLog("AfterRollbackProcessor threw an exception", this.logger);
+				}
 				catch (Exception ex) {
 					this.logger.error(ex, "AfterRollbackProcessor threw exception");
 				}
@@ -1729,6 +1739,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							|| this.producer != null) {
 						ackCurrent(record);
 					}
+				}
+				catch (KafkaException ke) {
+					ke.selfLog("Error handler threw an exception", this.logger);
+					return ke;
 				}
 				catch (RuntimeException ee) {
 					this.logger.error(ee, "Error handler threw an exception");

@@ -33,14 +33,22 @@ import org.springframework.util.Assert;
  * @since 2.1
  *
  */
-public class ContainerStoppingBatchErrorHandler implements ContainerAwareBatchErrorHandler {
+public class ContainerStoppingBatchErrorHandler extends KafkaExceptionLogLevelAware
+		implements ContainerAwareBatchErrorHandler {
 
 	private final Executor executor;
 
+	/**
+	 * Construct an instance with a {@link SimpleAsyncTaskExecutor}.
+	 */
 	public ContainerStoppingBatchErrorHandler() {
 		this.executor = new SimpleAsyncTaskExecutor();
 	}
 
+	/**
+	 * Construct an instance with the provided {@link Executor}.
+	 * @param executor the executor.
+	 */
 	public ContainerStoppingBatchErrorHandler(Executor executor) {
 		Assert.notNull(executor, "'executor' cannot be null");
 		this.executor = executor;
@@ -61,7 +69,7 @@ public class ContainerStoppingBatchErrorHandler implements ContainerAwareBatchEr
 				break;
 			}
 		}
-		throw new KafkaException("Stopped container", thrownException);
+		throw new KafkaException("Stopped container", getLogLevel(), thrownException);
 	}
 
 }

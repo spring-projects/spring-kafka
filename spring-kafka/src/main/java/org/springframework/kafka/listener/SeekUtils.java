@@ -32,6 +32,7 @@ import org.apache.kafka.common.errors.SerializationException;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.backoff.FixedBackOff;
@@ -132,11 +133,12 @@ public final class SeekUtils {
 	 * @param commitRecovered true to commit the recovererd record offset.
 	 * @param skipPredicate the skip predicate.
 	 * @param logger the logger.
+	 * @param level the log level for the thrown exception after handling.
 	 * @since 2.5
 	 */
 	public static void seekOrRecover(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, boolean commitRecovered,
-			BiPredicate<ConsumerRecord<?, ?>, Exception> skipPredicate, LogAccessor logger) {
+			BiPredicate<ConsumerRecord<?, ?>, Exception> skipPredicate, LogAccessor logger, Level level) {
 
 		if (ObjectUtils.isEmpty(records)) {
 			if (thrownException instanceof SerializationException) {
@@ -152,7 +154,7 @@ public final class SeekUtils {
 		}
 
 		if (!doSeeks(records, consumer, thrownException, true, skipPredicate, logger)) {
-			throw new KafkaException("Seek to current after exception", thrownException);
+			throw new KafkaException("Seek to current after exception", level, thrownException);
 		}
 		if (commitRecovered) {
 			if (container.getContainerProperties().getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {

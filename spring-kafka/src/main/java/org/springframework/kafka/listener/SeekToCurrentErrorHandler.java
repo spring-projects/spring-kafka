@@ -101,7 +101,7 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(),
-				getSkipPredicate(records, thrownException), this.logger);
+				getSkipPredicate(records, thrownException), this.logger, getLogLevel());
 	}
 
 	@Override

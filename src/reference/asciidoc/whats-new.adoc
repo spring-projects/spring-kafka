@@ -55,6 +55,9 @@ When incremental/cooperative rebalancing is configured, if offsets fail to commi
 The default error handler is now the `SeekToCurrentErrorHandler` for record listeners and `RecoveringBatchErrorHandler` for batch listeners.
 See <<error-handlers>> for more information.
 
+You can now control the level at which exceptions intentionally thrown by standard error handlers are logged.
+See <<error-handlers>> for more information.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 
