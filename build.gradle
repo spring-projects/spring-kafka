@@ -39,7 +39,7 @@ ext {
 	linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
 	linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
-	docResourcesVersion = '0.2.0.RELEASE'
+	docResourcesVersion = '0.2.1.RELEASE'
 
 
 	if (gitPresent) {
