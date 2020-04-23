@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -124,6 +125,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final AtomicInteger clientIdCounter = new AtomicInteger();
 
+	private final List<Listener<K, V>> listeners = new ArrayList<>();
+
 	private Supplier<Serializer<K>> keySerializerSupplier;
 
 	private Supplier<Serializer<V>> valueSerializerSupplier;
@@ -141,8 +144,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	private boolean producerPerThread;
 
 	private String clientIdPrefix;
-
-	private Listener<K, V> listener = new Listener<K, V>() { };
 
 	private volatile CloseSafeProducer<K, V> producer;
 
@@ -317,16 +318,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	}
 
 	/**
-	 * Set a listener.
-	 * @param listener the listener.
-	 * @since 2.5
-	 */
-	public void setListener(Listener<K, V> listener) {
-		Assert.notNull(listener, "'listener' cannot be null");
-		this.listener = listener;
-	}
-
-	/**
 	 * Return an unmodifiable reference to the configuration map for this factory.
 	 * Useful for cloning to make a similar factory.
 	 * @return the configs.
@@ -337,6 +328,50 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		return Collections.unmodifiableMap(this.configs);
 	}
 
+	/**
+	 * Get the current list of listeners.
+	 * @return the listeners.
+	 * @since 2.5
+	 */
+	public List<Listener<K, V>> getListeners() {
+		return Collections.unmodifiableList(this.listeners);
+	}
+
+	/**
+	 * Add a listener.
+	 * @param listener the listener.
+	 * @since 2.5
+	 */
+	public void addListener(Listener<K, V> listener) {
+		Assert.notNull(listener, "'listener' cannot be null");
+		this.listeners.add(listener);
+	}
+
+	/**
+	 * Add a listener at a specific index.
+	 * @param index the index (list position).
+	 * @param listener the listener.
+	 * @since 2.5
+	 */
+	public void addListener(int index, Listener<K, V> listener) {
+		Assert.notNull(listener, "'listener' cannot be null");
+		if (index >= this.listeners.size()) {
+			this.listeners.add(listener);
+		}
+		else {
+			this.listeners.add(index, listener);
+		}
+	}
+
+	/**
+	 * Remove a listener.
+	 * @param listener the listener.
+	 * @return true if removed.
+	 * @since 2.5
+	 */
+	public boolean removeListener(Listener<K, V> listener) {
+		return this.listeners.remove(listener);
+	}
 
 	/**
 	 * When set to 'true', the producer will ensure that exactly one copy of each message is written in the stream.
@@ -363,13 +398,13 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			this.producer = null;
 		}
 		if (producerToClose != null) {
-			producerToClose.closeDelegate(this.physicalCloseTimeout, this.listener);
+			producerToClose.closeDelegate(this.physicalCloseTimeout, this.listeners);
 		}
 		this.cache.values().forEach(queue -> {
 			CloseSafeProducer<K, V> next = queue.poll();
 			while (next != null) {
 				try {
-					next.closeDelegate(this.physicalCloseTimeout, this.listener);
+					next.closeDelegate(this.physicalCloseTimeout, this.listeners);
 				}
 				catch (Exception e) {
 					LOGGER.error(e, "Exception while closing producer");
@@ -380,7 +415,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		this.cache.clear();
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
-					(k, v) -> v.closeDelegate(this.physicalCloseTimeout, this.listener));
+					(k, v) -> v.closeDelegate(this.physicalCloseTimeout, this.listeners));
 			this.consumerProducers.clear();
 		}
 	}
@@ -437,7 +472,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			if (tlProducer == null) {
 				tlProducer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
 						this.physicalCloseTimeout, this.beanName);
-				this.listener.producerAdded(tlProducer.clientId, tlProducer);
+				for (Listener<K, V> listener : this.listeners) {
+					listener.producerAdded(tlProducer.clientId, tlProducer);
+				}
 				this.threadBoundProducers.set(tlProducer);
 			}
 			return tlProducer;
@@ -446,7 +483,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			if (this.producer == null) {
 				this.producer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
 						this.physicalCloseTimeout, this.beanName);
-				this.listener.producerAdded(this.producer.clientId, this.producer);
+				this.listeners.forEach(listener -> listener.producerAdded(this.producer.clientId, this.producer));
 			}
 			return this.producer;
 		}
@@ -499,7 +536,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				while (iterator.hasNext()) {
 					if (iterator.next().getValue().equals(producerToRemove)) {
 						iterator.remove();
-						producerToRemove.closeDelegate(timeout, this.listener);
+						producerToRemove.closeDelegate(timeout, this.listeners);
 						return true;
 					}
 				}
@@ -520,7 +557,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		if (producerToRemove.closed) {
 			if (producerToRemove.equals(this.producer)) {
 				this.producer = null;
-				producerToRemove.closeDelegate(timeout, this.listener);
+				producerToRemove.closeDelegate(timeout, this.listeners);
 			}
 			this.threadBoundProducers.remove();
 			return true;
@@ -554,14 +591,14 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	boolean cacheReturner(CloseSafeProducer<K, V> producerToRemove, Duration timeout) {
 		if (producerToRemove.closed) {
-			producerToRemove.closeDelegate(timeout, this.listener);
+			producerToRemove.closeDelegate(timeout, this.listeners);
 			return true;
 		}
 		else {
 			synchronized (this.cache) {
 				BlockingQueue<CloseSafeProducer<K, V>> txIdCache = getCache(producerToRemove.txIdPrefix);
 				if (txIdCache != null && !txIdCache.contains(producerToRemove) && !txIdCache.offer(producerToRemove)) {
-					producerToRemove.closeDelegate(timeout, this.listener);
+					producerToRemove.closeDelegate(timeout, this.listeners);
 					return true;
 				}
 			}
@@ -584,12 +621,12 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		newProducer.initTransactions();
 		CloseSafeProducer<K, V> closeSafeProducer =
 				new CloseSafeProducer<>(newProducer, remover, prefix, this.physicalCloseTimeout, this.beanName);
-		this.listener.producerAdded(closeSafeProducer.clientId, closeSafeProducer);
+		this.listeners.forEach(listener -> listener.producerAdded(closeSafeProducer.clientId, closeSafeProducer));
 		return closeSafeProducer;
 	}
 
-	protected Producer<K, V> createRawProducer(Map<String, Object> configs) {
-		return new KafkaProducer<>(configs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
+	protected Producer<K, V> createRawProducer(Map<String, Object> rawConfigs) {
+		return new KafkaProducer<>(rawConfigs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
 	}
 
 	@Nullable
@@ -611,7 +648,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			synchronized (this.consumerProducers) {
 				CloseSafeProducer<K, V> removed = this.consumerProducers.remove(suffix);
 				if (removed != null) {
-					removed.closeDelegate(this.physicalCloseTimeout, this.listener);
+					removed.closeDelegate(this.physicalCloseTimeout, this.listeners);
 				}
 			}
 		}
@@ -629,7 +666,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
 		if (tlProducer != null) {
 			this.threadBoundProducers.remove();
-			tlProducer.closeDelegate(this.physicalCloseTimeout, this.listener);
+			tlProducer.closeDelegate(this.physicalCloseTimeout, this.listeners);
 		}
 	}
 
@@ -818,9 +855,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			}
 		}
 
-		void closeDelegate(Duration timeout, Listener<K, V> listener) {
+		void closeDelegate(Duration timeout, List<Listener<K, V>> listeners) {
 			this.delegate.close(timeout == null ? this.closeTimeout : timeout);
-			listener.producerRemoved(this.clientId, this);
+			listeners.forEach(listener -> listener.producerRemoved(this.clientId, this));
 			this.closed = true;
 		}
 

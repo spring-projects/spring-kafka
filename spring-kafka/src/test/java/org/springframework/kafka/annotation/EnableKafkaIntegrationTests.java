@@ -1225,7 +1225,7 @@ public class EnableKafkaIntegrationTests {
 			Map<String, Object> configs = consumerConfigs();
 			configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 			DefaultKafkaConsumerFactory<byte[], String> cf = new DefaultKafkaConsumerFactory<>(configs);
-			cf.setListener(new MicrometerConsumerListener<byte[], String>(meterRegistry(),
+			cf.addListener(new MicrometerConsumerListener<byte[], String>(meterRegistry(),
 					Collections.singletonList(new ImmutableTag("consumerTag", "bytesString"))));
 			return cf;
 		}
@@ -1300,7 +1300,7 @@ public class EnableKafkaIntegrationTests {
 			configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
 			configs.put(ProducerConfig.CLIENT_ID_CONFIG, "bsPF");
 			DefaultKafkaProducerFactory<byte[], String> pf = new DefaultKafkaProducerFactory<>(configs);
-			pf.setListener(new MicrometerProducerListener<byte[], String>(meterRegistry(),
+			pf.addListener(new MicrometerProducerListener<byte[], String>(meterRegistry(),
 					Collections.singletonList(new ImmutableTag("producerTag", "bytesString"))));
 			return pf;
 		}

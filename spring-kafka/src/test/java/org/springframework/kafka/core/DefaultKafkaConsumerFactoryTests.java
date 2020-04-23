@@ -402,7 +402,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(AopUtils.isAopProxy(consum)).isFalse();
 		assertThat(adds).hasSize(0);
 
-		cf.setListener(new Listener() {
+		cf.addListener(new Listener() {
 
 			@Override
 			public void consumerAdded(String id, Consumer consumer) {

@@ -385,7 +385,7 @@ public class KafkaTemplateTransactionTests {
 			public Producer<String, String> createProducer(String txIdPrefixArg) {
 				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
 						(prod, timeout) -> {
-							prod.closeDelegate(timeout, new Listener() { });
+							prod.closeDelegate(timeout, Collections.emptyList());
 							return true;
 						},
 						Duration.ofSeconds(1), "factory");

@@ -269,7 +269,7 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		List<String> adds = new ArrayList<>();
 		List<String> removals = new ArrayList<>();
-		pf.setListener(new Listener() {
+		pf.addListener(new Listener() {
 
 			@Override
 			public void producerAdded(String id, Producer producer) {

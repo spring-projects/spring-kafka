@@ -16,9 +16,11 @@
 
 package org.springframework.kafka.core;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
@@ -73,13 +75,13 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 
 	private final Map<String, Object> configs;
 
+	private final List<Listener<K, V>> listeners = new ArrayList<>();
+
 	private Supplier<Deserializer<K>> keyDeserializerSupplier;
 
 	private Supplier<Deserializer<V>> valueDeserializerSupplier;
 
 	private String beanName = "not.managed.by.Spring";
-
-	private Listener<K, V> listener;
 
 
 	/**
@@ -140,16 +142,6 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 		this.valueDeserializerSupplier = () -> valueDeserializer;
 	}
 
-	/**
-	 * Set a listener.
-	 * @param listener the listener.
-	 * @since 2.5
-	 */
-	public void setListener(Listener<K, V> listener) {
-		Assert.notNull(listener, "'listener' cannot be null");
-		this.listener = listener;
-	}
-
 	@Override
 	public Map<String, Object> getConfigurationProperties() {
 		return Collections.unmodifiableMap(this.configs);
@@ -163,6 +155,51 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 	@Override
 	public Deserializer<V> getValueDeserializer() {
 		return this.valueDeserializerSupplier.get();
+	}
+
+	/**
+	 * Get the current list of listeners.
+	 * @return the listeners.
+	 * @since 2.5
+	 */
+	public List<Listener<K, V>> getListeners() {
+		return Collections.unmodifiableList(this.listeners);
+	}
+
+	/**
+	 * Add a listener.
+	 * @param listener the listener.
+	 * @since 2.5
+	 */
+	public void addListener(Listener<K, V> listener) {
+		Assert.notNull(listener, "'listener' cannot be null");
+		this.listeners.add(listener);
+	}
+
+	/**
+	 * Add a listener at a specific index.
+	 * @param index the index (list position).
+	 * @param listener the listener.
+	 * @since 2.5
+	 */
+	public void addListener(int index, Listener<K, V> listener) {
+		Assert.notNull(listener, "'listener' cannot be null");
+		if (index >= this.listeners.size()) {
+			this.listeners.add(listener);
+		}
+		else {
+			this.listeners.add(index, listener);
+		}
+	}
+
+	/**
+	 * Remove a listener.
+	 * @param listener the listener.
+	 * @return true if removed.
+	 * @since 2.5
+	 */
+	public boolean removeListener(Listener<K, V> listener) {
+		return this.listeners.remove(listener);
 	}
 
 	@Override
@@ -244,7 +281,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 	protected Consumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
 		Consumer<K, V> kafkaConsumer = createRawConsumer(configProps);
 
-		if (this.listener != null) {
+		if (this.listeners.size() > 0) {
 			Map<MetricName, ? extends Metric> metrics = kafkaConsumer.metrics();
 			Iterator<MetricName> metricIterator = metrics.keySet().iterator();
 			String clientId;
@@ -256,7 +293,9 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 			}
 			String id = this.beanName + "." + clientId;
 			kafkaConsumer = createProxy(kafkaConsumer, id);
-			this.listener.consumerAdded(id, kafkaConsumer);
+			for (Listener<K, V> listener : this.listeners) {
+				listener.consumerAdded(id, kafkaConsumer);
+			}
 		}
 		return kafkaConsumer;
 	}
@@ -279,7 +318,8 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 
 			@Override
 			public Object invoke(MethodInvocation invocation) throws Throwable {
-				DefaultKafkaConsumerFactory.this.listener.consumerRemoved(id, kafkaConsumer);
+				DefaultKafkaConsumerFactory.this.listeners.forEach(listener ->
+						listener.consumerRemoved(id, kafkaConsumer));
 				return invocation.proceed();
 			}
 
