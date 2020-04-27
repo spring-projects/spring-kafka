@@ -202,6 +202,35 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testThreadLocalReset() {
+		Producer producer1 = mock(Producer.class);
+		Producer producer2 = mock(Producer.class);
+		ProducerFactory mockPf = mock(ProducerFactory.class);
+		given(mockPf.createProducer()).willReturn(producer1, producer2);
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createKafkaProducer() {
+				return mockPf.createProducer();
+			}
+
+		};
+		pf.setProducerPerThread(true);
+		Producer aProducer = pf.createProducer();
+		assertThat(aProducer).isNotNull();
+		aProducer.close();
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isSameAs(aProducer);
+		bProducer.close();
+		pf.reset();
+		bProducer = pf.createProducer();
+		assertThat(bProducer).isNotSameAs(aProducer);
+		bProducer.close();
+		verify(producer1).close(any(Duration.class));
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	void testCleanUpAfterTxFence() {
 		final Producer producer = mock(Producer.class);
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
