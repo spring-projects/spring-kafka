@@ -12,6 +12,9 @@ The default consumer and producer factories can now invoke a callback whenever a
 Implementations for native Micrometer metrics are provided.
 See <<factory-listeners>> for more information.
 
+You can now change bootstrap server properties at runtime, enabling failover to another Kafka cluster.
+See <<connecting>> for more information.
+
 [[x25-kafka-client]]
 ==== Kafka Client Version
 

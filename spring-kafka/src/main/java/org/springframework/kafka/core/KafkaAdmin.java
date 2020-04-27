@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ import org.springframework.kafka.KafkaException;
  *
  * @since 1.3
  */
-public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSingleton {
+public class KafkaAdmin extends KafkaResourceFactory implements ApplicationContextAware, SmartInitializingSingleton {
 
 	/**
 	 * The default close timeout duration as 10 seconds.
@@ -67,7 +67,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(KafkaAdmin.class));
 
-	private final Map<String, Object> config;
+	private final Map<String, Object> configs;
 
 	private ApplicationContext applicationContext;
 
@@ -87,7 +87,7 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 	 * @param config the configuration for the {@link AdminClient}.
 	 */
 	public KafkaAdmin(Map<String, Object> config) {
-		this.config = new HashMap<>(config);
+		this.configs = new HashMap<>(config);
 	}
 
 	@Override
@@ -129,12 +129,25 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 		this.autoCreate = autoCreate;
 	}
 
+
+	/**
+	 * Get an unmodifiable copy of this admin's configuration.
+	 * @return the configuration map.
+	 * @deprecated in favor of {@link #getConfigurationProperties()}.
+	 */
+	@Deprecated
+	public Map<String, Object> getConfig() {
+		return getConfigurationProperties();
+	}
+
 	/**
 	 * Get an unmodifiable copy of this admin's configuration.
 	 * @return the configuration map.
 	 */
-	public Map<String, Object> getConfig() {
-		return Collections.unmodifiableMap(this.config);
+	public Map<String, Object> getConfigurationProperties() {
+		Map<String, Object> configs2 = new HashMap<>(this.configs);
+		checkBootstrap(configs2);
+		return Collections.unmodifiableMap(configs2);
 	}
 
 	@Override
@@ -159,7 +172,9 @@ public class KafkaAdmin implements ApplicationContextAware, SmartInitializingSin
 		if (newTopics.size() > 0) {
 			AdminClient adminClient = null;
 			try {
-				adminClient = AdminClient.create(this.config);
+				Map<String, Object> configs2 = new HashMap<>(this.configs);
+				checkBootstrap(configs2);
+				adminClient = AdminClient.create(configs2);
 			}
 			catch (Exception e) {
 				if (!this.initializingContext || this.fatalIfBrokerNotAvailable) {

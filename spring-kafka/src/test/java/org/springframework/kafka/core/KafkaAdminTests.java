@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ public class KafkaAdminTests {
 
 	@Test
 	public void testAddTopicsAndAddPartitions() throws Exception {
-		AdminClient adminClient = AdminClient.create(this.admin.getConfig());
+		AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties());
 		DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
 		Map<String, TopicDescription> results = topics.all().get();
 		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 1));
@@ -124,11 +124,28 @@ public class KafkaAdminTests {
 		}, m -> {
 			return m.getName().endsWith("Topics");
 		});
-		try (AdminClient adminClient = AdminClient.create(this.admin.getConfig())) {
+		try (AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties())) {
 			addTopics.get().invoke(this.admin, adminClient, Collections.singletonList(this.topic1));
 			modifyTopics.get().invoke(this.admin, adminClient, Collections.singletonMap(
 					this.topic1.name(), NewPartitions.increaseTo(this.topic1.numPartitions())));
 		}
+	}
+
+	@Test
+	void toggleBootstraps() {
+		Map<String, Object> config = new HashMap<>();
+		config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "foo");
+		KafkaAdmin admin = new KafkaAdmin(config);
+		ABSwitchCluster bootstrapServersSupplier = new ABSwitchCluster("a,b,c", "d,e,f");
+		admin.setBootstrapServersSupplier(bootstrapServersSupplier);
+		assertThat(admin.getConfigurationProperties().get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG))
+				.isEqualTo("a,b,c");
+		bootstrapServersSupplier.secondary();
+		assertThat(admin.getConfigurationProperties().get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG))
+				.isEqualTo("d,e,f");
+		bootstrapServersSupplier.primary();
+		assertThat(admin.getConfigurationProperties().get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG))
+				.isEqualTo("a,b,c");
 	}
 
 	@Configuration
@@ -142,9 +159,10 @@ public class KafkaAdminTests {
 		@Bean
 		public KafkaAdmin admin() {
 			Map<String, Object> configs = new HashMap<>();
-			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+			KafkaAdmin admin = new KafkaAdmin(configs);
+			admin.setBootstrapServersSupplier(() ->
 					StringUtils.arrayToCommaDelimitedString(kafkaEmbedded().getBrokerAddresses()));
-			return new KafkaAdmin(configs);
+			return admin;
 		}
 
 		@Bean

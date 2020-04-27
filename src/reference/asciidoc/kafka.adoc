@@ -11,6 +11,17 @@ For a quick but less detailed introduction, see <<quick-tour>>.
 * `ProducerFactory` - see <<sending-messages>>
 * `ConsumerFactory` - see <<receiving-messages>>
 
+Starting with version 2.5, each of these extends `KafkaResourceFactory`.
+This allows changing the bootstrap servers at runtime by adding a `Supplier<String>` to their configuration:  `setBootstrapServersSupplier(() -> ...)`.
+This will be called for all new connections to get the list of servers.
+Consumers and Producers are generally long-lived.
+To close existing Producers, call `reset()` on the `DefaultKafkaProducerFactory`.
+To close existing Consumers, call `stop()` (and then `start()`) on the `KafkaListenerEndpointRegistry` and/or `stop()` and `start()` on any other listener container beans.
+
+For convenience, the framework also provides an `ABSwitchCluster` which supports two sets of bootstrap servers; one of which is active at any time.
+
+See the Javadocs for more information.
+
 [[factory-listeners]]
 ===== Factory Listeners
 

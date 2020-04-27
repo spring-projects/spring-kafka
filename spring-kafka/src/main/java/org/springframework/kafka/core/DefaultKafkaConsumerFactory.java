@@ -69,7 +69,8 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Chris Gilbert
  */
-public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>, BeanNameAware {
+public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
+		implements ConsumerFactory<K, V>, BeanNameAware {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaConsumerFactory.class));
 
@@ -144,7 +145,9 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 
 	@Override
 	public Map<String, Object> getConfigurationProperties() {
-		return Collections.unmodifiableMap(this.configs);
+		Map<String, Object> configs2 = new HashMap<>(this.configs);
+		checkBootstrap(configs2);
+		return Collections.unmodifiableMap(configs2);
 	}
 
 	@Override
@@ -236,7 +239,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 		if (groupId == null
 				&& (properties == null || properties.stringPropertyNames().size() == 0)
 				&& !shouldModifyClientId) {
-			return createKafkaConsumer(this.configs);
+			return createKafkaConsumer(new HashMap<>(this.configs));
 		}
 		else {
 			return createConsumerWithAdjustedProperties(groupId, clientIdPrefix, properties, overrideClientIdPrefix,
@@ -279,6 +282,7 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>,
 
 	@SuppressWarnings("resource")
 	protected Consumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
+		checkBootstrap(configProps);
 		Consumer<K, V> kafkaConsumer = createRawConsumer(configProps);
 
 		if (this.listeners.size() > 0) {

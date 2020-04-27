@@ -108,7 +108,8 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Chris Gilbert
  */
-public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, ApplicationContextAware,
+public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
+		implements ProducerFactory<K, V>, ApplicationContextAware,
 			BeanNameAware, ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaProducerFactory.class));
@@ -329,7 +330,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 */
 	@Override
 	public Map<String, Object> getConfigurationProperties() {
-		return Collections.unmodifiableMap(this.configs);
+		Map<String, Object> configs2 = new HashMap<>(this.configs);
+		checkBootstrap(configs2);
+		return Collections.unmodifiableMap(configs2);
 	}
 
 	/**
@@ -507,15 +510,17 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @return the producer.
 	 */
 	protected Producer<K, V> createKafkaProducer() {
+		Map<String, Object> newConfigs;
 		if (this.clientIdPrefix == null) {
-			return createRawProducer(this.configs);
+			newConfigs = new HashMap<>(this.configs);
 		}
 		else {
-			Map<String, Object> newConfigs = new HashMap<>(this.configs);
+			newConfigs = new HashMap<>(this.configs);
 			newConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
 					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
-			return createRawProducer(newConfigs);
 		}
+		checkBootstrap(newConfigs);
+		return createRawProducer(newConfigs);
 	}
 
 	protected Producer<K, V> createTransactionalProducerForPartition() {
@@ -630,6 +635,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
 					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
 		}
+		checkBootstrap(newProducerConfigs);
 		newProducer = createRawProducer(newProducerConfigs);
 		newProducer.initTransactions();
 		CloseSafeProducer<K, V> closeSafeProducer =

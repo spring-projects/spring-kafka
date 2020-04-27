@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -367,6 +368,31 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.closeThreadBoundProducer();
 		assertThat(adds).hasSize(5);
 		assertThat(removals).hasSize(5);
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testBootstrapSupplier() {
+		final Producer producer = mock(Producer.class);
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				configPassedToKafkaConsumer.clear();
+				configPassedToKafkaConsumer.putAll(configs);
+				return producer;
+			}
+
+		};
+		pf.setBootstrapServersSupplier(() -> "foo");
+		Producer aProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo("foo");
+		pf.setBootstrapServersSupplier(() -> "bar");
+		pf.setTransactionIdPrefix("tx.");
+		aProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo("bar");
+		pf.destroy();
 	}
 
 }

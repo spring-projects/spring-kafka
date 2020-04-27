@@ -106,6 +106,25 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@Test
+	public void testBootstrapServersSupplier() {
+		Map<String, Object> originalConfig = Collections.emptyMap();
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> target =
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
+
+
+					@Override
+					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
+						configPassedToKafkaConsumer.putAll(configProps);
+						return null;
+					}
+				};
+		target.setBootstrapServersSupplier(() -> "foo");
+		target.createConsumer(null, null, null, null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo("foo");
+	}
+
+	@Test
 	public void testPropertyOverridesWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Stream
 				.of(new AbstractMap.SimpleEntry<>("config1", new Object()),
