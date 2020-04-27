@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -92,19 +93,31 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public static final String USE_TYPE_INFO_HEADERS = "spring.json.use.type.headers";
 
+	/**
+	 * A method name to determine the {@link JavaType} to deserialize the key to.
+	 */
+	public static final String KEY_TYPE_METHOD = "spring.json.key.type.method";
+
+	/**
+	 * A method name to determine the {@link JavaType} to deserialize the key to.
+	 */
+	public static final String VALUE_TYPE_METHOD = "spring.json.value.type.method";
+
 	protected final ObjectMapper objectMapper; // NOSONAR
 
 	protected JavaType targetType; // NOSONAR
 
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
-	private volatile ObjectReader reader;
+	private ObjectReader reader;
 
 	private boolean typeMapperExplicitlySet = false;
 
 	private boolean removeTypeHeaders = true;
 
 	private boolean useTypeHeaders = true;
+
+	private BiFunction<byte[], Headers, JavaType> typeFunction;
 
 	/**
 	 * Construct an instance with a default {@link ObjectMapper}.
@@ -242,19 +255,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		initialize(targetType, useHeadersIfPresent);
 	}
 
-	private void initialize(@Nullable JavaType type, boolean useHeadersIfPresent) {
-		this.targetType = type;
-		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
-				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
-
-		if (this.targetType != null) {
-			this.reader = this.objectMapper.readerFor(this.targetType);
-		}
-
-		addTargetPackageToTrusted();
-		this.typeMapper.setTypePrecedence(useHeadersIfPresent ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
-	}
-
 	public Jackson2JavaTypeMapper getTypeMapper() {
 		return this.typeMapper;
 	}
@@ -307,6 +307,16 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		}
 	}
 
+	/**
+	 * Set a {@link BiFunction} that receives the data to be deserialized and the headers
+	 * and returns a JavaType.
+	 * @param typeFunction the function.
+	 * @since 2.5
+	 */
+	public void setTypeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
+		this.typeFunction = typeFunction;
+	}
+
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		setUseTypeMapperForKey(isKey);
@@ -325,6 +335,17 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
 			this.removeTypeHeaders = Boolean.parseBoolean(configs.get(REMOVE_TYPE_INFO_HEADERS).toString());
 		}
+		if (isKey && configs.containsKey(KEY_TYPE_METHOD)) {
+			setUpTypeFuntion((String) configs.get(KEY_TYPE_METHOD));
+		}
+		else if (!isKey && configs.containsKey(VALUE_TYPE_METHOD)) {
+			setUpTypeFuntion((String) configs.get(VALUE_TYPE_METHOD));
+		}
+	}
+
+	private void setUpTypeFuntion(String method) {
+		this.typeFunction = SerializationUtils.propertyToMethodInvokingFunction(method, byte[].class,
+				getClass().getClassLoader());
 	}
 
 	private void setUpTypePrecedence(Map<String, ?> configs) {
@@ -353,6 +374,19 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		catch (ClassNotFoundException | LinkageError e) {
 			throw new IllegalStateException(e);
 		}
+	}
+
+	private void initialize(@Nullable JavaType type, boolean useHeadersIfPresent) {
+		this.targetType = type;
+		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
+				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
+
+		if (this.targetType != null) {
+			this.reader = this.objectMapper.readerFor(this.targetType);
+		}
+
+		addTargetPackageToTrusted();
+		this.typeMapper.setTypePrecedence(useHeadersIfPresent ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
 	}
 
 	private JavaType setupTargetType(Map<String, ?> configs, String key) throws ClassNotFoundException, LinkageError {
@@ -401,11 +435,15 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			return null;
 		}
 		ObjectReader deserReader = null;
-		if (this.typeMapper.getTypePrecedence().equals(TypePrecedence.TYPE_ID)) {
-			JavaType javaType = this.typeMapper.toJavaType(headers);
-			if (javaType != null) {
-				deserReader = this.objectMapper.readerFor(javaType);
-			}
+		JavaType javaType = null;
+		if (this.typeFunction != null) {
+			javaType = this.typeFunction.apply(data, headers);
+		}
+		if (javaType == null && this.typeMapper.getTypePrecedence().equals(TypePrecedence.TYPE_ID)) {
+			javaType = this.typeMapper.toJavaType(headers);
+		}
+		if (javaType != null) {
+			deserReader = this.objectMapper.readerFor(javaType);
 		}
 		if (this.removeTypeHeaders) {
 			this.typeMapper.removeHeaders(headers);
@@ -428,9 +466,16 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (data == null) {
 			return null;
 		}
-		Assert.state(this.reader != null, "No headers available and no default type provided");
+		ObjectReader localReader = this.reader;
+		if (this.typeFunction != null) {
+			JavaType javaType = this.typeFunction.apply(data, null);
+			if (javaType != null) {
+				localReader = this.objectMapper.readerFor(javaType);
+			}
+		}
+		Assert.state(localReader != null, "No headers available and no default type provided");
 		try {
-			return this.reader.readValue(data);
+			return localReader.readValue(data);
 		}
 		catch (IOException e) {
 			throw new SerializationException("Can't deserialize data [" + Arrays.toString(data) +
@@ -487,6 +532,30 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public JsonDeserializer<T> typeMapper(Jackson2JavaTypeMapper mapper) {
 		setTypeMapper(mapper);
+		return this;
+	}
+
+	/**
+	 * Add trusted packages to the default type mapper.
+	 * @param packages the packages.
+	 * @return the deserializer.
+	 * @since 2,5
+	 */
+	public JsonDeserializer<T> trustedPackages(String... packages) {
+		Assert.isTrue(!this.typeMapperExplicitlySet, "When using a custom type mapper, set the trusted packages there");
+		this.typeMapper.addTrustedPackages(packages);
+		return this;
+	}
+
+	/**
+	 * Set a {@link BiFunction} that receives the data to be deserialized and the headers
+	 * and returns a JavaType.
+	 * @param typeFunction the function.
+	 * @return the deserializer.
+	 * @since 2.5
+	 */
+	public JsonDeserializer<T> typeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
+		setTypeFunction(typeFunction);
 		return this;
 	}
 

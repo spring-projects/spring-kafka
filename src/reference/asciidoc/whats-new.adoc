@@ -76,6 +76,12 @@ See <<routing-template>> for more information.
 New `ToStringSerializer`/`StringDeserializer` s as well as an associated `SerDe` are now provided.
 See <<string-serde>> for more information.
 
+[[x25-json-deser]]
+==== JsonDeserializer
+
+The `JsonDeserializer` now has more flexibility to determine the deserialization type.
+See <<serdes-type-methods>> for more information.
+
 [[x25-testing]]
 ==== Testing Changes
 

@@ -3402,6 +3402,7 @@ The method must be static and have a signature of either `(String, Headers)` or 
 
 A `ToFromStringSerde` is also provided, for use with Kafka Streams.
 
+[[json-serde]]
 ===== JSON
 
 Spring for Apache Kafka also provides `JsonSerializer` and `JsonDeserializer` implementations that are based on the
@@ -3432,6 +3433,9 @@ Starting with version 2.1, you can convey type information in record `Headers`, 
 In addition, you can configure the serializer and deserializer by using the following Kafka properties.
 They have no effect if you have provided `Serializer` and `Deserializer` instances for `KafkaConsumer` and `KafkaProducer`, respectively.
 
+[[serdes-json-config]]
+====== Configuration Properties
+
 * `JsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to disable this feature on the `JsonSerializer` (sets the `addTypeInfo` property).
 * `JsonSerializer.TYPE_MAPPINGS` (default `empty`): See <<serdes-mapping-types>>.
 * `JsonDeserializer.USE_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to ignore headers set by the serializer.
@@ -3441,43 +3445,14 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 * `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`): Comma-delimited list of package patterns allowed for deserialization.
 `*` means deserialize all.
 * `JsonDeserializer.TYPE_MAPPINGS` (default `empty`): See <<serdes-mapping-types>>.
+* `JsonDeserializer.KEY_TYPE_METHOD` (default `empty`): See <<serdes-type-methods>>.
+* `JsonDeserializer.VALUE_TYPE_METHOD` (default `empty`): See <<serdes-type-methods>>.
 
 Starting with version 2.2, the type information headers (if added by the serializer) are removed by the deserializer.
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
-When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
-
-The following example assumes you are using Spring Boot:
-
-====
-[source, java]
-----
-@Bean
-public DefaultKafkaProducerFactory pf(KafkaProperties properties) {
-    Map<String, Object> props = properties.buildProducerProperties();
-    DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(props,
-        new JsonSerializer<>(MyKeyType.class)
-            .forKeys()
-            .noTypeInfo(),
-        new JsonSerializer<>(MyValueType.class)
-            .noTypeInfo());
-}
-
-@Bean
-public DefaultKafkaConsumerFactory pf(KafkaProperties properties) {
-    Map<String, Object> props = properties.buildConsumerProperties();
-    DefaultKafkaConsumerFactory pf = new DefaultKafkaConsumerFactory(props,
-        new JsonDeserializer<>(MyKeyType.class)
-            .forKeys()
-            .ignoreTypeHeaders(),
-        new JsonSerializer<>(MyValueType.class)
-            .ignoreTypeHeaders());
-}
-----
-====
-
 [[serdes-mapping-types]]
-===== Mapping Types
+====== Mapping Types
 
 Starting with version 2.2, when using JSON, you can now provide type mappings by using the properties in the preceding list.
 Previously, you had to customize the type mapper within the serializer and deserializer.
@@ -3550,6 +3525,87 @@ The following example shows how to do so:
 ----
 DefaultKafkaConsumerFactory<Integer, Cat1> cf = new DefaultKafkaConsumerFactory<>(props,
         new IntegerDeserializer(), new JsonDeserializer<>(Cat1.class, false));
+----
+====
+
+[[serdes-type-methods]]
+====== Using Methods to Determine Types
+
+Starting with version 2.5, you can now configure the deserializer, via properties, to invoke a method to determine the target type.
+If present, this will override any of the other techniques discussed above.
+This can be useful if the data is published by an application that does not use the Spring serializer and you need to deserializer to different types depending on the data, or other headers.
+Set these properties to the method name - a fully qualified class name followed by the method name, separated by a period `.`.
+The method must be declared as `public static`, have one of two signatures `(byte[] data, Headers headers)` or `(byte[] data)` and return a Jackson `JavaType`.
+
+* `JsonDeserializer.KEY_TYPE_METHOD` : `spring.json.key.type.method`
+* `JsonDeserializer.VALUE_TYPE_METHOD` : `spring.json.value.type.method`
+
+You can use arbitrary headers or introspecting the data to determine the type.
+
+====
+.Example
+[source, java]
+----
+JavaType thing1Type = TypeFactory.defaultInstance().constructType(Thing1.class);
+
+JavaType thing1Type = TypeFactory.defaultInstance().constructType(Thing2.class);
+
+public static JavaType thingOneOrThingTwo(byte[] data, Headers headers) {
+    // {"thisIsAFieldInThing1":"value", ...
+    if (data[21] == '1') {
+        return thing1Type;
+    }
+    else {
+        return thing2Type;
+    }
+}
+----
+====
+
+For more sophisticated data introspection consider using `JsonPath` or similar but, the simpler the test to determine the type, the more efficient the process will be.
+
+====== Programmatic Construction
+
+When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
+
+The following example assumes you are using Spring Boot:
+
+====
+[source, java]
+----
+@Bean
+public DefaultKafkaProducerFactory pf(KafkaProperties properties) {
+    Map<String, Object> props = properties.buildProducerProperties();
+    DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(props,
+        new JsonSerializer<>(MyKeyType.class)
+            .forKeys()
+            .noTypeInfo(),
+        new JsonSerializer<>(MyValueType.class)
+            .noTypeInfo());
+}
+
+@Bean
+public DefaultKafkaConsumerFactory pf(KafkaProperties properties) {
+    Map<String, Object> props = properties.buildConsumerProperties();
+    DefaultKafkaConsumerFactory pf = new DefaultKafkaConsumerFactory(props,
+        new JsonDeserializer<>(MyKeyType.class)
+            .forKeys()
+            .ignoreTypeHeaders(),
+        new JsonDeserializer<>(MyValueType.class)
+            .ignoreTypeHeaders());
+}
+----
+====
+
+To provide type mapping programmatically, similar to <<serdes-type-methods>>, use the `typeFunction` property.
+
+====
+.Example
+[source, java]
+----
+JsonDeserializer<Object> deser = new JsonDeserializer<>()
+        .trustedPackages("*")
+        .typeFunction(MyUtils::thingOneOrThingTwo);
 ----
 ====
 

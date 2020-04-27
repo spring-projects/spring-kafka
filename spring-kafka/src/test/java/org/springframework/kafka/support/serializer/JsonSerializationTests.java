@@ -43,6 +43,8 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * @author Igor Stepanov
@@ -257,6 +259,48 @@ public class JsonSerializationTests {
 		deser.configure(props, false);
 		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
 				.contains("foo", "bar", "baz");
+	}
+
+	@Test
+	void testTypeFunctionViaProperties() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		Map<String, Object> props = new HashMap<>();
+		props.put(JsonDeserializer.KEY_TYPE_METHOD, getClass().getName() + ".stringType");
+		props.put(JsonDeserializer.VALUE_TYPE_METHOD, getClass().getName() + ".fooBarJavaType");
+		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+		deser.configure(props, false);
+		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
+		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
+				.isInstanceOf(Bar.class);
+
+		deser.configure(props, true);
+		assertThat(deser.deserialize("", new RecordHeaders(), "\"foo\"".getBytes()))
+				.isEqualTo("foo");
+		deser.close();
+	}
+
+	@Test
+	void testTypeFunctionDirect() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>()
+				.trustedPackages("*")
+				.typeFunction(JsonSerializationTests::fooBarJavaType);
+		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
+		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
+				.isInstanceOf(Bar.class);
+		deser.close();
+	}
+
+	public static JavaType fooBarJavaType(byte[] data, Headers headers) {
+		if (data[0] == '{' && data[1] == 'f') {
+			return TypeFactory.defaultInstance().constructType(Foo.class);
+		}
+		else {
+			return TypeFactory.defaultInstance().constructType(Bar.class);
+		}
+	}
+
+	public static JavaType stringType(byte[] data, Headers headers) {
+		return TypeFactory.defaultInstance().constructType(String.class);
 	}
 
 	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {
