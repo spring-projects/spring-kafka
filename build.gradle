@@ -4,7 +4,6 @@ buildscript {
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
-		classpath 'org.asciidoctor:asciidoctorj-pdf:1.5.0-beta.6'
 		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
 		classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
 	}
@@ -15,11 +14,13 @@ plugins {
 	id 'project-report'
 	id 'idea'
 	id 'org.sonarqube' version '2.8'
-	id 'org.asciidoctor.convert' version '1.6.1'
 	id 'org.ajoberstar.grgit' version '4.0.1' apply false
 	id 'io.spring.nohttp' version '0.0.4.RELEASE'
 	id 'io.spring.dependency-management' version '1.0.9.RELEASE' apply false
 	id 'com.jfrog.artifactory' version '4.13.0' apply false
+	id 'org.asciidoctor.jvm.pdf' version '3.1.0'
+	id 'org.asciidoctor.jvm.gems' version '3.1.0'
+	id 'org.asciidoctor.jvm.convert' version '3.1.0'
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -341,26 +342,34 @@ task prepareAsciidocBuild(type: Sync) {
 	into "$buildDir/asciidoc"
 }
 
-task('makePDF', type: org.asciidoctor.gradle.AsciidoctorTask) {
+asciidoctorPdf {
 	dependsOn prepareAsciidocBuild
-	backends 'pdf'
-	sourceDir "$buildDir/asciidoc"
-	sources {
-		include 'index.adoc'
-	}
-	options doctype: 'book', eruby: 'erubis'
-	attributes 'icons': 'font',
+	baseDirFollowsSourceFile()
+
+	asciidoctorj {
+		sourceDir "$buildDir/asciidoc"
+		inputs.dir(sourceDir)
+		sources {
+			include 'index.adoc'
+		}
+		options doctype: 'book'
+		attributes 'icons': 'font',
 		'sectanchors': '',
 		'sectnums': '',
 		'toc': '',
 		'source-highlighter' : 'coderay',
-		revnumber: project.version
+		revnumber: project.version,
+		'project-version': project.version
+	}
 }
 
 asciidoctor {
-	dependsOn makePDF
-	backends 'html5'
-	sourceDir "$buildDir/asciidoc"
+	dependsOn asciidoctorPdf
+	baseDirFollowsSourceFile()
+	sourceDir = file("$buildDir/asciidoc")
+	sources {
+		include '*.adoc'
+	}
 	resources {
 		from(sourceDir) {
 			include 'images/*', 'css/**', 'js/**'
@@ -374,8 +383,8 @@ asciidoctor {
 		'linkcss': true,
 		'icons': 'font',
 		'sectanchors': '',
-		'source-highlighter=highlight.js',
-		'highlightjsdir=js/highlight',
+		'source-highlighter': 'highlight.js',
+		'highlightjsdir': 'js/highlight',
 		'highlightjs-theme': 'github',
 		'idprefix': '',
 		'idseparator': '-',
@@ -383,7 +392,8 @@ asciidoctor {
 		'allow-uri-read': '',
 		'toc': 'left',
 		'toclevbels': '4',
-		revnumber: project.version
+		revnumber: project.version,
+		'project-version': project.version
 }
 
 task reference(dependsOn: asciidoctor) {

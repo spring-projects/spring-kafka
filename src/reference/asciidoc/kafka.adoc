@@ -139,6 +139,7 @@ private KafkaAdmin admin;
 ----
 ====
 
+[[sending-messages]]
 ==== Sending Messages
 
 This section covers how to send messages.
@@ -726,6 +727,7 @@ IMPORTANT: The listener container for the replies MUST be configured with `AckMo
 To avoid any possibility of losing messages, the template only commits offsets when there are zero requests outstanding, i.e. when the last outstanding request is released by the release strategy.
 After a rebalance, it is possible for duplicate reply deliveries; these will be ignored for any in-flight requests; you may see error log messages when duplicate replies are received for already released replies.
 
+[[receiving-messages]]
 ==== Receiving Messages
 
 You can receive messages by configuring a `MessageListenerContainer` and providing a message listener or by using the `@KafkaListener` annotation.
@@ -828,7 +830,7 @@ The `ConcurrentMessageListenerContainer` delegates to one or more `KafkaMessageL
 
 Starting with version 2.2.7, you can add a `RecordInterceptor` to the listener container; it will be invoked before calling the listener allowing inspection or modification of the record.
 If the interceptor returns null, the listener is not called.
-The interceptor is not invoked when the listener is a <<batch-listners, batch listener>>.
+The interceptor is not invoked when the listener is a <<batch-listeners, batch listener>>.
 
 Starting with version 2.3, the `CompositeRecordInterceptor` can be used to invoke multiple interceptors.
 
