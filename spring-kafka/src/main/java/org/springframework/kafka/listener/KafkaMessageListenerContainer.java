@@ -1376,12 +1376,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				final List<ConsumerRecord<K, V>> recordList, RuntimeException e,
 				AfterRollbackProcessor<K, V> afterRollbackProcessorToUse) {
 
+			RuntimeException rollbackException = decorateException(e);
 			try {
 				if (recordList == null) {
-					afterRollbackProcessorToUse.process(createRecordList(records), this.consumer, e, false);
+					afterRollbackProcessorToUse.process(createRecordList(records), this.consumer, rollbackException,
+							false);
 				}
 				else {
-					afterRollbackProcessorToUse.process(recordList, this.consumer, e, false);
+					afterRollbackProcessorToUse.process(recordList, this.consumer, rollbackException, false);
 				}
 			}
 			catch (KafkaException ke) {
@@ -1607,7 +1609,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				catch (RuntimeException e) {
 					this.logger.error(e, "Transaction rolled back");
-					recordAfterRollback(iterator, record, e);
+					recordAfterRollback(iterator, record, decorateException(e));
 				}
 				finally {
 					if (this.producerPerConsumerPartition) {
@@ -1838,8 +1840,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private Exception decorateException(RuntimeException e) {
-			Exception toHandle = e;
+		private RuntimeException decorateException(RuntimeException e) {
+			RuntimeException toHandle = e;
 			if (toHandle instanceof ListenerExecutionFailedException) {
 				toHandle = new ListenerExecutionFailedException(toHandle.getMessage(), this.consumerGroupId,
 						toHandle.getCause());

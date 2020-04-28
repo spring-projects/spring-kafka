@@ -575,7 +575,7 @@ public class TransactionalContainerTests {
 	public void testMaxFailures() throws Exception {
 		logger.info("Start testMaxFailures");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("txTestMaxFailures", "false", embeddedKafka);
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "groupInARBP");
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic3);
@@ -650,9 +650,10 @@ public class TransactionalContainerTests {
 		Map<String, Object> map = new HashMap<>();
 		mapper.toHeaders(dltRecord.headers(), map);
 		MessageHeaders headers = new MessageHeaders(map);
-		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_FQCN, byte[].class))).contains("RuntimeException");
+		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_FQCN, byte[].class)))
+				.contains("ListenerExecutionFailedException");
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_MESSAGE, byte[].class))
-				.isEqualTo("fail for max failures".getBytes());
+				.contains("fail for max failures".getBytes());
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_OFFSET, byte[].class)[3]).isEqualTo((byte) 0);
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_PARTITION, byte[].class)[3]).isEqualTo((byte) 0);
@@ -663,7 +664,11 @@ public class TransactionalContainerTests {
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(afterRollbackProcessor, times(4)).isProcessInTransaction();
-		verify(afterRollbackProcessor, times(4)).process(any(), any(), any(), anyBoolean());
+		ArgumentCaptor<Exception> captor = ArgumentCaptor.forClass(Exception.class);
+		verify(afterRollbackProcessor, times(4)).process(any(), any(), captor.capture(), anyBoolean());
+		assertThat(captor.getValue()).isInstanceOf(ListenerExecutionFailedException.class)
+				.extracting(ex -> ((ListenerExecutionFailedException) ex).getGroupId())
+				.isEqualTo("groupInARBP");
 		verify(afterRollbackProcessor).clearThreadState();
 		verify(dlTemplate).send(any(ProducerRecord.class));
 		verify(dlTemplate).sendOffsetsToTransaction(
