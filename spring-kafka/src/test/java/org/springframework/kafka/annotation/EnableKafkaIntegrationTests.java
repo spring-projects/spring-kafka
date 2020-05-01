@@ -56,6 +56,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -142,7 +143,6 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
 import io.micrometer.core.instrument.ImmutableTag;
-import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -910,12 +910,12 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public MeterRegistry meterRegistry() {
 			SimpleMeterRegistry reg = new SimpleMeterRegistry();
-			List<java.util.function.Consumer<Meter>> al =
-					KafkaTestUtils.getPropertyValue(reg, "meterAddedListeners", List.class);
-			List<java.util.function.Consumer<Meter>> rl =
-					KafkaTestUtils.getPropertyValue(reg, "meterRemovedListeners", List.class);
-			al.add(meter -> logger.warn("Added:   " + meter.getId()));
-			rl.add(meter -> logger.warn("Removed: " + meter.getId()));
+//			List<java.util.function.Consumer<Meter>> al =
+//					KafkaTestUtils.getPropertyValue(reg, "meterAddedListeners", List.class);
+//			List<java.util.function.Consumer<Meter>> rl =
+//					KafkaTestUtils.getPropertyValue(reg, "meterRemovedListeners", List.class);
+//			al.add(meter -> logger.warn("Added:   " + meter.getId()));
+//			rl.add(meter -> logger.warn("Removed: " + meter.getId()));
 			return reg;
 		}
 
@@ -1910,21 +1910,24 @@ public class EnableKafkaIntegrationTests {
 			for (int i = 0; i < topicsHeader.size(); i++) {
 				this.latch17.countDown();
 				String inTopic = topicsHeader.get(i);
-				if ("annotated26".equals(inTopic) && consumer.committed(Collections.singleton(
-						new org.apache.kafka.common.TopicPartition(inTopic, partitionsHeader.get(i))))
-							.values()
-							.iterator()
-							.next()
-							.offset() == 1) {
-					this.latch18.countDown();
-				}
-				else if ("annotated27".equals(inTopic) && consumer.committed(Collections.singleton(
-						new org.apache.kafka.common.TopicPartition(inTopic, partitionsHeader.get(i))))
-							.values()
-							.iterator()
-							.next()
-							.offset() == 3) {
-					this.latch18.countDown();
+				Map<org.apache.kafka.common.TopicPartition, OffsetAndMetadata> committed = consumer.committed(
+						Collections.singleton(
+								new org.apache.kafka.common.TopicPartition(inTopic, partitionsHeader.get(i))));
+				if (committed.values().iterator().next() != null) {
+					if ("annotated26".equals(inTopic) && committed
+								.values()
+								.iterator()
+								.next()
+								.offset() == 1) {
+						this.latch18.countDown();
+					}
+					else if ("annotated27".equals(inTopic) && committed
+								.values()
+								.iterator()
+								.next()
+								.offset() == 3) {
+						this.latch18.countDown();
+					}
 				}
 			}
 		}

@@ -94,6 +94,7 @@ import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -459,16 +460,23 @@ public class KafkaMessageListenerContainerTests {
 		container8.stop();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testCommitsAreFlushedOnStop() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("flushedOnStop", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		DefaultKafkaConsumerFactory<Integer, String> cf = spy(new DefaultKafkaConsumerFactory<>(props));
+		AtomicReference<Consumer<Integer, String>> consumer = new AtomicReference<>();
+		willAnswer(inv -> {
+			consumer.set((Consumer<Integer, String>) spy(inv.callRealMethod()));
+			return consumer.get();
+		}).given(cf).createConsumer(any(), any(), any(), any());
 		ContainerProperties containerProps = new ContainerProperties(topic5);
 		containerProps.setAckCount(1);
 		// set large values, ensuring that commits don't happen before `stop()`
 		containerProps.setAckTime(20000);
 		containerProps.setAckCount(20000);
 		containerProps.setAckMode(AckMode.COUNT_TIME);
+		containerProps.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
 
 		final CountDownLatch latch = new CountDownLatch(4);
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -480,7 +488,6 @@ public class KafkaMessageListenerContainerTests {
 		container.setBeanName("testManualFlushed");
 
 		container.start();
-		Consumer<?, ?> consumer = spyOnConsumer(container);
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -498,10 +505,10 @@ public class KafkaMessageListenerContainerTests {
 		// Verify that commitSync is called when paused
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		// Verify that just the initial commit is processed before stop
-		verify(consumer, times(1)).commitSync(anyMap(), any());
+		verify(consumer.get(), times(1)).commitSync(anyMap(), any());
 		container.stop();
 		// Verify that a commit has been made on stop
-		verify(consumer, times(2)).commitSync(anyMap(), any());
+		verify(consumer.get(), times(2)).commitSync(anyMap(), any());
 	}
 
 	@Test
@@ -3005,8 +3012,13 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
-		Consumer<?, ?> consumer = spy(
-				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class));
+		Consumer<?, ?> consumer =
+				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class);
+		consumer = spy(consumer);
+//		consumer = mock(KafkaConsumer.class, withSettings()
+//				.verboseLogging()
+//				.spiedInstance(consumer)
+//				.defaultAnswer(CALLS_REAL_METHODS));
 		new DirectFieldAccessor(KafkaTestUtils.getPropertyValue(container, "listenerConsumer"))
 				.setPropertyValue("consumer", consumer);
 		return consumer;
