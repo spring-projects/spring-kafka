@@ -18,7 +18,9 @@ package org.springframework.kafka.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -288,6 +291,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		this.zkConnect = LOOPBACK + ":" + this.zookeeper.getPort();
 		this.kafkaServers.clear();
+		boolean userLogDir = this.brokerProperties.get(KafkaConfig.LogDirProp()) != null && this.count == 1;
 		for (int i = 0; i < this.count; i++) {
 			Properties brokerConfigProperties = createBrokerProperties(i);
 			brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
@@ -298,6 +302,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			this.brokerProperties.forEach(brokerConfigProperties::put);
 			if (!this.brokerProperties.containsKey(KafkaConfig.NumPartitionsProp())) {
 				brokerConfigProperties.setProperty(KafkaConfig.NumPartitionsProp(), "" + this.partitionsPerTopic);
+			}
+			if (!userLogDir) {
+				logDir(brokerConfigProperties);
 			}
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
 			this.kafkaServers.add(server);
@@ -314,6 +321,16 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		System.setProperty(this.brokerListProperty, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
+	}
+
+	private void logDir(Properties brokerConfigProperties) {
+		try {
+			brokerConfigProperties.put(KafkaConfig.LogDirProp(),
+					Files.createTempDirectory("spring.kafka." + UUID.randomUUID()).toString());
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	private void overrideExitMethods() {
