@@ -143,6 +143,7 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
 import io.micrometer.core.instrument.ImmutableTag;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -910,12 +911,12 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public MeterRegistry meterRegistry() {
 			SimpleMeterRegistry reg = new SimpleMeterRegistry();
-//			List<java.util.function.Consumer<Meter>> al =
-//					KafkaTestUtils.getPropertyValue(reg, "meterAddedListeners", List.class);
-//			List<java.util.function.Consumer<Meter>> rl =
-//					KafkaTestUtils.getPropertyValue(reg, "meterRemovedListeners", List.class);
-//			al.add(meter -> logger.warn("Added:   " + meter.getId()));
-//			rl.add(meter -> logger.warn("Removed: " + meter.getId()));
+			List<java.util.function.Consumer<Meter>> al =
+					KafkaTestUtils.getPropertyValue(reg, "meterAddedListeners", List.class);
+			List<java.util.function.Consumer<Meter>> rl =
+					KafkaTestUtils.getPropertyValue(reg, "meterRemovedListeners", List.class);
+			al.add(meter -> logger.warn("Added:   " + meter.getId()));
+			rl.add(meter -> logger.warn("Removed: " + meter.getId()));
 			return reg;
 		}
 
