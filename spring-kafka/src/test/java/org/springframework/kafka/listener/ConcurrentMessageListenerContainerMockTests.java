@@ -47,6 +47,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
@@ -525,6 +526,62 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(consumer, never()).commitSync(any(), any());
+	}
+
+	@Test
+	void testNoInitialCommitIfAlreadyCommitted() throws InterruptedException {
+		testInitialCommitIBasedOnCommitted(true);
+	}
+
+	@Test
+	void testInitialCommitIfNotAlreadyCommitted() throws InterruptedException {
+		testInitialCommitIBasedOnCommitted(false);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void testInitialCommitIBasedOnCommitted(boolean committed) throws InterruptedException {
+		Consumer consumer = mock(Consumer.class);
+		ConsumerRecords records = new ConsumerRecords<>(Collections.emptyMap());
+		CountDownLatch latch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			latch.countDown();
+			Thread.sleep(50);
+			return records;
+		}).given(consumer).poll(any());
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		List<TopicPartition> assignments = Arrays.asList(tp0);
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+				.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		if (committed) {
+			given(consumer.committed(Collections.singleton(tp0)))
+					.willReturn(Collections.singletonMap(tp0, new OffsetAndMetadata(0L)));
+		}
+		else {
+			given(consumer.committed(Collections.singleton(tp0)))
+					.willReturn(Collections.singletonMap(tp0, null));
+		}
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties())
+				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest"));
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener) rec -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		containerProperties.setAssignmentCommitOption(AssignmentCommitOption.LATEST_ONLY);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf,
+				containerProperties);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		if (committed) {
+			verify(consumer, never()).commitSync(any(), any());
+		}
+		else {
+			verify(consumer).commitSync(any(), any());
+		}
 	}
 
 	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {
