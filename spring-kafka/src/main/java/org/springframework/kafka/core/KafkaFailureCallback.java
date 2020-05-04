@@ -26,8 +26,10 @@ import org.springframework.util.concurrent.FailureCallback;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @since 2.5
  *
  */
+@FunctionalInterface
 public interface KafkaFailureCallback<K, V> extends FailureCallback {
 
 	@Override
