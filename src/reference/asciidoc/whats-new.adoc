@@ -73,6 +73,9 @@ See <<kafka-template>> for more information.
 A `RoutingKafkaTemplate` has now been provided.
 See <<routing-template>> for more information.
 
+You can now use `KafkaSendCallback` instead of `ListenerFutureCallback` to get a narrower exception, making it easier to extract the failed `ProducerRecord`.
+See <<kafka-template>> for more information.
+
 [[x25-string-serializer]]
 ==== Kafka String Serializer/Deserializer
 

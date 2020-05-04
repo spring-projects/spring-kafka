@@ -315,9 +315,47 @@ future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
 `SendResult` has two properties, a `ProducerRecord` and `RecordMetadata`.
 See the Kafka API documentation for information about those objects.
 
-The `Throwable` in `onFailure` can be cast to a `KafkaProducerException`; its `producerRecord` property contains the failed record.
+The `Throwable` in `onFailure` can be cast to a `KafkaProducerException`; its `failedProducerRecord` property contains the failed record.
 
-If you wish to block the sending thread to await the result, you can invoke the future's `get()` method.
+Starting with version 2.5, you can use a `KafkaSendCallback` instead of a `ListenableFutureCallback`, making it easier to extract the failed `ProducerRecord`, avoiding the need to cast the `Throwable`:
+
+====
+[source, java]
+----
+ListenableFuture<SendResult<Integer, String>> future = template.send("topic", 1, "thing");
+future.addCallback(new KafkaSendCallback<Integer, String>() {
+
+    @Override
+    public void onSuccess(SendResult<Integer, String> result) {
+        ...
+    }
+
+    @Override
+    public void onFailure(KafkaProducerException ex) {
+        ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
+        ...
+    }
+
+});
+----
+====
+
+You can also use a pair of lambdas:
+
+====
+[source, java]
+----
+ListenableFuture<SendResult<Integer, String>> future = template.send("topic", 1, "thing");
+future.addCallback(result -> {
+        ...
+    }, (KafkaFailureCallback<Integer, String>) ex -> {
+            ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
+            ...
+    });
+----
+====
+
+If you wish to block the sending thread to await the result, you can invoke the future's `get()` method; using the method with a timeout is recommended.
 You may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush` parameter that causes the template to `flush()` on each send.
 Flushing is only needed if you have set the `linger.ms` producer property and want to immediately send a partial batch.
 
@@ -333,7 +371,7 @@ public void sendToKafka(final MyOutputData data) {
     final ProducerRecord<String, String> record = createRecord(data);
 
     ListenableFuture<SendResult<Integer, String>> future = template.send(record);
-    future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
+    future.addCallback(new KafkaSendCallback<SendResult<Integer, String>>() {
 
         @Override
         public void onSuccess(SendResult<Integer, String> result) {
@@ -341,7 +379,7 @@ public void sendToKafka(final MyOutputData data) {
         }
 
         @Override
-        public void onFailure(Throwable ex) {
+        public void onFailure(KafkaProducerException ex) {
             handleFailure(data, record, ex);
         }
 
@@ -369,6 +407,8 @@ public void sendToKafka(final MyOutputData data) {
 ----
 ====
 
+Note that the cause of the `ExecutionException` is `KafkaProducerException` with the `failedProducerRecord` property.
+
 [[routing-template]]
 ===== Using `RoutingKafkaTemplate`
 
@@ -387,33 +427,33 @@ The following simple Spring Boot application provides an example of how to use t
 @SpringBootApplication
 public class Application {
 
-	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
 
-	@Bean
-	public RoutingKafkaTemplate routingTemplate(GenericApplicationContext context,
-			ProducerFactory<Object, Object> pf) {
+    @Bean
+    public RoutingKafkaTemplate routingTemplate(GenericApplicationContext context,
+            ProducerFactory<Object, Object> pf) {
 
-		// Clone the PF with a different Serializer, register with Spring for shutdown
-		Map<String, Object> configs = new HashMap<>(pf.getConfigurationProperties());
-		configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
-		DefaultKafkaProducerFactory<Object, Object> bytesPF = new DefaultKafkaProducerFactory<>(configs);
-		context.registerBean(DefaultKafkaProducerFactory.class, "bytesPF", bytesPF);
+        // Clone the PF with a different Serializer, register with Spring for shutdown
+        Map<String, Object> configs = new HashMap<>(pf.getConfigurationProperties());
+        configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+        DefaultKafkaProducerFactory<Object, Object> bytesPF = new DefaultKafkaProducerFactory<>(configs);
+        context.registerBean(DefaultKafkaProducerFactory.class, "bytesPF", bytesPF);
 
-		Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
-		map.put(Pattern.compile("two"), bytesPF);
-		map.put(Pattern.compile(".+"), pf); // Default PF with StringSerializer
-		return new RoutingKafkaTemplate(map);
-	}
+        Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
+        map.put(Pattern.compile("two"), bytesPF);
+        map.put(Pattern.compile(".+"), pf); // Default PF with StringSerializer
+        return new RoutingKafkaTemplate(map);
+    }
 
-	@Bean
-	public ApplicationRunner runner(RoutingKafkaTemplate routingTemplate) {
-		return args -> {
-			routingTemplate.send("one", "thing1");
-			routingTemplate.send("two", "thing2".getBytes());
-		};
-	}
+    @Bean
+    public ApplicationRunner runner(RoutingKafkaTemplate routingTemplate) {
+        return args -> {
+            routingTemplate.send("one", "thing1");
+            routingTemplate.send("two", "thing2".getBytes());
+        };
+    }
 
 }
 ----
@@ -2577,9 +2617,9 @@ public class MyListener extends AbstractConsumerSeekAware {
 ...
 
     @Override
-	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-		callback.seekToBeginning(assignments.keySet());
-	}
+    public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+        callback.seekToBeginning(assignments.keySet());
+    }
 
 }
 ----
@@ -2638,10 +2678,10 @@ class Listener implements ConsumerSeekAware {
     }
 
     @Override
-	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-		partitions.forEach(tp -> this.callbacks.remove(tp));
-		this.callbackForThread.remove();
-	}
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        partitions.forEach(tp -> this.callbacks.remove(tp));
+        this.callbackForThread.remove();
+    }
 
     @Override
     public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
@@ -2844,10 +2884,10 @@ The consumer/producer `id` passed to the listener is added to the meter's tags w
 [source, java]
 ----
 double count =this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
-				.tag("customTag", "customTagValue")
-				.tag("spring.id", "myProducerFactory.myClientId-1")
-				.functionCounter()
-				.count()
+                .tag("customTag", "customTagValue")
+                .tag("spring.id", "myProducerFactory.myClientId-1")
+                .functionCounter()
+                .count()
 ----
 ====
 
@@ -3392,15 +3432,15 @@ This information can be used by `ParseStringDeserializer` on the receiving side.
 [source, java]
 ----
 ParseStringDeserializer<Object> deserializer = new ParseStringDeserializer<>((str, headers) -> {
-	byte[] header = headers.lastHeader(ToStringSerializer.VALUE_TYPE).value();
-	String entityType = new String(header);
+    byte[] header = headers.lastHeader(ToStringSerializer.VALUE_TYPE).value();
+    String entityType = new String(header);
 
-	if (entityType.contains("Thing")) {
-		return Thing.parse(str);
-	}
-	else {
-		// ...parsing logic
-	}
+    if (entityType.contains("Thing")) {
+        return Thing.parse(str);
+    }
+    else {
+        // ...parsing logic
+    }
 });
 ----
 ====

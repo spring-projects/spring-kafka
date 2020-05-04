@@ -19,6 +19,9 @@ package org.springframework.kafka.core;
 import static org.assertj.core.api.Assertions.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.keyValue;
@@ -41,6 +44,7 @@ import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -75,6 +79,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -317,7 +322,7 @@ public class KafkaTemplateTests {
 	@Test
 	void testWithCallback() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic(INT_KEY_TOPIC);
 		ListenableFuture<SendResult<Integer, String>> future = template.sendDefault("foo");
@@ -339,7 +344,66 @@ public class KafkaTemplateTests {
 		});
 		assertThat(KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC)).has(value("foo"));
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-		pf.createProducer().close();
+		pf.destroy();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testWithCallbackFailure() throws Exception {
+		Producer<Integer, String> producer = mock(Producer.class);
+		willAnswer(inv -> {
+			Callback callback = inv.getArgument(1);
+			callback.onCompletion(null, new RuntimeException("test"));
+			return new SettableListenableFuture<RecordMetadata>();
+		}).given(producer).send(any(), any());
+		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
+		given(pf.createProducer()).willReturn(producer);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		ListenableFuture<SendResult<Integer, String>> future = template.send("foo", 1, "bar");
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
+		AtomicReference<String> value = new AtomicReference<>();
+		future.addCallback(new KafkaSendCallback<Integer, String>() {
+
+			@Override
+			public void onSuccess(SendResult<Integer, String> result) {
+			}
+
+			@Override
+			public void onFailure(KafkaProducerException ex) {
+				ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
+				value.set(failed.value());
+				latch.countDown();
+			}
+
+		});
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(value.get()).isEqualTo("bar");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testWithCallbackFailureFunctional() throws Exception {
+		Producer<Integer, String> producer = mock(Producer.class);
+		willAnswer(inv -> {
+			Callback callback = inv.getArgument(1);
+			callback.onCompletion(null, new RuntimeException("test"));
+			return new SettableListenableFuture<RecordMetadata>();
+		}).given(producer).send(any(), any());
+		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
+		given(pf.createProducer()).willReturn(producer);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		ListenableFuture<SendResult<Integer, String>> future = template.send("foo", 1, "bar");
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
+		AtomicReference<String> value = new AtomicReference<>();
+		future.addCallback(result -> { }, (KafkaFailureCallback<Integer, String>) ex -> {
+			ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
+			value.set(failed.value());
+			latch.countDown();
+		});
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(value.get()).isEqualTo("bar");
 	}
 
 	@Test

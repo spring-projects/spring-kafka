@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,13 +31,37 @@ public class KafkaProducerException extends KafkaException {
 
 	private final ProducerRecord<?, ?> producerRecord;
 
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param failedProducerRecord the producer record.
+	 * @param message the message.
+	 * @param cause the cause.
+	 */
 	public KafkaProducerException(ProducerRecord<?, ?> failedProducerRecord, String message, Throwable cause) {
 		super(message, cause);
 		this.producerRecord = failedProducerRecord;
 	}
 
+	/**
+	 * Return the failed producer record.
+	 * @return the record.
+	 * @deprecated in favor of {@link #getFailedProducerRecord()}
+	 */
+	@Deprecated
 	public ProducerRecord<?, ?> getProducerRecord() {
 		return this.producerRecord;
+	}
+
+	/**
+	 * Return the failed producer record.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the record.
+	 * @since 2.5
+	 */
+	@SuppressWarnings("unchecked")
+	public <K, V> ProducerRecord<K, V> getFailedProducerRecord() {
+		return (ProducerRecord<K, V>) producerRecord;
 	}
 
 }
