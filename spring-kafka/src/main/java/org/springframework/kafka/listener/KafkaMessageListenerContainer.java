@@ -246,6 +246,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	@Override
+	@Nullable
+	public Map<String, Collection<TopicPartition>> getAssignmentsByClientId() {
+		ListenerConsumer partitionsListenerConsumer = this.listenerConsumer;
+		if (this.listenerConsumer != null) {
+			return Collections.singletonMap(partitionsListenerConsumer.getClientId(), getAssignedPartitions());
+		}
+		else {
+			return null;
+		}
+	}
+
+	@Override
 	public boolean isContainerPaused() {
 		return isPaused() && this.listenerConsumer != null && this.listenerConsumer.isConsumerPaused();
 	}
@@ -255,11 +267,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		ListenerConsumer listenerConsumerForMetrics = this.listenerConsumer;
 		if (listenerConsumerForMetrics != null) {
 			Map<MetricName, ? extends Metric> metrics = listenerConsumerForMetrics.consumer.metrics();
-			Iterator<MetricName> metricIterator = metrics.keySet().iterator();
-			if (metricIterator.hasNext()) {
-				String clientId = metricIterator.next().tags().get("client-id");
-				return Collections.singletonMap(clientId, metrics);
-			}
+			return Collections.singletonMap(listenerConsumerForMetrics.getClientId(), metrics);
 		}
 		return Collections.emptyMap();
 	}
@@ -541,6 +549,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, OffsetAndMetadata> commitsDuringRebalance = new HashMap<>();
 
+		private final String clientId;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -585,6 +595,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							KafkaMessageListenerContainer.this.clientIdSuffix,
 							consumerProperties);
 
+			this.clientId = determineClientId();
 			this.transactionTemplate = determineTransactionTemplate();
 			this.genericListener = listener;
 			this.consumerSeekAwareListener = checkConsumerSeekAware(listener);
@@ -656,6 +667,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.micrometerHolder = obtainMicrometerHolder();
 			this.deliveryAttemptAware = setupDeliveryAttemptAware();
 			this.subBatchPerPartition = setupSubBatchPerPartition();
+		}
+
+		String getClientId() {
+			return this.clientId;
+		}
+
+		private final String determineClientId() {
+			Map<MetricName, ? extends Metric> metrics = this.consumer.metrics();
+			Iterator<MetricName> metricIterator = metrics.keySet().iterator();
+			if (metricIterator.hasNext()) {
+				return metricIterator.next().tags().get("client-id");
+			}
+			return "unknown.client.id";
 		}
 
 		private void checkGroupInstance(Properties properties, ConsumerFactory<K, V> consumerFactory) {

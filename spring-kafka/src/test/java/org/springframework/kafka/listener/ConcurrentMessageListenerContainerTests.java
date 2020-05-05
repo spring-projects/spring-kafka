@@ -132,6 +132,7 @@ public class ConcurrentMessageListenerContainerTests {
 		};
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setLogContainerConfig(true);
+		containerProps.setClientId("client");
 
 		final CountDownLatch latch = new CountDownLatch(3);
 		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
@@ -164,6 +165,10 @@ public class ConcurrentMessageListenerContainerTests {
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		assertThat(container.getAssignedPartitions()).hasSize(2);
+		Map<String, Collection<TopicPartition>> assignments = container.getAssignmentsByClientId();
+		assertThat(assignments).hasSize(2);
+		assertThat(assignments.get("client-0")).isNotNull();
+		assertThat(assignments.get("client-1")).isNotNull();
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);

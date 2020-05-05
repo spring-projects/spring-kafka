@@ -2299,8 +2299,8 @@ BeforeTx
 
 |pause
 Requested
-|n/a
-|True if a consumer pause has been requested (read only).
+|(read only)
+|True if a consumer pause has been requested.
 
 |record
 Interceptor
@@ -2323,8 +2323,14 @@ Timeout
 
 |assigned
 Partitions
-|n/a
-|The partitions currently assigned to this container (explicitly or not) (read only).
+|(read only)
+|The partitions currently assigned to this container (explicitly or not).
+
+|assigned
+Partitions
+ByClientId
+|(read only)
+|The partitions currently assigned to this container (explicitly or not).
 
 |clientId
 Suffix
@@ -2345,8 +2351,14 @@ Suffix
 
 |assigned
 Partitions
-|n/a
-|The aggregate of partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not) (read only).
+|(read only)
+|The aggregate of partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not).
+
+|assigned
+Partitions
+ByClientId
+|(read only)
+|The partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not), keyed by the child container's consumer's `client.id` property.
 
 |concurrency
 |1

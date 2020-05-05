@@ -61,6 +61,9 @@ See <<error-handlers>> for more information.
 You can now control the level at which exceptions intentionally thrown by standard error handlers are logged.
 See <<error-handlers>> for more information.
 
+The `getAssignmentsByClientId()` method has been added, making it easier to determine which consumers in a concurrent container are assigned which partition(s).
+See <<container-props>> for more information.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 

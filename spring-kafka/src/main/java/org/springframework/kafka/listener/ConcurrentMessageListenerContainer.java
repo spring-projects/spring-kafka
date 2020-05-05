@@ -110,6 +110,20 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
+	public Map<String, Collection<TopicPartition>> getAssignmentsByClientId() {
+		synchronized (this.lifecycleMonitor) {
+			Map<String, Collection<TopicPartition>> assignments = new HashMap<>();
+			this.containers.forEach(container -> {
+				Map<String, Collection<TopicPartition>> byClientId = container.getAssignmentsByClientId();
+				if (byClientId != null) {
+					assignments.putAll(byClientId);
+				}
+			});
+			return assignments;
+		}
+	}
+
+	@Override
 	public boolean isContainerPaused() {
 		synchronized (this.lifecycleMonitor) {
 			boolean paused = isPaused();

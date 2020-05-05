@@ -65,7 +65,18 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	 * @return the topics/partitions.
 	 * @since 2.1.3
 	 */
+	@Nullable
 	default Collection<TopicPartition> getAssignedPartitions() {
+		throw new UnsupportedOperationException("This container doesn't support retrieving its assigned partitions");
+	}
+
+	/**
+	 * Return the assigned topics/partitions for this container, by client.id.
+	 * @return the topics/partitions.
+	 * @since 2.5
+	 */
+	@Nullable
+	default Map<String, Collection<TopicPartition>> getAssignmentsByClientId() {
 		throw new UnsupportedOperationException("This container doesn't support retrieving its assigned partitions");
 	}
 
