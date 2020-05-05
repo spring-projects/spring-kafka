@@ -673,7 +673,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return this.clientId;
 		}
 
-		private final String determineClientId() {
+		private String determineClientId() {
 			Map<MetricName, ? extends Metric> metrics = this.consumer.metrics();
 			Iterator<MetricName> metricIterator = metrics.keySet().iterator();
 			if (metricIterator.hasNext()) {
