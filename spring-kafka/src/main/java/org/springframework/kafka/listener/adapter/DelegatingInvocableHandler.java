@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.listener.adapter;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.handler.HandlerMethod;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -123,14 +125,34 @@ public class DelegatingInvocableHandler {
 			Object bean, BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext,
 			@Nullable BeanFactory beanFactory) {
 
-		this.handlers = new ArrayList<>(handlers);
-		this.defaultHandler = defaultHandler;
+		this.handlers = new ArrayList<>();
+		checkMetadata(handlers);
+		this.defaultHandler = wrapIfNecessary(defaultHandler);
 		this.bean = bean;
 		this.resolver = beanExpressionResolver;
 		this.beanExpressionContext = beanExpressionContext;
 		this.beanFactory = beanFactory instanceof ConfigurableListableBeanFactory
 				? (ConfigurableListableBeanFactory) beanFactory
 				: null;
+	}
+
+	private void checkMetadata(List<InvocableHandlerMethod> methodHandlers) {
+		for (InvocableHandlerMethod handler : methodHandlers) {
+			this.handlers.add(wrapIfNecessary(handler));
+		}
+	}
+
+	private InvocableHandlerMethod wrapIfNecessary(InvocableHandlerMethod handler) {
+		if (handler == null) {
+			return null;
+		}
+		Parameter[] parameters = handler.getMethod().getParameters();
+		for (Parameter parameter : parameters) {
+			if (parameter.getType().equals(ConsumerRecordMetadata.class)) {
+				return new DelegatingInvocableHandler.MetadataAwareInvocableHandlerMethod(handler);
+			}
+		}
+		return handler;
 	}
 
 	/**
@@ -152,7 +174,16 @@ public class DelegatingInvocableHandler {
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
 		Class<? extends Object> payloadClass = message.getPayload().getClass();
 		InvocableHandlerMethod handler = getHandlerForPayload(payloadClass);
-		Object result = handler.invoke(message, providedArgs);
+		Object result;
+		if (handler instanceof MetadataAwareInvocableHandlerMethod) {
+			Object[] args = new Object[providedArgs.length + 1];
+			args[0] = AdapterUtils.buildConsumerRecordMetadataFromArray(providedArgs);
+			System.arraycopy(providedArgs, 0, args, 1, providedArgs.length);
+			result = handler.invoke(message, args);
+		}
+		else {
+			result = handler.invoke(message, providedArgs);
+		}
 		Expression replyTo = this.handlerSendTo.get(handler);
 		return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
 	}
@@ -282,6 +313,19 @@ public class DelegatingInvocableHandler {
 
 	public boolean hasDefaultHandler() {
 		return this.defaultHandler != null;
+	}
+
+	/**
+	 * A handler method that is aware of {@link ConsumerRecordMetadata}.
+	 *
+	 * @since 2.5
+	 */
+	private static final class MetadataAwareInvocableHandlerMethod extends InvocableHandlerMethod {
+
+		MetadataAwareInvocableHandlerMethod(HandlerMethod handlerMethod) {
+			super(handlerMethod);
+		}
+
 	}
 
 }

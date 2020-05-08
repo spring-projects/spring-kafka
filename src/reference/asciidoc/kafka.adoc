@@ -1241,7 +1241,10 @@ public void listen(String data, Acknowledgment ack) {
 ----
 ====
 
-Finally, metadata about the message is available from message headers.
+[[consumer-record-metadata]]
+====== Consumer Record Metadata
+
+Finally, metadata about the record is available from message headers.
 You can use the following header names to retrieve the headers of the message:
 
 * `KafkaHeaders.OFFSET`
@@ -1270,6 +1273,20 @@ public void listen(@Payload String foo,
 }
 ----
 ====
+
+Starting with version 2.5, instead of using discrete headers, you can receive record metadata in a `ConsumerRecordMetadata` parameter.
+
+====
+[source, java]
+----
+@KafkaListener(...)
+public void listen(String str, ConsumerRecordMetadata meta) {
+    ...
+}
+----
+====
+
+This contains all the data from the `ConsumerRecord` except the key and value.
 
 [[batch-listeners]]
 ====== Batch listeners
@@ -1606,6 +1623,24 @@ At most, one method can be so designated.
 When using `@KafkaHandler` methods, the payload must have already been converted to the domain object (so the match can be performed).
 Use a custom deserializer, the `JsonDeserializer`, or the `JsonMessageConverter` with its `TypePrecedence` set to `TYPE_ID`.
 See <<serdes>> for more information.
+
+IMPORTANT: Due to some limitations in the way Spring resolves method arguments, a default `@KafkaHandler` cannot receive discrete headers; it must use the `ConsumerRecordMetadata` as discussed in <<consumer-record-metadata>>.
+
+For example:
+
+====
+[source, java]
+----
+@KafkaHandler(isDefault = true)
+public void listenDefault(Object object, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+    ...
+}
+----
+====
+
+This won't work if the object is a `String`; the `topic` parameter will also get a reference to `object`.
+
+If you need metadata about the record in a default method, use this
 
 [[kafkalistener-lifecycle]]
 ===== `@KafkaListener` Lifecycle Management

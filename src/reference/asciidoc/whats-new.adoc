@@ -38,6 +38,9 @@ See <<reply-message>> for more information.
 
 The `KafkaHeaders.RECEIVED_MESSAGE_KEY` is no longer populated with a `null` value when the incoming record has a `null` key; the header is omitted altogether.
 
+`@KafkaListener` methods can now specify a `ConsumerRecordMetadata` parameter instead of using discrete headers for metadata such as topic, partition, etc.
+See <<consumer-record-metadata>> for more information.
+
 [[x25-container]]
 ==== Listener Container Changes
 

@@ -120,6 +120,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private boolean hasAckParameter;
 
+	private boolean hasMetadataParameter;
+
 	private boolean messageReturnType;
 
 	private ReplyHeadersConfigurer replyHeadersConfigurer;
@@ -324,7 +326,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				return this.handlerMethod.invoke(message, acknowledgment, consumer);
 			}
 			else {
-				return this.handlerMethod.invoke(message, data, acknowledgment, consumer);
+				if (this.hasMetadataParameter) {
+					return this.handlerMethod.invoke(message, data, acknowledgment, consumer,
+							AdapterUtils.buildConsumerRecordMetadata(data));
+				}
+				else {
+					return this.handlerMethod.invoke(message, data, acknowledgment, consumer);
+				}
 			}
 		}
 		catch (org.springframework.messaging.converter.MessageConversionException ex) {
@@ -562,6 +570,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			isNotConvertible |= isAck;
 			boolean isConsumer = parameterIsType(parameterType, Consumer.class);
 			isNotConvertible |= isConsumer;
+			boolean isMeta = parameterIsType(parameterType, ConsumerRecordMetadata.class);
+			this.hasMetadataParameter |= isMeta;
+			isNotConvertible |= isMeta;
 			if (isNotConvertible) {
 				notConvertibleParameters++;
 			}
