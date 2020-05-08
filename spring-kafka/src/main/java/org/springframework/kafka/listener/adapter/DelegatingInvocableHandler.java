@@ -126,7 +126,9 @@ public class DelegatingInvocableHandler {
 			@Nullable BeanFactory beanFactory) {
 
 		this.handlers = new ArrayList<>();
-		checkMetadata(handlers);
+		for (InvocableHandlerMethod handler : handlers) {
+			this.handlers.add(wrapIfNecessary(handler));
+		}
 		this.defaultHandler = wrapIfNecessary(defaultHandler);
 		this.bean = bean;
 		this.resolver = beanExpressionResolver;
@@ -134,12 +136,6 @@ public class DelegatingInvocableHandler {
 		this.beanFactory = beanFactory instanceof ConfigurableListableBeanFactory
 				? (ConfigurableListableBeanFactory) beanFactory
 				: null;
-	}
-
-	private void checkMetadata(List<InvocableHandlerMethod> methodHandlers) {
-		for (InvocableHandlerMethod handler : methodHandlers) {
-			this.handlers.add(wrapIfNecessary(handler));
-		}
 	}
 
 	private InvocableHandlerMethod wrapIfNecessary(InvocableHandlerMethod handler) {
