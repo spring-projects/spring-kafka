@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.apache.kafka.common.header.Headers;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.PatternMatchUtils;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -149,7 +150,7 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 		if (!this.trustedPackages.isEmpty()) {
 			String packageName = ClassUtils.getPackageName(requestedType).replaceFirst("\\[L", "");
 			for (String trustedPackage : this.trustedPackages) {
-				if (packageName.equals(trustedPackage)) {
+				if (PatternMatchUtils.simpleMatch(trustedPackage, packageName)) {
 					return true;
 				}
 			}

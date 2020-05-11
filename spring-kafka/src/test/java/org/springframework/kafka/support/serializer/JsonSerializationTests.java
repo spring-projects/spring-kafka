@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,6 +45,8 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
@@ -219,6 +222,19 @@ public class JsonSerializationTests {
 		assertThat(de.deserialize(this.topic, ser.serialize(this.topic, dummy))).isEqualTo(dummy);
 		ser.close();
 		de.close();
+	}
+
+	@Test
+	void jsonNode() throws IOException {
+		JsonSerializer<Object> ser = new JsonSerializer<>();
+		JsonDeserializer<JsonNode> de = new JsonDeserializer<>();
+		de.configure(Collections.singletonMap(JsonDeserializer.VALUE_DEFAULT_TYPE, JsonNode.class), false);
+		DummyEntity dummy = new DummyEntity();
+		byte[] serialized = ser.serialize("foo", dummy);
+		JsonNode node = new ObjectMapper().reader().readTree(serialized);
+		Headers headers = new RecordHeaders();
+		serialized = ser.serialize("foo", headers, node);
+		de.deserialize("foo", headers, serialized);
 	}
 
 	@Test

@@ -419,6 +419,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		String targetPackageName = getTargetPackageName();
 		if (targetPackageName != null) {
 			doAddTrustedPackages(targetPackageName);
+			doAddTrustedPackages(targetPackageName + ".*");
 		}
 	}
 
