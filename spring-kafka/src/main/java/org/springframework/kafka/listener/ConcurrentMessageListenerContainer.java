@@ -181,7 +181,11 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				if (getApplicationEventPublisher() != null) {
 					container.setApplicationEventPublisher(getApplicationEventPublisher());
 				}
-				container.setClientIdSuffix("-" + i);
+				if(this.concurrency == 1){
+				    container.setClientIdSuffix("");
+				} else {
+				    container.setClientIdSuffix("-" + i);
+				}
 				container.setGenericErrorHandler(getGenericErrorHandler());
 				container.setAfterRollbackProcessor(getAfterRollbackProcessor());
 				container.setRecordInterceptor(getRecordInterceptor());
