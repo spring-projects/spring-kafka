@@ -58,6 +58,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private int concurrency = 1;
 
+	private boolean alwaysClientIdSuffix = true;
+
 	/**
 	 * Construct an instance with the supplied configuration properties.
 	 * The topic partitions are distributed evenly across the delegate
@@ -84,6 +86,16 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void setConcurrency(int concurrency) {
 		Assert.isTrue(concurrency > 0, "concurrency must be greater than 0");
 		this.concurrency = concurrency;
+	}
+
+	/**
+	 * Set to false to suppress adding a suffix to the child container's client.id when
+	 * the concurrency is only 1.
+	 * @param alwaysClientIdSuffix true to suppress.
+	 * @since 2.2.14
+	 */
+	public void setAlwaysClientIdSuffix(boolean alwaysClientIdSuffix) {
+		this.alwaysClientIdSuffix = alwaysClientIdSuffix;
 	}
 
 	/**
@@ -181,7 +193,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				if (getApplicationEventPublisher() != null) {
 					container.setApplicationEventPublisher(getApplicationEventPublisher());
 				}
-				container.setClientIdSuffix("-" + i);
+				container.setClientIdSuffix(this.concurrency > 1 || this.alwaysClientIdSuffix ? "-" + i : "");
 				container.setGenericErrorHandler(getGenericErrorHandler());
 				container.setAfterRollbackProcessor(getAfterRollbackProcessor());
 				container.setRecordInterceptor(getRecordInterceptor());

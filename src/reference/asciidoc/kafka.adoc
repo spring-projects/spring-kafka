@@ -2384,6 +2384,11 @@ Suffix
 | Default
 | Description
 
+|alwaysClientId
+Suffix
+|`true`
+|Set to false to suppress adding a suffix to the `client.id` consumer property, when the `concurrency` is only 1.
+
 |assigned
 Partitions
 |(read only)
