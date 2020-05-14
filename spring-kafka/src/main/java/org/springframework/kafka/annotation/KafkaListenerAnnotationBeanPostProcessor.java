@@ -313,7 +313,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 */
 	private Collection<KafkaListener> findListenerAnnotations(Class<?> clazz) {
 		Set<KafkaListener> listeners = new HashSet<>();
-		KafkaListener ann = AnnotationUtils.findAnnotation(clazz, KafkaListener.class);
+		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(clazz, KafkaListener.class);
 		if (ann != null) {
 			listeners.add(ann);
 		}
