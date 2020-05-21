@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,15 @@ package org.springframework.kafka.support.serializer;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -29,13 +34,16 @@ import org.springframework.util.StringUtils;
 
 /**
  * A {@link Deserializer} that delegates to other deserializers based on a serialization
- * selector header.
+ * selector header. It is not necessary to configure standard deserializers supported by
+ * {@link Serdes}.
  *
  * @author Gary Russell
  * @since 2.3
  *
  */
 public class DelegatingDeserializer implements Deserializer<Object> {
+
+	private static final LogAccessor LOGGER = new LogAccessor(DelegatingDeserializer.class);
 
 	/**
 	 * Name of the configuration property containing the serialization selector map with
@@ -44,7 +52,11 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	public static final String SERIALIZATION_SELECTOR_CONFIG = DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG;
 
 
-	private final Map<String, Deserializer<?>> delegates = new HashMap<>();
+	private final Map<String, Deserializer<? extends Object>> delegates = new ConcurrentHashMap<>();
+
+	private final Map<String, Object> autoConfigs = new HashMap<>();
+
+	private boolean forKeys;
 
 	/**
 	 * Construct an instance that will be configured in {@link #configure(Map, boolean)}
@@ -57,7 +69,8 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	/**
 	 * Construct an instance with the supplied mapping of selectors to delegate
 	 * deserializers. The selector must be supplied in the
-	 * {@link DelegatingSerializer#SERIALIZATION_SELECTOR} header.
+	 * {@link DelegatingSerializer#SERIALIZATION_SELECTOR} header. It is not necessary to
+	 * configure standard deserializers supported by {@link Serdes}.
 	 * @param delegates the map of delegates.
 	 */
 	public DelegatingDeserializer(Map<String, Deserializer<?>> delegates) {
@@ -67,6 +80,8 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
+		this.autoConfigs.putAll(configs);
+		this.forKeys = isKey;
 		Object value = configs.get(SERIALIZATION_SELECTOR_CONFIG);
 		if (value == null) {
 			return;
@@ -151,18 +166,43 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 
 	@Override
 	public Object deserialize(String topic, Headers headers, byte[] data) {
-		byte[] value = headers.lastHeader(DelegatingSerializer.SERIALIZATION_SELECTOR).value();
+		byte[] value = null;
+		Header header = headers.lastHeader(DelegatingSerializer.SERIALIZATION_SELECTOR);
+		if (header != null) {
+			value = header.value();
+		}
 		if (value == null) {
 			throw new IllegalStateException("No '" + DelegatingSerializer.SERIALIZATION_SELECTOR + "' header present");
 		}
 		String selector = new String(value).replaceAll("\"", "");
-		@SuppressWarnings("unchecked")
-		Deserializer<Object> deserializer = (Deserializer<Object>) this.delegates.get(selector);
+		Deserializer<? extends Object> deserializer = this.delegates.get(selector);
+		if (deserializer == null) {
+			deserializer = trySerdes(selector);
+		}
 		if (deserializer == null) {
 			return data;
 		}
 		else {
 			return deserializer.deserialize(topic, headers, data);
+		}
+	}
+
+	/*
+	 * Package for testing.
+	 */
+	@Nullable
+	Deserializer<? extends Object> trySerdes(String key) {
+		try {
+			Class<?> clazz = ClassUtils.forName(key, ClassUtils.getDefaultClassLoader());
+			Serde<? extends Object> serdeFrom = Serdes.serdeFrom(clazz);
+			Deserializer<? extends Object> deserializer = serdeFrom.deserializer();
+			deserializer.configure(this.autoConfigs, this.forKeys);
+			this.delegates.put(key, deserializer);
+			return deserializer;
+		}
+		catch (IllegalStateException | ClassNotFoundException | LinkageError e) {
+			this.delegates.put(key, Serdes.serdeFrom(byte[].class).deserializer());
+			return null;
 		}
 	}
 

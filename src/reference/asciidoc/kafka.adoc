@@ -3748,6 +3748,10 @@ Producers would then set the `DelegatingSerializer.SERIALIZATION_SELECTOR` heade
 
 This technique supports sending different types to the same topic (or different topics).
 
+NOTE: Starting with version 2.5.1, it is not necessary to set the header if the type (key or value) is one of the standard types supported by `Serdes` (`Long`, `Integer`, etc).
+Instead, the serializer will set the header to the class name of the type.
+It is not necessary to configure serializers or deserializers for these types, they will be created (once) dynamically.
+
 For another technique to send different types to different topics, see <<routing-template>>.
 
 [[retrying-deserialization]]

@@ -94,6 +94,12 @@ See <<string-serde>> for more information.
 The `JsonDeserializer` now has more flexibility to determine the deserialization type.
 See <<serdes-type-methods>> for more information.
 
+[[x25-delegate-serde]]
+==== Delegating Serializer/Deserializer
+
+The `DelegatingSerializer` can now handle "standard" types, when the outbound record has no header.
+See <<delegating-serialization>> for more information.
+
 [[x25-testing]]
 ==== Testing Changes
 
