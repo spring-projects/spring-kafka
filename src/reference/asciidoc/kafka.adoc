@@ -3720,11 +3720,11 @@ JsonDeserializer<Object> deser = new JsonDeserializer<>()
 ===== Delegating Serializer and Deserializer
 
 Version 2.3 introduced the `DelegatingSerializer` and `DelegatingDeserializer`, which allow producing and consuming records with different key and/or value types.
-Producers must set a header `DelegatingSerializer.SERIALIZATION_SELECTOR` to a selector value that is used to select which serializer to use; if a match is not found, an `IllegalStateException` is thrown.
+Producers must set a header `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR` to a selector value that is used to select which serializer to use for the value and `DelegatingSerializer.KEY_SERIALIZATION_SELECTOR` for the key; if a match is not found, an `IllegalStateException` is thrown.
 
-For incoming records, the deserializer uses the same header to select the deserializer to use; if a match is not found or the header is not present, the raw `byte[]` is returned.
+For incoming records, the deserializer uses the same headers to select the deserializer to use; if a match is not found or the header is not present, the raw `byte[]` is returned.
 
-You can configure the map of selector to `Serializer` / `Deserializer` via a constructor, or you can configure it via Kafka producer/consumer properties with the key `DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG`.
+You can configure the map of selector to `Serializer` / `Deserializer` via a constructor, or you can configure it via Kafka producer/consumer properties with the keys `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG` and `DelegatingSerializer.KEY_SERIALIZATION_SELECTOR_CONFIG`.
 For the serializer, the producer property can be a `Map<String, Object>` where the key is the selector and the value is a `Serializer` instance, a serializer `Class` or the class name.
 The property can also be a String of comma-delimited map entries, as shown below.
 
@@ -3736,19 +3736,19 @@ To configure using properties, use the following syntax:
 ====
 [source, java]
 ----
-producerProps.put(DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG,
+producerProps.put(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG,
     "thing1:com.example.MyThing1Serializer, thing2:com.example.MyThing2Serializer")
 
-consumerProps.put(DelegatingDeserializer.SERIALIZATION_SELECTOR_CONFIG,
+consumerProps.put(DelegatingDeserializer.VALUE_SERIALIZATION_SELECTOR_CONFIG,
     "thing1:com.example.MyThing1Deserializer, thing2:com.example.MyThing2Deserializer")
 ----
 ====
 
-Producers would then set the `DelegatingSerializer.SERIALIZATION_SELECTOR` header to `thing1` or `thing2`.
+Producers would then set the `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR` header to `thing1` or `thing2`.
 
 This technique supports sending different types to the same topic (or different topics).
 
-NOTE: Starting with version 2.5.1, it is not necessary to set the header if the type (key or value) is one of the standard types supported by `Serdes` (`Long`, `Integer`, etc).
+NOTE: Starting with version 2.5.1, it is not necessary to set the selector header, if the type (key or value) is one of the standard types supported by `Serdes` (`Long`, `Integer`, etc).
 Instead, the serializer will set the header to the class name of the type.
 It is not necessary to configure serializers or deserializers for these types, they will be created (once) dynamically.
 

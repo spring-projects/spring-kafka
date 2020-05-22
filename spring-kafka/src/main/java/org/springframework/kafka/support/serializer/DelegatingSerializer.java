@@ -47,15 +47,40 @@ public class DelegatingSerializer implements Serializer<Object> {
 	private static final LogAccessor LOGGER = new LogAccessor(DelegatingDeserializer.class);
 
 	/**
-	 * Name of the header containing the serialization selector.
+	 * Synonym for {@link #VALUE_SERIALIZATION_SELECTOR}.
+	 * @deprecated in favor of {@link #VALUE_SERIALIZATION_SELECTOR}.
 	 */
+	@Deprecated
 	public static final String SERIALIZATION_SELECTOR = "spring.kafka.serialization.selector";
 
 	/**
-	 * Name of the configuration property containing the serialization selector map with
-	 * format {@code selector:class,...}.
+	 * Name of the header containing the serialization selector for values.
 	 */
+	public static final String VALUE_SERIALIZATION_SELECTOR = "spring.kafka.serialization.selector";
+
+	/**
+	 * Name of the header containing the serialization selector for keys.
+	 */
+	public static final String KEY_SERIALIZATION_SELECTOR = "spring.kafka.key.serialization.selector";
+
+	/**
+	 * Synonym for {@link #VALUE_SERIALIZATION_SELECTOR_CONFIG}.
+	 * @deprecated in favor of {@link #VALUE_SERIALIZATION_SELECTOR_CONFIG}.
+	 */
+	@Deprecated
 	public static final String SERIALIZATION_SELECTOR_CONFIG = "spring.kafka.serialization.selector.config";
+
+	/**
+	 * Name of the configuration property containing the serialization selector map for
+	 * values with format {@code selector:class,...}.
+	 */
+	public static final String VALUE_SERIALIZATION_SELECTOR_CONFIG = "spring.kafka.serialization.selector.config";
+
+	/**
+	 * Name of the configuration property containing the serialization selector map for
+	 * keys with format {@code selector:class,...}.
+	 */
+	public static final String KEY_SERIALIZATION_SELECTOR_CONFIG = "spring.kafka.key.serialization.selector.config";
 
 	private final Map<String, Serializer<?>> delegates = new ConcurrentHashMap<>();
 
@@ -65,8 +90,8 @@ public class DelegatingSerializer implements Serializer<Object> {
 
 	/**
 	 * Construct an instance that will be configured in {@link #configure(Map, boolean)}
-	 * with a producer property
-	 * {@link DelegatingSerializer#SERIALIZATION_SELECTOR_CONFIG}.
+	 * with producer properties {@link #VALUE_SERIALIZATION_SELECTOR_CONFIG} and
+	 * {@link #KEY_SERIALIZATION_SELECTOR_CONFIG}.
 	 */
 	public DelegatingSerializer() {
 	}
@@ -74,8 +99,9 @@ public class DelegatingSerializer implements Serializer<Object> {
 	/**
 	 * Construct an instance with the supplied mapping of selectors to delegate
 	 * serializers. The selector must be supplied in the
-	 * {@link DelegatingSerializer#SERIALIZATION_SELECTOR} header. It is not necessary to
-	 * configure standard serializers supported by {@link Serdes}.
+	 * {@link #KEY_SERIALIZATION_SELECTOR} and/or {@link #VALUE_SERIALIZATION_SELECTOR}
+	 * headers. It is not necessary to configure standard serializers supported by
+	 * {@link Serdes}.
 	 * @param delegates the map of delegates.
 	 */
 	public DelegatingSerializer(Map<String, Serializer<?>> delegates) {
@@ -87,7 +113,8 @@ public class DelegatingSerializer implements Serializer<Object> {
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		this.autoConfigs.putAll(configs);
 		this.forKeys = isKey;
-		Object value = configs.get(SERIALIZATION_SELECTOR_CONFIG);
+		String configKey = configKey();
+		Object value = configs.get(configKey);
 		if (value == null) {
 			return;
 		}
@@ -103,7 +130,7 @@ public class DelegatingSerializer implements Serializer<Object> {
 					createInstanceAndConfigure(configs, isKey, this.delegates, selector, (String) serializer);
 				}
 				else {
-					throw new IllegalStateException(SERIALIZATION_SELECTOR_CONFIG
+					throw new IllegalStateException(configKey
 							+ " map entries must be Serializers or class names, not " + value.getClass());
 				}
 			});
@@ -113,8 +140,12 @@ public class DelegatingSerializer implements Serializer<Object> {
 		}
 		else {
 			throw new IllegalStateException(
-					SERIALIZATION_SELECTOR_CONFIG + " must be a map or String, not " + value.getClass());
+					configKey + " must be a map or String, not " + value.getClass());
 		}
+	}
+
+	private String configKey() {
+		return this.forKeys ? KEY_SERIALIZATION_SELECTOR_CONFIG : VALUE_SERIALIZATION_SELECTOR_CONFIG;
 	}
 
 	protected static Map<String, Serializer<?>> createDelegates(String mappings, Map<String, ?> configs,
@@ -173,19 +204,20 @@ public class DelegatingSerializer implements Serializer<Object> {
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
 		byte[] value = null;
-		Header header = headers.lastHeader(SERIALIZATION_SELECTOR);
+		String selectorKey = selectorKey();
+		Header header = headers.lastHeader(selectorKey);
 		if (header != null) {
 			value = header.value();
 		}
 		if (value == null) {
 			value = trySerdes(data);
 			if (value == null) {
-				throw new IllegalStateException("No '" + SERIALIZATION_SELECTOR
+				throw new IllegalStateException("No '" + selectorKey
 						+ "' header present and type (" + data.getClass().getName()
 						+ ") is not supported by Serdes");
 			}
 			try {
-				headers.add(new RecordHeader(SERIALIZATION_SELECTOR, value));
+				headers.add(new RecordHeader(selectorKey, value));
 			}
 			catch (IllegalStateException e) {
 				LOGGER.debug(e, () -> "Could not set header for type " + data.getClass());
@@ -196,9 +228,13 @@ public class DelegatingSerializer implements Serializer<Object> {
 		Serializer<Object> serializer = (Serializer<Object>) this.delegates.get(selector);
 		if (serializer == null) {
 			throw new IllegalStateException(
-					"No serializer found for '" + SERIALIZATION_SELECTOR + "' header with value '" + selector + "'");
+					"No serializer found for '" + selectorKey + "' header with value '" + selector + "'");
 		}
 		return serializer.serialize(topic, headers, data);
+	}
+
+	private String selectorKey() {
+		return this.forKeys ? KEY_SERIALIZATION_SELECTOR : VALUE_SERIALIZATION_SELECTOR;
 	}
 
 	/*
