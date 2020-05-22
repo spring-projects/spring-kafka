@@ -62,7 +62,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	 * Construct an instance that will be configured in {@link #configure(Map, boolean)}
 	 * with consumer properties
 	 * {@link DelegatingSerializer#KEY_SERIALIZATION_SELECTOR_CONFIG} and
-	 * {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR_CONFIG}
+	 * {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR_CONFIG}.
 	 */
 	public DelegatingDeserializer() {
 	}
