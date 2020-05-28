@@ -129,7 +129,9 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * original topic. The templates map keys are classes and the value the corresponding
 	 * template to use for objects (producer record values) of that type. A
 	 * {@link java.util.LinkedHashMap} is recommended when there is more than one
-	 * template, to ensure the map is traversed in order.
+	 * template, to ensure the map is traversed in order. To send records with a null
+	 * value, add a template with the {@link Void} class as a key; otherwise the first
+	 * template from the map values iterator will be used.
 	 * @param templates the {@link KafkaOperations}s to use for publishing.
 	 */
 	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaOperations<? extends Object, ? extends Object>> templates) {
@@ -143,7 +145,9 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * 0, no partition is set when publishing to the topic. The templates map keys are
 	 * classes and the value the corresponding template to use for objects (producer
 	 * record values) of that type. A {@link java.util.LinkedHashMap} is recommended when
-	 * there is more than one template, to ensure the map is traversed in order.
+	 * there is more than one template, to ensure the map is traversed in order. To send
+	 * records with a null value, add a template with the {@link Void} class as a key;
+	 * otherwise the first template from the map values iterator will be used.
 	 * @param templates the {@link KafkaOperations}s to use for publishing.
 	 * @param destinationResolver the resolving function.
 	 */
@@ -212,9 +216,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private KafkaOperations<Object, Object> findTemplateForValue(Object value) {
+	private KafkaOperations<Object, Object> findTemplateForValue(@Nullable Object value) {
 		if (this.template != null) {
 			return this.template;
+		}
+		if (value == null) {
+			KafkaOperations<?, ?> operations = this.templates.get(Void.class);
+			if (operations == null) {
+				return (KafkaOperations<Object, Object>) this.templates.values().iterator().next();
+			}
+			else {
+				return (KafkaOperations<Object, Object>) operations;
+			}
 		}
 		Optional<Class<?>> key = this.templates.keySet()
 			.stream()

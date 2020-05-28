@@ -29,6 +29,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -52,13 +54,14 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  */
 public class DeadLetterPublishingRecovererTests {
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void testTxNoTx() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		given(template.isTransactional()).willReturn(true);
 		given(template.inTransaction()).willReturn(false);
 		given(template.isAllowNonTransactional()).willReturn(true);
+		given(template.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		recoverer.accept(record, new RuntimeException());
@@ -66,12 +69,13 @@ public class DeadLetterPublishingRecovererTests {
 		verify(template).send(any(ProducerRecord.class));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void testTxExisting() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		given(template.isTransactional()).willReturn(true);
 		given(template.inTransaction()).willReturn(true);
+		given(template.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		recoverer.accept(record, new RuntimeException());
@@ -79,11 +83,12 @@ public class DeadLetterPublishingRecovererTests {
 		verify(template).send(any(ProducerRecord.class));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void testNonTx() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		given(template.isTransactional()).willReturn(false);
+		given(template.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		recoverer.accept(record, new RuntimeException());
@@ -103,6 +108,7 @@ public class DeadLetterPublishingRecovererTests {
 			((OperationsCallback) inv.getArgument(0)).doInOperations(template);
 			return null;
 		}).given(template).executeInTransaction(any());
+		given(template.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		recoverer.accept(record, new RuntimeException());
@@ -164,6 +170,36 @@ public class DeadLetterPublishingRecovererTests {
 		headers = captor.getValue().headers();
 		assertThat(headers.lastHeader(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
 		assertThat(headers.lastHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void tombstoneWithMultiTemplates() {
+		KafkaOperations<?, ?> template1 = mock(KafkaOperations.class);
+		given(template1.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
+		KafkaOperations<?, ?> template2 = mock(KafkaOperations.class);
+		Map<Class<?>, KafkaOperations<?, ?>> templates = new HashMap<>();
+		templates.put(String.class, template1);
+		templates.put(Integer.class, template2);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(templates);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		recoverer.accept(record, new RuntimeException());
+		verify(template1).send(any(ProducerRecord.class));
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void tombstoneWithMultiTemplatesExplicit() {
+		KafkaOperations<?, ?> template1 = mock(KafkaOperations.class);
+		KafkaOperations<?, ?> template2 = mock(KafkaOperations.class);
+		given(template2.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
+		Map<Class<?>, KafkaOperations<?, ?>> templates = new HashMap<>();
+		templates.put(String.class, template1);
+		templates.put(Void.class, template2);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(templates);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		recoverer.accept(record, new RuntimeException());
+		verify(template2).send(any(ProducerRecord.class));
 	}
 
 	private byte[] header(boolean isKey) {
