@@ -29,7 +29,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -178,7 +177,7 @@ public class DeadLetterPublishingRecovererTests {
 		KafkaOperations<?, ?> template1 = mock(KafkaOperations.class);
 		given(template1.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
 		KafkaOperations<?, ?> template2 = mock(KafkaOperations.class);
-		Map<Class<?>, KafkaOperations<?, ?>> templates = new HashMap<>();
+		Map<Class<?>, KafkaOperations<?, ?>> templates = new LinkedHashMap<>();
 		templates.put(String.class, template1);
 		templates.put(Integer.class, template2);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(templates);
@@ -193,7 +192,7 @@ public class DeadLetterPublishingRecovererTests {
 		KafkaOperations<?, ?> template1 = mock(KafkaOperations.class);
 		KafkaOperations<?, ?> template2 = mock(KafkaOperations.class);
 		given(template2.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
-		Map<Class<?>, KafkaOperations<?, ?>> templates = new HashMap<>();
+		Map<Class<?>, KafkaOperations<?, ?>> templates = new LinkedHashMap<>();
 		templates.put(String.class, template1);
 		templates.put(Void.class, template2);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(templates);

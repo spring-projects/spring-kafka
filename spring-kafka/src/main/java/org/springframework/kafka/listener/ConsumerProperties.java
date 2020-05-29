@@ -44,6 +44,8 @@ public class ConsumerProperties {
 	 */
 	public static final long DEFAULT_POLL_TIMEOUT = 5_000L;
 
+	private static final int DEFAULT_COMMIT_RETRIES = 3;
+
 	/**
 	 * Topic names.
 	 */
@@ -98,6 +100,8 @@ public class ConsumerProperties {
 	private Properties kafkaConsumerProperties = new Properties();
 
 	private Duration authorizationExceptionRetryInterval;
+
+	private int commitRetries = DEFAULT_COMMIT_RETRIES;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -346,6 +350,28 @@ public class ConsumerProperties {
 	 */
 	public void setAuthorizationExceptionRetryInterval(Duration authorizationExceptionRetryInterval) {
 		this.authorizationExceptionRetryInterval = authorizationExceptionRetryInterval;
+	}
+
+	/**
+	 * The number of retries allowed when a
+	 * {@link org.apache.kafka.clients.consumer.RetriableCommitFailedException} is thrown
+	 * by the consumer.
+	 * @return the number of retries.
+	 * @since 2.3.9
+	 */
+	public int getCommitRetries() {
+		return this.commitRetries;
+	}
+
+	/**
+	 * Set number of retries allowed when a
+	 * {@link org.apache.kafka.clients.consumer.RetriableCommitFailedException} is thrown
+	 * by the consumer. Default 3 (4 attempts total).
+	 * @param commitRetries the commitRetries.
+	 * @since 2.3.9
+	 */
+	public void setCommitRetries(int commitRetries) {
+		this.commitRetries = commitRetries;
 	}
 
 	@Override

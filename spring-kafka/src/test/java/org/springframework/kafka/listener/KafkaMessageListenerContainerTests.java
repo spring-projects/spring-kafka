@@ -66,6 +66,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.clients.consumer.RetriableCommitFailedException;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthorizationException;
@@ -3009,6 +3011,73 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.getAssignedPartitions()).hasSize(1);
 		container.stop();
+	}
+
+	@Test
+	void testCommitSyncRetries() throws Exception {
+		testCommitRetriesGuts(true);
+	}
+
+	@Test
+	void testCommitAsyncRetries() throws Exception {
+		testCommitRetriesGuts(false);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private void testCommitRetriesGuts(boolean sync) throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+		CountDownLatch latch = new CountDownLatch(4);
+		if (sync) {
+			willAnswer(i -> {
+				latch.countDown();
+				throw new RetriableCommitFailedException("");
+			}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
+		}
+		else {
+			willAnswer(i -> {
+				OffsetCommitCallback callback = i.getArgument(1);
+				callback.onComplete(i.getArgument(0), new RetriableCommitFailedException(""));
+				latch.countDown();
+				return null;
+			}).given(consumer).commitAsync(anyMap(), any());
+		}
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setSyncCommits(sync);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setIdleEventInterval(100L);
+		containerProps.setMessageListener((MessageListener) r -> {
+		});
+		containerProps.setMissingTopicsFatal(false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		if (sync) {
+			verify(consumer, times(4)).commitSync(any(), any());
+		}
+		else {
+			verify(consumer, times(4)).commitAsync(any(), any());
+		}
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {

@@ -52,6 +52,7 @@ import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.clients.consumer.RetriableCommitFailedException;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -60,6 +61,7 @@ import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
+import org.apache.kafka.common.errors.RetriableException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
@@ -1236,6 +1238,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * @param e the exception.
 		 */
 		protected void handleConsumerException(Exception e) {
+			if (e instanceof RetriableCommitFailedException) {
+				this.logger.error(e, "Commit retries exhausted");
+				return;
+			}
 			try {
 				if (!this.isBatchListener && this.errorHandler != null) {
 					this.errorHandler.handle(e, Collections.emptyList(), this.consumer,
@@ -1318,8 +1324,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				commitSync(commits);
 			}
 			else {
-				this.consumer.commitAsync(commits, this.commitCallback);
+				commitAsync(commits, 0);
 			}
+		}
+
+		private void commitAsync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
+			this.consumer.commitAsync(commits, (offsetsAttempted, exception) -> {
+				if (exception instanceof RetriableException && retries < this.containerProperties.getCommitRetries()) {
+					commitAsync(commits, retries + 1);
+				}
+				else {
+					this.commitCallback.onComplete(offsetsAttempted, exception);
+				}
+			});
 		}
 
 		private void invokeListener(final ConsumerRecords<K, V> records) {
@@ -1903,7 +1920,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						commitSync(offsetsToCommit);
 					}
 					else {
-						this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
+						commitAsync(offsetsToCommit, 0);
 					}
 				}
 				else {
@@ -2134,7 +2151,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						commitSync(commits);
 					}
 					else {
-						this.consumer.commitAsync(commits, this.commitCallback);
+						commitAsync(commits, 0);
 					}
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
@@ -2145,8 +2162,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void commitSync(Map<TopicPartition, OffsetAndMetadata> commits) {
+			doCommitSync(commits, 0);
+		}
+
+		private void doCommitSync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
 			try {
 				this.consumer.commitSync(commits, this.syncCommitTimeout);
+			}
+			catch (RetriableCommitFailedException e) {
+				if (retries >= this.containerProperties.getCommitRetries()) {
+					throw e;
+				}
+				doCommitSync(commits, retries + 1);
 			}
 			catch (RebalanceInProgressException e) {
 				this.logger.debug(e, "Non-fatal commit failure");
@@ -2459,13 +2486,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
 									containerProps.getSyncCommitTimeout());
 						}
-						catch (RebalanceInProgressException e) {
+						catch (RetriableCommitFailedException | RebalanceInProgressException e) {
 							// ignore since this is on assignment anyway
 						}
 					}
 					else {
-						ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,
-								containerProps.getCommitCallback());
+						commitAsync(offsetsToCommit, 0);
 					}
 				}
 			}
