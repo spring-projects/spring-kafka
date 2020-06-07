@@ -3352,7 +3352,7 @@ Received test
 
 Version 2.1.3 added `pause()` and `resume()` methods to listener containers.
 Previously, you could pause a consumer within a `ConsumerAwareMessageListener` and resume it by listening for a `ListenerContainerIdleEvent`, which provides access to the `Consumer` object.
-While you could pause a consumer in an idle container byi using an event listener, in some cases, this was not thread-safe, since there is no guarantee that the event listener is invoked on the consumer thread.
+While you could pause a consumer in an idle container by using an event listener, in some cases, this was not thread-safe, since there is no guarantee that the event listener is invoked on the consumer thread.
 To safely pause and resume consumers, you should use the `pause` and `resume` methods on the listener containers.
 A `pause()` takes effect just before the next `poll()`; a `resume()` takes effect just after the current `poll()` returns.
 When a container is paused, it continues to `poll()` the consumer, avoiding a rebalance if group management is being used, but it does not retrieve any records.
@@ -3640,7 +3640,7 @@ DefaultKafkaConsumerFactory<Integer, Cat1> cf = new DefaultKafkaConsumerFactory<
 
 Starting with version 2.5, you can now configure the deserializer, via properties, to invoke a method to determine the target type.
 If present, this will override any of the other techniques discussed above.
-This can be useful if the data is published by an application that does not use the Spring serializer and you need to deserializer to different types depending on the data, or other headers.
+This can be useful if the data is published by an application that does not use the Spring serializer and you need to deserialize to different types depending on the data, or other headers.
 Set these properties to the method name - a fully qualified class name followed by the method name, separated by a period `.`.
 The method must be declared as `public static`, have one of two signatures `(byte[] data, Headers headers)` or `(byte[] data)` and return a Jackson `JavaType`.
 
