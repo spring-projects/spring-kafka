@@ -42,6 +42,8 @@ public final class ListenerUtils {
 	private ListenerUtils() {
 	}
 
+	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
+
 	public static ListenerType determineListenerType(Object listener) {
 		Assert.notNull(listener, "Listener cannot be null");
 		ListenerType listenerType;
@@ -96,4 +98,32 @@ public final class ListenerUtils {
 		return null;
 	}
 
+	/**
+	 * Set to true to only log record metadata.
+	 * @param onlyMeta true to only log record metadata.
+	 * @since 2.2.14
+	 * @see #recordToString(ConsumerRecord)
+	 */
+	public static void setLogOnlyMetadata(boolean onlyMeta) {
+		LOG_METADATA_ONLY.set(onlyMeta);
+	}
+
+	/**
+	 * Return the {@link ConsumerRecord} as a String; either {@code toString()} or
+	 * {@code topic-partition@offset}.
+	 * @param record the record.
+	 * @return the rendered record.
+	 * @since 2.2.14
+	 * @see #setLogOnlyMetadata(boolean)
+	 */
+	public static String recordToString(ConsumerRecord<?, ?> record) {
+		if (Boolean.TRUE.equals(LOG_METADATA_ONLY.get())) {
+			return record.topic() + "-" + record.partition() + "@" + record.offset();
+		}
+		else {
+			return record.toString();
+		}
+	}
+
 }
+

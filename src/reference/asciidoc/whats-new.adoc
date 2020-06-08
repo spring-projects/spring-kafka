@@ -67,6 +67,9 @@ See <<error-handlers>> for more information.
 The `getAssignmentsByClientId()` method has been added, making it easier to determine which consumers in a concurrent container are assigned which partition(s).
 See <<container-props>> for more information.
 
+You can now suppress logging entire `ConsumerRecord` s in error, debug logs etc.
+See `onlyLogRecordMetadata` in <<container-props>>.
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 

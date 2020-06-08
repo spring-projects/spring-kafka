@@ -2241,6 +2241,11 @@ See `noPollThreshold` and `pollTimeout`.
 |Multiplied by `pollTimeOut` to determine whether to publish a `NonResponsiveConsumerEvent`.
 See `monitorInterval`.
 
+|onlyLogRecord
+Metadata
+|`false`
+|Set to true to show only the `topic-partition@offset` for a record instead of the whole consumer record (in error, debug logs etc).
+
 |pollTimeout
 |5000
 |The timeout passed into `Consumer.poll()`.

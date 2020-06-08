@@ -168,7 +168,8 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 			}
 			catch (Exception ex) {
 				if (records.size() > 0) {
-					this.logger.error(ex, () -> "Recovery of record (" + records.get(0) + ") failed");
+					this.logger.error(ex, () -> "Recovery of record ("
+							+ ListenerUtils.recordToString(records.get(0)) + ") failed");
 				}
 				return NEVER_SKIP_PREDICATE;
 			}

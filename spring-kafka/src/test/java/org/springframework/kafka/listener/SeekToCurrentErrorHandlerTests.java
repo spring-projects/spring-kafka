@@ -48,6 +48,7 @@ public class SeekToCurrentErrorHandlerTests {
 
 	@Test
 	public void testClassifier() {
+		ListenerUtils.setLogOnlyMetadata(true);
 		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
 		AtomicBoolean recovererShouldFail = new AtomicBoolean(false);
 		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler((r, t) -> {
