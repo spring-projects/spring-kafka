@@ -2940,13 +2940,15 @@ The consumer/producer `id` passed to the listener is added to the meter's tags w
 .An example of obtaining one of the Kafka metrics
 [source, java]
 ----
-double count =this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
+double count = this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
                 .tag("customTag", "customTagValue")
                 .tag("spring.id", "myProducerFactory.myClientId-1")
                 .functionCounter()
                 .count()
 ----
 ====
+
+A similar listener is provided for the `StreamsBuilderFactoryBean` - see <<streams-micrometer>>.
 
 [[transactions]]
 ==== Transactions

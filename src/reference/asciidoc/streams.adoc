@@ -141,6 +141,19 @@ Default no-op implementations are provided to avoid having to implement both met
 
 A `CompositeKafkaStreamsInfrastructureCustomizer` is provided, for when you need to apply multiple customizers.
 
+[[streams-micrometer]]
+==== KafkaStreams Micrometer Support
+
+Introduced in version 2.5.3, you can configure a `KafkaStreamsMicrometerListener` to automatically register micrometer meters for the `KafkaStreams` object managed by the factory bean:
+
+====
+[source, java]
+----
+streamsBuilderFactoryBean.setListener(new KafkaStreamsMicrometerListener(meterRegistry,
+        Collections.singletonList(new ImmutableTag("customTag", "customTagValue"))));
+----
+====
+
 [[serde]]
 ==== Streams JSON Serialization and Deserialization
 

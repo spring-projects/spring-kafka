@@ -27,6 +27,7 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 
+import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.log.LogAccessor;
@@ -52,7 +53,8 @@ import org.springframework.util.Assert;
  *
  * @since 1.1.4
  */
-public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder> implements SmartLifecycle {
+public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder>
+		implements SmartLifecycle, BeanNameAware {
 
 	/**
 	 * The default {@link Duration} of {@code 10 seconds} for close timeout.
@@ -95,6 +97,10 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private Topology topology;
 
+	private Listener listener = new Listener() { };
+
+	private String beanName;
+
 	/**
 	 * Default constructor that creates the factory without configuration
 	 * {@link Properties}. It is the factory user's responsibility to properly set
@@ -127,6 +133,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public StreamsBuilderFactoryBean(KafkaStreamsConfiguration streamsConfig) {
 		this(streamsConfig, new CleanupConfig());
+	}
+
+	@Override
+	public void setBeanName(String name) {
+		this.beanName = name;
 	}
 
 	/**
@@ -183,8 +194,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Specify the timeout in seconds for the {@link KafkaStreams#close(Duration)} operation.
-	 * Defaults to {@link #DEFAULT_CLOSE_TIMEOUT} seconds.
+	 * Specify the timeout in seconds for the {@link KafkaStreams#close(Duration)}
+	 * operation. Defaults to {@link #DEFAULT_CLOSE_TIMEOUT} seconds.
 	 * @param closeTimeout the timeout for close in seconds.
 	 * @see KafkaStreams#close(Duration)
 	 */
@@ -193,7 +204,19 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Providing access to the associated {@link Topology} of this {@link StreamsBuilderFactoryBean}.
+	 * Set a {@link Listener} which will be called after starting and stopping the
+	 * streams.
+	 * @param listener the listener.
+	 * @since 2.5.3
+	 */
+	public void setListener(Listener listener) {
+		Assert.notNull(listener, "'listener' cannot be null");
+		this.listener = listener;
+	}
+
+	/**
+	 * Providing access to the associated {@link Topology} of this
+	 * {@link StreamsBuilderFactoryBean}.
 	 * @return {@link Topology} object
 	 * @since 2.4.4
 	 */
@@ -274,6 +297,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 					this.kafkaStreams.cleanUp();
 				}
 				this.kafkaStreams.start();
+				this.listener.streamsAdded(this.beanName, this.kafkaStreams);
 				this.running = true;
 			}
 			catch (Exception e) {
@@ -291,6 +315,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 					if (this.cleanupConfig.cleanupOnStop()) {
 						this.kafkaStreams.cleanUp();
 					}
+					this.listener.streamsRemoved(this.beanName, this.kafkaStreams);
 					this.kafkaStreams = null;
 				}
 			}
@@ -306,6 +331,32 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	@Override
 	public synchronized boolean isRunning() {
 		return this.running;
+	}
+
+	/**
+	 * Called whenever a {@link KafkaStreams} is added or removed.
+	 *
+	 * @since 2.5.3
+	 *
+	 */
+	public interface Listener {
+
+		/**
+		 * A new {@link KafkaStreams} was created.
+		 * @param id the streams id (factory bean name).
+		 * @param streams the streams;
+		 */
+		default void streamsAdded(String id, KafkaStreams streams) {
+		}
+
+		/**
+		 * An existing {@link KafkaStreams} was removed.
+		 * @param id the streams id (factory bean name).
+		 * @param streams the streams;
+		 */
+		default void streamsRemoved(String id, KafkaStreams streams) {
+		}
+
 	}
 
 }

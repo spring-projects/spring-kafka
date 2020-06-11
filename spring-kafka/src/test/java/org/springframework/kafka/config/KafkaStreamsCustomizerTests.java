@@ -45,10 +45,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
+import org.springframework.kafka.streams.KafkaStreamsMicrometerListener;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import io.micrometer.core.instrument.ImmutableTag;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
  * @author Nurettin Yilmaz
@@ -71,6 +76,9 @@ public class KafkaStreamsCustomizerTests {
 	@Autowired
 	private KafkaStreamsConfig config;
 
+	@Autowired
+	private MeterRegistry meterRegistry;
+
 	@Test
 	public void testKafkaStreamsCustomizer(@Autowired KafkaStreamsConfiguration configuration,
 			@Autowired KafkaStreamsConfig config) {
@@ -86,6 +94,18 @@ public class KafkaStreamsCustomizerTests {
 				.isEqualTo(1000);
 		assertThat(this.config.builderConfigured.get()).isTrue();
 		assertThat(this.config.topologyConfigured.get()).isTrue();
+		assertThat(this.meterRegistry.get("kafka.consumer.coordinator.join.total")
+				.tag("customTag", "stream")
+				.tag("spring.id", KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
+				.functionCounter()
+				.count())
+					.isGreaterThanOrEqualTo(0);
+		assertThat(this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
+				.tag("customTag", "stream")
+				.tag("spring.id", KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
+				.functionCounter()
+				.count())
+					.isGreaterThanOrEqualTo(0);
 	}
 
 	@Configuration
@@ -99,6 +119,12 @@ public class KafkaStreamsCustomizerTests {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
+
+		@SuppressWarnings("unchecked")
+		@Bean
+		public MeterRegistry meterRegistry() {
+			return new SimpleMeterRegistry();
+		}
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 		public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder() {
@@ -123,6 +149,8 @@ public class KafkaStreamsCustomizerTests {
 				}
 
 			});
+			streamsBuilderFactoryBean.setListener(new KafkaStreamsMicrometerListener(meterRegistry(),
+					Collections.singletonList(new ImmutableTag("customTag", "stream"))));
 			return streamsBuilderFactoryBean;
 		}
 
