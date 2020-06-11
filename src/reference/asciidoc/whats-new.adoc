@@ -15,6 +15,13 @@ See <<factory-listeners>> for more information.
 You can now change bootstrap server properties at runtime, enabling failover to another Kafka cluster.
 See <<connecting>> for more information.
 
+[[x25-streams-listeners]]
+==== `StreamsBuilderFactoryBean` Changes
+
+The factory bean can now invoke a callback whenever a `KafkaStreams` created or destroyed.
+An Implementation for native Micrometer metrics is provided.
+See <<streams-micrometer>> for more information.
+
 [[x25-kafka-client]]
 ==== Kafka Client Version
 
