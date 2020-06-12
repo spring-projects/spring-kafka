@@ -20,7 +20,7 @@ To build and install jars into your local Maven cache:
 
     ./gradlew install
 
-To build api Javadoc (results will be in `build/api`):
+To build API Javadoc (results will be in `build/api`):
 
     ./gradlew api
 
@@ -67,7 +67,7 @@ Here are some ways for you to get involved in the community:
 
 Before we accept a non-trivial patch or pull request we will need you to sign the [contributor's agreement](https://support.springsource.com/spring_committer_signup).
 Signing the contributor's agreement does not grant anyone commit rights to the main repository, but it does mean that we can accept your contributions, and you will get an author credit if we do.
- Active contributors might be asked to join the core team, and given the ability to merge pull requests.
+ Active contributors might be asked to join the core team and given the ability to merge pull requests.
 
 ## Code Conventions and Housekeeping
 None of these is essential for a pull request, but they will all help.
@@ -79,7 +79,7 @@ None of these is essential for a pull request, but they will all help.
 * Add yourself as an @author to the .java files that you modify substantially (more than cosmetic changes).
 * Add some Javadocs and, if you change the namespace, some XSD doc elements.
 * A few unit tests would help a lot as well - someone has to do it.
-* If no-one else is using your branch, please rebase it against the current master (or other target branch in the main project).
+* If no-one else is using your branch, please rebase it against the current master (or another target branch in the main project).
 
 # License
 
@@ -88,5 +88,5 @@ Spring Kafka is released under the terms of the Apache Software License Version 
 # Code of Conduct
 
 This project adheres to the Contributor Covenant [code of conduct](./CODE_OF_CONDUCT.adoc).
-By participating, you  are expected to uphold this code. Please report unacceptable behavior to
+By participating, you are expected to uphold this code. Please report unacceptable behavior to
 spring-code-of-conduct@pivotal.io.
