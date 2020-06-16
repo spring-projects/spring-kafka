@@ -3649,12 +3649,12 @@ Starting with version 2.5, you can now configure the deserializer, via propertie
 If present, this will override any of the other techniques discussed above.
 This can be useful if the data is published by an application that does not use the Spring serializer and you need to deserialize to different types depending on the data, or other headers.
 Set these properties to the method name - a fully qualified class name followed by the method name, separated by a period `.`.
-The method must be declared as `public static`, have one of two signatures `(byte[] data, Headers headers)` or `(byte[] data)` and return a Jackson `JavaType`.
+The method must be declared as `public static`, have one of three signatures `(String topic, byte[] data, Headers headers)`, `(byte[] data, Headers headers)` or `(byte[] data)` and return a Jackson `JavaType`.
 
 * `JsonDeserializer.KEY_TYPE_METHOD` : `spring.json.key.type.method`
 * `JsonDeserializer.VALUE_TYPE_METHOD` : `spring.json.value.type.method`
 
-You can use arbitrary headers or introspecting the data to determine the type.
+You can use arbitrary headers or introspect the data to determine the type.
 
 ====
 .Example
@@ -3677,6 +3677,23 @@ public static JavaType thingOneOrThingTwo(byte[] data, Headers headers) {
 ====
 
 For more sophisticated data introspection consider using `JsonPath` or similar but, the simpler the test to determine the type, the more efficient the process will be.
+
+The following is an example of creating the deserializer programmatically (when providing the consumer factory with the deserializer in the constructor):
+
+====
+[source, java]
+----
+JsonDeserializer<Object> deser = new JsonDeserializer<>()
+        .trustedPackages("*")
+        .typeResolver(SomeClass::thing1Thing2JavaTypeForTopic);
+
+...
+
+public static JavaType thing1Thing2JavaTypeForTopic(String topic, byte[] data, Headers headers) {
+    ...
+}
+----
+====
 
 ====== Programmatic Construction
 

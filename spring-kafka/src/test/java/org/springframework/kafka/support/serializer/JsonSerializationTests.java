@@ -296,10 +296,39 @@ public class JsonSerializationTests {
 	}
 
 	@Test
+	void testTypeResolverViaProperties() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		Map<String, Object> props = new HashMap<>();
+		props.put(JsonDeserializer.KEY_TYPE_METHOD, getClass().getName() + ".stringTypeForTopic");
+		props.put(JsonDeserializer.VALUE_TYPE_METHOD, getClass().getName() + ".fooBarJavaTypeForTopic");
+		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+		deser.configure(props, false);
+		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
+		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
+				.isInstanceOf(Bar.class);
+
+		deser.configure(props, true);
+		assertThat(deser.deserialize("", new RecordHeaders(), "\"foo\"".getBytes()))
+				.isEqualTo("foo");
+		deser.close();
+	}
+
+	@Test
 	void testTypeFunctionDirect() {
 		JsonDeserializer<Object> deser = new JsonDeserializer<>()
 				.trustedPackages("*")
 				.typeFunction(JsonSerializationTests::fooBarJavaType);
+		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
+		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
+				.isInstanceOf(Bar.class);
+		deser.close();
+	}
+
+	@Test
+	void testTypeResolverDirect() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>()
+				.trustedPackages("*")
+				.typeResolver(JsonSerializationTests::fooBarJavaTypeForTopic);
 		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
 		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
 				.isInstanceOf(Bar.class);
@@ -315,7 +344,20 @@ public class JsonSerializationTests {
 		}
 	}
 
+	public static JavaType fooBarJavaTypeForTopic(String topic, byte[] data, Headers headers) {
+		if (data[0] == '{' && data[1] == 'f') {
+			return TypeFactory.defaultInstance().constructType(Foo.class);
+		}
+		else {
+			return TypeFactory.defaultInstance().constructType(Bar.class);
+		}
+	}
+
 	public static JavaType stringType(byte[] data, Headers headers) {
+		return TypeFactory.defaultInstance().constructType(String.class);
+	}
+
+	public static JavaType stringTypeForTopic(String topic, byte[] data, Headers headers) {
 		return TypeFactory.defaultInstance().constructType(String.class);
 	}
 
