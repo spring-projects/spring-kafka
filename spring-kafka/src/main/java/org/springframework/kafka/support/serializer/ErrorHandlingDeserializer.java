@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,9 +141,9 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 			try {
 				Object value = configs.get(configKey);
 				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
-				this.delegate = setupDelegate(clazz.newInstance());
+				this.delegate = setupDelegate(clazz.getDeclaredConstructor().newInstance());
 			}
-			catch (ClassNotFoundException | LinkageError | InstantiationException | IllegalAccessException e) {
+			catch (Exception e) {
 				throw new IllegalStateException(e);
 			}
 		}
@@ -163,9 +163,10 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
 				Assert.isTrue(Function.class.isAssignableFrom(clazz), "'function' must be a 'Function ', not a "
 						+ clazz.getName());
-				this.failedDeserializationFunction = (Function<FailedDeserializationInfo, T>) clazz.newInstance();
+				this.failedDeserializationFunction = (Function<FailedDeserializationInfo, T>)
+						clazz.getDeclaredConstructor().newInstance();
 			}
-			catch (ClassNotFoundException | LinkageError | InstantiationException | IllegalAccessException e) {
+			catch (Exception e) {
 				throw new IllegalStateException(e);
 			}
 		}

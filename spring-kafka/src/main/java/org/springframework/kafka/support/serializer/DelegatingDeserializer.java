@@ -148,11 +148,11 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 			Map<String, Deserializer<?>> delegateMap, String selector, Class<?> clazz) {
 
 		try {
-			Deserializer<?> delegate = (Deserializer<?>) clazz.newInstance();
+			Deserializer<?> delegate = (Deserializer<?>) clazz.getDeclaredConstructor().newInstance();
 			delegate.configure(configs, isKey);
 			delegateMap.put(selector.trim(), delegate);
 		}
-		catch (InstantiationException | IllegalAccessException e) {
+		catch (Exception e) {
 			throw new IllegalArgumentException(e);
 		}
 	}

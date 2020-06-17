@@ -71,8 +71,11 @@ public class RecordMessagingMessageListenerAdapterTests {
 		for (Method method : declaredMethods) {
 			if (method.getName().equals("defListen")) {
 				defMethod = method;
+				methods.add(method);
 			}
-			methods.add(method);
+			else if (method.getName().equals("listen")) {
+				methods.add(method);
+			}
 		}
 		TestMultiClass bean = new TestMultiClass();
 		MultiMethodKafkaListenerEndpoint<Object, Object> endpoint = new MultiMethodKafkaListenerEndpoint<>(methods,

@@ -177,11 +177,11 @@ public class DelegatingSerializer implements Serializer<Object> {
 			Map<String, Serializer<?>> delegateMap, String selector, Class<?> clazz) {
 
 		try {
-			Serializer<?> delegate = (Serializer<?>) clazz.newInstance();
+			Serializer<?> delegate = (Serializer<?>) clazz.getDeclaredConstructor().newInstance();
 			delegate.configure(configs, isKey);
 			delegateMap.put(selector.trim(), delegate);
 		}
-		catch (InstantiationException | IllegalAccessException e) {
+		catch (Exception e) {
 			throw new IllegalArgumentException(e);
 		}
 	}
