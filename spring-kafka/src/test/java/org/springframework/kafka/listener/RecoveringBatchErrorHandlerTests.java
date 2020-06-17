@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -56,12 +57,14 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.MessagingException;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
+ * @author Myeonghyeon Lee
  * @since 2.5
  *
  */
@@ -127,6 +130,44 @@ public class RecoveringBatchErrorHandlerTests {
 					new BatchListenerFailedException("", 2)), records, mockConsumer, null))
 				.withMessageStartingWith("Seek to current after exception");
 		verify(mockConsumer).seek(tp, 0L);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void wrappedBatchListenerFailedException() {
+		Consumer mockConsumer = mock(Consumer.class);
+		InOrder inOrder = inOrder(mockConsumer);
+
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		ContainerProperties containerProperties = mock(ContainerProperties.class);
+		given(container.getContainerProperties()).willReturn(containerProperties);
+		given(containerProperties.isSyncCommits()).willReturn(true);
+
+		Duration syncCommitTimeout = Duration.ofMillis(1000);
+		given(containerProperties.getSyncCommitTimeout()).willReturn(syncCommitTimeout);
+
+		RecoveringBatchErrorHandler beh = new RecoveringBatchErrorHandler(new FixedBackOff(0, 0));
+		TopicPartition tp = new TopicPartition("foo", 0);
+		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
+			Arrays.asList(
+				new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"),
+				new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "bar"),
+				new ConsumerRecord("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "baz"))
+		));
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			beh.handle(new ListenerExecutionFailedException("", new MessagingException("",
+					new BatchListenerFailedException("", 1))), records, mockConsumer, container)
+		);
+
+		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
+		offsets.put(tp, new OffsetAndMetadata(1L));
+		inOrder.verify(mockConsumer).commitSync(offsets, syncCommitTimeout);
+
+		inOrder.verify(mockConsumer).seek(tp, 2);
+
+		offsets = new LinkedHashMap<>();
+		offsets.put(tp, new OffsetAndMetadata(2L));
+		inOrder.verify(mockConsumer).commitSync(offsets, syncCommitTimeout);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

@@ -20,9 +20,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -47,6 +49,7 @@ import org.springframework.util.backoff.BackOff;
  * this handler's {@link BackOff}. If the record is recovered, its offset is committed.
  *
  * @author Gary Russell
+ * @author Myeonghyeon Lee
  * @since 2.5
  *
  */
@@ -103,16 +106,16 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		Throwable cause = thrownException.getCause();
-		if (!(cause instanceof BatchListenerFailedException)) {
-			this.logger.debug(cause, "Expected a BatchListenerFailedException; re-seeking batch");
+		BatchListenerFailedException batchListenerFailedException = getBatchListenerFailedException(thrownException);
+		if (batchListenerFailedException == null) {
+			this.logger.debug(thrownException, "Expected a BatchListenerFailedException; re-seeking batch");
 			this.fallbackHandler.handle(thrownException, data, consumer, container);
 		}
 		else {
-			ConsumerRecord<?, ?> record = ((BatchListenerFailedException) cause).getRecord();
-			int index = record != null ? findIndex(data, record) : ((BatchListenerFailedException) cause).getIndex();
+			ConsumerRecord<?, ?> record = batchListenerFailedException.getRecord();
+			int index = record != null ? findIndex(data, record) : batchListenerFailedException.getIndex();
 			if (index < 0 || index >= data.count()) {
-				this.logger.warn(cause, () -> String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
+				this.logger.warn(batchListenerFailedException, () -> String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
 						record.topic(), record.partition(), record.offset()));
 				this.fallbackHandler.handle(thrownException, data, consumer, container);
 			}
@@ -191,4 +194,24 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 		}
 	}
 
+	private BatchListenerFailedException getBatchListenerFailedException(Throwable throwable) {
+		if (throwable == null || throwable instanceof BatchListenerFailedException) {
+			return (BatchListenerFailedException) throwable;
+		}
+
+		BatchListenerFailedException target = null;
+
+		Set<Throwable> checked = new HashSet<>();
+		while (throwable.getCause() != null && !checked.contains(throwable.getCause())) {
+			throwable = throwable.getCause();
+			checked.add(throwable);
+
+			if (throwable instanceof BatchListenerFailedException) {
+				target = (BatchListenerFailedException) throwable;
+				break;
+			}
+		}
+
+		return target;
+	}
 }
