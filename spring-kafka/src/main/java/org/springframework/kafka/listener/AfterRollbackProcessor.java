@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+
+import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 
 /**
  * Invoked by a listener container with remaining, unprocessed, records
@@ -55,8 +57,36 @@ public interface AfterRollbackProcessor<K, V> {
 	 * @param recoverable the recoverable.
 	 * @since 2.2
 	 * @see #isProcessInTransaction()
+	 * @deprecated in favor of {@link #process(List, Consumer, Exception, boolean,
+	 * EOSMode)}.
 	 */
+	@Deprecated
 	void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception, boolean recoverable);
+
+	/**
+	 * Process the remaining records. Recoverable will be true if the container is
+	 * processing individual records; this allows the processor to recover (skip) the
+	 * failed record rather than re-seeking it. This is not possible with a batch listener
+	 * since only the listener itself knows which record in the batch keeps failing.
+	 * IMPORTANT: If invoked in a transaction when the listener was invoked with a single
+	 * record, the transaction id will be based on the container group.id and the
+	 * topic/partition of the failed record, to avoid issues with zombie fencing (unless
+	 * the {@link EOSMode} is {@link EOSMode#BETA}). So, generally, only its offset should
+	 * be sent to the transaction. For other behavior the process method should manage its
+	 * own transaction.
+	 * @param records the records.
+	 * @param consumer the consumer.
+	 * @param exception the exception
+	 * @param recoverable the recoverable.
+	 * @param eosMode the {@link EOSMode}.
+	 * @since 2.5.3
+	 * @see #isProcessInTransaction()
+	 */
+	default void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
+			boolean recoverable, EOSMode eosMode) {
+
+		process(records, consumer, exception, recoverable);
+	}
 
 	/**
 	 * Optional method to clear thread state; will be called just before a consumer
@@ -68,13 +98,13 @@ public interface AfterRollbackProcessor<K, V> {
 	}
 
 	/**
-	 * Return true to invoke {@link #process(List, Consumer, Exception, boolean)} in a new
-	 * transaction. Because the container cannot infer the desired behavior, the processor
-	 * is responsible for sending the offset to the transaction if it decides to skip the
-	 * failing record.
+	 * Return true to invoke {@link #process(List, Consumer, Exception, boolean, EOSMode)}
+	 * in a new transaction. Because the container cannot infer the desired behavior, the
+	 * processor is responsible for sending the offset to the transaction if it decides to
+	 * skip the failing record.
 	 * @return true to run in a transaction; default false.
 	 * @since 2.2.5
-	 * @see #process(List, Consumer, Exception, boolean)
+	 * @see #process(List, Consumer, Exception, boolean, EOSMode)
 	 */
 	default boolean isProcessInTransaction() {
 		return false;

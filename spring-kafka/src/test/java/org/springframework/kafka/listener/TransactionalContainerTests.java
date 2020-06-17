@@ -571,7 +571,7 @@ public class TransactionalContainerTests {
 		consumer.close();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Test
 	public void testMaxFailures() throws Exception {
 		logger.info("Start testMaxFailures");
@@ -619,9 +619,7 @@ public class TransactionalContainerTests {
 
 		};
 		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
-				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 2L)));
-		afterRollbackProcessor.setCommitRecovered(true);
-		afterRollbackProcessor.setKafkaOperations(dlTemplate);
+				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 2L), dlTemplate, true));
 		container.setAfterRollbackProcessor(afterRollbackProcessor);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
@@ -666,7 +664,8 @@ public class TransactionalContainerTests {
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(afterRollbackProcessor, times(4)).isProcessInTransaction();
 		ArgumentCaptor<Exception> captor = ArgumentCaptor.forClass(Exception.class);
-		verify(afterRollbackProcessor, times(4)).process(any(), any(), captor.capture(), anyBoolean());
+		verify(afterRollbackProcessor, never()).process(any(), any(), captor.capture(), anyBoolean());
+		verify(afterRollbackProcessor, times(4)).process(any(), any(), captor.capture(), anyBoolean(), any());
 		assertThat(captor.getValue()).isInstanceOf(ListenerExecutionFailedException.class)
 				.extracting(ex -> ((ListenerExecutionFailedException) ex).getGroupId())
 				.isEqualTo("groupInARBP");
@@ -794,7 +793,7 @@ public class TransactionalContainerTests {
 		inOrder.verifyNoMoreInteractions();
 		assertThat(deliveryCount.get()).isEqualTo(1);
 
-		verify(arp, never()).process(any(), any(), any(), anyBoolean());
+		verify(arp, never()).process(any(), any(), any(), anyBoolean(), any());
 
 		container.stop();
 	}
