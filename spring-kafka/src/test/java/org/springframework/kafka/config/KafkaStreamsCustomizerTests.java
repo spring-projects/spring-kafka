@@ -149,7 +149,7 @@ public class KafkaStreamsCustomizerTests {
 				}
 
 			});
-			streamsBuilderFactoryBean.setListener(new KafkaStreamsMicrometerListener(meterRegistry(),
+			streamsBuilderFactoryBean.addListener(new KafkaStreamsMicrometerListener(meterRegistry(),
 					Collections.singletonList(new ImmutableTag("customTag", "stream"))));
 			return streamsBuilderFactoryBean;
 		}

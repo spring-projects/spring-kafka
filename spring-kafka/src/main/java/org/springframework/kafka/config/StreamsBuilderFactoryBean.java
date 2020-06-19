@@ -17,6 +17,9 @@
 package org.springframework.kafka.config;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 import org.apache.commons.logging.LogFactory;
@@ -74,6 +77,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private final CleanupConfig cleanupConfig;
 
+	private final List<Listener> listeners = new ArrayList<>();
+
 	private KafkaStreamsInfrastructureCustomizer infrastructureCustomizer = new KafkaStreamsInfrastructureCustomizer() {
 	};
 
@@ -96,8 +101,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private volatile boolean running;
 
 	private Topology topology;
-
-	private Listener listener = new Listener() { };
 
 	private String beanName;
 
@@ -204,17 +207,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Set a {@link Listener} which will be called after starting and stopping the
-	 * streams.
-	 * @param listener the listener.
-	 * @since 2.5.3
-	 */
-	public void setListener(Listener listener) {
-		Assert.notNull(listener, "'listener' cannot be null");
-		this.listener = listener;
-	}
-
-	/**
 	 * Providing access to the associated {@link Topology} of this
 	 * {@link StreamsBuilderFactoryBean}.
 	 * @return {@link Topology} object
@@ -250,6 +242,36 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public KafkaStreams getKafkaStreams() {
 		return this.kafkaStreams;
+	}
+
+	/**
+	 * Get the current list of listeners.
+	 * @return the listeners.
+	 * @since 2.5.3
+	 */
+	public List<Listener> getListeners() {
+		return Collections.unmodifiableList(this.listeners);
+	}
+
+	/**
+	 * Add a {@link Listener} which will be called after starting and stopping the
+	 * streams.
+	 * @param listener the listener.
+	 * @since 2.5.3
+	 */
+	public void addListener(Listener listener) {
+		Assert.notNull(listener, "'listener' cannot be null");
+		this.listeners.add(listener);
+	}
+
+	/**
+	 * Remove a listener.
+	 * @param listener the listener.
+	 * @return true if removed.
+	 * @since 2.5.3
+	 */
+	public boolean removeListener(Listener listener) {
+		return this.listeners.remove(listener);
 	}
 
 	@Override
@@ -297,7 +319,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 					this.kafkaStreams.cleanUp();
 				}
 				this.kafkaStreams.start();
-				this.listener.streamsAdded(this.beanName, this.kafkaStreams);
+				this.listeners.forEach(listener -> listener.streamsAdded(this.beanName, this.kafkaStreams));
 				this.running = true;
 			}
 			catch (Exception e) {
@@ -315,7 +337,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 					if (this.cleanupConfig.cleanupOnStop()) {
 						this.kafkaStreams.cleanUp();
 					}
-					this.listener.streamsRemoved(this.beanName, this.kafkaStreams);
+					this.listeners.forEach(listener -> listener.streamsRemoved(this.beanName, this.kafkaStreams));
 					this.kafkaStreams = null;
 				}
 			}
