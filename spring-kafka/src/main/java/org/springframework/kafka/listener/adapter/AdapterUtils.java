@@ -20,6 +20,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.expression.ParserContext;
+import org.springframework.expression.common.TemplateParserContext;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.lang.Nullable;
 
 /**
@@ -30,6 +33,12 @@ import org.springframework.lang.Nullable;
  *
  */
 public final class AdapterUtils {
+
+	/**
+	 * Parser context for runtime SpEL using ! as the template prefix.
+	 * @since 2.2.15
+	 */
+	public static final ParserContext PARSER_CONTEXT = new TemplateParserContext("!{", "}");
 
 	private AdapterUtils() {
 	}
@@ -65,6 +74,16 @@ public final class AdapterUtils {
 		return new ConsumerRecordMetadata(new RecordMetadata(new TopicPartition(record.topic(), record.partition()),
 				0, record.offset(), record.timestamp(), null, record.serializedKeySize(),
 				record.serializedValueSize()), record.timestampType());
+	}
+
+	/**
+	 * Return the default expression when no SendTo value is present.
+	 * @return the expression.
+	 * @since 2.2.15
+	 */
+	public static String getDefaultReplyTopicExpression() {
+		return PARSER_CONTEXT.getExpressionPrefix() + "source.headers['"
+				+ KafkaHeaders.REPLY_TOPIC + "']" + PARSER_CONTEXT.getExpressionSuffix();
 	}
 
 }

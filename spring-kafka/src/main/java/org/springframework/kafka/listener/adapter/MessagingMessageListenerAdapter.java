@@ -39,9 +39,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.expression.Expression;
-import org.springframework.expression.ParserContext;
 import org.springframework.expression.common.LiteralExpression;
-import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
@@ -83,8 +81,6 @@ import org.springframework.util.StringUtils;
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
 
 	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
-
-	private static final ParserContext PARSER_CONTEXT = new TemplateParserContext("!{", "}");
 
 	/**
 	 * Message used when no conversion is needed.
@@ -201,11 +197,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	public void setReplyTopic(String replyTopicParam) {
 		String replyTopic = replyTopicParam;
 		if (!StringUtils.hasText(replyTopic)) {
-			replyTopic = PARSER_CONTEXT.getExpressionPrefix() + "source.headers['"
-					+ KafkaHeaders.REPLY_TOPIC + "']" + PARSER_CONTEXT.getExpressionSuffix();
+			replyTopic = AdapterUtils.getDefaultReplyTopicExpression();
 		}
-		if (replyTopic.contains(PARSER_CONTEXT.getExpressionPrefix())) {
-			this.replyTopicExpression = PARSER.parseExpression(replyTopic, PARSER_CONTEXT);
+		if (replyTopic.contains(AdapterUtils.PARSER_CONTEXT.getExpressionPrefix())) {
+			this.replyTopicExpression = PARSER.parseExpression(replyTopic, AdapterUtils.PARSER_CONTEXT);
 		}
 		else {
 			this.replyTopicExpression = new LiteralExpression(replyTopic);

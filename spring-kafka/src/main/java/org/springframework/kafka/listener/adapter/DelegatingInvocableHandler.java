@@ -34,8 +34,6 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.Expression;
-import org.springframework.expression.ParserContext;
-import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.KafkaUtils;
@@ -60,8 +58,6 @@ import org.springframework.util.Assert;
 public class DelegatingInvocableHandler {
 
 	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
-
-	private static final ParserContext PARSER_CONTEXT = new TemplateParserContext("!{", "}");
 
 	private final List<InvocableHandlerMethod> handlers;
 
@@ -205,16 +201,20 @@ public class DelegatingInvocableHandler {
 	private void setupReplyTo(InvocableHandlerMethod handler) {
 		String replyTo = null;
 		Method method = handler.getMethod();
+		SendTo ann = null;
 		if (method != null) {
-			SendTo ann = AnnotationUtils.getAnnotation(method, SendTo.class);
+			ann = AnnotationUtils.getAnnotation(method, SendTo.class);
 			replyTo = extractSendTo(method.toString(), ann);
 		}
-		if (replyTo == null) {
-			SendTo ann = AnnotationUtils.getAnnotation(this.bean.getClass(), SendTo.class);
+		if (ann == null) {
+			ann = AnnotationUtils.getAnnotation(this.bean.getClass(), SendTo.class);
 			replyTo = extractSendTo(this.getBean().getClass().getSimpleName(), ann);
 		}
+		if (ann != null && replyTo == null) {
+			replyTo = AdapterUtils.getDefaultReplyTopicExpression();
+		}
 		if (replyTo != null) {
-			this.handlerSendTo.put(handler, PARSER.parseExpression(replyTo, PARSER_CONTEXT));
+			this.handlerSendTo.put(handler, PARSER.parseExpression(replyTo, AdapterUtils.PARSER_CONTEXT));
 		}
 		this.handlerReturnsMessage.put(handler, KafkaUtils.returnTypeMessageOrCollectionOf(method));
 	}
