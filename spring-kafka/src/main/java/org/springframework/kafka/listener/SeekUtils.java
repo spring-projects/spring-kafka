@@ -174,7 +174,7 @@ public final class SeekUtils {
 				}
 			}
 			else {
-				logger.warn(() -> "'commitRecovered' ignored, container AckMode must be MANUAL_IMMEDIATE, not "
+				logger.debug(() -> "'commitRecovered' ignored, container AckMode must be MANUAL_IMMEDIATE, not "
 						+ container.getContainerProperties().getAckMode());
 			}
 		}

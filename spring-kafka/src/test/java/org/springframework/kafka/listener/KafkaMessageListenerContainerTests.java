@@ -3081,6 +3081,51 @@ public class KafkaMessageListenerContainerTests {
 		}
 	}
 
+	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	void commitAfterHandleManual() throws InterruptedException {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setAckMode(AckMode.MANUAL);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setIdleEventInterval(100L);
+		containerProps.setMessageListener((MessageListener) r -> {
+			throw new RuntimeException("test");
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		AtomicBoolean recovered = new AtomicBoolean();
+		CountDownLatch latch = new CountDownLatch(1);
+		container.setErrorHandler(new SeekToCurrentErrorHandler((rec, ex) -> {
+					recovered.set(true);
+					latch.countDown();
+				},
+				new FixedBackOff(0, 0)));
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		assertThat(recovered.get()).isTrue();
+		verify(consumer).commitSync(any(), any());
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer =
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class);

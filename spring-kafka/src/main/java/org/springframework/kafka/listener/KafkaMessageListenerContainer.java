@@ -578,6 +578,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean producerPerConsumerPartition;
 
+		private boolean commitRecovered;
+
 		private volatile boolean consumerPaused;
 
 		private volatile Thread consumerThread;
@@ -1794,7 +1796,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					invokeErrorHandler(record, iterator, e);
 					if ((!acked && !this.autoCommit && this.errorHandler.isAckAfterHandle())
 							|| this.producer != null) {
+						if (this.isManualAck) {
+							this.commitRecovered = true;
+						}
 						ackCurrent(record);
+						if (this.isManualAck) {
+							this.commitRecovered = false;
+						}
 					}
 				}
 				catch (KafkaException ke) {
@@ -1932,7 +1940,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.acks.add(record);
 				}
 			}
-			else if (this.producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
+			else if (this.producer != null
+					|| ((!this.isAnyManualAck || this.commitRecovered) && !this.autoCommit)) {
 				this.acks.add(record);
 			}
 			if (this.producer != null) {
