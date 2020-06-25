@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -118,6 +119,11 @@ public class KafkaTemplateTests {
 	void testTemplate() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		AtomicBoolean ppCalled = new AtomicBoolean();
+		pf.addPostProcessor(prod -> {
+			ppCalled.set(true);
+			return prod;
+		});
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 
 		template.setDefaultTopic(INT_KEY_TOPIC);
@@ -160,6 +166,7 @@ public class KafkaTemplateTests {
 		assertThat(partitions).isNotNull();
 		assertThat(partitions).hasSize(2);
 		pf.destroy();
+		assertThat(ppCalled.get()).isTrue();
 	}
 
 	@Test

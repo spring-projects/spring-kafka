@@ -78,6 +78,8 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	private final List<Listener<K, V>> listeners = new ArrayList<>();
 
+	private final List<ConsumerPostProcessor<K, V>> postProcessors = new ArrayList<>();
+
 	private Supplier<Deserializer<K>> keyDeserializerSupplier;
 
 	private Supplier<Deserializer<V>> valueDeserializerSupplier;
@@ -165,8 +167,14 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @return the listeners.
 	 * @since 2.5
 	 */
+	@Override
 	public List<Listener<K, V>> getListeners() {
 		return Collections.unmodifiableList(this.listeners);
+	}
+
+	@Override
+	public List<ConsumerPostProcessor<K, V>> getPostProcessors() {
+		return Collections.unmodifiableList(this.postProcessors);
 	}
 
 	/**
@@ -174,6 +182,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @param listener the listener.
 	 * @since 2.5
 	 */
+	@Override
 	public void addListener(Listener<K, V> listener) {
 		Assert.notNull(listener, "'listener' cannot be null");
 		this.listeners.add(listener);
@@ -185,6 +194,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @param listener the listener.
 	 * @since 2.5
 	 */
+	@Override
 	public void addListener(int index, Listener<K, V> listener) {
 		Assert.notNull(listener, "'listener' cannot be null");
 		if (index >= this.listeners.size()) {
@@ -195,12 +205,24 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		}
 	}
 
+	@Override
+	public void addPostProcessor(ConsumerPostProcessor<K, V> postProcessor) {
+		Assert.notNull(postProcessor, "'postProcessor' cannot be null");
+		this.postProcessors.add(postProcessor);
+	}
+
+	@Override
+	public boolean removePostProcessor(ConsumerPostProcessor<K, V> postProcessor) {
+		return this.postProcessors.remove(postProcessor);
+	}
+
 	/**
 	 * Remove a listener.
 	 * @param listener the listener.
 	 * @return true if removed.
 	 * @since 2.5
 	 */
+	@Override
 	public boolean removeListener(Listener<K, V> listener) {
 		return this.listeners.remove(listener);
 	}
@@ -300,6 +322,9 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 			for (Listener<K, V> listener : this.listeners) {
 				listener.consumerAdded(id, kafkaConsumer);
 			}
+		}
+		for (ConsumerPostProcessor<K, V> pp : this.postProcessors) {
+			pp.apply(kafkaConsumer);
 		}
 		return kafkaConsumer;
 	}

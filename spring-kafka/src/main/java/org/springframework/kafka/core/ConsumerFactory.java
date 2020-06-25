@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -134,6 +136,72 @@ public interface ConsumerFactory<K, V> {
 	@Nullable
 	default Deserializer<V> getValueDeserializer() {
 		return null;
+	}
+
+	/**
+	 * Remove a listener.
+	 * @param listener the listener.
+	 * @return true if removed.
+	 * @since 2.5.3
+	 */
+	default boolean removeListener(Listener<K, V> listener) {
+		return false;
+	}
+
+	/**
+	 * Add a listener at a specific index.
+	 * @param index the index (list position).
+	 * @param listener the listener.
+	 * @since 2.5.3
+	 */
+	default void addListener(int index, Listener<K, V> listener) {
+
+	}
+
+	/**
+	 * Add a listener.
+	 * @param listener the listener.
+	 * @since 2.5.3
+	 */
+	default void addListener(Listener<K, V> listener) {
+
+	}
+
+	/**
+	 * Get the current list of listeners.
+	 * @return the listeners.
+	 * @since 2.5.3
+	 */
+	default List<Listener<K, V>> getListeners() {
+		return Collections.emptyList();
+	}
+
+	/**
+	 * Add a post processor.
+	 * @param postProcessor the post processor.
+	 * @since 2.5.3
+	 */
+	default void addPostProcessor(ConsumerPostProcessor<K, V> postProcessor) {
+
+	}
+
+	/**
+	 * Remove a post processor.
+	 * @param postProcessor the post processor.
+	 * @return true if removed.
+	 * @since 2.5.3
+	 */
+	default boolean removePostProcessor(ConsumerPostProcessor<K, V> postProcessor) {
+		return false;
+	}
+
+	/**
+	 * Get the current list of post processors.
+	 * @return the post processor.
+	 * @since 2.5.3
+	 */
+	default List<ConsumerPostProcessor<K, V>> getPostProcessors() {
+		return Collections.emptyList();
 	}
 
 	/**

@@ -132,6 +132,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private final List<Listener<K, V>> listeners = new ArrayList<>();
 
+	private final List<ProducerPostProcessor<K, V>> postProcessors = new ArrayList<>();
+
 	private Supplier<Serializer<K>> keySerializerSupplier;
 
 	private Supplier<Serializer<V>> valueSerializerSupplier;
@@ -337,8 +339,14 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @return the listeners.
 	 * @since 2.5
 	 */
+	@Override
 	public List<Listener<K, V>> getListeners() {
 		return Collections.unmodifiableList(this.listeners);
+	}
+
+	@Override
+	public List<ProducerPostProcessor<K, V>> getPostProcessors() {
+		return Collections.unmodifiableList(this.postProcessors);
 	}
 
 	/**
@@ -346,6 +354,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @param listener the listener.
 	 * @since 2.5
 	 */
+	@Override
 	public void addListener(Listener<K, V> listener) {
 		Assert.notNull(listener, "'listener' cannot be null");
 		this.listeners.add(listener);
@@ -357,6 +366,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @param listener the listener.
 	 * @since 2.5
 	 */
+	@Override
 	public void addListener(int index, Listener<K, V> listener) {
 		Assert.notNull(listener, "'listener' cannot be null");
 		if (index >= this.listeners.size()) {
@@ -373,8 +383,20 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @return true if removed.
 	 * @since 2.5
 	 */
+	@Override
 	public boolean removeListener(Listener<K, V> listener) {
 		return this.listeners.remove(listener);
+	}
+
+	@Override
+	public void addPostProcessor(ProducerPostProcessor<K, V> postProcessor) {
+		Assert.notNull(postProcessor, "'postProcessor' cannot be null");
+		this.postProcessors.add(postProcessor);
+	}
+
+	@Override
+	public boolean removePostProcessor(ProducerPostProcessor<K, V> postProcessor) {
+		return this.postProcessors.remove(postProcessor);
 	}
 
 	/**
@@ -642,7 +664,10 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	protected Producer<K, V> createRawProducer(Map<String, Object> rawConfigs) {
-		return new KafkaProducer<>(rawConfigs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
+		KafkaProducer<K, V> kafkaProducer =
+				new KafkaProducer<>(rawConfigs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
+		this.postProcessors.forEach(pp -> pp.apply(kafkaProducer));
+		return kafkaProducer;
 	}
 
 	@Nullable

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -334,6 +335,11 @@ public class DefaultKafkaConsumerFactoryTests {
 		KafkaTemplate<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache1Group", "false", this.embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		AtomicBoolean ppCalled = new AtomicBoolean();
+		cf.addPostProcessor(consumer -> {
+			ppCalled.set(true);
+			return consumer;
+		});
 		ContainerProperties containerProps = new ContainerProperties("txCache1");
 		CountDownLatch latch = new CountDownLatch(1);
 		containerProps.setMessageListener((MessageListener<Integer, String>) r -> {
@@ -360,6 +366,7 @@ public class DefaultKafkaConsumerFactoryTests {
 			pf.destroy();
 			pfTx.destroy();
 		}
+		assertThat(ppCalled.get()).isTrue();
 	}
 
 	@SuppressWarnings("unchecked")
