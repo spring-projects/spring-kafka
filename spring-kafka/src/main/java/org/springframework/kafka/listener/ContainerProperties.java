@@ -706,7 +706,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @since 2.5.4
 	 */
 	public void setTransactionDefinition(TransactionDefinition transactionDefinition) {
- 		this.transactionDefinition = transactionDefinition;
+		this.transactionDefinition = transactionDefinition;
 	}
 
 	@Override
