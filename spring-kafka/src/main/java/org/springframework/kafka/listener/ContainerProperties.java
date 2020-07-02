@@ -29,6 +29,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.util.Assert;
 
 /**
@@ -239,6 +240,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean deliveryAttemptHeader;
 
 	private EOSMode eosMode;
+
+	private TransactionDefinition transactionDefinition;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -680,6 +683,30 @@ public class ContainerProperties extends ConsumerProperties {
 		if (this.eosMode.equals(EOSMode.BETA) && this.subBatchPerPartition == null) {
 			this.subBatchPerPartition = false;
 		}
+	}
+
+	/**
+	 * Get the transaction definition.
+	 * @return the definition.
+	 * @since 2.5.4
+	 */
+	@Nullable
+	public TransactionDefinition getTransactionDefinition() {
+		return this.transactionDefinition;
+	}
+
+	/**
+	 * Set a transaction definition with properties (e.g. timeout) that will be copied to
+	 * the container's transaction template. Note that this is only generally useful when
+	 * used with a
+	 * {@link org.springframework.kafka.transaction.ChainedKafkaTransactionManager}
+	 * configured with a non-Kafka transaction manager. Kafka has no concept of
+	 * transaction timeout, for example.
+	 * @param transactionDefinition the definition.
+	 * @since 2.5.4
+	 */
+	public void setTransactionDefinition(TransactionDefinition transactionDefinition) {
+ 		this.transactionDefinition = transactionDefinition;
 	}
 
 	@Override

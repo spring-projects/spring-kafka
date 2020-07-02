@@ -64,6 +64,7 @@ import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
@@ -99,6 +100,7 @@ import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -787,9 +789,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.producerPerConsumerPartition =
 						this.kafkaTxManager.getProducerFactory().isProducerPerConsumerPartition();
 			}
-			return this.transactionManager != null
-					? new TransactionTemplate(this.transactionManager)
-					: null;
+			if (this.transactionManager != null) {
+				TransactionTemplate template = new TransactionTemplate(this.transactionManager);
+				TransactionDefinition definition = this.containerProperties.getTransactionDefinition();
+				Assert.state(definition == null
+						|| definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED
+						|| definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+						"Transaction propagation behavior must be REQUIRED or REQUIRES_NEW");
+				if (definition != null) {
+					BeanUtils.copyProperties(definition, template);
+				}
+				return template;
+			}
+			else {
+				return null;
+			}
 		}
 
 		private boolean determineAutoCommit(Properties consumerProperties) {

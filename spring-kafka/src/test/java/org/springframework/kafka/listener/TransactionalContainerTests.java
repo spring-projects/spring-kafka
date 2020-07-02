@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -100,6 +101,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.util.backoff.FixedBackOff;
 import org.springframework.util.concurrent.SettableListenableFuture;
@@ -775,6 +777,10 @@ public class TransactionalContainerTests {
 				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
 		props.setTransactionManager(tm);
+		DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+		def.setTimeout(42);
+		def.setName("myTx");
+		props.setTransactionDefinition(def);
 		AtomicInteger deliveryCount = new AtomicInteger();
 		props.setMessageListener((MessageListener) m -> {
 			deliveryCount.incrementAndGet();
@@ -795,7 +801,15 @@ public class TransactionalContainerTests {
 
 		verify(arp, never()).process(any(), any(), any(), anyBoolean(), any());
 
+		assertThat(KafkaTestUtils.getPropertyValue(container,
+				"listenerConsumer.transactionTemplate.timeout", Integer.class))
+				.isEqualTo(42);
+		assertThat(KafkaTestUtils.getPropertyValue(container,
+				"listenerConsumer.transactionTemplate.name", String.class))
+				.isEqualTo("myTx");
 		container.stop();
+		def.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
+		assertThatIllegalStateException().isThrownBy(container::start);
 	}
 
 	@SuppressWarnings("serial")

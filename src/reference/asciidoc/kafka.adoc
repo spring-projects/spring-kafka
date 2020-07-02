@@ -3052,6 +3052,10 @@ You should chain your transaction managers in the desired order and provide the 
 
 See <<ex-jdbc-sync>> for an example application that synchronizes JDBC and Kafka transactions.
 
+Starting with version 2.5.4, you can configure a `TransactionDefinition` in the `ContainerProperties`; its properties will be copied to the container's `TransactionTemplate` used to start transactions.
+This allows, for example, setting a transaction timeout for other transaction managers within the `ChainedKafkaTransactionManager`.
+It does not, however, make sense to set a propagation behavior because the container would always need to start a new transaction; anything other than `REQUIRED` or `REQUIRES_NEW` will be rejected.
+
 ===== `KafkaTemplate` Local Transactions
 
 You can use the `KafkaTemplate` to execute a series of operations within a local transaction.
