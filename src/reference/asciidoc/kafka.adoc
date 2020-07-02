@@ -2279,6 +2279,11 @@ topicPartitions
 |The configured topics, topic pattern or explicitly assigned topics/partitions.
 Mutually exclusive; at least one must be provided; enforced by `ContainerProperties` constructors.
 
+|transaction
+Definition
+|`null`
+|Set transaction properties; see <<chained-transaction-manager>> for more information.
+
 |transactionManager
 |`null`
 |See <<transactions>>.
