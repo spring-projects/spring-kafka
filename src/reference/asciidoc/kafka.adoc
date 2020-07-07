@@ -549,7 +549,7 @@ public class KRequestingApplication {
     @Bean
     public ReplyingKafkaTemplate<String, String, String> replyingTemplate(
             ProducerFactory<String, String> pf,
-            ConcurrentMessageListenerContainer<Long, String> repliesContainer) {
+            ConcurrentMessageListenerContainer<String, String> repliesContainer) {
 
         return new ReplyingKafkaTemplate<>(pf, repliesContainer);
     }
