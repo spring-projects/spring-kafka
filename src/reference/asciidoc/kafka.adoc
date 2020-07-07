@@ -133,7 +133,7 @@ private KafkaAdmin admin;
 
 ...
 
-    AdminClient client = AdminClient.create(admin.getConfig());
+    AdminClient client = AdminClient.create(admin.getConfigurationProperties());
     ...
     client.close();
 ----
