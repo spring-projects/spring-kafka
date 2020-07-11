@@ -36,6 +36,8 @@ import io.micrometer.core.instrument.Timer.Sample;
  */
 public final class MicrometerHolder {
 
+	private static final String NONE_EXCEPTION_METERS_KEY = "none";
+
 	private final Map<String, Timer> meters = new ConcurrentHashMap<>();
 
 	private final MeterRegistry registry;
@@ -69,7 +71,7 @@ public final class MicrometerHolder {
 		this.tags = tags;
 		if (registries.size() == 1) {
 			this.registry = registries.values().iterator().next();
-			buildTimer("none");
+			buildTimer(NONE_EXCEPTION_METERS_KEY);
 		}
 		else {
 			throw new IllegalStateException("No micrometer registry present (or more than one)");
@@ -86,11 +88,14 @@ public final class MicrometerHolder {
 
 	/**
 	 * Record success.
-	 * @param sample ths sample.
+	 * @param sample the sample.
 	 * @see #start()
 	 */
 	public void success(Object sample) {
-		((Sample) sample).stop(this.meters.get("none"));
+		Timer timer = this.meters.get(NONE_EXCEPTION_METERS_KEY);
+		if (timer != null) {
+			((Sample) sample).stop(timer);
+		}
 	}
 
 	/**
@@ -111,10 +116,10 @@ public final class MicrometerHolder {
 		Builder builder = Timer.builder(this.timerName)
 			.description(this.timerDesc)
 			.tag("name", this.name)
-			.tag("result", exception.equals("none") ? "success" : "failure")
+			.tag("result", exception.equals(NONE_EXCEPTION_METERS_KEY) ? "success" : "failure")
 			.tag("exception", exception);
 		if (this.tags != null && !this.tags.isEmpty()) {
-			this.tags.forEach((key, value) -> builder.tag(key, value));
+			this.tags.forEach(builder::tag);
 		}
 		Timer registeredTimer = builder.register(this.registry);
 		this.meters.put(exception, registeredTimer);
