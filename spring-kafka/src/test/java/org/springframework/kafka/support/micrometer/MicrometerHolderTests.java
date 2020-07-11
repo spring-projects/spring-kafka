@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collections;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,10 +42,10 @@ public class MicrometerHolderTests {
 		MeterRegistry meterRegistry = new SimpleMeterRegistry();
 		ApplicationContext ctx = mock(ApplicationContext.class);
 		Timer.Sample sample = mock(Timer.Sample.class);
-		given(ctx.getBeansOfType(any(), anyBoolean(), anyBoolean())).willReturn(Map.of("registry", meterRegistry));
+		given(ctx.getBeansOfType(any(), anyBoolean(), anyBoolean())).willReturn(Collections.singletonMap("registry", meterRegistry));
 
 		MicrometerHolder micrometerHolder = new MicrometerHolder(ctx, "holderName",
-				"timerName", "timerDesc", Map.of("tagKey", "tagValue"));
+				"timerName", "timerDesc", Collections.emptyMap());
 		Map<String, Timer> meters = (Map<String, Timer>) ReflectionTestUtils.getField(micrometerHolder, "meters");
 		assertThat(meters).hasSize(1);
 
