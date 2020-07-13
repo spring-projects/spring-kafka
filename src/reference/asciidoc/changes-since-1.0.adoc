@@ -48,7 +48,7 @@ When a replying listener returns an `Iterable` this property controls whether th
 See <<annotation-send-to>> for more information
 
 Batch listeners can now be configured with a `BatchToRecordAdapter`; this allows, for example, the batch to be processed in a transaction while the listener gets one record at a time.
-With the default implementation, a `ConsumerRecordRecoverer` can be used to handle errors within the batch, without aborting the entire batch - this might be useful when using transactions.
+With the default implementation, a `ConsumerRecordRecoverer` can be used to handle errors within the batch, without stopping the entire batch - this might be useful when using transactions.
 See <<transactions-batch>> for more information.
 
 ==== Kafka Streams
@@ -239,7 +239,7 @@ See <<container-factory>> for more information.
 A new container property (`missingTopicsFatal`) has been added.
 See <<kafka-container>> for more information.
 
-A `ConsumerStoppedEvent` is now emitted when a consumer terminates.
+A `ConsumerStoppedEvent` is now emitted when a consumer stops.
 See <<thread-safety>> for more information.
 
 Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` object instead of a `List<ConsumerRecord<?, ?>`.

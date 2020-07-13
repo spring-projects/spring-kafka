@@ -2439,7 +2439,7 @@ An error message is also logged when this condition occurs.
 * `ConsumerStoppingEvent`: published by each consumer just before stopping.
 * `ConsumerStoppedEvent`: published after the consumer is closed.
 See <<thread-safety>>.
-* `ContainerStoppedEvent`: published when all consumers have terminated.
+* `ContainerStoppedEvent`: published when all consumers have stopped.
 
 IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
 If you change the multicaster to use an async executor, you must not invoke any `Consumer` methods when the event contains a reference to the consumer.
@@ -2533,7 +2533,7 @@ To solve this issue, the container publishes a `NonResponsiveConsumerEvent` if a
 By default, this check is performed once every 30 seconds in each container.
 You can modify this behavior by setting the `monitorInterval` (default 30 seconds) and `noPollThreshold` (default 3.0) properties in the `ContainerProperties` when configuring the listener container.
 The `noPollThreshold` should be greater than `1.0` to avoid getting spurious events due to a race condition.
-Receiving such an event lets you stop the containers, thus waking the consumer so that it can terminate.
+Receiving such an event lets you stop the containers, thus waking the consumer so that it can stop.
 
 ====== Event Consumption
 
@@ -3120,7 +3120,7 @@ See <<after-rollback>> for more information.
 
 When using a batch listener, version 2.4.2 introduced an alternative mechanism to deal with failures while processing a batch; the `BatchToRecordAdapter`.
 When a container factory with `batchListener` set to true is configured with a `BatchToRecordAdapter`, the listener is invoked with one record at a time.
-This enables error handling within the batch, while still allowing to abort the entire batch, depending on the exception type.
+This enables error handling within the batch, while still making it possible to stop the entire batch, depending on the exception type.
 A default `BatchToRecordAdapter` is provided, that can be configured with a standard `ConsumerRecordRecoverer` such as the `DeadLetterPublishingRecoverer`.
 The following test case configuration snippet illustrates how to use this feature:
 
