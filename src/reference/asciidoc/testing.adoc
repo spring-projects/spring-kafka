@@ -142,6 +142,9 @@ public class MyTests {
 ----
 ====
 
+By default, `addTopics` will throw an exception when problems arise (such as adding a topic that already exists).
+Version 2.6 added a new version of that method that returns a `Map<String, Exception>`; the key is the topic name and the value is `null` for success, or an `Exception` for a failure.
+
 ==== Using the Same Brokers for Multiple Test Classes
 
 There is no built-in support for doing so, but you can use the same broker for multiple test classes with something similar to the following:
