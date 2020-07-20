@@ -2090,7 +2090,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (timestampSeeks != null) {
 				Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = this.consumer
 						.offsetsForTimes(timestampSeeks);
-				offsetsForTimes.forEach((tp, ot) -> this.consumer.seek(tp, ot.offset()));
+
+				for (TopicPartition tp : offsetsForTimes.keySet()) {
+					OffsetAndTimestamp ot = offsetsForTimes.get(tp);
+					if (ot != null) {
+						this.consumer.seek(tp, ot.offset());
+					}
+				}
 			}
 		}
 
