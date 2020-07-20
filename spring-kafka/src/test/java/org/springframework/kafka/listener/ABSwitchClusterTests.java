@@ -91,6 +91,7 @@ public class ABSwitchClusterTests {
 
 				@Override
 				protected Consumer<Object, Object> createRawConsumer(Map<String, Object> configProps) {
+					@SuppressWarnings("unchecked")
 					Consumer<Object, Object> consumer = mock(Consumer.class);
 					willAnswer(inv -> {
 						Thread.sleep(100);

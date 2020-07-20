@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,6 +61,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
@@ -760,9 +762,22 @@ public class EnableKafkaIntegrationTests {
 	@Test
 	public void testAddingTopics() {
 		int count = this.embeddedKafka.getTopics().size();
-		this.embeddedKafka.addTopics("testAddingTopics");
+		Map<String, Exception> results = this.embeddedKafka.addTopicsWithResults("testAddingTopics");
+		assertThat(results).hasSize(1);
+		assertThat(results.keySet().iterator().next()).isEqualTo("testAddingTopics");
+		assertThat(results.get("testAddingTopics")).isNull();
 		assertThat(this.embeddedKafka.getTopics().size()).isEqualTo(count + 1);
-		this.embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1));
+		results = this.embeddedKafka.addTopicsWithResults("testAddingTopics");
+		assertThat(results).hasSize(1);
+		assertThat(results.keySet().iterator().next()).isEqualTo("testAddingTopics");
+		assertThat(results.get("testAddingTopics"))
+				.isInstanceOf(ExecutionException.class)
+				.hasCauseInstanceOf(TopicExistsException.class);
+		assertThat(this.embeddedKafka.getTopics().size()).isEqualTo(count + 1);
+		results = this.embeddedKafka.addTopicsWithResults(new NewTopic("morePartitions", 10, (short) 1));
+		assertThat(results).hasSize(1);
+		assertThat(results.keySet().iterator().next()).isEqualTo("morePartitions");
+		assertThat(results.get("morePartitions")).isNull();
 		assertThat(this.embeddedKafka.getTopics().size()).isEqualTo(count + 2);
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> this.embeddedKafka.addTopics(new NewTopic("morePartitions", 10, (short) 1)))

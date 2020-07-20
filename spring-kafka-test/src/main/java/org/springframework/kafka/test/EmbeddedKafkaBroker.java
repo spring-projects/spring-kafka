@@ -22,6 +22,7 @@ import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,8 +34,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -418,21 +422,99 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	/**
+	 * Add topics to the existing broker(s) using the configured number of partitions.
+	 * The broker(s) must be running.
+	 * @param topicsToAdd the topics.
+	 * @return the results; null values indicate success.
+	 * @since 2.5.4
+	 */
+	public Map<String, Exception> addTopicsWithResults(String... topicsToAdd) {
+		Assert.notNull(this.zookeeper, "Broker must be started before this method can be called");
+		HashSet<String> set = new HashSet<>(Arrays.asList(topicsToAdd));
+		this.topics.addAll(set);
+		return createKafkaTopicsWithResults(set);
+	}
+
+	/**
+	 * Add topics to the existing broker(s) and returning a map of results.
+	 * The broker(s) must be running.
+	 * @param topicsToAdd the topics.
+	 * @return the results; null values indicate success.
+	 * @since 2.5.4
+	 */
+	public Map<String, Exception> addTopicsWithResults(NewTopic... topicsToAdd) {
+		Assert.notNull(this.zookeeper, "Broker must be started before this method can be called");
+		for (NewTopic topic : topicsToAdd) {
+			Assert.isTrue(this.topics.add(topic.name()), () -> "topic already exists: " + topic);
+			Assert.isTrue(topic.replicationFactor() <= this.count
+							&& (topic.replicasAssignments() == null
+							|| topic.replicasAssignments().size() <= this.count),
+					() -> "Embedded kafka does not support the requested replication factor: " + topic);
+		}
+
+		return doWithAdminFunction(admin -> createTopicsWithResults(admin, Arrays.asList(topicsToAdd)));
+	}
+
+	/**
+	 * Create topics in the existing broker(s) using the configured number of partitions
+	 * and returning a map of results.
+	 * @param topicsToCreate the topics.
+	 * @return the results; null values indicate success.
+	 * @since 2.5.4
+	 */
+	private Map<String, Exception> createKafkaTopicsWithResults(Set<String> topicsToCreate) {
+		return doWithAdminFunction(admin -> {
+			return createTopicsWithResults(admin,
+					topicsToCreate.stream()
+						.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
+						.collect(Collectors.toList()));
+		});
+	}
+
+	private Map<String, Exception> createTopicsWithResults(AdminClient admin, List<NewTopic> newTopics) {
+		CreateTopicsResult createTopics = admin.createTopics(newTopics);
+		Map<String, Exception> results = new HashMap<>();
+		createTopics.values()
+				.entrySet()
+				.stream()
+				.map(entry -> {
+					Exception result;
+					try {
+						entry.getValue().get(this.adminTimeout.getSeconds(), TimeUnit.SECONDS);
+						result = null;
+					}
+					catch (InterruptedException | ExecutionException | TimeoutException e) {
+						result = e;
+					}
+					return new SimpleEntry<>(entry.getKey(), result);
+				})
+				.forEach(entry -> results.put(entry.getKey(), entry.getValue()));
+		return results;
+	}
+
+	/**
 	 * Create an {@link AdminClient}; invoke the callback and reliably close the admin.
 	 * @param callback the callback.
 	 */
 	public void doWithAdmin(java.util.function.Consumer<AdminClient> callback) {
 		Map<String, Object> adminConfigs = new HashMap<>();
 		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
-		AdminClient admin = null;
-		try {
-			admin = AdminClient.create(adminConfigs);
+		try (AdminClient admin = AdminClient.create(adminConfigs)) {
 			callback.accept(admin);
 		}
-		finally {
-			if (admin != null) {
-				admin.close(this.adminTimeout);
-			}
+	}
+
+	/**
+	 * Create an {@link AdminClient}; invoke the callback and reliably close the admin.
+	 * @param callback the callback.
+	 * @return a map of results.
+	 * @since 2.5.4
+	 */
+	public <T> T doWithAdminFunction(Function<AdminClient, T> callback) {
+		Map<String, Object> adminConfigs = new HashMap<>();
+		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokersAsString());
+		try (AdminClient admin = AdminClient.create(adminConfigs)) {
+			return callback.apply(admin);
 		}
 	}
 
