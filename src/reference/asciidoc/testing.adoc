@@ -260,7 +260,7 @@ The following example sets the `topics`, `brokerProperties`, and `brokerProperti
 @EmbeddedKafka(topics = { "any-topic", "${kafka.topics.another-topic}" },
         brokerProperties = { "log.dir=${kafka.broker.logs-dir}",
                             "listeners=PLAINTEXT://localhost:${kafka.broker.port}",
-                            "auto.create.topics.enable=${kafka.broker.topics-enable:true}" }
+                            "auto.create.topics.enable=${kafka.broker.topics-enable:true}" },
         brokerPropertiesLocation = "classpath:/broker.properties")
 ----
 ====
