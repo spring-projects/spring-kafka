@@ -589,6 +589,9 @@ public class KRequestingApplication {
 
 Note that we can use Boot's auto-configured container factory to create the reply container.
 
+If a non-trivial deserializer is being used for replies, consider using an <<error-handling-deserializer,`ErrorHandlingDeserializer`>> that delegates to your configured deserializer.
+When so configured, the `RequestReplyFuture` will be completed exceptionally and you can catch the `ExecutionException`, with the `DeserializationException` in its `cause` property.
+
 The template sets a header (named `KafkaHeaders.CORRELATION_ID` by default), which must be echoed back by the server side.
 
 In this case, the following `@KafkaListener` application responds:
@@ -770,6 +773,11 @@ The real `ConsumerRecord` s in the `Collection` contain the actual topic(s) from
 IMPORTANT: The listener container for the replies MUST be configured with `AckMode.MANUAL` or `AckMode.MANUAL_IMMEDIATE`; the consumer property `enable.auto.commit` must be `false` (the default since version 2.3).
 To avoid any possibility of losing messages, the template only commits offsets when there are zero requests outstanding, i.e. when the last outstanding request is released by the release strategy.
 After a rebalance, it is possible for duplicate reply deliveries; these will be ignored for any in-flight requests; you may see error log messages when duplicate replies are received for already released replies.
+
+NOTE: If you use an <<error-handling-deserializer,`ErrorHandlingDeserializer`>> with this aggregating template, the framework will not automatically detect `DeserializationException` s.
+Instead, the record (with a `null` value) will be returned intact, with the deserialization exception(s) in headers.
+It is recommended that applications call the utility method `ReplyingKafkaTemplate.checkDeserialization()` method to determine if a deserialization exception occurred.
+See its javadocs for more information.
 
 [[receiving-messages]]
 ==== Receiving Messages

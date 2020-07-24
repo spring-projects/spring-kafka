@@ -37,14 +37,18 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
+import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -92,8 +96,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private boolean sharedReplyTopic;
 
-	private Function<ProducerRecord<K, V>, CorrelationKey> correlationStrategy =
-			ReplyingKafkaTemplate::defaultCorrelationIdStrategy;
+	private Function<ProducerRecord<K, V>, CorrelationKey> correlationStrategy = ReplyingKafkaTemplate::defaultCorrelationIdStrategy;
 
 	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
 
@@ -207,8 +210,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	/**
-	 * Set to true when multiple templates are using the same topic for replies.
-	 * This simply changes logs for unexpected replies to debug instead of error.
+	 * Set to true when multiple templates are using the same topic for replies. This
+	 * simply changes logs for unexpected replies to debug instead of error.
 	 * @param sharedReplyTopic true if using a shared topic.
 	 * @since 2.2
 	 */
@@ -404,11 +407,52 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 					logLateArrival(record, correlationId);
 				}
 				else {
-					this.logger.debug(() -> "Received: " + record + WITH_CORRELATION_ID + correlationKey);
-					future.set(record);
+					boolean ok = true;
+					if (record.value() == null) {
+						DeserializationException de = checkDeserialization(record, this.logger);
+						if (de != null) {
+							ok = false;
+							future.setException(de);
+						}
+					}
+					if (ok) {
+						this.logger.debug(() -> "Received: " + record + WITH_CORRELATION_ID + correlationKey);
+						future.set(record);
+					}
 				}
 			}
 		});
+	}
+
+	/**
+	 * Return a {@link DeserializationException} if either the key or value failed
+	 * deserialization; null otherwise. If you need to determine whether it was the key or
+	 * value, call
+	 * {@link ListenerUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)}
+	 * with {@link ErrorHandlingDeserializer#KEY_DESERIALIZER_EXCEPTION_HEADER} and
+	 * {@link ErrorHandlingDeserializer#VALUE_DESERIALIZER_EXCEPTION_HEADER} instead.
+	 * @param record the record.
+	 * @param logger a {@link LogAccessor}.
+	 * @return the {@link DeserializationException} or {@code null}.
+	 * @since 2.2.15
+	 */
+	@Nullable
+	public static DeserializationException checkDeserialization(ConsumerRecord<?, ?> record, LogAccessor logger) {
+		DeserializationException exception = ListenerUtils.getExceptionFromHeader(record,
+				ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, logger);
+		if (exception != null) {
+			logger.error(exception, () -> "Reply value deserialization failed for " + record.topic() + "-"
+					+ record.partition() + "@" + record.offset());
+			return exception;
+		}
+		exception = ListenerUtils.getExceptionFromHeader(record,
+				ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, logger);
+		if (exception != null) {
+			logger.error(exception, () -> "Reply key deserialization failed for " + record.topic() + "-"
+					+ record.partition() + "@" + record.offset());
+			return exception;
+		}
+		return null;
 	}
 
 	protected void logLateArrival(ConsumerRecord<K, R> record, CorrelationKey correlationId) {

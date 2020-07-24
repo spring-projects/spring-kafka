@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -51,6 +52,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -78,6 +80,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -104,7 +108,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 		ReplyingKafkaTemplateTests.F_REPLY, ReplyingKafkaTemplateTests.F_REQUEST,
 		ReplyingKafkaTemplateTests.G_REPLY, ReplyingKafkaTemplateTests.G_REQUEST,
 		ReplyingKafkaTemplateTests.H_REPLY, ReplyingKafkaTemplateTests.H_REQUEST,
-		ReplyingKafkaTemplateTests.I_REPLY, ReplyingKafkaTemplateTests.I_REQUEST })
+		ReplyingKafkaTemplateTests.I_REPLY, ReplyingKafkaTemplateTests.I_REQUEST,
+		ReplyingKafkaTemplateTests.J_REPLY, ReplyingKafkaTemplateTests.J_REQUEST })
 public class ReplyingKafkaTemplateTests {
 
 	public static final String A_REPLY = "aReply";
@@ -142,6 +147,10 @@ public class ReplyingKafkaTemplateTests {
 	public static final String I_REPLY = "iReply";
 
 	public static final String I_REQUEST = "iRequest";
+
+	public static final String J_REPLY = "jReply";
+
+	public static final String J_REQUEST = "jRequest";
 
 	@Autowired
 	private EmbeddedKafkaBroker embeddedKafka;
@@ -182,6 +191,25 @@ public class ReplyingKafkaTemplateTests {
 			assertThatExceptionOfType(ExecutionException.class)
 					.isThrownBy(() -> template.sendAndReceive(record2, Duration.ZERO).get(10, TimeUnit.SECONDS))
 					.withCauseExactlyInstanceOf(KafkaReplyTimeoutException.class);
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@Test
+	public void testBadDeserialize() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(J_REPLY, true);
+		try {
+			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+			Headers headers = new RecordHeaders();
+			headers.add("baz", "buz".getBytes());
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(J_REQUEST, null, null, null, "foo", headers);
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			assertThatExceptionOfType(ExecutionException.class).isThrownBy(() -> future.get(10, TimeUnit.SECONDS))
+					.withCauseExactlyInstanceOf(DeserializationException.class);
 		}
 		finally {
 			template.stop();
@@ -477,6 +505,12 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(String topic) throws Exception {
+		return createTemplate(topic, false);
+	}
+
+	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(String topic, boolean badDeser)
+			throws Exception {
+
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		final CountDownLatch latch = new CountDownLatch(1);
 		containerProperties.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
@@ -493,6 +527,10 @@ public class ReplyingKafkaTemplateTests {
 
 		});
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false", embeddedKafka);
+		if (badDeser) {
+			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+			consumerProps.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, BadDeser.class);
+		}
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProperties);
@@ -508,7 +546,6 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(TopicPartitionOffset topic) {
-
 		ContainerProperties containerProperties = new ContainerProperties(topic);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.testName, "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -687,6 +724,12 @@ public class ReplyingKafkaTemplateTests {
 					.build();
 		}
 
+		@KafkaListener(id = J_REQUEST, topics = J_REQUEST)
+		@SendTo  // default REPLY_TOPIC header
+		public String handleJ(String in) throws InterruptedException {
+			return in.toUpperCase();
+		}
+
 	}
 
 	@KafkaListener(topics = C_REQUEST, groupId = C_REQUEST)
@@ -713,6 +756,20 @@ public class ReplyingKafkaTemplateTests {
 		@SendTo
 		public String listen1(String in) {
 			return in.toUpperCase();
+		}
+
+	}
+
+	public static class BadDeser implements Deserializer<Object> {
+
+		@Override
+		public Object deserialize(String topic, byte[] data) {
+			return null;
+		}
+
+		@Override
+		public Object deserialize(String topic, Headers headers, byte[] data) {
+			throw new IllegalStateException("test reply deserialization failure");
 		}
 
 	}
