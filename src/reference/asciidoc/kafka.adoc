@@ -3178,12 +3178,12 @@ If the listener successfully processes the record (or multiple records, when usi
 If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back record(s) can be retrieved on the next poll.
 See <<after-rollback>> for more information and for handling records that repeatedly fail.
 
-Using transactions enables exactly once semantics (EOS).
+Using transactions enables Exactly Once Semantics (EOS).
 
 This means that, for a `read->process-write` sequence, it is guaranteed that the **sequence** is completed exactly once.
 (The read and process are have at least once semantics).
 
-Kafka version 2.5 now supports two EOS modes:
+Spring for Apache Kafka version 2.5 and later supports two EOS modes:
 
 * `ALPHA` - aka `transactional.id` fencing (since version 0.11.0.0)
 * `BETA` - aka fetch-offset-request fencing (since version 2.5)
@@ -3193,18 +3193,18 @@ Spring manages this by using a `Producer` for each `group.id/topic/partition`; w
 
 With mode `BETA`, it is not necessary to have a producer for each `group.id/topic/partition` because consumer metadata is sent along with the offsets to the transaction and the broker can determine if the producer is fenced using that information instead.
 
-To configure the container to use mode `BETA`, set the container property `EOSMode` to `BETA`.
+Starting with version 2.6, the default `EOSMode` is `BETA`.
 
-IMPORTANT: With `BETA`, your brokers must be version 2.5 or later, unless you are using `kafka-clients` version 2.6; the producer in that version can automatically fall back to `ALPHA` if the broker does not support `BETA`.
-To enable the fall back in the 2.6 client; set `internal.auto.downgrade.txn.commit=true`.
+To configure the container to use mode `ALPHA`, set the container property `EOSMode` to `ALPHA`, to revert to the previous behavior.
 
-You should also set the `DefaultKafkaConsumerFactory` `producerPerConsumerPartition` property to `false`, to reduce the number of producers needed.
+IMPORTANT: With `BETA`, your brokers must be version 2.5 or later, however with `kafka-clients` version 2.6, the producer will automatically fall back to `ALPHA` if the broker does not support `BETA`.
+The `DefaultKafkaProducerFactory` is configured to enable that behavior.
+If your brokers are earlier than 2.5, be sure to leave the `DefaultKafkaConsumerFactory` `producerPerConsumerPartition` set to `true` and, if you are using a batch listener, you should set `subBatchPerPartition` to `true`.
 
-If your brokers are upgraded to 2.5, you can immediately enable `BETA` mode.
-
-If your brokers are older than 2.5, when the 2.6 client is available, you can enable `BETA` mode, but leave the `producerPerConsumerPartition` to its default `true` and enable fall back as discussed above.
 When your brokers are upgraded to 2.5 or later, the producer will automatically switch to using mode `BETA`, but the number of producers will remain as before.
-You can then do a rolling upgrade of your application with `producerPerConsumerPartition` set to `false` to reduce the number of producers.
+You can then do a rolling upgrade of your application with `producerPerConsumerPartition` set to `false` to reduce the number of producers; you should also no longer set the `subBatchPerPartition` container property.
+
+If your brokers are already 2.5 or newer, you should set the `DefaultKafkaConsumerFactory` `producerPerConsumerPartition` property to `false`, to reduce the number of producers needed.
 
 When using `BETA` mode, it is no longer necessary to set the `subBatchPerPartition` to `true`; it will default to `false` when the `EOSMode` is `BETA`.
 

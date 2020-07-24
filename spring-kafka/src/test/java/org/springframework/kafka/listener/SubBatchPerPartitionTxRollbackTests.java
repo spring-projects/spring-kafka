@@ -18,9 +18,11 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
@@ -37,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -101,7 +104,7 @@ public class SubBatchPerPartitionTxRollbackTests {
 		inOrder.verify(this.producer).beginTransaction();
 		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
 		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(2L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		inOrder.verify(this.producer).beginTransaction();
 		inOrder.verify(this.producer).abortTransaction();
@@ -109,12 +112,12 @@ public class SubBatchPerPartitionTxRollbackTests {
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
 		inOrder.verify(this.producer).beginTransaction();
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
 		inOrder.verify(this.producer).beginTransaction();
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		assertThat(this.config.contents).containsExactly("foo", "bar", "baz", "qux", "fiz", "buz", "baz", "qux");
 		assertThat(this.config.transactionSuffix).isNotNull();
@@ -204,6 +207,7 @@ public class SubBatchPerPartitionTxRollbackTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
+			willReturn(new ConsumerGroupMetadata(CONTAINER_ID)).given(consumer).groupMetadata();
 			return consumer;
 		}
 

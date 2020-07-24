@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
@@ -494,6 +495,7 @@ public class TransactionalContainerTests {
 	public void testRollbackRecord() throws Exception {
 		logger.info("Start testRollbackRecord");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("txTest1", "false", embeddedKafka);
+//		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092"); test fallback to EOSMode.ALPHA
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -502,6 +504,7 @@ public class TransactionalContainerTests {
 		containerProps.setPollTimeout(10_000);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+//		senderProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("rr.");
@@ -674,7 +677,8 @@ public class TransactionalContainerTests {
 		verify(afterRollbackProcessor).clearThreadState();
 		verify(dlTemplate).send(any(ProducerRecord.class));
 		verify(dlTemplate).sendOffsetsToTransaction(
-				Collections.singletonMap(new TopicPartition(topic3, 0), new OffsetAndMetadata(1L)));
+				eq(Collections.singletonMap(new TopicPartition(topic3, 0), new OffsetAndMetadata(1L))),
+				any(ConsumerGroupMetadata.class));
 		logger.info("Stop testMaxAttempts");
 	}
 

@@ -239,7 +239,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean deliveryAttemptHeader;
 
-	private EOSMode eosMode;
+	private EOSMode eosMode = EOSMode.BETA;
 
 	private TransactionDefinition transactionDefinition;
 

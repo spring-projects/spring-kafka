@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,11 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
@@ -38,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -106,15 +109,15 @@ public class SeekToCurrentOnErrorRecordModeTXTests {
 		inOrder.verify(this.producer).beginTransaction();
 		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
 		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(1L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(2L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(1L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 2), 0L);
@@ -122,15 +125,15 @@ public class SeekToCurrentOnErrorRecordModeTXTests {
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 2), new OffsetAndMetadata(1L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		offsets.clear();
 		offsets.put(new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		assertThat(this.config.count).isEqualTo(7);
@@ -225,6 +228,7 @@ public class SeekToCurrentOnErrorRecordModeTXTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
+			willReturn(new ConsumerGroupMetadata(CONTAINER_ID)).given(consumer).groupMetadata();
 			return consumer;
 		}
 

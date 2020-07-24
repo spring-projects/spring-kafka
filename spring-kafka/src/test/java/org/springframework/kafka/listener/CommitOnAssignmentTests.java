@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -37,6 +38,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -118,7 +120,7 @@ public class CommitOnAssignmentTests {
 		willAnswer(inv -> {
 			latch.countDown();
 			return null;
-		}).given(producer).sendOffsetsToTransaction(any(), anyString());
+		}).given(producer).sendOffsetsToTransaction(any(), any(ConsumerGroupMetadata.class));
 		props.setTransactionManager(tm);
 		this.registry.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -196,6 +198,7 @@ public class CommitOnAssignmentTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
+			willReturn(new ConsumerGroupMetadata("")).given(consumer).groupMetadata();
 			return consumer;
 		}
 

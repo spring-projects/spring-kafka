@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
@@ -41,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -117,7 +119,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(2L));
 		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
 		offsets.put(new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
-		inOrder.verify(this.producer).sendOffsetsToTransaction(offsets, CONTAINER_ID);
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		assertThat(this.config.ehException).isInstanceOf(ListenerExecutionFailedException.class);
 		assertThat(((ListenerExecutionFailedException) this.config.ehException).getGroupId()).isEqualTo(CONTAINER_ID);
@@ -254,6 +256,7 @@ public class SeekToCurrentBatchErrorHandlerTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
+			willReturn(new ConsumerGroupMetadata(CONTAINER_ID)).given(consumer).groupMetadata();
 			return consumer;
 		}
 
@@ -275,7 +278,6 @@ public class SeekToCurrentBatchErrorHandlerTests {
 			});
 			factory.setBatchListener(true);
 			factory.getContainerProperties().setTransactionManager(tm());
-			factory.getContainerProperties().setSubBatchPerPartition(false);
 			factory.setMissingTopicsFatal(false);
 			return factory;
 		}
