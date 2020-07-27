@@ -2130,7 +2130,7 @@ However, see the note at the beginning of this section; you can avoid using the 
 
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
-With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
 [[container-props]]
@@ -4623,7 +4623,7 @@ Also see <<retrying-batch-eh>>.
 
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
-With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
 Starting with version 2.3.2, after a record has been recovered, its offset will be committed (if one of the container `AckMode` s is configured).
@@ -4731,7 +4731,7 @@ IMPORTANT: This error handler cannot be used with transactions
 
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
-With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
 ===== Container Stopping Error Handlers
@@ -4786,7 +4786,7 @@ To enable this feature, set the `commitRecovered` and `kafkaTemplate` properties
 
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
-With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the processor's `resetStateOnRecoveryFailure` property to `false`.
 
 Starting with version 2.3.1, similar to the `SeekToCurrentErrorHandler`, the `DefaultAfterRollbackProcessor` considers certain exceptions to be fatal, and retries are skipped for such exceptions; the recoverer is invoked on the first failure.
@@ -4921,7 +4921,7 @@ When publishing `null` values, when there are multiple templates, the recoverer 
 
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
-With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` property to `false`.
 
 Starting with version 2.3, the recoverer can also be used with Kafka Streams - see <<streams-deser-recovery>> for more information.
