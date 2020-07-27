@@ -179,6 +179,7 @@ public class RecoveringBatchErrorHandlerIntegrationTests {
 
 		};
 		RecoveringBatchErrorHandler errorHandler = new RecoveringBatchErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		errorHandler.setResetStateOnRecoveryFailure(false);
 		container.setBatchErrorHandler(errorHandler);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {

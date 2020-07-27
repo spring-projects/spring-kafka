@@ -48,6 +48,8 @@ class FailedRecordTracker {
 
 	private final BackOff backOff;
 
+	private boolean resetStateOnRecoveryFailure = true;
+
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			LogAccessor logger) {
 
@@ -73,9 +75,19 @@ class FailedRecordTracker {
 		this.backOff = backOff;
 	}
 
+	/**
+	 * Set to false to immediately attempt to recover on the next attempt instead
+	 * of repeating the BackOff cycle when recovery fails.
+	 * @param resetStateOnRecoveryFailure false to retain state.
+	 * @since 3.5.5
+	 */
+	public void setResetStateOnRecoveryFailure(boolean resetStateOnRecoveryFailure) {
+		this.resetStateOnRecoveryFailure = resetStateOnRecoveryFailure;
+	}
+
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
 		if (this.noRetries) {
-			this.recoverer.accept(record, exception);
+			attemptRecovery(record, exception, null);
 			return true;
 		}
 		Map<TopicPartition, FailedRecord> map = this.failures.get();
@@ -103,12 +115,24 @@ class FailedRecordTracker {
 			return false;
 		}
 		else {
-			this.recoverer.accept(record, exception);
+			attemptRecovery(record, exception, topicPartition);
 			map.remove(topicPartition);
 			if (map.isEmpty()) {
 				this.failures.remove();
 			}
 			return true;
+		}
+	}
+
+	private void attemptRecovery(ConsumerRecord<?, ?> record, Exception exception, @Nullable TopicPartition tp) {
+		try {
+			this.recoverer.accept(record, exception);
+		}
+		catch (RuntimeException e) {
+			if (tp != null && this.resetStateOnRecoveryFailure) {
+				this.failures.get().remove(tp);
+			}
+			throw e;
 		}
 	}
 

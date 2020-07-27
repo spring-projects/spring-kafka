@@ -12,3 +12,6 @@ This version requires the 2.6.0 `kafka-clients`.
 
 The default `EOSMode` is now `BETA`.
 See <<exactly-once>> for more information.
+
+Various error handlers (that extend `FailedRecordProcessor`) and the `DefaultAfterRollbackProcessor` now reset the `BackOff` if recovery fails.
+See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.

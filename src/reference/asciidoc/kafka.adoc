@@ -2128,7 +2128,10 @@ public SeekToCurrentErrorHandler eh() {
 
 However, see the note at the beginning of this section; you can avoid using the `RetryTemplate` altogether.
 
-IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
+Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
+With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
 [[container-props]]
 ==== Listener Container Properties
@@ -4587,7 +4590,7 @@ Here is an example that adds `IllegalArgumentException` to the not-retryable exc
 [source, java]
 ----
 @Bean
-public SeekToCurrentErrorHandler errorHandler(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer) {
+public SeekToCurrentErrorHandler errorHandler(ConsumerRecordRecoverer recoverer) {
     SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler(recoverer);
     handler.addNotRetryableException(IllegalArgumentException.class);
     return handler;
@@ -4618,7 +4621,10 @@ However, since this error handler has no mechanism to "recover" after retries ar
 Again, the maximum delay must be less than the `max.poll.interval.ms` consumer property.
 Also see <<retrying-batch-eh>>.
 
-IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
+Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
+With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
 Starting with version 2.3.2, after a record has been recovered, its offset will be committed (if one of the container `AckMode` s is configured).
 To revert to the previous behavior, set the error handler's `ackAfterHandle` property to false.
@@ -4721,7 +4727,12 @@ public void listen(List<Thing> things) {
 ----
 ====
 
-IMPORTANT: This error handler cannot be used with transactions.
+IMPORTANT: This error handler cannot be used with transactions
+
+IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
+Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
+With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
 ===== Container Stopping Error Handlers
 
@@ -4773,7 +4784,10 @@ Starting with version 2.2.5, the `DefaultAfterRollbackProcessor` can be invoked 
 Then, if you are using the `DeadLetterPublishingRecoverer` to publish a failed record, the processor will send the recovered record's offset in the original topic/partition to the transaction.
 To enable this feature, set the `commitRecovered` and `kafkaTemplate` properties on the `DefaultAfterRollbackProcessor`.
 
-IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
+Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
+With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+To revert to the previous behavior, set the processor's `resetStateOnRecoveryFailure` property to `false`.
 
 Starting with version 2.3.1, similar to the `SeekToCurrentErrorHandler`, the `DefaultAfterRollbackProcessor` considers certain exceptions to be fatal, and retries are skipped for such exceptions; the recoverer is invoked on the first failure.
 The exceptions that are considered fatal, by default, are:
@@ -4905,7 +4919,10 @@ A `LinkedHashMap` is recommended so that the keys are examined in order.
 
 When publishing `null` values, when there are multiple templates, the recoverer will look for a template for the `Void` class; if none is present, the first template from the `values().iterator()` will be used.
 
-IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
+Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
+With earlier versions, the `BackOff was not reset and recovery was re-attempted on the next failure.
+To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` property to `false`.
 
 Starting with version 2.3, the recoverer can also be used with Kafka Streams - see <<streams-deser-recovery>> for more information.
 

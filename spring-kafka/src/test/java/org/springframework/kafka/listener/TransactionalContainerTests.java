@@ -625,6 +625,7 @@ public class TransactionalContainerTests {
 		};
 		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
 				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 2L), dlTemplate, true));
+		afterRollbackProcessor.setResetStateOnRecoveryFailure(false);
 		container.setAfterRollbackProcessor(afterRollbackProcessor);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {

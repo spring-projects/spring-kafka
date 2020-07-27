@@ -17,10 +17,12 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -36,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
@@ -192,6 +195,70 @@ public class SeekToCurrentRecovererTests {
 		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer).accept(eq(records.get(0)), any());
+	}
+
+	@Test
+	public void seekToCurrentErrorHandlerRecovererFailsBackOffReset() {
+		@SuppressWarnings("unchecked")
+		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+		AtomicBoolean fail = new AtomicBoolean(true);
+		willAnswer(incovation -> {
+			if (fail.getAndSet(false)) {
+				throw new RuntimeException("recovery failed");
+			}
+			return null;
+		}).given(recoverer).accept(any(), any());
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
+		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+				() -> eh.handle(new RuntimeException(), records, consumer, null));
+		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
+		verifyNoMoreInteractions(consumer);
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+				() -> eh.handle(new RuntimeException(), records, consumer, null));
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+				() -> eh.handle(new RuntimeException(), records, consumer, null));
+		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
+		eh.handle(new RuntimeException(), records, consumer, null);
+		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
+		verifyNoMoreInteractions(consumer);
+		verify(recoverer, times(2)).accept(eq(records.get(0)), any());
+	}
+
+	@Test
+	public void seekToCurrentErrorHandlerRecovererFailsBackOffNotReset() {
+		@SuppressWarnings("unchecked")
+		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+		AtomicBoolean fail = new AtomicBoolean(true);
+		willAnswer(incovation -> {
+			if (fail.getAndSet(false)) {
+				throw new RuntimeException("recovery failed");
+			}
+			return null;
+		}).given(recoverer).accept(any(), any());
+		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		eh.setResetStateOnRecoveryFailure(false);
+		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
+		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+				() -> eh.handle(new RuntimeException(), records, consumer, null));
+		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
+		verifyNoMoreInteractions(consumer);
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+				() -> eh.handle(new RuntimeException(), records, consumer, null));
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
+		eh.handle(new RuntimeException(), records, consumer, null); // immediate re-attempt recovery
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
+		verifyNoMoreInteractions(consumer);
+		verify(recoverer, times(2)).accept(eq(records.get(0)), any());
 	}
 
 	@Test
