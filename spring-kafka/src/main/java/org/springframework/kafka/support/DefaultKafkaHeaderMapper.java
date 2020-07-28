@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,16 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	private static final String JAVA_LANG_STRING = "java.lang.String";
+
+	private static final Set<String> TRUSTED_ARRAY_TYPES =
+			new HashSet<>(Arrays.asList(
+					"[B",
+					"[I",
+					"[J",
+					"[F",
+					"[D",
+					"[C"
+			));
 
 	private static final List<String> DEFAULT_TRUSTED_PACKAGES =
 			Arrays.asList(
@@ -366,12 +377,16 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		if (requestedType.equals(NonTrustedHeaderType.class.getName())) {
 			return true;
 		}
+		if (TRUSTED_ARRAY_TYPES.contains(requestedType)) {
+			return true;
+		}
+		String type = requestedType.startsWith("[") ? requestedType.substring(2) : requestedType;
 		if (!this.trustedPackages.isEmpty()) {
-			int lastDot = requestedType.lastIndexOf('.');
+			int lastDot = type.lastIndexOf('.');
 			if (lastDot < 0) {
 				return false;
 			}
-			String packageName = requestedType.substring(0, lastDot);
+			String packageName = type.substring(0, lastDot);
 			for (String trustedPackage : this.trustedPackages) {
 				if (packageName.equals(trustedPackage) || packageName.startsWith(trustedPackage + ".")) {
 					return true;
