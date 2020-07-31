@@ -308,7 +308,8 @@ public class ConsumerProperties {
 	/**
 	 * Get the consumer properties that will be merged with the consumer properties
 	 * provided by the consumer factory; properties here will supersede any with the same
-	 * name(s) in the consumer factory.
+	 * name(s) in the consumer factory. You can add non-String-valued properties, but the
+	 * property name (hashtable key) must be String; all others will be ignored.
 	 * {@code group.id} and {@code client.id} are ignored.
 	 * @return the properties.
 	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
@@ -324,8 +325,7 @@ public class ConsumerProperties {
 	 * provided by the consumer factory; properties here will supersede any with the same
 	 * name(s) in the consumer factory.
 	 * {@code group.id} and {@code client.id} are ignored.
-	 * Property values must be {@link String}s; only properties returned by
-	 * {@link Properties#stringPropertyNames()} will be applied.
+	 * Property keys must be {@link String}s.
 	 * @param kafkaConsumerProperties the properties.
 	 * @see org.apache.kafka.clients.consumer.ConsumerConfig
 	 * @see #setGroupId(String)

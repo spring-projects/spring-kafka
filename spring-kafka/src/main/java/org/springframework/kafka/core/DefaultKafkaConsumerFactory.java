@@ -18,11 +18,13 @@ package org.springframework.kafka.core;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import org.aopalliance.aop.Advice;
@@ -283,23 +285,32 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 							: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
 		}
 		if (properties != null) {
-			checkForUnsupportedProps(properties);
-			properties.stringPropertyNames()
+			Set<String> stringPropertyNames = properties.stringPropertyNames();  // to get any nested default Properties
+			stringPropertyNames
 					.stream()
 					.filter(name -> !name.equals(ConsumerConfig.CLIENT_ID_CONFIG)
 							&& !name.equals(ConsumerConfig.GROUP_ID_CONFIG))
 					.forEach(name -> modifiedConfigs.put(name, properties.getProperty(name)));
+			properties.entrySet().stream()
+					.filter(entry -> !entry.getKey().equals(ConsumerConfig.CLIENT_ID_CONFIG)
+							&& !entry.getKey().equals(ConsumerConfig.GROUP_ID_CONFIG)
+							&& !stringPropertyNames.contains(entry.getKey())
+							&& entry.getKey() instanceof String)
+					.forEach(entry -> modifiedConfigs.put((String) entry.getKey(), entry.getValue()));
+			checkInaccessible(properties, modifiedConfigs);
 		}
 		return createKafkaConsumer(modifiedConfigs);
 	}
 
-	private void checkForUnsupportedProps(Properties properties) {
-		properties.forEach((key, value) -> {
-			if (!(key instanceof String) || !(value instanceof String)) {
-				LOGGER.warn(() -> "Property override for '" + key.toString()
-					+ "' ignored, only <String, String> properties are supported; value is a(n) " + value.getClass());
+	private void checkInaccessible(Properties properties, Map<String, Object> modifiedConfigs) {
+		for (Enumeration<?> propertyNames = properties.propertyNames(); propertyNames.hasMoreElements(); ) {
+			Object nextElement = propertyNames.nextElement();
+			if (!modifiedConfigs.containsKey(nextElement)) {
+				LOGGER.error(() -> "Non-String-valued default properties are inaccessible; use a String value or "
+						+ "make it an explicit property instead of a default: "
+						+ nextElement);
 			}
-		});
+		}
 	}
 
 	@SuppressWarnings("resource")

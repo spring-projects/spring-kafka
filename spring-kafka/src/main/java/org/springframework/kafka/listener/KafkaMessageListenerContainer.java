@@ -590,7 +590,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
-			Properties consumerProperties = new Properties(this.containerProperties.getKafkaConsumerProperties());
+			Properties consumerProperties = propertiesFromProperties();
 			checkGroupInstance(consumerProperties, KafkaMessageListenerContainer.this.consumerFactory);
 			this.autoCommit = determineAutoCommit(consumerProperties);
 			this.consumer =
@@ -672,6 +672,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.micrometerHolder = obtainMicrometerHolder();
 			this.deliveryAttemptAware = setupDeliveryAttemptAware();
 			this.subBatchPerPartition = setupSubBatchPerPartition();
+		}
+
+		private Properties propertiesFromProperties() {
+			Properties props = new Properties(this.containerProperties.getKafkaConsumerProperties());
+			Set<String> stringPropertyNames = props.stringPropertyNames();
+			// Copy non-string-valued properties from the default hash table to the new properties object
+			this.containerProperties.getKafkaConsumerProperties().forEach((key, value) -> {
+				if (key instanceof String && !stringPropertyNames.contains(key)) {
+					props.put(key, value);
+				}
+			});
+			return props;
 		}
 
 		String getClientId() {

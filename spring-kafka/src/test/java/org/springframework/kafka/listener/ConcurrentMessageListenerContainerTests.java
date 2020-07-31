@@ -227,7 +227,10 @@ public class ConcurrentMessageListenerContainerTests {
 					String clientIdSuffixArg, Properties properties) {
 
 				overrides.set(properties);
-				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+				Consumer<Integer, String> created = super.createKafkaConsumer(groupId, clientIdPrefix,
+						clientIdSuffixArg, properties);
+				assertThat(KafkaTestUtils.getPropertyValue(created, "requestTimeoutMs", Long.class)).isEqualTo(23000L);
+				return created;
 			}
 
 		};
@@ -240,8 +243,11 @@ public class ConcurrentMessageListenerContainerTests {
 			listenerThreadNames.add(Thread.currentThread().getName());
 			latch.countDown();
 		});
-		Properties consumerProperties = new Properties();
+		Properties nestedProps = new Properties();
+		nestedProps.put("weCantAccessThisOne", 42);
+		Properties consumerProperties = new Properties(nestedProps);
 		consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+		consumerProperties.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 23000);
 		containerProps.setKafkaConsumerProperties(consumerProperties);
 		final CountDownLatch rebalancePartitionsAssignedLatch = new CountDownLatch(2);
 		containerProps.setConsumerRebalanceListener(new ConsumerRebalanceListener() {
