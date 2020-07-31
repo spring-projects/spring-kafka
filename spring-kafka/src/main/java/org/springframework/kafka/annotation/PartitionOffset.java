@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,10 @@ import java.lang.annotation.Target;
 public @interface PartitionOffset {
 
 	/**
-	 * The partition within the topic to listen on.
-	 * Property place holders and SpEL expressions are supported,
-	 * which must resolve to Integer (or String that can be parsed as Integer).
+	 * The partition within the topic to listen on. Property place holders and SpEL
+	 * expressions are supported, which must resolve to Integer (or String that can be
+	 * parsed as Integer). '*' indicates that the initial offset will be applied to all
+	 * partitions in the encompassing {@link TopicPartition}
 	 * @return partition within the topic.
 	 */
 	String partition();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,11 +70,11 @@ public class TopicPartitionOffset {
 
 	private final TopicPartition topicPartition;
 
-	private final Long offset;
-
-	private final boolean relativeToCurrent;
-
 	private final SeekPosition position;
+
+	private Long offset;
+
+	private boolean relativeToCurrent;
 
 	/**
 	 * Construct an instance with no initial offset management.
@@ -171,8 +171,26 @@ public class TopicPartitionOffset {
 		return this.offset;
 	}
 
+	/**
+	 * Set the offset.
+	 * @param offset the offset.
+	 * @since 2.5.5
+	 */
+	public void setOffset(Long offset) {
+		this.offset = offset;
+	}
+
 	public boolean isRelativeToCurrent() {
 		return this.relativeToCurrent;
+	}
+
+	/**
+	 * Set whether the offset is relative to the current position.
+	 * @param relativeToCurrent true for relative to current.
+	 * @since 2.5.5
+	 */
+	public void setRelativeToCurrent(boolean relativeToCurrent) {
+		this.relativeToCurrent = relativeToCurrent;
 	}
 
 	public SeekPosition getPosition() {

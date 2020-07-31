@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,8 @@ public @interface TopicPartition {
 	String[] partitions() default {};
 
 	/**
-	 * The partitions with initial offsets within the topic.
+	 * The partitions with initial offsets within the topic. There must only be one
+	 * instance of {@link PartitionOffset} if its 'partition' property is '*'.
 	 * Partitions specified here can't be duplicated in the {@link #partitions()}.
 	 * @return the {@link PartitionOffset} array.
 	 */

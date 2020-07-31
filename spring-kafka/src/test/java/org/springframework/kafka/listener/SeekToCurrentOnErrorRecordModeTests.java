@@ -51,6 +51,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -94,7 +95,10 @@ public class SeekToCurrentOnErrorRecordModeTests {
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(this.consumer);
-		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
+		inOrder.verify(this.consumer).assign(any(Collection.class));
+		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 0), 0L);
+		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 1), 0L);
+		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 2), 0L);
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)),
@@ -137,11 +141,14 @@ public class SeekToCurrentOnErrorRecordModeTests {
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		final CountDownLatch commitLatch = new CountDownLatch(7);
+		final CountDownLatch commitLatch = new CountDownLatch(6);
 
 		int count;
 
-		@KafkaListener(topics = "foo", groupId = "grp")
+		@KafkaListener(groupId = "grp",
+				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
+						partitions = "#{'0,1,2'.split(',')}",
+						partitionOffsets = @PartitionOffset(partition = "*", initialOffset = "0")))
 		public void foo(String in, @Header(KafkaHeaders.DELIVERY_ATTEMPT) int delivery) {
 			this.contents.add(in);
 			this.deliveries.add(delivery);

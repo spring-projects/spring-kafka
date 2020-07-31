@@ -1209,6 +1209,9 @@ public void listen(String data) {
 ----
 ====
 
+[[manual-assignment]]
+====== Explicit Partition Assignment
+
 You can also configure POJO listeners with explicit topics and partitions (and, optionally, their initial offsets).
 The following example shows how to do so:
 
@@ -1229,6 +1232,24 @@ public void listen(ConsumerRecord<?, ?> record) {
 You can specify each partition in the `partitions` or `partitionOffsets` attribute but not both.
 
 As with most annotation properties, you can use SpEL expressions; for an example of how to generate a large list of partitions, see <<tip-assign-all-parts>>.
+
+Starting with version 2.5.5, you can apply an initial offset to all assigned partitions:
+
+====
+[source, java]
+----
+@KafkaListener(id = "thing3", topicPartitions =
+        { @TopicPartition(topic = "topic1", partitions = { "0", "1" },
+             partitionOffsets = @PartitionOffset(partition = "*", initialOffset = "0"))
+        })
+public void listen(ConsumerRecord<?, ?> record) {
+    ...
+}
+----
+====
+
+The `*` wildcard represents all partitions in the `partitions` attribute.
+There must only be one `@PartitionOffset` with the wildcard in each `@TopicPartition`.
 
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.
 The following example also shows how to use a different container factory.

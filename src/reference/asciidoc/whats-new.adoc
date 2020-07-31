@@ -15,3 +15,9 @@ See <<exactly-once>> for more information.
 
 Various error handlers (that extend `FailedRecordProcessor`) and the `DefaultAfterRollbackProcessor` now reset the `BackOff` if recovery fails.
 See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.
+
+==== @KafkaLisener Changes
+
+When using manual partition assignment, you can now specify a wildcard for determining which partitions should be reset to the initial offset.
+(Also added in version 2.5.5).
+See <<manual-assignment>> for more information.

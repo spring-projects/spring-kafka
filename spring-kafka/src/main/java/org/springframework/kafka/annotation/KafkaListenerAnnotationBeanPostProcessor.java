@@ -555,22 +555,32 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (String partition : partitions) {
 			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result);
 		}
-
-		for (PartitionOffset partitionOffset : partitionOffsets) {
-			TopicPartitionOffset topicPartitionOffset =
-					new TopicPartitionOffset((String) topic,
-							resolvePartition(topic, partitionOffset),
-							resolveInitialOffset(topic, partitionOffset),
-							isRelative(topic, partitionOffset));
-			if (!result.contains(topicPartitionOffset)) {
-				result.add(topicPartitionOffset);
-			}
-			else {
-				throw new IllegalArgumentException(
-						String.format("@TopicPartition can't have the same partition configuration twice: [%s]",
-								topicPartitionOffset));
+		if (partitionOffsets.length == 1 && partitionOffsets[0].partition().equals("*")) {
+			result.forEach(tpo -> {
+				tpo.setOffset(resolveInitialOffset(tpo.getTopic(), partitionOffsets[0]));
+				tpo.setRelativeToCurrent(isRelative(tpo.getTopic(), partitionOffsets[0]));
+			});
+		}
+		else {
+			for (PartitionOffset partitionOffset : partitionOffsets) {
+				Assert.isTrue(!partitionOffset.partition().equals("*"), () ->
+						"Partition wildcard '*' is only allowed in a single @PartitionOffset in " + result);
+				TopicPartitionOffset topicPartitionOffset =
+						new TopicPartitionOffset((String) topic,
+								resolvePartition(topic, partitionOffset),
+								resolveInitialOffset(topic, partitionOffset),
+								isRelative(topic, partitionOffset));
+				if (!result.contains(topicPartitionOffset)) {
+					result.add(topicPartitionOffset);
+				}
+				else {
+					throw new IllegalArgumentException(
+							String.format("@TopicPartition can't have the same partition configuration twice: [%s]",
+									topicPartitionOffset));
+				}
 			}
 		}
+		Assert.isTrue(result.size() > 0, () -> "At least one partition required for " + topic);
 		return result;
 	}
 

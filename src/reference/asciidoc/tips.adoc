@@ -11,7 +11,8 @@ The following is an example of how to use the power of a SpEL expression to crea
 [source, java]
 ----
 @KafkaListener(topicPartitions = @TopicPartition(topic = "compacted",
-                                                 partitions = "#{@finder.partitions('compacted')}"))
+            partitions = "#{@finder.partitions('compacted')}"),
+            partitionOffsets = @PartitionOffset(partition = "*", initialOffset = "0")))
 public void listen(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key, String payload) {
     ...
 }
@@ -43,6 +44,7 @@ public static class PartitionFinder {
 
 Using this in conjunction with `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG=earliest` will load all records each time the application is started.
 You should also set the container's `AckMode` to `MANUAL` to prevent the container from committing offsets for a `null` consumer group.
+Howewever, starting with version 2.5.5, as shown above, you can apply an initial offset to all partitions; see <<manual-assignment>> for more information.
 
 [[ex-jdbc-sync]]
 === Example of Transaction Synchronization
