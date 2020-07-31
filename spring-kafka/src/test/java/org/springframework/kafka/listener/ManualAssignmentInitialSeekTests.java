@@ -58,7 +58,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class ManualAssignmentInitialSeek {
+public class ManualAssignmentInitialSeekTests {
 
 	@SuppressWarnings("rawtypes")
 	@Autowired
