@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -2153,6 +2154,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								+ " at " + newOffsetToLog + ". Position is " + this.consumer.position(topicPartition));
 					}
 				}
+			}
+			if (this.consumerSeekAwareListener != null) {
+				this.consumerSeekAwareListener.onPartitionsAssigned(partitions.keySet().stream()
+							.map(tp -> new SimpleEntry<>(tp, this.consumer.position(tp)))
+							.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue())),
+						this.seekCallback);
 			}
 		}
 

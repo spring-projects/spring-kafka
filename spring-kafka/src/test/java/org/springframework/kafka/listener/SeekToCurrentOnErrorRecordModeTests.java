@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -175,11 +174,6 @@ public class SeekToCurrentOnErrorRecordModeTests {
 			final TopicPartition topicPartition0 = new TopicPartition("foo", 0);
 			final TopicPartition topicPartition1 = new TopicPartition("foo", 1);
 			final TopicPartition topicPartition2 = new TopicPartition("foo", 2);
-			willAnswer(i -> {
-				((ConsumerRebalanceListener) i.getArgument(1)).onPartitionsAssigned(
-						Collections.singletonList(topicPartition1));
-				return null;
-			}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 			Map<TopicPartition, List<ConsumerRecord>> records1 = new LinkedHashMap<>();
 			records1.put(topicPartition0, Arrays.asList(
 					new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"),
@@ -205,7 +199,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 						return new ConsumerRecords(records2);
 					default:
 						try {
-							Thread.sleep(500);
+							Thread.sleep(50);
 						}
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();

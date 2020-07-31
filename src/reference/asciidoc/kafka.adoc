@@ -1251,6 +1251,11 @@ public void listen(ConsumerRecord<?, ?> record) {
 The `*` wildcard represents all partitions in the `partitions` attribute.
 There must only be one `@PartitionOffset` with the wildcard in each `@TopicPartition`.
 
+In addition, when the listener implements `ConsumerSeekAware`, `onPartitionsAssigned` is now called, even when using manual assignment.
+This allows, for example, any arbitrary seek operations at that time.
+
+====== Manual Acknowledgment
+
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.
 The following example also shows how to use a different container factory.
 
@@ -2653,8 +2658,7 @@ When using group management, `onPartitionsAssigned` is called when partitions ar
 You can use this method, for example, for setting initial offsets for the partitions, by calling the callback.
 You can also use this method to associate this thread's callback with the assigned partitions (see the example below).
 You must use the callback argument, not the one passed into `registerSeekCallback`.
-This method is never called if you explicitly assign partitions yourself.
-Use the `TopicPartitionOffset` in that case.
+Starting with version 2.5.5, this method is called, even when using <<manual-assignment,manual partition assignment>>.
 
 `onPartitionsRevoked` is called when the container is stopped or Kafka revokes assignments.
 You should discard this thread's callback and remove any associations to the revoked partitions.
