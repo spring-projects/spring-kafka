@@ -675,10 +675,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private Properties propertiesFromProperties() {
-			Properties props = new Properties(this.containerProperties.getKafkaConsumerProperties());
+			Properties propertyOverrides = this.containerProperties.getKafkaConsumerProperties();
+			Properties props = new Properties(propertyOverrides);
 			Set<String> stringPropertyNames = props.stringPropertyNames();
 			// Copy non-string-valued properties from the default hash table to the new properties object
-			this.containerProperties.getKafkaConsumerProperties().forEach((key, value) -> {
+			propertyOverrides.forEach((key, value) -> {
 				if (key instanceof String && !stringPropertyNames.contains(key)) {
 					props.put(key, value);
 				}

@@ -303,13 +303,20 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	private void checkInaccessible(Properties properties, Map<String, Object> modifiedConfigs) {
+		List<Object> inaccessible = null;
 		for (Enumeration<?> propertyNames = properties.propertyNames(); propertyNames.hasMoreElements(); ) {
 			Object nextElement = propertyNames.nextElement();
 			if (!modifiedConfigs.containsKey(nextElement)) {
-				LOGGER.error(() -> "Non-String-valued default properties are inaccessible; use a String value or "
-						+ "make it an explicit property instead of a default: "
-						+ nextElement);
+				if (inaccessible == null) {
+					inaccessible = new ArrayList<>();
+				}
+				inaccessible.add(nextElement);
 			}
+		}
+		if (inaccessible != null) {
+			LOGGER.error("Non-String-valued default properties are inaccessible; use String values or "
+					+ "make them explicit properties instead of defaults: "
+					+ inaccessible);
 		}
 	}
 
