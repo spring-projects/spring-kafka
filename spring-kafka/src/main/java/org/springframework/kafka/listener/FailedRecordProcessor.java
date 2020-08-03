@@ -52,7 +52,7 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 
 	private final FailedRecordTracker failureTracker;
 
-	private BinaryExceptionClassifier classifier;
+	private ExtendedBinaryExceptionClassifier classifier;
 
 	private boolean commitRecovered;
 
@@ -85,6 +85,7 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	 * @param classifications the classifications.
 	 * @param defaultValue whether or not to retry non-matching exceptions.
 	 * @see BinaryExceptionClassifier#BinaryExceptionClassifier(Map, boolean)
+	 * @see #addNotRetryableExceptions(Class...)
 	 */
 	public void setClassifications(Map<Class<? extends Throwable>, Boolean> classifications, boolean defaultValue) {
 		Assert.notNull(classifications, "'classifications' + cannot be null");
@@ -123,8 +124,8 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	}
 
 	/**
-	 * Add an exception type to the default list; if and only if an external classifier
-	 * has not been provided. By default, the following exceptions will not be retried:
+	 * Add an exception type to the default list. By default, the following exceptions
+	 * will not be retried:
 	 * <ul>
 	 * <li>{@link DeserializationException}</li>
 	 * <li>{@link MessageConversionException}</li>
@@ -134,19 +135,46 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	 * </ul>
 	 * All others will be retried.
 	 * @param exceptionType the exception type.
+	 * @deprecated in favor of {@link #addNotRetryableExceptions(Class...)}.
 	 * @see #removeNotRetryableException(Class)
 	 * @see #setClassifications(Map, boolean)
 	 */
+	@Deprecated
 	public void addNotRetryableException(Class<? extends Exception> exceptionType) {
-		Assert.isTrue(this.classifier instanceof ExtendedBinaryExceptionClassifier,
-				"Cannot add exception types to a supplied classifier");
-		((ExtendedBinaryExceptionClassifier) this.classifier).getClassified().put(exceptionType, false);
+		Assert.notNull(exceptionType, "'exceptionType' cannot be null");
+		this.classifier.getClassified().put(exceptionType, false);
 	}
 
 	/**
-	 * Remove an exception type from the configured list; if and only if an external
-	 * classifier has not been provided. By default, the following exceptions will not be
-	 * retried:
+	 * Add exception types to the default list. By default, the following exceptions will
+	 * not be retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried.
+	 * @param exceptionTypes the exception types.
+	 * @since 2.6
+	 * @see #removeNotRetryableException(Class)
+	 * @see #setClassifications(Map, boolean)
+	 */
+	@SafeVarargs
+	@SuppressWarnings("varargs")
+	public final void addNotRetryableExceptions(Class<? extends Exception>... exceptionTypes) {
+		Assert.notNull(exceptionTypes, "'exceptionTypes' cannot be null");
+		Assert.noNullElements(exceptionTypes, "'exceptionTypes' cannot contain nulls");
+		for (Class<? extends Exception> exceptionType : exceptionTypes) {
+			Assert.isInstanceOf(Exception.class, exceptionType);
+			this.classifier.getClassified().put(exceptionType, false);
+		}
+	}
+
+	/**
+	 * Remove an exception type from the configured list. By default, the following
+	 * exceptions will not be retried:
 	 * <ul>
 	 * <li>{@link DeserializationException}</li>
 	 * <li>{@link MessageConversionException}</li>
@@ -157,13 +185,11 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	 * All others will be retried.
 	 * @param exceptionType the exception type.
 	 * @return true if the removal was successful.
-	 * @see #addNotRetryableException(Class)
+	 * @see #addNotRetryableExceptions(Class...)
 	 * @see #setClassifications(Map, boolean)
 	 */
 	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
-		Assert.isTrue(this.classifier instanceof ExtendedBinaryExceptionClassifier,
-				"Cannot remove exception types from a supplied classifier");
-		return ((ExtendedBinaryExceptionClassifier) this.classifier).getClassified().remove(exceptionType);
+		return this.classifier.getClassified().remove(exceptionType);
 	}
 
 	protected BiPredicate<ConsumerRecord<?, ?>, Exception> getSkipPredicate(List<ConsumerRecord<?, ?>> records,
@@ -191,7 +217,7 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 		this.failureTracker.clearThreadState();
 	}
 
-	private static BinaryExceptionClassifier configureDefaultClassifier() {
+	private static ExtendedBinaryExceptionClassifier configureDefaultClassifier() {
 		Map<Class<? extends Throwable>, Boolean> classified = new HashMap<>();
 		classified.put(DeserializationException.class, false);
 		classified.put(MessageConversionException.class, false);

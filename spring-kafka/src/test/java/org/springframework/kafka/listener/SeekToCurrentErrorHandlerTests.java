@@ -68,7 +68,7 @@ public class SeekToCurrentErrorHandlerTests {
 		handler.handle(new DeserializationException("intended", null, false, illegalState), records,
 				consumer, mock(MessageListenerContainer.class));
 		assertThat(recovered.get()).isSameAs(record1);
-		handler.addNotRetryableException(IllegalStateException.class);
+		handler.addNotRetryableExceptions(IllegalStateException.class);
 		recovered.set(null);
 		recovererShouldFail.set(true);
 		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->

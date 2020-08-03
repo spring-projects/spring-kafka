@@ -75,7 +75,7 @@ public class DefaultAfterRollbackProcessorTests {
 		verify(template).sendOffsetsToTransaction(anyMap());
 		verify(template, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
-		processor.addNotRetryableException(IllegalStateException.class);
+		processor.addNotRetryableExceptions(IllegalStateException.class);
 		recovered.set(null);
 		recovererShouldFail.set(true);
 		processor.process(records, consumer, illegalState, true, EOSMode.ALPHA);
