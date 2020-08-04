@@ -14,6 +14,7 @@ The default `EOSMode` is now `BETA`.
 See <<exactly-once>> for more information.
 
 Various error handlers (that extend `FailedRecordProcessor`) and the `DefaultAfterRollbackProcessor` now reset the `BackOff` if recovery fails.
+In addition, you can now select the `BackOff` to use based on the failed record and/or exception.
 See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.
 
 ==== @KafkaLisener Changes

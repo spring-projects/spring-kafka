@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 import org.apache.commons.logging.LogFactory;
@@ -106,6 +107,17 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	 */
 	public void setCommitRecovered(boolean commitRecovered) {
 		this.commitRecovered = commitRecovered;
+	}
+
+	/**
+	 * Set a function to dynamically determine the {@link BackOff} to use, based on the
+	 * consumer record and/or exception. If null is returned, the default BackOff will be
+	 * used.
+	 * @param backOffFunction the function.
+	 * @since 2.6
+	 */
+	public void setBackOffFunction(BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction) {
+		this.failureTracker.setBackOffFunction(backOffFunction);
 	}
 
 	/**

@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
@@ -47,6 +48,8 @@ class FailedRecordTracker {
 	private final boolean noRetries;
 
 	private final BackOff backOff;
+
+	private BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction;
 
 	private boolean resetStateOnRecoveryFailure = true;
 
@@ -76,6 +79,17 @@ class FailedRecordTracker {
 	}
 
 	/**
+	 * Set a function to dynamically determine the {@link BackOff} to use, based on the
+	 * consumer record and/or exception. If null is returned, the default BackOff will be
+	 * used.
+	 * @param backOffFunction the function.
+	 * @since 2.6
+	 */
+	public void setBackOffFunction(BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction) {
+		this.backOffFunction = backOffFunction;
+	}
+
+	/**
 	 * Set to false to immediately attempt to recover on the next attempt instead
 	 * of repeating the BackOff cycle when recovery fails.
 	 * @param resetStateOnRecoveryFailure false to retain state.
@@ -98,7 +112,7 @@ class FailedRecordTracker {
 		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
 		FailedRecord failedRecord = map.get(topicPartition);
 		if (failedRecord == null || failedRecord.getOffset() != record.offset()) {
-			failedRecord = new FailedRecord(record.offset(), this.backOff.start());
+			failedRecord = new FailedRecord(record.offset(), determineBackOff(record, exception).start());
 			map.put(topicPartition, failedRecord);
 		}
 		else {
@@ -122,6 +136,14 @@ class FailedRecordTracker {
 			}
 			return true;
 		}
+	}
+
+	private BackOff determineBackOff(ConsumerRecord<?, ?> record, Exception exception) {
+		if (this.backOffFunction == null) {
+			return this.backOff;
+		}
+		BackOff backOff = this.backOffFunction.apply(record, exception);
+		return backOff != null ? backOff : this.backOff;
 	}
 
 	private void attemptRecovery(ConsumerRecord<?, ?> record, Exception exception, @Nullable TopicPartition tp) {

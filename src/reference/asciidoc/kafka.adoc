@@ -2159,6 +2159,17 @@ Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset
 With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
+Starting with version 2.6, you can now provide the error handler with a `BiFunction<ConsumerRecord<?, ?>, Exception, BackOff>` to determine the `BackOff` to use, based on the failed record and/or the exception:
+
+====
+[source, java]
+----
+handler.setBackOffFunction((record, ex) -> { ... });
+----
+====
+
+If the function returns `null`, the handler's default `BackOff` will be used.
+
 [[container-props]]
 ==== Listener Container Properties
 
@@ -4654,6 +4665,17 @@ To revert to the previous behavior, set the error handler's `resetStateOnRecover
 Starting with version 2.3.2, after a record has been recovered, its offset will be committed (if one of the container `AckMode` s is configured).
 To revert to the previous behavior, set the error handler's `ackAfterHandle` property to false.
 
+Starting with version 2.6, you can now provide the error handler with a `BiFunction<ConsumerRecord<?, ?>, Exception, BackOff>` to determine the `BackOff` to use, based on the failed record and/or the exception:
+
+====
+[source, java]
+----
+handler.setBackOffFunction((record, ex) -> { ... });
+----
+====
+
+If the function returns `null`, the handler's default `BackOff` will be used.
+
 Also see <<delivery-header>>.
 
 [[retrying-batch-eh]]
@@ -4759,6 +4781,17 @@ Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset
 With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` to `false`.
 
+Starting with version 2.6, you can now provide the error handler with a `BiFunction<ConsumerRecord<?, ?>, Exception, BackOff>` to determine the `BackOff` to use, based on the failed record and/or the exception:
+
+====
+[source, java]
+----
+handler.setBackOffFunction((record, ex) -> { ... });
+----
+====
+
+If the function returns `null`, the handler's default `BackOff` will be used.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.
@@ -4813,6 +4846,17 @@ IMPORTANT: If the recoverer fails (throws an exception), the failed record will 
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
 With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the processor's `resetStateOnRecoveryFailure` property to `false`.
+
+Starting with version 2.6, you can now provide the processor with a `BiFunction<ConsumerRecord<?, ?>, Exception, BackOff>` to determine the `BackOff` to use, based on the failed record and/or the exception:
+
+====
+[source, java]
+----
+handler.setBackOffFunction((record, ex) -> { ... });
+----
+====
+
+If the function returns `null`, the processor's default `BackOff` will be used.
 
 Starting with version 2.3.1, similar to the `SeekToCurrentErrorHandler`, the `DefaultAfterRollbackProcessor` considers certain exceptions to be fatal, and retries are skipped for such exceptions; the recoverer is invoked on the first failure.
 The exceptions that are considered fatal, by default, are:

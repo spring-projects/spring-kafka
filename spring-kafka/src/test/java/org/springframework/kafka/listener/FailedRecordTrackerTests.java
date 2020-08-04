@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,22 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -37,7 +43,7 @@ import org.springframework.util.backoff.FixedBackOff;
 public class FailedRecordTrackerTests {
 
 	@Test
-	public void testNoRetries() {
+	void testNoRetries() {
 		AtomicBoolean recovered = new AtomicBoolean();
 		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
 			recovered.set(true);
@@ -48,7 +54,7 @@ public class FailedRecordTrackerTests {
 	}
 
 	@Test
-	public void testThreeRetries() {
+	void testThreeRetries() {
 		AtomicBoolean recovered = new AtomicBoolean();
 		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
 			recovered.set(true);
@@ -62,7 +68,7 @@ public class FailedRecordTrackerTests {
 	}
 
 	@Test
-	public void testSuccessAfterFailure() {
+	void testSuccessAfterFailure() {
 		FailedRecordTracker tracker = new FailedRecordTracker(null, new FixedBackOff(0L, 1L), mock(LogAccessor.class));
 		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
@@ -77,7 +83,7 @@ public class FailedRecordTrackerTests {
 	}
 
 	@Test
-	public void testDifferentOrder() {
+	void testDifferentOrder() {
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		FailedRecordTracker tracker = new FailedRecordTracker((rec, ex) -> {
 			records.add(rec);
@@ -91,6 +97,38 @@ public class FailedRecordTrackerTests {
 		assertThat(tracker.skip(record1, new RuntimeException())).isTrue();
 		assertThat(tracker.skip(record2, new RuntimeException())).isTrue();
 		assertThat(records).hasSize(2);
+	}
+
+	@Test
+	void multiBackOffs() {
+		BackOff bo1 = mock(BackOff.class);
+		BackOffExecution be1 = mock(BackOffExecution.class);
+		given(bo1.start()).willReturn(be1);
+		BackOff bo2 = mock(BackOff.class);
+		BackOffExecution be2 = mock(BackOffExecution.class);
+		given(bo2.start()).willReturn(be2);
+		FailedRecordTracker tracker = new FailedRecordTracker((rec, ex) -> { }, bo1, mock(LogAccessor.class));
+		tracker.setBackOffFunction((record, ex) -> {
+			if (record.topic().equals("foo")) {
+				return bo2;
+			}
+			else {
+				return null;
+			}
+		});
+		@SuppressWarnings("unchecked")
+		ThreadLocal<Map<TopicPartition, Object>> failures = (ThreadLocal<Map<TopicPartition, Object>>) KafkaTestUtils
+				.getPropertyValue(tracker, "failures");
+		ConsumerRecord<?, ?> record1 = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		tracker.skip(record1, new RuntimeException());
+		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+					.get(new TopicPartition("foo", 0)), "backOffExecution"))
+				.isSameAs(be2);
+		ConsumerRecord<?, ?> record2 = new ConsumerRecord<>("bar", 0, 0L, "bar", "baz");
+		tracker.skip(record2, new RuntimeException());
+		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+					.get(new TopicPartition("bar", 0)), "backOffExecution"))
+				.isSameAs(be1);
 	}
 
 }
