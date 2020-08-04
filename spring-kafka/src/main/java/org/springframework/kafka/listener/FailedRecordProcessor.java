@@ -167,7 +167,8 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 		Assert.notNull(exceptionTypes, "'exceptionTypes' cannot be null");
 		Assert.noNullElements(exceptionTypes, "'exceptionTypes' cannot contain nulls");
 		for (Class<? extends Exception> exceptionType : exceptionTypes) {
-			Assert.isInstanceOf(Exception.class, exceptionType);
+			Assert.isTrue(Exception.class.isAssignableFrom(exceptionType),
+					() -> "exceptionType " + exceptionType + " must be an Exception");
 			this.classifier.getClassified().put(exceptionType, false);
 		}
 	}
