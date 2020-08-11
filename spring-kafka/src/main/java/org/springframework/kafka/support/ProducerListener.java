@@ -31,7 +31,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  *
  * @author Marius Bogoevici
  * @author Gary Russell
- * @author Endika Guti?rrez
+ * @author Endika Gutiérrez
  *
  * @see org.apache.kafka.clients.producer.Callback
  */
@@ -43,22 +43,6 @@ public interface ProducerListener<K, V> {
 	 * @param recordMetadata the result of the successful send operation
 	 */
 	default void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata) {
-		onSuccess(producerRecord.topic(), producerRecord.partition(),
-				producerRecord.key(), producerRecord.value(), recordMetadata);
-	}
-
-	/**
-	 * Invoked after the successful send of a message (that is, after it has been acknowledged by the broker).
-	 * If the method receiving the ProducerRecord is overridden, this method won't be called
-	 * @param topic the destination topic
-	 * @param partition the destination partition (could be null)
-	 * @param key the key of the outbound message
-	 * @param value the payload of the outbound message
-	 * @param recordMetadata the result of the successful send operation
-	 * @deprecated in favor of {@link #onSuccess(ProducerRecord, RecordMetadata)}.
-	 */
-	@Deprecated
-	default void onSuccess(String topic, Integer partition, K key, V value, RecordMetadata recordMetadata) {
 	}
 
 	/**
@@ -67,32 +51,6 @@ public interface ProducerListener<K, V> {
 	 * @param exception the exception thrown
 	 */
 	default void onError(ProducerRecord<K, V> producerRecord, Exception exception) {
-		onError(producerRecord.topic(), producerRecord.partition(),
-				producerRecord.key(), producerRecord.value(), exception);
-	}
-
-	/**
-	 * Invoked after an attempt to send a message has failed.
-	 * If the method receiving the ProducerRecord is overridden, this method won't be called
-	 * @param topic the destination topic
-	 * @param partition the destination partition (could be null)
-	 * @param key the key of the outbound message
-	 * @param value the payload of the outbound message
-	 * @param exception the exception thrown
-	 * @deprecated in favor of {@link #onError(ProducerRecord, Exception)}.
-	 */
-	@Deprecated
-	default void onError(String topic, Integer partition, K key, V value, Exception exception) {
-	}
-
-	/**
-	 * Return true if this listener is interested in success as well as failure.
-	 * @deprecated the result of this method will be ignored.
-	 * @return true to express interest in successful sends.
-	 */
-	@Deprecated
-	default boolean isInterestedInSuccess() {
-		return false;
 	}
 
 }
