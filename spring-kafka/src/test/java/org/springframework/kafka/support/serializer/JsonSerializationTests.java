@@ -30,12 +30,16 @@ import java.util.Set;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.kafka.annotation.TypeMapping;
+import org.springframework.kafka.support.TypeMappingUtils;
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
@@ -335,6 +339,26 @@ public class JsonSerializationTests {
 		deser.close();
 	}
 
+	@Test
+	void testDiscoveredTypeMappings() {
+		DefaultJackson2JavaTypeMapper mapper = new DefaultJackson2JavaTypeMapper();
+		GenericApplicationContext context = new GenericApplicationContext();
+		mapper.setTypePrecedence(TypePrecedence.TYPE_ID);
+		mapper.setIdClassMapping(TypeMappingUtils.findTypeMappings(context, getClass().getPackage().getName()));
+		JsonDeserializer<Object> deser = new JsonDeserializer<>()
+				.trustedPackages("*")
+				.typeMapper(mapper);
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "foo1".getBytes()));
+		assertThat(deser.deserialize("", headers, "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
+		headers.add(new RecordHeader(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "foo2".getBytes()));
+		assertThat(deser.deserialize("", headers, "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
+		headers.add(new RecordHeader(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "bar".getBytes()));
+		assertThat(deser.deserialize("", headers, "{\"bar\":\"baz\"}".getBytes()))
+				.isInstanceOf(Bar.class);
+		deser.close();
+	}
+
 	public static JavaType fooBarJavaType(byte[] data, Headers headers) {
 		if (data[0] == '{' && data[1] == 'f') {
 			return TypeFactory.defaultInstance().constructType(Foo.class);
@@ -369,12 +393,14 @@ public class JsonSerializationTests {
 
 	}
 
+	@TypeMapping({ "foo1", "foo2" })
 	public static class Foo {
 
 		public String foo = "foo";
 
 	}
 
+	@TypeMapping("bar")
 	public static class Bar extends Foo {
 
 		public String bar = "bar";
