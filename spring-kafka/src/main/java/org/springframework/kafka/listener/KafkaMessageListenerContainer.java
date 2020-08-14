@@ -435,8 +435,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private static final String ERROR_HANDLER_THREW_AN_EXCEPTION = "Error handler threw an exception";
 
-		private static final int SIXTY = 60;
-
 		private static final String UNCHECKED = "unchecked";
 
 		private static final String RAWTYPES = "rawtypes";
