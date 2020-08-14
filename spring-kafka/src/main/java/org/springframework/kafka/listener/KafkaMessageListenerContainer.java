@@ -140,6 +140,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private static final int DEFAULT_ACK_TIME = 5000;
 
+	private static final Map<String, Object> CONSUMER_CONFIG_DEFAULTS = ConsumerConfig.configDef().defaultValues();
+
 	private final AbstractMessageListenerContainer<K, V> thisOrParentContainer;
 
 	private final TopicPartitionOffset[] topicPartitions;
@@ -678,12 +680,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private Properties propertiesFromProperties() {
 			Properties propertyOverrides = this.containerProperties.getKafkaConsumerProperties();
-			Properties props = new Properties(propertyOverrides);
-			Set<String> stringPropertyNames = props.stringPropertyNames();
-			// Copy non-string-valued properties from the default hash table to the new properties object
-			propertyOverrides.forEach((key, value) -> {
-				if (key instanceof String && !stringPropertyNames.contains(key)) {
-					props.put(key, value);
+			Properties props = new Properties();
+			props.putAll(propertyOverrides);
+			Set<String> stringPropertyNames = propertyOverrides.stringPropertyNames();
+			// User might have provided properties as defaults
+			stringPropertyNames.forEach((name) -> {
+				if (!props.contains(name)) {
+					props.setProperty(name, propertyOverrides.getProperty(name));
 				}
 			});
 			return props;
@@ -783,9 +786,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.logger.warn(() -> "Unexpected type: " + timeoutToLog.getClass().getName()
 							+ " in property '"
 							+ ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG
-							+ "'; defaulting to 30 seconds.");
+							+ "'; using Kafka default.");
 				}
-				return Duration.ofSeconds(SIXTY / 2).toMillis(); // Default 'max.poll.interval.ms' is 30 seconds
+				return (int) CONSUMER_CONFIG_DEFAULTS.get(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG);
 			}
 		}
 
@@ -868,12 +871,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						this.logger.warn(() -> "Unexpected type: " + timeoutToLog.getClass().getName()
 							+ " in property '"
 							+ ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
-							+ "'; defaulting to 60 seconds for sync commit timeouts");
+							+ "'; defaulting to Kafka default for sync commit timeouts");
 					}
-					return Duration.ofSeconds(SIXTY);
+					return Duration
+							.ofMillis((int) CONSUMER_CONFIG_DEFAULTS.get(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG));
 				}
 			}
-
 		}
 
 		private Object findDeserializerClass(Map<String, Object> props, boolean isValue) {

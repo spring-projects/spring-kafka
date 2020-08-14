@@ -98,6 +98,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
@@ -235,6 +236,10 @@ public class EnableKafkaIntegrationTests {
 		List<?> containers = KafkaTestUtils.getPropertyValue(container, "containers", List.class);
 		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumerGroupId"))
 				.isEqualTo(DEFAULT_TEST_GROUP_ID);
+		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.maxPollInterval"))
+				.isEqualTo(300000L);
+		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.syncCommitTimeout"))
+				.isEqualTo(Duration.ofSeconds(60));
 		container.stop();
 	}
 
@@ -370,13 +375,15 @@ public class EnableKafkaIntegrationTests {
 		assertThat(listenerContainer.getContainerProperties().getSyncCommitTimeout()).isNull();
 		this.registry.start();
 		assertThat(listenerContainer.isRunning()).isTrue();
-		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer)
+		KafkaMessageListenerContainer<?, ?> kafkaMessageListenerContainer =
+				((ConcurrentMessageListenerContainer<?, ?>) listenerContainer)
 				.getContainers()
-				.get(0)
+				.get(0);
+		assertThat(kafkaMessageListenerContainer
 				.getContainerProperties().getSyncCommitTimeout())
-				.isEqualTo(Duration.ofSeconds(60));
+				.isEqualTo(Duration.ofSeconds(59));
 		assertThat(listenerContainer.getContainerProperties().getSyncCommitTimeout())
-				.isEqualTo(Duration.ofSeconds(60));
+				.isEqualTo(Duration.ofSeconds(59));
 		listenerContainer.stop();
 		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.syncCommits", Boolean.class))
 				.isFalse();
@@ -384,6 +391,8 @@ public class EnableKafkaIntegrationTests {
 				.isNotNull();
 		assertThat(KafkaTestUtils.getPropertyValue(listenerContainer, "containerProperties.consumerRebalanceListener"))
 				.isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(kafkaMessageListenerContainer, "listenerConsumer.maxPollInterval"))
+				.isEqualTo(301000L);
 	}
 
 	@Test
@@ -1683,7 +1692,9 @@ public class EnableKafkaIntegrationTests {
 		volatile CustomMethodArgument customMethodArgument;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
-				containerFactory = "kafkaAutoStartFalseListenerContainerFactory")
+				containerFactory = "kafkaAutoStartFalseListenerContainerFactory",
+				properties = { ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG + ":301000",
+						ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG + ":59000" })
 		public void manualStart(String foo) {
 		}
 
