@@ -4611,6 +4611,7 @@ The exceptions that are considered fatal, by default, are:
 
 * `DeserializationException`
 * `MessageConversionException`
+* `ConversionException`
 * `MethodArgumentResolutionException`
 * `NoSuchMethodException`
 * `ClassCastException`
@@ -4863,6 +4864,7 @@ The exceptions that are considered fatal, by default, are:
 
 * `DeserializationException`
 * `MessageConversionException`
+* `ConversionException`
 * `MethodArgumentResolutionException`
 * `NoSuchMethodException`
 * `ClassCastException`

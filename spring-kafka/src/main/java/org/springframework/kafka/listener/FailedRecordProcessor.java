@@ -29,6 +29,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.MessageConversionException;
@@ -141,6 +142,7 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	 * <ul>
 	 * <li>{@link DeserializationException}</li>
 	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link ConversionException}</li>
 	 * <li>{@link MethodArgumentResolutionException}</li>
 	 * <li>{@link NoSuchMethodException}</li>
 	 * <li>{@link ClassCastException}</li>
@@ -163,6 +165,7 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	 * <ul>
 	 * <li>{@link DeserializationException}</li>
 	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link ConversionException}</li>
 	 * <li>{@link MethodArgumentResolutionException}</li>
 	 * <li>{@link NoSuchMethodException}</li>
 	 * <li>{@link ClassCastException}</li>
@@ -191,6 +194,7 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	 * <ul>
 	 * <li>{@link DeserializationException}</li>
 	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link ConversionException}</li>
 	 * <li>{@link MethodArgumentResolutionException}</li>
 	 * <li>{@link NoSuchMethodException}</li>
 	 * <li>{@link ClassCastException}</li>
@@ -234,6 +238,7 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 		Map<Class<? extends Throwable>, Boolean> classified = new HashMap<>();
 		classified.put(DeserializationException.class, false);
 		classified.put(MessageConversionException.class, false);
+		classified.put(ConversionException.class, false);
 		classified.put(MethodArgumentResolutionException.class, false);
 		classified.put(NoSuchMethodException.class, false);
 		classified.put(ClassCastException.class, false);
