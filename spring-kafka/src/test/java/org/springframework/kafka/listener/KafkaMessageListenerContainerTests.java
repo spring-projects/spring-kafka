@@ -57,6 +57,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.aopalliance.intercept.MethodInterceptor;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -596,6 +597,16 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setMissingTopicsFatal(false);
+		List<String> advised = new ArrayList<>();
+		MethodInterceptor advice1 = invoc -> {
+			advised.add("one");
+			return invoc.proceed();
+		};
+		MethodInterceptor advice2 = invoc -> {
+			advised.add("two");
+			return invoc.proceed();
+		};
+		containerProps.setAdviceChain(advice1, advice2);
 		final CountDownLatch latch = new CountDownLatch(2);
 		MessageListener<Integer, String> messageListener = spy(
 				new MessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
@@ -632,6 +643,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
+		assertThat(advised).containsExactly("one", "two", "one", "two");
 	}
 
 	@SuppressWarnings("unchecked")

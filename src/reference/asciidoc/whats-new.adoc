@@ -17,6 +17,9 @@ Various error handlers (that extend `FailedRecordProcessor`) and the `DefaultAft
 In addition, you can now select the `BackOff` to use based on the failed record and/or exception.
 See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.
 
+You can now configure an `adviceChain` in the container properties.
+See <<container-props>> for more information.
+
 ==== @KafkaLisener Changes
 
 When using manual partition assignment, you can now specify a wildcard for determining which partitions should be reset to the initial offset.

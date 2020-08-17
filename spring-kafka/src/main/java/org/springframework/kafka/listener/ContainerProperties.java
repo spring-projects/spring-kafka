@@ -17,12 +17,20 @@
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
+import org.aopalliance.aop.Advice;
+
+import org.springframework.aop.framework.Advised;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -31,6 +39,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Contains runtime properties for a listener container.
@@ -164,6 +173,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
+	private final List<Advice> adviceChain = new ArrayList<>();
+
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
 	 * <ul>
@@ -280,6 +291,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setMessageListener(Object messageListener) {
 		this.messageListener = messageListener;
+		adviseListenerIfNeeded();
 	}
 
 	/**
@@ -707,6 +719,45 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setTransactionDefinition(TransactionDefinition transactionDefinition) {
 		this.transactionDefinition = transactionDefinition;
+	}
+
+	/**
+	 * A chain of listener {@link Advice}s.
+	 * @return the adviceChain.
+	 * @since 2.5.6
+	 */
+	public Advice[] getAdviceChain() {
+		return this.adviceChain.toArray(new Advice[0]);
+	}
+
+	/**
+	 * Set a chain of listener {@link Advice}s; must not be null or have null elements.
+	 * @param adviceChain the adviceChain to set.
+	 * @since 2.5.6
+	 */
+	public void setAdviceChain(Advice... adviceChain) {
+		Assert.notNull(adviceChain, "'adviceChain' cannot be null");
+		Assert.noNullElements(adviceChain, "'adviceChain' cannot have null elements");
+		this.adviceChain.clear();
+		this.adviceChain.addAll(Arrays.asList(adviceChain));
+		if (this.messageListener != null) {
+			adviseListenerIfNeeded();
+		}
+	}
+
+	private void adviseListenerIfNeeded() {
+		if (!CollectionUtils.isEmpty(this.adviceChain)) {
+			if (AopUtils.isAopProxy(this.messageListener)) {
+				Advised advised = (Advised) this.messageListener;
+				this.adviceChain.forEach(advised::removeAdvice);
+				this.adviceChain.forEach(advised::addAdvice);
+			}
+			else {
+				ProxyFactory pf = new ProxyFactory(this.messageListener);
+				this.adviceChain.forEach(pf::addAdvice);
+				this.messageListener = pf.getProxy();
+			}
+		}
 	}
 
 	@Override

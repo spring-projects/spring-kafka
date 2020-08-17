@@ -2184,6 +2184,10 @@ If the function returns `null`, the handler's default `BackOff` will be used.
 |1
 |The number of records before committing pending offsets when the `ackMode` is `COUNT` or `COUNT_TIME`.
 
+|adviceChain
+|`null`
+|A chain of `Advice` objects (e.g. `MethodInterceptor` around advice) wrapping the message listener, invoked in order.
+
 |ackMode
 |BATCH
 |Controls how often offsets are committed - see <<committing-offsets>>.
