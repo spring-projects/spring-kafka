@@ -170,7 +170,7 @@ public class ErrorHandlingDeserializerTests {
 		@Bean
 		public ConsumerFactory<String, String> cf() {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(TOPIC + ".g1", "false", embeddedKafka());
-			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class.getName());
+			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ExtendedEHD.class.getName());
 			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
 			props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, FailSometimesDeserializer.class);
 			props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, FailSometimesDeserializer.class.getName());
@@ -228,6 +228,10 @@ public class ErrorHandlingDeserializerTests {
 			}
 			return string;
 		}
+
+	}
+
+	public static class ExtendedEHD<T> extends ErrorHandlingDeserializer<T> {
 
 	}
 
