@@ -3250,12 +3250,12 @@ To configure the container to use mode `ALPHA`, set the container property `EOSM
 
 IMPORTANT: With `BETA`, your brokers must be version 2.5 or later, however with `kafka-clients` version 2.6, the producer will automatically fall back to `ALPHA` if the broker does not support `BETA`.
 The `DefaultKafkaProducerFactory` is configured to enable that behavior.
-If your brokers are earlier than 2.5, be sure to leave the `DefaultKafkaConsumerFactory` `producerPerConsumerPartition` set to `true` and, if you are using a batch listener, you should set `subBatchPerPartition` to `true`.
+If your brokers are earlier than 2.5, be sure to leave the `DefaultKafkaProducerFactory` `producerPerConsumerPartition` set to `true` and, if you are using a batch listener, you should set `subBatchPerPartition` to `true`.
 
 When your brokers are upgraded to 2.5 or later, the producer will automatically switch to using mode `BETA`, but the number of producers will remain as before.
 You can then do a rolling upgrade of your application with `producerPerConsumerPartition` set to `false` to reduce the number of producers; you should also no longer set the `subBatchPerPartition` container property.
 
-If your brokers are already 2.5 or newer, you should set the `DefaultKafkaConsumerFactory` `producerPerConsumerPartition` property to `false`, to reduce the number of producers needed.
+If your brokers are already 2.5 or newer, you should set the `DefaultKafkaProducerFactory` `producerPerConsumerPartition` property to `false`, to reduce the number of producers needed.
 
 When using `BETA` mode, it is no longer necessary to set the `subBatchPerPartition` to `true`; it will default to `false` when the `EOSMode` is `BETA`.
 
