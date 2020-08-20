@@ -349,6 +349,20 @@ public class JsonSerializationTests {
 		deser.close();
 	}
 
+	@Test
+	void testCopyWithType() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JsonSerializer<Object> ser = new JsonSerializer<>();
+		JsonDeserializer<Parent> typedDeser = deser.copyWithType(Parent.class);
+		JsonSerializer<Parent> typedSer = ser.copyWithType(Parent.class);
+		Child serializedValue = new Child(1);
+		assertThat(typedDeser.deserialize("", typedSer.serialize("", serializedValue))).isEqualTo(serializedValue);
+		deser.close();
+		ser.close();
+		typedDeser.close();
+		typedSer.close();
+	}
+
 	public static JavaType fooBarJavaType(byte[] data, Headers headers) {
 		if (data[0] == '{' && data[1] == 'f') {
 			return TypeFactory.defaultInstance().constructType(Foo.class);

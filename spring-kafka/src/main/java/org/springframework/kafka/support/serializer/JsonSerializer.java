@@ -204,6 +204,43 @@ public class JsonSerializer<T> implements Serializer<T> {
 		// No-op
 	}
 
+	/**
+	 * Copies this serializer with same configuration, except new target type reference is used.
+	 * @param newTargetType type reference forced for serialization, not null
+	 * @param <X> new serialization source type
+	 * @return new instance of serializer with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonSerializer<X> copyWithType(Class<? super X> newTargetType) {
+		return copyWithType(this.objectMapper.constructType(newTargetType));
+	}
+
+	/**
+	 * Copies this serializer with same configuration, except new target type reference is used.
+	 * @param newTargetType type reference forced for serialization, not null
+	 * @param <X> new serialization source type
+	 * @return new instance of serializer with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonSerializer<X> copyWithType(TypeReference<? super X> newTargetType) {
+		return copyWithType(this.objectMapper.constructType(newTargetType.getType()));
+	}
+
+	/**
+	 * Copies this serializer with same configuration, except new target java type is used.
+	 * @param newTargetType java type forced for serialization, not null
+	 * @param <X> new serialization source type
+	 * @return new instance of serializer with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonSerializer<X> copyWithType(JavaType newTargetType) {
+		JsonSerializer<X> result = new JsonSerializer<>(newTargetType, this.objectMapper);
+		result.addTypeInfo = this.addTypeInfo;
+		result.typeMapper = this.typeMapper;
+		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;
+		return result;
+	}
+
 	// Fluent API
 
 	/**

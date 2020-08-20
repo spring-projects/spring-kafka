@@ -125,6 +125,42 @@ public class JsonSerde<T> implements Serde<T> {
 		return this.jsonDeserializer;
 	}
 
+	/**
+	 * Copies this serde with same configuration, except new target type is used.
+	 * @param newTargetType type reference forced for serialization, and used as default for deserialization, not null
+	 * @param <X> new deserialization result type and serialization source type
+	 * @return new instance of serde with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonSerde<X> copyWithType(Class<? super X> newTargetType) {
+		return new JsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
+			this.jsonDeserializer.copyWithType(newTargetType));
+	}
+
+	/**
+	 * Copies this serde with same configuration, except new target type reference is used.
+	 * @param newTargetType type reference forced for serialization, and used as default for deserialization, not null
+	 * @param <X> new deserialization result type and serialization source type
+	 * @return new instance of serde with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonSerde<X> copyWithType(TypeReference<? super X> newTargetType) {
+		return new JsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
+			this.jsonDeserializer.copyWithType(newTargetType));
+	}
+
+	/**
+	 * Copies this serde with same configuration, except new target java type is used.
+	 * @param newTargetType java type forced for serialization, and used as default for deserialization, not null
+	 * @param <X> new deserialization result type and serialization source type
+	 * @return new instance of serde with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonSerde<X> copyWithType(JavaType newTargetType) {
+		return new JsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
+			this.jsonDeserializer.copyWithType(newTargetType));
+	}
+
 	// Fluent API
 
 	/**

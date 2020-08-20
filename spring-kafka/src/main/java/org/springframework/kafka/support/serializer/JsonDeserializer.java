@@ -548,6 +548,43 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		// No-op
 	}
 
+	/**
+	 * Copies this deserializer with same configuration, except new target type is used.
+	 * @param newTargetType type used for when type headers are missing, not null
+	 * @param <X> new deserialization result type
+	 * @return new instance of deserializer with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonDeserializer<X> copyWithType(Class<? super X> newTargetType) {
+		return copyWithType(this.objectMapper.constructType(newTargetType));
+	}
+
+	/**
+	 * Copies this deserializer with same configuration, except new target type reference is used.
+	 * @param newTargetType type reference used for when type headers are missing, not null
+	 * @param <X> new deserialization result type
+	 * @return new instance of deserializer with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonDeserializer<X> copyWithType(TypeReference<? super X> newTargetType) {
+		return copyWithType(this.objectMapper.constructType(newTargetType.getType()));
+	}
+
+	/**
+	 * Copies this deserializer with same configuration, except new target java type is used.
+	 * @param newTargetType java type used for when type headers are missing, not null
+	 * @param <X> new deserialization result type
+	 * @return new instance of deserializer with type changes
+	 * @since 2.6
+	 */
+	public <X> JsonDeserializer<X> copyWithType(JavaType newTargetType) {
+		JsonDeserializer<X> result = new JsonDeserializer<>(newTargetType, this.objectMapper, this.useTypeHeaders);
+		result.removeTypeHeaders = this.removeTypeHeaders;
+		result.typeMapper = this.typeMapper;
+		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;
+		return result;
+	}
+
 	// Fluent API
 
 	/**
