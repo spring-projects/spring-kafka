@@ -133,6 +133,10 @@ subprojects { subproject ->
 		targetCompatibility = 1.8
 	}
 
+	compileTestJava {
+		sourceCompatibility = 11
+	}
+
 	compileTestKotlin {
 		kotlinOptions {
 			jvmTarget = '1.8'

@@ -26,3 +26,6 @@ When using manual partition assignment, you can now specify a wildcard for deter
 In addition, if the listener implements `ConsumerSeekAware`, `onPartitionsAssigned()` is called after the manual assignment.
 (Also added in version 2.5.5).
 See <<manual-assignment>> for more information.
+
+Convenience methods have been added to `AbstractConsumerSeekAware` to make seeking easier.
+See <<seek>> for more information.

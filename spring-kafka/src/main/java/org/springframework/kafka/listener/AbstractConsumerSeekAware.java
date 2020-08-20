@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -40,6 +42,8 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
 
+	private final Map<ConsumerSeekCallback, List<TopicPartition>> callbacksToTopic = new ConcurrentHashMap<>();
+
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
 		this.callbackForThread.set(callback);
@@ -49,13 +53,27 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 		ConsumerSeekCallback threadCallback = this.callbackForThread.get();
 		if (threadCallback != null) {
-			assignments.keySet().forEach(tp -> this.callbacks.put(tp, threadCallback));
+			assignments.keySet().forEach(tp -> {
+				this.callbacks.put(tp, threadCallback);
+				this.callbacksToTopic.computeIfAbsent(threadCallback, key -> new LinkedList<>()).add(tp);
+			});
 		}
 	}
 
 	@Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-		partitions.forEach(tp -> this.callbacks.remove(tp));
+		partitions.forEach(tp -> {
+			ConsumerSeekCallback removed = this.callbacks.remove(tp);
+			if (removed != null) {
+				List<TopicPartition> topics = this.callbacksToTopic.get(removed);
+				if (topics != null) {
+					topics.remove(tp);
+					if (topics.size() == 0) {
+						this.callbacksToTopic.remove(removed);
+					}
+				}
+			}
+		});
 	}
 
 	@Override
@@ -79,6 +97,40 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	 */
 	protected Map<TopicPartition, ConsumerSeekCallback> getSeekCallbacks() {
 		return Collections.unmodifiableMap(this.callbacks);
+	}
+
+	/**
+	 * Return the currently registered callbacks and their associated {@link TopicPartition}(s).
+	 * @return the map of callbacks and partitions.
+	 * @since 2.6
+	 */
+	protected Map<ConsumerSeekCallback, List<TopicPartition>> getCallbacksAndTopics() {
+		return Collections.unmodifiableMap(this.callbacksToTopic);
+	}
+
+	/**
+	 * Seek all assigned partitions to the beginning.
+	 * @since 2.6
+	 */
+	public void seekToBeginning() {
+		getCallbacksAndTopics().forEach((cb, topics) -> cb.seekToBeginning(topics));
+	}
+
+	/**
+	 * Seek all assigned partitions to the end.
+	 * @since 2.6
+	 */
+	public void seekToEnd() {
+		getCallbacksAndTopics().forEach((cb, topics) -> cb.seekToEnd(topics));
+	}
+
+	/**
+	 * Seek all assigned partitions to the offset represented by the timestamp.
+	 * @param time the time to seek to.
+	 * @since 2.6
+	 */
+	public void seekToTimestamp(long time) {
+		getCallbacksAndTopics().forEach((cb, topcis) -> cb.seekToTimestamp(topcis, time));
 	}
 
 }

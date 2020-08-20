@@ -2721,7 +2721,7 @@ NOTE: The `seekToBeginning` method that accepts a collection is useful, for exam
 ====
 [source, java]
 ----
-public class MyListener extends AbstractConsumerSeekAware {
+public class MyListener implements ConsumerSeekAware {
 
 ...
 
@@ -2850,6 +2850,41 @@ public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
 }
 ----
 ====
+
+Version 2.6 added convenience methods to the abstract class:
+
+* `seekToBeginning()` - seeks all assigned partitions to the beginning
+* `seekToEnd()` - seeks all assigned partitions to the end
+* `seekToTimestamp(long time)` - seeks all assigned partitions to the offset represented by that timestamp.
+
+Example:
+
+====
+[source, java]
+----
+public class MyListener extends AbstractConsumerSeekAware {
+
+    @KafkaListener(...)
+    void listn(...) {
+        ...
+    }
+}
+
+public class SomeOtherBean {
+
+    MyListener listener;
+
+    ...
+
+    void someMethod() {
+        this.listener.seekToTimestamp(System.currentTimeMillis - 60_000);
+    }
+
+}
+
+----
+====
+
 
 [[container-factory]]
 ==== Container factory
