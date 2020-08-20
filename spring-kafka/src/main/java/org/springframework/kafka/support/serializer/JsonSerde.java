@@ -28,6 +28,8 @@ import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -53,29 +55,45 @@ public class JsonSerde<T> implements Serde<T> {
 	private final JsonDeserializer<T> jsonDeserializer;
 
 	public JsonSerde() {
-		this((ObjectMapper) null);
+		this((JavaType) null, JacksonUtils.enhancedObjectMapper());
 	}
 
-	public JsonSerde(Class<? super T> targetType) {
-		this(targetType, null);
+	public JsonSerde(@Nullable Class<? super T> targetType) {
+		this(targetType, JacksonUtils.enhancedObjectMapper());
+	}
+
+	public JsonSerde(@Nullable TypeReference<? super T> targetType) {
+		this(targetType, JacksonUtils.enhancedObjectMapper());
+	}
+
+	public JsonSerde(@Nullable JavaType targetType) {
+		this(targetType, JacksonUtils.enhancedObjectMapper());
 	}
 
 	public JsonSerde(ObjectMapper objectMapper) {
-		this(null, objectMapper);
+		this((JavaType) null, objectMapper);
 	}
 
-	@SuppressWarnings("unchecked")
-	public JsonSerde(@Nullable Class<? super T> targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
-		ObjectMapper objectMapper = objectMapperArg;
-		Class<T> targetType = (Class<T>) targetTypeArg;
-		if (objectMapper == null) {
-			objectMapper = JacksonUtils.enhancedObjectMapper();
+	public JsonSerde(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper) {
+		this(targetType == null ? null : objectMapper.constructType(targetType.getType()), objectMapper);
+	}
+
+	public JsonSerde(@Nullable Class<? super T> targetType, ObjectMapper objectMapper) {
+		this(targetType == null ? null : objectMapper.constructType(targetType), objectMapper);
+	}
+
+	public JsonSerde(@Nullable JavaType targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
+		ObjectMapper objectMapper = objectMapperArg == null ? JacksonUtils.enhancedObjectMapper() : objectMapperArg;
+		JavaType actualJavaType;
+		if (targetTypeArg != null) {
+			actualJavaType = targetTypeArg;
+		}
+		else {
+			Class<?> resolvedGeneric = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
+			actualJavaType = resolvedGeneric != null ? objectMapper.constructType(resolvedGeneric) : null;
 		}
 		this.jsonSerializer = new JsonSerializer<>(objectMapper);
-		if (targetType == null) {
-			targetType = (Class<T>) ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
-		}
-		this.jsonDeserializer = new JsonDeserializer<>(targetType, objectMapper);
+		this.jsonDeserializer = new JsonDeserializer<>(actualJavaType, objectMapper);
 	}
 
 	public JsonSerde(JsonSerializer<T> jsonSerializer, JsonDeserializer<T> jsonDeserializer) {

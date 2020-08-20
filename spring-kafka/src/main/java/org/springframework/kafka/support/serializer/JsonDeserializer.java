@@ -142,7 +142,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * {@link ObjectMapper}.
 	 * @param targetType the target type to use if no type info headers are present.
 	 */
-	public JsonDeserializer(Class<? super T> targetType) {
+	public JsonDeserializer(@Nullable Class<? super T> targetType) {
 		this(targetType, true);
 	}
 
@@ -151,7 +151,17 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param targetType the target type reference to use if no type info headers are present.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(TypeReference<? super T> targetType) {
+	public JsonDeserializer(@Nullable TypeReference<? super T> targetType) {
+		this(targetType, true);
+	}
+
+
+	/**
+	 * Construct an instance with the provided target type, and a default {@link ObjectMapper}.
+	 * @param targetType the target java type to use if no type info headers are present.
+	 * @since 2.3
+	 */
+	public JsonDeserializer(@Nullable JavaType targetType) {
 		this(targetType, true);
 	}
 
@@ -180,6 +190,18 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
+	 * Construct an instance with the provided target type, and
+	 * useHeadersIfPresent with a default {@link ObjectMapper}.
+	 * @param targetType the target java type.
+	 * @param useHeadersIfPresent true to use headers if present and fall back to target
+	 * type if not.
+	 * @since 2.3
+	 */
+	public JsonDeserializer(JavaType targetType, boolean useHeadersIfPresent) {
+		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
+	}
+
+	/**
 	 * Construct an instance with the provided target type, and {@link ObjectMapper}.
 	 * @param targetType the target type to use if no type info headers are present.
 	 * @param objectMapper the mapper. type if not.
@@ -194,6 +216,15 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param objectMapper the mapper. type if not.
 	 */
 	public JsonDeserializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
+		this(targetType, objectMapper, true);
+	}
+
+	/**
+	 * Construct an instance with the provided target type, and {@link ObjectMapper}.
+	 * @param targetType the target java type to use if no type info headers are present.
+	 * @param objectMapper the mapper. type if not.
+	 */
+	public JsonDeserializer(JavaType targetType, ObjectMapper objectMapper) {
 		this(targetType, objectMapper, true);
 	}
 
