@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -42,6 +43,9 @@ import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePr
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;
@@ -225,6 +229,16 @@ public class JsonSerializationTests {
 	}
 
 	@Test
+	void testDeserializerTypeForcedType() {
+		JsonSerializer<List<Parent>> ser = new JsonSerializer<>(new TypeReference<List<Parent>>() { });
+		JsonDeserializer<List<Parent>> de = new JsonDeserializer<>(new TypeReference<List<Parent>>() { });
+		List<Parent> dummy = Arrays.asList(new Child(1), new Parent(2));
+		assertThat(de.deserialize(this.topic, ser.serialize(this.topic, dummy))).isEqualTo(dummy);
+		ser.close();
+		de.close();
+	}
+
+	@Test
 	void jsonNode() throws IOException {
 		JsonSerializer<Object> ser = new JsonSerializer<>();
 		JsonDeserializer<JsonNode> de = new JsonDeserializer<>();
@@ -380,5 +394,44 @@ public class JsonSerializationTests {
 		public String bar = "bar";
 
 	}
+
+	@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+	@JsonSubTypes({
+		@JsonSubTypes.Type(value = Parent.class, name = "parent"),
+		@JsonSubTypes.Type(value = Child.class, name = "child")
+	})
+	public static class Parent {
+		@JsonProperty
+		private int number;
+
+		Parent() { }
+
+		Parent(int number) {
+			this.number = number;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (o == null || !getClass().equals(o.getClass())) {
+				return false;
+			}
+			Parent parent = (Parent) o;
+			return number == parent.number;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(number);
+		}
+	}
+
+	public static class Child extends Parent {
+		Child() { }
+
+		Child(int number) {
+			super(number);
+		}
+	}
+
 
 }

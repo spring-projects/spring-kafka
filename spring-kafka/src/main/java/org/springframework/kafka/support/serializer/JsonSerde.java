@@ -92,7 +92,7 @@ public class JsonSerde<T> implements Serde<T> {
 			Class<?> resolvedGeneric = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
 			actualJavaType = resolvedGeneric != null ? objectMapper.constructType(resolvedGeneric) : null;
 		}
-		this.jsonSerializer = new JsonSerializer<>(objectMapper);
+		this.jsonSerializer = new JsonSerializer<>(actualJavaType, objectMapper);
 		this.jsonDeserializer = new JsonDeserializer<>(actualJavaType, objectMapper);
 	}
 
