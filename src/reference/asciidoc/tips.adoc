@@ -47,7 +47,7 @@ You should also set the container's `AckMode` to `MANUAL` to prevent the contain
 Howewever, starting with version 2.5.5, as shown above, you can apply an initial offset to all partitions; see <<manual-assignment>> for more information.
 
 [[ex-jdbc-sync]]
-=== Example of Transaction Synchronization
+=== Example of Transactions with ChainedKafkaTransactionManager
 
 The following Spring Boot application is an example of synchronizing database and Kafka transactions.
 

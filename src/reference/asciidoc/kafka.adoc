@@ -3050,6 +3050,8 @@ Spring for Apache Kafka adds support in the following ways:
 * `KafkaTransactionManager`: Used with normal Spring transaction support (`@Transactional`, `TransactionTemplate` etc).
 * Transactional `KafkaMessageListenerContainer`
 * Local transactions with `KafkaTemplate`
+* Transaction synchronization with other transaction managers
+* `ChainedKafkaTransactionManager`
 
 Transactions are enabled by providing the `DefaultKafkaProducerFactory` with a `transactionIdPrefix`.
 In that case, instead of managing a single shared `Producer`, the factory maintains a cache of transactional producers.
@@ -3064,8 +3066,11 @@ NOTE: While transactions are supported with batch listeners, by default, zombie 
 However, starting with version 2.3.2, zombie fencing is supported if you set the container property `subBatchPerPartition` to true.
 In that case, the batch listener is invoked once per partition received from the last poll, as if each poll only returned records for a single partition.
 This is `true` by default since version 2.5 when transactions are enabled with `EOSMode.ALPHA`; set it to `false` if you are using transactions but are not concerned about zombie fencing.
+Also see <<exactly-once>>.
 
 Also see <<transaction-id-prefix>>.
+
+With Spring Boot, it is only necessary to set the `spring.kafka.producer.transaction-id-prefix` property - Boot will automatically configure a `KafkaTransactionManager` bean and wire it into the listener container.
 
 ===== Using `KafkaTransactionManager`
 
@@ -3081,52 +3086,24 @@ You must configure the `KafkaTemplate` to use the same `ProducerFactory` as the 
 
 ===== Transaction Synchronization
 
-If you need to synchronize a Kafka transaction with some other transaction, configure the listener container with the appropriate transaction manager (one that supports synchronization, such as the `DataSourceTransactionManager`).
-Any operations performed on a transactional `KafkaTemplate` from the listener participate in a single transaction.
-The Kafka transaction is committed (or rolled back) immediately after the controlling transaction.
-Before exiting the listener, you should invoke one of the template's `sendOffsetsToTransaction` methods (unless you use a <<chained-transaction-manager,`ChainedKafkaTransactionManager`>>).
-For convenience, the listener container binds its consumer group ID to the thread, so, generally, you can use the first method.
-The following listing shows the two method signatures:
+This section refers to producer-only transactions (transactions not started by a listener container); see <<chained-transaction-manager>> for information about synchronizing transactions when the container starts the transaction.
+
+If you want to send records to kafka and perform some database updates, you can use normal Spring transaction management with, say, a `DataSourceTransactionManager`.
 
 ====
 [source, java]
 ----
-void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets);
-
-void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId);
-----
-====
-
-The following example shows how to use the first signature of the `sendOffsetsToTransaction` method:
-
-====
-[source, java]
-----
-@Bean
-KafkaMessageListenerContainer container(ConsumerFactory<String, String> cf,
-            final KafkaTemplate template) {
-    ContainerProperties props = new ContainerProperties("foo");
-    props.setGroupId("group");
-    props.setTransactionManager(new SomeOtherTransactionManager());
-    ...
-    props.setMessageListener((MessageListener<String, String>) m -> {
-        template.send("foo", "bar");
-        template.send("baz", "qux");
-        template.sendOffsetsToTransaction(
-            Collections.singletonMap(new TopicPartition(m.topic(), m.partition()),
-                new OffsetAndMetadata(m.offset() + 1)));
-    });
-    return new KafkaMessageListenerContainer<>(cf, props);
+@Transactional
+public void process(List<Thing> things) {
+    things.forEach(thing -> this.kafkaTemplate.send("topic", thing));
+    updateDb(things);
 }
 ----
 ====
 
-NOTE: The offset to be committed is one greater than the offset of the records processed by the listener.
-
-IMPORTANT: You should call this only when you use transaction synchronization.
-When a listener container is configured to use a `KafkaTransactionManager` or `ChainedKafkaTransactionManager`, it takes care of sending the offsets to the transaction.
-
-See <<ex-jdbc-sync>> for an example application that synchronizes JDBC and Kafka transactions.
+The interceptor for the `@Transactional` annotation starts the transaction and the `KafkaTemplate` will synchronize a transaction with that transaction manager; each send will participate in that transaction.
+When the method exits, the database transaction will commit followed by the Kafka transaction.
+If you wish the commits to be performed in the reverse order (Kafka first), use a <<chained-transaction-manager,`ChainedTransactionManager`>> configured with the `DataSourceTransactionManager` as the first TM and then the `KafkaTransactionManager`, in that order.
 
 [[chained-transaction-manager]]
 ===== Using `ChainedKafkaTransactionManager`
@@ -3137,7 +3114,7 @@ Since it is a `KafkaAwareTransactionManager`, the container can send the offsets
 This provides another mechanism for synchronizing transactions without having to send the offsets to the transaction in the listener code.
 You should chain your transaction managers in the desired order and provide the `ChainedTransactionManager` in the `ContainerProperties`.
 
-See <<ex-jdbc-sync>> for an example application that synchronizes JDBC and Kafka transactions.
+See <<ex-jdbc-sync>> for an example application that chains JDBC and Kafka transactions.
 
 Starting with version 2.5.4, you can configure a `TransactionDefinition` in the `ContainerProperties`; its properties will be copied to the container's `TransactionTemplate` used to start transactions.
 This allows, for example, setting a transaction timeout for other transaction managers within the `ChainedKafkaTransactionManager`.
@@ -3181,6 +3158,8 @@ When using a transaction manager and template for a listener container, you woul
 This value should be the same for all application instances.
 For transactions started by the template (or the transaction manager for `@Transaction`) you should set the property on the template and transaction manager respectively.
 This property must have a different value on each application instance.
+
+This problem has been eliminated when `EOSMode.BETA` is being used (with broker versions >= 2.5); see <<exactly-once>>.
 
 [[tx-template-mixed]]
 ===== `KafkaTemplate` Transactional and non-Transactional Publishing
