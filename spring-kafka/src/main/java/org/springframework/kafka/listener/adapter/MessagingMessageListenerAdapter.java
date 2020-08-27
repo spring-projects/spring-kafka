@@ -605,7 +605,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 
-		if (notConvertibleParameters == method.getParameterCount()) {
+		if (notConvertibleParameters == method.getParameterCount() && method.getReturnType().equals(void.class)) {
 			this.conversionNeeded = false;
 		}
 		boolean validParametersForBatch = method.getGenericParameterTypes().length <= allowedBatchParameters;
