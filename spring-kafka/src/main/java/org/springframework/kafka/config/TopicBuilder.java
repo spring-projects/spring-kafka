@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;
 
 /**
- * Builder for a {@link NewTopic}.
+ * Builder for a {@link NewTopic}. Since 2.3 partitions and replicas default to
+ * {@link Optional#empty()} indicating the broker defaults will be applied.
  *
  * @author Gary Russell
  * @since 2.3
@@ -35,9 +37,9 @@ public final class TopicBuilder {
 
 	private final String name;
 
-	private int partitions = 1;
+	private Optional<Integer> partitions = Optional.empty();
 
-	private short replicas = 1;
+	private Optional<Short> replicas = Optional.empty();
 
 	private Map<Integer, List<Integer>> replicasAssignments;
 
@@ -48,22 +50,22 @@ public final class TopicBuilder {
 	}
 
 	/**
-	 * Set the number of partitions (default 1).
+	 * Set the number of partitions (default broker 'num.partitions').
 	 * @param partitionCount the partitions.
 	 * @return the builder.
 	 */
 	public TopicBuilder partitions(int partitionCount) {
-		this.partitions = partitionCount;
+		this.partitions = Optional.of(partitionCount);
 		return this;
 	}
 
 	/**
-	 * Set the number of replicas (default 1).
+	 * Set the number of replicas (default broker 'default.replication.factor').
 	 * @param replicaCount the replicas (which will be cast to short).
 	 * @return the builder.
 	 */
 	public TopicBuilder replicas(int replicaCount) {
-		this.replicas = (short) replicaCount;
+		this.replicas = Optional.of((short) replicaCount);
 		return this;
 	}
 

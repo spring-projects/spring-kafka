@@ -116,6 +116,34 @@ public NewTopic topic3() {
 ----
 ====
 
+Starting with version 2.6, you can omit `.partitions()` and/or `replicas()` and the broker defaults will be applied to those properties.
+The broker version must be at least 2.4.0 to support this feature - see https://cwiki.apache.org/confluence/display/KAFKA/KIP-464%3A+Defaults+for+AdminClient%23createTopic[KIP-464].
+
+====
+[source, java]
+----
+@Bean
+public NewTopic topic4() {
+    return TopicBuilder.name("defaultBoth")
+            .build();
+}
+
+@Bean
+public NewTopic topic5() {
+    return TopicBuilder.name("defaultPart")
+            .replicas(1)
+            .build();
+}
+
+@Bean
+public NewTopic topic6() {
+    return TopicBuilder.name("defaultRepl")
+            .partitions(3)
+            .build();
+}
+----
+====
+
 IMPORTANT: When using Spring Boot, a `KafkaAdmin` bean is automatically registered so you only need the `NewTopic` `@Bean` s.
 
 By default, if the broker is not available, a message is logged, but the context continues to load.
