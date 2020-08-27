@@ -26,7 +26,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;
 
 /**
- * Builder for a {@link NewTopic}. Since 2.3 partitions and replicas default to
+ * Builder for a {@link NewTopic}. Since 2.6 partitions and replicas default to
  * {@link Optional#empty()} indicating the broker defaults will be applied.
  *
  * @author Gary Russell
