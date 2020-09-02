@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,16 @@ public interface GenericErrorHandler<T> {
 	 */
 	default boolean isAckAfterHandle() {
 		return true;
+	}
+
+	/**
+	 * Set to false to prevent the container from committing the offset of a recovered
+	 * record (when the error handler does not itself throw an exception).
+	 * @param ack false to not commit.
+	 * @since 2.5.6
+	 */
+	default void setAckAfterHandle(boolean ack) {
+		throw new UnsupportedOperationException("This error handler does not support setting this property");
 	}
 
 }

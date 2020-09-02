@@ -97,25 +97,21 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	}
 
 	@Override
+	public boolean isAckAfterHandle() {
+		return this.ackAfterHandle;
+	}
+
+	@Override
+	public void setAckAfterHandle(boolean ackAfterHandle) {
+		this.ackAfterHandle = ackAfterHandle;
+	}
+
+	@Override
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(),
 				getSkipPredicate(records, thrownException), this.logger, getLogLevel());
-	}
-
-	@Override
-	public boolean isAckAfterHandle() {
-		return this.ackAfterHandle;
-	}
-
-	/**
-	 * Set to false to tell the container to NOT commit the offset for a recovered record.
-	 * @param ackAfterHandle false to suppress committing the offset.
-	 * @since 2.3.2
-	 */
-	public void setAckAfterHandle(boolean ackAfterHandle) {
-		this.ackAfterHandle = ackAfterHandle;
 	}
 
 }

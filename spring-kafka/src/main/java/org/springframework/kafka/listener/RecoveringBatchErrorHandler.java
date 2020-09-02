@@ -60,6 +60,8 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 
 	private final SeekToCurrentBatchErrorHandler fallbackHandler = new SeekToCurrentBatchErrorHandler();
 
+	private boolean ackAfterHandle = true;
+
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
 	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
@@ -100,6 +102,16 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 
 		super(recoverer, backOff);
 		this.fallbackHandler.setBackOff(backOff);
+	}
+
+	@Override
+	public boolean isAckAfterHandle() {
+		return this.ackAfterHandle;
+	}
+
+	@Override
+	public void setAckAfterHandle(boolean ackAfterHandle) {
+		this.ackAfterHandle = ackAfterHandle;
 	}
 
 	@Override

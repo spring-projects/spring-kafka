@@ -53,6 +53,8 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 
 	private final SeekToCurrentBatchErrorHandler seeker = new SeekToCurrentBatchErrorHandler();
 
+	private boolean ackAfterHandle = true;
+
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
 	 * a 5 second back off).
@@ -79,6 +81,17 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 			}
 		};
 	}
+
+	@Override
+	public boolean isAckAfterHandle() {
+		return this.ackAfterHandle;
+	}
+
+	@Override
+	public void setAckAfterHandle(boolean ackAfterHandle) {
+		this.ackAfterHandle = ackAfterHandle;
+	}
+
 
 	@Override
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> records,
