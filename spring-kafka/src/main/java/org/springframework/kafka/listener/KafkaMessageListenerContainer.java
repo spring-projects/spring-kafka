@@ -458,6 +458,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, OffsetAndMetadata> lastCommits = new HashMap<>();
 
+		private final Map<TopicPartition, Long> savedPositions = new HashMap<>();
+
 		private final GenericMessageListener<?> genericListener;
 
 		private final ConsumerSeekAware consumerSeekAwareListener;
@@ -1119,6 +1121,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			resumeConsumerIfNeccessary();
 			debugRecords(records);
 			if (records != null && records.count() > 0) {
+				savePositionsIfNeeded(records);
 				if (this.containerProperties.getIdleEventInterval() != null) {
 					this.lastReceive = System.currentTimeMillis();
 				}
@@ -1129,6 +1132,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		private void savePositionsIfNeeded(ConsumerRecords<K, V> records) {
+			if (this.fixTxOffsets) {
+				this.savedPositions.clear();
+				records.partitions().forEach(tp -> this.savedPositions.put(tp, this.consumer.position(tp)));
+			}
+		}
+
 		@SuppressWarnings("rawtypes")
 		private void fixTxOffsetsIfNeeded() {
 			if (this.fixTxOffsets) {
@@ -1136,6 +1146,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					Map<TopicPartition, OffsetAndMetadata> toFix = new HashMap<>();
 					this.lastCommits.forEach((tp, oamd) -> {
 						long position = this.consumer.position(tp);
+						Long saved = this.savedPositions.get(tp);
+						if (saved != null && saved.longValue() != position) {
+							this.logger.debug(() -> "Skipping TX offset correction - seek(s) have been performed; "
+									+ "saved: " + this.savedPositions + ", "
+									+ "comitted: " + oamd + ", "
+									+ "current: " + tp + "@" + position);
+							return;
+						}
 						if (position > oamd.offset()) {
 							toFix.put(tp, new OffsetAndMetadata(position));
 						}
