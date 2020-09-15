@@ -105,6 +105,8 @@ public class ConsumerProperties {
 
 	private int commitRetries = DEFAULT_COMMIT_RETRIES;
 
+	private boolean fixTxOffsets;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -388,6 +390,32 @@ public class ConsumerProperties {
 	 */
 	public void setOnlyLogRecordMetadata(boolean onlyLogRecordMetadata) {
 		this.onlyLogRecordMetadata = onlyLogRecordMetadata;
+	}
+
+	/**
+	 * Whether or not to correct terminal transactional offsets.
+	 * @return true to fix.
+	 * @since 2.5.6
+	 * @see #setFixTxOffsets(boolean)
+	 */
+	public boolean isFixTxOffsets() {
+		return this.fixTxOffsets;
+	}
+
+	/**
+	 * When consuming records produced by a transactional producer, and the consumer is
+	 * positioned at the end of a partition, the lag can incorrectly be reported as
+	 * greater than zero, due to the pseudo record used to indicate transaction
+	 * commit/rollback and, possibly, the presence of rolled-back records. This does not
+	 * functionally affect the consumer but some users have expressed concern that the
+	 * "lag" is non-zero. Set this to true and the container will correct such
+	 * mis-reported offsets. The check is performed before the next poll to avoid adding
+	 * significant complexity to the commit processing.
+	 * @param fixTxOffsets true to correct the offset(s).
+	 * @since 2.5.6
+	 */
+	public void setFixTxOffsets(boolean fixTxOffsets) {
+		this.fixTxOffsets = fixTxOffsets;
 	}
 
 	@Override

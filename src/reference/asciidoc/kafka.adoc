@@ -2293,6 +2293,13 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 |`BETA`
 |Exactly Once Semantics mode; see <<exactly-once>>.
 
+|fixTxOffsets
+|`false`
+|When consuming records produced by a transactional producer, and the consumer is positioned at the end of a partition, the lag can incorrectly be reported as greater than zero, due to the pseudo record used to indicate transaction commit/rollback and, possibly, the presence of rolled-back records.
+This does not functionally affect the consumer but some users have expressed concern that the "lag" is non-zero.
+Set this property to `true` and the container will correct such mis-reported offsets.
+The check is performed before the next poll to avoid adding significant complexity to the commit processing.
+
 |groupId
 |`null`
 |Overrides the consumer `group.id` property; automatically set by the `@KafkaListener` `id` or `groupId` property.

@@ -456,6 +456,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Collection<TopicPartition> assignedPartitions = new LinkedHashSet<>();
 
+		private final Map<TopicPartition, OffsetAndMetadata> lastCommits = new HashMap<>();
+
 		private final GenericMessageListener<?> genericListener;
 
 		private final ConsumerSeekAware consumerSeekAwareListener;
@@ -556,6 +558,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final Map<TopicPartition, OffsetAndMetadata> commitsDuringRebalance = new HashMap<>();
 
 		private final String clientId;
+
+		private final boolean fixTxOffsets = this.containerProperties.isFixTxOffsets();
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
@@ -1090,6 +1094,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!this.autoCommit && !this.isRecordAck) {
 				processCommits();
 			}
+			fixTxOffsetsIfNeeded();
 			idleBetweenPollIfNecessary();
 			if (this.seeks.size() > 0) {
 				processSeeks();
@@ -1121,6 +1126,42 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				checkIdle();
+			}
+		}
+
+		@SuppressWarnings("rawtypes")
+		private void fixTxOffsetsIfNeeded() {
+			if (this.fixTxOffsets) {
+				try {
+					Map<TopicPartition, OffsetAndMetadata> toFix = new HashMap<>();
+					this.lastCommits.forEach((tp, oamd) -> {
+						long position = this.consumer.position(tp);
+						if (position > oamd.offset()) {
+							toFix.put(tp, new OffsetAndMetadata(position));
+						}
+					});
+					if (toFix.size() > 0) {
+						logger.debug(() -> "Fixing TX offsets: " + toFix);
+						if (this.transactionTemplate == null) {
+							if (this.syncCommits) {
+								commitSync(toFix);
+							}
+							else {
+								commitAsync(toFix, 0);
+							}
+						}
+						else {
+							this.transactionTemplate.executeWithoutResult(status -> {
+								doSendOffsets(((KafkaResourceHolder) TransactionSynchronizationManager
+										.getResource(this.kafkaTxManager.getProducerFactory()))
+										.getProducer(), toFix);
+							});
+						}
+					}
+				}
+				catch (Exception e) {
+					this.logger.error(e, "Failed to correct transactional offset(s)");
+				}
 			}
 		}
 
@@ -1215,8 +1256,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				long now = System.currentTimeMillis();
 				if (now > this.lastReceive + this.containerProperties.getIdleEventInterval()
 						&& now > this.lastAlertAt + this.containerProperties.getIdleEventInterval()) {
-					publishIdleContainerEvent(now - this.lastReceive, this.isConsumerAwareListener
-							? this.consumer : null, this.consumerPaused);
+					publishIdleContainerEvent(now - this.lastReceive, this.consumer, this.consumerPaused);
 					this.lastAlertAt = now;
 					if (this.consumerSeekAwareListener != null) {
 						Collection<TopicPartition> partitions = getAssignedPartitions();
@@ -1392,6 +1432,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				else {
 					this.commitCallback.onComplete(offsetsAttempted, exception);
+					if (this.fixTxOffsets) {
+						this.lastCommits.putAll(commits);
+					}
 				}
 			});
 		}
@@ -2022,6 +2065,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				prod.sendOffsetsToTransaction(commits, this.consumer.groupMetadata());
 			}
+			if (this.fixTxOffsets) {
+				this.lastCommits.putAll(commits);
+			}
 		}
 
 		private void processCommits() {
@@ -2245,6 +2291,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void doCommitSync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
 			try {
 				this.consumer.commitSync(commits, this.syncCommitTimeout);
+				if (this.fixTxOffsets) {
+					this.lastCommits.putAll(commits);
+				}
 			}
 			catch (RetriableCommitFailedException e) {
 				if (retries >= this.containerProperties.getCommitRetries()) {
@@ -2450,6 +2499,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					try {
 						// Wait until now to commit, in case the user listener added acks
 						commitPendingAcks();
+						fixTxOffsetsIfNeeded();
 					}
 					catch (Exception e) {
 						ListenerConsumer.this.logger.error(e, () -> "Fatal commit error after revocation "
@@ -2465,6 +2515,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (ListenerConsumer.this.assignedPartitions != null) {
 						ListenerConsumer.this.assignedPartitions.removeAll(partitions);
 					}
+					partitions.forEach(tp -> ListenerConsumer.this.lastCommits.remove(tp));
 				}
 				finally {
 					if (ListenerConsumer.this.kafkaTxManager != null) {
