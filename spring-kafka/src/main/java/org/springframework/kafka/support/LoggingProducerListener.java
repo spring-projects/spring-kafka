@@ -18,6 +18,7 @@ package org.springframework.kafka.support;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.util.ObjectUtils;
@@ -65,7 +66,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 	}
 
 	@Override
-	public void onError(ProducerRecord<K, V> record, Exception exception) {
+	public void onError(ProducerRecord<K, V> record, RecordMetadata recordMetadata, Exception exception) {
 		LOGGER.error(exception, () -> {
 			StringBuffer logOutput = new StringBuffer();
 			logOutput.append("Exception thrown when sending a message");
@@ -79,7 +80,9 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 			}
 			logOutput.append(" to topic ").append(record.topic());
 			if (record.partition() != null) {
-				logOutput.append(" and partition ").append(record.partition());
+				logOutput.append(" and partition ").append(recordMetadata != null
+						? recordMetadata.partition()
+						: record.partition());
 			}
 			logOutput.append(":");
 			return logOutput.toString();

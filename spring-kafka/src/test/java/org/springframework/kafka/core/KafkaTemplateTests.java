@@ -53,6 +53,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.Serializer;
@@ -276,7 +277,9 @@ public class KafkaTemplateTests {
 			}
 
 			@Override
-			public void onError(ProducerRecord<Integer, String> producerRecord, Exception exception) {
+			public void onError(ProducerRecord<Integer, String> producerRecord, RecordMetadata metadata,
+					Exception exception) {
+
 				assertThat(producerRecord).isNotNull();
 				assertThat(exception).isNotNull();
 				onErrorDelegateCalls.incrementAndGet();
@@ -298,7 +301,8 @@ public class KafkaTemplateTests {
 		//Drain the topic
 		KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		pf.destroy();
-		cpl.onError(records.get(0), new RuntimeException("x"));
+		cpl.onError(records.get(0), new RecordMetadata(new TopicPartition(INT_KEY_TOPIC, -1), 0L, 0L, 0L, 0L, 0, 0),
+				new RuntimeException("x"));
 		assertThat(onErrorDelegateCalls.get()).isEqualTo(2);
 	}
 
