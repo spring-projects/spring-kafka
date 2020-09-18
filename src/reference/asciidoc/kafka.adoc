@@ -2535,6 +2535,7 @@ The following Spring application events are published by listener containers and
 This event might signal that the configured task executor has insufficient threads to support the containers it is used in and their concurrency.
 An error message is also logged when this condition occurs.
 * `ListenerContainerIdleEvent`: published when no messages have been received in `idleInterval` (if configured).
+* `ListenerContainerNoLongerIdleEvent`: published when a record is consumed after previously publishing a `ListenerContainerIdleEvent`.
 * `NonResponsiveConsumerEvent`: published when the consumer appears to be blocked in the `poll` method.
 * `ConsumerPausedEvent`: published by each consumer when the container is paused.
 * `ConsumerResumedEvent`: published by each consumer when the container is resumed.
@@ -2557,6 +2558,8 @@ The `ListenerContainerIdleEvent` has the following properties:
 For example, if the consumer's `pause()` method was previously called, it can `resume()` when the event is received.
 * `paused`: Whether the container is currently paused.
 See <<pause-resume>> for more information.
+
+The `ListenerContainerNoLongerIdleEvent` has the same properties, except `idleTime` and `paused`.
 
 The `NonResponsiveConsumerEvent` has the following properties:
 
@@ -2636,6 +2639,8 @@ By default, this check is performed once every 30 seconds in each container.
 You can modify this behavior by setting the `monitorInterval` (default 30 seconds) and `noPollThreshold` (default 3.0) properties in the `ContainerProperties` when configuring the listener container.
 The `noPollThreshold` should be greater than `1.0` to avoid getting spurious events due to a race condition.
 Receiving such an event lets you stop the containers, thus waking the consumer so that it can stop.
+
+Starting with version 2.6.2, if a container has published a `ListenerContainerIdleEvent`, it will publish a `ListenerContainerNoLongerIdleEvent` when a record is subsequently received.
 
 ====== Event Consumption
 

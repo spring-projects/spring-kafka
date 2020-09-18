@@ -89,6 +89,7 @@ import org.springframework.kafka.core.MicrometerConsumerListener;
 import org.springframework.kafka.core.MicrometerProducerListener;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
+import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ConsumerAwareErrorHandler;
@@ -247,13 +248,11 @@ public class EnableKafkaIntegrationTests {
 	public void testSimple() throws Exception {
 		this.recordFilter.called = false;
 		template.send("annotated1", 0, "foo");
-		template.flush();
 		assertThat(this.listener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.globalErrorThrowable).isNotNull();
 		assertThat(this.listener.receivedGroupId).isEqualTo("foo");
 
 		template.send("annotated2", 0, 123, "foo");
-		template.flush();
 		assertThat(this.listener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.key).isEqualTo(123);
 		assertThat(this.listener.partition).isNotNull();
@@ -277,13 +276,11 @@ public class EnableKafkaIntegrationTests {
 						.isEqualTo(2L);
 
 		template.send("annotated3", 0, "foo");
-		template.flush();
 		assertThat(this.listener.latch3.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.capturedRecord.value()).isEqualTo("foo");
 		assertThat(this.config.listen3Exception).isNotNull();
 
 		template.send("annotated4", 0, "foo");
-		template.flush();
 		assertThat(this.listener.latch4.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.capturedRecord.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
@@ -316,6 +313,10 @@ public class EnableKafkaIntegrationTests {
 				.isEqualTo("qux");
 		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumer.clientId"))
 				.isEqualTo("clientIdViaProps3-0");
+
+		template.send("annotated4", 0, "foo");
+		assertThat(this.listener.noLongerIdleEventLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.noLongerIdleEvent.getListenerId().startsWith("qux-"));
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -1637,6 +1638,8 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch eventLatch = new CountDownLatch(1);
 
+		final CountDownLatch noLongerIdleEventLatch = new CountDownLatch(1);
+
 		final CountDownLatch keyLatch = new CountDownLatch(1);
 
 		final AtomicBoolean reposition12 = new AtomicBoolean();
@@ -1666,6 +1669,8 @@ public class EnableKafkaIntegrationTests {
 		volatile Foo listen16foo;
 
 		volatile ListenerContainerIdleEvent event;
+
+		volatile ListenerContainerNoLongerIdleEvent noLongerIdleEvent;
 
 		volatile List<Integer> keys;
 
@@ -1755,6 +1760,12 @@ public class EnableKafkaIntegrationTests {
 		public void eventHandler(ListenerContainerIdleEvent event) {
 			this.event = event;
 			eventLatch.countDown();
+		}
+
+		@EventListener(condition = "event.listenerId.startsWith('qux')")
+		public void eventHandler(ListenerContainerNoLongerIdleEvent event) {
+			this.noLongerIdleEvent = event;
+			noLongerIdleEventLatch.countDown();
 		}
 
 		@KafkaListener(id = "fiz", topicPartitions = {

@@ -81,6 +81,7 @@ import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
+import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
@@ -358,6 +359,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
+	private void publishNoLongerIdleContainerEvent(long idleTime, Consumer<?, ?> consumer) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ListenerContainerNoLongerIdleEvent(this,
+					this.thisOrParentContainer, idleTime, getBeanName(), getAssignedPartitions(), consumer));
+		}
+	}
+
 	private void publishNonResponsiveConsumerEvent(long timeSinceLastPoll, Consumer<?, ?> consumer) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(
@@ -590,6 +598,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private boolean producerPerConsumerPartition;
 
 		private boolean commitRecovered;
+
+		private boolean wasIdle;
 
 		private volatile boolean consumerPaused;
 
@@ -1122,13 +1132,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			debugRecords(records);
 			if (records != null && records.count() > 0) {
 				savePositionsIfNeeded(records);
-				if (this.containerProperties.getIdleEventInterval() != null) {
-					this.lastReceive = System.currentTimeMillis();
-				}
+				notIdle();
 				invokeListener(records);
 			}
 			else {
 				checkIdle();
+			}
+		}
+
+		private void notIdle() {
+			if (this.containerProperties.getIdleEventInterval() != null) {
+				long now = System.currentTimeMillis();
+				if (this.wasIdle) {
+					this.wasIdle = false;
+					publishNoLongerIdleContainerEvent(now - this.lastReceive, this.consumer);
+				}
+				this.lastReceive = now;
 			}
 		}
 
@@ -1274,6 +1293,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				long now = System.currentTimeMillis();
 				if (now > this.lastReceive + this.containerProperties.getIdleEventInterval()
 						&& now > this.lastAlertAt + this.containerProperties.getIdleEventInterval()) {
+					this.wasIdle = true;
 					publishIdleContainerEvent(now - this.lastReceive, this.consumer, this.consumerPaused);
 					this.lastAlertAt = now;
 					if (this.consumerSeekAwareListener != null) {
