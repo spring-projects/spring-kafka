@@ -57,15 +57,15 @@ ext {
 	jaywayJsonPathVersion = '2.4.0'
 	junit4Version = '4.13.1'
 	junitJupiterVersion = '5.7.0'
-	kafkaVersion = '2.6.0'
+	kafkaVersion = '2.7.0'
 	log4jVersion = '2.13.3'
 	micrometerVersion = '1.5.7'
 	mockitoVersion = '3.5.13'
-	reactorVersion = 'Dysprosium-SR13'
+	reactorVersion = '2020.0.1'
 	scalaVersion = '2.13'
-	springDataCommonsVersion = '2.3.5.RELEASE'
+	springDataCommonsVersion = '2.4.1'
 	springRetryVersion = '1.3.0'
-	springVersion = '5.2.11.RELEASE'
+	springVersion = '5.3.1'
 
 	idPrefix = 'kafka'
 }
@@ -103,7 +103,7 @@ allprojects {
 		if (version.endsWith('SNAPSHOT')) {
 			maven { url 'https://repo.spring.io/libs-snapshot' }
 		}
-//		maven { url 'https://repository.apache.org/content/groups/staging/' }
+		maven { url 'https://repository.apache.org/content/groups/staging/' }
 	}
 
 }

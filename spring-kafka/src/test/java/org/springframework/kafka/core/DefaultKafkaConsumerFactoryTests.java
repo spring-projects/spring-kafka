@@ -36,7 +36,6 @@ import java.util.stream.Stream;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -327,7 +326,6 @@ public class DefaultKafkaConsumerFactoryTests {
 	@Test
 	public void testNestedTxProducerIsCached() throws Exception {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(this.embeddedKafka);
-		producerProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(producerProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		DefaultKafkaProducerFactory<Integer, String> pfTx = new DefaultKafkaProducerFactory<>(producerProps);
@@ -373,7 +371,6 @@ public class DefaultKafkaConsumerFactoryTests {
 	@Test
 	public void testContainerTxProducerIsNotCached() throws Exception {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(this.embeddedKafka);
-		producerProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(producerProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		DefaultKafkaProducerFactory<Integer, String> pfTx = new DefaultKafkaProducerFactory<>(producerProps);

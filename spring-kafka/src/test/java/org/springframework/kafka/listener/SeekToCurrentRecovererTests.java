@@ -47,7 +47,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
@@ -98,7 +97,6 @@ public class SeekToCurrentRecovererTests {
 		containerProps.setPollTimeout(10_000);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
 		Serializer<?> byteArraySerializer = new ByteArraySerializer();

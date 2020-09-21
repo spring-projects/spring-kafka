@@ -101,7 +101,6 @@ public class KafkaTemplateTransactionTests {
 	@Test
 	public void testLocalTransaction() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		senderProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "my.transaction.");
 		senderProps.put(ProducerConfig.CLIENT_ID_CONFIG, "customClientId");
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
@@ -157,7 +156,6 @@ public class KafkaTemplateTransactionTests {
 	@Test
 	public void testGlobalTransaction() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
 		pf.setTransactionIdPrefix("my.transaction.");
@@ -236,7 +234,6 @@ public class KafkaTemplateTransactionTests {
 	@Test
 	public void testNoTx() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
 		pf.setTransactionIdPrefix("my.transaction.");
@@ -249,7 +246,8 @@ public class KafkaTemplateTransactionTests {
 
 	@Test
 	public void testTransactionSynchronization() {
-		MockProducer<String, String> producer = spy(new MockProducer<>());
+		StringSerializer ss = new StringSerializer();
+		MockProducer<String, String> producer = spy(new MockProducer<>(false, ss, ss));
 		producer.initTransactions();
 
 		@SuppressWarnings("unchecked")
@@ -283,7 +281,8 @@ public class KafkaTemplateTransactionTests {
 
 	@Test
 	public void testTransactionSynchronizationExceptionOnCommit() {
-		MockProducer<String, String> producer = new MockProducer<>();
+		StringSerializer ss = new StringSerializer();
+		MockProducer<String, String> producer = new MockProducer<>(false, ss, ss);
 		producer.initTransactions();
 
 		@SuppressWarnings("unchecked")
@@ -553,7 +552,6 @@ public class KafkaTemplateTransactionTests {
 	void testNonTxWithTx() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(this.embeddedKafka);
 		senderProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "tx.");
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 2);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true);

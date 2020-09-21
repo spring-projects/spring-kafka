@@ -125,7 +125,7 @@ public class StreamsBuilderFactoryBeanTests {
 			Map<String, Object> props = new HashMap<>();
 			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
 			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
-			props.put(StreamsConfig.TOPOLOGY_OPTIMIZATION, StreamsConfig.OPTIMIZE);
+			props.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
 			props.put(StreamsConfig.STATE_DIR_CONFIG, stateStoreDir.toString());
 			return new KafkaStreamsConfiguration(props);
 		}

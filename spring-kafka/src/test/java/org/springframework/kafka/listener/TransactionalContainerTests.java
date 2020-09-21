@@ -63,7 +63,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
@@ -557,7 +556,6 @@ public class TransactionalContainerTests {
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 //		senderProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("rr.");
 
@@ -669,7 +667,6 @@ public class TransactionalContainerTests {
 		containerProps.setIdleEventInterval(500L);
 		containerProps.setFixTxOffsets(true);
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("fl.");
 		switch (whichTm) {
@@ -727,7 +724,6 @@ public class TransactionalContainerTests {
 		containerProps.setPollTimeout(10_000);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("maxAtt.");
 		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
@@ -834,7 +830,6 @@ public class TransactionalContainerTests {
 		containerProps.setPollTimeout(10_000);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
 		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setTransactionIdPrefix("noRetries.");
 		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);

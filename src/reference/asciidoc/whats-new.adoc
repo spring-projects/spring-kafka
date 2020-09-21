@@ -1,48 +1,9 @@
-=== What's New in 2.6 Since 2.5
+=== What's New in 2.7 Since 2.6
 
 This section covers the changes made from version 2.5 to version 2.6.
 For changes in earlier version, see <<history>>.
 
-[[x26-kafka-client]]
+[[x27-kafka-client]]
 ==== Kafka Client Version
 
-This version requires the 2.6.0 `kafka-clients`.
-
-==== Listener Container Changes
-
-The default `EOSMode` is now `BETA`.
-See <<exactly-once>> for more information.
-
-Various error handlers (that extend `FailedRecordProcessor`) and the `DefaultAfterRollbackProcessor` now reset the `BackOff` if recovery fails.
-In addition, you can now select the `BackOff` to use based on the failed record and/or exception.
-See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.
-
-You can now configure an `adviceChain` in the container properties.
-See <<container-props>> for more information.
-
-When the container is configured to publish `ListenerContainerIdleEvent` s, it now publishes a `ListenerContainerNoLongerIdleEvent` when a record is received after publishing an idle event.
-See <<events>> and <<idle-containers>> for more information.
-
-==== @KafkaListener Changes
-
-When using manual partition assignment, you can now specify a wildcard for determining which partitions should be reset to the initial offset.
-In addition, if the listener implements `ConsumerSeekAware`, `onPartitionsAssigned()` is called after the manual assignment.
-(Also added in version 2.5.5).
-See <<manual-assignment>> for more information.
-
-Convenience methods have been added to `AbstractConsumerSeekAware` to make seeking easier.
-See <<seek>> for more information.
-
-==== ErrorHandler Changes
-
-Subclasses of `FailedRecordProcessor` (e.g. `SeekToCurrentErrorHandler`, `DefaultAfterRollbackProcessor`, `RecoveringBatchErrorHandler`) can now be configured to reset the retry state if the exception is a different type to that which occurred previously with this record.
-See <<seek-to-current>>, <<after-rollback>>, <<recovering-batch-eh>> for more information.
-
-==== Producer Factory Changes
-
-You can now set a maximum age for producers after which they will be closed and recreated.
-See <<transactions>> for more information.
-
-You can now update the configuration map after the `DefaultKafkaProducerFactory` has been created.
-This might be useful, for example, if you have to update SSL key/trust store locations after a credentials change.
-See <<producer-factory>> for more information.
+This version requires the 2.7.0 `kafka-clients`.

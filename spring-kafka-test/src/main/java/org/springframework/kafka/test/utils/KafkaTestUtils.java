@@ -115,7 +115,6 @@ public final class KafkaTestUtils {
 	public static Map<String, Object> producerProps(String brokers) {
 		Map<String, Object> props = new HashMap<>();
 		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
-		props.put(ProducerConfig.RETRIES_CONFIG, 0);
 		props.put(ProducerConfig.BATCH_SIZE_CONFIG, "16384");
 		props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
 		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, "33554432");

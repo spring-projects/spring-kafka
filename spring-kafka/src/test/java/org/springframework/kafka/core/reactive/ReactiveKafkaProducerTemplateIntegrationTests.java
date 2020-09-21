@@ -404,27 +404,6 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 	}
 
 	@Test
-	public void shouldFlushRecordsOnDemand() {
-		Mono<Void> sendWithFlushMono = reactiveKafkaProducerTemplate
-				.send(Mono.just(SenderRecord
-						.create(new ProducerRecord<>(REACTIVE_INT_KEY_TOPIC, DEFAULT_KEY, DEFAULT_VALUE), null)))
-				.then(reactiveKafkaProducerTemplate.flush())
-				.then();
-
-		StepVerifier.create(sendWithFlushMono)
-				.expectComplete()
-				.verify(DEFAULT_VERIFY_TIMEOUT);
-
-		StepVerifier.create(reactiveKafkaConsumerTemplate.receive().doOnNext(rr -> rr.receiverOffset().acknowledge()))
-				.assertNext(receiverRecord -> {
-					assertThat(receiverRecord.key()).isEqualTo(DEFAULT_KEY);
-					assertThat(receiverRecord.value()).isEqualTo(DEFAULT_VALUE);
-				})
-				.thenCancel()
-				.verify(DEFAULT_VERIFY_TIMEOUT);
-	}
-
-	@Test
 	public void shouldReturnPartitionsForTopic() {
 		Flux<PartitionInfo> topicPartitionsMono = reactiveKafkaProducerTemplate
 				.partitionsFromProducerFor(REACTIVE_INT_KEY_TOPIC);

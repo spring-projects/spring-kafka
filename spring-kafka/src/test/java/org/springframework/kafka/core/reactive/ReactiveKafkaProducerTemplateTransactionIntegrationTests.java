@@ -105,8 +105,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 		SenderOptions<Integer, String> senderOptions = SenderOptions.create(senderProps);
 		senderOptions = senderOptions
 				.producerProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "reactive.transaction")
-				.producerProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true)
-				.producerProperty(ProducerConfig.RETRIES_CONFIG, 1);
+				.producerProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
 		return senderOptions;
 	}
 
