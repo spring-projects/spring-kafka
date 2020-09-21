@@ -21,6 +21,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
@@ -66,7 +67,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 	}
 
 	@Override
-	public void onError(ProducerRecord<K, V> record, RecordMetadata recordMetadata, Exception exception) {
+	public void onError(ProducerRecord<K, V> record, @Nullable RecordMetadata recordMetadata, Exception exception) {
 		LOGGER.error(exception, () -> {
 			StringBuffer logOutput = new StringBuffer();
 			logOutput.append("Exception thrown when sending a message");

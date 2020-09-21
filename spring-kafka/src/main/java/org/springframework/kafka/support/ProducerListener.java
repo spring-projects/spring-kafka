@@ -19,6 +19,8 @@ package org.springframework.kafka.support;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
+import org.springframework.lang.Nullable;
+
 /**
  * Listener for handling outbound Kafka messages. Exactly one of its methods will be invoked, depending on whether
  * the write has been acknowledged or not.
@@ -67,7 +69,9 @@ public interface ProducerListener<K, V> {
 	 * @since 2.6.2
 	 */
 	@SuppressWarnings("deprecation")
-	default void onError(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata, Exception exception) {
+	default void onError(ProducerRecord<K, V> producerRecord, @Nullable RecordMetadata recordMetadata,
+			Exception exception) {
+
 		onError(producerRecord, exception);
 	}
 
