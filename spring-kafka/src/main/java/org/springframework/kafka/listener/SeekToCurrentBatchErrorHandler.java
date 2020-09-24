@@ -39,7 +39,7 @@ public class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
 
 	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static
 
-	private final ThreadLocal<Long> lastInterval = new ThreadLocal<>(); // Intentionally not static
+	private final ThreadLocal<Long> lastIntervals = new ThreadLocal<>(); // Intentionally not static
 
 	private BackOff backOff;
 
@@ -66,27 +66,7 @@ public class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
 				.forEach(consumer::seek);
 
 		if (this.backOff != null) {
-			BackOffExecution backOffExecution = this.backOffs.get();
-			if (backOffExecution == null) {
-				backOffExecution = this.backOff.start();
-				this.backOffs.set(backOffExecution);
-			}
-			Long interval = backOffExecution.nextBackOff();
-			if (interval == BackOffExecution.STOP) {
-				interval = this.lastInterval.get();
-				if (interval == null) {
-					interval = Long.valueOf(0);
-				}
-			}
-			this.lastInterval.set(interval);
-			if (interval > 0) {
-				try {
-					Thread.sleep(interval);
-				}
-				catch (@SuppressWarnings("unused") InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
-			}
+			ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals);
 		}
 
 		throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
@@ -95,7 +75,7 @@ public class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
 	@Override
 	public void clearThreadState() {
 		this.backOffs.remove();
-		this.lastInterval.remove();
+		this.lastIntervals.remove();
 	}
 
 }

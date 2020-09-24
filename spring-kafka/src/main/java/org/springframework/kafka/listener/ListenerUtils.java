@@ -29,6 +29,8 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.BackOffExecution;
 
 /**
  * Listener utilities.
@@ -139,6 +141,42 @@ public final class ListenerUtils {
 		}
 		else {
 			return record.toString();
+		}
+	}
+
+	/**
+	 * Sleep according to the {@link BackOff}; when the {@link BackOffExecution} returns
+	 * {@link BackOffExecution#STOP} sleep for the previous backOff.
+	 * @param backOff the {@link BackOff} to create a new {@link BackOffExecution}.
+	 * @param executions a thread local containing the {@link BackOffExecution} for this
+	 * thread.
+	 * @param lastIntervals a thread local containing the previous {@link BackOff}
+	 * interval for this thread.
+	 * @since 2.3.12
+	 */
+	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
+			ThreadLocal<Long> lastIntervals) {
+
+		BackOffExecution backOffExecution = executions.get();
+		if (backOffExecution == null) {
+			backOffExecution = backOff.start();
+			executions.set(backOffExecution);
+		}
+		Long interval = backOffExecution.nextBackOff();
+		if (interval == BackOffExecution.STOP) {
+			interval = lastIntervals.get();
+			if (interval == null) {
+				interval = Long.valueOf(0);
+			}
+		}
+		lastIntervals.set(interval);
+		if (interval > 0) {
+			try {
+				Thread.sleep(interval);
+			}
+			catch (@SuppressWarnings("unused") InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 		}
 	}
 

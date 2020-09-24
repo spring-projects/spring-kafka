@@ -32,6 +32,7 @@ import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.BackOffExecution;
 
 /**
  * Default implementation of {@link AfterRollbackProcessor}. Seeks all
@@ -51,6 +52,12 @@ import org.springframework.util.backoff.BackOff;
  */
 public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		implements AfterRollbackProcessor<K, V>, InitializingBean {
+
+	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static
+
+	private final ThreadLocal<Long> lastIntervals = new ThreadLocal<>(); // Intentionally not static
+
+	private final BackOff backOff;
 
 	private KafkaOperations<?, ?> kafkaTemplate;
 
@@ -115,6 +122,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		this.kafkaTemplate = kafkaOperations;
 		super.setCommitRecovered(commitRecovered);
 		checkConfig();
+		this.backOff = backOff;
 	}
 
 	@Override
@@ -155,6 +163,10 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 						Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
 								new OffsetAndMetadata(skipped.offset() + 1)), consumer.groupMetadata());
 			}
+		}
+
+		if (!recoverable && this.backOff != null) {
+			ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals);
 		}
 	}
 
@@ -208,6 +220,13 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	@Deprecated
 	public void setKafkaOperations(KafkaOperations<K, V> kafkaOperations) {
 		this.kafkaTemplate = kafkaOperations;
+	}
+
+	@Override
+	public void clearThreadState() {
+		super.clearThreadState();
+		this.backOffs.remove();
+		this.lastIntervals.remove();
 	}
 
 }

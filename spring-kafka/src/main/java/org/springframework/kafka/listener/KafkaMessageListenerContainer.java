@@ -601,6 +601,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean wasIdle;
 
+		private boolean batchFailed;
+
 		private volatile boolean consumerPaused;
 
 		private volatile Thread consumerThread;
@@ -1605,6 +1607,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			try {
 				invokeBatchOnMessage(records, recordList);
 				successTimer(sample);
+				if (this.batchFailed) {
+					this.batchFailed = false;
+					this.batchErrorHandler.clearThreadState();
+					getAfterRollbackProcessor().clearThreadState();
+				}
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
@@ -1616,6 +1623,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					throw e;
 				}
 				try {
+					this.batchFailed = true;
 					invokeBatchErrorHandler(records, recordList, e);
 					// unlikely, but possible, that a batch error handler "handles" the error
 					if ((!acked && !this.autoCommit && this.batchErrorHandler.isAckAfterHandle())

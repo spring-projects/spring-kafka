@@ -53,7 +53,6 @@ public interface GenericErrorHandler<T> {
 	 * @since 2.3
 	 */
 	default void clearThreadState() {
-		// NOSONAR
 	}
 
 	/**
