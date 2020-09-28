@@ -67,6 +67,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationContext;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
@@ -949,7 +950,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else if (deser instanceof String) {
 				try {
-					deserializer = ClassUtils.forName((String) deser, getApplicationContext().getClassLoader());
+					ApplicationContext applicationContext = getApplicationContext();
+					ClassLoader classLoader = applicationContext == null
+							? getClass().getClassLoader()
+							: applicationContext.getClassLoader();
+					deserializer = ClassUtils.forName((String) deser, classLoader);
 				}
 				catch (ClassNotFoundException | LinkageError e) {
 					throw new IllegalStateException(e);
