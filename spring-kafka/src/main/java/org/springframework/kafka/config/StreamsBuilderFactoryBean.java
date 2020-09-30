@@ -75,7 +75,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private Properties properties;
 
-	private final CleanupConfig cleanupConfig;
+	private CleanupConfig cleanupConfig;
 
 	private final List<Listener> listeners = new ArrayList<>();
 
@@ -232,6 +232,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	@Override
 	public int getPhase() {
 		return this.phase;
+	}
+
+	public void setCleanupConfig(CleanupConfig cleanupConfig) {
+		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
+		this.cleanupConfig = cleanupConfig;
 	}
 
 	/**
