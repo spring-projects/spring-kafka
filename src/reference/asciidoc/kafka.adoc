@@ -5098,6 +5098,34 @@ The `ErrorHandlingDeserializer` adds the deserialization exception(s) in headers
 By default, these headers are not retained in the message published to the dead letter topic, unless both the key and value fail deserialization.
 In that case, the `DLT_*` headers are based on the value deserialization and the key `DeserializationException` is retained in the header.
 
+If incoming records are dependent on each other, but may arrive out of order, it may be useful to republish a failed record to the tail of the original topic (for some number of times), instead of sending it directly to the dead letter topic.
+See https://stackoverflow.com/questions/64646996[this Stack Overflow Question] for an example.
+
+The following error handler configuration will do exactly that:
+
+====
+[source, java]
+----
+@Bean
+public ErrorHandler eh(KafkaOperations<String, String> template) {
+    return new SeekToCurrentErrorHandler(new DeadLetterPublishingRecoverer(template,
+            (rec, ex) -> {
+                org.apache.kafka.common.header.Header retries = rec.headers().lastHeader("retries");
+                if (retries == null) {
+                    retries = new RecordHeader("retries", new byte[] { 1 });
+                    rec.headers().add(retries);
+                }
+                else {
+                    retries.value()[0]++;
+                }
+                return retries.value()[0] > 5
+                        ? new TopicPartition("topic.DLT", rec.partition())
+                        : new TopicPartition("topic", rec.partition());
+            }), new FixedBackOff(0L, 0L));
+}
+----
+====
+
 [[kerberos]]
 ==== JAAS and Kerberos
 
