@@ -410,9 +410,10 @@ public class ConsumerProperties {
 	 * functionally affect the consumer but some users have expressed concern that the
 	 * "lag" is non-zero. Set this to true and the container will correct such
 	 * mis-reported offsets. The check is performed before the next poll to avoid adding
-	 * significant complexity to the commit processing. IMPORTANT: The lag will only be
-	 * corrected if the consumer is configured with
-	 * {@code isolation.level=read_committed}.
+	 * significant complexity to the commit processing. IMPORTANT: At the time of writing,
+	 * the lag will only be corrected if the consumer is configured with
+	 * {@code isolation.level=read_committed} and {@code max.poll.records} is greater than
+	 * 1. See https://issues.apache.org/jira/browse/KAFKA-10683 for more information.
 	 * @param fixTxOffsets true to correct the offset(s).
 	 * @since 2.5.6
 	 */

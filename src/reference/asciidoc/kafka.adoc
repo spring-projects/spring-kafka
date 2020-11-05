@@ -2300,7 +2300,8 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 This does not functionally affect the consumer but some users have expressed concern that the "lag" is non-zero.
 Set this property to `true` and the container will correct such mis-reported offsets.
 The check is performed before the next poll to avoid adding significant complexity to the commit processing.
-The lag will only be corrected if the consumer is configured with `isolation.level=read_committed`.
+At the time of writing, the lag will only be corrected if the consumer is configured with `isolation.level=read_committed` and `max.poll.records` is greater than 1.
+See https://issues.apache.org/jira/browse/KAFKA-10683[KAFKA-10683] for more information.
 
 |groupId
 |`null`

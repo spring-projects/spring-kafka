@@ -1186,7 +1186,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					});
 					if (toFix.size() > 0) {
 						this.logger.debug(() -> "Fixing TX offsets: " + toFix);
-						if (this.transactionTemplate == null) {
+						if (this.kafkaTxManager == null) {
 							if (this.syncCommits) {
 								commitSync(toFix);
 							}
