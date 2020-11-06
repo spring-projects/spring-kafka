@@ -32,3 +32,8 @@ See <<manual-assignment>> for more information.
 
 Convenience methods have been added to `AbstractConsumerSeekAware` to make seeking easier.
 See <<seek>> for more information.
+
+==== ErrorHandler Changes
+
+Subclasses of `FailedRecordProcessor` (e.g. `SeekToCurrentErrorHandler`, `DefaultAfterRollbackProcessor`, `RecoveringBatchErrorHandler`) can now be configured to reset the retry state if the exception is a different type to that which occurred previously with this record.
+See <<seek-to-current>>, <<after-rollback>>, <<recovering-batch-eh>> for more information.

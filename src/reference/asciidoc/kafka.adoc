@@ -2218,6 +2218,9 @@ handler.setBackOffFunction((record, ex) -> { ... });
 
 If the function returns `null`, the handler's default `BackOff` will be used.
 
+Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
+By default, the exception type is not considered.
+
 [[container-props]]
 ==== Listener Container Properties
 
@@ -4776,6 +4779,9 @@ handler.setBackOffFunction((record, ex) -> { ... });
 
 If the function returns `null`, the handler's default `BackOff` will be used.
 
+Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
+By default, the exception type is not considered.
+
 Also see <<delivery-header>>.
 
 [[retrying-batch-eh]]
@@ -4892,6 +4898,9 @@ handler.setBackOffFunction((record, ex) -> { ... });
 
 If the function returns `null`, the handler's default `BackOff` will be used.
 
+Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
+By default, the exception type is not considered.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.
@@ -4957,6 +4966,9 @@ handler.setBackOffFunction((record, ex) -> { ... });
 ====
 
 If the function returns `null`, the processor's default `BackOff` will be used.
+
+Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
+By default, the exception type is not considered.
 
 Starting with version 2.3.1, similar to the `SeekToCurrentErrorHandler`, the `DefaultAfterRollbackProcessor` considers certain exceptions to be fatal, and retries are skipped for such exceptions; the recoverer is invoked on the first failure.
 The exceptions that are considered fatal, by default, are:
@@ -5093,6 +5105,9 @@ IMPORTANT: If the recoverer fails (throws an exception), the failed record will 
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
 With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` property to `false`.
+
+Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
+By default, the exception type is not considered.
 
 Starting with version 2.3, the recoverer can also be used with Kafka Streams - see <<streams-deser-recovery>> for more information.
 

@@ -131,6 +131,19 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 		this.failureTracker.setResetStateOnRecoveryFailure(resetStateOnRecoveryFailure);
 	}
 
+	/**
+	 * Set to true to reset the retry {@link BackOff} if the exception is a different type
+	 * to the previous failure for the same record. The
+	 * {@link #setBackOffFunction(BiFunction) backOffFunction}, if provided, will be
+	 * called to get the {@link BackOff} to use for the new exception; otherwise, the
+	 * configured {@link BackOff} will be used.
+	 * @param resetStateOnExceptionChange true to reset.
+	 * @since 2.6.3
+	 */
+	public void setResetStateOnExceptionChange(boolean resetStateOnExceptionChange) {
+		this.failureTracker.setResetStateOnExceptionChange(resetStateOnExceptionChange);
+	}
+
 	@Override
 	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
 		return this.failureTracker.deliveryAttempt(topicPartitionOffset);

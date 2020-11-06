@@ -30,6 +30,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
@@ -129,6 +130,42 @@ public class FailedRecordTrackerTests {
 		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
 					.get(new TopicPartition("bar", 0)), "backOffExecution"))
 				.isSameAs(be1);
+	}
+
+	@Test
+	void exceptionChanges() {
+		BackOff bo1 = mock(BackOff.class);
+		BackOffExecution be1 = mock(BackOffExecution.class);
+		given(bo1.start()).willReturn(be1);
+		BackOff bo2 = mock(BackOff.class);
+		BackOffExecution be2 = mock(BackOffExecution.class);
+		given(bo2.start()).willReturn(be2);
+		FailedRecordTracker tracker = new FailedRecordTracker((rec, ex) -> { }, bo1, mock(LogAccessor.class));
+		tracker.setBackOffFunction((record, ex) -> {
+			if (ex instanceof IllegalStateException) {
+				return bo1;
+			}
+			else {
+				return bo2;
+			}
+		});
+		@SuppressWarnings("unchecked")
+		ThreadLocal<Map<TopicPartition, Object>> failures = (ThreadLocal<Map<TopicPartition, Object>>) KafkaTestUtils
+				.getPropertyValue(tracker, "failures");
+		ConsumerRecord<?, ?> record1 = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		tracker.skip(record1, new IllegalStateException());
+		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+				.get(new TopicPartition("foo", 0)), "backOffExecution"))
+			.isSameAs(be1);
+		TopicPartitionOffset tpo = new TopicPartitionOffset("foo", 0, 0L);
+		assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(2);
+		tracker.skip(record1, new IllegalStateException());
+		assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(3);
+		tracker.skip(record1, new IllegalArgumentException());
+		assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(2);
+		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+				.get(new TopicPartition("foo", 0)), "backOffExecution"))
+			.isSameAs(be2);
 	}
 
 }
