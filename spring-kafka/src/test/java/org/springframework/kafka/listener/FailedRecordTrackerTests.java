@@ -133,7 +133,16 @@ public class FailedRecordTrackerTests {
 	}
 
 	@Test
-	void exceptionChanges() {
+	void exceptionChangesNoReset() {
+		exceptionChanges(false);
+	}
+
+	@Test
+	void exceptionChangesReset() {
+		exceptionChanges(true);
+	}
+
+	void exceptionChanges(boolean reset) {
 		BackOff bo1 = mock(BackOff.class);
 		BackOffExecution be1 = mock(BackOffExecution.class);
 		given(bo1.start()).willReturn(be1);
@@ -149,6 +158,9 @@ public class FailedRecordTrackerTests {
 				return bo2;
 			}
 		});
+		if (reset) {
+			tracker.setResetStateOnExceptionChange(reset);
+		}
 		@SuppressWarnings("unchecked")
 		ThreadLocal<Map<TopicPartition, Object>> failures = (ThreadLocal<Map<TopicPartition, Object>>) KafkaTestUtils
 				.getPropertyValue(tracker, "failures");
@@ -162,10 +174,18 @@ public class FailedRecordTrackerTests {
 		tracker.skip(record1, new IllegalStateException());
 		assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(3);
 		tracker.skip(record1, new IllegalArgumentException());
-		assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(2);
-		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
-				.get(new TopicPartition("foo", 0)), "backOffExecution"))
-			.isSameAs(be2);
+		if (reset) {
+			assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(2);
+			assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+					.get(new TopicPartition("foo", 0)), "backOffExecution"))
+				.isSameAs(be2);
+		}
+		else {
+			assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(4);
+			assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+					.get(new TopicPartition("foo", 0)), "backOffExecution"))
+				.isSameAs(be1);
+		}
 	}
 
 }
