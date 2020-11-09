@@ -254,6 +254,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private TransactionDefinition transactionDefinition;
 
+	private boolean stopContainerWhenFenced;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -743,6 +745,28 @@ public class ContainerProperties extends ConsumerProperties {
 		if (this.messageListener != null) {
 			adviseListenerIfNeeded();
 		}
+	}
+
+	/**
+	 * When true, the container will stop after a
+	 * {@link org.apache.kafka.common.errors.ProducerFencedException}.
+	 * @return the stopContainerWhenFenced
+	 */
+	public boolean isStopContainerWhenFenced() {
+		return this.stopContainerWhenFenced;
+	}
+
+	/**
+	 * Set to true to stop the container when a
+	 * {@link org.apache.kafka.common.errors.ProducerFencedException} is thrown.
+	 * Currently, there is no way to determine if such an exception is thrown due to a
+	 * rebalance Vs. a timeout. We therefore cannot call the after rollback processor. The
+	 * best solution is to ensure that the {@code transaction.timeout.ms} is large enough
+	 * so that transactions don't time out.
+	 * @param stopContainerWhenFenced true to stop the container.
+	 */
+	public void setStopContainerWhenFenced(boolean stopContainerWhenFenced) {
+		this.stopContainerWhenFenced = stopContainerWhenFenced;
 	}
 
 	private void adviseListenerIfNeeded() {

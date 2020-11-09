@@ -84,6 +84,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
@@ -172,15 +173,29 @@ public class TransactionalContainerTests {
 		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD, EOSMode.BETA);
 	}
 
+	@Test
+	public void testConsumeAndProduceTransactionStopWhenFenced() throws Exception {
+		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD, EOSMode.BETA, true);
+	}
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError, AckMode ackMode,
 			EOSMode eosMode) throws Exception {
 
+		testConsumeAndProduceTransactionGuts(chained, handleError, ackMode, eosMode, false);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError, AckMode ackMode,
+			EOSMode eosMode, boolean stopWhenFenced) throws Exception {
+
 		Consumer consumer = mock(Consumer.class);
+		AtomicBoolean assigned = new AtomicBoolean();
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
 		willAnswer(i -> {
 			((ConsumerRebalanceListener) i.getArgument(1))
 					.onPartitionsAssigned(Collections.singletonList(topicPartition));
+			assigned.set(true);
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(topicPartition,
@@ -199,6 +214,14 @@ public class TransactionalContainerTests {
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		willReturn(consumer).given(cf).createConsumer("group", "", null, KafkaTestUtils.defaultPropertyOverrides());
 		Producer producer = mock(Producer.class);
+		if (stopWhenFenced) {
+			willAnswer(inv -> {
+				if (assigned.get()) {
+					throw new ProducerFencedException("fenced");
+				}
+				return null;
+			}).given(producer).sendOffsetsToTransaction(any(), any(ConsumerGroupMetadata.class));
+		}
 		given(producer.send(any(), any())).willReturn(new SettableListenableFuture<>());
 		final CountDownLatch closeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
@@ -224,6 +247,7 @@ public class TransactionalContainerTests {
 		props.setTransactionManager(ptm);
 		props.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
 		props.setEosMode(eosMode);
+		props.setStopContainerWhenFenced(stopWhenFenced);
 		ConsumerGroupMetadata consumerGroupMetadata = new ConsumerGroupMetadata("group");
 		given(consumer.groupMetadata()).willReturn(consumerGroupMetadata);
 		final KafkaTemplate template = new KafkaTemplate(pf);
@@ -260,6 +284,12 @@ public class TransactionalContainerTests {
 		if (handleError) {
 			container.setErrorHandler((e, data) -> { });
 		}
+		CountDownLatch stopEventLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ContainerStoppedEvent) {
+				stopEventLatch.countDown();
+			}
+		});
 		container.start();
 		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(producer);
@@ -272,27 +302,32 @@ public class TransactionalContainerTests {
 			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
 					new OffsetAndMetadata(0)), consumerGroupMetadata);
 		}
-		inOrder.verify(producer).commitTransaction();
-		inOrder.verify(producer).close(any());
-		inOrder.verify(producer).beginTransaction();
-		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
-		inOrder.verify(producer).send(captor.capture(), any(Callback.class));
-		assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
-		if (eosMode.equals(EOSMode.ALPHA)) {
-			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-					new OffsetAndMetadata(1)), "group");
+		if (stopWhenFenced) {
+			assertThat(stopEventLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		}
 		else {
-			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-					new OffsetAndMetadata(1)), consumerGroupMetadata);
+			inOrder.verify(producer).commitTransaction();
+			inOrder.verify(producer).close(any());
+			inOrder.verify(producer).beginTransaction();
+			ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+			inOrder.verify(producer).send(captor.capture(), any(Callback.class));
+			assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
+			if (eosMode.equals(EOSMode.ALPHA)) {
+				inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+						new OffsetAndMetadata(1)), "group");
+			}
+			else {
+				inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+						new OffsetAndMetadata(1)), consumerGroupMetadata);
+			}
+			inOrder.verify(producer).commitTransaction();
+			inOrder.verify(producer).close(any());
+			container.stop();
+			verify(pf, times(2)).createProducer(isNull());
+			verifyNoMoreInteractions(producer);
+			assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
+			assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
 		}
-		inOrder.verify(producer).commitTransaction();
-		inOrder.verify(producer).close(any());
-		container.stop();
-		verify(pf, times(2)).createProducer(isNull());
-		verifyNoMoreInteractions(producer);
-		assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
-		assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })

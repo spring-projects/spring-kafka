@@ -2366,6 +2366,11 @@ Metadata
 |10000
 |The maximum time in ms to block the `stop()` method until all consumers stop and before publishing the container stopped event.
 
+|stopContainerWhenFenced
+|`false`
+|Stop the listener container if a `ProducerFencedException` is thrown.
+See <<after-rollback>> for more information.
+
 |subBatchPerPartition
 |See desc.
 |When using a batch listener, if this is `true`, the listener is called with the results of the poll split into sub batches, one per partition.
@@ -5000,6 +5005,11 @@ public DefaultAfterRollbackProcessor errorHandler(BiConsumer<ConsumerRecord<?, ?
 ====
 
 Also see <<delivery-header>>.
+
+IMPORTANT: With current `kafka-clients`, the container cannot detect whether a `ProducerFencedException` is caused by a rebalance or if the producer's `transactional.id` has been revoked due to a timeout or expiry.
+Because, in most cases, it is caused by a rebalance, the container does not call the `AfterRollbackProcessor` (because it's not appropriate to seek the partitions because we no longer are assigned them).
+If you ensure the timeout is large enough to process each transaction and periodically perform an "empty" transaction (e.g. via a `ListenerContainerIdleEvent`) you can avoid fencing due to timeout and expiry.
+Or, you can set the `stopContainerWhenFenced` container property to `true` and the container will stop, avoiding the loss of records.
 
 [[delivery-header]]
 ===== Delivery Attempts Header
