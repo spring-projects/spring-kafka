@@ -751,6 +751,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * When true, the container will stop after a
 	 * {@link org.apache.kafka.common.errors.ProducerFencedException}.
 	 * @return the stopContainerWhenFenced
+	 * @since 2.5.8
 	 */
 	public boolean isStopContainerWhenFenced() {
 		return this.stopContainerWhenFenced;
@@ -764,6 +765,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * best solution is to ensure that the {@code transaction.timeout.ms} is large enough
 	 * so that transactions don't time out.
 	 * @param stopContainerWhenFenced true to stop the container.
+	 * @since 2.5.8
 	 */
 	public void setStopContainerWhenFenced(boolean stopContainerWhenFenced) {
 		this.stopContainerWhenFenced = stopContainerWhenFenced;

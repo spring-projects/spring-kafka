@@ -1541,7 +1541,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						+ ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
 						+ "' fenced during transaction");
 				if (this.containerProperties.isStopContainerWhenFenced()) {
-					throw new StopAfterFenceException("Container stopping due to fenced producer");
+					throw new StopAfterFenceException("Container stopping due to fencing", e);
 				}
 			}
 			catch (RuntimeException e) {
@@ -1810,7 +1810,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (ProducerFencedException | FencedInstanceIdException e) {
 					this.logger.error(e, "Producer or 'group.instance.id' fenced during transaction");
 					if (this.containerProperties.isStopContainerWhenFenced()) {
-						throw new StopAfterFenceException("Container stopping due to fenced producer");
+						throw new StopAfterFenceException("Container stopping due to fencing", e);
 					}
 					break;
 				}
@@ -2852,8 +2852,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	@SuppressWarnings("serial")
 	private static class StopAfterFenceException extends KafkaException {
 
-		StopAfterFenceException(String message) {
-			super(message);
+		StopAfterFenceException(String message, Throwable t) {
+			super(message, t);
 		}
 
 	}
