@@ -152,6 +152,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private String clientIdPrefix;
 
+	private long maxAge;
+
 	private volatile CloseSafeProducer<K, V> producer;
 
 	/**
@@ -351,6 +353,16 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
+	 * Set the maximum age for a producer; useful when using transactions and the broker
+	 * might expire a {@code transactional.id} due to inactivity.
+	 * @param maxAge the maxAge to set
+	 * @since 2.5.8
+	 */
+	public void setMaxAge(Duration maxAge) {
+		this.maxAge = maxAge.toMillis();
+	}
+
+	/**
 	 * Add a listener.
 	 * @param listener the listener.
 	 * @since 2.5
@@ -439,7 +451,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				next = queue.poll();
 			}
 		});
-		this.cache.clear();
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
 					(k, v) -> v.closeDelegate(this.physicalCloseTimeout, this.listeners));
@@ -500,7 +511,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			if (this.threadBoundProducerEpochs.get() == null) {
 				this.threadBoundProducerEpochs.set(this.epoch.get());
 			}
-			if (tlProducer != null && this.epoch.get() != this.threadBoundProducerEpochs.get()) {
+			if (tlProducer != null
+					&& (this.epoch.get() != this.threadBoundProducerEpochs.get() || expire(tlProducer))) {
 				closeThreadBoundProducer();
 				tlProducer = null;
 			}
@@ -516,6 +528,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			return tlProducer;
 		}
 		synchronized (this) {
+			if (this.producer != null && expire(this.producer)) {
+				this.producer = null;
+			}
 			if (this.producer == null) {
 				this.producer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
 						this.physicalCloseTimeout, this.beanName);
@@ -554,14 +569,15 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 		else {
 			synchronized (this.consumerProducers) {
-				if (!this.consumerProducers.containsKey(suffix)) {
+				CloseSafeProducer<K, V> consumerProducer = this.consumerProducers.get(suffix);
+				if (consumerProducer == null || expire(consumerProducer)) {
 					CloseSafeProducer<K, V> newProducer = doCreateTxProducer(txIdPrefix, suffix,
 							this::removeConsumerProducer);
 					this.consumerProducers.put(suffix, newProducer);
 					return newProducer;
 				}
 				else {
-					return this.consumerProducers.get(suffix);
+					return consumerProducer;
 				}
 			}
 		}
@@ -618,13 +634,29 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	protected Producer<K, V> createTransactionalProducer(String txIdPrefix) {
 		BlockingQueue<CloseSafeProducer<K, V>> queue = getCache(txIdPrefix);
 		Assert.notNull(queue, () -> "No cache found for " + txIdPrefix);
-		Producer<K, V> cachedProducer = queue.poll();
+		CloseSafeProducer<K, V> cachedProducer = queue.poll();
+		while (cachedProducer != null) {
+			if (expire(cachedProducer)) {
+				cachedProducer = queue.poll();
+			}
+			else {
+				break;
+			}
+		}
 		if (cachedProducer == null) {
 			return doCreateTxProducer(txIdPrefix, "" + this.transactionIdSuffix.getAndIncrement(), this::cacheReturner);
 		}
 		else {
 			return cachedProducer;
 		}
+	}
+
+	private boolean expire(CloseSafeProducer<K, V> producer) {
+		boolean expired = this.maxAge > 0 && System.currentTimeMillis() - producer.created > this.maxAge;
+		if (expired) {
+			producer.closeDelegate(this.physicalCloseTimeout, this.listeners);
+		}
+		return expired;
 	}
 
 	boolean cacheReturner(CloseSafeProducer<K, V> producerToRemove, Duration timeout) {
@@ -729,6 +761,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		final String txIdPrefix; // NOSONAR
 
+		final long created;
+
 		private final Duration closeTimeout;
 
 		final String clientId; // NOSONAR
@@ -763,6 +797,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				id = "unknown";
 			}
 			this.clientId = factoryName + "." + id;
+			this.created = System.currentTimeMillis();
 			LOGGER.debug(() -> "Created new Producer: " + this);
 		}
 

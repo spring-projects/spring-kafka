@@ -25,6 +25,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
@@ -122,9 +123,9 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	void testResetSingle() {
+	void testResetSingle() throws InterruptedException {
 		final Producer producer = mock(Producer.class);
-		ProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override
 			protected Producer createRawProducer(Map configs) {
@@ -134,13 +135,19 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isSameAs(aProducer);
 		aProducer.close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNotNull();
+		pf.setMaxAge(Duration.ofMillis(10));
+		Thread.sleep(50);
+		aProducer = pf.createProducer();
+		assertThat(aProducer).isNotSameAs(bProducer);
 		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
 		assertThat(cache.size()).isEqualTo(0);
 		pf.reset();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
-		verify(producer).close(any(Duration.class));
+		verify(producer, times(2)).close(any(Duration.class));
 	}
 
 	@Test
@@ -161,11 +168,18 @@ public class DefaultKafkaProducerFactoryTests {
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
 		aProducer.close();
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isSameAs(aProducer);
+		bProducer.close();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
 		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
 		assertThat(cache.size()).isEqualTo(1);
 		Queue queue = (Queue) cache.get("foo");
 		assertThat(queue.size()).isEqualTo(1);
+		pf.setMaxAge(Duration.ofMillis(10));
+		Thread.sleep(50);
+		aProducer = pf.createProducer();
+		assertThat(aProducer).isNotSameAs(bProducer);
 		pf.onApplicationEvent(new ContextStoppedEvent(ctx));
 		assertThat(queue.size()).isEqualTo(0);
 		verify(producer).close(any(Duration.class));
@@ -173,16 +187,15 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	void testThreadLocal() {
+	void testThreadLocal() throws InterruptedException {
 		final Producer producer = mock(Producer.class);
+		AtomicBoolean created = new AtomicBoolean();
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
-
-			boolean created;
 
 			@Override
 			protected Producer createKafkaProducer() {
-				assertThat(this.created).isFalse();
-				this.created = true;
+				assertThat(created.get()).isFalse();
+				created.set(true);
 				return producer;
 			}
 
@@ -196,9 +209,14 @@ public class DefaultKafkaProducerFactoryTests {
 		bProducer.close();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNotNull();
+		pf.setMaxAge(Duration.ofMillis(10));
+		Thread.sleep(50);
+		created.set(false);
+		aProducer = pf.createProducer();
+		assertThat(aProducer).isNotSameAs(bProducer);
 		pf.closeThreadBoundProducer();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNull();
-		verify(producer).close(any(Duration.class));
+		verify(producer, times(3)).close(any(Duration.class));
 	}
 
 	@Test
