@@ -439,7 +439,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				next = queue.poll();
 			}
 		});
-		this.cache.clear();
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
 					(k, v) -> v.closeDelegate(this.physicalCloseTimeout, this.listeners));
