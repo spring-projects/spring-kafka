@@ -80,6 +80,7 @@ import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
@@ -401,9 +402,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
-	private void publishConsumerStoppedEvent() {
+	private void publishConsumerStoppedEvent(Throwable throwable) {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer));
+			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer,
+					this.thisOrParentContainer.equals(this) ? null : this,
+					throwable instanceof Error
+						? Reason.ERROR
+						: throwable instanceof StopAfterFenceException
+							? Reason.FENCED
+							: Reason.NORMAL));
 		}
 	}
 
@@ -1082,14 +1089,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						runnable.run();
 					}
 					this.logger.error(e, "Stopping container due to an Error");
-					wrapUp();
+					wrapUp(e);
 					throw e;
 				}
 				catch (Exception e) {
 					handleConsumerException(e);
 				}
 			}
-			wrapUp();
+			wrapUp(null);
 		}
 
 		private void setupSeeks() {
@@ -1331,7 +1338,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void wrapUp() {
+		private void wrapUp(Throwable throwable) {
 			KafkaUtils.clearConsumerGroupId();
 			if (this.micrometerHolder != null) {
 				this.micrometerHolder.destroy();
@@ -1370,7 +1377,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.consumerSeekAwareListener.unregisterSeekCallback();
 			}
 			this.logger.info(() -> getGroupId() + ": Consumer stopped");
-			publishConsumerStoppedEvent();
+			publishConsumerStoppedEvent(throwable);
 		}
 
 		/**

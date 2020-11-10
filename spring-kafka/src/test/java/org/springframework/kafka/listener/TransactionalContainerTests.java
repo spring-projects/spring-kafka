@@ -84,7 +84,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
-import org.springframework.kafka.event.ContainerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
@@ -285,8 +285,10 @@ public class TransactionalContainerTests {
 			container.setErrorHandler((e, data) -> { });
 		}
 		CountDownLatch stopEventLatch = new CountDownLatch(1);
+		AtomicReference<ConsumerStoppedEvent> stopEvent = new AtomicReference<>();
 		container.setApplicationEventPublisher(event -> {
-			if (event instanceof ContainerStoppedEvent) {
+			if (event instanceof ConsumerStoppedEvent) {
+				stopEvent.set((ConsumerStoppedEvent) event);
 				stopEventLatch.countDown();
 			}
 		});
@@ -304,6 +306,7 @@ public class TransactionalContainerTests {
 		}
 		if (stopWhenFenced) {
 			assertThat(stopEventLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(stopEvent.get().getReason()).isEqualTo(Reason.FENCED);
 		}
 		else {
 			inOrder.verify(producer).commitTransaction();
@@ -327,6 +330,8 @@ public class TransactionalContainerTests {
 			verifyNoMoreInteractions(producer);
 			assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
 			assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
+			assertThat(stopEventLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(stopEvent.get().getReason()).isEqualTo(Reason.NORMAL);
 		}
 	}
 
