@@ -402,7 +402,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
-	private void publishConsumerStoppedEvent(Throwable throwable) {
+	private void publishConsumerStoppedEvent(@Nullable Throwable throwable) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer,
 					this.thisOrParentContainer.equals(this) ? null : this,
@@ -1338,7 +1338,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void wrapUp(Throwable throwable) {
+		private void wrapUp(@Nullable Throwable throwable) {
 			KafkaUtils.clearConsumerGroupId();
 			if (this.micrometerHolder != null) {
 				this.micrometerHolder.destroy();
