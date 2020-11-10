@@ -405,7 +405,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private void publishConsumerStoppedEvent(@Nullable Throwable throwable) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer,
-					this.thisOrParentContainer.equals(this) ? null : this,
 					throwable instanceof Error
 						? Reason.ERROR
 						: throwable instanceof StopAfterFenceException

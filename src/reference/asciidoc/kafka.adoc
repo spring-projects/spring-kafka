@@ -2598,6 +2598,24 @@ The `ConsumerStartingEvent`, `ConsumerStartingEvent`, `ConsumerFailedToStartEven
 All containers (whether a child or a parent) publish `ContainerStoppedEvent`.
 For a parent container, the source and container properties are identical.
 
+In addition, the `ConsumerStoppedEvent` has the following additional property:
+
+* `reason`
+** `NORMAL` - the consumer stopped normally (container was stopped).
+** `ERROR` - a `java.lang.Error` was thrown.
+** `FENCED` - the transactional producer was fenced and the `stopContainerWhenFenced` container property is `true`.
+
+You can use this event to restart the container after such a condition:
+
+====
+[source, java]
+----
+if (event.getReason.equals(Reason.FENCED)) {
+    event.getSource(MessageListenerContainer.class).start();
+}
+----
+====
+
 [[idle-containers]]
 ===== Detecting Idle and Non-Responsive Consumers
 
@@ -5015,6 +5033,8 @@ IMPORTANT: With current `kafka-clients`, the container cannot detect whether a `
 Because, in most cases, it is caused by a rebalance, the container does not call the `AfterRollbackProcessor` (because it's not appropriate to seek the partitions because we no longer are assigned them).
 If you ensure the timeout is large enough to process each transaction and periodically perform an "empty" transaction (e.g. via a `ListenerContainerIdleEvent`) you can avoid fencing due to timeout and expiry.
 Or, you can set the `stopContainerWhenFenced` container property to `true` and the container will stop, avoiding the loss of records.
+You can consume a `ConsumerStoppedEvent` and check the `Reason` property for `FENCED` to detect this condition.
+Since the event also has a reference to the container, you can restart the container using this event.
 
 [[delivery-header]]
 ===== Delivery Attempts Header

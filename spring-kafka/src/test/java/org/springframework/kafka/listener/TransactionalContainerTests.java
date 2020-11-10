@@ -333,8 +333,7 @@ public class TransactionalContainerTests {
 			assertThat(stopEventLatch.await(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(stopEvent.get().getReason()).isEqualTo(Reason.NORMAL);
 		}
-		MessageListenerContainer stoppedContainer = stopEvent.get().getContainer();
-		assertThat(stoppedContainer).isSameAs(container);
+		assertThat(stopEvent.get().getSource()).isSameAs(container);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
