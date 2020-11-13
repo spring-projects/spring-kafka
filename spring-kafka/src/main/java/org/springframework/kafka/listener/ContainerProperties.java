@@ -682,20 +682,17 @@ public class ContainerProperties extends ConsumerProperties {
 	 * Set the exactly once semantics mode. When {@link EOSMode#ALPHA} a producer per
 	 * group/topic/partition is used (enabling 'transactional.id fencing`).
 	 * {@link EOSMode#BETA} enables fetch-offset-request fencing, and requires brokers 2.5
-	 * or later. In the 2.6 client, the default will be BETA because the 2.6 client can
+	 * or later. With the 2.6 client, the default is now BETA because the 2.6 client can
 	 * automatically fall back to ALPHA.
 	 * @param eosMode the mode; default ALPHA.
 	 * @since 2.5
 	 */
 	public void setEosMode(EOSMode eosMode) {
 		if (eosMode == null) {
-			this.eosMode = EOSMode.ALPHA;
+			this.eosMode = EOSMode.ALPHA; // TODO change this in 2.7 to an assertion
 		}
 		else {
 			this.eosMode = eosMode;
-		}
-		if (this.eosMode.equals(EOSMode.BETA) && this.subBatchPerPartition == null) {
-			this.subBatchPerPartition = false;
 		}
 	}
 

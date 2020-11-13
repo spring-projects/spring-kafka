@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -55,10 +56,15 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ContainerProperties.EOSMode;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * @author Gary Russell
@@ -67,6 +73,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext(classMode = ClassMode.AFTER_EACH_TEST_METHOD)
+@EmbeddedKafka(topics = "sbpp")
 public class SubBatchPerPartitionTests {
 
 	private static final String CONTAINER_ID = "container";
@@ -80,6 +87,9 @@ public class SubBatchPerPartitionTests {
 
 	@Autowired
 	private KafkaListenerEndpointRegistry registry;
+
+	@Autowired
+	private EmbeddedKafkaBroker broker;
 
 	/*
 	 * Deliver 6 records from three partitions, fail on the second record second
@@ -98,7 +108,7 @@ public class SubBatchPerPartitionTests {
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer, times(3)).commitSync(any(), eq(Duration.ofSeconds(60)));
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(this.consumer, atLeastOnce()).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "fiz", "buz");
 		this.registry.stop();
 	}
@@ -116,9 +126,62 @@ public class SubBatchPerPartitionTests {
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer, times(3)).commitSync(any(), eq(Duration.ofSeconds(60)));
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(this.consumer, atLeastOnce()).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		assertThat(this.config.filtered).contains("bar", "qux", "buz");
 		this.registry.stop();
+	}
+
+	@Test
+	void defaults() {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("sbpp", "false", this.broker);
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties("sbpp");
+		containerProps.setMessageListener(mock(MessageListener.class));
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
+				.isEqualTo(Boolean.FALSE);
+		container.stop();
+
+		containerProps = new ContainerProperties("sbpp");
+		containerProps.setMessageListener(mock(MessageListener.class));
+		containerProps.setSubBatchPerPartition(true);
+		container = new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
+				.isEqualTo(Boolean.TRUE);
+		container.stop();
+
+		containerProps = new ContainerProperties("sbpp");
+		containerProps.setMessageListener(mock(MessageListener.class));
+		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+		containerProps.setEosMode(EOSMode.ALPHA);
+		container = new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
+				.isEqualTo(Boolean.TRUE);
+		container.stop();
+
+		containerProps = new ContainerProperties("sbpp");
+		containerProps.setMessageListener(mock(MessageListener.class));
+		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+		containerProps.setEosMode(EOSMode.BETA);
+		container = new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
+				.isEqualTo(Boolean.FALSE);
+		container.stop();
+
+		// default is BETA
+		containerProps = new ContainerProperties("sbpp");
+		containerProps.setMessageListener(mock(MessageListener.class));
+		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+		container = new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
+				.isEqualTo(Boolean.FALSE);
+		container.stop();
 	}
 
 	@Configuration

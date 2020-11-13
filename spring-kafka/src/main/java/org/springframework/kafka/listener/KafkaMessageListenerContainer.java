@@ -748,7 +748,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean setupSubBatchPerPartition() {
 			Boolean subBatching = this.containerProperties.getSubBatchPerPartition();
-			return subBatching == null ? this.transactionManager != null : subBatching;
+			if (subBatching != null) {
+				return subBatching;
+			}
+			if (this.transactionManager == null) {
+				return false;
+			}
+			return this.eosMode.equals(EOSMode.ALPHA);
 		}
 
 		private DeliveryAttemptAware setupDeliveryAttemptAware() {
