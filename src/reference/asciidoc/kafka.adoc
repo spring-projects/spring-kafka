@@ -3636,8 +3636,8 @@ Also, you can pass in `Supplier<Serializer>` or `Supplier<Deserializer>` instanc
 [[string-serde]]
 ===== String serialization
 
-Since version 2.5, Spring Kafka provides `ToStringSerializer` and `ParseStringDeserializer` classes that uses String representation of entities.
-They rely on methods `toString` and some `Function<String>` or `BiFuntion<String, Headers>` to parse the String and populate properties of an instance.
+Since version 2.5, Spring Kafka provides `ToStringSerializer` and `ParseStringDeserializer` classes that use String representation of entities.
+They rely on methods `toString` and some `Function<String>` or `BiFunction<String, Headers>` to parse the String and populate properties of an instance.
 Usually, this would invoke some static method on the class, such as `parse`:
 
 ====
