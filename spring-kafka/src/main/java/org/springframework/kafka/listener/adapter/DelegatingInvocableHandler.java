@@ -207,8 +207,9 @@ public class DelegatingInvocableHandler {
 			replyTo = extractSendTo(method.toString(), ann);
 		}
 		if (ann == null) {
-			ann = AnnotationUtils.getAnnotation(this.bean.getClass(), SendTo.class);
-			replyTo = extractSendTo(this.getBean().getClass().getSimpleName(), ann);
+			Class<?> beanType = handler.getBeanType();
+			ann = AnnotationUtils.getAnnotation(beanType, SendTo.class);
+			replyTo = extractSendTo(beanType.getSimpleName(), ann);
 		}
 		if (ann != null && replyTo == null) {
 			replyTo = AdapterUtils.getDefaultReplyTopicExpression();
