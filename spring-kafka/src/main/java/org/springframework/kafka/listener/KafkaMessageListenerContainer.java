@@ -1088,7 +1088,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							+ "' has been fenced");
 					break;
 				}
-				catch (StopAfterFenceException | Error e) { // NOSONAR - rethrown
+				catch (StopAfterFenceException e) {
+					this.logger.error(e, "Stopping container due to fencing");
+					stop();
+				}
+				catch (Error e) { // NOSONAR - rethrown
 					Runnable runnable = KafkaMessageListenerContainer.this.emergencyStop;
 					if (runnable != null) {
 						runnable.run();
