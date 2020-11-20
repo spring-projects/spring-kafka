@@ -1304,6 +1304,24 @@ There must only be one `@PartitionOffset` with the wildcard in each `@TopicParti
 In addition, when the listener implements `ConsumerSeekAware`, `onPartitionsAssigned` is now called, even when using manual assignment.
 This allows, for example, any arbitrary seek operations at that time.
 
+Starting with version 2.6.4, a SpEL function `#parsePartitions` is registered to parse a list of ranges of partitions.
+
+====
+[source, java]
+----
+@KafkaListener(id = "pp", autoStartup = "false",
+        topicPartitions = @TopicPartition(topic = "topic1",
+                partitions = "#{#parsePartitions('0-5, 7, 10-15')}"))
+public void process(String in) {
+    ...
+}
+----
+====
+
+The range is inclusive; the example above will assign partitions `0, 1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 14, 15`.
+The function is only registered if bean factory is configured with the default `StandardBeanExpressionResolver`.
+If you register your own bean expression resolver, and you wish to use this feature, you can register the function to reference the method `KafkaListenerAnnotationBeanPostProcessor.parsePartitions(String)` with the resolver's evaluation context.
+
 ====== Manual Acknowledgment
 
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.

@@ -62,9 +62,11 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.GenericConverter;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.format.Formatter;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.format.support.DefaultFormattingConversionService;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
@@ -214,7 +216,29 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	public void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
 		if (beanFactory instanceof ConfigurableListableBeanFactory) {
-			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
+			BeanExpressionResolver beanExpressionResolver =
+					((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
+			if (StandardBeanExpressionResolver.class.equals(beanExpressionResolver.getClass())) {
+				this.resolver = new StandardBeanExpressionResolver(((ConfigurableListableBeanFactory) beanFactory)
+						.getBeanClassLoader()) {
+
+					@Override
+					protected void customizeEvaluationContext(StandardEvaluationContext evalContext) {
+						try {
+							evalContext.registerFunction("parsePartitions",
+									KafkaListenerAnnotationBeanPostProcessor.class
+										.getDeclaredMethod("parsePartitions", String.class));
+						}
+						catch (NoSuchMethodException | SecurityException e) {
+							throw new KafkaException("Could not find method", e);
+						}
+					}
+
+				};
+			}
+			else {
+				this.resolver = beanExpressionResolver;
+			}
 			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory,
 					this.listenerScope);
 		}
@@ -785,6 +809,36 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else {
 			return Collections.emptySet();
 		}
+	}
+
+	/**
+	 * Parse a list of partitions into an array. Example: "0-5,10-15".
+	 * @param partsString the list of partions.
+	 * @return the array.
+	 */
+	public static Integer[] parsePartitions(String partsString) {
+		String[] partsStrings = partsString.split(",");
+		if (partsStrings.length == 1) {
+			return new Integer[] { Integer.parseInt(partsStrings[0].trim()) };
+		}
+		List<Integer> parts = new ArrayList<>();
+		for (String part : partsStrings) {
+			if (part.contains("-")) {
+				String[] startEnd = part.split("-");
+				if (startEnd.length != 2) {
+					throw new IllegalStateException("Only one hyphen allowed for a range of partitions: " + part);
+				}
+				int end = Integer.parseInt(startEnd[1].trim());
+				for (int i = Integer.parseInt(startEnd[0].trim()); i <= end; i++) {
+					parts.add(i);
+				}
+			}
+			else {
+				Integer[] parsed = parsePartitions(part);
+				Arrays.stream(parsed).forEach(p -> parts.add(p));
+			}
+		}
+		return parts.toArray(new Integer[0]);
 	}
 
 	/**

@@ -25,11 +25,14 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -47,6 +50,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -77,7 +81,7 @@ public class ManualAssignmentInitialSeekTests {
 	 */
 	@SuppressWarnings("unchecked")
 	@Test
-	public void discardRemainingRecordsFromPollAndSeek() throws Exception {
+	void discardRemainingRecordsFromPollAndSeek() throws Exception {
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -88,6 +92,16 @@ public class ManualAssignmentInitialSeekTests {
 		assertThat(this.config.registerSeekCallbackCalled).isTrue();
 		assertThat(this.config.partitionsAssignedCalled).isTrue();
 		assertThat(this.config.assignments).hasSize(3);
+	}
+
+	@Test
+	void parsePartitions() {
+		TopicPartitionOffset[] topicPartitions = registry.getListenerContainer("pp")
+				.getContainerProperties()
+				.getTopicPartitions();
+		List<Integer> collected = Arrays.stream(topicPartitions).map(tp -> tp.getPartition())
+				.collect(Collectors.toList());
+		assertThat(collected).containsExactly(0, 1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 14, 15);
 	}
 
 	@Configuration
@@ -109,6 +123,12 @@ public class ManualAssignmentInitialSeekTests {
 						partitions = "#{'0,1,2'.split(',')}",
 						partitionOffsets = @PartitionOffset(partition = "*", initialOffset = "0")))
 		public void foo(String in) {
+		}
+
+		@KafkaListener(id = "pp", autoStartup = "false",
+				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
+						partitions = "#{#parsePartitions('0-5, 7, 10-15')}"))
+		public void bar(String in) {
 		}
 
 		@SuppressWarnings({ "rawtypes" })
