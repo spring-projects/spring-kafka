@@ -24,6 +24,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -104,6 +106,19 @@ public class ManualAssignmentInitialSeekTests {
 		assertThat(collected).containsExactly(0, 1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 14, 15);
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void parseUnitTests() throws Exception {
+		Method parser = KafkaListenerAnnotationBeanPostProcessor.class.getDeclaredMethod("parsePartitions",
+				String.class);
+		parser.setAccessible(true);
+		KafkaListenerAnnotationBeanPostProcessor bpp = new KafkaListenerAnnotationBeanPostProcessor();
+		assertThat((List<Integer>) parser.invoke(bpp, "0-2")).containsExactly(0, 1, 2);
+		assertThat((List<Integer>) parser.invoke(bpp, "  0-2  ,  5")).containsExactly(0, 1, 2, 5);
+		assertThat((List<Integer>) parser.invoke(bpp, "0-2,5-6")).containsExactly(0, 1, 2, 5, 6);
+		assertThat((List<Integer>) parser.invoke(bpp, "5-6,0-2,0-2")).containsExactly(0, 1, 2, 5, 6);
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config extends AbstractConsumerSeekAware {
@@ -127,7 +142,7 @@ public class ManualAssignmentInitialSeekTests {
 
 		@KafkaListener(id = "pp", autoStartup = "false",
 				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
-						partitions = "#{#parsePartitions('0-5, 7, 10-15')}"))
+						partitions = "0-5, 7, 10-15"))
 		public void bar(String in) {
 		}
 

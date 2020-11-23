@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -62,11 +63,9 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.GenericConverter;
 import org.springframework.core.log.LogAccessor;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.format.Formatter;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.format.support.DefaultFormattingConversionService;
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
@@ -216,29 +215,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	public void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
 		if (beanFactory instanceof ConfigurableListableBeanFactory) {
-			BeanExpressionResolver beanExpressionResolver =
-					((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
-			if (StandardBeanExpressionResolver.class.equals(beanExpressionResolver.getClass())) {
-				this.resolver = new StandardBeanExpressionResolver(((ConfigurableListableBeanFactory) beanFactory)
-						.getBeanClassLoader()) {
-
-					@Override
-					protected void customizeEvaluationContext(StandardEvaluationContext evalContext) {
-						try {
-							evalContext.registerFunction("parsePartitions",
-									KafkaListenerAnnotationBeanPostProcessor.class
-										.getDeclaredMethod("parsePartitions", String.class));
-						}
-						catch (NoSuchMethodException | SecurityException e) {
-							throw new KafkaException("Could not find method", e);
-						}
-					}
-
-				};
-			}
-			else {
-				this.resolver = beanExpressionResolver;
-			}
+			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
 			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory,
 					this.listenerScope);
 		}
@@ -704,7 +681,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
 					() -> "partition in @TopicPartition for topic '" + topic + "' cannot be empty");
-			result.add(new TopicPartitionOffset(topic, Integer.valueOf((String) resolvedValue)));
+			result.addAll(parsePartitions((String) resolvedValue).stream()
+					.map(part -> new TopicPartitionOffset(topic, part))
+					.collect(Collectors.toList()));
 		}
 		else if (resolvedValue instanceof Integer[]) {
 			for (Integer partition : (Integer[]) resolvedValue) {
@@ -812,33 +791,36 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	/**
-	 * Parse a list of partitions into an array. Example: "0-5,10-15".
-	 * @param partsString the list of partions.
-	 * @return the array.
+	 * Parse a list of partitions into a {@link List}. Example: "0-5,10-15".
+	 * @param partsString the comma-delimited list of partitions/ranges.
+	 * @return the partitions sorted and de-duplicated.
+	 * @since 2.6.4
 	 */
-	public static Integer[] parsePartitions(String partsString) {
+	private List<Integer> parsePartitions(String partsString) {
 		String[] partsStrings = partsString.split(",");
-		if (partsStrings.length == 1) {
-			return new Integer[] { Integer.parseInt(partsStrings[0].trim()) };
+		if (partsStrings.length == 1 && !partsStrings[0].contains("-")) {
+			return Collections.singletonList(Integer.parseInt(partsStrings[0].trim()));
 		}
 		List<Integer> parts = new ArrayList<>();
 		for (String part : partsStrings) {
 			if (part.contains("-")) {
 				String[] startEnd = part.split("-");
-				if (startEnd.length != 2) {
-					throw new IllegalStateException("Only one hyphen allowed for a range of partitions: " + part);
-				}
+				Assert.state(startEnd.length == 2, "Only one hyphen allowed for a range of partitions: " + part);
+				int start = Integer.parseInt(startEnd[0].trim());
 				int end = Integer.parseInt(startEnd[1].trim());
-				for (int i = Integer.parseInt(startEnd[0].trim()); i <= end; i++) {
+				Assert.state(end >= start, "Invalid range: " + part);
+				for (int i = start; i <= end; i++) {
 					parts.add(i);
 				}
 			}
 			else {
-				Integer[] parsed = parsePartitions(part);
-				Arrays.stream(parsed).forEach(p -> parts.add(p));
+				parsePartitions(part).stream().forEach(p -> parts.add(p));
 			}
 		}
-		return parts.toArray(new Integer[0]);
+		return parts.stream()
+				.sorted()
+				.distinct()
+				.collect(Collectors.toList());
 	}
 
 	/**
