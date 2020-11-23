@@ -1320,6 +1320,23 @@ public void process(String in) {
 
 The range is inclusive; the example above will assign partitions `0, 1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 14, 15`.
 
+The same technique can be used when specifying initial offsets:
+
+====
+[source, java]
+----
+@KafkaListener(id = "thing3", topicPartitions =
+        { @TopicPartition(topic = "topic1",
+             partitionOffsets = @PartitionOffset(partition = "0-5", initialOffset = "0"))
+        })
+public void listen(ConsumerRecord<?, ?> record) {
+    ...
+}
+----
+====
+
+The initial offset will be applied to all 6 partitions.
+
 ====== Manual Acknowledgment
 
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.

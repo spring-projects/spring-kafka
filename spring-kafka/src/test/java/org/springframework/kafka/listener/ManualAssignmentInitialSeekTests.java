@@ -29,11 +29,9 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -102,9 +100,21 @@ public class ManualAssignmentInitialSeekTests {
 		TopicPartitionOffset[] topicPartitions = registry.getListenerContainer("pp")
 				.getContainerProperties()
 				.getTopicPartitions();
-		List<Integer> collected = Arrays.stream(topicPartitions).map(tp -> tp.getPartition())
-				.collect(Collectors.toList());
+		Stream<Integer> collected = Arrays.stream(topicPartitions)
+				.map(tp -> tp.getPartition());
 		assertThat(collected).containsExactly(0, 1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 14, 15);
+
+		assertThat(Arrays.stream(this.registry.getListenerContainer("ppo")
+					.getContainerProperties()
+					.getTopicPartitions())).containsExactly(
+							new TopicPartitionOffset("foo", 0),
+							new TopicPartitionOffset("foo", 1),
+							new TopicPartitionOffset("foo", 2),
+							new TopicPartitionOffset("foo", 3));
+		assertThat(Arrays.stream(this.registry.getListenerContainer("ppo")
+				.getContainerProperties()
+				.getTopicPartitions())
+				.map(tpo -> tpo.getOffset())).containsExactly(0L, 0L, 1L, 1L);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -145,6 +155,13 @@ public class ManualAssignmentInitialSeekTests {
 				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
 						partitions = "0-5, 7, 10-15"))
 		public void bar(String in) {
+		}
+
+		@KafkaListener(id = "ppo", autoStartup = "false",
+				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
+						partitionOffsets = { @PartitionOffset(partition = "0-1", initialOffset = "0"),
+								@PartitionOffset(partition = "#{'2-3'}", initialOffset = "1") }))
+		public void baz(String in) {
 		}
 
 		@SuppressWarnings({ "rawtypes" })

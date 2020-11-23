@@ -76,6 +76,7 @@ import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
@@ -564,7 +565,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				() -> "At least one 'partition' or 'partitionOffset' required in @TopicPartition for topic '" + topic + "'");
 		List<TopicPartitionOffset> result = new ArrayList<>();
 		for (String partition : partitions) {
-			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result);
+			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result, null, false, false);
 		}
 		if (partitionOffsets.length == 1 && partitionOffsets[0].partition().equals("*")) {
 			result.forEach(tpo -> {
@@ -576,19 +577,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			for (PartitionOffset partitionOffset : partitionOffsets) {
 				Assert.isTrue(!partitionOffset.partition().equals("*"), () ->
 						"Partition wildcard '*' is only allowed in a single @PartitionOffset in " + result);
-				TopicPartitionOffset topicPartitionOffset =
-						new TopicPartitionOffset((String) topic,
-								resolvePartition(topic, partitionOffset),
-								resolveInitialOffset(topic, partitionOffset),
-								isRelative(topic, partitionOffset));
-				if (!result.contains(topicPartitionOffset)) {
-					result.add(topicPartitionOffset);
-				}
-				else {
-					throw new IllegalArgumentException(
-							String.format("@TopicPartition can't have the same partition configuration twice: [%s]",
-									topicPartitionOffset));
-				}
+				resolvePartitionAsInteger((String) topic, resolveExpression(partitionOffset.partition()), result,
+						resolveInitialOffset(topic, partitionOffset), isRelative(topic, partitionOffset), true);
 			}
 		}
 		Assert.isTrue(result.size() > 0, () -> "At least one partition required for " + topic);
@@ -673,18 +663,27 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	@SuppressWarnings("unchecked")
 	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
-			List<TopicPartitionOffset> result) {
+			List<TopicPartitionOffset> result, @Nullable Long offset, boolean isRelative, boolean checkDups) {
+
 		if (resolvedValue instanceof String[]) {
 			for (Object object : (String[]) resolvedValue) {
-				resolvePartitionAsInteger(topic, object, result);
+				resolvePartitionAsInteger(topic, object, result, offset, isRelative, checkDups);
 			}
 		}
 		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
 					() -> "partition in @TopicPartition for topic '" + topic + "' cannot be empty");
-			result.addAll(parsePartitions((String) resolvedValue)
-					.map(part -> new TopicPartitionOffset(topic, part))
-					.collect(Collectors.toList()));
+			List<TopicPartitionOffset> collected = parsePartitions((String) resolvedValue)
+					.map(part -> new TopicPartitionOffset(topic, part, offset, isRelative))
+					.collect(Collectors.toList());
+			if (checkDups) {
+				collected.forEach(tpo -> {
+					Assert.state(!result.contains(tpo), () ->
+							String.format("@TopicPartition can't have the same partition configuration twice: [%s]",
+									tpo));
+				});
+			}
+			result.addAll(collected);
 		}
 		else if (resolvedValue instanceof Integer[]) {
 			for (Integer partition : (Integer[]) resolvedValue) {
@@ -696,7 +695,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else if (resolvedValue instanceof Iterable) {
 			for (Object object : (Iterable<Object>) resolvedValue) {
-				resolvePartitionAsInteger(topic, object, result);
+				resolvePartitionAsInteger(topic, object, result, offset, isRelative, checkDups);
 			}
 		}
 		else {
