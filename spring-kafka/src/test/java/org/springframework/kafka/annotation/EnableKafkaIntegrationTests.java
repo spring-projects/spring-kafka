@@ -26,7 +26,9 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.Collection;
@@ -49,6 +51,8 @@ import javax.validation.Valid;
 import javax.validation.ValidationException;
 import javax.validation.constraints.Max;
 
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -67,14 +71,23 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import org.springframework.aop.BeforeAdvice;
+import org.springframework.aop.MethodBeforeAdvice;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Role;
 import org.springframework.context.event.EventListener;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.web.JsonPath;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -169,7 +182,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
-		"annotated38", "annotated38reply", "annotated39"})
+		"annotated38", "annotated38reply", "annotated39", "sentto-in", "sendto-out"})
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
@@ -1279,6 +1292,13 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		@Order(HIGHEST_PRECEDENCE)
+		@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+		public ProxyListenerPostProcessor proxyListenerPostProcessor() {
+			return new ProxyListenerPostProcessor();
+		}
+
+		@Bean
 		public MultiListenerBean multiListener() {
 			return new MultiListenerBean();
 		}
@@ -2010,6 +2030,27 @@ public class EnableKafkaIntegrationTests {
 			this.seekCallBack.set(callback);
 		}
 
+	}
+
+	static class ProxyListenerPostProcessor implements BeanPostProcessor {
+
+		@Override
+		public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+			if ("multiListenerSendTo".equals(beanName)) {
+				ProxyFactory proxyFactory = new ProxyFactory(bean);
+				proxyFactory.setProxyTargetClass(true);
+				proxyFactory.addAdvice(new MethodInterceptor() {
+					@Override
+					public Object invoke(MethodInvocation invocation) throws Throwable {
+						logger.info(String.format("Proxy listener for %s.$s",
+								invocation.getMethod().getDeclaringClass(), invocation.getMethod().getName()));
+						return invocation.proceed();
+					}
+				});
+				return proxyFactory.getProxy();
+			}
+			return bean;
+		}
 	}
 
 	public static class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
