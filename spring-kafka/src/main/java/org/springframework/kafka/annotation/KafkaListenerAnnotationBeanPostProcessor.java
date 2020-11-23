@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -681,7 +682,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
 					() -> "partition in @TopicPartition for topic '" + topic + "' cannot be empty");
-			result.addAll(parsePartitions((String) resolvedValue).stream()
+			result.addAll(parsePartitions((String) resolvedValue)
 					.map(part -> new TopicPartitionOffset(topic, part))
 					.collect(Collectors.toList()));
 		}
@@ -793,13 +794,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	/**
 	 * Parse a list of partitions into a {@link List}. Example: "0-5,10-15".
 	 * @param partsString the comma-delimited list of partitions/ranges.
-	 * @return the partitions sorted and de-duplicated.
+	 * @return the stream of partition numbers, sorted and de-duplicated.
 	 * @since 2.6.4
 	 */
-	private List<Integer> parsePartitions(String partsString) {
+	private Stream<Integer> parsePartitions(String partsString) {
 		String[] partsStrings = partsString.split(",");
 		if (partsStrings.length == 1 && !partsStrings[0].contains("-")) {
-			return Collections.singletonList(Integer.parseInt(partsStrings[0].trim()));
+			return Stream.of(Integer.parseInt(partsStrings[0].trim()));
 		}
 		List<Integer> parts = new ArrayList<>();
 		for (String part : partsStrings) {
@@ -814,13 +815,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				}
 			}
 			else {
-				parsePartitions(part).stream().forEach(p -> parts.add(p));
+				parsePartitions(part).forEach(p -> parts.add(p));
 			}
 		}
 		return parts.stream()
 				.sorted()
-				.distinct()
-				.collect(Collectors.toList());
+				.distinct();
 	}
 
 	/**

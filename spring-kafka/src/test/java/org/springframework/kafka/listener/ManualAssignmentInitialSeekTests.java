@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -113,10 +114,10 @@ public class ManualAssignmentInitialSeekTests {
 				String.class);
 		parser.setAccessible(true);
 		KafkaListenerAnnotationBeanPostProcessor bpp = new KafkaListenerAnnotationBeanPostProcessor();
-		assertThat((List<Integer>) parser.invoke(bpp, "0-2")).containsExactly(0, 1, 2);
-		assertThat((List<Integer>) parser.invoke(bpp, "  0-2  ,  5")).containsExactly(0, 1, 2, 5);
-		assertThat((List<Integer>) parser.invoke(bpp, "0-2,5-6")).containsExactly(0, 1, 2, 5, 6);
-		assertThat((List<Integer>) parser.invoke(bpp, "5-6,0-2,0-2")).containsExactly(0, 1, 2, 5, 6);
+		assertThat((Stream<Integer>) parser.invoke(bpp, "0-2")).containsExactly(0, 1, 2);
+		assertThat((Stream<Integer>) parser.invoke(bpp, "  0-2  ,  5")).containsExactly(0, 1, 2, 5);
+		assertThat((Stream<Integer>) parser.invoke(bpp, "0-2,5-6")).containsExactly(0, 1, 2, 5, 6);
+		assertThat((Stream<Integer>) parser.invoke(bpp, "5-6,0-2,0-2")).containsExactly(0, 1, 2, 5, 6);
 	}
 
 	@Configuration
