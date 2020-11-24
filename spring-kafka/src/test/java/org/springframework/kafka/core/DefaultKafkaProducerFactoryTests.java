@@ -188,6 +188,41 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void dontReturnToCacheAfterReset() {
+		final Producer producer = mock(Producer.class);
+		ApplicationContext ctx = mock(ApplicationContext.class);
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				return producer;
+			}
+
+		};
+		pf.setApplicationContext(ctx);
+		pf.setTransactionIdPrefix("foo");
+		Producer aProducer = pf.createProducer();
+		assertThat(aProducer).isNotNull();
+		aProducer.close();
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isSameAs(aProducer);
+		bProducer.close();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
+		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
+		assertThat(cache.size()).isEqualTo(1);
+		Queue queue = (Queue) cache.get("foo");
+		assertThat(queue.size()).isEqualTo(1);
+		bProducer = pf.createProducer();
+		assertThat(bProducer).isSameAs(aProducer);
+		assertThat(queue.size()).isEqualTo(0);
+		pf.reset();
+		bProducer.close();
+		assertThat(queue.size()).isEqualTo(0);
+		pf.destroy();
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	void testThreadLocal() throws InterruptedException {
 		final Producer producer = mock(Producer.class);
 		AtomicBoolean created = new AtomicBoolean();

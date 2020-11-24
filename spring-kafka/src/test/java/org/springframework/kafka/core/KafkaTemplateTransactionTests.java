@@ -388,7 +388,7 @@ public class KafkaTemplateTransactionTests {
 							prod.closeDelegate(timeout, Collections.emptyList());
 							return true;
 						},
-						Duration.ofSeconds(1), "factory");
+						Duration.ofSeconds(1), "factory", 0);
 				return closeSafeProducer;
 			}
 
@@ -422,14 +422,14 @@ public class KafkaTemplateTransactionTests {
 				BlockingQueue<CloseSafeProducer<String, String>> cache = new LinkedBlockingDeque<>(1);
 				try {
 					cache.put(new CloseSafeProducer<>(mock(Producer.class), this::removeProducer,
-							Duration.ofSeconds(1), "factory"));
+							Duration.ofSeconds(1), "factory", 0));
 				}
 				catch (@SuppressWarnings("unused") InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
 				KafkaTestUtils.getPropertyValue(this, "cache", Map.class).put("foo", cache);
 				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
-						this::cacheReturner, "foo", Duration.ofSeconds(1), "factory");
+						this::cacheReturner, "foo", Duration.ofSeconds(1), "factory", 0);
 				return closeSafeProducer;
 			}
 

@@ -124,8 +124,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private final ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers = new ThreadLocal<>();
 
-	private final ThreadLocal<Integer> threadBoundProducerEpochs = new ThreadLocal<>();
-
 	private final AtomicInteger epoch = new AtomicInteger();
 
 	private final AtomicInteger clientIdCounter = new AtomicInteger();
@@ -543,7 +541,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 			if (this.producer == null) {
 				this.producer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
-						this.physicalCloseTimeout, this.beanName);
+						this.physicalCloseTimeout, this.beanName, this.epoch.get());
 				this.listeners.forEach(listener -> listener.producerAdded(this.producer.clientId, this.producer));
 			}
 			return this.producer;
@@ -552,22 +550,17 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private Producer<K, V> getOrCreateThreadBoundProducer() {
 		CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
-		if (this.threadBoundProducerEpochs.get() == null) {
-			this.threadBoundProducerEpochs.set(this.epoch.get());
-		}
-		if (tlProducer != null
-				&& (this.epoch.get() != this.threadBoundProducerEpochs.get() || expire(tlProducer))) {
+		if (tlProducer != null && (this.epoch.get() != tlProducer.epoch || expire(tlProducer))) {
 			closeThreadBoundProducer();
 			tlProducer = null;
 		}
 		if (tlProducer == null) {
 			tlProducer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
-					this.physicalCloseTimeout, this.beanName);
+					this.physicalCloseTimeout, this.beanName, this.epoch.get());
 			for (Listener<K, V> listener : this.listeners) {
 				listener.producerAdded(tlProducer.clientId, tlProducer);
 			}
 			this.threadBoundProducers.set(tlProducer);
-			this.threadBoundProducerEpochs.set(this.epoch.get());
 		}
 		return tlProducer;
 	}
@@ -699,7 +692,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		else {
 			synchronized (this.cache) {
 				BlockingQueue<CloseSafeProducer<K, V>> txIdCache = getCache(producerToRemove.txIdPrefix);
-				if (txIdCache != null && !txIdCache.contains(producerToRemove) && !txIdCache.offer(producerToRemove)) {
+				if (producerToRemove.epoch != this.epoch.get()
+						|| (txIdCache != null && !txIdCache.contains(producerToRemove)
+								&& !txIdCache.offer(producerToRemove))) {
 					producerToRemove.closeDelegate(timeout, this.listeners);
 					return true;
 				}
@@ -723,7 +718,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		newProducer = createRawProducer(newProducerConfigs);
 		newProducer.initTransactions();
 		CloseSafeProducer<K, V> closeSafeProducer =
-				new CloseSafeProducer<>(newProducer, remover, prefix, this.physicalCloseTimeout, this.beanName);
+				new CloseSafeProducer<>(newProducer, remover, prefix, this.physicalCloseTimeout, this.beanName,
+						this.epoch.get());
 		this.listeners.forEach(listener -> listener.producerAdded(closeSafeProducer.clientId, closeSafeProducer));
 		return closeSafeProducer;
 	}
@@ -799,20 +795,22 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		final String clientId; // NOSONAR
 
+		final int epoch; // NOSONAR
+
 		private volatile Exception producerFailed;
 
 		volatile boolean closed; // NOSONAR
 
 		CloseSafeProducer(Producer<K, V> delegate,
 				BiPredicate<CloseSafeProducer<K, V>, Duration> removeConsumerProducer, Duration closeTimeout,
-				String factoryName) {
+				String factoryName, int epoch) {
 
-			this(delegate, removeConsumerProducer, null, closeTimeout, factoryName);
+			this(delegate, removeConsumerProducer, null, closeTimeout, factoryName, epoch);
 		}
 
 		CloseSafeProducer(Producer<K, V> delegate,
 				BiPredicate<CloseSafeProducer<K, V>, Duration> removeProducer, @Nullable String txIdPrefix,
-				Duration closeTimeout, String factoryName) {
+				Duration closeTimeout, String factoryName, int epoch) {
 
 			Assert.isTrue(!(delegate instanceof CloseSafeProducer), "Cannot double-wrap a producer");
 			this.delegate = delegate;
@@ -830,6 +828,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 			this.clientId = factoryName + "." + id;
 			this.created = System.currentTimeMillis();
+			this.epoch = epoch;
 			LOGGER.debug(() -> "Created new Producer: " + this);
 		}
 
