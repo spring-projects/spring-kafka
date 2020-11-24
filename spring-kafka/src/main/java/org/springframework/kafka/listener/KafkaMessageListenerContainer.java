@@ -404,12 +404,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private void publishConsumerStoppedEvent(@Nullable Throwable throwable) {
 		if (getApplicationEventPublisher() != null) {
+			Reason reason;
+			if (throwable instanceof Error) {
+				reason = Reason.ERROR;
+			}
+			else if (throwable instanceof StopAfterFenceException || throwable instanceof FencedInstanceIdException) {
+				reason = Reason.FENCED;
+			}
+			else if (throwable instanceof AuthorizationException) {
+				reason = Reason.AUTH;
+			}
+			else if (throwable instanceof NoOffsetForPartitionException) {
+				reason = Reason.NO_OFFSET;
+			}
+			else {
+				reason = Reason.NORMAL;
+			}
 			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer,
-					throwable instanceof Error
-						? Reason.ERROR
-						: throwable instanceof StopAfterFenceException
-							? Reason.FENCED
-							: Reason.NORMAL));
+					reason));
 		}
 	}
 
@@ -1066,12 +1078,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (NoOffsetForPartitionException nofpe) {
 					this.fatalError = true;
 					ListenerConsumer.this.logger.error(nofpe, "No offset and no reset policy");
+					exitThrowable = nofpe;
 					break;
 				}
 				catch (AuthorizationException ae) {
 					if (this.authorizationExceptionRetryInterval == null) {
 						ListenerConsumer.this.logger.error(ae, "Authorization Exception and no authorizationExceptionRetryInterval set");
 						this.fatalError = true;
+						exitThrowable = ae;
 						break;
 					}
 					else {
@@ -1087,6 +1101,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.fatalError = true;
 					ListenerConsumer.this.logger.error(fie, "'" + ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
 							+ "' has been fenced");
+					exitThrowable = fie;
 					break;
 				}
 				catch (StopAfterFenceException e) {

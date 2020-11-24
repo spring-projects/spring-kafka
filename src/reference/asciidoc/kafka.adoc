@@ -2655,6 +2655,8 @@ In addition, the `ConsumerStoppedEvent` has the following additional property:
 ** `NORMAL` - the consumer stopped normally (container was stopped).
 ** `ERROR` - a `java.lang.Error` was thrown.
 ** `FENCED` - the transactional producer was fenced and the `stopContainerWhenFenced` container property is `true`.
+** `AUTH` - an `AuthorizationException` was thrown and the `authorizationExceptionRetryInterval` is not configured.
+** `NO_OFFSET` - there is no offset for a partition and the `auto.offset.reset` policy is `none`.
 
 You can use this event to restart the container after such a condition:
 

@@ -31,6 +31,11 @@ public class ConsumerStoppedEvent extends KafkaEvent {
 
 	private static final long serialVersionUID = 1L;
 
+	/**
+	 * Reasons for stopping a consumer.
+	 * @since 2.5.9
+	 *
+	 */
 	public enum Reason {
 
 		/**
@@ -43,6 +48,18 @@ public class ConsumerStoppedEvent extends KafkaEvent {
 		 * {@code stopContainerWhenFenced} property is true.
 		 */
 		FENCED,
+
+		/**
+		 * An authorization exception occurred.
+		 * @since 2.5.10
+		 */
+		AUTH,
+
+		/**
+		 * No offset found for a partition and no reset policy.
+		 * @since 2.5.10
+		 */
+		NO_OFFSET,
 
 		/**
 		 * A {@link java.lang.Error} was thrown.

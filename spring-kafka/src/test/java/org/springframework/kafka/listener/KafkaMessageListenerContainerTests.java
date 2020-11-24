@@ -94,6 +94,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
@@ -2726,16 +2727,19 @@ public class KafkaMessageListenerContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 
+		AtomicReference<ConsumerStoppedEvent.Reason> reason = new AtomicReference<>();
 		CountDownLatch stopped = new CountDownLatch(1);
 
 		container.setApplicationEventPublisher(e -> {
 			if (e instanceof ConsumerStoppedEvent) {
+				reason.set(((ConsumerStoppedEvent) e).getReason());
 				stopped.countDown();
 			}
 		});
 
 		container.start();
 		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(reason.get()).isEqualTo(Reason.AUTH);
 		container.stop();
 	}
 
