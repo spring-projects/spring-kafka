@@ -18,6 +18,7 @@ package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -411,6 +412,35 @@ public class DefaultKafkaProducerFactoryTests {
 		aProducer = pf.createProducer();
 		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo("bar");
 		pf.destroy();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void configUpdates() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory<>(configs);
+		assertThat(pf.getConfigurationProperties()).hasSize(2);
+		configs.remove(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
+		configs.put(ProducerConfig.ACKS_CONFIG, "all");
+		pf.updateConfigs(configs);
+		assertThat(pf.getConfigurationProperties()).hasSize(3);
+		pf.removeConfig(ProducerConfig.ACKS_CONFIG);
+		assertThat(pf.getConfigurationProperties()).hasSize(2);
+		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "tx-");
+		assertThatIllegalArgumentException().isThrownBy(() -> pf.updateConfigs(configs));
+		configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+		configs.put(ProducerConfig.CLIENT_ID_CONFIG, "clientId");
+		DefaultKafkaProducerFactory pf1 = new DefaultKafkaProducerFactory<>(configs);
+		assertThat(pf1.getConfigurationProperties()).hasSize(5);
+		configs.put(ProducerConfig.CLIENT_ID_CONFIG, "clientId2");
+		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "tx2-");
+		pf1.updateConfigs(configs);
+		assertThat(pf1.getConfigurationProperties()).hasSize(5);
+		assertThat(KafkaTestUtils.getPropertyValue(pf1, "clientIdPrefix")).isEqualTo("clientId2");
+		assertThat(KafkaTestUtils.getPropertyValue(pf1, "transactionIdPrefix")).isEqualTo("tx2-");
+		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, null);
+		assertThatIllegalArgumentException().isThrownBy(() -> pf1.updateConfigs(configs));
 	}
 
 }

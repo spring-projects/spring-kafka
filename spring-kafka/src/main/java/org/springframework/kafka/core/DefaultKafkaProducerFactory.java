@@ -140,8 +140,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private Duration physicalCloseTimeout = DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
 
-	private String transactionIdPrefix;
-
 	private ApplicationContext applicationContext;
 
 	private String beanName = "not.managed.by.Spring";
@@ -150,9 +148,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private boolean producerPerThread;
 
-	private String clientIdPrefix;
-
 	private long maxAge;
+
+	private volatile String transactionIdPrefix;
+
+	private volatile String clientIdPrefix;
 
 	private volatile CloseSafeProducer<K, V> producer;
 
@@ -410,6 +410,34 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	@Override
 	public boolean removePostProcessor(ProducerPostProcessor<K, V> postProcessor) {
 		return this.postProcessors.remove(postProcessor);
+	}
+
+	@Override
+	public void updateConfigs(Map<String, Object> updates) {
+		updates.entrySet().forEach(entry -> {
+			if (entry.getKey().equals(ProducerConfig.TRANSACTIONAL_ID_CONFIG)) {
+				Assert.isTrue(entry.getValue() instanceof String, () -> "'" + ProducerConfig.TRANSACTIONAL_ID_CONFIG
+						+ "' must be a String, not a " + entry.getClass().getName());
+				Assert.isTrue(this.transactionIdPrefix != null
+							? entry.getValue() != null
+							: entry.getValue() == null,
+						"Cannot change transactional capability");
+				this.transactionIdPrefix = (String) entry.getValue();
+			}
+			else if (entry.getKey().equals(ProducerConfig.CLIENT_ID_CONFIG)) {
+				Assert.isTrue(entry.getValue() instanceof String, () -> "'" + ProducerConfig.CLIENT_ID_CONFIG
+						+ "' must be a String, not a " + entry.getClass().getName());
+				this.clientIdPrefix = (String) entry.getValue();
+			}
+			else {
+				this.configs.put(entry.getKey(), entry.getValue());
+			}
+		});
+	}
+
+	@Override
+	public void removeConfig(String configKey) {
+		this.configs.remove(configKey);
 	}
 
 	/**

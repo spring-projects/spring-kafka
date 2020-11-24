@@ -42,3 +42,7 @@ See <<seek-to-current>>, <<after-rollback>>, <<recovering-batch-eh>> for more in
 
 You can now set a maximum age for producers after which they will be closed and recreated.
 See <<transactions>> for more information.
+
+You can now update the configuration map after the `DefaultKafkaProducerFactory` has been created.
+This might be useful, for example, if you have to update SSL key/trust store locations after a credentials change.
+See <<producer-factory>> for more information.

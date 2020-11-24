@@ -531,6 +531,22 @@ public KafkaTemplate<Integer, CustomValue> kafkaTemplate() {
 ----
 ====
 
+Starting with version 2.5.10, you can now update the producer properties after the factory is created.
+This might be useful, for example, if you have to update SSL key/trust store locations after a credentials change.
+The changes will not affect existing producer instances; call `reset()` to close any existing  producers so that new producers will be created using the new properties.
+NOTE: You cannot change a transactional producer factory to non-transactional, and vice-versa.
+
+Two new methods are now provided:
+
+====
+[source, java]
+----
+void updateConfigs(Map<String, Object> updates);
+
+void removeConfig(String configKey);
+----
+====
+
 [[replying-template]]
 ===== Using `ReplyingKafkaTemplate`
 

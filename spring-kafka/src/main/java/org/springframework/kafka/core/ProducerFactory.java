@@ -83,7 +83,6 @@ public interface ProducerFactory<K, V> {
 	 * @since 1.3.8
 	 */
 	default void closeProducerFor(String transactionIdSuffix) {
-		// NOSONAR
 	}
 
 	/**
@@ -101,7 +100,6 @@ public interface ProducerFactory<K, V> {
 	 * @since 2.3
 	 */
 	default void closeThreadBoundProducer() {
-		// NOSONAR
 	}
 
 	/**
@@ -109,7 +107,6 @@ public interface ProducerFactory<K, V> {
 	 * @since 2.4
 	 */
 	default void reset() {
-		// NOSONAR
 	}
 
 	/**
@@ -234,6 +231,23 @@ public interface ProducerFactory<K, V> {
 	 */
 	default List<ProducerPostProcessor<K, V>> getPostProcessors() {
 		return Collections.emptyList();
+	}
+
+	/**
+	 * Update the producer configuration map; useful for situations such as
+	 * credential rotation.
+	 * @param updates the configuration properties to update.
+	 * @since 2.5.10
+	 */
+	default void updateConfigs(Map<String, Object> updates) {
+	}
+
+	/**
+	 * Remove the specified key from the configuration map.
+	 * @param configKey the key to remove.
+	 * @since 2.5.10
+	 */
+	default void removeConfig(String configKey) {
 	}
 
 	/**
