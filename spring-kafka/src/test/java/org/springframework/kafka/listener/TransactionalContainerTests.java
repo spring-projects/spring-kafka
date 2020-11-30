@@ -710,6 +710,7 @@ public class TransactionalContainerTests {
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		TopicPartition partition0 = new TopicPartition(topic, 0);
 		assertThat(committed.get().get(partition0).offset()).isEqualTo(2L);
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.lastCommits", Map.class)).isEmpty();
 		container.stop();
 		pf.destroy();
 	}
