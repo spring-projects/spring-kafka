@@ -1237,7 +1237,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 				catch (Exception e) {
-					this.logger.error(e, "Failed to correct transactional offset(s)");
+					this.logger.error(e, () -> "Failed to correct transactional offset(s): "
+							+ ListenerConsumer.this.lastCommits);
+				}
+				finally {
+					ListenerConsumer.this.lastCommits.clear();
 				}
 			}
 		}
