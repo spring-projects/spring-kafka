@@ -61,7 +61,11 @@ public interface AfterRollbackProcessor<K, V> {
 	 * {@link #process(List, Consumer, Exception, boolean, ContainerProperties.EOSMode)}.
 	 */
 	@Deprecated
-	void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception, boolean recoverable);
+	default void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
+			boolean recoverable) {
+
+		process(records, consumer, exception, recoverable, EOSMode.BETA);
+	}
 
 	/**
 	 * Process the remaining records. Recoverable will be true if the container is
@@ -83,11 +87,8 @@ public interface AfterRollbackProcessor<K, V> {
 	 * @since 2.5.3
 	 * @see #isProcessInTransaction()
 	 */
-	default void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
-			boolean recoverable, EOSMode eosMode) {
-
-		process(records, consumer, exception, recoverable);
-	}
+	void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
+			boolean recoverable, EOSMode eosMode);
 
 	/**
 	 * Optional method to clear thread state; will be called just before a consumer
@@ -95,7 +96,6 @@ public interface AfterRollbackProcessor<K, V> {
 	 * @since 2.2
 	 */
 	default void clearThreadState() {
-		// NOSONAR
 	}
 
 	/**

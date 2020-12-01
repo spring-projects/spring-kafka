@@ -805,7 +805,6 @@ public class TransactionalContainerTests {
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(afterRollbackProcessor, times(4)).isProcessInTransaction();
 		ArgumentCaptor<Exception> captor = ArgumentCaptor.forClass(Exception.class);
-		verify(afterRollbackProcessor, never()).process(any(), any(), captor.capture(), anyBoolean());
 		verify(afterRollbackProcessor, times(4)).process(any(), any(), captor.capture(), anyBoolean(), any());
 		assertThat(captor.getValue()).isInstanceOf(ListenerExecutionFailedException.class)
 				.extracting(ex -> ((ListenerExecutionFailedException) ex).getGroupId())

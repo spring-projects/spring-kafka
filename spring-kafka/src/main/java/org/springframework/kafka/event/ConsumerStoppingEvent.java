@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,17 +38,6 @@ public class ConsumerStoppingEvent extends KafkaEvent {
 	private transient Consumer<?, ?> consumer;
 
 	private final Collection<TopicPartition> partitions;
-
-	/**
-	 * Construct an instance with the provided source, consumer and partitions.
-	 * @param source the container.
-	 * @param consumer the consumer.
-	 * @param partitions the partitions.
-	 */
-	@Deprecated
-	public ConsumerStoppingEvent(Object source, Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		this(source, null, consumer, partitions); // NOSONAR
-	}
 
 	/**
 	 * Construct an instance with the provided source, consumer and partitions.

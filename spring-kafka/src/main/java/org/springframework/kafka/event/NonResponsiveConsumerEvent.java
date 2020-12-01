@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,13 +43,6 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 	private final List<TopicPartition> topicPartitions;
 
 	private transient Consumer<?, ?> consumer;
-
-	@Deprecated
-	public NonResponsiveConsumerEvent(Object source, long timeSinceLastPoll, String id,
-			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
-
-		this(source, null, timeSinceLastPoll, id, topicPartitions, consumer); // NOSONAR
-	}
 
 	/**
 	 * Construct an instance with the provided properties.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,27 +35,20 @@ public class ConsumerPausedEvent extends KafkaEvent {
 
 	/**
 	 * Construct an instance with the provided source and partitions.
-	 * @param source the container.
-	 * @param partitions the partitions.
-	 */
-	@Deprecated
-	public ConsumerPausedEvent(Object source, Collection<TopicPartition> partitions) {
-		this(source, null, partitions); // NOSONAR
-	}
-
-	/**
-	 * Construct an instance with the provided source and partitions.
 	 * @param source the container instance that generated the event.
 	 * @param container the container or the parent container if the container is a child.
 	 * @param partitions the partitions.
 	 * @since 2.2.1
 	 */
-	public ConsumerPausedEvent(Object source, Object container,
-			Collection<TopicPartition> partitions) {
+	public ConsumerPausedEvent(Object source, Object container, Collection<TopicPartition> partitions) {
 		super(source, container);
 		this.partitions = partitions;
 	}
 
+	/**
+	 * Return the paused partitions.
+	 * @return the partitions.
+	 */
 	public Collection<TopicPartition> getPartitions() {
 		return this.partitions;
 	}

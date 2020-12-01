@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,16 +32,6 @@ public class ConsumerResumedEvent extends KafkaEvent {
 	private static final long serialVersionUID = 1L;
 
 	private final Collection<TopicPartition> partitions;
-
-	/**
-	 * Construct an instance with the provided source and partitions.
-	 * @param source the container.
-	 * @param partitions the partitions.
-	 */
-	@Deprecated
-	public ConsumerResumedEvent(Object source, Collection<TopicPartition> partitions) {
-		this(source, null, partitions); // NOSONAR
-	}
 
 	/**
 	 * Construct an instance with the provided source and partitions.

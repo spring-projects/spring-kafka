@@ -25,9 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -51,7 +49,7 @@ import org.springframework.util.backoff.BackOffExecution;
  *
  */
 public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
-		implements AfterRollbackProcessor<K, V>, InitializingBean {
+		implements AfterRollbackProcessor<K, V> {
 
 	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static
 
@@ -125,23 +123,9 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		this.backOff = backOff;
 	}
 
-	@Override
-	public void afterPropertiesSet() {
-		// remove InitializingBean when the deprecated setters are removed.
-		checkConfig();
-	}
-
 	private void checkConfig() {
 		Assert.isTrue(!isCommitRecovered() || this.kafkaTemplate != null,
 				"A KafkaOperations is required when 'commitRecovered' is true");
-	}
-
-	@Override
-	@Deprecated
-	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
-			boolean recoverable) {
-
-		process(records, consumer, exception, recoverable, EOSMode.ALPHA);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -173,53 +157,6 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	@Override
 	public boolean isProcessInTransaction() {
 		return isCommitRecovered();
-	}
-
-	/**
-	 * {@inheritDoc} Set to true and the container will run the
-	 * {@link #process(List, Consumer, Exception, boolean, ContainerProperties.EOSMode)}
-	 * method in a transaction and, if a record is skipped and recovered, we will send its
-	 * offset to the transaction. Requires a {@link KafkaOperations}.
-	 * @param commitRecovered true to process in a transaction.
-	 * @since 2.3
-	 * @deprecated in favor of
-	 * {@link #DefaultAfterRollbackProcessor(BiConsumer, BackOff, KafkaOperations, boolean)}.
-	 * @see #isProcessInTransaction()
-	 * @see #process(List, Consumer, Exception, boolean, ContainerProperties.EOSMode)
-	 */
-	@Deprecated
-	@Override
-	public void setCommitRecovered(boolean commitRecovered) { // NOSONAR enhanced javadoc
-		super.setCommitRecovered(commitRecovered);
-	}
-
-	/**
-	 * Set a {@link KafkaTemplate} to use to send the offset of a recovered record to a
-	 * transaction.
-	 * @param kafkaTemplate the template.
-	 * @since 2.2.5
-	 * @deprecated in favor of
-	 * {@link #DefaultAfterRollbackProcessor(BiConsumer, BackOff, KafkaOperations, boolean)}.
-	 * @see #setCommitRecovered(boolean)
-	 */
-	@Deprecated
-	public void setKafkaTemplate(KafkaTemplate<K, V> kafkaTemplate) {
-		this.kafkaTemplate = kafkaTemplate;
-	}
-
-	/**
-	 * Set a {@link KafkaOperations} to use to send the offset of a recovered record to a
-	 * transaction.
-	 * @param kafkaOperations the operations.
-	 * @since 2.5.1
-	 * @deprecated in favor of
-	 * {@link #DefaultAfterRollbackProcessor(BiConsumer, BackOff, KafkaOperations,
-	 * boolean)}.
-	 * @see #setCommitRecovered(boolean)
-	 */
-	@Deprecated
-	public void setKafkaOperations(KafkaOperations<K, V> kafkaOperations) {
-		this.kafkaTemplate = kafkaOperations;
 	}
 
 	@Override

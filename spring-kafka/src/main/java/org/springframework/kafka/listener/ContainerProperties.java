@@ -222,8 +222,6 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	private long shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
-	private boolean ackOnError = false;
-
 	private Long idleEventInterval;
 
 	private PlatformTransactionManager transactionManager;
@@ -390,34 +388,6 @@ public class ContainerProperties extends ConsumerProperties {
 		this.idleEventInterval = idleEventInterval;
 	}
 
-	/**
-	 * Set whether or not the container should commit offsets (ack messages) where the
-	 * listener throws exceptions. This works in conjunction with {@link #ackMode} and is
-	 * effective only when the kafka property {@code enable.auto.commit} is {@code false};
-	 * it is not applicable to manual ack modes. When this property is set to
-	 * {@code true}, all messages handled will have their offset committed. When set to
-	 * {@code false} (the default), offsets will be committed only for successfully
-	 * handled messages. Manual acks will always be applied. Bear in mind that, if the
-	 * next message is successfully handled, its offset will be committed, effectively
-	 * committing the offset of the failed message anyway, so this option has limited
-	 * applicability, unless you are using a {@code SeekToCurrentBatchErrorHandler} which
-	 * will seek the current record so that it is reprocessed.
-	 * <p>
-	 * Does not apply when transactions are used - in that case, whether or not the
-	 * offsets are sent to the transaction depends on whether the transaction is committed
-	 * or rolled back. If a listener throws an exception, the transaction will normally be
-	 * rolled back unless an error handler is provided that handles the error and exits
-	 * normally; in which case the offsets are sent to the transaction and the transaction
-	 * is committed.
-	 * @deprecated in favor of {@code GenericErrorHandler.isAckAfterHandle()}.
-	 * @param ackOnError whether the container should acknowledge messages that throw
-	 * exceptions.
-	 */
-	@Deprecated
-	public void setAckOnError(boolean ackOnError) {
-		this.ackOnError = ackOnError;
-	}
-
 	public AckMode getAckMode() {
 		return this.ackMode;
 	}
@@ -444,11 +414,6 @@ public class ContainerProperties extends ConsumerProperties {
 
 	public Long getIdleEventInterval() {
 		return this.idleEventInterval;
-	}
-
-	public boolean isAckOnError() {
-		return this.ackOnError &&
-				!(AckMode.MANUAL_IMMEDIATE.equals(this.ackMode) || AckMode.MANUAL.equals(this.ackMode));
 	}
 
 	public PlatformTransactionManager getTransactionManager() {
@@ -688,16 +653,12 @@ public class ContainerProperties extends ConsumerProperties {
 	 * {@link EOSMode#BETA} enables fetch-offset-request fencing, and requires brokers 2.5
 	 * or later. With the 2.6 client, the default is now BETA because the 2.6 client can
 	 * automatically fall back to ALPHA.
-	 * @param eosMode the mode; default ALPHA.
+	 * @param eosMode the mode; default BETA.
 	 * @since 2.5
 	 */
 	public void setEosMode(EOSMode eosMode) {
-		if (eosMode == null) {
-			this.eosMode = EOSMode.ALPHA;
-		}
-		else {
-			this.eosMode = eosMode;
-		}
+		Assert.notNull(eosMode, "'eosMode' cannot be null");
+		this.eosMode = eosMode;
 	}
 
 	/**
@@ -799,7 +760,6 @@ public class ContainerProperties extends ConsumerProperties {
 						? ", consumerTaskExecutor=" + this.consumerTaskExecutor
 						: "")
 				+ ", shutdownTimeout=" + this.shutdownTimeout
-				+ ", ackOnError=" + this.ackOnError
 				+ ", idleEventInterval="
 				+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
 				+ (this.transactionManager != null

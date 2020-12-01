@@ -150,29 +150,6 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 	}
 
 	/**
-	 * Add an exception type to the default list. By default, the following exceptions
-	 * will not be retried:
-	 * <ul>
-	 * <li>{@link DeserializationException}</li>
-	 * <li>{@link MessageConversionException}</li>
-	 * <li>{@link ConversionException}</li>
-	 * <li>{@link MethodArgumentResolutionException}</li>
-	 * <li>{@link NoSuchMethodException}</li>
-	 * <li>{@link ClassCastException}</li>
-	 * </ul>
-	 * All others will be retried.
-	 * @param exceptionType the exception type.
-	 * @deprecated in favor of {@link #addNotRetryableExceptions(Class...)}.
-	 * @see #removeNotRetryableException(Class)
-	 * @see #setClassifications(Map, boolean)
-	 */
-	@Deprecated
-	public void addNotRetryableException(Class<? extends Exception> exceptionType) {
-		Assert.notNull(exceptionType, "'exceptionType' cannot be null");
-		this.classifier.getClassified().put(exceptionType, false);
-	}
-
-	/**
 	 * Add exception types to the default list. By default, the following exceptions will
 	 * not be retried:
 	 * <ul>

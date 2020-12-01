@@ -74,12 +74,6 @@ public class CompositeProducerListener<K, V> implements ProducerListener<K, V> {
 	}
 
 	@Override
-	@Deprecated
-	public void onError(ProducerRecord<K, V> producerRecord, Exception exception) {
-		this.delegates.forEach(d -> d.onError(producerRecord, exception));
-	}
-
-	@Override
 	public void onError(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata, Exception exception) {
 		this.delegates.forEach(d -> d.onError(producerRecord, recordMetadata, exception));
 	}

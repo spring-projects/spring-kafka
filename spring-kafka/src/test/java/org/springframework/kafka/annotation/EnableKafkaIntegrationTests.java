@@ -1227,7 +1227,6 @@ public class EnableKafkaIntegrationTests {
 			return factory;
 		}
 
-		@SuppressWarnings("deprecation")
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
 				recordAckListenerContainerFactory() {
@@ -1237,7 +1236,6 @@ public class EnableKafkaIntegrationTests {
 			factory.setConsumerFactory(configuredConsumerFactory("clientIdViaProps4"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.RECORD);
-			props.setAckOnError(true);
 			factory.setErrorHandler(listen16ErrorHandler());
 			return factory;
 		}

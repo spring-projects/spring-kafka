@@ -1143,7 +1143,6 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop batch listener manual");
 	}
 
-	@SuppressWarnings("deprecation")
 	@Test
 	public void testBatchListenerErrors() throws Exception {
 		logger.info("Start batch listener errors");
@@ -1158,7 +1157,6 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.BATCH);
 		containerProps.setPollTimeout(100);
-		containerProps.setAckOnError(true);
 		final CountDownLatch latch = new CountDownLatch(4);
 
 		CountDownLatch stubbingComplete = new CountDownLatch(1);

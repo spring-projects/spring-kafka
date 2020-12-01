@@ -133,16 +133,6 @@ public class KafkaAdmin extends KafkaResourceFactory implements ApplicationConte
 	/**
 	 * Get an unmodifiable copy of this admin's configuration.
 	 * @return the configuration map.
-	 * @deprecated in favor of {@link #getConfigurationProperties()}.
-	 */
-	@Deprecated
-	public Map<String, Object> getConfig() {
-		return getConfigurationProperties();
-	}
-
-	/**
-	 * Get an unmodifiable copy of this admin's configuration.
-	 * @return the configuration map.
 	 */
 	public Map<String, Object> getConfigurationProperties() {
 		Map<String, Object> configs2 = new HashMap<>(this.configs);

@@ -243,13 +243,6 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
 	}
 
-	@Deprecated
-	protected Consumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffixArg) {
-
-		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, null);
-	}
-
 	protected Consumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
 			@Nullable String clientIdSuffixArg, @Nullable Properties properties) {
 

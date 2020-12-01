@@ -55,25 +55,6 @@ public class DeserializationException extends KafkaException {
 	}
 
 	/**
-	 * Construct an instance with the provided properties.
-	 * @param message the message.
-	 * @param headers the headers.
-	 * @param data the data (value or key).
-	 * @param isKey true if the exception occurred while deserializing the key.
-	 * @param cause the cause.
-	 * @deprecated Headers are not set during construction.
-	 */
-	@Deprecated
-	public DeserializationException(String message, @Nullable Headers headers, byte[] data, // NOSONAR array reference
-			boolean isKey, Throwable cause) {
-
-		super(message, cause);
-		this.headers = headers;
-		this.data = data; // NOSONAR array reference
-		this.isKey = isKey;
-	}
-
-	/**
 	 * Get the headers.
 	 * @return the headers.
 	 */

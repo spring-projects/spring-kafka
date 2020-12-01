@@ -71,26 +71,6 @@ public class ConsumerStoppedEvent extends KafkaEvent {
 	private final Reason reason;
 
 	/**
-	 * Construct an instance with the provided source.
-	 * @param source the container.
-	 */
-	@Deprecated
-	public ConsumerStoppedEvent(Object source) {
-		this(source, null); // NOSONAR
-	}
-
-	/**
-	 * Construct an instance with the provided source and container.
-	 * @param source the container instance that generated the event.
-	 * @param container the container or the parent container if the container is a child.
-	 * @since 2.2.1
-	 */
-	@Deprecated
-	public ConsumerStoppedEvent(Object source, Object container) {
-		this(source, container, Reason.NORMAL);
-	}
-
-	/**
 	 * Construct an instance with the provided source and container.
 	 * @param source the container instance that generated the event.
 	 * @param container the container or the parent container if the container is a child.

@@ -42,16 +42,6 @@ import org.springframework.util.StringUtils;
  */
 public class DelegatingDeserializer implements Deserializer<Object> {
 
-	/**
-	 * Name of the configuration property containing the serialization selector map with
-	 * format {@code selector:class,...}.
-	 * @deprecated Use {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR} or
-	 * {@link DelegatingSerializer#KEY_SERIALIZATION_SELECTOR}.
-	 */
-	@Deprecated
-	public static final String SERIALIZATION_SELECTOR_CONFIG = DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG;
-
-
 	private final Map<String, Deserializer<? extends Object>> delegates = new ConcurrentHashMap<>();
 
 	private final Map<String, Object> autoConfigs = new HashMap<>();

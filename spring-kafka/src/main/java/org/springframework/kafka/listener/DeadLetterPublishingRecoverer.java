@@ -35,7 +35,6 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
@@ -90,34 +89,6 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * @param destinationResolver the resolving function.
 	 */
 	public DeadLetterPublishingRecoverer(KafkaOperations<? extends Object, ? extends Object> template,
-			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
-		this(Collections.singletonMap(Object.class, template), destinationResolver);
-	}
-
-	/**
-	 * Create an instance with the provided template and a default destination resolving
-	 * function that returns a TopicPartition based on the original topic (appended with ".DLT")
-	 * from the failed record, and the same partition as the failed record. Therefore the
-	 * dead-letter topic must have at least as many partitions as the original topic.
-	 * @param template the {@link KafkaTemplate} to use for publishing.
-	 * @deprecated in favor of {@link #DeadLetterPublishingRecoverer(KafkaOperations)}.
-	 */
-	@Deprecated
-	public DeadLetterPublishingRecoverer(KafkaTemplate<? extends Object, ? extends Object> template) {
-		this(template, DEFAULT_DESTINATION_RESOLVER);
-	}
-
-	/**
-	 * Create an instance with the provided template and destination resolving function,
-	 * that receives the failed consumer record and the exception and returns a
-	 * {@link TopicPartition}. If the partition in the {@link TopicPartition} is less than
-	 * 0, no partition is set when publishing to the topic.
-	 * @param template the {@link KafkaOperations} to use for publishing.
-	 * @param destinationResolver the resolving function.
-	 * @deprecated in favor of {@link #DeadLetterPublishingRecoverer(KafkaOperations, BiFunction)}.
-	 */
-	@Deprecated
-	public DeadLetterPublishingRecoverer(KafkaTemplate<? extends Object, ? extends Object> template,
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 		this(Collections.singletonMap(Object.class, template), destinationResolver);
 	}

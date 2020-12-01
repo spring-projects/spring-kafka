@@ -167,17 +167,6 @@ public class ConsumerProperties {
 
 	/**
 	 * Return the configured {@link TopicPartitionOffset}s.
-	 * @deprecated in favor of {@link #getTopicPartitions()}.
-	 * @return the topics/partitions.
-	 */
-	@Deprecated
-	@Nullable
-	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
-		return getTopicPartitions();
-	}
-
-	/**
-	 * Return the configured {@link TopicPartitionOffset}s.
 	 * @return the topics/partitions.
 	 * @since 2.5
 	 */

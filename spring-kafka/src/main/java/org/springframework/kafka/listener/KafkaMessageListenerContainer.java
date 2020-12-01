@@ -1660,18 +1660,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
-				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && this.producer == null;
-				if (acked) {
-					this.acks.addAll(getHighestOffsetRecords(records));
-				}
 				if (this.batchErrorHandler == null) {
 					throw e;
 				}
 				try {
 					this.batchFailed = true;
 					invokeBatchErrorHandler(records, recordList, e);
-					// unlikely, but possible, that a batch error handler "handles" the error
-					if ((!acked && !this.autoCommit && this.batchErrorHandler.isAckAfterHandle())
+					if ((!this.autoCommit && this.batchErrorHandler.isAckAfterHandle())
 							|| this.producer != null) {
 						this.acks.addAll(getHighestOffsetRecords(records));
 						if (this.producer != null) {
@@ -1978,16 +1973,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
-				boolean acked = this.containerProperties.isAckOnError() && !this.autoCommit && this.producer == null;
-				if (acked) {
-					ackCurrent(record);
-				}
 				if (this.errorHandler == null) {
 					throw e;
 				}
 				try {
 					invokeErrorHandler(record, iterator, e);
-					if ((!acked && !this.autoCommit && this.errorHandler.isAckAfterHandle())
+					if ((!this.autoCommit && this.errorHandler.isAckAfterHandle())
 							|| this.producer != null) {
 						if (this.isManualAck) {
 							this.commitRecovered = true;

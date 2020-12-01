@@ -700,7 +700,6 @@ public class ConcurrentMessageListenerContainerTests {
 		testAckOnErrorWithManualImmediateGuts(topic11, false);
 	}
 
-	@SuppressWarnings("deprecation")
 	private void testAckOnErrorWithManualImmediateGuts(String topic, boolean ackOnError) throws Exception {
 		logger.info("Start ack on error with ManualImmediate ack mode");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testMan" + ackOnError, "false", embeddedKafka);
@@ -709,7 +708,6 @@ public class ConcurrentMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic);
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-		containerProps.setAckOnError(ackOnError);
 		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (message, ack) -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("manualExisting: " + message);
 			latch.countDown();
