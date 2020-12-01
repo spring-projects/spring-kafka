@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -130,7 +130,7 @@ public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, Dispo
 	 * scheduled to avoid a deadlock; see
 	 * https://issues.apache.org/jira/browse/KAFKA-10790
 	 */
-	@Deprecated(since = "2.7")
+	@Deprecated(since = "2.7", forRemoval = true)
 	public Mono<?> flush() {
 		return doOnProducer(producer -> {
 			producer.flush();
