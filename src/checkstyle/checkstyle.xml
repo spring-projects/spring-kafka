@@ -13,9 +13,7 @@
 		<property name="headerFile" value="${config_loc}/checkstyle-header.txt"/>
 		<property name="fileExtensions" value="java"/>
 	</module>
-	<module name="NewlineAtEndOfFile">
-		<property name="lineSeparator" value="lf"/>
-	</module>
+	<module name="NewlineAtEndOfFile"/>
 
 	<!-- TreeWalker Checks -->
 	<module name="TreeWalker">
@@ -111,7 +109,7 @@
 			<property name="authorFormat" value=".+\s.+"/>
 		</module>
 		<module name="JavadocMethod">
-			<property name="allowMissingJavadoc" value="true"/>
+			<property name="scope" value="public"/>
 		</module>
 		<module name="JavadocVariable">
 			<property name="scope" value="public"/>

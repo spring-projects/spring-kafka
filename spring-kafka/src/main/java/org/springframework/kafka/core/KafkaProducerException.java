@@ -51,7 +51,7 @@ public class KafkaProducerException extends KafkaException {
 	 */
 	@SuppressWarnings("unchecked")
 	public <K, V> ProducerRecord<K, V> getFailedProducerRecord() {
-		return (ProducerRecord<K, V>) producerRecord;
+		return (ProducerRecord<K, V>) this.producerRecord;
 	}
 
 }
