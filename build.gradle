@@ -41,7 +41,7 @@ ext {
 	linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
 	linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
-	docResourcesVersion = '0.2.1.RELEASE'
+	docResourcesVersion = '0.2.4'
 
 
 	if (gitPresent) {
@@ -149,7 +149,7 @@ subprojects { subproject ->
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 	jacoco {
-		toolVersion = '0.8.5'
+		toolVersion = '0.8.6'
 	}
 
 	// dependencies that are common across all java projects
@@ -185,7 +185,7 @@ subprojects { subproject ->
 
 	checkstyle {
 		configDirectory.set(rootProject.file("src/checkstyle"))
-		toolVersion = '8.24'
+		toolVersion = '8.38'
 	}
 
 	jacocoTestReport {
