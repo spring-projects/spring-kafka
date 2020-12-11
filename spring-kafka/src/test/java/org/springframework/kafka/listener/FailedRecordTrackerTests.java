@@ -171,9 +171,9 @@ public class FailedRecordTrackerTests {
 			.isSameAs(be1);
 		TopicPartitionOffset tpo = new TopicPartitionOffset("foo", 0, 0L);
 		assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(2);
-		tracker.skip(record1, new IllegalStateException());
+		tracker.skip(record1, new ListenerExecutionFailedException("test", new IllegalStateException()));
 		assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(3);
-		tracker.skip(record1, new IllegalArgumentException());
+		tracker.skip(record1, new ListenerExecutionFailedException("test", new IllegalArgumentException()));
 		if (reset) {
 			assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(2);
 			assertThat(KafkaTestUtils.getPropertyValue(failures.get()

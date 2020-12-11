@@ -149,18 +149,24 @@ class FailedRecordTracker {
 	private FailedRecord getFailedRecordInstance(ConsumerRecord<?, ?> record, Exception exception,
 			Map<TopicPartition, FailedRecord> map, TopicPartition topicPartition) {
 
+		Exception realException = exception;
+		if (realException  instanceof ListenerExecutionFailedException
+				&& realException.getCause() instanceof Exception) {
+
+			realException = (Exception) realException.getCause();
+		}
 		FailedRecord failedRecord = map.get(topicPartition);
 		if (failedRecord == null || failedRecord.getOffset() != record.offset()
 				|| (this.resetStateOnExceptionChange
-						&& !exception.getClass().isInstance(failedRecord.getLastException()))) {
+						&& !realException.getClass().isInstance(failedRecord.getLastException()))) {
 
-			failedRecord = new FailedRecord(record.offset(), determineBackOff(record, exception).start());
+			failedRecord = new FailedRecord(record.offset(), determineBackOff(record, realException).start());
 			map.put(topicPartition, failedRecord);
 		}
 		else {
 			failedRecord.getDeliveryAttempts().incrementAndGet();
 		}
-		failedRecord.setLastException(exception);
+		failedRecord.setLastException(realException);
 		return failedRecord;
 	}
 
