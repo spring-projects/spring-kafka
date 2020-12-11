@@ -152,7 +152,7 @@ class FailedRecordTracker {
 		FailedRecord failedRecord = map.get(topicPartition);
 		if (failedRecord == null || failedRecord.getOffset() != record.offset()
 				|| (this.resetStateOnExceptionChange
-						&& !exception.getClass().isInstance(failedRecord.getLastException()))) {
+						&& !exception.getCause().getClass().isInstance(failedRecord.getLastException().getCause()))) {
 
 			failedRecord = new FailedRecord(record.offset(), determineBackOff(record, exception).start());
 			map.put(topicPartition, failedRecord);
