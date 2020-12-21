@@ -97,7 +97,7 @@ public class ConsumerProperties {
 
 	private LogIfLevelEnabled.Level commitLogLevel = LogIfLevelEnabled.Level.DEBUG;
 
-	private boolean onlyLogRecordMetadata;
+	private boolean onlyLogRecordMetadata = true;
 
 	private Properties kafkaConsumerProperties = new Properties();
 
@@ -372,9 +372,9 @@ public class ConsumerProperties {
 	}
 
 	/**
-	 * Set to true to only log {@code topic-partition@offset} in log messages instead
-	 * of {@code record.toString()}.
-	 * @param onlyLogRecordMetadata true to only log the topic/parrtition/offset.
+	 * Set to false to log {@code record.toString()} in log messages instead
+	 * of {@code topic-partition@offset}.
+	 * @param onlyLogRecordMetadata false to log the entire record.
 	 * @since 2.2.14
 	 */
 	public void setOnlyLogRecordMetadata(boolean onlyLogRecordMetadata) {

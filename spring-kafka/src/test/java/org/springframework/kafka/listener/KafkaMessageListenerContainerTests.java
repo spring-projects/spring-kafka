@@ -668,7 +668,6 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setMissingTopicsFatal(false);
-		containerProps.setOnlyLogRecordMetadata(true);
 		final CountDownLatch latch = new CountDownLatch(2);
 		MessageListener<Integer, String> messageListener = spy(
 				new MessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes

@@ -7,3 +7,9 @@ For changes in earlier version, see <<history>>.
 ==== Kafka Client Version
 
 This version requires the 2.7.0 `kafka-clients`.
+
+[[x27-container]]
+==== Listener Container Changes
+
+The `onlyLogRecordMetadata` container property is now `true` by default.
+See <<container-props>> for more information.

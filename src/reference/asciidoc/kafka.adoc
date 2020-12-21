@@ -2403,7 +2403,7 @@ See `monitorInterval`.
 |onlyLogRecord
 Metadata
 |`false`
-|Set to true to show only the `topic-partition@offset` for a record instead of the whole consumer record (in error, debug logs etc).
+|Set to false to log the complete consumer record (in error, debug logs etc) instead of just `topic-partition@offset`.
 
 |pollTimeout
 |5000
