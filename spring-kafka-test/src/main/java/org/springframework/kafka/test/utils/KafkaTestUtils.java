@@ -251,8 +251,9 @@ public final class KafkaTestUtils {
 	 * @param partitions the partitions, or null for all partitions.
 	 * @return the map of end offsets.
 	 * @since 2.6.5
+	 * @see Consumer#endOffsets(Collection, Duration)
 	 */
-	public static <K, V> Map<TopicPartition, Long> getEndOffsets(Consumer<K, V> consumer, String topic,
+	public static Map<TopicPartition, Long> getEndOffsets(Consumer<?, ?> consumer, String topic,
 			Integer... partitions) {
 
 		Collection<TopicPartition> tps;
@@ -266,12 +267,12 @@ public final class KafkaTestUtils {
 					.collect(Collectors.toList());
 		}
 		else {
-			Assert.noNullElements(partitions, "'partitions' cannot have nulll elements");
+			Assert.noNullElements(partitions, "'partitions' cannot have null elements");
 			tps = Arrays.stream(partitions)
 					.map(part -> new TopicPartition(topic, part))
 					.collect(Collectors.toList());
 		}
-		return consumer.endOffsets(tps);
+		return consumer.endOffsets(tps, Duration.ofSeconds(10));
 	}
 
 	/**

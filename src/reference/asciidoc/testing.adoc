@@ -3,10 +3,16 @@
 
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
+[[ktu]]
+==== KafkaTestUtils
+
+`o.s.kafka.test.utils.KafkaTestUtils` provides a number of static helper methods to consume records, retrieve various record offsets, and others.
+Refer to its https://docs.spring.io/spring-kafka/docs/current/api/org/springframework/kafka/test/utils/KafkaTestUtils.html[Javadocs] for complete details.
+
 [[junit]]
 ==== JUnit
 
-`o.s.kafka.test.utils.KafkaTestUtils` provides some static methods to set up producer and consumer properties.
+`o.s.kafka.test.utils.KafkaTestUtils` also provides some static methods to set up producer and consumer properties.
 The following listing shows those method signatures:
 
 ====
