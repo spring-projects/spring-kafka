@@ -22,4 +22,4 @@ jobs:
         env:
           GRADLE_ENTERPRISE_URL: https://ge.spring.io/
         with:
-          arguments: check
+          arguments: check api
