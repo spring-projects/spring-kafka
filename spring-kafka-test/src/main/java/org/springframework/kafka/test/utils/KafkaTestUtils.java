@@ -18,6 +18,8 @@ package org.springframework.kafka.test.utils;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -36,6 +38,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
@@ -237,6 +240,38 @@ public final class KafkaTestUtils {
 			return client.listConsumerGroupOffsets(group).partitionsToOffsetAndMetadata().get() // NOSONAR false positive
 					.get(new TopicPartition(topic, partition));
 		}
+	}
+
+	/**
+	 * Return the end offsets of the requested topic/partitions
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param consumer the consumer.
+	 * @param topic the topic.
+	 * @param partitions the partitions, or null for all partitions.
+	 * @return the map of end offsets.
+	 * @since 2.6.5
+	 */
+	public static <K, V> Map<TopicPartition, Long> getEndOffsets(Consumer<K, V> consumer, String topic,
+			Integer... partitions) {
+
+		Collection<TopicPartition> tps;
+		if (partitions == null || partitions.length == 0) {
+			Map<String, List<PartitionInfo>> parts = consumer.listTopics(Duration.ofSeconds(10));
+			tps = parts.entrySet()
+					.stream()
+					.filter(entry -> entry.getKey().equals(topic))
+					.flatMap(entry -> entry.getValue().stream())
+					.map(pi -> new TopicPartition(topic, pi.partition()))
+					.collect(Collectors.toList());
+		}
+		else {
+			Assert.noNullElements(partitions, "'partitions' cannot have nulll elements");
+			tps = Arrays.stream(partitions)
+					.map(part -> new TopicPartition(topic, part))
+					.collect(Collectors.toList());
+		}
+		return consumer.endOffsets(tps);
 	}
 
 	/**

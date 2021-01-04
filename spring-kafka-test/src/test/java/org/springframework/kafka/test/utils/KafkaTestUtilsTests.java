@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -44,14 +45,18 @@ public class KafkaTestUtilsTests {
 	void testGetSingleWithMoreThatOneTopic(EmbeddedKafkaBroker broker) {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
 		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
-		producer.send(new ProducerRecord<>("singleTopic1", 1, "foo"));
-		producer.send(new ProducerRecord<>("singleTopic2", 1, "foo"));
+		producer.send(new ProducerRecord<>("singleTopic1", 0, 1, "foo"));
+		producer.send(new ProducerRecord<>("singleTopic2", 0, 1, "foo"));
 		producer.close();
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests1", "false", broker);
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromAllEmbeddedTopics(consumer);
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic1");
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic2");
+		Map<TopicPartition, Long> endOffsets = KafkaTestUtils.getEndOffsets(consumer, "singleTopic1");
+		assertThat(endOffsets).hasSize(2);
+		assertThat(endOffsets.get(new TopicPartition("singleTopic1", 0))).isEqualTo(1L);
+		assertThat(endOffsets.get(new TopicPartition("singleTopic1", 1))).isEqualTo(0L);
 		consumer.close();
 	}
 
@@ -59,7 +64,7 @@ public class KafkaTestUtilsTests {
 	void testGetSingleWithMoreThatOneTopicRecordNotThereYet(EmbeddedKafkaBroker broker) {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
 		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
-		producer.send(new ProducerRecord<>("singleTopic4", 1, "foo"));
+		producer.send(new ProducerRecord<>("singleTopic4", 0, 1, "foo"));
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests2", "false", broker);
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromEmbeddedTopics(consumer, "singleTopic4", "singleTopic5");
@@ -71,6 +76,10 @@ public class KafkaTestUtilsTests {
 		producer.close();
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic4");
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic5");
+		Map<TopicPartition, Long> endOffsets = KafkaTestUtils.getEndOffsets(consumer, "singleTopic4", 0, 1);
+		assertThat(endOffsets).hasSize(2);
+		assertThat(endOffsets.get(new TopicPartition("singleTopic4", 0))).isEqualTo(1L);
+		assertThat(endOffsets.get(new TopicPartition("singleTopic4", 1))).isEqualTo(0L);
 		consumer.close();
 	}
 
