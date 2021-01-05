@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@ package org.springframework.kafka.listener;
 
 import java.util.Collection;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
+
+import org.springframework.core.log.LogAccessor;
 
 /**
  * A rebalance listener that provides access to the consumer object. Starting with version
@@ -34,13 +37,23 @@ import org.apache.kafka.common.TopicPartition;
 public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListener {
 
 	/**
+	 * {@link LogAccessor} for use in default methods.
+	 */
+	LogAccessor logger = new LogAccessor(LogFactory.getLog(ConsumerAwareRebalanceListener.class));
+
+	/**
 	 * The same as {@link #onPartitionsRevoked(Collection)} with the additional consumer
 	 * parameter. It is invoked by the container before any pending offsets are committed.
 	 * @param consumer the consumer.
 	 * @param partitions the partitions.
 	 */
 	default void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		// do nothing
+		try {
+			onPartitionsRevoked(partitions);
+		}
+		catch (Exception e) { // NOSONAR
+			logger.debug(e, "User method threw exception");
+		}
 	}
 
 	/**
@@ -50,7 +63,6 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	 * @param partitions the partitions.
 	 */
 	default void onPartitionsRevokedAfterCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		// do nothing
 	}
 
 	/**
@@ -60,7 +72,12 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	 * @since 2.4
 	 */
 	default void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		// do nothing
+		try {
+			onPartitionsLost(partitions);
+		}
+		catch (Exception e) { // NOSONAR
+			logger.debug(e, "User method threw exception");
+		}
 	}
 
 	/**
@@ -70,22 +87,24 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	 * @param partitions the partitions.
 	 */
 	default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		// do nothing
+		try {
+			onPartitionsAssigned(partitions);
+		}
+		catch (Exception e) { // NOSONAR
+			logger.debug(e, "User method threw exception");
+		}
 	}
 
 	@Override
 	default void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-		throw new UnsupportedOperationException("Listener container should never call this");
 	}
 
 	@Override
 	default void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-		throw new UnsupportedOperationException("Listener container should never call this");
 	}
 
 	@Override
 	default void onPartitionsLost(Collection<TopicPartition> partitions) {
-		throw new UnsupportedOperationException("Listener container should never call this");
 	}
 
 }
