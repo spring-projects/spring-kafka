@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,12 +73,18 @@ public class BatchListenerConversionTests {
 	private Config config;
 
 	@Autowired
+	private Listener listener1;
+
+	@Autowired
+	private Listener listener2;
+
+	@Autowired
 	private KafkaTemplate<Integer, Foo> template;
 
 	@Test
 	public void testBatchOfPojos() throws Exception {
-		doTest(this.config.listener1(), "blc1");
-		doTest(this.config.listener2(), "blc2");
+		doTest(this.listener1, "blc1");
+		doTest(this.listener2, "blc2");
 	}
 
 	private void doTest(Listener listener, String topic) throws InterruptedException {
@@ -173,13 +179,13 @@ public class BatchListenerConversionTests {
 		}
 
 		@Bean
-		public Listener listener1() {
-			return new Listener("blc1");
+		public Listener listener1(KafkaListenerContainerFactory<?> cf) {
+			return new Listener("blc1", cf);
 		}
 
 		@Bean
-		public Listener listener2() {
-			return new Listener("blc2");
+		public Listener listener2(KafkaListenerContainerFactory<?> cf) {
+			return new Listener("blc2", cf);
 		}
 
 		@Bean
@@ -202,17 +208,25 @@ public class BatchListenerConversionTests {
 
 		private final CountDownLatch latch2 = new CountDownLatch(1);
 
+		private final KafkaListenerContainerFactory<?> cf;
+
 		private List<Foo> received;
 
 		private List<String> receivedTopics;
 
 		private List<Integer> receivedPartitions;
 
-		public Listener(String topic) {
+		public Listener(String topic, KafkaListenerContainerFactory<?> cf) {
 			this.topic = topic;
+			this.cf = cf;
 		}
 
-		@KafkaListener(topics = "#{__listener.topic}", groupId = "#{__listener.topic}.group")
+		public KafkaListenerContainerFactory<?> getContainerFactory() {
+			return this.cf;
+		}
+
+		@KafkaListener(topics = "#{__listener.topic}", groupId = "#{__listener.topic}.group",
+				containerFactory = "#{__listener.containerFactory}")
 		// @SendTo("foo") test WARN log for void return
 		public void listen1(List<Foo> foos, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions) {

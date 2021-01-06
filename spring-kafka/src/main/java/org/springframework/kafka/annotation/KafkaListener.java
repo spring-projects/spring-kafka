@@ -104,7 +104,10 @@ public @interface KafkaListener {
 	/**
 	 * The bean name of the {@link org.springframework.kafka.config.KafkaListenerContainerFactory}
 	 * to use to create the message listener container responsible to serve this endpoint.
-	 * <p>If not specified, the default container factory is used, if any.
+	 * <p>
+	 * If not specified, the default container factory is used, if any. If a SpEL
+	 * expression is provided ({@code #{...}}), the expression can either evaluate to a
+	 * container factory instance or a bean name.
 	 * @return the container factory bean name.
 	 */
 	String containerFactory() default "";
@@ -156,7 +159,10 @@ public @interface KafkaListener {
 
 	/**
 	 * Set an {@link org.springframework.kafka.listener.KafkaListenerErrorHandler} bean
-	 * name to invoke if the listener method throws an exception.
+	 * name to invoke if the listener method throws an exception. If a SpEL expression is
+	 * provided ({@code #{...}}), the expression can either evaluate to a
+	 * {@link org.springframework.kafka.listener.KafkaListenerErrorHandler} instance or a
+	 * bean name.
 	 * @return the error handler.
 	 * @since 1.3
 	 */

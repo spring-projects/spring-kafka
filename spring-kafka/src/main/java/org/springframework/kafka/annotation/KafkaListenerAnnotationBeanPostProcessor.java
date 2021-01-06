@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2020 the original author or authors.
+ * Copyright 2014-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -449,29 +449,73 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		resolveKafkaProperties(endpoint, kafkaListener.properties());
 		endpoint.setSplitIterables(kafkaListener.splitIterables());
 
-		KafkaListenerContainerFactory<?> factory = null;
-		String containerFactoryBeanName = resolve(kafkaListener.containerFactory());
-		if (StringUtils.hasText(containerFactoryBeanName)) {
-			Assert.state(this.beanFactory != null, "BeanFactory must be set to obtain container factory by bean name");
-			try {
-				factory = this.beanFactory.getBean(containerFactoryBeanName, KafkaListenerContainerFactory.class);
-			}
-			catch (NoSuchBeanDefinitionException ex) {
-				throw new BeanInitializationException("Could not register Kafka listener endpoint on [" + adminTarget
-						+ "] for bean " + beanName + ", no " + KafkaListenerContainerFactory.class.getSimpleName()
-						+ " with id '" + containerFactoryBeanName + "' was found in the application context", ex);
-			}
+		String containerFactory = resolve(kafkaListener.containerFactory());
+		if (StringUtils.hasText(containerFactory)) {
+			this.registrar.registerEndpoint(endpoint, resolveContainerFactory(kafkaListener, containerFactory, beanName));
+		}
+		else {
+			this.registrar.registerEndpoint(endpoint);
 		}
 
 		endpoint.setBeanFactory(this.beanFactory);
 		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
 		if (StringUtils.hasText(errorHandlerBeanName)) {
-			endpoint.setErrorHandler(this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
+			resolveErrorHandler(endpoint, kafkaListener);
 		}
-		this.registrar.registerEndpoint(endpoint, factory);
 		if (StringUtils.hasText(beanRef)) {
 			this.listenerScope.removeListener(beanRef);
 		}
+	}
+
+	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener KafkaListener) {
+		Object errorHandler = resolveExpression(KafkaListener.errorHandler());
+		if (errorHandler instanceof KafkaListenerErrorHandler) {
+			endpoint.setErrorHandler((KafkaListenerErrorHandler) errorHandler);
+		}
+		else {
+			String errorHandlerBeanName = resolveExpressionAsString(KafkaListener.errorHandler(), "errorHandler");
+			if (StringUtils.hasText(errorHandlerBeanName)) {
+				endpoint.setErrorHandler(
+						this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
+			}
+		}
+	}
+
+	@Nullable
+	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener KafkaListener,
+			Object factoryTarget, String beanName) {
+
+		KafkaListenerContainerFactory<?> factory = null;
+		Object resolved = resolveExpression(KafkaListener.containerFactory());
+		if (resolved instanceof KafkaListenerContainerFactory) {
+			return (KafkaListenerContainerFactory<?>) resolved;
+		}
+		String containerFactoryBeanName = resolveExpressionAsString(KafkaListener.containerFactory(),
+				"containerFactory");
+		if (StringUtils.hasText(containerFactoryBeanName)) {
+			assertBeanFactory();
+			try {
+				factory = this.beanFactory.getBean(containerFactoryBeanName, KafkaListenerContainerFactory.class);
+			}
+			catch (NoSuchBeanDefinitionException ex) {
+				throw new BeanInitializationException(
+						noBeanFoundMessage(factoryTarget, beanName, containerFactoryBeanName,
+								KafkaListenerContainerFactory.class), ex);
+			}
+		}
+		return factory;
+	}
+
+	protected void assertBeanFactory() {
+		Assert.state(this.beanFactory != null, "BeanFactory must be set to obtain container factory by bean name");
+	}
+
+	protected String noBeanFoundMessage(Object target, String listenerBeanName, String requestedBeanName,
+			Class<?> expectedClass) {
+
+		return "Could not register Kafka listener endpoint on ["
+				+ target + "] for bean " + listenerBeanName + ", no '" + expectedClass.getSimpleName() + "' with id '"
+				+ requestedBeanName + "' was found in the application context";
 	}
 
 	private void resolveKafkaProperties(MethodKafkaListenerEndpoint<?, ?> endpoint, String[] propertyStrings) {
