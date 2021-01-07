@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -309,7 +309,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				.getConsumerTaskExecutor()
 				.submitListenable(this.listenerConsumer);
 		try {
-			if (!this.startLatch.await(containerProperties.getConsumerStartTimout().toMillis(), TimeUnit.MILLISECONDS)) {
+			if (!this.startLatch.await(containerProperties.getConsumerStartTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
 				this.logger.error("Consumer thread failed to start - does the configured task executor "
 						+ "have enough threads to support all containers and concurrency?");
 				publishConsumerFailedToStart();

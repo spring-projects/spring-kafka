@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		exec.setCorePoolSize(1);
 		exec.afterPropertiesSet();
 		containerProperties.setConsumerTaskExecutor(exec);
-		containerProperties.setConsumerStartTimout(Duration.ofMillis(50));
+		containerProperties.setConsumerStartTimeout(Duration.ofMillis(50));
 		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
 				containerProperties);
 		container.setConcurrency(2);
