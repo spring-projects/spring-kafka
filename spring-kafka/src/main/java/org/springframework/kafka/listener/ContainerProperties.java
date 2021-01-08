@@ -563,6 +563,11 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.consumerStartTimeout;
 	}
 
+	@Deprecated
+	public Duration getConsumerStartTimout() {
+		return this.consumerStartTimeout;
+	}
+
 	/**
 	 * Set the timeout to wait for a consumer thread to start before logging
 	 * an error. Default 30 seconds.
@@ -571,6 +576,11 @@ public class ContainerProperties extends ConsumerProperties {
 	public void setConsumerStartTimeout(Duration consumerStartTimeout) {
 		Assert.notNull(consumerStartTimeout, "'consumerStartTimout' cannot be null");
 		this.consumerStartTimeout = consumerStartTimeout;
+	}
+
+	@Deprecated
+	public void setConsumerStartTimout(Duration consumerStartTimeout) {
+		setConsumerStartTimeout(consumerStartTimeout);
 	}
 
 	/**
