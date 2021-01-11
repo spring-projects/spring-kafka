@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -3137,6 +3137,53 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		assertThat(recovered.get()).isTrue();
 		verify(consumer).commitSync(any(), any());
+	}
+
+	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	void stopImmediately() throws InterruptedException {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records =
+				Map.of(new TopicPartition("foo", 0), Arrays.asList(new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+						new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setStopImmediate(true);
+		AtomicInteger delivered = new AtomicInteger();
+		AtomicReference<KafkaMessageListenerContainer> containerRef = new AtomicReference<>();
+		containerProps.setMessageListener((MessageListener) r -> {
+			delivered.incrementAndGet();
+			containerRef.get().stop(() -> { });
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		containerRef.set(container);
+		CountDownLatch latch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStoppedEvent) {
+				latch.countDown();
+			}
+		});
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		assertThat(delivered.get()).isEqualTo(1);
+		verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))), any());
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {

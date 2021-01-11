@@ -2433,6 +2433,10 @@ Metadata
 |Stop the listener container if a `ProducerFencedException` is thrown.
 See <<after-rollback>> for more information.
 
+|stopImmediate
+|`false`
+|When the container is stopped, stop processing after the current record instead of after processing all the records from the previous poll.
+
 |subBatchPerPartition
 |See desc.
 |When using a batch listener, if this is `true`, the listener is called with the results of the poll split into sub batches, one per partition.

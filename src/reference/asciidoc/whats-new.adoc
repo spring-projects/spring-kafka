@@ -12,4 +12,7 @@ This version requires the 2.7.0 `kafka-clients`.
 ==== Listener Container Changes
 
 The `onlyLogRecordMetadata` container property is now `true` by default.
+
+A new container property `stopImmediate` is now available.
+
 See <<container-props>> for more information.

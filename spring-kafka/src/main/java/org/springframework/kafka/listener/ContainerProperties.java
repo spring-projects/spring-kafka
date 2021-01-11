@@ -255,6 +255,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean stopContainerWhenFenced;
 
+	private boolean stopImmediate;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -742,6 +744,26 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setStopContainerWhenFenced(boolean stopContainerWhenFenced) {
 		this.stopContainerWhenFenced = stopContainerWhenFenced;
+	}
+
+	/**
+	 * When true, the container will be stopped immediately after processing the current record.
+	 * @return true to stop immediately.
+	 * @since 2.5.11
+	 */
+	public boolean isStopImmediate() {
+		return this.stopImmediate;
+	}
+
+	/**
+	 * Set to true to stop the container after processing the current record (when stop()
+	 * is called). When false (default), the container will stop after all the results of
+	 * the previous poll are processed.
+	 * @param stopImmediate true to stop after the current record.
+	 * @since 2.5.11
+	 */
+	public void setStopImmediate(boolean stopImmediate) {
+		this.stopImmediate = stopImmediate;
 	}
 
 	private void adviseListenerIfNeeded() {
