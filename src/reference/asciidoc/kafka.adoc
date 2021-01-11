@@ -1769,7 +1769,18 @@ public void listenDefault(Object object, @Header(KafkaHeaders.RECEIVED_TOPIC) St
 
 This won't work if the object is a `String`; the `topic` parameter will also get a reference to `object`.
 
-If you need metadata about the record in a default method, use this
+If you need metadata about the record in a default method, use this:
+
+====
+[source, java]
+----
+@KafkaHandler(isDefault = true)
+void listen(Object in, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetadata meta) {
+    String topic = meta.topic();
+    ...
+}
+----
+====
 
 [[kafkalistener-lifecycle]]
 ===== `@KafkaListener` Lifecycle Management
