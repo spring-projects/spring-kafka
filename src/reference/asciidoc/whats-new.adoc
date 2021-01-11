@@ -13,3 +13,9 @@ This version requires the 2.7.0 `kafka-clients`.
 
 The `onlyLogRecordMetadata` container property is now `true` by default.
 See <<container-props>> for more information.
+
+[[27-listener]]
+==== `@KafkaListener` Changes
+
+You can now validate the payload parameter of `@KafkaHandler` methods (class-level listeners).
+See <<kafka-validation>> for more information.

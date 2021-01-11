@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import javax.validation.Valid;
-import javax.validation.ValidationException;
 import javax.validation.constraints.Max;
 
 import org.aopalliance.intercept.MethodInterceptor;
@@ -141,6 +140,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
@@ -438,13 +438,16 @@ public class EnableKafkaIntegrationTests {
 		this.kafkaJsonTemplate.send(new GenericMessage<>(new Foo("one")));
 		this.kafkaJsonTemplate.send(new GenericMessage<>(new Baz("two")));
 		this.kafkaJsonTemplate.send(new GenericMessage<>(new Qux("three")));
+		this.kafkaJsonTemplate.send(new GenericMessage<>(new ValidatedClass(5)));
 		assertThat(this.multiJsonListener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.multiJsonListener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.multiJsonListener.latch3.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiJsonListener.latch4.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.multiJsonListener.foo.getBar()).isEqualTo("one");
 		assertThat(this.multiJsonListener.baz.getBar()).isEqualTo("two");
 		assertThat(this.multiJsonListener.bar.getBar()).isEqualTo("three");
 		assertThat(this.multiJsonListener.bar).isInstanceOf(Qux.class);
+		assertThat(this.multiJsonListener.validated.isValidated()).isTrue();
 	}
 
 	@Test
@@ -618,7 +621,7 @@ public class EnableKafkaIntegrationTests {
 	public void testValidation() throws Exception {
 		template.send("annotated35", 0, "{\"bar\":42}");
 		assertThat(this.listener.validationLatch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.listener.validationException).isInstanceOf(ValidationException.class);
+		assertThat(this.listener.validationException).isInstanceOf(MethodArgumentNotValidException.class);
 	}
 
 	@Test
@@ -1557,7 +1560,12 @@ public class EnableKafkaIntegrationTests {
 
 				@Override
 				public void validate(Object target, Errors errors) {
-					throw new ValidationException();
+					if (target instanceof ValidatedClass && ((ValidatedClass) target).getBar() > 10) {
+						errors.reject("bar too large");
+					}
+					else {
+						((ValidatedClass) target).setValidated(true);
+					}
 				}
 
 				@Override
@@ -2177,17 +2185,21 @@ public class EnableKafkaIntegrationTests {
 	@KafkaListener(id = "multiJson", topics = "annotated33", containerFactory = "kafkaJsonListenerContainerFactory2")
 	static class MultiJsonListenerBean {
 
-		private final CountDownLatch latch1 = new CountDownLatch(1);
+		final CountDownLatch latch1 = new CountDownLatch(1);
 
-		private final CountDownLatch latch2 = new CountDownLatch(1);
+		final CountDownLatch latch2 = new CountDownLatch(1);
 
-		private final CountDownLatch latch3 = new CountDownLatch(1);
+		final CountDownLatch latch3 = new CountDownLatch(1);
 
-		private Foo foo;
+		final CountDownLatch latch4 = new CountDownLatch(1);
 
-		private Baz baz;
+		volatile Foo foo;
 
-		private Bar bar;
+		volatile Baz baz;
+
+		volatile Bar bar;
+
+		volatile ValidatedClass validated;
 
 		@KafkaHandler
 		public void bar(Foo foo) {
@@ -2199,6 +2211,12 @@ public class EnableKafkaIntegrationTests {
 		public void bar(Baz baz) {
 			this.baz = baz;
 			this.latch2.countDown();
+		}
+
+		@KafkaHandler
+		public void bar(@Valid ValidatedClass val) {
+			this.validated = val;
+			this.latch4.countDown();
 		}
 
 		@KafkaHandler(isDefault = true)
@@ -2337,12 +2355,30 @@ public class EnableKafkaIntegrationTests {
 		@Max(10)
 		private int bar;
 
+		private volatile boolean validated;
+
+
+		public ValidatedClass() {
+		}
+
+		public ValidatedClass(int bar) {
+			this.bar = bar;
+		}
+
 		public int getBar() {
 			return this.bar;
 		}
 
 		public void setBar(int bar) {
 			this.bar = bar;
+		}
+
+		public boolean isValidated() {
+			return this.validated;
+		}
+
+		public void setValidated(boolean validated) {
+			this.validated = validated;
 		}
 
 	}

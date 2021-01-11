@@ -1844,6 +1844,7 @@ public class Config implements KafkaListenerConfigurer {
     public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
       registrar.setValidator(new MyValidator());
     }
+
 }
 ----
 ====
@@ -1906,6 +1907,9 @@ public KafkaListenerErrorHandler validationErrorHandler() {
 }
 ----
 ====
+
+Starting with version 2.5.11, validation now works on payloads for `@KafkaHandler` methods in a class-level listener.
+See <<class-level-kafkalistener>>.
 
 [[rebalance-listeners]]
 ===== Rebalancing Listeners

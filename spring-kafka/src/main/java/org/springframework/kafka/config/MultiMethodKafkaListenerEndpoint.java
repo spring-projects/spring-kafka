@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
+import org.springframework.validation.Validator;
 
 /**
  * The {@link MethodKafkaListenerEndpoint} extension for several POJO methods
@@ -44,11 +45,16 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 
 	private final Method defaultMethod;
 
+	private Validator validator;
+
 	/**
 	 * Construct an instance for the provided methods and bean with no default method.
 	 * @param methods the methods.
 	 * @param bean the bean.
+	 * @deprecated in favor of
+	 * {@link #MultiMethodKafkaListenerEndpoint(List, Method, Object)}.
 	 */
+	@Deprecated
 	public MultiMethodKafkaListenerEndpoint(List<Method> methods, Object bean) {
 		this(methods, null, bean);
 	}
@@ -66,6 +72,15 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 		setBean(bean);
 	}
 
+	/**
+	 * Set a payload validator.
+	 * @param validator the validator.
+	 * @since 2.5.11
+	 */
+	public void setValidator(Validator validator) {
+		this.validator = validator;
+	}
+
 	@Override
 	protected HandlerAdapter configureListenerAdapter(MessagingMessageListenerAdapter<K, V> messageListener) {
 		List<InvocableHandlerMethod> invocableHandlerMethods = new ArrayList<InvocableHandlerMethod>();
@@ -79,7 +94,7 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 			}
 		}
 		DelegatingInvocableHandler delegatingHandler = new DelegatingInvocableHandler(invocableHandlerMethods,
-				defaultHandler, getBean(), getResolver(), getBeanExpressionContext(), getBeanFactory());
+				defaultHandler, getBean(), getResolver(), getBeanExpressionContext(), getBeanFactory(), this.validator);
 		return new HandlerAdapter(delegatingHandler);
 	}
 
