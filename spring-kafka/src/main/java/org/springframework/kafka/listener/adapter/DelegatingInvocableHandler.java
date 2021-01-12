@@ -151,7 +151,7 @@ public class DelegatingInvocableHandler {
 	 * @param beanExpressionContext the context.
 	 * @param beanFactory the bean factory.
 	 * @param validator the validator.
-	 * @since 2.1.11
+	 * @since 2.5.11
 	 */
 	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers,
 			@Nullable InvocableHandlerMethod defaultHandler,
