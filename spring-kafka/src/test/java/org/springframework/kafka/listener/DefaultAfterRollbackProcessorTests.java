@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,18 +74,18 @@ public class DefaultAfterRollbackProcessorTests {
 		@SuppressWarnings("unchecked")
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
-		processor.process(records, consumer, illegalState, true, EOSMode.ALPHA);
-		processor.process(records, consumer, new DeserializationException("intended", null, false, illegalState), true,
-				EOSMode.ALPHA);
+		processor.process(records, consumer, null, illegalState, true, EOSMode.ALPHA);
+		processor.process(records, consumer, null, new DeserializationException("intended", null, false, illegalState),
+				true, EOSMode.ALPHA);
 		verify(template).sendOffsetsToTransaction(anyMap());
 		verify(template, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		processor.addNotRetryableExceptions(IllegalStateException.class);
 		recovered.set(null);
 		recovererShouldFail.set(true);
-		processor.process(records, consumer, illegalState, true, EOSMode.ALPHA);
+		processor.process(records, consumer, null, illegalState, true, EOSMode.ALPHA);
 		verify(template, times(1)).sendOffsetsToTransaction(anyMap()); // recovery failed
-		processor.process(records, consumer, illegalState, true, EOSMode.BETA);
+		processor.process(records, consumer, null, illegalState, true, EOSMode.BETA);
 		verify(template, times(1)).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		InOrder inOrder = inOrder(consumer);
@@ -120,12 +120,12 @@ public class DefaultAfterRollbackProcessorTests {
 		@SuppressWarnings("unchecked")
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
-		processor.process(records, consumer, illegalState, false, EOSMode.BETA);
-		processor.process(records, consumer, illegalState, false, EOSMode.BETA);
+		processor.process(records, consumer, null, illegalState, false, EOSMode.BETA);
+		processor.process(records, consumer, null, illegalState, false, EOSMode.BETA);
 		verify(backOff, times(2)).start();
 		verify(execution.get(), times(2)).nextBackOff();
 		processor.clearThreadState();
-		processor.process(records, consumer, illegalState, false, EOSMode.BETA);
+		processor.process(records, consumer, null, illegalState, false, EOSMode.BETA);
 		verify(backOff, times(3)).start();
 	}
 

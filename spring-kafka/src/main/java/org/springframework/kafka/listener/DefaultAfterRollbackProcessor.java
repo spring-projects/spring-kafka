@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,12 +141,13 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
 			boolean recoverable) {
 
-		process(records, consumer, exception, recoverable, EOSMode.ALPHA);
+		process(records, consumer, null, exception, recoverable, EOSMode.ALPHA);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
-	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
+	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer,
+			@Nullable MessageListenerContainer container, Exception exception,
 			boolean recoverable, @Nullable EOSMode eosMode) {
 
 		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable,
@@ -177,7 +178,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 
 	/**
 	 * {@inheritDoc} Set to true and the container will run the
-	 * {@link #process(List, Consumer, Exception, boolean, ContainerProperties.EOSMode)}
+	 * {@link #process(List, Consumer, MessageListenerContainer, Exception, boolean, ContainerProperties.EOSMode)}
 	 * method in a transaction and, if a record is skipped and recovered, we will send its
 	 * offset to the transaction. Requires a {@link KafkaOperations}.
 	 * @param commitRecovered true to process in a transaction.
@@ -185,7 +186,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	 * @deprecated in favor of
 	 * {@link #DefaultAfterRollbackProcessor(BiConsumer, BackOff, KafkaOperations, boolean)}.
 	 * @see #isProcessInTransaction()
-	 * @see #process(List, Consumer, Exception, boolean, ContainerProperties.EOSMode)
+	 * @see #process(List, Consumer, MessageListenerContainer, Exception, boolean, ContainerProperties.EOSMode)
 	 */
 	@Deprecated
 	@Override
