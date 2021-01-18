@@ -87,7 +87,7 @@ public class KafkaListenerUseAcknowledgementWithWrongAckModeTests {
 		private final Object somethingHappenedNotification = new Object();
 
 		@KafkaListener(topics = "foo", groupId = "grp", errorHandler = "errorHandler")
-		public void foo(@Payload ConsumerRecord<String, String> in, Acknowledgment ack) {
+		public void foo(ConsumerRecord<String, String> in, Acknowledgment ack) {
 			synchronized (somethingHappenedNotification) {
 				// Received message
 				somethingHappenedNotification.notifyAll();
