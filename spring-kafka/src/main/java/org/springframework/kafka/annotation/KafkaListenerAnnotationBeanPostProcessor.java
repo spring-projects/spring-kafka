@@ -74,6 +74,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
@@ -82,12 +83,16 @@ import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.messaging.handler.annotation.support.PayloadMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
 import org.springframework.validation.Validator;
 
 /**
@@ -117,6 +122,7 @@ import org.springframework.validation.Validator;
  * @author Venil Noronha
  * @author Dimitri Penner
  * @author Filip Halemba
+ * @author Sela Lerer
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -967,6 +973,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 		@Override
 		public Object resolveArgument(MethodParameter parameter, Message<?> message) throws Exception { // NOSONAR
+			validateAcknowledgementUsedOnlyWithManualAckMode(parameter, message);
 			Object resolved = super.resolveArgument(parameter, message);
 			/*
 			 * Replace KafkaNull list elements with null.
@@ -980,6 +987,21 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				}
 			}
 			return resolved;
+		}
+
+		private void validateAcknowledgementUsedOnlyWithManualAckMode(MethodParameter parameter, Message<?> message) {
+			Class<?> parameterType = resolveTargetClass(parameter, message);
+			if (parameterType == Acknowledgment.class) {
+				String paramName = parameter.getParameterName();
+				paramName = (paramName != null ? paramName : "Arg " + parameter.getParameterIndex());
+				BindingResult bindingResult = new BeanPropertyBindingResult(message.getPayload(), paramName);
+				bindingResult.addError(new ObjectError(paramName,
+						"Parameter of type Acknowledgement should not be resolved by this resolver.\n" +
+						"Use Acknowledgement argument only if the listener is configured to use manual acknowledgment:\n" +
+						"\tspring.kafka.consumer.auto-offset-reset=earliest\n" +
+						"\tspring.kafka.listener.ack-mode=manual\n"));
+				throw new MethodArgumentNotValidException(message, parameter, bindingResult);
+			}
 		}
 
 		@Override
