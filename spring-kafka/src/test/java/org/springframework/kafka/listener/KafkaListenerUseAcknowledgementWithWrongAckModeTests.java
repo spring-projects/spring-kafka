@@ -45,7 +45,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
