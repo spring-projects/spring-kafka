@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,19 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.lang.reflect.Method;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.support.GenericMessage;
@@ -36,7 +41,7 @@ import org.springframework.messaging.support.GenericMessage;
 public class MessagingMessageListenerAdapterTests {
 
 	@Test
-	public void testFallbackType() {
+	void testFallbackType() {
 		final class MyAdapter extends MessagingMessageListenerAdapter<String, String>
 				implements AcknowledgingMessageListener<String, String> {
 
@@ -59,6 +64,24 @@ public class MessagingMessageListenerAdapterTests {
 		adapter.setMessageConverter(converter);
 		adapter.onMessage(cr, ack);
 		verify(converter).toMessage(cr, ack, null, String.class);
+	}
+
+	@Test
+	void testMissingAck() throws NoSuchMethodException, SecurityException {
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		Method method = getClass().getDeclaredMethod("test", Acknowledgment.class);
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				new RecordMessagingMessageListenerAdapter<>(this, method);
+		adapter.setHandlerMethod(
+				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		assertThatExceptionOfType(ListenerExecutionFailedException.class).isThrownBy(() -> adapter.onMessage(
+						new ConsumerRecord<>("foo", 0, 0L, null, "foo"), null, null))
+				.withCauseExactlyInstanceOf(IllegalStateException.class)
+				.withMessageContaining("MANUAL");
+	}
+
+	public void test(Acknowledgment ack) {
+
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
@@ -340,6 +341,16 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
 					"be invoked with the incoming message", message.getPayload()),
 					new MessageConversionException("Cannot handle message", ex));
+		}
+		catch (MethodArgumentNotValidException ex) {
+			if (this.hasAckParameter && acknowledgment == null) {
+				throw new ListenerExecutionFailedException("invokeHandler Failed",
+						new IllegalStateException("No Acknowledgment available as an argument, "
+								+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment.",
+								ex));
+			}
+			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
+					"be invoked with the incoming message", message.getPayload()), ex);
 		}
 		catch (MessagingException ex) {
 			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
