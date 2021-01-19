@@ -5169,6 +5169,9 @@ The record sent to the dead-letter topic is enhanced with the following headers:
 * `KafkaHeaders.DLT_EXCEPTION_FQCN`: The Exception class name.
 * `KafkaHeaders.DLT_EXCEPTION_STACKTRACE`: The Exception stack trace.
 * `KafkaHeaders.DLT_EXCEPTION_MESSAGE`: The  Exception message.
+* `KafkaHeaders.DLT_KEY_EXCEPTION_FQCN`: The Exception class name (key deserialization errors only).
+* `KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE`: The Exception stack trace (key deserialization errors only).
+* `KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE`: The  Exception message (key deserialization errors only).
 * `KafkaHeaders.DLT_ORIGINAL_TOPIC`: The original topic.
 * `KafkaHeaders.DLT_ORIGINAL_PARTITION`: The original partition.
 * `KafkaHeaders.DLT_ORIGINAL_OFFSET`: The original offset.
@@ -5219,8 +5222,8 @@ By default, the exception type is not considered.
 Starting with version 2.3, the recoverer can also be used with Kafka Streams - see <<streams-deser-recovery>> for more information.
 
 The `ErrorHandlingDeserializer` adds the deserialization exception(s) in headers `ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER` and `ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER` (using java serialization).
-By default, these headers are not retained in the message published to the dead letter topic, unless both the key and value fail deserialization.
-In that case, the `DLT_*` headers are based on the value deserialization and the key `DeserializationException` is retained in the header.
+By default, these headers are not retained in the message published to the dead letter topic.
+Starting with version 2.7, if both the key and value fail deserialization, the original values of both are populated in the record sent to the DLT.
 
 If incoming records are dependent on each other, but may arrive out of order, it may be useful to republish a failed record to the tail of the original topic (for some number of times), instead of sending it directly to the dead letter topic.
 See https://stackoverflow.com/questions/64646996[this Stack Overflow Question] for an example.

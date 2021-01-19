@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -168,24 +168,21 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	@Override
 	public void accept(ConsumerRecord<?, ?> record, Exception exception) {
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
-		boolean isKey = false;
-		DeserializationException deserEx = ListenerUtils.getExceptionFromHeader(record,
+		DeserializationException vDeserEx = ListenerUtils.getExceptionFromHeader(record,
 				ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
-		if (deserEx == null) {
-			deserEx = ListenerUtils.getExceptionFromHeader(record,
+		DeserializationException kDeserEx = ListenerUtils.getExceptionFromHeader(record,
 					ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
-			isKey = true;
+		Headers headers = new RecordHeaders(record.headers().toArray());
+		if (kDeserEx != null && !this.retainExceptionHeader) {
+			headers.remove(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER);
+			addExceptionInfoHeaders(headers, kDeserEx, true);
 		}
-		Headers headers;
-		if (deserEx == null || this.retainExceptionHeader) {
-			headers = new RecordHeaders(record.headers().toArray());
-		}
-		else {
-			headers = deserEx.getHeaders();
+		if (vDeserEx != null && !this.retainExceptionHeader) {
+			headers.remove(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 		}
 		enhanceHeaders(headers, record, exception); // NOSONAR headers are never null
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
-				deserEx == null ? null : deserEx.getData(), isKey);
+				kDeserEx == null ? null : kDeserEx.getData(), vDeserEx == null ? null : vDeserEx.getData());
 		KafkaOperations<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
 		if (this.transactional && !kafkaTemplate.inTransaction() && !kafkaTemplate.isAllowNonTransactional()) {
 			kafkaTemplate.executeInTransaction(t -> {
@@ -236,18 +233,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	 * @param topicPartition the {@link TopicPartition} returned by the destination
 	 * resolver.
 	 * @param headers the headers - original record headers plus DLT headers.
-	 * @param data the value to use instead of the consumer record value.
-	 * @param isKey true if key deserialization failed.
+	 * @param key the key to use instead of the consumer record key.
+	 * @param value the value to use instead of the consumer record value.
 	 * @return the producer record to send.
 	 * @see KafkaHeaders
 	 */
 	protected ProducerRecord<Object, Object> createProducerRecord(ConsumerRecord<?, ?> record,
-			TopicPartition topicPartition, Headers headers, @Nullable byte[] data, boolean isKey) {
+			TopicPartition topicPartition, Headers headers, @Nullable byte[] key, @Nullable byte[] value) {
 
 		return new ProducerRecord<>(topicPartition.topic(),
 				topicPartition.partition() < 0 ? null : topicPartition.partition(),
-				isKey && data != null ? data : record.key(),
-				data == null || isKey ? record.value() : data, headers);
+				key != null ? key : record.key(),
+				value != null ? value : record.value(), headers);
 	}
 
 	/**
@@ -280,19 +277,27 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 				ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array()));
 		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE,
 				record.timestampType().toString().getBytes(StandardCharsets.UTF_8)));
-		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_EXCEPTION_FQCN,
-				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)));
-		String message = exception.getMessage();
-		if (message != null) {
-			kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE,
-					exception.getMessage().getBytes(StandardCharsets.UTF_8)));
-		}
-		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE,
-				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)));
+		addExceptionInfoHeaders(kafkaHeaders, exception, false);
 		Headers headers = this.headersFunction.apply(record, exception);
 		if (headers != null) {
 			headers.forEach(header -> kafkaHeaders.add(header));
 		}
+	}
+
+	private void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception, boolean isKey) {
+		kafkaHeaders.add(new RecordHeader(isKey ? KafkaHeaders.DLT_KEY_EXCEPTION_FQCN : KafkaHeaders.DLT_EXCEPTION_FQCN,
+				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)));
+		String message = exception.getMessage();
+		if (message != null) {
+			kafkaHeaders.add(new RecordHeader(isKey
+						? KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE
+						: KafkaHeaders.DLT_EXCEPTION_MESSAGE,
+					exception.getMessage().getBytes(StandardCharsets.UTF_8)));
+		}
+		kafkaHeaders.add(new RecordHeader(isKey
+						? KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE
+						: KafkaHeaders.DLT_EXCEPTION_STACKTRACE,
+				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)));
 	}
 
 	private String getStackTraceAsString(Throwable cause) {

@@ -22,3 +22,11 @@ See <<container-props>> for more information.
 
 You can now validate the payload parameter of `@KafkaHandler` methods (class-level listeners).
 See <<kafka-validation>> for more information.
+
+[[27-dlt]]
+==== `DeadLetterPublishingRecover` Changes
+
+Now, if both the key and value fail deserialization, the original values are published to the DLT.
+Previously, the value was populated but the key `DeserializationException` remained in the headers.
+There is a breaking API change, if you subclassed the recoverer and overrode the `createProducerRecord` method.
+See <<dead-letters>> for more information.
