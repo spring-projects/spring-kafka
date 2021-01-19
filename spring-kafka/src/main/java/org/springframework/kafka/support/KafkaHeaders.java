@@ -160,20 +160,23 @@ public abstract class KafkaHeaders {
 	public static final String DLT_EXCEPTION_MESSAGE = PREFIX + "dlt-exception-message";
 
 	/**
-	 * Exception stack trace for a record published to a dead-letter topic.
-	 * @since 2.2
+	 * Exception stack trace for a record published to a dead-letter topic with a key
+	 * deserialization exception.
+	 * @since 2.7
 	 */
 	public static final String DLT_KEY_EXCEPTION_STACKTRACE = PREFIX + "dlt-key-exception-stacktrace";
 
 	/**
-	 * Exception message for a record published to a dead-letter topic.
-	 * @since 2.2
+	 * Exception message for a record published to a dead-letter topic with a key
+	 * deserialization exception.
+	 * @since 2.7
 	 */
 	public static final String DLT_KEY_EXCEPTION_MESSAGE = PREFIX + "dlt-key-exception-message";
 
 	/**
-	 * Exception class name for a record published sent to a dead-letter topic.
-	 * @since 2.2
+	 * Exception class name for a record published sent to a dead-letter topic with a key
+	 * deserialization exception.
+	 * @since 2.7
 	 */
 	public static final String DLT_KEY_EXCEPTION_FQCN = PREFIX + "dlt-key-exception-fqcn";
 
