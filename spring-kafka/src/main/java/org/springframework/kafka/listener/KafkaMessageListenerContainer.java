@@ -1615,11 +1615,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			RuntimeException rollbackException = decorateException(e);
 			try {
 				if (recordList == null) {
-					afterRollbackProcessorToUse.process(createRecordList(records), this.consumer, rollbackException,
-							false, this.eosMode);
+					afterRollbackProcessorToUse.process(createRecordList(records), this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer,  rollbackException, false,
+							this.eosMode);
 				}
 				else {
-					afterRollbackProcessorToUse.process(recordList, this.consumer, rollbackException, false,
+					afterRollbackProcessorToUse.process(recordList, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer,  rollbackException, false,
 							this.eosMode);
 				}
 			}
@@ -1890,7 +1892,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 					@Override
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
-						afterRollbackProcessorToUse.process(unprocessed, ListenerConsumer.this.consumer, e, true,
+						afterRollbackProcessorToUse.process(unprocessed, ListenerConsumer.this.consumer,
+								KafkaMessageListenerContainer.this.thisOrParentContainer, e, true,
 								ListenerConsumer.this.eosMode);
 					}
 
@@ -1898,7 +1901,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				try {
-					afterRollbackProcessorToUse.process(unprocessed, this.consumer, e, true, this.eosMode);
+					afterRollbackProcessorToUse.process(unprocessed, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer, e, true, this.eosMode);
 				}
 				catch (KafkaException ke) {
 					ke.selfLog("AfterRollbackProcessor threw an exception", this.logger);

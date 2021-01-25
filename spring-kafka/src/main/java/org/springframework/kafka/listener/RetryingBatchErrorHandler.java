@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,6 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 		this.ackAfterHandle = ackAfterHandle;
 	}
 
-
 	@Override
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
@@ -105,7 +104,7 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 			while (nextBackOff != BackOffExecution.STOP) {
 				consumer.poll(Duration.ZERO);
 				try {
-					Thread.sleep(nextBackOff);
+					ListenerUtils.stoppableSleep(container, nextBackOff);
 				}
 				catch (InterruptedException e1) {
 					Thread.currentThread().interrupt();

@@ -4884,6 +4884,8 @@ By default, the exception type is not considered.
 
 Also see <<delivery-header>>.
 
+Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
+
 [[retrying-batch-eh]]
 ===== Retrying Batch Error Handler
 
@@ -4898,6 +4900,8 @@ If the recoverer throws an exception, or the thread is interrupted during its sl
 Before exiting, regardless of the outcome, the consumer is resumed.
 
 IMPORTANT: This error handler cannot be used with transactions.
+
+Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
 Also see <<recovering-batch-eh>>.
 
@@ -5000,6 +5004,8 @@ If the function returns `null`, the handler's default `BackOff` will be used.
 
 Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
 By default, the exception type is not considered.
+
+Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
 ===== Container Stopping Error Handlers
 
@@ -5107,6 +5113,8 @@ If you ensure the timeout is large enough to process each transaction and period
 Or, you can set the `stopContainerWhenFenced` container property to `true` and the container will stop, avoiding the loss of records.
 You can consume a `ConsumerStoppedEvent` and check the `Reason` property for `FENCED` to detect this condition.
 Since the event also has a reference to the container, you can restart the container using this event.
+
+Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
 [[delivery-header]]
 ===== Delivery Attempts Header

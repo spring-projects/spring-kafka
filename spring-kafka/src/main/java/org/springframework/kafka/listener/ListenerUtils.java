@@ -19,8 +19,11 @@ package org.springframework.kafka.listener;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -45,6 +48,8 @@ public final class ListenerUtils {
 	}
 
 	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
+
+	private static final int SLEEP_INTERVAL = 100;
 
 	public static ListenerType determineListenerType(Object listener) {
 		Assert.notNull(listener, "Listener cannot be null");
@@ -153,9 +158,58 @@ public final class ListenerUtils {
 	 * @param lastIntervals a thread local containing the previous {@link BackOff}
 	 * interval for this thread.
 	 * @since 2.3.12
+	 * @deprecated in favor of
+	 * {@link #unrecoverableBackOff(BackOff, ThreadLocal, ThreadLocal, MessageListenerContainer)}.
 	 */
+	@Deprecated
 	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
 			ThreadLocal<Long> lastIntervals) {
+
+		try {
+			unrecoverableBackOff(backOff, executions, lastIntervals, new MessageListenerContainer() {
+
+				@Override
+				public void stop() {
+				}
+
+				@Override
+				public void start() {
+				}
+
+				@Override
+				public boolean isRunning() {
+					return true;
+				}
+
+				@Override
+				public void setupMessageListener(Object messageListener) {
+				}
+
+				@Override
+				public Map<String, Map<MetricName, ? extends Metric>> metrics() {
+					return null;
+				}
+			});
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	/**
+	 * Sleep according to the {@link BackOff}; when the {@link BackOffExecution} returns
+	 * {@link BackOffExecution#STOP} sleep for the previous backOff.
+	 * @param backOff the {@link BackOff} to create a new {@link BackOffExecution}.
+	 * @param executions a thread local containing the {@link BackOffExecution} for this
+	 * thread.
+	 * @param lastIntervals a thread local containing the previous {@link BackOff}
+	 * interval for this thread.
+	 * @param container the container or parent container.
+	 * @throws InterruptedException if the thread is interrupted.
+	 * @since 2.7
+	 */
+	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
+			ThreadLocal<Long> lastIntervals, MessageListenerContainer container) throws InterruptedException {
 
 		BackOffExecution backOffExecution = executions.get();
 		if (backOffExecution == null) {
@@ -171,13 +225,26 @@ public final class ListenerUtils {
 		}
 		lastIntervals.set(interval);
 		if (interval > 0) {
-			try {
-				Thread.sleep(interval);
-			}
-			catch (@SuppressWarnings("unused") InterruptedException e) {
-				Thread.currentThread().interrupt();
+			stoppableSleep(container, interval);
+		}
+	}
+
+	/**
+	 * Sleep for the desired timeout, as long as the container continues to run.
+	 * @param container the container.
+	 * @param timeout the timeout.
+	 * @throws InterruptedException if the thread is interrupted.
+	 * @since 2.7
+	 */
+	public static void stoppableSleep(MessageListenerContainer container, long timeout) throws InterruptedException {
+
+		do {
+			Thread.sleep(SLEEP_INTERVAL);
+			if (!container.isRunning()) {
+				break;
 			}
 		}
+		while (System.currentTimeMillis() < timeout);
 	}
 
 }

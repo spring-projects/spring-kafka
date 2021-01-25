@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -130,11 +130,11 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
-	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer, Exception exception,
-			boolean recoverable, @Nullable EOSMode eosMode) {
+	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer,
+			@Nullable MessageListenerContainer container, Exception exception, boolean recoverable, EOSMode eosMode) {
 
 		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable,
-				getSkipPredicate((List) records, exception), this.logger)
+				getRecoveryStrategy((List) records, exception), container, this.logger)
 					&& isCommitRecovered() && this.kafkaTemplate.isTransactional()) {
 			ConsumerRecord<K, V> skipped = records.get(0);
 			if (EOSMode.ALPHA.equals(eosMode)) {
@@ -150,8 +150,14 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		}
 
 		if (!recoverable && this.backOff != null) {
-			ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals);
+			try {
+				ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals, container);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 		}
+
 	}
 
 	@Override

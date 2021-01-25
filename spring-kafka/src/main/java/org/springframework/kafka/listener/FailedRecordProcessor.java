@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -199,6 +199,15 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 		return this.classifier.getClassified().remove(exceptionType);
 	}
 
+	/**
+	 * Return a {@link BiPredicate} to call to determine whether the first record in the
+	 * list should be skipped.
+	 * @param records the records.
+	 * @param thrownException the exception.
+	 * @return the {@link BiPredicate}.
+	 * @deprecated in favor of {@link #getRecoveryStrategy(List, Exception)}.
+	 */
+	@Deprecated
 	protected BiPredicate<ConsumerRecord<?, ?>, Exception> getSkipPredicate(List<ConsumerRecord<?, ?>> records,
 			Exception thrownException) {
 
@@ -217,6 +226,33 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 				return NEVER_SKIP_PREDICATE;
 			}
 			return ALWAYS_SKIP_PREDICATE;
+		}
+	}
+
+	/**
+	 * Return a {@link RecoveryStrategy} to call to determine whether the first record in the
+	 * list should be skipped.
+	 * @param records the records.
+	 * @param thrownException the exception.
+	 * @return the {@link RecoveryStrategy}.
+	 * @since 2.7
+	 */
+	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records, Exception thrownException) {
+		if (getClassifier().classify(thrownException)) {
+			return this.failureTracker::recovered;
+		}
+		else {
+			try {
+				this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
+			}
+			catch (Exception ex) {
+				if (records.size() > 0) {
+					this.logger.error(ex, () -> "Recovery of record ("
+							+ ListenerUtils.recordToString(records.get(0)) + ") failed");
+				}
+				return (rec, excep, cont) -> NEVER_SKIP_PREDICATE.test(rec, excep);
+			}
+			return (rec, excep, cont) -> ALWAYS_SKIP_PREDICATE.test(rec, excep);
 		}
 	}
 

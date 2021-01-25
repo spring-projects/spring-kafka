@@ -43,7 +43,7 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
 	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
-	 * topic/partition/offset.
+	 * topic/partition/offset, with the default back off (9 retries, no delay).
 	 * @since 2.2
 	 */
 	public SeekToCurrentErrorHandler() {
@@ -110,7 +110,7 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(),
-				getSkipPredicate(records, thrownException), this.logger, getLogLevel());
+				getRecoveryStrategy(records, thrownException), this.logger, getLogLevel());
 	}
 
 }

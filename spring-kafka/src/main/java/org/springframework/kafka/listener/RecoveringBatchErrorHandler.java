@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -127,8 +127,9 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 			ConsumerRecord<?, ?> record = batchListenerFailedException.getRecord();
 			int index = record != null ? findIndex(data, record) : batchListenerFailedException.getIndex();
 			if (index < 0 || index >= data.count()) {
-				this.logger.warn(batchListenerFailedException, () -> String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
-						record.topic(), record.partition(), record.offset()));
+				this.logger.warn(batchListenerFailedException, () ->
+						String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
+								record.topic(), record.partition(), record.offset()));
 				this.fallbackHandler.handle(thrownException, data, consumer, container);
 			}
 			else {
@@ -178,7 +179,7 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 		}
 		if (remaining.size() > 0) {
 			SeekUtils.seekOrRecover(thrownException, remaining, consumer, container, false,
-					getSkipPredicate(remaining, thrownException), this.logger, getLogLevel());
+				getRecoveryStrategy(remaining, thrownException), this.logger, getLogLevel());
 			ConsumerRecord<?, ?> recovered = remaining.get(0);
 			commit(consumer, container,
 					Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),

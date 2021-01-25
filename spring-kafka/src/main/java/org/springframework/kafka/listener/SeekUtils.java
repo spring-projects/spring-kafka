@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -75,13 +76,32 @@ public final class SeekUtils {
 	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
 			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, LogAccessor logger) {
 
+		return doSeeks(records, consumer, exception, recoverable, (rec, ex, cont) -> skipper.test(rec, ex), null,
+				logger);
+	}
+
+	/**
+	 * Seek records to earliest position, optionally skipping the first.
+	 * @param records the records.
+	 * @param consumer the consumer.
+	 * @param exception the exception
+	 * @param recoverable true if skipping the first record is allowed.
+	 * @param recovery the {@link RecoveryStrategy}.
+	 * @param container the container, or parent if a child.
+	 * @param logger a {@link LogAccessor} for seek errors.
+	 * @return true if the failed record was skipped.
+	 */
+	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
+			boolean recoverable, RecoveryStrategy recovery, @Nullable MessageListenerContainer container,
+			LogAccessor logger) {
+
 		Map<TopicPartition, Long> partitions = new LinkedHashMap<>();
 		AtomicBoolean first = new AtomicBoolean(true);
 		AtomicBoolean skipped = new AtomicBoolean();
 		records.forEach(record -> {
 			if (recoverable && first.get()) {
 				try {
-					boolean test = skipper.test(record, exception);
+					boolean test = recovery.recovered(record, exception, container);
 					skipped.set(test);
 				}
 				catch (Exception ex) {
@@ -140,6 +160,27 @@ public final class SeekUtils {
 			Consumer<?, ?> consumer, MessageListenerContainer container, boolean commitRecovered,
 			BiPredicate<ConsumerRecord<?, ?>, Exception> skipPredicate, LogAccessor logger, Level level) {
 
+		seekOrRecover(thrownException, records, consumer, container, commitRecovered,
+				(rec, ex, cont) -> skipPredicate.test(rec, ex), logger, level);
+
+	}
+
+	/**
+	 * Seek the remaining records, optionally recovering the first.
+	 * @param thrownException the exception.
+	 * @param records the remaining records.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 * @param commitRecovered true to commit the recovererd record offset.
+	 * @param recovery the {@link RecoveryStrategy}.
+	 * @param logger the logger.
+	 * @param level the log level for the thrown exception after handling.
+	 * @since 2.7
+	 */
+	public static void seekOrRecover(Exception thrownException, List<ConsumerRecord<?, ?>> records,
+			Consumer<?, ?> consumer, MessageListenerContainer container, boolean commitRecovered,
+			RecoveryStrategy recovery, LogAccessor logger, Level level) {
+
 		if (ObjectUtils.isEmpty(records)) {
 			if (thrownException instanceof SerializationException) {
 				throw new IllegalStateException("This error handler cannot process 'SerializationException's directly; "
@@ -153,7 +194,7 @@ public final class SeekUtils {
 			}
 		}
 
-		if (!doSeeks(records, consumer, thrownException, true, skipPredicate, logger)) {
+		if (!doSeeks(records, consumer, thrownException, true, recovery, container, logger)) {
 			throw new KafkaException("Seek to current after exception", level, thrownException);
 		}
 		if (commitRecovered) {

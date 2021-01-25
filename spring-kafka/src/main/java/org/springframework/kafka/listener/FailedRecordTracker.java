@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @since 2.2
  *
  */
-class FailedRecordTracker {
+class FailedRecordTracker implements RecoveryStrategy {
 
 	private final ThreadLocal<Map<TopicPartition, FailedRecord>> failures = new ThreadLocal<>(); // intentionally not static
 
@@ -115,6 +115,19 @@ class FailedRecordTracker {
 	}
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
+		try {
+			return recovered(record, exception, null);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
+		}
+	}
+
+	@Override
+	public boolean recovered(ConsumerRecord<?, ?> record, Exception exception,
+			@Nullable MessageListenerContainer container) throws InterruptedException {
+
 		if (this.noRetries) {
 			attemptRecovery(record, exception, null);
 			return true;
@@ -128,11 +141,11 @@ class FailedRecordTracker {
 		FailedRecord failedRecord = getFailedRecordInstance(record, exception, map, topicPartition);
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
 		if (nextBackOff != BackOffExecution.STOP) {
-			try {
+			if (container == null) {
 				Thread.sleep(nextBackOff);
 			}
-			catch (@SuppressWarnings("unused") InterruptedException e) {
-				Thread.currentThread().interrupt();
+			else {
+				ListenerUtils.stoppableSleep(container, nextBackOff);
 			}
 			return false;
 		}
@@ -216,7 +229,7 @@ class FailedRecordTracker {
 		return failedRecord.getDeliveryAttempts().get() + 1;
 	}
 
-	private static final class FailedRecord {
+	static final class FailedRecord {
 
 		private final long offset;
 

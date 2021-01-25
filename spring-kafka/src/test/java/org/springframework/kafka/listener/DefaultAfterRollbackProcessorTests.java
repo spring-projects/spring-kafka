@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,18 +74,19 @@ public class DefaultAfterRollbackProcessorTests {
 		@SuppressWarnings("unchecked")
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
-		processor.process(records, consumer, illegalState, true, EOSMode.ALPHA);
-		processor.process(records, consumer, new DeserializationException("intended", null, false, illegalState), true,
-				EOSMode.ALPHA);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.ALPHA);
+		processor.process(records, consumer, container,
+				new DeserializationException("intended", null, false, illegalState), true, EOSMode.ALPHA);
 		verify(template).sendOffsetsToTransaction(anyMap());
 		verify(template, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		processor.addNotRetryableExceptions(IllegalStateException.class);
 		recovered.set(null);
 		recovererShouldFail.set(true);
-		processor.process(records, consumer, illegalState, true, EOSMode.ALPHA);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.ALPHA);
 		verify(template, times(1)).sendOffsetsToTransaction(anyMap()); // recovery failed
-		processor.process(records, consumer, illegalState, true, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.BETA);
 		verify(template, times(1)).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		InOrder inOrder = inOrder(consumer);
@@ -120,13 +121,48 @@ public class DefaultAfterRollbackProcessorTests {
 		@SuppressWarnings("unchecked")
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
-		processor.process(records, consumer, illegalState, false, EOSMode.BETA);
-		processor.process(records, consumer, illegalState, false, EOSMode.BETA);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		processor.process(records, consumer, container, illegalState, false, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, false, EOSMode.BETA);
 		verify(backOff, times(2)).start();
 		verify(execution.get(), times(2)).nextBackOff();
 		processor.clearThreadState();
-		processor.process(records, consumer, illegalState, false, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, false, EOSMode.BETA);
 		verify(backOff, times(3)).start();
+	}
+
+	void testEarlyExitBackOff() {
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
+				new FixedBackOff(1, 10_000));
+		@SuppressWarnings("unchecked")
+		Consumer<String, String> consumer = mock(Consumer.class);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
+		IllegalStateException illegalState = new IllegalStateException();
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(false);
+		long t1 = System.currentTimeMillis();
+		processor.process(records, consumer, container, illegalState, true, EOSMode.BETA);
+		assertThat(System.currentTimeMillis() < t1 + 5_000);
+	}
+
+	@Test
+	void testNoEarlyExitBackOff() {
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
+				new FixedBackOff(1, 200));
+		@SuppressWarnings("unchecked")
+		Consumer<String, String> consumer = mock(Consumer.class);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
+		IllegalStateException illegalState = new IllegalStateException();
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		long t1 = System.currentTimeMillis();
+		processor.process(records, consumer, container, illegalState, true, EOSMode.BETA);
+		assertThat(System.currentTimeMillis() >= t1 + 200);
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -39,6 +40,7 @@ import org.mockito.InOrder;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
@@ -103,6 +105,38 @@ public class SeekToCurrentErrorHandlerTests {
 		assertThatIllegalStateException().isThrownBy(
 					() -> handler.handle(thrownException, Collections.emptyList(), null, null))
 				.withCause(thrownException);
+	}
+
+	@Test
+	void testEarlyExitBackOff() {
+		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler(new FixedBackOff(1, 10_000));
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
+		IllegalStateException illegalState = new IllegalStateException();
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(false);
+		long t1 = System.currentTimeMillis();
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handle(illegalState,
+						records, consumer, container));
+		assertThat(System.currentTimeMillis() < t1 + 5_000);
+	}
+
+	@Test
+	void testNoEarlyExitBackOff() {
+		SeekToCurrentErrorHandler handler = new SeekToCurrentErrorHandler(new FixedBackOff(1, 200));
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
+		IllegalStateException illegalState = new IllegalStateException();
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		long t1 = System.currentTimeMillis();
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handle(illegalState,
+						records, consumer, container));
+		assertThat(System.currentTimeMillis() >= t1 + 200);
 	}
 
 }

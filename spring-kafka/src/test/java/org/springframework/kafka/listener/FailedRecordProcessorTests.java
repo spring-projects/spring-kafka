@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import org.springframework.util.backoff.FixedBackOff;
 public class FailedRecordProcessorTests {
 
 	@Test
-	void deliveryAttempts() {
+	void deliveryAttempts() throws InterruptedException {
 		FailedRecordProcessor frp = new FailedRecordProcessor(null, new FixedBackOff(0, 2)) {
 		};
 		TopicPartitionOffset tpo1 = new TopicPartitionOffset("foo", 0, 0L);
@@ -43,29 +43,29 @@ public class FailedRecordProcessorTests {
 		List<ConsumerRecord<?, ?>> records = Collections
 				.singletonList(new ConsumerRecord<Object, Object>("foo", 0, 0L, null, null));
 		RuntimeException exception = new RuntimeException();
-		frp.getSkipPredicate(records, exception).test(records.get(0), exception);
+		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(2);
-		frp.getSkipPredicate(records, exception).test(records.get(0), exception);
+		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(3);
-		frp.getSkipPredicate(records, exception).test(records.get(0), exception);
+		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(1);
-		frp.getSkipPredicate(records, exception).test(records.get(0), exception);
+		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(2);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(2);
 		// new partition
 		TopicPartitionOffset tpo2 = new TopicPartitionOffset("foo", 1, 0L);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(1);
-		frp.getSkipPredicate(records, exception).test(new ConsumerRecord<Object, Object>("foo", 1, 0L, null, null),
-				exception);
+		frp.getRecoveryStrategy(records, exception).recovered(new ConsumerRecord<Object, Object>("foo", 1, 0L, null, null),
+				exception, null);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(2);
 		// new offset
 		tpo2 = new TopicPartitionOffset("foo", 1, 1L);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(1);
-		frp.getSkipPredicate(records, exception).test(new ConsumerRecord<Object, Object>("foo", 1, 1L, null, null),
-				exception);
+		frp.getRecoveryStrategy(records, exception).recovered(new ConsumerRecord<Object, Object>("foo", 1, 1L, null, null),
+				exception, null);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(2);
 		// back to original
-		frp.getSkipPredicate(records, exception).test(records.get(0), exception);
+		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(3);
 	}
 

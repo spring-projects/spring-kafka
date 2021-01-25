@@ -17,6 +17,9 @@ A new container property `stopImmediate` is now available.
 
 See <<container-props>> for more information.
 
+Error handlers that use a `BackOff` between delivery attempts (e.g. `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor`) will now exit the back off interval soon after the container is stopped, rather than delaying the stop.
+See <<after-rollback>> and <<seek-to-current>> for more information.
+
 [[x27-listener]]
 ==== `@KafkaListener` Changes
 
