@@ -144,6 +144,16 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 		this.failureTracker.setResetStateOnExceptionChange(resetStateOnExceptionChange);
 	}
 
+	/**
+	 * Set one or more {@link RetryListener} to receive notifications of retries and
+	 * recovery.
+	 * @param listeners the listeners.
+	 * @since 2.7
+	 */
+	public void setRetryListeners(RetryListener... listeners) {
+		this.failureTracker.setRetryListeners(listeners);
+	}
+
 	@Override
 	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
 		return this.failureTracker.deliveryAttempt(topicPartitionOffset);
@@ -244,11 +254,14 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 		else {
 			try {
 				this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
+				this.failureTracker.getRetryListeners().forEach(rl -> rl.recovered(records.get(0), thrownException));
 			}
 			catch (Exception ex) {
 				if (records.size() > 0) {
 					this.logger.error(ex, () -> "Recovery of record ("
 							+ ListenerUtils.recordToString(records.get(0)) + ") failed");
+					this.failureTracker.getRetryListeners().forEach(rl ->
+							rl.recoveryFailed(records.get(0), thrownException, ex));
 				}
 				return (rec, excep, cont) -> NEVER_SKIP_PREDICATE.test(rec, excep);
 			}

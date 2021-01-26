@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,7 +113,9 @@ public class RecoveringBatchErrorHandlerTests {
 				"foo", "bar", "baz", "qux", "fiz", "buz",
 				"baz", "qux", "fiz", "buz",
 				"qux", "fiz", "buz");
-		assertThat(config.recovered.value()).isEqualTo("baz");
+		assertThat(this.config.recovered.value()).isEqualTo("baz");
+		assertThat(this.config.listenerFailed.value()).isEqualTo("baz");
+		assertThat(this.config.listenerRecovered.value()).isEqualTo("baz");
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -200,6 +202,10 @@ public class RecoveringBatchErrorHandlerTests {
 
 		volatile ConsumerRecord<?, ?> recovered;
 
+		volatile ConsumerRecord<?, ?> listenerFailed;
+
+		volatile ConsumerRecord<?, ?> listenerRecovered;
+
 		@KafkaListener(id = CONTAINER_ID, topics = "foo")
 		public void foo(List<String> in) {
 			received.addAll(in);
@@ -279,8 +285,22 @@ public class RecoveringBatchErrorHandlerTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setBatchErrorHandler(new RecoveringBatchErrorHandler((cr, ex) -> this.recovered = cr,
-					new FixedBackOff(0, 1)));
+			RecoveringBatchErrorHandler errorHandler = new RecoveringBatchErrorHandler((cr, ex) -> this.recovered = cr,
+					new FixedBackOff(0, 1));
+			errorHandler.setRetryListeners(new RetryListener() {
+
+				@Override
+				public void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {
+					Config.this.listenerFailed = record;
+				}
+
+				@Override
+				public void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+					Config.this.listenerRecovered = record;
+				}
+
+			});
+			factory.setBatchErrorHandler(errorHandler);
 			factory.setBatchListener(true);
 			factory.getContainerProperties().setSubBatchPerPartition(false);
 			factory.setMissingTopicsFatal(false);

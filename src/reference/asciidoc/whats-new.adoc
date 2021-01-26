@@ -20,6 +20,10 @@ See <<container-props>> for more information.
 Error handlers that use a `BackOff` between delivery attempts (e.g. `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor`) will now exit the back off interval soon after the container is stopped, rather than delaying the stop.
 See <<after-rollback>> and <<seek-to-current>> for more information.
 
+Error handlers and after rollback processors that extend `FailedRecordProcessor` can now be configured with one or more `RetryListener` s to receive information about retry and recovery progress.
+
+See See <<after-rollback>>, <<seek-to-current>>, and <<recovering-batch-eh>> for more information.
+
 [[x27-listener]]
 ==== `@KafkaListener` Changes
 

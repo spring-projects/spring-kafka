@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
@@ -180,13 +181,8 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		try {
-			eh.handle(new RuntimeException(), records, consumer, null);
-			fail("Expected exception");
-		}
-		catch (@SuppressWarnings("unused") KafkaException e) {
-			// NOSONAR
-		}
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+				eh.handle(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
 		eh.handle(new RuntimeException(), records, consumer, null);
@@ -207,6 +203,27 @@ public class SeekToCurrentRecovererTests {
 			return null;
 		}).given(recoverer).accept(any(), any());
 		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		AtomicInteger failedDeliveryAttempt = new AtomicInteger();
+		AtomicReference<Exception> recoveryFailureEx = new AtomicReference<>();
+		AtomicBoolean isRecovered = new AtomicBoolean();
+		eh.setRetryListeners(new RetryListener() {
+
+			@Override
+			public void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {
+				failedDeliveryAttempt.set(deliveryAttempt);
+			}
+
+			@Override
+			public void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+				isRecovered.set(true);
+			}
+
+			@Override
+			public void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+				recoveryFailureEx.set(failure);
+			}
+
+		});
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
@@ -226,6 +243,12 @@ public class SeekToCurrentRecovererTests {
 		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer, times(2)).accept(eq(records.get(0)), any());
+		assertThat(failedDeliveryAttempt.get()).isEqualTo(2);
+		assertThat(recoveryFailureEx.get())
+				.isInstanceOf(RuntimeException.class)
+				.extracting(ex -> ex.getMessage())
+				.isEqualTo("recovery failed");
+		assertThat(isRecovered.get()).isTrue();
 	}
 
 	@Test

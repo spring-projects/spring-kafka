@@ -16,7 +16,10 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -46,6 +49,8 @@ class FailedRecordTracker implements RecoveryStrategy {
 	private final BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer;
 
 	private final boolean noRetries;
+
+	private final List<RetryListener> retryListeners = new ArrayList<>();
 
 	private final BackOff backOff;
 
@@ -114,6 +119,21 @@ class FailedRecordTracker implements RecoveryStrategy {
 		this.resetStateOnExceptionChange = resetStateOnExceptionChange;
 	}
 
+	/**
+	 * Set one or more {@link RetryListener} to receive notifications of retries and
+	 * recovery.
+	 * @param listeners the listeners.
+	 * @since 2.7
+	 */
+	public void setRetryListeners(RetryListener... listeners) {
+		this.retryListeners.clear();
+		this.retryListeners.addAll(Arrays.asList(listeners));
+	}
+
+	List<RetryListener> getRetryListeners() {
+		return this.retryListeners;
+	}
+
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
 		try {
 			return recovered(record, exception, null);
@@ -139,6 +159,8 @@ class FailedRecordTracker implements RecoveryStrategy {
 		}
 		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
 		FailedRecord failedRecord = getFailedRecordInstance(record, exception, map, topicPartition);
+		this.retryListeners.forEach(rl ->
+				rl.failedDelivery(record, exception, failedRecord.getDeliveryAttempts().get()));
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
 		if (nextBackOff != BackOffExecution.STOP) {
 			if (container == null) {
@@ -194,8 +216,10 @@ class FailedRecordTracker implements RecoveryStrategy {
 	private void attemptRecovery(ConsumerRecord<?, ?> record, Exception exception, @Nullable TopicPartition tp) {
 		try {
 			this.recoverer.accept(record, exception);
+			this.retryListeners.forEach(rl -> rl.recovered(record, exception));
 		}
 		catch (RuntimeException e) {
+			this.retryListeners.forEach(rl -> rl.recoveryFailed(record, exception, e));
 			if (tp != null && this.resetStateOnRecoveryFailure) {
 				this.failures.get().remove(tp);
 			}

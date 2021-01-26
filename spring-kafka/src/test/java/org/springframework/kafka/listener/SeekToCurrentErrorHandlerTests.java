@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -60,6 +61,27 @@ public class SeekToCurrentErrorHandlerTests {
 			}
 			recovered.set(r);
 		});
+		AtomicInteger failedDeliveryAttempt = new AtomicInteger();
+		AtomicReference<Exception> recoveryFailureEx = new AtomicReference<>();
+		AtomicBoolean isRecovered = new AtomicBoolean();
+		handler.setRetryListeners(new RetryListener() {
+
+			@Override
+			public void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {
+				failedDeliveryAttempt.set(deliveryAttempt);
+			}
+
+			@Override
+			public void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+				isRecovered.set(true);
+			}
+
+			@Override
+			public void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+				recoveryFailureEx.set(failure);
+			}
+
+		});
 		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
 		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
 		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
@@ -88,6 +110,12 @@ public class SeekToCurrentErrorHandlerTests {
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed
 		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verifyNoMoreInteractions();
+		assertThat(failedDeliveryAttempt.get()).isEqualTo(1);
+		assertThat(recoveryFailureEx.get())
+				.isInstanceOf(RuntimeException.class)
+				.extracting(ex -> ex.getMessage())
+				.isEqualTo("test recoverer failure");
+		assertThat(isRecovered.get()).isTrue();
 	}
 
 	@Test

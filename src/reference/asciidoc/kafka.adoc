@@ -4837,6 +4837,27 @@ public SeekToCurrentErrorHandler errorHandler(ConsumerRecordRecoverer recoverer)
 ----
 ====
 
+Starting with version 2.7, the error handler can be configured with one or more `RetryListener` s, receiving notifications of retry and recovery progress.
+
+====
+[source, java]
+----
+@FunctionalInterface
+public interface RetryListener {
+
+	void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
+
+	default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+	}
+
+	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+	}
+
+}
+----
+====
+
+See the javadocs for more information.
 
 The `SeekToCurrentBatchErrorHandler` seeks each partition to the first record in each partition in the batch, so the whole batch is replayed.
 Also see <<committing-offsets>> for an alternative.
@@ -5007,6 +5028,28 @@ By default, the exception type is not considered.
 
 Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
+Starting with version 2.7, the error handler can be configured with one or more `RetryListener` s, receiving notifications of retry and recovery progress.
+
+====
+[source, java]
+----
+@FunctionalInterface
+public interface RetryListener {
+
+	void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
+
+	default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+	}
+
+	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+	}
+
+}
+----
+====
+
+See the javadocs for more information.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.
@@ -5089,7 +5132,7 @@ The exceptions that are considered fatal, by default, are:
 since these exceptions are unlikely to be resolved on a retried delivery.
 
 You can add more exception types to the not-retryable category, or completely replace the map of classified exceptions.
-See the Javadocs for `SeekToCurrentErrorHandler.setClassifications()` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
+See the Javadocs for `DefaultAfterRollbackProcessor.setClassifications()` for more information, as well as those for the `spring-retry` `BinaryExceptionClassifier`.
 
 Here is an example that adds `IllegalArgumentException` to the not-retryable exceptions:
 
@@ -5115,6 +5158,28 @@ You can consume a `ConsumerStoppedEvent` and check the `Reason` property for `FE
 Since the event also has a reference to the container, you can restart the container using this event.
 
 Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
+
+Starting with version 2.7, the processor can be configured with one or more `RetryListener` s, receiving notifications of retry and recovery progress.
+
+====
+[source, java]
+----
+@FunctionalInterface
+public interface RetryListener {
+
+	void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
+
+	default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+	}
+
+	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+	}
+
+}
+----
+====
+
+See the javadocs for more information.
 
 [[delivery-header]]
 ===== Delivery Attempts Header
