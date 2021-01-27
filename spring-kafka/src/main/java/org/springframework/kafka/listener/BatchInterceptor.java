@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,48 +16,45 @@
 
 package org.springframework.kafka.listener;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.lang.Nullable;
 
 /**
- * An interceptor for {@link ConsumerRecord} invoked by the listener
- * container before and after invoking the listener.
+ * An interceptor for batches of records.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Gary Russell
- * @since 2.2.7
+ * @since 2.7
  *
  */
 @FunctionalInterface
-public interface RecordInterceptor<K, V> {
+public interface BatchInterceptor<K, V> {
 
 	/**
-	 * Perform some action on the record or return a different one. If null is returned
-	 * the record will be skipped. Invoked before the listener.
-	 * @param record the record.
-	 * @return the record or null.
+	 * Perform some action on the records or return a different one. If null is returned
+	 * the records will be skipped. Invoked before the listener.
+	 * @param records the records.
+	 * @return the records or null.
 	 */
 	@Nullable
-	ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record);
+	ConsumerRecords<K, V> intercept(ConsumerRecords<K, V> records);
 
 	/**
 	 * Called after the listener exits normally.
-	 * @param record the record.
-	 * @since 2.7
+	 * @param records the records.
 	 */
-	default void success(ConsumerRecord<K, V> record) {
+	default void success(ConsumerRecords<K, V> records) {
 	}
 
 	/**
 	 * Called after the listener throws an exception.
-	 * @param record the record.
+	 * @param records the records.
 	 * @param exception the exception.
-	 * @since 2.7
 	 */
-	default void failure(ConsumerRecord<K, V> record, Exception exception) {
+	default void failure(ConsumerRecords<K, V> records, Exception exception) {
 	}
 
 }

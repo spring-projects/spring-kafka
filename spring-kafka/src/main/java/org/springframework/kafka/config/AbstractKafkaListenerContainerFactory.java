@@ -36,6 +36,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AfterRollbackProcessor;
 import org.springframework.kafka.listener.BatchErrorHandler;
+import org.springframework.kafka.listener.BatchInterceptor;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
@@ -105,6 +106,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private Boolean missingTopicsFatal;
 
 	private RecordInterceptor<K, V> recordInterceptor;
+
+	private BatchInterceptor<K, V> batchInterceptor;
 
 	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
@@ -310,6 +313,16 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Set a batch interceptor to be called before and after calling the listener.
+	 * Does not apply to batch listeners.
+	 * @param batchInterceptor the interceptor.
+	 * @since 2.7
+	 */
+	public void setBatchInterceptor(BatchInterceptor<K, V> batchInterceptor) {
+		this.batchInterceptor = batchInterceptor;
+	}
+
+	/**
 	 * Set a {@link BatchToRecordAdapter}.
 	 * @param batchToRecordAdapter the adapter.
 	 * @since 2.4.2
@@ -407,6 +420,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			instance.setAutoStartup(this.autoStartup);
 		}
 		instance.setRecordInterceptor(this.recordInterceptor);
+		instance.setBatchInterceptor(this.batchInterceptor);
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.phase, instance::setPhase)
 				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)

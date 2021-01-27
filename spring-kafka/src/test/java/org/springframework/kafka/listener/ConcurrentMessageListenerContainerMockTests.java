@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -64,6 +65,7 @@ import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -398,39 +400,63 @@ public class ConcurrentMessageListenerContainerMockTests {
 	@Test
 	@DisplayName("Intercept after tx start")
 	void testInterceptAfterTx() throws InterruptedException {
-		testIntercept(false, AssignmentCommitOption.ALWAYS);
+		testIntercept(false, AssignmentCommitOption.ALWAYS, false);
 	}
 
 	@Test
 	@DisplayName("Intercept before tx start")
 	void testInterceptBeforeTx() throws InterruptedException {
-		testIntercept(true, AssignmentCommitOption.ALWAYS);
+		testIntercept(true, AssignmentCommitOption.ALWAYS, false);
 	}
 
 	@Test
 	@DisplayName("Intercept after tx start no initial commit")
 	void testInterceptAfterTx1() throws InterruptedException {
-		testIntercept(false, null);
+		testIntercept(false, null, false);
 	}
 
 	@Test
 	@DisplayName("Intercept before tx start no initial commit")
 	void testInterceptBeforeTx1() throws InterruptedException {
-		testIntercept(true, null);
+		testIntercept(true, null, false);
+	}
+
+	@Test
+	@DisplayName("Intercept batch after tx start")
+	void testBatchInterceptAfterTx() throws InterruptedException {
+		testIntercept(false, AssignmentCommitOption.ALWAYS, true);
+	}
+
+	@Test
+	@DisplayName("Intercept batch before tx start")
+	void testBatchInterceptBeforeTx() throws InterruptedException {
+		testIntercept(true, AssignmentCommitOption.ALWAYS, true);
+	}
+
+	@Test
+	@DisplayName("Intercept batch after tx start no initial commit")
+	void testBatchInterceptAfterTx1() throws InterruptedException {
+		testIntercept(false, null, true);
+	}
+
+	@Test
+	@DisplayName("Intercept batch before tx start no initial commit")
+	void testBatchInterceptBeforeTx1() throws InterruptedException {
+		testIntercept(true, null, true);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	void testIntercept(boolean beforeTx, AssignmentCommitOption option) throws InterruptedException {
+	void testIntercept(boolean beforeTx, AssignmentCommitOption option, boolean batch) throws InterruptedException {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
 		TopicPartition tp0 = new TopicPartition("foo", 0);
 		ConsumerRecord record = new ConsumerRecord("foo", 0, 0L, "bar", "baz");
 		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record)));
 		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
-		AtomicBoolean first = new AtomicBoolean(true);
+		AtomicInteger firstOrSecondPoll = new AtomicInteger();
 		willAnswer(invocation -> {
 			Thread.sleep(10);
-			return first.getAndSet(false) ? records : empty;
+			return firstOrSecondPoll.incrementAndGet() < 3 ? records : empty;
 		}).given(consumer).poll(any());
 		List<TopicPartition> assignments = Arrays.asList(tp0);
 		willAnswer(invocation -> {
@@ -443,7 +469,21 @@ public class ConcurrentMessageListenerContainerMockTests {
 			.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
-		containerProperties.setMessageListener((MessageListener) rec -> { });
+		AtomicBoolean first = new AtomicBoolean(true);
+		if (batch) {
+			containerProperties.setMessageListener((BatchMessageListener) recs -> {
+				if (first.getAndSet(false)) {
+					throw new RuntimeException("test");
+				}
+			});
+		}
+		else {
+			containerProperties.setMessageListener((MessageListener) rec -> {
+				if (first.getAndSet(false)) {
+					throw new RuntimeException("test");
+				}
+			});
+		}
 		containerProperties.setMissingTopicsFatal(false);
 		if (option != null) {
 			containerProperties.setAssignmentCommitOption(option);
@@ -463,31 +503,87 @@ public class ConcurrentMessageListenerContainerMockTests {
 			latch.countDown();
 			return null;
 		}).given(tm).getTransaction(any());
+		willAnswer(inv -> {
+			TransactionSynchronizationManager.unbindResource(pf);
+			return null;
+		}).given(tm).commit(any());
+		willAnswer(inv -> {
+			TransactionSynchronizationManager.unbindResource(pf);
+			return null;
+		}).given(tm).rollback(any());
 		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
 				containerProperties);
-		container.setRecordInterceptor(rec -> {
-			order.add("interceptor");
-			latch.countDown();
-			return rec;
+		CountDownLatch interceptedLatch = new CountDownLatch(2);
+		CountDownLatch successCalled = new CountDownLatch(1);
+		CountDownLatch failureCalled = new CountDownLatch(1);
+		container.setRecordInterceptor(new RecordInterceptor() {
+
+			@Override
+			@Nullable
+			public ConsumerRecord intercept(ConsumerRecord rec) {
+				order.add("interceptor");
+				latch.countDown();
+				return rec;
+			}
+
+			@Override
+			public void success(ConsumerRecord record) {
+				order.add("success");
+				successCalled.countDown();
+			}
+
+			@Override
+			public void failure(ConsumerRecord record, Exception exception) {
+				order.add("failure");
+				failureCalled.countDown();
+			}
+
+		});
+		container.setBatchInterceptor(new BatchInterceptor() {
+
+			@Override
+			@Nullable
+			public ConsumerRecords intercept(ConsumerRecords recs) {
+				order.add("interceptor");
+				latch.countDown();
+				return recs;
+			}
+
+			@Override
+			public void success(ConsumerRecords records) {
+				order.add("success");
+				successCalled.countDown();
+			}
+
+			@Override
+			public void failure(ConsumerRecords records, Exception exception) {
+				order.add("failure");
+				failureCalled.countDown();
+			}
+
 		});
 		container.setInterceptBeforeTx(beforeTx);
 		container.start();
 		try {
 			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(failureCalled.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(successCalled.await(10, TimeUnit.SECONDS)).isTrue();
 			if (beforeTx) {
 				if (option == null) {
-					assertThat(order).containsExactly("interceptor", "tx");
+					assertThat(order).containsExactly("interceptor", "tx", "failure", "interceptor", "tx", "success");
 				}
 				else {
-					assertThat(order).containsExactly("tx", "interceptor", "tx"); // first one is on assignment
+					assertThat(order).containsExactly("tx", "interceptor", "tx", "failure", "interceptor", "tx",
+							"success"); // first one is on assignment
 				}
 			}
 			else {
 				if (option == null) {
-					assertThat(order).containsExactly("tx", "interceptor");
+					assertThat(order).containsExactly("tx", "interceptor", "failure", "tx", "interceptor", "success");
 				}
 				else {
-					assertThat(order).containsExactly("tx", "tx", "interceptor");
+					assertThat(order).containsExactly("tx", "tx", "interceptor", "failure", "tx", "interceptor",
+							"success");
 				}
 			}
 		}

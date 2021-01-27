@@ -565,6 +565,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.config.listen12Message.getPayload()).isInstanceOf(List.class);
 		List<?> errorPayload = (List<?>) this.config.listen12Message.getPayload();
 		assertThat(errorPayload.size()).isGreaterThanOrEqualTo(1);
+		assertThat(this.config.batchIntercepted).isTrue();
 	}
 
 	@Test
@@ -940,6 +941,8 @@ public class EnableKafkaIntegrationTests {
 
 		volatile boolean intercepted;
 
+		volatile boolean batchIntercepted;
+
 		@Autowired
 		private EmbeddedKafkaBroker embeddedKafka;
 
@@ -1116,6 +1119,10 @@ public class EnableKafkaIntegrationTests {
 			factory.setRecordFilterStrategy(recordFilter());
 			// always send to the same partition so the replies are in order for the test
 			factory.setReplyTemplate(partitionZeroReplyTemplate());
+			factory.setBatchInterceptor(records -> {
+				this.batchIntercepted = true;
+				return records;
+			});
 			return factory;
 		}
 

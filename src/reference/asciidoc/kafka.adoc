@@ -946,14 +946,13 @@ The `ConcurrentMessageListenerContainer` delegates to one or more `KafkaMessageL
 
 Starting with version 2.2.7, you can add a `RecordInterceptor` to the listener container; it will be invoked before calling the listener allowing inspection or modification of the record.
 If the interceptor returns null, the listener is not called.
-The interceptor is not invoked when the listener is a <<batch-listeners, batch listener>>.
+Starting with version 2.7, it has additional methods which are called after the listener exits (normally, or by throwing an exception).
+Also, starting with version 2.7, there is now a `BatchInterceptor`, providing similar functionality for <<batch-listeners>>.
 
-Starting with version 2.3, the `CompositeRecordInterceptor` can be used to invoke multiple interceptors.
+Starting with version 2.3, the `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
 
 By default, when using transactions, the interceptor is invoked after the transaction has started.
 Starting with version 2.3.4, you can set the listener container's `interceptBeforeTx` property to invoke the interceptor before the transaction has started instead.
-
-No interceptor is provided for batch listeners because Kafka already provides a `ConsumerInterceptor`.
 
 Starting with versions 2.3.8, 2.4.6, the `ConcurrentMessageListenerContainer` now supports https://kafka.apache.org/documentation/#static_membership[Static Membership] when the concurrency is greater than one.
 The `group.instance.id` is suffixed with `-n` with `n` starting at `1`.
@@ -1418,7 +1417,7 @@ public void listen(String str, ConsumerRecordMetadata meta) {
 This contains all the data from the `ConsumerRecord` except the key and value.
 
 [[batch-listeners]]
-====== Batch listeners
+====== Batch Listeners
 
 Starting with version 1.1, you can configure `@KafkaListener` methods to receive the entire batch of consumer records received from the consumer poll.
 To configure the listener container factory to create batch listeners, you can set the `batchListener` property.
@@ -2495,6 +2494,12 @@ Handler
 |See desc.
 |An error handler for a batch listener; defaults to a `RecoveringBatchErrorHandler` or `null` if transactions are being used (errors are handled by the `AfterRollbackProcessor`).
 
+|batch
+Interceptor
+|`null`
+|Set a `BatchInterceptor` to call before invoking the batch listener; does not apply to record listeners.
+Also see `interceptBeforeTx`.
+
 |beanName
 |bean name
 |The bean name of the container; suffixed with `-n` for child containers.
@@ -2533,7 +2538,7 @@ Requested
 |record
 Interceptor
 |`null`
-|Set a `RecordInterceptor` to call before invoking the listener; does not apply to batch listeners.
+|Set a `RecordInterceptor` to call before invoking the record listener; does not apply to batch listeners.
 Also see `interceptBeforeTx`.
 
 |topicCheck

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,25 +20,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.util.Assert;
 
 /**
- * A {@link RecordInterceptor} that delegates to one or more {@link RecordInterceptor}s in
+ * A {@link BatchInterceptor} that delegates to one or more {@link BatchInterceptor}s in
  * order.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
- * @author Artem Bilan
  * @author Gary Russell
- * @since 2.3
+ * @since 2.7
  *
  */
-public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V> {
+public class CompositeBatchInterceptor<K, V> implements BatchInterceptor<K, V> {
 
-	private final Collection<RecordInterceptor<K, V>> delegates = new ArrayList<>();
+	private final Collection<BatchInterceptor<K, V>> delegates = new ArrayList<>();
 
 	/**
 	 * Construct an instance with the provided delegates.
@@ -46,29 +45,29 @@ public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V>
 	 */
 	@SafeVarargs
 	@SuppressWarnings("varargs")
-	public CompositeRecordInterceptor(RecordInterceptor<K, V>... delegates) {
+	public CompositeBatchInterceptor(BatchInterceptor<K, V>... delegates) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.noNullElements(delegates, "'delegates' cannot have null entries");
 		this.delegates.addAll(Arrays.asList(delegates));
 	}
 
 	@Override
-	public ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record) {
-		ConsumerRecord<K, V> recordToIntercept = record;
-		for (RecordInterceptor<K, V> delegate : this.delegates) {
-			recordToIntercept = delegate.intercept(recordToIntercept);
+	public ConsumerRecords<K, V> intercept(ConsumerRecords<K, V> records) {
+		ConsumerRecords<K, V> recordsToIntercept = records;
+		for (BatchInterceptor<K, V> delegate : this.delegates) {
+			recordsToIntercept = delegate.intercept(recordsToIntercept);
 		}
-		return recordToIntercept;
+		return recordsToIntercept;
 	}
 
 	@Override
-	public void success(ConsumerRecord<K, V> record) {
-		this.delegates.forEach(del -> del.success(record));
+	public void success(ConsumerRecords<K, V> records) {
+		this.delegates.forEach(del -> del.success(records));
 	}
 
 	@Override
-	public void failure(ConsumerRecord<K, V> record, Exception exception) {
-		this.delegates.forEach(del -> del.failure(record, exception));
+	public void failure(ConsumerRecords<K, V> records, Exception exception) {
+		this.delegates.forEach(del -> del.failure(records, exception));
 	}
 
 }

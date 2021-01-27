@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,6 +94,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	private int topicCheckTimeout = DEFAULT_TOPIC_CHECK_TIMEOUT;
 
 	private RecordInterceptor<K, V> recordInterceptor;
+
+	private BatchInterceptor<K, V> batchInterceptor;
 
 	private boolean interceptBeforeTx;
 
@@ -299,7 +301,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * Set an interceptor to be called before calling the listener.
+	 * Set an interceptor to be called before calling the record listener.
 	 * Does not apply to batch listeners.
 	 * @param recordInterceptor the interceptor.
 	 * @since 2.2.7
@@ -307,6 +309,21 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
 		this.recordInterceptor = recordInterceptor;
+	}
+
+	protected BatchInterceptor<K, V> getBatchInterceptor() {
+		return this.batchInterceptor;
+	}
+
+	/**
+	 * Set an interceptor to be called before calling the record listener.
+	 * Does not apply to batch listeners.
+	 * @param batchInterceptor the interceptor.
+	 * @since 2.6.6
+	 * @see #setInterceptBeforeTx(boolean)
+	 */
+	public void setBatchInterceptor(BatchInterceptor<K, V> batchInterceptor) {
+		this.batchInterceptor = batchInterceptor;
 	}
 
 	protected boolean isInterceptBeforeTx() {
@@ -318,6 +335,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @param interceptBeforeTx true to intercept before the transaction.
 	 * @since 2.3.4
 	 * @see #setRecordInterceptor(RecordInterceptor)
+	 * @see #setBatchInterceptor(BatchInterceptor)
 	 */
 	public void setInterceptBeforeTx(boolean interceptBeforeTx) {
 		this.interceptBeforeTx = interceptBeforeTx;
