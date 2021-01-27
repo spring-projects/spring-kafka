@@ -66,7 +66,7 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 	}
 
 	public Flux<ConsumerRecord<K, V>> receiveAutoAck() {
-		return this.kafkaReceiver.receiveAutoAck().flatMap(Function.identity());
+		return this.kafkaReceiver.receiveAutoAck().concatMap(Function.identity());
 	}
 
 	public Flux<ConsumerRecord<K, V>> receiveAtMostOnce() {
