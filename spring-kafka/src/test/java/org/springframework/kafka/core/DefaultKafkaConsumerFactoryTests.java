@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -145,6 +145,10 @@ public class DefaultKafkaConsumerFactoryTests {
 		target.createConsumer(null, null, null, overrides);
 		assertThat(configPassedToKafkaConsumer.get("config1")).isEqualTo("overridden");
 		assertThat(configPassedToKafkaConsumer.get("config2")).isSameAs(originalConfig.get("config2"));
+		target.updateConfigs(Map.of("config1", "newValue"));
+		assertThat(target.getConfigurationProperties().get("config1")).isEqualTo("newValue");
+		target.removeConfig("config1");
+		assertThat(target.getConfigurationProperties().get("config1")).isNull();
 	}
 
 	@Test

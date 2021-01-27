@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.aopalliance.aop.Advice;
@@ -121,7 +122,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 			@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier,
 			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier) {
 
-		this.configs = new HashMap<>(configs);
+		this.configs = new ConcurrentHashMap<>(configs);
 		this.keyDeserializerSupplier = keyDeserializerSupplier == null ? () -> null : keyDeserializerSupplier;
 		this.valueDeserializerSupplier = valueDeserializerSupplier == null ? () -> null : valueDeserializerSupplier;
 	}
@@ -227,6 +228,16 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	@Override
 	public boolean removeListener(Listener<K, V> listener) {
 		return this.listeners.remove(listener);
+	}
+
+	@Override
+	public void updateConfigs(Map<String, Object> updates) {
+		this.configs.putAll(updates);
+	}
+
+	@Override
+	public void removeConfig(String configKey) {
+		this.configs.remove(configKey);
 	}
 
 	@Override

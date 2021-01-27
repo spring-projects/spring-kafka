@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -192,7 +192,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			@Nullable Supplier<Serializer<K>> keySerializerSupplier,
 			@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
 
-		this.configs = new HashMap<>(configs);
+		this.configs = new ConcurrentHashMap<>(configs);
 		this.keySerializerSupplier = keySerializerSupplier == null ? () -> null : keySerializerSupplier;
 		this.valueSerializerSupplier = valueSerializerSupplier == null ? () -> null : valueSerializerSupplier;
 		if (this.clientIdPrefix == null && configs.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String) {

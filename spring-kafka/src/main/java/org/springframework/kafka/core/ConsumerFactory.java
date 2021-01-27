@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -202,6 +202,23 @@ public interface ConsumerFactory<K, V> {
 	 */
 	default List<ConsumerPostProcessor<K, V>> getPostProcessors() {
 		return Collections.emptyList();
+	}
+
+	/**
+	 * Update the consumer configuration map; useful for situations such as
+	 * credential rotation.
+	 * @param updates the configuration properties to update.
+	 * @since 2.7
+	 */
+	default void updateConfigs(Map<String, Object> updates) {
+	}
+
+	/**
+	 * Remove the specified key from the configuration map.
+	 * @param configKey the key to remove.
+	 * @since 2.7
+	 */
+	default void removeConfig(String configKey) {
 	}
 
 	/**
