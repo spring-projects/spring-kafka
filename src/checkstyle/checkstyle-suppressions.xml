@@ -8,4 +8,5 @@
 	<suppress files="[\\/]test[\\/]" checks="Javadoc*"/>
 	<suppress files="KafkaMatchersTests" checks="RegexpSinglelineJava"/>
 	<suppress files="DeserializationException" checks="MutableException"/>
+	<suppress files="[\\/]kafka.docs[\\/]" checks="Regexp*"/>
 </suppressions>
