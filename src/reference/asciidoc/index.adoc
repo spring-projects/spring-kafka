@@ -5,6 +5,7 @@
 :numbered:
 :icons: font
 :hide-uri-scheme:
+:code-examples: ../../spring-kafka-docs/src/main/java/org/springframework/kafka/docs
 Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant
 
 ifdef::backend-html5[]

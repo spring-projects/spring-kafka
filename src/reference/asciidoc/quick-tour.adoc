@@ -72,27 +72,7 @@ Here is a minimal consumer application.
 ====
 [source, java]
 ----
-@SpringBootApplication
-public class Application {
-
-	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
-	}
-
-	@Bean
-	public NewTopic topic() {
-		return TopicBuilder.name("topic1")
-				.partitions(10)
-				.replicas(1)
-				.build();
-	}
-
-	@KafkaListener(id = "myId", topics = "topic1")
-	public void listen(String in) {
-		System.out.println(in);
-	}
-
-}
+include::{code-examples}/started/consumer/Application.java[tag=startedConsumer]
 ----
 ====
 
@@ -112,29 +92,7 @@ The `NewTopic` bean causes the topic to be created on the broker; it is not need
 ====
 [source, java]
 ----
-@SpringBootApplication
-public class Application {
-
-	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
-	}
-
-	@Bean
-	public NewTopic topic() {
-		return TopicBuilder.name("topic1")
-				.partitions(10)
-				.replicas(1)
-				.build();
-	}
-
-	@Bean
-	public ApplicationRunner runner(KafkaTemplate<String, String> template) {
-		return args -> {
-			template.send("topic1", "test");
-		};
-	}
-
-}
+include::{code-examples}/started/producer/Application.java[tag=startedProducer]
 ----
 ====
 
@@ -143,94 +101,17 @@ public class Application {
 IMPORTANT: Spring for Apache Kafka is designed to be used in a Spring Application Context.
 For example, if you create the listener container yourself outside of a Spring context, not all functions will work unless you satisfy all of the `...Aware` interfaces that the container implements.
 
-Here is an example of an application that does not use Spring Boot.
+Here is an example of an application that does not use Spring Boot; it has both a `Consumer` and `Producer`.
 
+.Without Boot
 ====
 [source,java]
 ----
-@Autowired
-private Listener listener;
+include::{code-examples}/started/noboot/Sender.java[tag=startedNoBootSender]
 
-@Autowired
-private KafkaTemplate<Integer, String> template;
+include::{code-examples}/started/noboot/Listener.java[tag=startedNoBootListener]
 
-@Test
-public void testSimple() throws Exception {
-    template.send("annotated1", 0, "foo");
-    template.flush();
-    assertTrue(this.listener.latch1.await(10, TimeUnit.SECONDS));
-}
-
-@Configuration
-@EnableKafka
-public class Config {
-
-    @Bean
-    ConcurrentKafkaListenerContainerFactory<Integer, String>
-                        kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
-                                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
-        return factory;
-    }
-
-    @Bean
-    public ConsumerFactory<Integer, String> consumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(consumerProps());
-    }
-
-    private Map<String, Object> consumerProps() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, group);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        ...
-        return props;
-    }
-
-    @Bean
-    public Listener listener() {
-        return new Listener();
-    }
-
-    @Bean
-    public ProducerFactory<Integer, String> producerFactory() {
-        return new DefaultKafkaProducerFactory<>(senderProps());
-    }
-
-    private Map<String, Object> senderProps() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 10);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        ...
-        return props;
-    }
-
-    @Bean
-    public KafkaTemplate<Integer, String> kafkaTemplate() {
-        return new KafkaTemplate<Integer, String>(producerFactory());
-    }
-
-}
-----
-====
-
-====
-[source, java]
-----
-public class Listener {
-
-    private final CountDownLatch latch1 = new CountDownLatch(1);
-
-    @KafkaListener(id = "foo", topics = "annotated1")
-    public void listen1(String foo) {
-        this.latch1.countDown();
-    }
-
-}
+include::{code-examples}/started/noboot/Config.java[tag=startedNoBootConfig]
 ----
 ====
 

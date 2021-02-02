@@ -1,0 +1,21 @@
+jar {
+    enabled = false
+}
+
+sourcesJar {
+    enabled = false
+}
+
+javadocJar {
+    enabled = false
+}
+
+publishMavenJavaPublicationToMavenLocal {
+    enabled = false
+}
+
+project.afterEvaluate {
+
+    project.tasks.artifactoryPublish.enabled(false)
+
+}
