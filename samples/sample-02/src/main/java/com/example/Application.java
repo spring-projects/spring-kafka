@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.context.annotation.Profile;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
@@ -55,7 +56,7 @@ public class Application {
 	 * Boot will autowire this into the container factory.
 	 */
 	@Bean
-	public SeekToCurrentErrorHandler errorHandler(KafkaTemplate<Object, Object> template) {
+	public SeekToCurrentErrorHandler errorHandler(KafkaOperations<Object, Object> template) {
 		return new SeekToCurrentErrorHandler(
 				new DeadLetterPublishingRecoverer(template), new FixedBackOff(1000L, 2));
 	}
@@ -85,6 +86,7 @@ public class Application {
 	}
 
 	@Bean
+	@Profile("default") // Don't run from test(s)
 	public ApplicationRunner runner() {
 		return args -> {
 			System.out.println("Hit Enter to terminate...");
