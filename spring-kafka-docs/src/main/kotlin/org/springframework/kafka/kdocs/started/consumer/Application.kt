@@ -51,7 +51,7 @@ class Application {
 
     @Bean
     fun runner(template: KafkaTemplate<String?, String?>): ApplicationRunner {
-        return ApplicationRunner { args: ApplicationArguments? -> template.send("topic1", "test") }
+        return ApplicationRunner { ApplicationArguments? -> template.send("topic1", "test") }
     }
 
     companion object {

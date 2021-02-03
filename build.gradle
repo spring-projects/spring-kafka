@@ -351,6 +351,12 @@ project ('spring-kafka-docs') {
 		api project (':spring-kafka')
 	}
 
+	compileKotlin {
+		kotlinOptions {
+			jvmTarget = '1.8'
+		}
+	}
+
 }
 
 sonarqube {
