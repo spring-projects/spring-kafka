@@ -70,9 +70,15 @@ Here is a minimal consumer application.
 
 .Application
 ====
-[source, java]
+[source, java, role="primary"]
+.Java
 ----
-include::{code-examples}/started/consumer/Application.java[tag=startedConsumer]
+include::{java-examples}/started/consumer/Application.java[tag=startedConsumer]
+----
+[source, kotlin, role="secondary"]
+.Kotlin
+----
+include::{kotlin-examples}/started/consumer/Application.kt[tag=startedConsumer]
 ----
 ====
 
@@ -90,9 +96,15 @@ The `NewTopic` bean causes the topic to be created on the broker; it is not need
 
 .Application
 ====
-[source, java]
+[source,java,role="primary"]
+.Java
 ----
-include::{code-examples}/started/producer/Application.java[tag=startedProducer]
+include::{java-examples}/started/producer/Application.java[tag=startedProducer]
+----
+[source,kotlin,role="secondary"]
+.Kotlin
+----
+include::{kotlin-examples}/started/producer/Application.kt[tag=startedProducer]
 ----
 ====
 
@@ -105,13 +117,23 @@ Here is an example of an application that does not use Spring Boot; it has both 
 
 .Without Boot
 ====
-[source,java]
+[source,java,role="primary"]
+.Java
 ----
-include::{code-examples}/started/noboot/Sender.java[tag=startedNoBootSender]
+include::{java-examples}/started/noboot/Sender.java[tag=startedNoBootSender]
 
-include::{code-examples}/started/noboot/Listener.java[tag=startedNoBootListener]
+include::{java-examples}/started/noboot/Listener.java[tag=startedNoBootListener]
 
-include::{code-examples}/started/noboot/Config.java[tag=startedNoBootConfig]
+include::{java-examples}/started/noboot/Config.java[tag=startedNoBootConfig]
+----
+[source,kotline,role="secondary"]
+.Kotlin
+----
+include::{kotlin-examples}/started/noboot/Sender.kt[tag=startedNoBootSender]
+
+include::{kotlin-examples}/started/noboot/Listener.kt[tag=startedNoBootListener]
+
+include::{kotlin-examples}/started/noboot/Config.kt[tag=startedNoBootConfig]
 ----
 ====
 

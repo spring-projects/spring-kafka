@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.docs.started.noboot;
+package org.springframework.kafka.jdocs.started.noboot;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.kafka.core.KafkaTemplate;

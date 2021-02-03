@@ -383,6 +383,7 @@ task prepareAsciidocBuild(type: Sync) {
 asciidoctorPdf {
 	dependsOn prepareAsciidocBuild
 	baseDirFollowsSourceFile()
+	configurations 'asciidoctorExt'
 
 	asciidoctorj {
 		sourceDir "$buildDir/asciidoc"
@@ -404,6 +405,7 @@ asciidoctorPdf {
 asciidoctor {
 	dependsOn asciidoctorPdf
 	baseDirFollowsSourceFile()
+	configurations 'asciidoctorExt'
 	sourceDir = file("$buildDir/asciidoc")
 	sources {
 		include '*.adoc'
@@ -533,3 +535,5 @@ publishing {
 		}
 	}
 }
+
+apply from: "${rootDir}/gradle/docs.gradle"

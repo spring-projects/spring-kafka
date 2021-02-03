@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.docs.started.noboot;
+package org.springframework.kafka.jdocs.started.noboot;
 
 import java.util.HashMap;
 import java.util.Map;

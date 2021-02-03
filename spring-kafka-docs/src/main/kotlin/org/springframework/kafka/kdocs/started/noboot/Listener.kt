@@ -13,25 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.springframework.kafka.kdocs.started.noboot
 
-package org.springframework.kafka.docs.started.noboot;
-
-import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.KafkaListener
 
 /**
  * Code snippet for quick start.
  *
  * @author Gary Russell
  * @since 2.7
- *
  */
 // tag::startedNoBootListener[]
-public class Listener {
+class Listener {
 
-    @KafkaListener(id = "listen1", topics = "topic1")
-    public void listen1(String in) {
-        System.out.println(in);
+    @KafkaListener(id = "listen1", topics = ["topic1"])
+    fun listen1(`in`: String) {
+        println(`in`)
     }
 
 }
-// end::startedNoBootListener[]
+// tag::startedNoBootListener[]
