@@ -382,7 +382,7 @@ task prepareAsciidocBuild(type: Sync) {
 	from {
 		configurations.docs.collect { zipTree(it) }
 	}
-	from 'src/reference/asciidoc/'
+	from 'src/reference/asciidoc/','spring-kafka-docs/src/main/java','spring-kafka-docs/src/main/kotlin'
 	into "$buildDir/asciidoc"
 }
 
