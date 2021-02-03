@@ -57,3 +57,4 @@ class Application {
     }
 
 }
+// end::startedProducer[]
