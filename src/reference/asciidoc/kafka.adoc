@@ -77,42 +77,15 @@ Version 2.3 introduced a new class `TopicBuilder` to make creation of such beans
 The following example shows how to do so:
 
 ====
-[source, java]
+[source, java, indent=0, role="primary"]
+.Java
 ----
-@Bean
-public KafkaAdmin admin() {
-    Map<String, Object> configs = new HashMap<>();
-    configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, ...);
-    return new KafkaAdmin(configs);
-}
-
-@Bean
-public NewTopic topic1() {
-    return TopicBuilder.name("thing1")
-            .partitions(10)
-            .replicas(3)
-            .compact()
-            .build();
-}
-
-@Bean
-public NewTopic topic2() {
-    return TopicBuilder.name("thing2")
-            .partitions(10)
-            .replicas(3)
-            .config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
-            .build();
-}
-
-@Bean
-public NewTopic topic3() {
-    return TopicBuilder.name("thing3")
-            .assignReplicas(0, Arrays.asList(0, 1))
-            .assignReplicas(1, Arrays.asList(1, 2))
-            .assignReplicas(2, Arrays.asList(2, 0))
-            .config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
-            .build();
-}
+include::{java-examples}/topics/Config.java[tag=topicBeans]
+----
+[source, kotlin, indent=0, role="secondary"]
+.Kotlin
+----
+include::{kotlin-examples}/topics/Config.kt[tag=topicBeans]
 ----
 ====
 
@@ -120,27 +93,15 @@ Starting with version 2.6, you can omit `.partitions()` and/or `replicas()` and 
 The broker version must be at least 2.4.0 to support this feature - see https://cwiki.apache.org/confluence/display/KAFKA/KIP-464%3A+Defaults+for+AdminClient%23createTopic[KIP-464].
 
 ====
-[source, java]
+[source, java, indent=0, role="primary"]
+.Java
 ----
-@Bean
-public NewTopic topic4() {
-    return TopicBuilder.name("defaultBoth")
-            .build();
-}
-
-@Bean
-public NewTopic topic5() {
-    return TopicBuilder.name("defaultPart")
-            .replicas(1)
-            .build();
-}
-
-@Bean
-public NewTopic topic6() {
-    return TopicBuilder.name("defaultRepl")
-            .partitions(3)
-            .build();
-}
+include::{java-examples}/topics/Config.java[tag=brokerProps]
+----
+[source, kotlin, indent=0, role="secondary"]
+.Kotlin
+----
+include::{kotlin-examples}/topics/Config.kt[tag=brokerProps]
 ----
 ====
 

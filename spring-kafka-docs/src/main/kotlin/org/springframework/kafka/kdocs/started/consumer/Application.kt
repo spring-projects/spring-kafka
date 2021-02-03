@@ -19,9 +19,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.apache.kafka.clients.admin.NewTopic
 import org.springframework.kafka.config.TopicBuilder
 import org.springframework.kafka.annotation.KafkaListener
-import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.ApplicationArguments
 import kotlin.jvm.JvmStatic
 import org.springframework.boot.SpringApplication
 import org.springframework.context.annotation.Bean
@@ -47,11 +44,6 @@ class Application {
     @KafkaListener(id = "myId", topics = ["topic1"])
     fun listen(`in`: String?) {
         println(`in`)
-    }
-
-    @Bean
-    fun runner(template: KafkaTemplate<String?, String?>): ApplicationRunner {
-        return ApplicationRunner { _: ApplicationArguments? -> template.send("topic1", "test") }
     }
 
     companion object {
