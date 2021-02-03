@@ -382,7 +382,7 @@ task prepareAsciidocBuild(type: Sync) {
 	from {
 		configurations.docs.collect { zipTree(it) }
 	}
-	from 'src/reference/asciidoc/','spring-kafka-docs/src/main/java','spring-kafka-docs/src/main/kotlin'
+	from 'spring-kafka-docs/src/main/asciidoc/','spring-kafka-docs/src/main/java','spring-kafka-docs/src/main/kotlin'
 	into "$buildDir/asciidoc"
 }
 
@@ -439,7 +439,9 @@ asciidoctor {
 		'toc': 'left',
 		'toclevbels': '4',
 		revnumber: project.version,
-		'project-version': project.version
+		'project-version': project.version,
+		'java-examples': 'org/springframework/kafka/jdocs',
+		'kotlin-examples': 'org/springframework/kafka/kdocs'
 }
 
 task reference(dependsOn: asciidoctor) {

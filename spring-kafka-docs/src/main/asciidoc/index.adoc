@@ -5,8 +5,8 @@
 :numbered:
 :icons: font
 :hide-uri-scheme:
-:java-examples: ../../spring-kafka-docs/src/main/java/org/springframework/kafka/jdocs
-:kotlin-examples: ../../spring-kafka-docs/src/main/kotlin/org/springframework/kafka/kdocs
+:java-examples: org/springframework/kafka/jdocs
+:kotlin-examples: org/springframework/kafka/kdocs
 Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant
 
 ifdef::backend-html5[]
