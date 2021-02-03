@@ -54,12 +54,5 @@ public class Application {
         System.out.println(in);
     }
 
-    @Bean
-    public ApplicationRunner runner(KafkaTemplate<String, String> template) {
-        return args -> {
-            template.send("topic1", "test");
-        };
-    }
-
 }
 // end::startedConsumer[]
