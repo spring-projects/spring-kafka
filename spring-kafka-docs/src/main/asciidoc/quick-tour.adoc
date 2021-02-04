@@ -7,9 +7,10 @@ The easiest way to do that is to declare a dependency in your build tool.
 
 If you are not using Spring Boot, declare the `spring-kafka` jar as a dependency in your project.
 
-.Maven
+
 ====
-[source,xml,subs="+attributes"]
+[source,xml,subs="+attributes",role="primary"]
+.Maven
 ----
 <dependency>
   <groupId>org.springframework.kafka</groupId>
@@ -17,11 +18,9 @@ If you are not using Spring Boot, declare the `spring-kafka` jar as a dependency
   <version>{project-version}</version>
 </dependency>
 ----
-====
 
+[source,groovy,subs="+attributes",role="secondary"]
 .Gradle
-====
-[source,groovy,subs="+attributes"]
 ----
 compile 'org.springframework.kafka:spring-kafka:{project-version}'
 ----
@@ -29,20 +28,17 @@ compile 'org.springframework.kafka:spring-kafka:{project-version}'
 
 IMPORTANT: When using Spring Boot, (and you haven't used start.spring.io to create your project), omit the version and Boot will automatically bring in the correct version that is compatible with your Boot version:
 
-.Maven
 ====
-[source,xml,subs="+attributes"]
+[source,xml,subs="+attributes",role="primary"]
+.Maven
 ----
 <dependency>
   <groupId>org.springframework.kafka</groupId>
   <artifactId>spring-kafka</artifactId>
 </dependency>
 ----
-====
-
+[source,groovy,subs="+attributes",role="secondary"]
 .Gradle
-====
-[source,groovy,subs="+attributes"]
 ----
 compile 'org.springframework.kafka:spring-kafka'
 ----
@@ -108,7 +104,7 @@ include::{kotlin-examples}/started/producer/Application.kt[tag=startedProducer]
 ----
 ====
 
-==== With Java Configuration (No Spring Boot)
+===== With Java Configuration (No Spring Boot)
 
 IMPORTANT: Spring for Apache Kafka is designed to be used in a Spring Application Context.
 For example, if you create the listener container yourself outside of a Spring context, not all functions will work unless you satisfy all of the `...Aware` interfaces that the container implements.

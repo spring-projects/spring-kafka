@@ -7,10 +7,9 @@ This is especially true when using the embedded Kafka broker in `spring-kafka-te
 
 IMPORTANT: Backwards compatibility is not supported for all Boot versions; Spring for Apache Kafka 2.6 has been tested with Spring Boot 2.4 and 2.3.
 
-**maven**
-
 ====
-[source, xml, subs="+attributes"]
+[source, xml, subs="+attributes", role="primary"]
+.Maven
 ----
 <dependency>
     <groupId>org.springframework.kafka</groupId>
@@ -61,12 +60,9 @@ IMPORTANT: Backwards compatibility is not supported for all Boot versions; Sprin
     <scope>test</scope>
 </dependency>
 ----
-====
 
-**gradle**
-
-====
-[source, groovy, subs="+attributes"]
+[source, groovy, subs="+attributes", role="secondary"]
+.Gradle
 ----
 dependencies {
 

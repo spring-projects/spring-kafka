@@ -42,7 +42,7 @@ ext {
 	linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
 	linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
-	docResourcesVersion = '0.2.4'
+	docResourcesVersion = '0.2.5'
 
 
 	if (gitPresent) {
@@ -408,6 +408,29 @@ asciidoctorPdf {
 	}
 }
 
+asciidoctorj {
+	version = '2.4.1'
+	// fatalWarnings ".*"
+	options doctype: 'book', eruby: 'erubis'
+	attributes([
+			icons: 'font',
+			idprefix: '',
+			idseparator: '-',
+			docinfo: 'shared',
+			revnumber: project.version,
+			sectanchors: '',
+			sectnums: '',
+			'source-highlighter': 'highlight.js',
+			highlightjsdir: 'js/highlight',
+			'highlightjs-theme': 'googlecode',
+			stylesdir: 'css/',
+			stylesheet: 'stylesheet.css',
+			'spring-version': project.version,
+			'java-examples': 'org/springframework/kafka/jdocs',
+			'kotlin-examples': 'org/springframework/kafka/kdocs'
+	])
+}
+
 asciidoctor {
 	dependsOn asciidoctorPdf
 	baseDirFollowsSourceFile()
@@ -421,27 +444,7 @@ asciidoctor {
 			include 'images/*', 'css/**', 'js/**'
 		}
 	}
-	options doctype: 'book', eruby: 'erubis'
 
-	attributes 'docinfo': 'shared',
-		stylesdir: "css/",
-		stylesheet: 'spring.css',
-		'linkcss': true,
-		'icons': 'font',
-		'sectanchors': '',
-		'source-highlighter': 'highlight.js',
-		'highlightjsdir': 'js/highlight',
-		'highlightjs-theme': 'github',
-		'idprefix': '',
-		'idseparator': '-',
-		'spring-version': project.version,
-		'allow-uri-read': '',
-		'toc': 'left',
-		'toclevbels': '4',
-		revnumber: project.version,
-		'project-version': project.version,
-		'java-examples': 'org/springframework/kafka/jdocs',
-		'kotlin-examples': 'org/springframework/kafka/kdocs'
 }
 
 task reference(dependsOn: asciidoctor) {
