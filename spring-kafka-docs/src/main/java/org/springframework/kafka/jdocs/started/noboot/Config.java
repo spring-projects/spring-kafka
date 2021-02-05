@@ -75,7 +75,7 @@ public class Config {
 
     @Bean
     public Sender sender(KafkaTemplate<Integer, String> template) {
-    	return new Sender(template);
+        return new Sender(template);
     }
 
     @Bean
