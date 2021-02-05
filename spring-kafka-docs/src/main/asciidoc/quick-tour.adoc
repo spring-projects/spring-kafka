@@ -122,7 +122,7 @@ include::{java-examples}/started/noboot/Listener.java[tag=startedNoBootListener]
 
 include::{java-examples}/started/noboot/Config.java[tag=startedNoBootConfig]
 ----
-[source,kotline,role="secondary"]
+[source,kotlin,role="secondary"]
 .Kotlin
 ----
 include::{kotlin-examples}/started/noboot/Sender.kt[tag=startedNoBootSender]

@@ -141,6 +141,7 @@ subprojects { subproject ->
 
 	compileTestJava {
 		sourceCompatibility = 11
+		options.encoding = 'UTF-8'
 	}
 
 	compileTestKotlin {
@@ -426,6 +427,7 @@ asciidoctorj {
 			stylesdir: 'css/',
 			stylesheet: 'stylesheet.css',
 			'spring-version': project.version,
+			'project-version': project.version,
 			'java-examples': 'org/springframework/kafka/jdocs',
 			'kotlin-examples': 'org/springframework/kafka/kdocs'
 	])

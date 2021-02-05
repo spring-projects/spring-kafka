@@ -15,77 +15,61 @@
  */
 package org.springframework.kafka.kdocs.topics
 
-import org.springframework.kafka.core.KafkaAdmin
 import org.apache.kafka.clients.admin.AdminClientConfig
-import org.apache.kafka.clients.admin.NewTopic
-import org.springframework.kafka.config.TopicBuilder
 import org.apache.kafka.common.config.TopicConfig
 import org.springframework.context.annotation.Bean
+import org.springframework.kafka.config.TopicBuilder
+import org.springframework.kafka.core.KafkaAdmin
 import java.util.*
 
 /**
  * Snippet for Configuring Topics section.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  * @since 2.7
  */
 class Config {
 
     // tag::topicBeans[]
     @Bean
-    fun admin(): KafkaAdmin {
-        val configs: MutableMap<String, Any> = HashMap()
-        configs[AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG] = "localhost:9092"
-        return KafkaAdmin(configs)
-    }
+    fun admin() = KafkaAdmin(mapOf(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092"))
 
     @Bean
-    fun topic1(): NewTopic {
-        return TopicBuilder.name("thing1")
+    fun topic1() =
+        TopicBuilder.name("thing1")
             .partitions(10)
             .replicas(3)
             .compact()
             .build()
-    }
 
     @Bean
-    fun topic2(): NewTopic {
-        return TopicBuilder.name("thing2")
+    fun topic2() =
+        TopicBuilder.name("thing2")
             .partitions(10)
             .replicas(3)
             .config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
             .build()
-    }
 
     @Bean
-    fun topic3(): NewTopic {
-        return TopicBuilder.name("thing3")
+    fun topic3() =
+        TopicBuilder.name("thing3")
             .assignReplicas(0, Arrays.asList(0, 1))
             .assignReplicas(1, Arrays.asList(1, 2))
             .assignReplicas(2, Arrays.asList(2, 0))
             .config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
             .build()
-    }
+
     // end::topicBeans[]
     // tag::brokerProps[]
     @Bean
-    fun topic4(): NewTopic {
-        return TopicBuilder.name("defaultBoth")
-            .build()
-    }
+    fun topic4() = TopicBuilder.name("defaultBoth").build()
 
     @Bean
-    fun topic5(): NewTopic {
-        return TopicBuilder.name("defaultPart")
-            .replicas(1)
-            .build()
-    }
+    fun topic5() = TopicBuilder.name("defaultPart").replicas(1).build()
 
     @Bean
-    fun topic6(): NewTopic {
-        return TopicBuilder.name("defaultRepl")
-            .partitions(3)
-            .build()
-    } // end::brokerProps[]
+    fun topic6() = TopicBuilder.name("defaultRepl").partitions(3).build()
+    // end::brokerProps[]
 
 }

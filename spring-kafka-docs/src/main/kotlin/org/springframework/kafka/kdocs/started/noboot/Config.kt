@@ -24,78 +24,55 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.annotation.EnableKafka
-import org.springframework.kafka.core.ConsumerFactory
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory
-import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.core.ProducerFactory
-import org.springframework.kafka.core.DefaultKafkaProducerFactory
-import java.util.HashMap
+import org.springframework.kafka.core.*
 
 /**
  * Code snippet for quick start.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  * @since 2.7
  */
 // tag::startedNoBootConfig[]
 @Configuration
 @EnableKafka
 class Config {
-    @Bean
-    fun kafkaListenerContainerFactory(consumerFactory: ConsumerFactory<Int, String>):
-            ConcurrentKafkaListenerContainerFactory<Int, String> {
-
-        val factory = ConcurrentKafkaListenerContainerFactory<Int, String>()
-        factory.consumerFactory = consumerFactory
-        return factory
-    }
 
     @Bean
-    fun consumerFactory(): ConsumerFactory<Int, String> {
-        return DefaultKafkaConsumerFactory(consumerProps())
-    }
+    fun kafkaListenerContainerFactory(consumerFactory: ConsumerFactory<Int, String>) =
+        ConcurrentKafkaListenerContainerFactory<Int, String>().also { it.consumerFactory = consumerFactory }
 
-    private fun consumerProps(): Map<String, Any> {
-        val props: MutableMap<String, Any> = HashMap()
-        props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = "localhost:9092"
-        props[ConsumerConfig.GROUP_ID_CONFIG] = "group"
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = IntegerDeserializer::class.java
-        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
-        props[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
-        // ...
-        return props
-    }
 
     @Bean
-    fun sender(template: KafkaTemplate<Int, String>): Sender {
-        return Sender(template)
-    }
+    fun consumerFactory() = DefaultKafkaConsumerFactory<Int, String>(consumerProps)
+
+    val consumerProps = mapOf(
+        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092",
+        ConsumerConfig.GROUP_ID_CONFIG to "group",
+        ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to IntegerDeserializer::class.java,
+        ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to "earliest"
+    )
 
     @Bean
-    fun listener(): Listener {
-        return Listener()
-    }
+    fun sender(template: KafkaTemplate<Int, String>) = Sender(template)
 
     @Bean
-    fun producerFactory(): ProducerFactory<Int, String> {
-        return DefaultKafkaProducerFactory(senderProps())
-    }
-
-    private fun senderProps(): Map<String, Any> {
-        val props: MutableMap<String, Any> = HashMap()
-        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = "localhost:9092"
-        props[ProducerConfig.LINGER_MS_CONFIG] = 10
-        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = IntegerSerializer::class.java
-        props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-        //...
-        return props
-    }
+    fun listener() = Listener()
 
     @Bean
-    fun kafkaTemplate(producerFactory: ProducerFactory<Int, String>): KafkaTemplate<Int, String> {
-        return KafkaTemplate(producerFactory)
-    }
+    fun producerFactory() = DefaultKafkaProducerFactory<Int, String>(senderProps)
+
+    val senderProps = mapOf(
+        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9092",
+        ProducerConfig.LINGER_MS_CONFIG to 10,
+        ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to IntegerSerializer::class.java,
+        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java
+    )
+
+    @Bean
+    fun kafkaTemplate(producerFactory: ProducerFactory<Int, String>) = KafkaTemplate(producerFactory)
 
 }
 // end::startedNoBootConfig[]

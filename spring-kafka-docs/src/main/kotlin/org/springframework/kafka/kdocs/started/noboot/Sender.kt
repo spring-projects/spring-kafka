@@ -15,14 +15,17 @@
  */
 package org.springframework.kafka.kdocs.started.noboot
 
+import org.springframework.boot.runApplication
 import org.springframework.kafka.core.KafkaTemplate
 import kotlin.jvm.JvmStatic
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
+import org.springframework.kafka.kdocs.started.producer.Application
 
 /**
  * Code snippet for quick start.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  * @since 2.7
  */
 // tag::startedNoBootSender[]
@@ -32,12 +35,9 @@ class Sender(private val template: KafkaTemplate<Int, String>) {
         template.send("topic1", key, toSend)
     }
 
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            val context = AnnotationConfigApplicationContext(Config::class.java)
-            context.getBean(Sender::class.java).send("test", 42)
-        }
+    fun main(args: Array<String>) {
+        val context = runApplication<Sender>(*args)
+        context.getBean(Sender::class.java).send("test", 42)
     }
 
 }
