@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
@@ -210,6 +211,22 @@ public class DeadLetterPublishingRecovererTests {
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
 		recoverer.accept(record, new RuntimeException());
 		verify(template2).send(any(ProducerRecord.class));
+	}
+
+	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	void testDefaultDestinationResolver() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		given(template.isTransactional()).willReturn(true);
+		given(template.inTransaction()).willReturn(false);
+		given(template.isAllowNonTransactional()).willReturn(true);
+		given(template.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		recoverer.accept(record, new RuntimeException());
+		verify(template, never()).executeInTransaction(any());
+		// ProducerRecord has null partition -> it will be assigned by the broker
+		verify(template).send(argThat((ProducerRecord it) -> it.partition() == null));
 	}
 
 	private byte[] header(boolean isKey) {

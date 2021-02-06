@@ -55,7 +55,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
-		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
+		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", -1);
 
 	private final KafkaOperations<Object, Object> template;
 
