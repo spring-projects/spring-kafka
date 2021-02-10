@@ -749,11 +749,11 @@ public class TransactionalContainerTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
 
 			@Override
-			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+			public void accept(ConsumerRecord<?, ?> record, Consumer<?, ?> consumer, Exception exception) {
 				if (recovererShouldFail.getAndSet(false)) {
 					throw new RuntimeException("test recoverer failure");
 				}
-				super.accept(record, exception);
+				super.accept(record, consumer, exception);
 				recoverLatch.countDown();
 			}
 

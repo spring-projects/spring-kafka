@@ -23,17 +23,22 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
+import java.time.Duration;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -65,9 +70,20 @@ public class DeadLetterPublishingRecovererTests {
 		given(template.send(any(ProducerRecord.class))).willReturn(new SettableListenableFuture());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
-		recoverer.accept(record, new RuntimeException());
+		Consumer consumer = mock(Consumer.class);
+		given(consumer.partitionsFor("foo.DLT", Duration.ofSeconds(5)))
+				.willReturn(Collections.singletonList(new PartitionInfo("foo", 0, null, null, null)));
+		recoverer.accept(record, consumer, new RuntimeException());
 		verify(template, never()).executeInTransaction(any());
-		verify(template).send(any(ProducerRecord.class));
+		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(captor.capture());
+		assertThat(captor.getValue().partition()).isEqualTo(0);
+		verify(consumer).partitionsFor("foo.DLT", Duration.ofSeconds(5));
+
+		record = new ConsumerRecord<>("foo", 1, 0L, "bar", "baz");
+		recoverer.accept(record, consumer, new RuntimeException());
+		verify(template, times(2)).send(captor.capture());
+		assertThat(captor.getValue().partition()).isNull();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

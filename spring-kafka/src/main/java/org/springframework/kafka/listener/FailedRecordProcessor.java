@@ -263,9 +263,9 @@ public abstract class FailedRecordProcessor extends KafkaExceptionLogLevelAware 
 					this.failureTracker.getRetryListeners().forEach(rl ->
 							rl.recoveryFailed(records.get(0), thrownException, ex));
 				}
-				return (rec, excep, cont) -> NEVER_SKIP_PREDICATE.test(rec, excep);
+				return (rec, excep, cont, consumer) -> NEVER_SKIP_PREDICATE.test(rec, excep);
 			}
-			return (rec, excep, cont) -> ALWAYS_SKIP_PREDICATE.test(rec, excep);
+			return (rec, excep, cont, consumer) -> ALWAYS_SKIP_PREDICATE.test(rec, excep);
 		}
 	}
 

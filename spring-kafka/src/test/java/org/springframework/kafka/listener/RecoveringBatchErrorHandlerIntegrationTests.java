@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -170,11 +170,11 @@ public class RecoveringBatchErrorHandlerIntegrationTests {
 						(r, e) -> new TopicPartition(topic2DLT, r.partition())) {
 
 			@Override
-			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+			public void accept(ConsumerRecord<?, ?> record, Consumer<?, ?> consumer, Exception exception) {
 				if (failRecovery.getAndSet(false)) {
 					throw new RuntimeException("Recovery failed");
 				}
-				super.accept(record, exception);
+				super.accept(record, consumer, exception);
 			}
 
 		};

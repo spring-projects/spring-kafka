@@ -22,25 +22,29 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.lang.Nullable;
 
 /**
- * Called to determine whether a record should be skipped.
+ * A {@link ConsumerRecordRecoverer} that supports getting a reference to the
+ * {@link Consumer}.
  *
  * @author Gary Russell
  * @since 2.7
+ *
  */
 @FunctionalInterface
-public interface RecoveryStrategy {
+public interface ConsumerAwareRecordRecoverer extends ConsumerRecordRecoverer {
+
+
+	@Override
+	default void accept(ConsumerRecord<?, ?> record, Exception exception) {
+		accept(record, null, exception);
+	}
 
 	/**
-	 * Return true if the record should be skipped because it was successfully
-	 * recovered.
+	 * Recover the record.
 	 * @param record the record.
-	 * @param ex the exception.
-	 * @param container the container (or parent if a child container).
 	 * @param consumer the consumer.
-	 * @return true to skip.
-	 * @throws InterruptedException if the thread is interrupted.
+	 * @param exception the exception.
+	 * @since 2.7
 	 */
-	boolean recovered(ConsumerRecord<?, ?> record, Exception ex, @Nullable MessageListenerContainer container,
-			@Nullable Consumer<?, ?> consumer) throws InterruptedException;
+	void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception);
 
 }

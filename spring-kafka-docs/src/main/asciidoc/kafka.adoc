@@ -5294,6 +5294,10 @@ public ErrorHandler eh(KafkaOperations<String, String> template) {
 ----
 ====
 
+Starting with version 2.7, the recoverer checks that the partition selected by the destination resolver actually exists.
+If the partition is not present, the partition in the `ProducerRecord` is set to `null`, allowing the `KafkaProducer` to select the partition.
+You can disable this check by setting the `verifyPartition` property to `false`.
+
 [[kerberos]]
 ==== JAAS and Kerberos
 

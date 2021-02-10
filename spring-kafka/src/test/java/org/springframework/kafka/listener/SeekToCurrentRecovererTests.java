@@ -67,6 +67,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -127,8 +128,8 @@ public class SeekToCurrentRecovererTests {
 						(r, e) -> new TopicPartition(topic1DLT, r.partition())) {
 
 			@Override
-			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
-				super.accept(record, exception);
+			public void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception) {
+				super.accept(record, consumer, exception);
 				if (exception instanceof ListenerExecutionFailedException) {
 					failedGroupId.set(((ListenerExecutionFailedException) exception).getGroupId());
 				}

@@ -20,14 +20,18 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -50,12 +54,14 @@ import org.springframework.util.ObjectUtils;
  * @since 2.2
  *
  */
-public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
+public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecoverer {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
 		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
+
+	private static final long FIVE = 5L;
 
 	private final KafkaOperations<Object, Object> template;
 
@@ -68,6 +74,10 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 	private boolean retainExceptionHeader;
 
 	private BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction = (rec, ex) -> null;
+
+	private boolean verifyPartition = true;
+
+	private Duration partitionInfoTimeout = Duration.ofSeconds(FIVE);
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
@@ -165,9 +175,36 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 		this.headersFunction = headersFunction;
 	}
 
+	/**
+	 * Set to false to disable partition verification. When true, verify that the
+	 * partition returned by the resolver actually exists. If not, set the
+	 * {@link ProducerRecord#partition()} to null, allowing the producer to determine the
+	 * destination partition.
+	 * @param verifyPartition false to disable.
+	 * @since 2.7
+	 * @see #setPartitionInfoTimeout(Duration)
+	 */
+	public void setVerifyPartition(boolean verifyPartition) {
+		this.verifyPartition = verifyPartition;
+	}
+
+	/**
+	 * Time to wait for partition information when verifying. Default is 5 seconds.
+	 * @param partitionInfoTimeout the timeout.
+	 * @since 2.7
+	 * @see #setVerifyPartition(boolean)
+	 */
+	public void setPartitionInfoTimeout(Duration partitionInfoTimeout) {
+		Assert.notNull(partitionInfoTimeout, "'partitionInfoTimeout' cannot be null");
+		this.partitionInfoTimeout = partitionInfoTimeout;
+	}
+
 	@Override
-	public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+	public void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception) {
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
+		if (consumer != null && this.verifyPartition) {
+			tp = checkPartition(tp, consumer);
+		}
 		DeserializationException vDeserEx = ListenerUtils.getExceptionFromHeader(record,
 				ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		DeserializationException kDeserEx = ListenerUtils.getExceptionFromHeader(record,
@@ -192,6 +229,30 @@ public class DeadLetterPublishingRecoverer implements ConsumerRecordRecoverer {
 		}
 		else {
 			publish(outRecord, kafkaTemplate);
+		}
+	}
+
+	private TopicPartition checkPartition(TopicPartition tp, Consumer<?, ?> consumer) {
+		if (tp.partition() < 0) {
+			return tp;
+		}
+		try {
+			List<PartitionInfo> partitions = consumer.partitionsFor(tp.topic(), this.partitionInfoTimeout);
+			if (partitions == null) {
+				this.logger.debug(() -> "Could not obtain partition info for " + tp.topic());
+				return tp;
+			}
+			boolean anyMatch = partitions.stream().anyMatch(pi -> pi.partition() == tp.partition());
+			if (!anyMatch) {
+				this.logger.warn(() -> "Destination resolver returned non-existent partition " + tp
+						+ ", KafkaProducer will determine partition to use for this topic");
+				return new TopicPartition(tp.topic(), -1);
+			}
+			return tp;
+		}
+		catch (Exception ex) {
+			this.logger.debug(ex, () -> "Could not obtain partition info for " + tp.topic());
+			return tp;
 		}
 	}
 

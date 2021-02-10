@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.SendResult;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.util.concurrent.ListenableFuture;
 
@@ -167,6 +168,7 @@ public interface KafkaOperations<K, V> {
 	 * @return the result.
 	 * @since 1.1
 	 */
+	@Nullable
 	<T> T execute(ProducerCallback<K, V, T> callback);
 
 	/**
@@ -178,6 +180,7 @@ public interface KafkaOperations<K, V> {
 	 * @return the result.
 	 * @since 1.1
 	 */
+	@Nullable
 	<T> T executeInTransaction(OperationsCallback<K, V, T> callback);
 
 	/**

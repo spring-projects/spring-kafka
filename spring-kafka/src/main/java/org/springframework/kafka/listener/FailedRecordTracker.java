@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
@@ -46,7 +47,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private final ThreadLocal<Map<TopicPartition, FailedRecord>> failures = new ThreadLocal<>(); // intentionally not static
 
-	private final BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer;
+	private final ConsumerAwareRecordRecoverer recoverer;
 
 	private final boolean noRetries;
 
@@ -65,7 +66,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
-			this.recoverer = (rec, thr) -> {
+			this.recoverer = (rec, consumer, thr) -> {
 				Map<TopicPartition, FailedRecord> map = this.failures.get();
 				FailedRecord failedRecord = null;
 				if (map != null) {
@@ -79,7 +80,12 @@ class FailedRecordTracker implements RecoveryStrategy {
 			};
 		}
 		else {
-			this.recoverer = recoverer;
+			if (recoverer instanceof ConsumerAwareRecordRecoverer) {
+				this.recoverer = (ConsumerAwareRecordRecoverer) recoverer;
+			}
+			else {
+				this.recoverer = (rec, consumer, ex) -> recoverer.accept(rec, ex);
+			}
 		}
 		this.noRetries = backOff.start().nextBackOff() == BackOffExecution.STOP;
 		this.backOff = backOff;
@@ -136,7 +142,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	boolean skip(ConsumerRecord<?, ?> record, Exception exception) {
 		try {
-			return recovered(record, exception, null);
+			return recovered(record, exception, null, null);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -146,10 +152,11 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	@Override
 	public boolean recovered(ConsumerRecord<?, ?> record, Exception exception,
-			@Nullable MessageListenerContainer container) throws InterruptedException {
+			@Nullable MessageListenerContainer container,
+			@Nullable Consumer<?, ?> consumer) throws InterruptedException {
 
 		if (this.noRetries) {
-			attemptRecovery(record, exception, null);
+			attemptRecovery(record, exception, null, consumer);
 			return true;
 		}
 		Map<TopicPartition, FailedRecord> map = this.failures.get();
@@ -172,7 +179,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 			return false;
 		}
 		else {
-			attemptRecovery(record, exception, topicPartition);
+			attemptRecovery(record, exception, topicPartition, consumer);
 			map.remove(topicPartition);
 			if (map.isEmpty()) {
 				this.failures.remove();
@@ -213,9 +220,11 @@ class FailedRecordTracker implements RecoveryStrategy {
 		return backOffToUse != null ? backOffToUse : this.backOff;
 	}
 
-	private void attemptRecovery(ConsumerRecord<?, ?> record, Exception exception, @Nullable TopicPartition tp) {
+	private void attemptRecovery(ConsumerRecord<?, ?> record, Exception exception, @Nullable TopicPartition tp,
+			Consumer<?, ?> consumer) {
+
 		try {
-			this.recoverer.accept(record, exception);
+			this.recoverer.accept(record, consumer, exception);
 			this.retryListeners.forEach(rl -> rl.recovered(record, exception));
 		}
 		catch (RuntimeException e) {

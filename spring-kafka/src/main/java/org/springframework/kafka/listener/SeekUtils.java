@@ -76,7 +76,7 @@ public final class SeekUtils {
 	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
 			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, LogAccessor logger) {
 
-		return doSeeks(records, consumer, exception, recoverable, (rec, ex, cont) -> skipper.test(rec, ex), null,
+		return doSeeks(records, consumer, exception, recoverable, (rec, ex, cont, cons) -> skipper.test(rec, ex), null,
 				logger);
 	}
 
@@ -101,7 +101,7 @@ public final class SeekUtils {
 		records.forEach(record -> {
 			if (recoverable && first.get()) {
 				try {
-					boolean test = recovery.recovered(record, exception, container);
+					boolean test = recovery.recovered(record, exception, container, consumer);
 					skipped.set(test);
 				}
 				catch (Exception ex) {
@@ -161,7 +161,7 @@ public final class SeekUtils {
 			BiPredicate<ConsumerRecord<?, ?>, Exception> skipPredicate, LogAccessor logger, Level level) {
 
 		seekOrRecover(thrownException, records, consumer, container, commitRecovered,
-				(rec, ex, cont) -> skipPredicate.test(rec, ex), logger, level);
+				(rec, ex, cont, cons) -> skipPredicate.test(rec, ex), logger, level);
 
 	}
 

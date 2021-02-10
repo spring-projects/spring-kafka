@@ -40,4 +40,7 @@ See <<kafka-validation>> for more information.
 Now, if both the key and value fail deserialization, the original values are published to the DLT.
 Previously, the value was populated but the key `DeserializationException` remained in the headers.
 There is a breaking API change, if you subclassed the recoverer and overrode the `createProducerRecord` method.
+
+In addition, the recoverer verifies that the partition selected by the destination resolver actually exists before publishing to it.
+
 See <<dead-letters>> for more information.
