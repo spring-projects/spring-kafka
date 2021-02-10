@@ -47,9 +47,11 @@ You should also set the container's `AckMode` to `MANUAL` to prevent the contain
 Howewever, starting with version 2.5.5, as shown above, you can apply an initial offset to all partitions; see <<manual-assignment>> for more information.
 
 [[ex-jdbc-sync]]
-=== Example of Transactions with ChainedKafkaTransactionManager
+=== Examples of Kafka Transactions with Other Transaction Managers
 
-The following Spring Boot application is an example of synchronizing database and Kafka transactions.
+The following Spring Boot application is an example of chaining database and Kafka transactions.
+The listener container starts the Kafka transaction and the `@Transactional` annotation starts the DB transaction.
+The DB transaction is committed first; if the Kafka transaction fails to commit, the record will be redelivered so the DB update should be idempotent.
 
 ====
 [source, java]
@@ -67,29 +69,8 @@ public class Application {
     }
 
     @Bean
-    public ChainedKafkaTransactionManager<Object, Object> chainedTm(
-            KafkaTransactionManager<String, String> ktm,
-            DataSourceTransactionManager dstm) {
-
-        return new ChainedKafkaTransactionManager<>(ktm, dstm);
-    }
-
-    @Bean
     public DataSourceTransactionManager dstm(DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
-            ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
-            ConsumerFactory<Object, Object> kafkaConsumerFactory,
-            ChainedKafkaTransactionManager<Object, Object> chainedTM) {
-
-        ConcurrentKafkaListenerContainerFactory<Object, Object> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        configurer.configure(factory, kafkaConsumerFactory);
-        factory.getContainerProperties().setTransactionManager(chainedTM);
-        return factory;
     }
 
     @Component
@@ -105,6 +86,7 @@ public class Application {
         }
 
         @KafkaListener(id = "group1", topics = "topic1")
+        @Transactional("dstm")
         public void listen1(String in) {
             this.kafkaTemplate.send("topic2", in.toUpperCase());
             this.jdbcTemplate.execute("insert into mytable (data) values ('" + in + "')");
@@ -154,5 +136,38 @@ spring.kafka.producer.transaction-id-prefix=tx-
 [source, sql]
 ----
 create table mytable (data varchar(20));
+----
+====
+
+For producer-only transactions, transaction synchronization works:
+
+====
+[source, java]
+----
+@Transactional("dstm")
+public void someMethod(String in) {
+    this.kafkaTemplate.send("topic2", in.toUpperCase());
+    this.jdbcTemplate.execute("insert into mytable (data) values ('" + in + "')");
+}
+----
+====
+
+The `KafkaTemplate` will synchronize its transaction with the DB transaction and the commit/rollback occurs after the database.
+
+If you wish to commit the Kafka transaction first, and only commit the DB transaction if the Kafka transaction is successful, use nested `@Transactional` methods:
+
+====
+[source, java]
+----
+@Transactional("dstm")
+public void someMethod(String in) {
+    this.jdbcTemplate.execute("insert into mytable (data) values ('" + in + "')");
+    sendToKafka(in);
+}
+
+@Transactional("kafkaTransactionManager")
+public void sendToKafka(String in) {
+    this.kafkaTemplate.send("topic2", in.toUpperCase());
+}
 ----
 ====

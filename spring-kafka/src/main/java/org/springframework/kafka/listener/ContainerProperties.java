@@ -723,7 +723,10 @@ public class ContainerProperties extends ConsumerProperties {
 	 * transaction timeout, for example.
 	 * @param transactionDefinition the definition.
 	 * @since 2.5.4
+	 * @deprecated Refer to the
+	 * {@link org.springframework.data.transaction.ChainedTransactionManager} javadocs.
 	 */
+	@Deprecated
 	public void setTransactionDefinition(TransactionDefinition transactionDefinition) {
 		this.transactionDefinition = transactionDefinition;
 	}

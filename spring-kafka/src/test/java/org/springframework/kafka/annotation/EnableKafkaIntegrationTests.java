@@ -66,17 +66,14 @@ import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Role;
 import org.springframework.context.event.EventListener;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
@@ -131,9 +128,6 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.kafka.transaction.ChainedKafkaTransactionManager;
-import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
-import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -229,9 +223,6 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	private FooConverter fooConverter;
-
-	@Autowired
-	private ConcurrentKafkaListenerContainerFactory<Integer, String> transactionalFactory;
 
 	@Autowired
 	private SeekToLastOnIdleListener seekOnIdleListener;
@@ -826,12 +817,6 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testAutoConfigTm() {
-		assertThat(this.transactionalFactory.getContainerProperties().getTransactionManager())
-				.isInstanceOf(ChainedKafkaTransactionManager.class);
-	}
-
-	@Test
 	public void testKeyConversion() throws Exception {
 		this.bytesKeyTemplate.send("annotated36", "foo".getBytes(), "bar");
 		assertThat(this.listener.keyLatch.await(30, TimeUnit.SECONDS)).isTrue();
@@ -959,18 +944,7 @@ public class EnableKafkaIntegrationTests {
 
 		@Bean
 		public PlatformTransactionManager transactionManager() {
-			return Mockito.mock(PlatformTransactionManager.class);
-		}
-
-		@Bean
-		public KafkaTransactionManager<Integer, String> ktm() {
-			return new KafkaTransactionManager<>(txProducerFactory());
-		}
-
-		@Bean
-		@Primary
-		public ChainedKafkaTransactionManager<Integer, String> cktm() {
-			return new ChainedKafkaTransactionManager<>(ktm(), transactionManager());
+			return mock(PlatformTransactionManager.class);
 		}
 
 		@Bean
@@ -1028,20 +1002,6 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			return factory;
-		}
-
-		@Bean
-		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
-				transactionalFactory(ObjectProvider<KafkaAwareTransactionManager<Integer, String>> tm) {
-
-			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
-					new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(consumerFactory());
-			KafkaAwareTransactionManager<Integer, String> ktm = tm.getIfUnique();
-			if (ktm != null) {
-				factory.getContainerProperties().setTransactionManager(ktm);
-			}
 			return factory;
 		}
 
@@ -2143,7 +2103,7 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "ifctx", topics = "annotated9")
-		@Transactional(transactionManager = "transactionManager")
+		@Transactional
 		public void listenTx(String foo) {
 			latch2.countDown();
 		}

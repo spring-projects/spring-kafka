@@ -41,3 +41,8 @@ Now, if both the key and value fail deserialization, the original values are pub
 Previously, the value was populated but the key `DeserializationException` remained in the headers.
 There is a breaking API change, if you subclassed the recoverer and overrode the `createProducerRecord` method.
 See <<dead-letters>> for more information.
+
+[[x27-CKTM]]
+==== `ChainedKafkaTransactionManager` is Deprecated
+
+See <<transactions>> for more information.

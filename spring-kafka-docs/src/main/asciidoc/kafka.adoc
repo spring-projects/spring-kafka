@@ -2422,11 +2422,6 @@ topicPartitions
 |The configured topics, topic pattern or explicitly assigned topics/partitions.
 Mutually exclusive; at least one must be provided; enforced by `ContainerProperties` constructors.
 
-|transaction
-Definition
-|`null`
-|Set transaction properties; see <<chained-transaction-manager>> for more information.
-
 |transactionManager
 |`null`
 |See <<transactions>>.
@@ -3177,7 +3172,6 @@ Spring for Apache Kafka adds support in the following ways:
 * Transactional `KafkaMessageListenerContainer`
 * Local transactions with `KafkaTemplate`
 * Transaction synchronization with other transaction managers
-* `ChainedKafkaTransactionManager`
 
 Transactions are enabled by providing the `DefaultKafkaProducerFactory` with a `transactionIdPrefix`.
 In that case, instead of managing a single shared `Producer`, the factory maintains a cache of transactional producers.
@@ -3217,7 +3211,7 @@ You must configure the `KafkaTemplate` to use the same `ProducerFactory` as the 
 
 ===== Transaction Synchronization
 
-This section refers to producer-only transactions (transactions not started by a listener container); see <<chained-transaction-manager>> for information about synchronizing transactions when the container starts the transaction.
+This section refers to producer-only transactions (transactions not started by a listener container); see <<container-transaction-manager>> for information about chaining transactions when the container starts the transaction.
 
 If you want to send records to kafka and perform some database updates, you can use normal Spring transaction management with, say, a `DataSourceTransactionManager`.
 
@@ -3234,22 +3228,17 @@ public void process(List<Thing> things) {
 
 The interceptor for the `@Transactional` annotation starts the transaction and the `KafkaTemplate` will synchronize a transaction with that transaction manager; each send will participate in that transaction.
 When the method exits, the database transaction will commit followed by the Kafka transaction.
-If you wish the commits to be performed in the reverse order (Kafka first), use a <<chained-transaction-manager,`ChainedTransactionManager`>> configured with the `DataSourceTransactionManager` as the first TM and then the `KafkaTransactionManager`, in that order.
+If you wish the commits to be performed in the reverse order (Kafka first), use nested `@Transactional` methods, with the outer method configured to use the `DataSourceTransactionManager`, and the inner method configured to use the `KafkaTransactionManager`.
 
-[[chained-transaction-manager]]
-===== Using `ChainedKafkaTransactionManager`
+See <<ex-jdbc-sync>> for examples of an application that synchronizes JDBC and Kafka transactions in Kafka-first or DB-first configurations.
 
-The `ChainedKafkaTransactionManager` was introduced in version 2.1.3.
-This is a subclass of `ChainedTransactionManager` that can have exactly one `KafkaTransactionManager`.
-Since it is a `KafkaAwareTransactionManager`, the container can send the offsets to the transaction in the same way as when the container is configured with a simple `KafkaTransactionManager`.
-This provides another mechanism for synchronizing transactions without having to send the offsets to the transaction in the listener code.
-You should chain your transaction managers in the desired order and provide the `ChainedTransactionManager` in the `ContainerProperties`.
+[[container-transaction-manager]]
+===== Using Consumer-Initiated Transactions
+
+The `ChainedKafkaTransactionManager` is now deprecated, since version 2.7; see the javadocs for its super class `ChainedTransactionManager` for more information.
+Instead, use a `KafkaTransactionManager` in the container to start the Kafka transaction and annotate the listener method with `@Transactional` to start the other transaction.
 
 See <<ex-jdbc-sync>> for an example application that chains JDBC and Kafka transactions.
-
-Starting with version 2.5.4, you can configure a `TransactionDefinition` in the `ContainerProperties`; its properties will be copied to the container's `TransactionTemplate` used to start transactions.
-This allows, for example, setting a transaction timeout for other transaction managers within the `ChainedKafkaTransactionManager`.
-It does not, however, make sense to set a propagation behavior because the container would always need to start a new transaction; anything other than `REQUIRED` or `REQUIRES_NEW` will be rejected.
 
 ===== `KafkaTemplate` Local Transactions
 

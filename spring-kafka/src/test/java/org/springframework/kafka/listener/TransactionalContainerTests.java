@@ -97,10 +97,8 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.kafka.transaction.ChainedKafkaTransactionManager;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
@@ -149,43 +147,38 @@ public class TransactionalContainerTests {
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD, EOSMode.ALPHA);
-	}
-
-	@Test
-	public void testConsumeAndProduceTransactionKCTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(true, false, AckMode.RECORD, EOSMode.ALPHA);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.ALPHA);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionHandleError() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, true, AckMode.RECORD, EOSMode.ALPHA);
+		testConsumeAndProduceTransactionGuts(true, AckMode.RECORD, EOSMode.ALPHA);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTMManual() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, false, AckMode.MANUAL_IMMEDIATE, EOSMode.ALPHA);
+		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL_IMMEDIATE, EOSMode.ALPHA);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM_BETA() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD, EOSMode.BETA);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.BETA);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionStopWhenFenced() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, false, AckMode.RECORD, EOSMode.BETA, true);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.BETA, true);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError, AckMode ackMode,
+	private void testConsumeAndProduceTransactionGuts(boolean handleError, AckMode ackMode,
 			EOSMode eosMode) throws Exception {
 
-		testConsumeAndProduceTransactionGuts(chained, handleError, ackMode, eosMode, false);
+		testConsumeAndProduceTransactionGuts(handleError, ackMode, eosMode, false);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void testConsumeAndProduceTransactionGuts(boolean chained, boolean handleError, AckMode ackMode,
+	private void testConsumeAndProduceTransactionGuts(boolean handleError, AckMode ackMode,
 			EOSMode eosMode, boolean stopWhenFenced) throws Exception {
 
 		Consumer consumer = mock(Consumer.class);
@@ -236,14 +229,10 @@ public class TransactionalContainerTests {
 			return producer;
 		}).given(pf).createProducer(isNull());
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		PlatformTransactionManager ptm = tm;
-		if (chained) {
-			ptm = new ChainedKafkaTransactionManager(new SomeOtherTransactionManager(), tm);
-		}
 		ContainerProperties props = new ContainerProperties("foo");
 		props.setAckMode(ackMode);
 		props.setGroupId("group");
-		props.setTransactionManager(ptm);
+		props.setTransactionManager(tm);
 		props.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
 		props.setEosMode(eosMode);
 		props.setStopContainerWhenFenced(stopWhenFenced);
@@ -881,7 +870,7 @@ public class TransactionalContainerTests {
 		logger.info("Stop testRollbackNoRetries");
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
 	@Test
 	void testNoAfterRollbackWhenFenced() throws Exception {
 		Consumer consumer = mock(Consumer.class);
