@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,10 +33,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.DltStrategy;
-import org.springframework.kafka.retrytopic.FixedDelayStrategy;
-import org.springframework.kafka.retrytopic.RetryTopicConstants;
-import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.backoff.FixedBackOffPolicy;

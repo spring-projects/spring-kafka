@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import java.util.Map;
 

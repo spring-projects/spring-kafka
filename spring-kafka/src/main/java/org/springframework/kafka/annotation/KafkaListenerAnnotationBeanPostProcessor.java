@@ -78,7 +78,6 @@ import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
-import org.springframework.kafka.retrytopic.RetryTopicConfigurationProvider;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionOffset;

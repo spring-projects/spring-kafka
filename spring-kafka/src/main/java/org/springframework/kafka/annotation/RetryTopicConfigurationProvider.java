@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic;
+package org.springframework.kafka.annotation;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -25,7 +25,8 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 
 
 /**

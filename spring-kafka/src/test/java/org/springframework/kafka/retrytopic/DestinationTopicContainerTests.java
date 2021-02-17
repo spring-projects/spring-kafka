@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -30,7 +30,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
-import org.springframework.kafka.retrytopic.TestClockUtils;
 
 /**
  * @author Tomaz Fernandes
@@ -42,11 +41,11 @@ class DestinationTopicContainerTests extends DestinationTopicTests {
 
 	private final Clock clock = TestClockUtils.CLOCK;
 
-	private DestinationTopicContainer destinationTopicContainer = new DestinationTopicContainer(clock);
+	private final DestinationTopicContainer destinationTopicContainer = new DestinationTopicContainer(clock);
 
-	private long originalTimestamp = Instant.now(this.clock).toEpochMilli();
+	private final long originalTimestamp = Instant.now(this.clock).toEpochMilli();
 
-	private byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
+	private final byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
 
 	@BeforeEach
 	public void setup() {

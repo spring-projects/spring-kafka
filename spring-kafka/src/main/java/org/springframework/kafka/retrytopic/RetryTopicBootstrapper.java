@@ -25,8 +25,6 @@ import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
-import org.springframework.kafka.retrytopic.destinationtopic.DefaultDestinationTopicProcessor;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicContainer;
 
 /**
  *

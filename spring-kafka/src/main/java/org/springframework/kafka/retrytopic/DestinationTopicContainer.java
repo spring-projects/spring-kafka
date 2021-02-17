@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -25,13 +25,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
-import org.springframework.kafka.retrytopic.RetryTopicConstants;
 
 
 /**
  *
  * Contains the destination topics and correlates them with their source via the
- * Map&lt;String, {@link org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicResolver.DestinationsHolder}&gt; map.
+ * Map&lt;String, {@link org.springframework.kafka.retrytopic.DestinationTopicResolver.DestinationsHolder}&gt; map.
  *
  * Implements the {@link DestinationTopicResolver} interface.
  *

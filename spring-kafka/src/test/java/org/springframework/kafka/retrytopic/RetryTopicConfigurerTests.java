@@ -49,8 +49,6 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopic;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicProcessor;
 import org.springframework.kafka.support.Suffixer;
 
 /**

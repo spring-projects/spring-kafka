@@ -30,7 +30,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopic;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**

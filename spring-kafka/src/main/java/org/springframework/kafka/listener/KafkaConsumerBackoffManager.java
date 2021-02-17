@@ -26,7 +26,6 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
 
 /**
@@ -36,6 +35,7 @@ import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
  * again after partition consumption is resumed (or seek it manually by other means).
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  * @see SeekToCurrentErrorHandler
  */
@@ -46,14 +46,15 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 	 */
 	public static final String INTERNAL_BACKOFF_CLOCK_BEAN_NAME = "internalBackOffClock";
 
-	private final KafkaListenerEndpointRegistry registry;
+	private final ListenerContainerRegistry registry;
 
 	private final Map<TopicPartition, Context> backOffTimes;
 
 	private final Clock clock;
 
-	public KafkaConsumerBackoffManager(KafkaListenerEndpointRegistry registry,
+	public KafkaConsumerBackoffManager(ListenerContainerRegistry registry,
 									@Qualifier(INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
+
 		this.registry = registry;
 		this.clock = clock;
 		this.backOffTimes = new HashMap<>();

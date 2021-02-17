@@ -37,8 +37,8 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.annotation.RetryableTopicAnnotationProcessor;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopic;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.util.ReflectionUtils;
 

@@ -38,8 +38,6 @@ import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.ListenerUtils;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopic;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicProcessor;
 import org.springframework.kafka.support.Suffixer;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
@@ -66,7 +64,7 @@ import org.springframework.util.ReflectionUtils;
  * <p>If a message processing throws an exception, the configured
  * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler}
  * and {@link org.springframework.kafka.listener.DeadLetterPublishingRecoverer} forwards the message to the next topic, using a
- * {@link org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicResolver}
+ * {@link org.springframework.kafka.retrytopic.DestinationTopicResolver}
  * to know the next topic and the delay for it.
  *
  * <p>Each forwareded record has a back off timestamp header and, if consumption is
@@ -226,7 +224,7 @@ public class RetryTopicConfigurer {
 
 	private final BeanFactory beanFactory;
 
-	RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
+	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
 						ListenerContainerFactoryResolver containerFactoryResolver,
 						ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
 						BeanFactory beanFactory) {
@@ -244,7 +242,7 @@ public class RetryTopicConfigurer {
 	 * {@link org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor}
 	 * processListener method. As a side effect, the created destinations are registered
 	 * at the
-	 * {@link org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicContainer}
+	 * {@link org.springframework.kafka.retrytopic.DestinationTopicContainer}
 	 * @param mainEndpoint the endpoint based on which retry and dlt endpoints are also
 	 * created and processed.
 	 * @param configuration the configuration for the topic
@@ -376,7 +374,7 @@ public class RetryTopicConfigurer {
 	 *  method.
 	 *
 	 *  <p>As a side effect, registers the topics in the
-	 *  {@link org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicContainer}.
+	 *  {@link org.springframework.kafka.retrytopic.DestinationTopicContainer}.
 	 *
 	 */
 
@@ -495,7 +493,7 @@ public class RetryTopicConfigurer {
 		}
 	}
 
-	static class EndpointHandlerMethod {
+	public static class EndpointHandlerMethod {
 
 		private final Class<?> beanClass;
 
@@ -503,7 +501,7 @@ public class RetryTopicConfigurer {
 
 		private Object bean;
 
-		EndpointHandlerMethod(Class<?> beanClass, String methodName) {
+		public EndpointHandlerMethod(Class<?> beanClass, String methodName) {
 			Assert.notNull(beanClass, () -> "No destination bean class provided!");
 			Assert.notNull(methodName, () -> "No method name for destination bean class provided!");
 			this.method = Arrays.stream(ReflectionUtils.getDeclaredMethods(beanClass))
@@ -513,7 +511,7 @@ public class RetryTopicConfigurer {
 			this.beanClass = beanClass;
 		}
 
-		EndpointHandlerMethod(Object bean, Method method) {
+		public EndpointHandlerMethod(Object bean, Method method) {
 			Assert.notNull(bean, () -> "No bean for destination provided!");
 			Assert.notNull(method, () -> "No method for destination bean class provided!");
 			this.method = method;

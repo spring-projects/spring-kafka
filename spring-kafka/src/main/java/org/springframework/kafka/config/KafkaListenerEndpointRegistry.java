@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2019 the original author or authors.
+ * Copyright 2014-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -66,8 +67,8 @@ import org.springframework.util.StringUtils;
  * @see MessageListenerContainer
  * @see KafkaListenerContainerFactory
  */
-public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifecycle, ApplicationContextAware,
-		ApplicationListener<ContextRefreshedEvent> {
+public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry, DisposableBean, SmartLifecycle,
+		ApplicationContextAware, ApplicationListener<ContextRefreshedEvent> {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); //NOSONAR
 
@@ -96,6 +97,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	 * @see KafkaListenerEndpoint#getId()
 	 * @see #getListenerContainerIds()
 	 */
+	@Override
 	public MessageListenerContainer getListenerContainer(String id) {
 		Assert.hasText(id, "Container identifier must not be empty");
 		return this.listenerContainers.get(id);
@@ -106,6 +108,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	 * @return the ids.
 	 * @see #getListenerContainer(String)
 	 */
+	@Override
 	public Set<String> getListenerContainerIds() {
 		return Collections.unmodifiableSet(this.listenerContainers.keySet());
 	}
@@ -115,6 +118,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	 * @return the managed {@link MessageListenerContainer} instance(s).
 	 * @see #getAllListenerContainers()
 	 */
+	@Override
 	public Collection<MessageListenerContainer> getListenerContainers() {
 		return Collections.unmodifiableCollection(this.listenerContainers.values());
 	}
@@ -128,6 +132,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	 * @since 2.2.5
 	 * @see #getListenerContainers()
 	 */
+	@Override
 	public Collection<MessageListenerContainer> getAllListenerContainers() {
 		List<MessageListenerContainer> containers = new ArrayList<>();
 		containers.addAll(getListenerContainers());

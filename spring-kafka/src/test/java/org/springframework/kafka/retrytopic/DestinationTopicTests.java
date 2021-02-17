@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,7 +26,6 @@ import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.retrytopic.DltStrategy;
 
 /**
  * @author Tomaz Fernandes
@@ -44,16 +43,16 @@ public class DestinationTopicTests {
 
 	// Suffixes
 
-	private DestinationTopicPropertiesFactory.DestinationTopicSuffixes suffixes =
+	private final DestinationTopicPropertiesFactory.DestinationTopicSuffixes suffixes =
 			new DestinationTopicPropertiesFactory.DestinationTopicSuffixes("", "");
 
-	private String retrySuffix = suffixes.getRetrySuffix();
+	private final String retrySuffix = suffixes.getRetrySuffix();
 
-	private String dltSuffix = suffixes.getDltSuffix();
+	private final String dltSuffix = suffixes.getDltSuffix();
 
-	private long noTimeout = -1;
+	private final long noTimeout = -1;
 
-	private long timeout = 1000;
+	private final long timeout = 1000;
 
 	// MaxAttempts
 
@@ -219,7 +218,7 @@ public class DestinationTopicTests {
 
 	// Classifiers
 
-	private BinaryExceptionClassifier classifier = new BinaryExceptionClassifierBuilder()
+	private final BinaryExceptionClassifier classifier = new BinaryExceptionClassifierBuilder()
 			.retryOn(IllegalArgumentException.class).build();
 
 	private BiPredicate<Integer, Throwable> getShouldRetryOn() {

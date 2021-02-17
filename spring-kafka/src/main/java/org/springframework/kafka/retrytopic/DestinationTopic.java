@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import java.util.Objects;
 import java.util.function.BiPredicate;
 
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.DltStrategy;
 
 /**
  *

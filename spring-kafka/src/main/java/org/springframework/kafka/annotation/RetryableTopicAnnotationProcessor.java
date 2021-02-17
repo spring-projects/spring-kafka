@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic;
+package org.springframework.kafka.annotation;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -27,10 +27,11 @@ import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.kafka.annotation.DltHandler;
-import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.adapter.AdapterUtils;
+import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
+import org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.backoff.ExponentialRandomBackOffPolicy;
@@ -42,7 +43,6 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 /**
- *
  * Processes the provided {@link RetryableTopic} annotation
  * returning an {@link RetryTopicConfiguration}.
  *

@@ -23,8 +23,6 @@ import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopic;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicPropertiesFactory;
 import org.springframework.kafka.support.AllowDenyCollectionManager;
 import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
@@ -40,6 +38,7 @@ import org.springframework.util.Assert;
  * Builder class to create {@link RetryTopicConfiguration} instances.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */
@@ -82,7 +81,9 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
-	RetryTopicConfigurationBuilder dltHandlerMethod(RetryTopicConfigurer.EndpointHandlerMethod endpointHandlerMethod) {
+	public RetryTopicConfigurationBuilder dltHandlerMethod(
+			RetryTopicConfigurer.EndpointHandlerMethod endpointHandlerMethod) {
+
 		this.dltHandlerMethod = endpointHandlerMethod;
 		return this;
 	}
@@ -93,7 +94,7 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
-	RetryTopicConfigurationBuilder dltProcessingFailureStrategy(
+	public RetryTopicConfigurationBuilder dltProcessingFailureStrategy(
 			DltStrategy dltStrategy) {
 		this.dltStrategy = dltStrategy;
 		return this;
@@ -143,7 +144,7 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
-	RetryTopicConfigurationBuilder setTopicSuffixingStrategy(TopicSuffixingStrategy topicSuffixingStrategy) {
+	public RetryTopicConfigurationBuilder setTopicSuffixingStrategy(TopicSuffixingStrategy topicSuffixingStrategy) {
 		this.topicSuffixingStrategy = topicSuffixingStrategy;
 		return this;
 	}
@@ -229,7 +230,7 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
-	RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(FixedDelayStrategy useSameTopicForFixedDelays) {
+	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(FixedDelayStrategy useSameTopicForFixedDelays) {
 		this.fixedDelayStrategy = useSameTopicForFixedDelays;
 		return this;
 	}
@@ -242,12 +243,16 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	public RetryTopicConfigurationBuilder autoCreateTopicsWith(int numPartitions, short replicationFactor) {
-		this.topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation(true, numPartitions, replicationFactor);
+		this.topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation(true, numPartitions,
+				replicationFactor);
 		return this;
 	}
 
-	public RetryTopicConfigurationBuilder autoCreateTopics(boolean shouldCreate, int numPartitions, short replicationFactor) {
-		this.topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation(shouldCreate, numPartitions, replicationFactor);
+	public RetryTopicConfigurationBuilder autoCreateTopics(boolean shouldCreate, int numPartitions,
+			short replicationFactor) {
+
+		this.topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation(shouldCreate, numPartitions,
+				replicationFactor);
 		return this;
 	}
 
@@ -282,7 +287,7 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
-	RetryTopicConfigurationBuilder traversingCauses(boolean traversing) {
+	public RetryTopicConfigurationBuilder traversingCauses(boolean traversing) {
 		if (traversing) {
 			classifierBuilder().traversingCauses();
 		}

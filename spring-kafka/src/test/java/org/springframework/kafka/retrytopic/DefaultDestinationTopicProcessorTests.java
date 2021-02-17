@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,7 +45,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 	@Captor
 	private ArgumentCaptor<Map<String, DestinationTopicResolver.DestinationsHolder>> destinationMapCaptor;
 
-	private DefaultDestinationTopicProcessor destinationTopicProcessor =
+	private final DefaultDestinationTopicProcessor destinationTopicProcessor =
 			new DefaultDestinationTopicProcessor(destinationTopicResolver);
 
 	@Test

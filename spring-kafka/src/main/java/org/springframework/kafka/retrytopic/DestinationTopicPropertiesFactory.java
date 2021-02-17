@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.retrytopic.destinationtopic;
+package org.springframework.kafka.retrytopic;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,11 +24,6 @@ import java.util.stream.IntStream;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.BackOffValuesGenerator;
-import org.springframework.kafka.retrytopic.DltStrategy;
-import org.springframework.kafka.retrytopic.FixedDelayStrategy;
-import org.springframework.kafka.retrytopic.RetryTopicConstants;
-import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.util.StringUtils;
 
@@ -195,9 +190,10 @@ public class DestinationTopicPropertiesFactory {
 	public static class DestinationTopicSuffixes {
 
 		private final String retryTopicSuffix;
+
 		private final String dltSuffix;
 
-		DestinationTopicSuffixes(String retryTopicSuffix, String dltSuffix) {
+		public DestinationTopicSuffixes(String retryTopicSuffix, String dltSuffix) {
 			this.retryTopicSuffix = StringUtils.hasText(retryTopicSuffix)
 					? retryTopicSuffix
 					: RetryTopicConstants.DEFAULT_RETRY_SUFFIX;

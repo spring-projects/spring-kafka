@@ -30,8 +30,6 @@ import org.springframework.core.NestedRuntimeException;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.KafkaBackoffException;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopic;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicResolver;
 import org.springframework.util.Assert;
 
 /**

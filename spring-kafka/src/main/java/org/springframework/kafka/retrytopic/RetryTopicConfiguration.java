@@ -18,7 +18,6 @@ package org.springframework.kafka.retrytopic;
 
 import java.util.List;
 
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopic;
 import org.springframework.kafka.support.AllowDenyCollectionManager;
 
 /**

@@ -38,8 +38,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
-import org.springframework.kafka.retrytopic.destinationtopic.DefaultDestinationTopicProcessor;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicContainer;
 
 /**
  * @author Tomaz Fernandes
