@@ -50,7 +50,7 @@ public abstract class KafkaResourceFactory {
 
 	/**
 	 * Enhance the properties by calling the
-	 * {@link #setBootstrapServersSupplier(Supplier)} amd replace the bootstrap servers
+	 * {@link #setBootstrapServersSupplier(Supplier)} and replace the bootstrap servers
 	 * properties.
 	 * @param configs the configs.
 	 */
