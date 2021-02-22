@@ -3896,7 +3896,7 @@ You can use arbitrary headers or inspect the data to determine the type.
 ----
 JavaType thing1Type = TypeFactory.defaultInstance().constructType(Thing1.class);
 
-JavaType thing1Type = TypeFactory.defaultInstance().constructType(Thing2.class);
+JavaType thing2Type = TypeFactory.defaultInstance().constructType(Thing2.class);
 
 public static JavaType thingOneOrThingTwo(byte[] data, Headers headers) {
     // {"thisIsAFieldInThing1":"value", ...
