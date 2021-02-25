@@ -29,7 +29,7 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.core.NestedRuntimeException;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.listener.KafkaBackoffException;
+import org.springframework.kafka.listener.SeekUtils;
 import org.springframework.kafka.support.KafkaHeaders;
 
 /**
@@ -96,7 +96,7 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	private TopicPartition resolveDestination(ConsumerRecord<?, ?> cr, Exception e) {
-		if (isBackoffException(e)) {
+		if (SeekUtils.isBackoffException(e)) {
 			throw (NestedRuntimeException) e; // Necessary to not commit the offset and seek to current again
 		}
 
@@ -110,11 +110,6 @@ public class DeadLetterPublishingRecovererFactory {
 					? null
 					: new TopicPartition(nextDestination.getDestinationName(),
 				cr.partition() % nextDestination.getDestinationPartitions());
-	}
-
-	private boolean isBackoffException(Exception e) {
-		return NestedRuntimeException.class.isAssignableFrom(e.getClass())
-				&& ((NestedRuntimeException) e).contains(KafkaBackoffException.class);
 	}
 
 	private int getAttempts(ConsumerRecord<?, ?> consumerRecord) {

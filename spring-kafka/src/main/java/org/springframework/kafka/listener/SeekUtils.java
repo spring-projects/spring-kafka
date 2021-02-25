@@ -30,6 +30,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.SerializationException;
 
+import org.springframework.core.NestedRuntimeException;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.KafkaException.Level;
@@ -105,8 +106,15 @@ public final class SeekUtils {
 					skipped.set(test);
 				}
 				catch (Exception ex) {
-					logger.error(ex, "Failed to determine if this record (" + ListenerUtils.recordToString(record)
-							+ ") should be recovererd, including in seeks");
+					if (isBackoffException(ex)) {
+						logger.debug(ex, () -> ListenerUtils.recordToString(record)
+								+ " included in seeks due to retry back off");
+					}
+					else {
+						logger.error(ex, () -> "Failed to determine if this record ("
+								+ ListenerUtils.recordToString(record)
+								+ ") should be recovererd, including in seeks");
+					}
 					skipped.set(false);
 				}
 				if (skipped.get()) {
@@ -219,6 +227,17 @@ public final class SeekUtils {
 						+ container.getContainerProperties().getAckMode());
 			}
 		}
+	}
+
+	/**
+	 * Return true if the exception is a {@link KafkaBackoffException}.
+	 * @param exception the exception.
+	 * @return true if it's a back off.
+	 * @since 2.7
+	 */
+	public static boolean isBackoffException(Exception exception) {
+		return NestedRuntimeException.class.isAssignableFrom(exception.getClass())
+				&& ((NestedRuntimeException) exception).contains(KafkaBackoffException.class);
 	}
 
 }
