@@ -18,7 +18,10 @@ package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -28,9 +31,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -43,6 +46,7 @@ import org.springframework.util.ReflectionUtils;
 
 /**
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -64,22 +68,31 @@ class RetryableTopicAnnotationProcessorTests {
 	@Mock
 	private KafkaOperations<?, ?> kafkaOperationsFromDefaultName;
 
-	@Mock
-	private BeanFactory beanFactory;
+	private ConfigurableBeanFactory beanFactory;
+
+	{
+		this.beanFactory = mock(ConfigurableBeanFactory.class);
+		willAnswer(invoc -> {
+			return invoc.getArgument(0);
+		}).given(this.beanFactory).resolveEmbeddedValue(anyString());
+	}
 
 	// Retry with DLT
-	private Method listenWithRetryAndDlt = ReflectionUtils.findMethod(RetryableTopicAnnotationFactoryWithDlt.class, listenerMethodName);
+	private final Method listenWithRetryAndDlt = ReflectionUtils
+			.findMethod(RetryableTopicAnnotationFactoryWithDlt.class, listenerMethodName);
 
-	private RetryableTopic annotationWithDlt = AnnotationUtils.findAnnotation(listenWithRetryAndDlt, RetryableTopic.class);
+	private final RetryableTopic annotationWithDlt = AnnotationUtils.findAnnotation(listenWithRetryAndDlt,
+			RetryableTopic.class);
 
-	private Object beanWithDlt = createBean();
+	private final Object beanWithDlt = createBean();
 
 	// Retry without DLT
-	private Method listenWithRetry = ReflectionUtils.findMethod(RetryableTopicAnnotationFactory.class, listenerMethodName);
+	private final Method listenWithRetry = ReflectionUtils.findMethod(RetryableTopicAnnotationFactory.class,
+			listenerMethodName);
 
-	private RetryableTopic annotation = AnnotationUtils.findAnnotation(listenWithRetry, RetryableTopic.class);
+	private final RetryableTopic annotation = AnnotationUtils.findAnnotation(listenWithRetry, RetryableTopic.class);
 
-	private Object bean = createBean();
+	private final Object bean = createBean();
 
 	private Object createBean() {
 		try {
@@ -235,6 +248,8 @@ class RetryableTopicAnnotationProcessorTests {
 		DestinationTopic destinationTopic4 = new DestinationTopic("", destinationTopicProperties.get(3));
 		assertThat(destinationTopic4.getDestinationDelay()).isEqualTo(0);
 
+		assertThat(destinationTopic.shouldRetryOn(1, new IllegalStateException())).isFalse();
+		assertThat(destinationTopic.shouldRetryOn(1, new IllegalArgumentException())).isTrue();
 	}
 
 	@Test
@@ -299,8 +314,8 @@ class RetryableTopicAnnotationProcessorTests {
 	static class RetryableTopicAnnotationFactoryWithDlt {
 
 		@KafkaListener
-		@RetryableTopic(attempts = 3, backoff = @Backoff(multiplier = 2, value = 1000),
-			dltStrategy = DltStrategy.FAIL_ON_ERROR)
+		@RetryableTopic(attempts = "3", backoff = @Backoff(multiplier = 2, value = 1000),
+			dltStrategy = DltStrategy.FAIL_ON_ERROR, excludeNames = "java.lang.IllegalStateException")
 		void listenWithRetry() {
 			// NoOps
 		}

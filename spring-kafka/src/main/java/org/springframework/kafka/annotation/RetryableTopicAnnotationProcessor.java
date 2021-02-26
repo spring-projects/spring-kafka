@@ -17,22 +17,26 @@
 package org.springframework.kafka.annotation;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.config.BeanExpressionContext;
+import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.expression.BeanFactoryResolver;
+import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.listener.adapter.AdapterUtils;
 import org.springframework.kafka.retrytopic.EndpointHandlerMethod;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
+import org.springframework.kafka.retrytopic.RetryTopicConstants;
 import org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
@@ -41,6 +45,7 @@ import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.backoff.SleepingBackOffPolicy;
 import org.springframework.retry.backoff.UniformRandomBackOffPolicy;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -49,44 +54,85 @@ import org.springframework.util.StringUtils;
  * returning an {@link RetryTopicConfiguration}.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */
 public class RetryableTopicAnnotationProcessor {
 
-	private static final SpelExpressionParser PARSER;
-
 	private final BeanFactory beanFactory;
 
-	static {
-		PARSER = new SpelExpressionParser();
-	}
+	private final BeanExpressionResolver resolver;
+
+	private final BeanExpressionContext expressionContext;
 
 	private static final String DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME = "kafkaTemplate";
 
+	/**
+	 * Construct an instance using the provided parameters and default resolver,
+	 * expression context.
+	 * @param beanFactory the bean factory.
+	 */
 	public RetryableTopicAnnotationProcessor(BeanFactory beanFactory) {
+		this(beanFactory, new StandardBeanExpressionResolver(), beanFactory instanceof ConfigurableBeanFactory
+				? new BeanExpressionContext((ConfigurableBeanFactory) beanFactory, null)
+				: null); // NOSONAR
+	}
+
+	/**
+	 * Construct an instance using the provided parameters.
+	 * @param beanFactory the bean factory.
+	 * @param resolver the bean expression resolver.
+	 * @param expressionContext the bean expression context.
+	 */
+	public RetryableTopicAnnotationProcessor(BeanFactory beanFactory, BeanExpressionResolver resolver,
+			BeanExpressionContext expressionContext) {
+
 		this.beanFactory = beanFactory;
+		this.resolver = resolver;
+		this.expressionContext = expressionContext;
 	}
 
 	public RetryTopicConfiguration processAnnotation(String[] topics, Method method, RetryableTopic annotation,
 			Object bean) {
 
+		Long resolvedTimeout = resolveExpressionAsLong(annotation.timeout(), "timeout", false);
+		long timeout = RetryTopicConstants.NOT_SET;
+		if (resolvedTimeout != null) {
+			timeout = resolvedTimeout;
+		}
+		List<Class<? extends Throwable>> includes = resolveClasses(annotation.include(), annotation.includeNames(),
+				"include");
+		List<Class<? extends Throwable>> excludes = resolveClasses(annotation.exclude(), annotation.excludeNames(),
+				"exclude");
+		boolean traverse = false;
+		if (StringUtils.hasText(annotation.traversingCauses())) {
+			Boolean traverseResolved = resolveExpressionAsBoolean(annotation.traversingCauses(), "traversingCauses");
+			if (traverseResolved != null) {
+				traverse = traverseResolved;
+			}
+			else {
+				traverse = includes.size() > 0 || excludes.size() > 0;
+			}
+		}
 		return RetryTopicConfigurationBuilder.newInstance()
-				.maxAttempts(annotation.attempts())
+				.maxAttempts(resolveExpressionAsInteger(annotation.attempts(), "attempts", true))
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
-				.retryTopicSuffix(annotation.retryTopicSuffix())
-				.dltSuffix(annotation.dltTopicSuffix())
+				.retryTopicSuffix(resolveExpressionAsString(annotation.retryTopicSuffix(), "retryTopicSuffix"))
+				.dltSuffix(resolveExpressionAsString(annotation.dltTopicSuffix(), "dltTopicSuffix"))
 				.dltHandlerMethod(getDltProcessor(method, bean))
 				.includeTopics(Arrays.asList(topics))
 				.listenerFactory(annotation.listenerContainerFactory())
-				.autoCreateTopics(annotation.autoCreateTopics(), annotation.numPartitions(), annotation.replicationFactor())
-				.retryOn(Arrays.asList(annotation.include()))
-				.notRetryOn(Arrays.asList(annotation.exclude()))
-				.traversingCauses(annotation.traversingCauses())
+				.autoCreateTopics(resolveExpressionAsBoolean(annotation.autoCreateTopics(), "autoCreateTopics"),
+						resolveExpressionAsInteger(annotation.numPartitions(), "numPartitions", true),
+						resolveExpressionAsShort(annotation.replicationFactor(), "replicationFactor", true))
+				.retryOn(includes)
+				.notRetryOn(excludes)
+				.traversingCauses(traverse)
 				.useSingleTopicForFixedDelays(annotation.fixedDelayTopicStrategy())
 				.dltProcessingFailureStrategy(annotation.dltStrategy())
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
-				.timeoutAfter(annotation.timeout())
+				.timeoutAfter(timeout)
 				.create(getKafkaTemplate(annotation.kafkaTemplate(), topics));
 	}
 
@@ -97,20 +143,15 @@ public class RetryableTopicAnnotationProcessor {
 		// Code from Spring Retry
 		Long min = backoff.delay() == 0 ? backoff.value() : backoff.delay();
 		if (StringUtils.hasText(backoff.delayExpression())) {
-			min = PARSER.parseExpression(resolve(backoff.delayExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
-					.getValue(evaluationContext, Long.class);
+			min = resolveExpressionAsLong(backoff.delayExpression(), "delayExpression", true);
 		}
 		Long max = backoff.maxDelay();
 		if (StringUtils.hasText(backoff.maxDelayExpression())) {
-			max = PARSER
-					.parseExpression(resolve(backoff.maxDelayExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
-					.getValue(evaluationContext, Long.class);
+			max = resolveExpressionAsLong(backoff.maxDelayExpression(), "maxDelayExpression", true);
 		}
 		Double multiplier = backoff.multiplier();
 		if (StringUtils.hasText(backoff.multiplierExpression())) {
-			multiplier = PARSER
-					.parseExpression(resolve(backoff.multiplierExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
-					.getValue(evaluationContext, Double.class);
+			multiplier = resolveExpressionAsDouble(backoff.multiplierExpression(), "multiplierExpression", true);
 		}
 		if (multiplier != null && multiplier > 0) {
 			ExponentialBackOffPolicy policy = new ExponentialBackOffPolicy();
@@ -133,13 +174,6 @@ public class RetryableTopicAnnotationProcessor {
 			policy.setBackOffPeriod(min);
 		}
 		return policy;
-	}
-
-	private String resolve(String value, BeanFactory beanFactory) {
-		if (beanFactory instanceof ConfigurableBeanFactory) {
-			return ((ConfigurableBeanFactory) beanFactory).resolveEmbeddedValue(value);
-		}
-		return value;
 	}
 
 	private EndpointHandlerMethod getDltProcessor(Method listenerMethod, Object bean) {
@@ -177,6 +211,164 @@ public class RetryableTopicAnnotationProcessor {
 						exc);
 			}
 		}
+	}
+
+	private String resolveExpressionAsString(String value, String attribute) {
+		Object resolved = resolveExpression(value);
+		if (resolved instanceof String) {
+			return (String) resolved;
+		}
+		else if (resolved != null) {
+			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
+					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+		}
+		return null;
+	}
+
+	private Integer resolveExpressionAsInteger(String value, String attribute, boolean required) {
+		Object resolved = resolveExpression(value);
+		Integer result = null;
+		if (resolved instanceof String) {
+			if (!required && !StringUtils.hasText((String) resolved)) {
+				result = null;
+			}
+			else {
+				result = Integer.parseInt((String) resolved);
+			}
+		}
+		else if (resolved instanceof Number) {
+			result = ((Number) resolved).intValue();
+		}
+		else if (resolved != null || required) {
+			throw new IllegalStateException(
+					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
+							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
+									+ "] for [" + value + "]");
+		}
+		return result;
+	}
+
+	private Short resolveExpressionAsShort(String value, String attribute, boolean required) {
+		Object resolved = resolveExpression(value);
+		Short result = null;
+		if (resolved instanceof String) {
+			if (!required && !StringUtils.hasText((String) resolved)) {
+				result = null;
+			}
+			else {
+				result = Short.parseShort((String) resolved);
+			}
+		}
+		else if (resolved instanceof Number) {
+			result = ((Number) resolved).shortValue();
+		}
+		else if (resolved != null || required) {
+			throw new IllegalStateException(
+					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as a Short. "
+							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
+									+ "] for [" + value + "]");
+		}
+		return result;
+	}
+
+	private Long resolveExpressionAsLong(String value, String attribute, boolean required) {
+		Object resolved = resolveExpression(value);
+		Long result = null;
+		if (resolved instanceof String) {
+			if (!required && !StringUtils.hasText((String) resolved)) {
+				result = null;
+			}
+			else {
+				result = Long.parseLong((String) resolved);
+			}
+		}
+		else if (resolved instanceof Number) {
+			result = ((Number) resolved).longValue();
+		}
+		else if (resolved != null || required) {
+			throw new IllegalStateException(
+					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as a Long. "
+							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
+									+ "] for [" + value + "]");
+		}
+		return result;
+	}
+
+	private Double resolveExpressionAsDouble(String value, String attribute, boolean required) {
+		Object resolved = resolveExpression(value);
+		Double result = null;
+		if (resolved instanceof String) {
+			if (!required && !StringUtils.hasText((String) resolved)) {
+				result = null;
+			}
+			else {
+				result = Double.parseDouble((String) resolved);
+			}
+		}
+		else if (resolved instanceof Number) {
+			result = ((Number) resolved).doubleValue();
+		}
+		else if (resolved != null || required) {
+			throw new IllegalStateException(
+					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as a Double. "
+							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
+									+ "] for [" + value + "]");
+		}
+		return result;
+	}
+
+	private Boolean resolveExpressionAsBoolean(String value, String attribute) {
+		Object resolved = resolveExpression(value);
+		Boolean result = null;
+		if (resolved instanceof Boolean) {
+			result = (Boolean) resolved;
+		}
+		else if (resolved instanceof String) {
+			result = Boolean.parseBoolean((String) resolved);
+		}
+		else if (resolved != null) {
+			throw new IllegalStateException(
+					"The [" + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
+							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+		}
+		return result;
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<Class<? extends Throwable>> resolveClasses(Class<? extends Throwable>[] fromAnnot, String[] names,
+			String type) {
+
+		List<Class<? extends Throwable>> classes = new ArrayList<>(Arrays.asList(fromAnnot));
+		try {
+			for (String name : names) {
+				Class<?> clazz = ClassUtils.forName(name, ClassUtils.getDefaultClassLoader());
+				if (!Throwable.class.isAssignableFrom(clazz)) {
+					throw new IllegalStateException(type + " entry must be of type Throwable: " + clazz);
+				}
+				classes.add((Class<? extends Throwable>) clazz);
+			}
+		}
+		catch (ClassNotFoundException | LinkageError ex) {
+			throw new IllegalStateException(ex);
+		}
+		return classes;
+	}
+
+	private Object resolveExpression(String value) {
+		String resolved = resolve(value);
+		if (this.expressionContext != null) {
+			return this.resolver.evaluate(resolved, this.expressionContext);
+		}
+		else {
+			return value;
+		}
+	}
+
+	private String resolve(String value) {
+		if (this.beanFactory != null && this.beanFactory instanceof ConfigurableBeanFactory) {
+			return ((ConfigurableBeanFactory) this.beanFactory).resolveEmbeddedValue(value);
+		}
+		return value;
 	}
 
 }

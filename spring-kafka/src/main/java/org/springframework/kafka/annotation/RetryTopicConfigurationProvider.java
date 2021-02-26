@@ -23,6 +23,10 @@ import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.config.BeanExpressionContext;
+import org.springframework.beans.factory.config.BeanExpressionResolver;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
@@ -42,6 +46,7 @@ import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
  * {@link org.springframework.kafka.annotation.DltHandler} annotated method is looked up.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
  * @see RetryableTopic
@@ -52,16 +57,41 @@ public class RetryTopicConfigurationProvider {
 
 	private final BeanFactory beanFactory;
 
+	private final BeanExpressionResolver resolver;
+
+	private final BeanExpressionContext expressionContext;
+
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(RetryTopicConfigurationProvider.class));
 
+	/**
+	 * Construct an instance using the provided bean factory and default resolver and bean
+	 * expression context.
+	 * @param beanFactory the bean factory.
+	 */
 	public RetryTopicConfigurationProvider(BeanFactory beanFactory) {
+		this(beanFactory, new StandardBeanExpressionResolver(), beanFactory instanceof ConfigurableBeanFactory
+				? new BeanExpressionContext((ConfigurableBeanFactory) beanFactory, null)
+				: null); // NOSONAR
+	}
+
+	/**
+	 * Construct an instance using the provided parameters.
+	 * @param beanFactory the bean factory.
+	 * @param resolver the bean expression resolver.
+	 * @param expressionContext the bean expression context.
+	 */
+	public RetryTopicConfigurationProvider(BeanFactory beanFactory, BeanExpressionResolver resolver,
+			BeanExpressionContext expressionContext) {
+
 		this.beanFactory = beanFactory;
+		this.resolver = resolver;
+		this.expressionContext = expressionContext;
 	}
 	public RetryTopicConfiguration findRetryConfigurationFor(String[] topics, Method method, Object bean) {
 		RetryableTopic annotation = AnnotationUtils.findAnnotation(method, RetryableTopic.class);
 		return annotation != null
-				? new RetryableTopicAnnotationProcessor(this.beanFactory)
-				.processAnnotation(topics, method, annotation, bean)
+				? new RetryableTopicAnnotationProcessor(this.beanFactory, this.resolver, this.expressionContext)
+						.processAnnotation(topics, method, annotation, bean)
 				: maybeGetFromContext(topics);
 	}
 

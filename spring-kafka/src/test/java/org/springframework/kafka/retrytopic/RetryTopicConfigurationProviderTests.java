@@ -17,9 +17,12 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
 import java.lang.reflect.Method;
@@ -30,26 +33,33 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.kafka.annotation.RetryTopicConfigurationProvider;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.core.KafkaOperations;
 
 /**
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
 class RetryTopicConfigurationProviderTests {
 
-	@Mock
-	private ListableBeanFactory beanFactory;
+	private ConfigurableListableBeanFactory beanFactory;
 
-	private String[] topics = {"topic1", "topic2"};
+	{
+		this.beanFactory = mock(ConfigurableListableBeanFactory.class);
+		willAnswer(invoc -> {
+			return invoc.getArgument(0);
+		}).given(this.beanFactory).resolveEmbeddedValue(anyString());
+	}
 
-	private Method annotatedMethod = getAnnotatedMethod("annotatedMethod");
+	private final String[] topics = {"topic1", "topic2"};
 
-	private Method nonAnnotatedMethod = getAnnotatedMethod("nonAnnotatedMethod");
+	private final Method annotatedMethod = getAnnotatedMethod("annotatedMethod");
+
+	private final Method nonAnnotatedMethod = getAnnotatedMethod("nonAnnotatedMethod");
 
 	private Method getAnnotatedMethod(String methodName) {
 		try {

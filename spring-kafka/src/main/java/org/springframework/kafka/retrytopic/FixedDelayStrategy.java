@@ -25,6 +25,7 @@ package org.springframework.kafka.retrytopic;
  *
  */
 public enum FixedDelayStrategy {
+
 	/**
 	 * Uses a single topic to achieve non-blocking retry.
 	 */
@@ -34,4 +35,5 @@ public enum FixedDelayStrategy {
 	 * Uses one separate topic per retry attempt.
 	 */
 	MULTIPLE_TOPICS
+
 }

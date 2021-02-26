@@ -56,11 +56,13 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 
 /**
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  */
 @SpringJUnitConfig
@@ -69,6 +71,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryableTopicIntegrationTests.SECOND_TOPIC,
 		RetryableTopicIntegrationTests.THIRD_TOPIC,
 		RetryableTopicIntegrationTests.FOURTH_TOPIC }, partitions = 1)
+@TestPropertySource(properties = "five.attempts=5")
 public class RetryableTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryableTopicIntegrationTests.class);
@@ -174,10 +177,10 @@ public class RetryableTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = 5,
+		@RetryableTopic(attempts = "${five.attempts}",
 				backoff = @Backoff(delay = 70, maxDelay = 120, multiplier = 1.5),
-				numPartitions = 3,
-				timeout = 2000,
+				numPartitions = "#{3}",
+				timeout = "${missing.property:2000}",
 				include = MyRetryException.class, kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(id = "thirdTopicId", topics = THIRD_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation(String message) {
@@ -199,7 +202,7 @@ public class RetryableTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = 4, backoff = @Backoff(50),
+		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @Backoff(50),
 				kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenNoDlt(String message) {
@@ -220,9 +223,9 @@ public class RetryableTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = 3, numPartitions = 3, exclude = MyDontRetryException.class,
+		@RetryableTopic(attempts = "3", numPartitions = "3", exclude = MyDontRetryException.class,
 				backoff = @Backoff(delay = 50, maxDelay = 100, multiplier = 3),
-				traversingCauses = true, kafkaTemplate = "kafkaTemplate")
+				traversingCauses = "true", kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(topics = NOT_RETRYABLE_EXCEPTION_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation2(String message) {
 			container.countDownLatchNoRetry.countDown();
@@ -424,23 +427,26 @@ public class RetryableTopicIntegrationTests {
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(ConsumerFactory<String, String> consumerFactory) {
-			ConcurrentKafkaListenerContainerFactory<String, String> factory =
-					new ConcurrentKafkaListenerContainerFactory<>();
+		public ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
+				ConsumerFactory<String, String> consumerFactory) {
+
+			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
 			ContainerProperties props = factory.getContainerProperties();
 			props.setIdleEventInterval(100L);
 			props.setPollTimeout(50L);
 			props.setIdlePartitionEventInterval(100L);
 			factory.setConsumerFactory(consumerFactory);
 			factory.setConcurrency(1);
-			factory.setContainerCustomizer(container -> container.getContainerProperties().setIdlePartitionEventInterval(100L));
+			factory.setContainerCustomizer(
+					container -> container.getContainerProperties().setIdlePartitionEventInterval(100L));
 			return factory;
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(ConsumerFactory<String, String> consumerFactory) {
-			ConcurrentKafkaListenerContainerFactory<String, String> factory =
-					new ConcurrentKafkaListenerContainerFactory<>();
+		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+				ConsumerFactory<String, String> consumerFactory) {
+
+			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
 			ContainerProperties props = factory.getContainerProperties();
 			props.setIdleEventInterval(100L);
 			props.setPollTimeout(50L);
@@ -450,4 +456,5 @@ public class RetryableTopicIntegrationTests {
 			return factory;
 		}
 	}
+
 }

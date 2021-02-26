@@ -393,8 +393,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private boolean processMainAndRetryListeners(KafkaListener kafkaListener, Object bean, String beanName,
 												Method methodToUse, MethodKafkaListenerEndpoint<K, V> endpoint) {
 
-		RetryTopicConfiguration retryTopicConfiguration = new RetryTopicConfigurationProvider(this.beanFactory)
-				.findRetryConfigurationFor(kafkaListener.topics(), methodToUse, bean);
+		RetryTopicConfiguration retryTopicConfiguration = new RetryTopicConfigurationProvider(this.beanFactory,
+				this.resolver, this.expressionContext)
+						.findRetryConfigurationFor(kafkaListener.topics(), methodToUse, bean);
 
 		if (retryTopicConfiguration == null) {
 			this.logger.debug("No retry topic configuration found for topics " + Arrays.asList(kafkaListener.topics()));
