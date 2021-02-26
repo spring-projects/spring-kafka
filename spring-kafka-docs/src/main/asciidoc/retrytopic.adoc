@@ -66,9 +66,9 @@ You can also configure the non-blocking retry support by creating `RetryTopicCon
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, Object> template) {
-return RetryTopicConfiguration
-                    .builder()
-                    .create(template);
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .create(template);
 }
 ----
 ====
@@ -82,8 +82,8 @@ To achieve more fine-grained control over how to handle non-blocking retrials fo
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
-return RetryTopicConfiguration
-            .builder()
+    return RetryTopicConfigurationBuilder
+            .newInstance()
             .fixedBackoff(3000)
             .maxAttempts(5)
             .includeTopics("my-topic", "my-other-topic")
@@ -92,13 +92,13 @@ return RetryTopicConfiguration
 
 @Bean
 public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<String, MyOtherPojo> template) {
-           return RetryTopicConfiguration
-                   .builder()
-                   .exponentialBackoff(1000, 2, 5000)
-                   .maxAttempts(4)
-                   .excludeTopics("my-topic", "my-other-topic")
-                   .retryOn(MyException.class)
-                   .create(template);
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .exponentialBackoff(1000, 2, 5000)
+            .maxAttempts(4)
+            .excludeTopics("my-topic", "my-other-topic")
+            .retryOn(MyException.class)
+            .create(template);
 }
 ----
 ====
@@ -137,11 +137,12 @@ public void processMessage(MyPojo message) {
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
-return RetryTopicConfiguration
-                .builder()
-                .fixedBackoff(3000)
-                .maxAttempts(4)
-                .build
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .fixedBackoff(3000)
+            .maxAttempts(4)
+            .build();
+}
 ----
 ====
 
@@ -152,11 +153,12 @@ You can also provide a custom implementation of Spring Retry's `SleepingBackOffP
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
-return RetryTopicConfiguration
-                .builder()
-                .customBackOff(new MyCustomBackOffPolicy())
-                .maxAttempts(5)
-                .build
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .customBackOff(new MyCustomBackOffPolicy())
+            .maxAttempts(5)
+            .build();
+}
 ----
 ====
 
@@ -185,12 +187,13 @@ public void processMessage(MyPojo message) {
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
-return RetryTopicConfiguration
-                .builder()
-                .fixedBackoff(3000)
-                .maxAttempts(5)
-                .useSingleTopicForFixedDelays()
-                .build
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .fixedBackoff(3000)
+            .maxAttempts(5)
+            .useSingleTopicForFixedDelays()
+            .build();
+}
 ----
 ====
 
@@ -217,11 +220,12 @@ public void processMessage(MyPojo message) {
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
-return RetryTopicConfiguration
-                .builder()
-                .fixedBackoff(2000)
-                .timeoutAfter(5000)
-                .build
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .fixedBackoff(2000)
+            .timeoutAfter(5000)
+            .build();
+}
 ----
 ====
 
@@ -249,11 +253,11 @@ public void processMessage(MyPojo message) {
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyOtherPojo> template) {
-           return RetryTopicConfiguration
-                   .builder()
-                   .notRetryOn(MyDontRetryException.class)
-                   .create(template);
-           }
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .notRetryOn(MyDontRetryException.class)
+            .create(template);
+}
 ----
 ====
 
@@ -267,21 +271,20 @@ You can decide which topics will and will not be handled by a `RetryTopicConfigu
 [source, java]
 ----
 @Bean
-public RetryTopicConfigurer myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-    return RetryTopicConfigurer
-        .builder()
-        .includeTopics(List.of("my-included-topic", "my-other-included-topic"))
-        .create(template);
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .includeTopics(List.of("my-included-topic", "my-other-included-topic"))
+            .create(template);
 }
 
 @Bean
-public RetryTopicConfigurer myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-    return RetryTopicConfigurer
-        .builder()
-        .excludeTopic("my-excluded-topic")
-        .create(template);
+public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .excludeTopic("my-excluded-topic")
+            .create(template);
 }
-
 ----
 ====
 
@@ -313,19 +316,19 @@ public void processMessage(MyPojo message) {
 [source, java]
 ----
 @Bean
-public RetryTopicConfigurer myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-return RetryTopicConfigurer
-    .builder()
-    .autoCreateTopicsWith(2, 3)
-    .create(template);
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .autoCreateTopicsWith(2, 3)
+            .create(template);
 }
 
 @Bean
-public RetryTopicConfigurer myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-return RetryTopicConfigurer
-    .builder()
-    .doNotAutoCreateRetryTopics()
-    .create(template);
+public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .doNotAutoCreateRetryTopics()
+            .create(template);
 }
 ----
 ====
@@ -363,12 +366,12 @@ public void processMessage(MyPojo message) {
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyOtherPojo> template) {
-           return RetryTopicConfiguration
-                   .builder()
-                   .retryTopicSuffix("-my-retry-suffix")
-                   .dltTopicSuffix("-my-dlt-suffix")
-                   .create(template);
-           }
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .retryTopicSuffix("-my-retry-suffix")
+            .dltTopicSuffix("-my-dlt-suffix")
+            .create(template);
+}
 ----
 ====
 
@@ -394,11 +397,11 @@ public void processMessage(MyPojo message) {
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
-           return RetryTopicConfiguration
-                    .builder()
-                    .suffixTopicsWithIndexValues()
-                    .create(template);
-           }
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .suffixTopicsWithIndexValues()
+            .create(template);
+    }
 ----
 ====
 
@@ -438,11 +441,11 @@ If a bean instance of the provided class is found in the application context tha
 [source, java]
 ----
 @Bean
-public RetryTopicConfigurer myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-return RetryTopicConfigurer
-    .builder()
-    .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
-    .create(template);
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
+            .create(template);
 }
 
 @Component
@@ -485,12 +488,12 @@ public void processMessage(MyPojo message) {
 [source, java]
 ----
 @Bean
-public RetryTopicConfigurer myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-return RetryTopicConfigurer
-    .builder()
-    .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
-    .doNotRetryOnDltFailure()
-    .create(template);
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
+            .doNotRetryOnDltFailure()
+            .create(template);
 }
 ----
 ====
@@ -517,11 +520,11 @@ public void processMessage(MyPojo message) {
 [source, java]
 ----
 @Bean
-public RetryTopicConfigurer myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-return RetryTopicConfigurer
-    .builder()
-    .doNotConfigureDlt()
-    .create(template);
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .doNotConfigureDlt()
+            .create(template);
 }
 ----
 ====
@@ -547,19 +550,21 @@ public void processMessage(MyPojo message) {
 [source, java]
 ----
 @Bean
-public RetryTopicConfigurer myRetryTopic(KafkaTemplate<Integer, MyPojo> template, ConcurrentKafkaListenerContainerFactory<Integer, MyPojo> factory) {
-return RetryTopicConfigurer
-    .builder()
-    .listenerFactory(factory)
-    .create(template);
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template,
+        ConcurrentKafkaListenerContainerFactory<Integer, MyPojo> factory) {
+
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .listenerFactory(factory)
+            .create(template);
 }
 
 @Bean
-public RetryTopicConfigurer myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
-return RetryTopicConfigurer
-    .builder()
-    .listenerFactory("my-retry-topic-factory")
-    .create(template);
+public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .listenerFactory("my-retry-topic-factory")
+            .create(template);
 }
 ----
 ====

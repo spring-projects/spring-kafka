@@ -105,7 +105,7 @@ class RetryableTopicAnnotationProcessorTests {
 				.processAnnotation(topics, listenWithRetryAndDlt, annotationWithDlt, beanWithDlt);
 
 		// then
-		RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
+		EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
 		Method method = (Method) ReflectionTestUtils.getField(dltHandlerMethod, "method");
 		assertEquals("handleDlt", method.getName());
 
@@ -124,7 +124,7 @@ class RetryableTopicAnnotationProcessorTests {
 		RetryTopicConfiguration configuration = processor.processAnnotation(topics, listenWithRetry, annotation, bean);
 
 		// then
-		RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
+		EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
 		Method method = (Method) ReflectionTestUtils.getField(dltHandlerMethod, "method");
 		assertEquals(RetryTopicConfigurer.LoggingDltListenerHandlerMethod.DEFAULT_DLT_METHOD_NAME,
 				method.getName());

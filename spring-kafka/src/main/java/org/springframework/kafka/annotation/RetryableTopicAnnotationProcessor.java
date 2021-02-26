@@ -29,7 +29,9 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.adapter.AdapterUtils;
+import org.springframework.kafka.retrytopic.EndpointHandlerMethod;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames;
 import org.springframework.retry.annotation.Backoff;
@@ -69,7 +71,7 @@ public class RetryableTopicAnnotationProcessor {
 	public RetryTopicConfiguration processAnnotation(String[] topics, Method method, RetryableTopic annotation,
 			Object bean) {
 
-		return RetryTopicConfiguration.builder()
+		return RetryTopicConfigurationBuilder.newInstance()
 				.maxAttempts(annotation.attempts())
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
 				.retryTopicSuffix(annotation.retryTopicSuffix())
@@ -140,7 +142,7 @@ public class RetryableTopicAnnotationProcessor {
 		return value;
 	}
 
-	private RetryTopicConfigurer.EndpointHandlerMethod getDltProcessor(Method listenerMethod, Object bean) {
+	private EndpointHandlerMethod getDltProcessor(Method listenerMethod, Object bean) {
 		Class<?> declaringClass = listenerMethod.getDeclaringClass();
 		return Arrays.stream(ReflectionUtils.getDeclaredMethods(declaringClass))
 				.filter(method -> AnnotationUtils.findAnnotation(method, DltHandler.class) != null)

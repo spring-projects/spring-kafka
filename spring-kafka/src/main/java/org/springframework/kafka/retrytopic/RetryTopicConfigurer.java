@@ -28,10 +28,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
-import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -42,8 +39,6 @@ import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.Suffixer;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
-import org.springframework.util.ReflectionUtils;
 
 
 /**
@@ -100,8 +95,8 @@ import org.springframework.util.ReflectionUtils;
  * <pre>
  *     <code>@Bean</code>
  *     <code>public RetryTopicConfiguration myRetryableTopic(KafkaTemplate&lt;String, Object&gt; template) {
- *         return RetryTopicConfiguration
- *                 .builder()
+ *         return RetryTopicConfigurationBuilder
+ *                 .newInstance()
  *                 .create(template);
  *      }</code>
  * </pre>
@@ -117,8 +112,8 @@ import org.springframework.util.ReflectionUtils;
  * <pre>
  *     <code>@Bean
  *     public RetryTopicConfiguration myRetryableTopic(KafkaTemplate&lt;String, MyPojo&gt; template) {
- *         return RetryTopicConfiguration
- *                 .builder()
+ *         return RetryTopicConfigurationBuilder
+ *                 .newInstance()
  *                 .fixedBackoff(3000)
  *                 .maxAttempts(5)
  *                 .includeTopics("my-topic", "my-other-topic")
@@ -128,8 +123,8 @@ import org.springframework.util.ReflectionUtils;
  * <pre>
  *	   <code>@Bean
  *     public RetryTopicConfiguration myOtherRetryableTopic(KafkaTemplate&lt;String, MyPojo&gt; template) {
- *         return RetryTopicConfiguration
- *                 .builder()
+ *         return RetryTopicConfigurationBuilder
+ *                 .newInstance()
  *                 .exponentialBackoff(1000, 2, 5000)
  *                 .maxAttempts(4)
  *                 .excludeTopics("my-topic", "my-other-topic")
@@ -168,8 +163,8 @@ import org.springframework.util.ReflectionUtils;
  * <pre>
  *     <code>@Bean
  *     public RetryTopicConfiguration otherRetryTopic(KafkaTemplate&lt;Integer, MyPojo&gt; template) {
- *         return RetryTopicConfiguration
- *                 .builder()
+ *         return RetryTopicConfigurationBuilder
+ *                 .newInstance()
  *                 .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
  *                 .create(template);
  *     }</code>
@@ -420,7 +415,7 @@ public class RetryTopicConfigurer {
 
 		public EndpointCustomizer createEndpointCustomizer() {
 			return addSuffixesAndMethod(this.destinationProperties.suffix(), this.beanMethod.resolveBean(this.beanFactory),
-					this.beanMethod.method);
+					this.beanMethod.getMethod());
 		}
 
 		private EndpointCustomizer addSuffixesAndMethod(String topicSuffix, Object bean, Method method) {
@@ -481,49 +476,6 @@ public class RetryTopicConfigurer {
 
 		String getProcessedTopic() {
 			return this.processedTopic;
-		}
-	}
-
-	public static class EndpointHandlerMethod {
-
-		private final Class<?> beanClass;
-
-		private final Method method;
-
-		private Object bean;
-
-		public EndpointHandlerMethod(Class<?> beanClass, String methodName) {
-			Assert.notNull(beanClass, () -> "No destination bean class provided!");
-			Assert.notNull(methodName, () -> "No method name for destination bean class provided!");
-			this.method = Arrays.stream(ReflectionUtils.getDeclaredMethods(beanClass))
-					.filter(mthd -> mthd.getName().equals(methodName))
-					.findFirst()
-					.orElseThrow(() -> new IllegalArgumentException(
-							String.format("No method %s in class %s", methodName, beanClass)));
-			this.beanClass = beanClass;
-		}
-
-		public EndpointHandlerMethod(Object bean, Method method) {
-			Assert.notNull(bean, () -> "No bean for destination provided!");
-			Assert.notNull(method, () -> "No method for destination bean class provided!");
-			this.method = method;
-			this.bean = bean;
-			this.beanClass = bean.getClass();
-		}
-
-		public Object resolveBean(BeanFactory beanFactory) {
-			if (this.bean == null) {
-				try {
-					this.bean = beanFactory.getBean(this.beanClass);
-				}
-				catch (NoSuchBeanDefinitionException e) {
-					String beanName = this.beanClass.getSimpleName() + "-handlerMethod";
-					((BeanDefinitionRegistry) beanFactory).registerBeanDefinition(beanName,
-							new RootBeanDefinition(this.beanClass));
-					this.bean = beanFactory.getBean(beanName);
-				}
-			}
-			return this.bean;
 		}
 	}
 

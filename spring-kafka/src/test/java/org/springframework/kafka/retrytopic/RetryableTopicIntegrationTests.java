@@ -289,8 +289,8 @@ public class RetryableTopicIntegrationTests {
 
 		@Bean
 		public RetryTopicConfiguration firstRetryTopic(KafkaTemplate<String, String> template) {
-			return RetryTopicConfiguration
-					.builder()
+			return RetryTopicConfigurationBuilder
+					.newInstance()
 					.fixedBackOff(50)
 					.maxAttempts(5)
 					.useSingleTopicForFixedDelays()
@@ -302,8 +302,8 @@ public class RetryableTopicIntegrationTests {
 
 		@Bean
 		public RetryTopicConfiguration secondRetryTopic(KafkaTemplate<String, String> template) {
-			return RetryTopicConfiguration
-					.builder()
+			return RetryTopicConfigurationBuilder
+					.newInstance()
 					.exponentialBackoff(50, 2, 10000)
 					.retryOn(Arrays.asList(IllegalStateException.class, IllegalAccessException.class))
 					.traversingCauses()

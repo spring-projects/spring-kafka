@@ -54,7 +54,7 @@ public class RetryTopicConfigurationBuilder {
 
 	private BackOffPolicy backOffPolicy;
 
-	private RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod;
+	private EndpointHandlerMethod dltHandlerMethod;
 
 	private String retryTopicSuffix;
 
@@ -73,6 +73,7 @@ public class RetryTopicConfigurationBuilder {
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
 	private long timeout = RetryTopicConstants.NOT_SET;
+
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
 	/* ---------------- DLT Behavior -------------- */
@@ -82,7 +83,7 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	public RetryTopicConfigurationBuilder dltHandlerMethod(
-			RetryTopicConfigurer.EndpointHandlerMethod endpointHandlerMethod) {
+			EndpointHandlerMethod endpointHandlerMethod) {
 
 		this.dltHandlerMethod = endpointHandlerMethod;
 		return this;
@@ -334,4 +335,13 @@ public class RetryTopicConfigurationBuilder {
 				? this.classifierBuilder.build()
 				: new BinaryExceptionClassifierBuilder().retryOn(Throwable.class).build();
 	}
+
+	/**
+	 * Create a new instance of the builder.
+	 * @return the new instance.
+	 */
+	public static RetryTopicConfigurationBuilder newInstance() {
+		return new RetryTopicConfigurationBuilder();
+	}
+
 }

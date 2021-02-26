@@ -21,12 +21,12 @@ import java.util.List;
 import org.springframework.kafka.support.AllowDenyCollectionManager;
 
 /**
- *
  * Contains the provided configuration for the retryable topics.
  *
  * Should be created via the {@link RetryTopicConfigurationBuilder}.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */
@@ -36,14 +36,14 @@ public class RetryTopicConfiguration {
 
 	private final AllowDenyCollectionManager<String> topicAllowListManager;
 
-	private final RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod;
+	private final EndpointHandlerMethod dltHandlerMethod;
 
 	private final TopicCreation kafkaTopicAutoCreationConfig;
 
 	private final ListenerContainerFactoryResolver.Configuration factoryResolverConfig;
 
 	RetryTopicConfiguration(List<DestinationTopic.Properties> destinationTopicProperties,
-								RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod,
+								EndpointHandlerMethod dltHandlerMethod,
 								TopicCreation kafkaTopicAutoCreationConfig,
 								AllowDenyCollectionManager<String> topicAllowListManager,
 								ListenerContainerFactoryResolver.Configuration factoryResolverConfig) {
@@ -66,16 +66,12 @@ public class RetryTopicConfiguration {
 		return this.factoryResolverConfig;
 	}
 
-	public RetryTopicConfigurer.EndpointHandlerMethod getDltHandlerMethod() {
+	public EndpointHandlerMethod getDltHandlerMethod() {
 		return this.dltHandlerMethod;
 	}
 
 	public List<DestinationTopic.Properties> getDestinationTopicProperties() {
 		return this.destinationTopicProperties;
-	}
-
-	public static RetryTopicConfigurationBuilder builder() {
-		return new RetryTopicConfigurationBuilder();
 	}
 
 	static class TopicCreation {
