@@ -16,10 +16,8 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
 
 import java.lang.reflect.Method;
@@ -107,10 +105,10 @@ class RetryableTopicAnnotationProcessorTests {
 		// then
 		RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
 		Method method = (Method) ReflectionTestUtils.getField(dltHandlerMethod, "method");
-		assertEquals("handleDlt", method.getName());
+		assertThat(method.getName()).isEqualTo("handleDlt");
 
-		assertFalse(new DestinationTopic("",
-				configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure());
+		assertThat(new DestinationTopic("",
+				configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure()).isFalse();
 	}
 
 	@Test
@@ -126,11 +124,11 @@ class RetryableTopicAnnotationProcessorTests {
 		// then
 		RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
 		Method method = (Method) ReflectionTestUtils.getField(dltHandlerMethod, "method");
-		assertEquals(RetryTopicConfigurer.LoggingDltListenerHandlerMethod.DEFAULT_DLT_METHOD_NAME,
-				method.getName());
+		assertThat(method.getName())
+				.isEqualTo(RetryTopicConfigurer.LoggingDltListenerHandlerMethod.DEFAULT_DLT_METHOD_NAME);
 
-		assertTrue(new DestinationTopic("",
-				configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure());
+		assertThat(new DestinationTopic("",
+				configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure()).isTrue();
 	}
 
 	@Test
@@ -141,8 +139,8 @@ class RetryableTopicAnnotationProcessorTests {
 		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
 
 		// given - then
-		assertThrows(BeanInitializationException.class, () ->
-				processor.processAnnotation(topics, listenWithRetry, annotation, bean));
+		assertThatExceptionOfType(BeanInitializationException.class)
+				.isThrownBy(() -> processor.processAnnotation(topics, listenWithRetry, annotation, bean));
 	}
 
 	@Test
@@ -158,7 +156,7 @@ class RetryableTopicAnnotationProcessorTests {
 		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
 
 		// given - then
-		assertThrows(BeanInitializationException.class, () ->
+		assertThatExceptionOfType(BeanInitializationException.class).isThrownBy(() ->
 				processor.processAnnotation(topics, listenWithRetryAndDlt, annotationWithDlt, beanWithDlt));
 	}
 
@@ -177,7 +175,7 @@ class RetryableTopicAnnotationProcessorTests {
 				bean);
 		DestinationTopic.Properties properties = configuration.getDestinationTopicProperties().get(0);
 		DestinationTopic destinationTopic = new DestinationTopic("", properties);
-		assertEquals(kafkaOperationsFromDefaultName, destinationTopic.getKafkaOperations());
+		assertThat(destinationTopic.getKafkaOperations()).isEqualTo(kafkaOperationsFromDefaultName);
 	}
 
 	@Test
@@ -193,7 +191,7 @@ class RetryableTopicAnnotationProcessorTests {
 				.processAnnotation(topics, listenWithRetry, annotation, bean);
 		DestinationTopic.Properties properties = configuration.getDestinationTopicProperties().get(0);
 		DestinationTopic destinationTopic = new DestinationTopic("", properties);
-		assertEquals(kafkaOperationsFromTemplateName, destinationTopic.getKafkaOperations());
+		assertThat(destinationTopic.getKafkaOperations()).isEqualTo(kafkaOperationsFromTemplateName);
 	}
 
 	@Test
@@ -211,7 +209,7 @@ class RetryableTopicAnnotationProcessorTests {
 		// then
 		DestinationTopic.Properties properties = configuration.getDestinationTopicProperties().get(0);
 		DestinationTopic destinationTopic = new DestinationTopic("", properties);
-		assertEquals(kafkaOperationsFromDefaultName, destinationTopic.getKafkaOperations());
+		assertThat(destinationTopic.getKafkaOperations()).isEqualTo(kafkaOperationsFromDefaultName);
 	}
 
 	@Test
@@ -229,13 +227,13 @@ class RetryableTopicAnnotationProcessorTests {
 		// then
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
 		DestinationTopic destinationTopic = new DestinationTopic("", destinationTopicProperties.get(0));
-		assertEquals(0, destinationTopic.getDestinationDelay());
+		assertThat(destinationTopic.getDestinationDelay()).isEqualTo(0);
 		DestinationTopic destinationTopic2 = new DestinationTopic("", destinationTopicProperties.get(1));
-		assertEquals(1000, destinationTopic2.getDestinationDelay());
+		assertThat(destinationTopic2.getDestinationDelay()).isEqualTo(1000);
 		DestinationTopic destinationTopic3 = new DestinationTopic("", destinationTopicProperties.get(2));
-		assertEquals(2000, destinationTopic3.getDestinationDelay());
+		assertThat(destinationTopic3.getDestinationDelay()).isEqualTo(2000);
 		DestinationTopic destinationTopic4 = new DestinationTopic("", destinationTopicProperties.get(3));
-		assertEquals(0, destinationTopic4.getDestinationDelay());
+		assertThat(destinationTopic4.getDestinationDelay()).isEqualTo(0);
 
 	}
 
@@ -254,13 +252,13 @@ class RetryableTopicAnnotationProcessorTests {
 		// then
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
 		DestinationTopic destinationTopic = new DestinationTopic("", destinationTopicProperties.get(0));
-		assertEquals(0, destinationTopic.getDestinationDelay());
+		assertThat(destinationTopic.getDestinationDelay()).isEqualTo(0);
 		DestinationTopic destinationTopic2 = new DestinationTopic("", destinationTopicProperties.get(1));
-		assertEquals(1000, destinationTopic2.getDestinationDelay());
+		assertThat(destinationTopic2.getDestinationDelay()).isEqualTo(1000);
 		DestinationTopic destinationTopic3 = new DestinationTopic("", destinationTopicProperties.get(2));
-		assertEquals(2000, destinationTopic3.getDestinationDelay());
+		assertThat(destinationTopic3.getDestinationDelay()).isEqualTo(2000);
 		DestinationTopic destinationTopic4 = new DestinationTopic("", destinationTopicProperties.get(3));
-		assertEquals(0, destinationTopic4.getDestinationDelay());
+		assertThat(destinationTopic4.getDestinationDelay()).isEqualTo(0);
 
 	}
 
@@ -279,13 +277,13 @@ class RetryableTopicAnnotationProcessorTests {
 		// then
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
 		DestinationTopic destinationTopic = new DestinationTopic("", destinationTopicProperties.get(0));
-		assertEquals(0, destinationTopic.getDestinationDelay());
+		assertThat(destinationTopic.getDestinationDelay()).isEqualTo(0);
 		DestinationTopic destinationTopic2 = new DestinationTopic("", destinationTopicProperties.get(1));
-		assertEquals(1000, destinationTopic2.getDestinationDelay());
+		assertThat(destinationTopic2.getDestinationDelay()).isEqualTo(1000);
 		DestinationTopic destinationTopic3 = new DestinationTopic("", destinationTopicProperties.get(2));
-		assertEquals(1000, destinationTopic3.getDestinationDelay());
+		assertThat(destinationTopic3.getDestinationDelay()).isEqualTo(1000);
 		DestinationTopic destinationTopic4 = new DestinationTopic("", destinationTopicProperties.get(3));
-		assertEquals(0, destinationTopic4.getDestinationDelay());
+		assertThat(destinationTopic4.getDestinationDelay()).isEqualTo(0);
 
 	}
 

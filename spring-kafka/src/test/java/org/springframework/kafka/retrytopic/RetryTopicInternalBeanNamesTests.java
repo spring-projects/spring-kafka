@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
@@ -47,14 +47,14 @@ class RetryTopicInternalBeanNamesTests {
 	@Test
 	public void assertRetryTopicInternalBeanNamesConstants() {
 		new RetryTopicInternalBeanNames() { }; // for coverage
-		assertEquals(DESTINATION_TOPIC_PROCESSOR_NAME, RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME);
-		assertEquals(KAFKA_CONSUMER_BACKOFF_MANAGER, RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER);
-		assertEquals(RETRY_TOPIC_CONFIGURER, RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER);
-		assertEquals(LISTENER_CONTAINER_FACTORY_RESOLVER_NAME, RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME);
-		assertEquals(LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME, RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME);
-		assertEquals(DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME, RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME);
-		assertEquals(DESTINATION_TOPIC_CONTAINER_NAME, RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME);
-		assertEquals(DEFAULT_LISTENER_FACTORY_BEAN_NAME, RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME);
-		assertEquals(DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME);
+		assertThat(RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME).isEqualTo(DESTINATION_TOPIC_PROCESSOR_NAME);
+		assertThat(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER).isEqualTo(KAFKA_CONSUMER_BACKOFF_MANAGER);
+		assertThat(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER).isEqualTo(RETRY_TOPIC_CONFIGURER);
+		assertThat(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME).isEqualTo(LISTENER_CONTAINER_FACTORY_RESOLVER_NAME);
+		assertThat(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME).isEqualTo(LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME);
+		assertThat(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME).isEqualTo(DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME);
+		assertThat(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME).isEqualTo(DESTINATION_TOPIC_CONTAINER_NAME);
+		assertThat(RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME).isEqualTo(DEFAULT_LISTENER_FACTORY_BEAN_NAME);
+		assertThat(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME).isEqualTo(DEFAULT_KAFKA_TEMPLATE_BEAN_NAME);
 	}
 }

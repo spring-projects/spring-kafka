@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,8 +35,8 @@ class RetryTopicHeadersTests {
 	@Test
 	public void assertRetryTopicHeadersConstants() {
 		new RetryTopicHeaders() { }; // for coverage
-		assertEquals(DEFAULT_HEADER_BACKOFF_TIMESTAMP, RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP);
-		assertEquals(DEFAULT_HEADER_ATTEMPTS, RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
-		assertEquals(DEFAULT_HEADER_ORIGINAL_TIMESTAMP, RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+		assertThat(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP).isEqualTo(DEFAULT_HEADER_BACKOFF_TIMESTAMP);
+		assertThat(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS).isEqualTo(DEFAULT_HEADER_ATTEMPTS);
+		assertThat(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP).isEqualTo(DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
 	}
 }

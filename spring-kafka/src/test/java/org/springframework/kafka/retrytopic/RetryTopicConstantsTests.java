@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,9 +37,9 @@ class RetryTopicConstantsTests {
 	@Test
 	public void assertRetryTopicConstants() {
 		new RetryTopicConstants() { }; // for coverage
-		assertEquals(DEFAULT_DLT_SUFFIX, RetryTopicConstants.DEFAULT_DLT_SUFFIX);
-		assertEquals(DEFAULT_RETRY_SUFFIX, RetryTopicConstants.DEFAULT_RETRY_SUFFIX);
-		assertEquals(DEFAULT_MAX_ATTEMPTS, RetryTopicConstants.DEFAULT_MAX_ATTEMPTS);
-		assertEquals(NOT_SET, RetryTopicConstants.NOT_SET);
+		assertThat(RetryTopicConstants.DEFAULT_DLT_SUFFIX).isEqualTo(DEFAULT_DLT_SUFFIX);
+		assertThat(RetryTopicConstants.DEFAULT_RETRY_SUFFIX).isEqualTo(DEFAULT_RETRY_SUFFIX);
+		assertThat(RetryTopicConstants.DEFAULT_MAX_ATTEMPTS).isEqualTo(DEFAULT_MAX_ATTEMPTS);
+		assertThat(RetryTopicConstants.NOT_SET).isEqualTo(NOT_SET);
 	}
 }

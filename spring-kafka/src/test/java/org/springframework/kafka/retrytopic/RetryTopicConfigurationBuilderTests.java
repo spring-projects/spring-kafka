@@ -16,9 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -60,7 +58,7 @@ class RetryTopicConfigurationBuilderTests {
 		RetryTopicConfiguration configuration = builder.create(kafkaOperations);
 
 		// then
-		assertFalse(configuration.hasConfigurationForTopics(topicNames));
+		assertThat(configuration.hasConfigurationForTopics(topicNames)).isFalse();
 	}
 
 	@Test
@@ -75,10 +73,10 @@ class RetryTopicConfigurationBuilderTests {
 
 		// then
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
-		assertEquals(0, destinationTopicProperties.get(0).delay());
-		assertEquals(1000, destinationTopicProperties.get(1).delay());
-		assertEquals(1000, destinationTopicProperties.get(2).delay());
-		assertEquals(0, destinationTopicProperties.get(3).delay());
+		assertThat(destinationTopicProperties.get(0).delay()).isEqualTo(0);
+		assertThat(destinationTopicProperties.get(1).delay()).isEqualTo(1000);
+		assertThat(destinationTopicProperties.get(2).delay()).isEqualTo(1000);
+		assertThat(destinationTopicProperties.get(3).delay()).isEqualTo(0);
 	}
 
 	@Test
@@ -93,10 +91,12 @@ class RetryTopicConfigurationBuilderTests {
 
 		// then
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
-		assertEquals(0, destinationTopicProperties.get(0).delay());
-		assertEquals(0, destinationTopicProperties.get(1).delay());
-		assertEquals(0, destinationTopicProperties.get(2).delay());
-		assertEquals(0, destinationTopicProperties.get(3).delay());
+		assertThat(destinationTopicProperties.get(0).delay()).isEqualTo(0);
+		assertThat(destinationTopicProperties.get(1).delay()).isEqualTo(0);
+		assertThat(destinationTopicProperties.get(2).delay()).isEqualTo(0);
+		assertThat(destinationTopicProperties.get(3).delay()).isEqualTo(0);
+
+
 	}
 
 	@Test
@@ -113,12 +113,12 @@ class RetryTopicConfigurationBuilderTests {
 
 		// then
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
-		assertEquals(0, destinationTopicProperties.get(0).delay());
-		assertTrue(minInterval < destinationTopicProperties.get(1).delay());
-		assertTrue(destinationTopicProperties.get(1).delay() < maxInterval);
-		assertTrue(minInterval < destinationTopicProperties.get(2).delay());
-		assertTrue(destinationTopicProperties.get(2).delay() < maxInterval);
-		assertEquals(0, destinationTopicProperties.get(3).delay());
+		assertThat(destinationTopicProperties.get(0).delay()).isEqualTo(0);
+		assertThat(minInterval < destinationTopicProperties.get(1).delay()).isTrue();
+		assertThat(destinationTopicProperties.get(1).delay() < maxInterval).isTrue();
+		assertThat(minInterval < destinationTopicProperties.get(2).delay()).isTrue();
+		assertThat(destinationTopicProperties.get(2).delay() < maxInterval).isTrue();
+		assertThat(destinationTopicProperties.get(3).delay()).isEqualTo(0);
 	}
 
 	@Test
@@ -132,8 +132,8 @@ class RetryTopicConfigurationBuilderTests {
 		// then
 		DestinationTopic destinationTopic = new DestinationTopic("",
 				configuration.getDestinationTopicProperties().get(0));
-		assertTrue(destinationTopic.shouldRetryOn(0, new IllegalArgumentException()));
-		assertFalse(destinationTopic.shouldRetryOn(0, new IllegalStateException()));
+		assertThat(destinationTopic.shouldRetryOn(0, new IllegalArgumentException())).isTrue();
+		assertThat(destinationTopic.shouldRetryOn(0, new IllegalStateException())).isFalse();
 	}
 
 	@Test
@@ -148,8 +148,8 @@ class RetryTopicConfigurationBuilderTests {
 		// then
 		DestinationTopic destinationTopic = new DestinationTopic("",
 				configuration.getDestinationTopicProperties().get(0));
-		assertFalse(destinationTopic.shouldRetryOn(0, new IllegalArgumentException()));
-		assertTrue(destinationTopic.shouldRetryOn(0, new IllegalStateException()));
+		assertThat(destinationTopic.shouldRetryOn(0, new IllegalArgumentException())).isFalse();
+		assertThat(destinationTopic.shouldRetryOn(0, new IllegalStateException())).isTrue();
 	}
 
 	@Test
@@ -167,8 +167,8 @@ class RetryTopicConfigurationBuilderTests {
 		Object factoryInstance = ReflectionTestUtils.getField(config, "factoryFromRetryTopicConfiguration");
 		Object listenerContainerFactoryName = ReflectionTestUtils.getField(config, "listenerContainerFactoryName");
 
-		assertEquals(containerFactory, factoryInstance);
-		assertEquals(factoryName, listenerContainerFactoryName);
+		assertThat(factoryInstance).isEqualTo(containerFactory);
+		assertThat(listenerContainerFactoryName).isEqualTo(factoryName);
 
 	}
 
@@ -182,6 +182,6 @@ class RetryTopicConfigurationBuilderTests {
 				.create(kafkaOperations);
 
 		RetryTopicConfiguration.TopicCreation config = configuration.forKafkaTopicAutoCreation();
-		assertFalse(config.shouldCreateTopics());
+		assertThat(config.shouldCreateTopics()).isFalse();
 	}
 }

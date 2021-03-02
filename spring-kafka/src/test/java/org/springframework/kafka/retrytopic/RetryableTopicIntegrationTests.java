@@ -16,8 +16,8 @@
 
 package org.springframework.kafka.retrytopic;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.util.Arrays;
@@ -95,39 +95,39 @@ public class RetryableTopicIntegrationTests {
 	void shouldRetryFirstTopic() {
 		logger.debug("Sending message to topic " + FIRST_TOPIC);
 		kafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
-		assertTrue(awaitLatch(latchContainer.countDownLatch1));
-		assertTrue(awaitLatch(latchContainer.customDltCountdownLatch));
+		assertThat(awaitLatch(latchContainer.countDownLatch1)).isTrue();
+		assertThat(awaitLatch(latchContainer.customDltCountdownLatch)).isTrue();
 	}
 
 	@Test
 	void shouldRetrySecondTopic() {
 		logger.debug("Sending message to topic " + SECOND_TOPIC);
 		kafkaTemplate.send(SECOND_TOPIC, "Testing topic 2");
-		assertTrue(awaitLatch(latchContainer.countDownLatch2));
-		assertTrue(awaitLatch(latchContainer.customDltCountdownLatch));
+		assertThat(awaitLatch(latchContainer.countDownLatch2)).isTrue();
+		assertThat(awaitLatch(latchContainer.customDltCountdownLatch)).isTrue();
 	}
 
 	@Test
 	void shouldRetryThirdTopicWithTimeout() {
 		logger.debug("Sending message to topic " + THIRD_TOPIC);
 		kafkaTemplate.send(THIRD_TOPIC, "Testing topic 3");
-		assertTrue(awaitLatch(latchContainer.countDownLatch3));
-		assertTrue(awaitLatch(latchContainer.countDownLatchDltOne));
+		assertThat(awaitLatch(latchContainer.countDownLatch3)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatchDltOne)).isTrue();
 	}
 
 	@Test
 	void shouldRetryFourthTopicWithNoDlt() {
 		logger.debug("Sending message to topic " + FOURTH_TOPIC);
 		kafkaTemplate.send(FOURTH_TOPIC, "Testing topic 4");
-		assertTrue(awaitLatch(latchContainer.countDownLatch4));
+		assertThat(awaitLatch(latchContainer.countDownLatch4)).isTrue();
 	}
 
 	@Test
 	public void shouldGoStraightToDlt() {
 		logger.debug("Sending message to topic " + NOT_RETRYABLE_EXCEPTION_TOPIC);
 		kafkaTemplate.send(NOT_RETRYABLE_EXCEPTION_TOPIC, "Testing topic with annotation 1");
-		assertTrue(awaitLatch(latchContainer.countDownLatchNoRetry));
-		assertTrue(awaitLatch(latchContainer.countDownLatchDltTwo));
+		assertThat(awaitLatch(latchContainer.countDownLatchNoRetry)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatchDltTwo)).isTrue();
 	}
 
 	private boolean awaitLatch(CountDownLatch latch) {

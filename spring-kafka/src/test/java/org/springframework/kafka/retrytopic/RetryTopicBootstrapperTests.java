@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -66,12 +66,14 @@ class RetryTopicBootstrapperTests {
 
 	@Test
 	void shouldThrowIfACDoesntImplementInterfaces() {
-		assertThrows(IllegalStateException.class, () -> new RetryTopicBootstrapper(wrongApplicationContext, beanFactory));
+		assertThatExceptionOfType(IllegalStateException.class)
+				.isThrownBy(() -> new RetryTopicBootstrapper(wrongApplicationContext, beanFactory));
 	}
 
 	@Test
 	void shouldThrowIfBFDoesntImplementInterfaces() {
-		assertThrows(IllegalStateException.class, () -> new RetryTopicBootstrapper(applicationContext, wrongBeanFactory));
+		assertThatExceptionOfType(IllegalStateException.class)
+				.isThrownBy(() -> new RetryTopicBootstrapper(applicationContext, wrongBeanFactory));
 	}
 
 	@Test

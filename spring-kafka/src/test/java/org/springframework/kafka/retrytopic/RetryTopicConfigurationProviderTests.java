@@ -16,8 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willReturn;
@@ -105,7 +104,7 @@ class RetryTopicConfigurationProviderTests {
 
 		// then
 		then(this.beanFactory).should(times(1)).getBeansOfType(RetryTopicConfiguration.class);
-		assertEquals(retryTopicConfiguration, configuration);
+		assertThat(configuration).isEqualTo(retryTopicConfiguration);
 
 	}
 
@@ -123,7 +122,7 @@ class RetryTopicConfigurationProviderTests {
 
 		// then
 		then(this.beanFactory).should(times(1)).getBeansOfType(RetryTopicConfiguration.class);
-		assertNull(configuration);
+		assertThat(configuration).isNull();
 
 	}
 
@@ -136,7 +135,7 @@ class RetryTopicConfigurationProviderTests {
 		RetryTopicConfiguration configuration = provider.findRetryConfigurationFor(topics, nonAnnotatedMethod, bean);
 
 		// then
-		assertNull(configuration);
+		assertThat(configuration).isNull();
 
 	}
 

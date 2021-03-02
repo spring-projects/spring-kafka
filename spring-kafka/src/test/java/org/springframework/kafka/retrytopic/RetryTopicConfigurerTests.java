@@ -16,9 +16,8 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -173,7 +172,7 @@ class RetryTopicConfigurerTests {
 				listenerContainerFactoryConfigurer, beanFactory);
 
 		// when - then
-		assertThrows(IllegalArgumentException.class,
+		assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
 				() -> configurer.processMainAndRetryListeners(endpointProcessor, multiMethodEndpoint, configuration,
 						registrar, containerFactory, defaultFactoryBeanName));
 	}
@@ -250,22 +249,22 @@ class RetryTopicConfigurerTests {
 		then(registrar).should(times(4)).registerEndpoint(endpointCaptor.capture(), eq(this.containerFactory));
 		List<MethodKafkaListenerEndpoint<?, ?>> allRegisteredEndpoints = endpointCaptor.getAllValues();
 
-		assertEquals(mainEndpoint, allRegisteredEndpoints.get(0));
+		assertThat(allRegisteredEndpoints.get(0)).isEqualTo(mainEndpoint);
 
 		List<String> firstRetryTopics = new ArrayList<>(allRegisteredEndpoints.get(1).getTopics());
 		List<String> secondRetryTopics = new ArrayList<>(allRegisteredEndpoints.get(2).getTopics());
 		List<String> dltTopics = new ArrayList<>(allRegisteredEndpoints.get(3).getTopics());
 
-		assertEquals(topics.get(0) + firstRetrySuffix, firstRetryTopics.get(0));
-		assertEquals(topics.get(1) + firstRetrySuffix, firstRetryTopics.get(1));
-		assertEquals(topics.get(0) + secondRetrySuffix, secondRetryTopics.get(0));
-		assertEquals(topics.get(1) + secondRetrySuffix, secondRetryTopics.get(1));
-		assertEquals(topics.get(0) + dltSuffix, dltTopics.get(0));
-		assertEquals(topics.get(1) + dltSuffix, dltTopics.get(1));
+		assertThat(firstRetryTopics.get(0)).isEqualTo(topics.get(0) + firstRetrySuffix);
+		assertThat(firstRetryTopics.get(1)).isEqualTo(topics.get(1) + firstRetrySuffix);
+		assertThat(secondRetryTopics.get(0)).isEqualTo(topics.get(0) + secondRetrySuffix);
+		assertThat(secondRetryTopics.get(1)).isEqualTo(topics.get(1) + secondRetrySuffix);
+		assertThat(dltTopics.get(0)).isEqualTo(topics.get(0) + dltSuffix);
+		assertThat(dltTopics.get(1)).isEqualTo(topics.get(1) + dltSuffix);
 
-		assertEquals(this.defaultListableBeanFactory, ReflectionTestUtils.getField(allRegisteredEndpoints.get(1), "beanFactory"));
-		assertEquals(this.defaultListableBeanFactory, ReflectionTestUtils.getField(allRegisteredEndpoints.get(2), "beanFactory"));
-		assertEquals(this.defaultListableBeanFactory, ReflectionTestUtils.getField(allRegisteredEndpoints.get(3), "beanFactory"));
+		assertThat(ReflectionTestUtils.getField(allRegisteredEndpoints.get(1), "beanFactory")).isEqualTo(this.defaultListableBeanFactory);
+		assertThat(ReflectionTestUtils.getField(allRegisteredEndpoints.get(2), "beanFactory")).isEqualTo(this.defaultListableBeanFactory);
+		assertThat(ReflectionTestUtils.getField(allRegisteredEndpoints.get(3), "beanFactory")).isEqualTo(this.defaultListableBeanFactory);
 
 		then(destinationTopicProcessor).should(times(1)).processRegisteredDestinations(topicsConsumerCaptor.capture(), eq(context));
 
@@ -285,10 +284,10 @@ class RetryTopicConfigurerTests {
 
 		List<String> allValues = mainTopicNameCaptor.getAllValues();
 		List<String> retryTopicName = retryDltTopicNameCaptor.getAllValues();
-		assertEquals(topics.get(0), allValues.get(index));
-		assertEquals(topics.get(1), allValues.get(index + 1));
-		assertEquals(firstTopicName, retryTopicName.get(index));
-		assertEquals(secondTopicName, retryTopicName.get(index + 1));
+		assertThat(allValues.get(index)).isEqualTo(topics.get(0));
+		assertThat(allValues.get(index + 1)).isEqualTo(topics.get(1));
+		assertThat(retryTopicName.get(index)).isEqualTo(firstTopicName);
+		assertThat(retryTopicName.get(index + 1)).isEqualTo(secondTopicName);
 	}
 
 	private void thenAssertEndpointProcessing(MethodKafkaListenerEndpoint<?, ?> endpoint) {
@@ -324,7 +323,7 @@ class RetryTopicConfigurerTests {
 		Object resolvedBean = handlerMethod.resolveBean(this.beanFactory);
 
 		// then
-		assertEquals(noOps, resolvedBean);
+		assertThat(resolvedBean).isEqualTo(noOps);
 
 	}
 
@@ -344,7 +343,7 @@ class RetryTopicConfigurerTests {
 		// then
 		then(defaultListableBeanFactory).should()
 				.registerBeanDefinition(eq(beanName), any(RootBeanDefinition.class));
-		assertTrue(NoOpsClass.class.isAssignableFrom(resolvedBean.getClass()));
+		assertThat(NoOpsClass.class.isAssignableFrom(resolvedBean.getClass())).isTrue();
 
 	}
 
