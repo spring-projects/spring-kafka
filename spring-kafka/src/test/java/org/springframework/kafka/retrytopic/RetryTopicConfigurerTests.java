@@ -17,7 +17,7 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -172,7 +172,7 @@ class RetryTopicConfigurerTests {
 				listenerContainerFactoryConfigurer, beanFactory);
 
 		// when - then
-		assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
+		assertThatIllegalArgumentException().isThrownBy(
 				() -> configurer.processMainAndRetryListeners(endpointProcessor, multiMethodEndpoint, configuration,
 						registrar, containerFactory, defaultFactoryBeanName));
 	}

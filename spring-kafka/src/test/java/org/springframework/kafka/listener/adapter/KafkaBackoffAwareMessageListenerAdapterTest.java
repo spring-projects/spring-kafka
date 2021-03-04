@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -140,7 +140,7 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 		// then
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
-		assertEquals(originalTimestamp, timestampCaptor.getValue());
+		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.maybeBackoff(context);
 
@@ -162,7 +162,7 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 		// then
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
-		assertEquals(originalTimestamp, timestampCaptor.getValue());
+		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.maybeBackoff(context);
 
@@ -184,7 +184,7 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 		// then
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
-		assertEquals(originalTimestamp, timestampCaptor.getValue());
+		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.maybeBackoff(context);
 
@@ -207,7 +207,7 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 		// then
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
-		assertEquals(originalTimestamp, timestampCaptor.getValue());
+		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.maybeBackoff(context);
 

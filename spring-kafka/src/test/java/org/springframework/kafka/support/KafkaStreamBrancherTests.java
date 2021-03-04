@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 package org.springframework.kafka.support;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -48,25 +47,25 @@ class KafkaStreamBrancherTests {
 		given(input.branch(eq(p1), eq(p2), any()))
 				.willReturn(result);
 		AtomicInteger invocations = new AtomicInteger(0);
-		assertSame(input, new KafkaStreamBrancher()
+		assertThat(new KafkaStreamBrancher()
 				.branch(
 						p1,
 						ks -> {
-							assertSame(result[0], ks);
-							assertEquals(0, invocations.getAndIncrement());
+							assertThat(ks).isSameAs(result[0]);
+							assertThat(invocations.getAndIncrement()).isEqualTo(0);
 						})
 				.defaultBranch(ks -> {
-					assertSame(result[2], ks);
-					assertEquals(2, invocations.getAndIncrement());
+					assertThat(ks).isSameAs(result[2]);
+					assertThat(invocations.getAndIncrement()).isEqualTo(2);
 				})
 				.branch(p2,
 						ks -> {
-							assertSame(result[1], ks);
-							assertEquals(1, invocations.getAndIncrement());
+							assertThat(ks).isSameAs(result[1]);
+							assertThat(invocations.getAndIncrement()).isEqualTo(1);
 						})
-				.onTopOf(input));
+				.onTopOf(input)).isSameAs(input);
 
-		assertEquals(3, invocations.get());
+		assertThat(invocations.get()).isEqualTo(3);
 	}
 
 }

@@ -16,9 +16,8 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -121,18 +120,18 @@ class DeadLetterPublishingRecovererFactoryTests {
 		// then
 		then(kafkaOperations2).should(times(1)).send(producerRecordCaptor.capture());
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
-		assertEquals(testRetryTopic, producerRecord.topic());
-		assertEquals(value, producerRecord.value());
-		assertEquals(key, producerRecord.key());
-		assertEquals(2, producerRecord.partition());
+		assertThat(producerRecord.topic()).isEqualTo(testRetryTopic);
+		assertThat(producerRecord.value()).isEqualTo(value);
+		assertThat(producerRecord.key()).isEqualTo(key);
+		assertThat(producerRecord.partition()).isEqualTo(2);
 
 		// assert headers
 		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
-		assertNotNull(attemptsHeader);
-		assertEquals(2, attemptsHeader.value()[0]);
+		assertThat(attemptsHeader).isNotNull();
+		assertThat(attemptsHeader.value()[0]).isEqualTo(Integer.valueOf(2).byteValue());
 		Header timestampHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP);
-		assertNotNull(timestampHeader);
-		assertEquals(this.nowTimestamp, new BigInteger(timestampHeader.value()).longValue());
+		assertThat(timestampHeader).isNotNull();
+		assertThat(new BigInteger(timestampHeader.value()).longValue()).isEqualTo(this.nowTimestamp);
 	}
 
 	@Test
@@ -164,8 +163,8 @@ class DeadLetterPublishingRecovererFactoryTests {
 		then(kafkaOperations2).should(times(1)).send(producerRecordCaptor.capture());
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
 		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
-		assertNotNull(attemptsHeader);
-		assertEquals(2, attemptsHeader.value()[0]);
+		assertThat(attemptsHeader).isNotNull();
+		assertThat(attemptsHeader.value()[0]).isEqualTo(Integer.valueOf(2).byteValue());
 	}
 
 	@Test
@@ -197,8 +196,8 @@ class DeadLetterPublishingRecovererFactoryTests {
 		then(kafkaOperations2).should(times(1)).send(producerRecordCaptor.capture());
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
 		Header originalTimestampHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
-		assertNotNull(originalTimestampHeader);
-		assertEquals(this.nowTimestamp,	new BigInteger(originalTimestampHeader.value()).longValue());
+		assertThat(originalTimestampHeader).isNotNull();
+		assertThat(new BigInteger(originalTimestampHeader.value()).longValue()).isEqualTo(this.nowTimestamp);
 	}
 
 	@Test
@@ -231,8 +230,8 @@ class DeadLetterPublishingRecovererFactoryTests {
 		then(kafkaOperations2).should(times(1)).send(producerRecordCaptor.capture());
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
 		Header originalTimestampHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
-		assertNotNull(originalTimestampHeader);
-		assertEquals(timestamp,	new BigInteger(originalTimestampHeader.value()).longValue());
+		assertThat(originalTimestampHeader).isNotNull();
+		assertThat(new BigInteger(originalTimestampHeader.value()).longValue()).isEqualTo(timestamp);
 	}
 
 	@Test
@@ -261,7 +260,8 @@ class DeadLetterPublishingRecovererFactoryTests {
 
 		// when
 		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
-		assertThrows(NestedRuntimeException.class, () -> deadLetterPublishingRecoverer.accept(this.consumerRecord, e));
+		assertThatExceptionOfType(NestedRuntimeException.class)
+				.isThrownBy(() -> deadLetterPublishingRecoverer.accept(this.consumerRecord, e));
 
 		// then
 		then(kafkaOperations2).should(times(0)).send(any(ProducerRecord.class));

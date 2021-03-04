@@ -16,9 +16,8 @@
 
 package org.springframework.kafka.listener;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
@@ -79,14 +78,14 @@ class KafkaConsumerBackoffManagerTest {
 				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition);
 
 		// given
-		KafkaBackoffException backoffException = assertThrows(KafkaBackoffException.class,
-				() -> backoffManager.maybeBackoff(context));
+		KafkaBackoffException backoffException = catchThrowableOfType(() -> backoffManager.maybeBackoff(context),
+				KafkaBackoffException.class);
 
 		// then
-		assertEquals(dueTimestamp, backoffException.getDueTimestamp());
-		assertEquals(testListenerId, backoffException.getListenerId());
-		assertEquals(topicPartition, backoffException.getTopicPartition());
-		assertEquals(context, backoffManager.getBackoff(topicPartition));
+		assertThat(backoffException.getDueTimestamp()).isEqualTo(dueTimestamp);
+		assertThat(backoffException.getListenerId()).isEqualTo(testListenerId);
+		assertThat(backoffException.getTopicPartition()).isEqualTo(topicPartition);
+		assertThat(backoffManager.getBackoff(topicPartition)).isEqualTo(context);
 		then(listenerContainer).should(times(1)).pausePartition(topicPartition);
 	}
 
@@ -102,7 +101,7 @@ class KafkaConsumerBackoffManagerTest {
 		backoffManager.maybeBackoff(context);
 
 		// then
-		assertNull(backoffManager.getBackoff(topicPartition));
+		assertThat(backoffManager.getBackoff(topicPartition)).isNull();
 		then(listenerContainer).should(times(0)).pausePartition(topicPartition);
 	}
 
@@ -121,7 +120,7 @@ class KafkaConsumerBackoffManagerTest {
 		backoffManager.onApplicationEvent(partitionIdleEvent);
 
 		// then
-		assertEquals(context, backoffManager.getBackoff(topicPartition));
+		assertThat(backoffManager.getBackoff(topicPartition)).isEqualTo(context);
 		then(listenerContainer).should(times(0)).resumePartition(topicPartition);
 	}
 
@@ -140,7 +139,7 @@ class KafkaConsumerBackoffManagerTest {
 		backoffManager.onApplicationEvent(partitionIdleEvent);
 
 		// then
-		assertNull(backoffManager.getBackoff(topicPartition));
+		assertThat(backoffManager.getBackoff(topicPartition)).isNull();
 		then(listenerContainer).should(times(1)).resumePartition(topicPartition);
 	}
 }

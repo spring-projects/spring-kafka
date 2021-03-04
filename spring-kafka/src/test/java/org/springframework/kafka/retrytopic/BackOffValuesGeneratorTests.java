@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -45,8 +45,8 @@ class BackOffValuesGeneratorTests {
 		List<Long> backOffValues = backOffValuesGenerator.generateValues();
 
 		// then
-		List<Long> expectedBackoffs = Arrays.asList(1000L, 1000L);
-		assertEquals(expectedBackoffs, backOffValues);
+		List<Long> expectedBackOffs = Arrays.asList(1000L, 1000L);
+		assertThat(backOffValues).isEqualTo(expectedBackOffs);
 	}
 
 	@Test
@@ -63,7 +63,7 @@ class BackOffValuesGeneratorTests {
 
 		// then
 		List<Long> expectedBackoffs = Arrays.asList(1000L, 2000L, 4000L);
-		assertEquals(expectedBackoffs, backOffValues);
+		assertThat(backOffValues).isEqualTo(expectedBackoffs);
 	}
 
 	@Test
@@ -78,6 +78,6 @@ class BackOffValuesGeneratorTests {
 
 		// then
 		List<Long> expectedBackoffs = Arrays.asList(0L, 0L, 0L);
-		assertEquals(expectedBackoffs, backOffValues);
+		assertThat(backOffValues).isEqualTo(expectedBackoffs);
 	}
 }

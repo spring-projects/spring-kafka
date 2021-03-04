@@ -16,8 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -149,7 +148,7 @@ class ListenerContainerFactoryConfigurerTests {
 		// then
 		then(containerFactory).should(times(1)).setErrorHandler(errorHandlerCaptor.capture());
 		ErrorHandler errorHandler = errorHandlerCaptor.getValue();
-		assertTrue(SeekToCurrentErrorHandler.class.isAssignableFrom(errorHandler.getClass()));
+		assertThat(SeekToCurrentErrorHandler.class.isAssignableFrom(errorHandler.getClass())).isTrue();
 		SeekToCurrentErrorHandler seekToCurrent = (SeekToCurrentErrorHandler) errorHandler;
 
 		RuntimeException ex = new RuntimeException();
@@ -250,7 +249,7 @@ class ListenerContainerFactoryConfigurerTests {
 
 		then(this.kafkaConsumerBackoffManager).should(times(1))
 				.createContext(anyLong(), listenerIdCaptor.capture(), any(TopicPartition.class));
-		assertEquals(testListenerId, listenerIdCaptor.getValue());
+		assertThat(listenerIdCaptor.getValue()).isEqualTo(testListenerId);
 		then(listener).should(times(1)).onMessage(data, ack, consumer);
 
 		then(this.configurerContainerCustomizer).should(times(1)).accept(container);
@@ -272,7 +271,7 @@ class ListenerContainerFactoryConfigurerTests {
 				.configure(containerFactory);
 
 		// then
-		assertEquals(factory, secondFactory);
+		assertThat(secondFactory).isEqualTo(factory);
 		then(containerFactory).should(times(1)).setContainerCustomizer(any());
 		then(containerFactory).should(times(1)).setErrorHandler(any());
 	}

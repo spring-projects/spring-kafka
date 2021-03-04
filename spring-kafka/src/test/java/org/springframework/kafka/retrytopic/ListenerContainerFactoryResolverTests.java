@@ -16,9 +16,8 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
@@ -73,7 +72,7 @@ class ListenerContainerFactoryResolverTests {
 				.resolveFactoryForMainEndpoint(factoryFromKafkaListenerAnnotation, defaultFactoryBeanName, configuration);
 
 		// then
-		assertEquals(factoryFromKafkaListenerAnnotation, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromKafkaListenerAnnotation);
 	}
 
 	@Test
@@ -89,7 +88,7 @@ class ListenerContainerFactoryResolverTests {
 				.resolveFactoryForMainEndpoint(null, defaultFactoryBeanName, configuration);
 
 		// then
-		assertEquals(factoryFromRetryTopicConfiguration, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromRetryTopicConfiguration);
 	}
 
 	@Test
@@ -107,7 +106,7 @@ class ListenerContainerFactoryResolverTests {
 						.resolveFactoryForMainEndpoint(null, null, configuration);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
 	}
 
 	@Test
@@ -125,7 +124,7 @@ class ListenerContainerFactoryResolverTests {
 						defaultFactoryBeanName, configuration);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
 	}
 
 	@Test
@@ -143,7 +142,7 @@ class ListenerContainerFactoryResolverTests {
 				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, null, configuration);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
 	}
 
 	@Test
@@ -157,9 +156,8 @@ class ListenerContainerFactoryResolverTests {
 				new ListenerContainerFactoryResolver.Configuration(null, null);
 
 		// then
-		assertThrows(IllegalArgumentException.class,
-				() -> listenerContainerFactoryResolver
-						.resolveFactoryForMainEndpoint(null, null, configuration));
+		assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> listenerContainerFactoryResolver
+				.resolveFactoryForMainEndpoint(null, null, configuration));
 	}
 
 	@Test
@@ -175,7 +173,7 @@ class ListenerContainerFactoryResolverTests {
 				.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, null, configuration);
 
 		// then
-		assertEquals(factoryFromRetryTopicConfiguration, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromRetryTopicConfiguration);
 	}
 
 	@Test
@@ -192,7 +190,7 @@ class ListenerContainerFactoryResolverTests {
 				.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, null, configuration);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
 	}
 
 	@Test
@@ -208,7 +206,7 @@ class ListenerContainerFactoryResolverTests {
 				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, null, configuration);
 
 		// then
-		assertEquals(factoryFromKafkaListenerAnnotation, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromKafkaListenerAnnotation);
 	}
 
 	@Test
@@ -227,7 +225,7 @@ class ListenerContainerFactoryResolverTests {
 						defaultFactoryBeanName, configuration);
 
 		// then
-		assertEquals(factoryFromDefaultBeanName, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromDefaultBeanName);
 	}
 
 	@Test
@@ -246,7 +244,7 @@ class ListenerContainerFactoryResolverTests {
 						defaultFactoryBeanName, configuration);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
 	}
 
 	@Test
@@ -260,8 +258,8 @@ class ListenerContainerFactoryResolverTests {
 				new ListenerContainerFactoryResolver.Configuration(null, null);
 
 		// then
-		assertThrows(IllegalArgumentException.class,
-				() -> listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, defaultFactoryBeanName, configuration));
+		assertThatExceptionOfType(IllegalArgumentException.class)
+				.isThrownBy(() -> listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, defaultFactoryBeanName, configuration));
 	}
 
 	@Test
@@ -288,8 +286,8 @@ class ListenerContainerFactoryResolverTests {
 						null, configuration2);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
-		assertEquals(factoryFromBeanName, resolvedFactory2);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
+		assertThat(resolvedFactory2).isEqualTo(factoryFromBeanName);
 		then(beanFactory).should(times(1)).getBean(factoryName,
 				ConcurrentKafkaListenerContainerFactory.class);
 	}
@@ -318,8 +316,8 @@ class ListenerContainerFactoryResolverTests {
 						null, configuration2);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
-		assertEquals(factoryFromBeanName, resolvedFactory2);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
+		assertThat(resolvedFactory2).isEqualTo(factoryFromBeanName);
 		then(beanFactory).should(times(1)).getBean(factoryName,
 				ConcurrentKafkaListenerContainerFactory.class);
 	}
@@ -350,8 +348,8 @@ class ListenerContainerFactoryResolverTests {
 						null, configuration2);
 
 		// then
-		assertEquals(factoryFromBeanName, resolvedFactory);
-		assertEquals(factoryFromOtherBeanName, resolvedFactory2);
+		assertThat(resolvedFactory).isEqualTo(factoryFromBeanName);
+		assertThat(resolvedFactory2).isEqualTo(factoryFromOtherBeanName);
 		then(beanFactory).should(times(1)).getBean(factoryName,
 				ConcurrentKafkaListenerContainerFactory.class);
 		then(beanFactory).should(times(1)).getBean(otherFactoryName,
@@ -370,7 +368,7 @@ class ListenerContainerFactoryResolverTests {
 		cache.addIfAbsent(factoryFromKafkaListenerAnnotation, configuration, factoryFromDefaultBeanName);
 
 		// then
-		assertEquals(cache.fromCache(factoryFromKafkaListenerAnnotation, configuration), factoryFromDefaultBeanName);
+		assertThat(factoryFromDefaultBeanName).isEqualTo(cache.fromCache(factoryFromKafkaListenerAnnotation, configuration));
 	}
 
 	@Test
@@ -387,7 +385,7 @@ class ListenerContainerFactoryResolverTests {
 		cache.addIfAbsent(factoryFromKafkaListenerAnnotation, configuration, factoryFromDefaultBeanName);
 
 		// then
-		assertEquals(cache.fromCache(factoryFromKafkaListenerAnnotation, configuration2), factoryFromDefaultBeanName);
+		assertThat(factoryFromDefaultBeanName).isEqualTo(cache.fromCache(factoryFromKafkaListenerAnnotation, configuration2));
 	}
 
 	@Test
@@ -404,6 +402,6 @@ class ListenerContainerFactoryResolverTests {
 		cache.addIfAbsent(factoryFromKafkaListenerAnnotation, configuration, factoryFromDefaultBeanName);
 
 		// then
-		assertNull(cache.fromCache(factoryFromKafkaListenerAnnotation, configuration2));
+		assertThat(cache.fromCache(factoryFromKafkaListenerAnnotation, configuration2)).isNull();
 	}
 }

@@ -16,9 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -91,30 +89,30 @@ class DestinationTopicPropertiesFactoryTests {
 						.createProperties();
 
 		// then
-		assertTrue(propertiesList.size() == 2);
+		assertThat(propertiesList.size() == 2).isTrue();
 		DestinationTopic.Properties mainTopicProperties = propertiesList.get(0);
-		assertEquals("", mainTopicProperties.suffix());
-		assertFalse(mainTopicProperties.isDltTopic());
+		assertThat(mainTopicProperties.suffix()).isEqualTo("");
+		assertThat(mainTopicProperties.isDltTopic()).isFalse();
 		DestinationTopic mainTopic = new DestinationTopic("mainTopic", mainTopicProperties);
-		assertEquals(0L, mainTopic.getDestinationDelay());
-		assertTrue(mainTopic.shouldRetryOn(0, new IllegalArgumentException()));
-		assertFalse(mainTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException()));
-		assertFalse(mainTopic.shouldRetryOn(0, new RuntimeException()));
-		assertEquals(RetryTopicConstants.NOT_SET, mainTopic.getDestinationTimeout());
+		assertThat(mainTopic.getDestinationDelay()).isEqualTo(0L);
+		assertThat(mainTopic.shouldRetryOn(0, new IllegalArgumentException())).isTrue();
+		assertThat(mainTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException())).isFalse();
+		assertThat(mainTopic.shouldRetryOn(0, new RuntimeException())).isFalse();
+		assertThat(mainTopic.getDestinationTimeout()).isEqualTo(RetryTopicConstants.NOT_SET);
 
 		DestinationTopic.Properties dltProperties = propertiesList.get(1);
 		assertDltTopic(dltProperties);
 	}
 
 	private void assertDltTopic(DestinationTopic.Properties dltProperties) {
-		assertEquals(dltSuffix, dltProperties.suffix());
-		assertTrue(dltProperties.isDltTopic());
+		assertThat(dltProperties.suffix()).isEqualTo(dltSuffix);
+		assertThat(dltProperties.isDltTopic()).isTrue();
 		DestinationTopic dltTopic = new DestinationTopic("mainTopic", dltProperties);
-		assertEquals(0, dltTopic.getDestinationDelay());
-		assertFalse(dltTopic.shouldRetryOn(0, new IllegalArgumentException()));
-		assertFalse(dltTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException()));
-		assertFalse(dltTopic.shouldRetryOn(0, new RuntimeException()));
-		assertEquals(RetryTopicConstants.NOT_SET, dltTopic.getDestinationTimeout());
+		assertThat(dltTopic.getDestinationDelay()).isEqualTo(0);
+		assertThat(dltTopic.shouldRetryOn(0, new IllegalArgumentException())).isFalse();
+		assertThat(dltTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException())).isFalse();
+		assertThat(dltTopic.shouldRetryOn(0, new RuntimeException())).isFalse();
+		assertThat(dltTopic.getDestinationTimeout()).isEqualTo(RetryTopicConstants.NOT_SET);
 	}
 
 	@Test
@@ -137,26 +135,26 @@ class DestinationTopicPropertiesFactoryTests {
 				.collect(Collectors.toList());
 
 		// then
-		assertTrue(propertiesList.size() == 4);
+		assertThat(propertiesList.size() == 4).isTrue();
 		DestinationTopic.Properties firstRetryProperties = propertiesList.get(1);
-		assertEquals(retryTopicSuffix + "-1000", firstRetryProperties.suffix());
-		assertFalse(firstRetryProperties.isDltTopic());
+		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-1000");
+		assertThat(firstRetryProperties.isDltTopic()).isFalse();
 		DestinationTopic firstRetryDestinationTopic = destinationTopicList.get(1);
-		assertEquals(1000, firstRetryDestinationTopic.getDestinationDelay());
-		assertEquals(numPartitions, firstRetryDestinationTopic.getDestinationPartitions());
-		assertTrue(firstRetryDestinationTopic.shouldRetryOn(0, new IllegalArgumentException()));
-		assertFalse(firstRetryDestinationTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException()));
-		assertFalse(firstRetryDestinationTopic.shouldRetryOn(0, new RuntimeException()));
+		assertThat(firstRetryDestinationTopic.getDestinationDelay()).isEqualTo(1000);
+		assertThat(firstRetryDestinationTopic.getDestinationPartitions()).isEqualTo(numPartitions);
+		assertThat(firstRetryDestinationTopic.shouldRetryOn(0, new IllegalArgumentException())).isTrue();
+		assertThat(firstRetryDestinationTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException())).isFalse();
+		assertThat(firstRetryDestinationTopic.shouldRetryOn(0, new RuntimeException())).isFalse();
 
 		DestinationTopic.Properties secondRetryProperties = propertiesList.get(2);
-		assertEquals(retryTopicSuffix + "-2000", secondRetryProperties.suffix());
-		assertFalse(secondRetryProperties.isDltTopic());
+		assertThat(secondRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-2000");
+		assertThat(secondRetryProperties.isDltTopic()).isFalse();
 		DestinationTopic secondRetryDestinationTopic = destinationTopicList.get(2);
-		assertEquals(2000, secondRetryDestinationTopic.getDestinationDelay());
-		assertEquals(numPartitions, secondRetryDestinationTopic.getDestinationPartitions());
-		assertTrue(secondRetryDestinationTopic.shouldRetryOn(0, new IllegalArgumentException()));
-		assertFalse(secondRetryDestinationTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException()));
-		assertFalse(secondRetryDestinationTopic.shouldRetryOn(0, new RuntimeException()));
+		assertThat(secondRetryDestinationTopic.getDestinationDelay()).isEqualTo(2000);
+		assertThat(secondRetryDestinationTopic.getDestinationPartitions()).isEqualTo(numPartitions);
+		assertThat(secondRetryDestinationTopic.shouldRetryOn(0, new IllegalArgumentException())).isTrue();
+		assertThat(secondRetryDestinationTopic.shouldRetryOn(maxAttempts, new IllegalArgumentException())).isFalse();
+		assertThat(secondRetryDestinationTopic.shouldRetryOn(0, new RuntimeException())).isFalse();
 
 		assertDltTopic(propertiesList.get(3));
 	}
@@ -182,8 +180,8 @@ class DestinationTopicPropertiesFactoryTests {
 				.collect(Collectors.toList());
 
 		// then
-		assertTrue(propertiesList.size() == 3);
-		assertFalse(propertiesList.get(2).isDltTopic());
+		assertThat(propertiesList.size() == 3).isTrue();
+		assertThat(propertiesList.get(2).isDltTopic()).isFalse();
 	}
 
 	@Test
@@ -205,24 +203,24 @@ class DestinationTopicPropertiesFactoryTests {
 				.collect(Collectors.toList());
 
 		// then
-		assertTrue(propertiesList.size() == 3);
+		assertThat(propertiesList.size() == 3).isTrue();
 
 		DestinationTopic.Properties mainTopicProperties = propertiesList.get(0);
 		DestinationTopic mainDestinationTopic = destinationTopicList.get(0);
-		assertTrue(mainDestinationTopic.isMainTopic());
+		assertThat(mainDestinationTopic.isMainTopic()).isTrue();
 
 		DestinationTopic.Properties firstRetryProperties = propertiesList.get(1);
-		assertEquals(retryTopicSuffix, firstRetryProperties.suffix());
+		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix);
 		DestinationTopic retryDestinationTopic = destinationTopicList.get(1);
-		assertTrue(retryDestinationTopic.isSingleTopicRetry());
-		assertEquals(1000, retryDestinationTopic.getDestinationDelay());
+		assertThat(retryDestinationTopic.isSingleTopicRetry()).isTrue();
+		assertThat(retryDestinationTopic.getDestinationDelay()).isEqualTo(1000);
 
 		DestinationTopic.Properties dltProperties = propertiesList.get(2);
-		assertEquals(dltSuffix, dltProperties.suffix());
-		assertTrue(dltProperties.isDltTopic());
+		assertThat(dltProperties.suffix()).isEqualTo(dltSuffix);
+		assertThat(dltProperties.isDltTopic()).isTrue();
 		DestinationTopic dltTopic = destinationTopicList.get(2);
-		assertEquals(0, dltTopic.getDestinationDelay());
-		assertEquals(numPartitions, dltTopic.getDestinationPartitions());
+		assertThat(dltTopic.getDestinationDelay()).isEqualTo(0);
+		assertThat(dltTopic.getDestinationPartitions()).isEqualTo(numPartitions);
 	}
 
 	@Test
@@ -245,30 +243,30 @@ class DestinationTopicPropertiesFactoryTests {
 				.collect(Collectors.toList());
 
 		// then
-		assertTrue(propertiesList.size() == 4);
+		assertThat(propertiesList.size() == 4).isTrue();
 
 		DestinationTopic.Properties mainTopicProperties = propertiesList.get(0);
 		DestinationTopic mainDestinationTopic = destinationTopicList.get(0);
-		assertTrue(mainDestinationTopic.isMainTopic());
+		assertThat(mainDestinationTopic.isMainTopic()).isTrue();
 
 		DestinationTopic.Properties firstRetryProperties = propertiesList.get(1);
-		assertEquals(retryTopicSuffix + "-0", firstRetryProperties.suffix());
+		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-0");
 		DestinationTopic retryDestinationTopic = destinationTopicList.get(1);
-		assertFalse(retryDestinationTopic.isSingleTopicRetry());
-		assertEquals(5000, retryDestinationTopic.getDestinationDelay());
+		assertThat(retryDestinationTopic.isSingleTopicRetry()).isFalse();
+		assertThat(retryDestinationTopic.getDestinationDelay()).isEqualTo(5000);
 
 		DestinationTopic.Properties secondRetryProperties = propertiesList.get(2);
-		assertEquals(retryTopicSuffix + "-1", secondRetryProperties.suffix());
+		assertThat(secondRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-1");
 		DestinationTopic secondRetryDestinationTopic = destinationTopicList.get(2);
-		assertFalse(secondRetryDestinationTopic.isSingleTopicRetry());
-		assertEquals(5000, secondRetryDestinationTopic.getDestinationDelay());
+		assertThat(secondRetryDestinationTopic.isSingleTopicRetry()).isFalse();
+		assertThat(secondRetryDestinationTopic.getDestinationDelay()).isEqualTo(5000);
 
 		DestinationTopic.Properties dltProperties = propertiesList.get(3);
-		assertEquals(dltSuffix, dltProperties.suffix());
-		assertTrue(dltProperties.isDltTopic());
+		assertThat(dltProperties.suffix()).isEqualTo(dltSuffix);
+		assertThat(dltProperties.isDltTopic()).isTrue();
 		DestinationTopic dltTopic = destinationTopicList.get(3);
-		assertEquals(0, dltTopic.getDestinationDelay());
-		assertEquals(numPartitions, dltTopic.getDestinationPartitions());
+		assertThat(dltTopic.getDestinationDelay()).isEqualTo(0);
+		assertThat(dltTopic.getDestinationPartitions()).isEqualTo(numPartitions);
 	}
 
 	@Test
@@ -287,8 +285,7 @@ class DestinationTopicPropertiesFactoryTests {
 
 		// then
 		IntStream.range(1, maxAttempts)
-				.forEach(index -> assertEquals(retryTopicSuffix + "-" + String.valueOf(index - 1),
-						propertiesList.get(index).suffix()));
+				.forEach(index -> assertThat(propertiesList.get(index).suffix()).isEqualTo(retryTopicSuffix + "-" + String.valueOf(index - 1)));
 	}
 
 	@Test
@@ -308,8 +305,7 @@ class DestinationTopicPropertiesFactoryTests {
 
 		// then
 		IntStream.range(1, maxAttempts)
-				.forEach(index -> assertEquals(retryTopicSuffix + "-" + String.valueOf(index - 1),
-						propertiesList.get(index).suffix()));
+				.forEach(index -> assertThat(propertiesList.get(index).suffix()).isEqualTo(retryTopicSuffix + "-" + String.valueOf(index - 1)));
 	}
 
 	@Test
@@ -330,12 +326,12 @@ class DestinationTopicPropertiesFactoryTests {
 						dltStrategy, defaultTopicSuffixingStrategy, -1).createProperties();
 
 		// then
-		assertTrue(propertiesList.size() == 6);
-		assertEquals("", propertiesList.get(0).suffix());
-		assertEquals(retryTopicSuffix + "-1000", propertiesList.get(1).suffix());
-		assertEquals(retryTopicSuffix + "-2000", propertiesList.get(2).suffix());
-		assertEquals(retryTopicSuffix + "-3000-0", propertiesList.get(3).suffix());
-		assertEquals(retryTopicSuffix + "-3000-1", propertiesList.get(4).suffix());
-		assertEquals(dltSuffix, propertiesList.get(5).suffix());
+		assertThat(propertiesList.size() == 6).isTrue();
+		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
+		assertThat(propertiesList.get(1).suffix()).isEqualTo(retryTopicSuffix + "-1000");
+		assertThat(propertiesList.get(2).suffix()).isEqualTo(retryTopicSuffix + "-2000");
+		assertThat(propertiesList.get(3).suffix()).isEqualTo(retryTopicSuffix + "-3000-0");
+		assertThat(propertiesList.get(4).suffix()).isEqualTo(retryTopicSuffix + "-3000-1");
+		assertThat(propertiesList.get(5).suffix()).isEqualTo(dltSuffix);
 	}
 }
