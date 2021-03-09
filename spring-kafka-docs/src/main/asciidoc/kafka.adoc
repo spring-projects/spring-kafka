@@ -598,6 +598,46 @@ Note that we can use Boot's auto-configured container factory to create the repl
 If a non-trivial deserializer is being used for replies, consider using an <<error-handling-deserializer,`ErrorHandlingDeserializer`>> that delegates to your configured deserializer.
 When so configured, the `RequestReplyFuture` will be completed exceptionally and you can catch the `ExecutionException`, with the `DeserializationException` in its `cause` property.
 
+Starting with version 2.6.7, in addition to detecting `DeserializationException` s, the template will call the `replyErrorChecker` function, if provided.
+If it returns an exception, the future will be completed exceptionally.
+
+Here is an example:
+
+====
+[source, java]
+----
+template.setReplyErrorChecker(record -> {
+    Header error = record.headers().lastHeader("serverSentAnError");
+    if (error != null) {
+        return new MyException(new String(error.value()));
+    }
+    else {
+        return null;
+    }
+});
+
+...
+
+RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+try {
+    future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+    ConsumerRecord<Integer, String> consumerRecord = future.get(10, TimeUnit.SECONDS);
+    ...
+}
+catch (InterruptedException e) {
+    ...
+}
+catch (ExecutionException e) {
+    if (e.getCause instanceof MyException) {
+        ...
+    }
+}
+catch (TimeoutException e) {
+    ...
+}
+----
+====
+
 The template sets a header (named `KafkaHeaders.CORRELATION_ID` by default), which must be echoed back by the server side.
 
 In this case, the following `@KafkaListener` application responds:
@@ -803,6 +843,7 @@ NOTE: If you use an <<error-handling-deserializer,`ErrorHandlingDeserializer`>> 
 Instead, the record (with a `null` value) will be returned intact, with the deserialization exception(s) in headers.
 It is recommended that applications call the utility method `ReplyingKafkaTemplate.checkDeserialization()` method to determine if a deserialization exception occurred.
 See its javadocs for more information.
+The `replyErrorChecker` is also not called for this aggregating template; you should perform the checks on each element of the reply.
 
 [[receiving-messages]]
 ==== Receiving Messages

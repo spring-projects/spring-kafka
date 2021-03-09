@@ -49,3 +49,9 @@ See <<dead-letters>> for more information.
 ==== `ChainedKafkaTransactionManager` is Deprecated
 
 See <<transactions>> for more information.
+
+[[x27-RKT]]
+==== `ReplyingKafkaTemplate` Changes
+
+There is now a mechanism to examine a reply and fail the future exceptionally if some condition exists.
+See <<replying-template>> for more information.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,7 +110,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 		ReplyingKafkaTemplateTests.H_REPLY, ReplyingKafkaTemplateTests.H_REQUEST,
 		ReplyingKafkaTemplateTests.I_REPLY, ReplyingKafkaTemplateTests.I_REQUEST,
 		ReplyingKafkaTemplateTests.J_REPLY, ReplyingKafkaTemplateTests.J_REQUEST,
-		ReplyingKafkaTemplateTests.K_REPLY, ReplyingKafkaTemplateTests.K_REQUEST })
+		ReplyingKafkaTemplateTests.K_REPLY, ReplyingKafkaTemplateTests.K_REQUEST,
+		ReplyingKafkaTemplateTests.L_REPLY, ReplyingKafkaTemplateTests.L_REQUEST })
 public class ReplyingKafkaTemplateTests {
 
 	public static final String A_REPLY = "aReply";
@@ -157,6 +158,10 @@ public class ReplyingKafkaTemplateTests {
 
 	public static final String K_REQUEST = "kRequest";
 
+	public static final String L_REPLY = "lReply";
+
+	public static final String L_REQUEST = "lRequest";
+
 	@Autowired
 	private EmbeddedKafkaBroker embeddedKafka;
 
@@ -196,6 +201,32 @@ public class ReplyingKafkaTemplateTests {
 			assertThatExceptionOfType(ExecutionException.class)
 					.isThrownBy(() -> template.sendAndReceive(record2, Duration.ZERO).get(10, TimeUnit.SECONDS))
 					.withCauseExactlyInstanceOf(KafkaReplyTimeoutException.class);
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@Test
+	void userDefinedException() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(L_REPLY);
+		try {
+			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+			template.setReplyErrorChecker(record -> {
+				org.apache.kafka.common.header.Header error = record.headers().lastHeader("serverSentAnError");
+				if (error != null) {
+					return new IllegalStateException(new String(error.value()));
+				}
+				else {
+					return null;
+				}
+			});
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(L_REQUEST, null, null, null, "foo", null);
+			assertThatExceptionOfType(ExecutionException.class)
+					.isThrownBy(() -> template.sendAndReceive(record).get(10, TimeUnit.SECONDS))
+					.withCauseExactlyInstanceOf(IllegalStateException.class)
+					.withMessageContaining("user error");
 		}
 		finally {
 			template.stop();
@@ -726,6 +757,14 @@ public class ReplyingKafkaTemplateTests {
 		@SendTo
 		public String handleK(ConsumerRecord<String, String> in) {
 			return in.value().toUpperCase();
+		}
+
+		@KafkaListener(id = L_REQUEST, topics = L_REQUEST)
+		@SendTo  // default REPLY_TOPIC header
+		public Message<String> handleL(String in) throws InterruptedException {
+			return MessageBuilder.withPayload(in.toUpperCase())
+					.setHeader("serverSentAnError", "user error")
+					.build();
 		}
 
 	}

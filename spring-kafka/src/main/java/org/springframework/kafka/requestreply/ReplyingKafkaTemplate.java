@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,6 +103,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	private String replyTopicHeaderName = KafkaHeaders.REPLY_TOPIC;
 
 	private String replyPartitionHeaderName = KafkaHeaders.REPLY_PARTITION;
+
+	private Function<ConsumerRecord<?, ?>, Exception> replyErrorChecker = rec -> null;
 
 	private volatile boolean running;
 
@@ -263,6 +265,16 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.replyPartitionHeaderName = replyPartitionHeaderName;
 	}
 
+	/**
+	 * Set a function to examine replies for an error returned by the server.
+	 * @param replyErrorChecker the error checker function.
+	 * @since 2.6.7
+	 */
+	public void setReplyErrorChecker(Function<ConsumerRecord<?, ?>, Exception> replyErrorChecker) {
+		Assert.notNull(replyErrorChecker, "'replyErrorChecker' cannot be null");
+		this.replyErrorChecker = replyErrorChecker;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		if (!this.schedulerSet && !this.schedulerInitialized) {
@@ -408,12 +420,10 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 				else {
 					boolean ok = true;
-					if (record.value() == null) {
-						DeserializationException de = checkDeserialization(record, this.logger);
-						if (de != null) {
-							ok = false;
-							future.setException(de);
-						}
+					Exception exception = checkForErrors(record);
+					if (exception != null) {
+						ok = false;
+						future.setException(exception);
 					}
 					if (ok) {
 						this.logger.debug(() -> "Received: " + record + WITH_CORRELATION_ID + correlationKey);
@@ -422,6 +432,24 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				}
 			}
 		});
+	}
+
+	/**
+	 * Check for errors in a reply. The default implementation checks for {@link DeserializationException}s
+	 * and invokes the {@link #setReplyErrorChecker(Function) replyErrorChecker} function.
+	 * @param record the record.
+	 * @return the exception, or null if none.
+	 * @since 2.6.7
+	 */
+	@Nullable
+	protected Exception checkForErrors(ConsumerRecord<K, R> record) {
+		if (record.value() == null || record.key() == null) {
+			DeserializationException de = checkDeserialization(record, this.logger);
+			if (de != null) {
+				return de;
+			}
+		}
+		return this.replyErrorChecker.apply(record);
 	}
 
 	/**
