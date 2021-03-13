@@ -388,11 +388,17 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		Assert.notNull(record, "'record' cannot be null");
 		return doSend(record);
 	}
-
+			
 	@SuppressWarnings("unchecked")
 	@Override
 	public ListenableFuture<SendResult<K, V>> send(Message<?> message) {
-		ProducerRecord<?, ?> producerRecord = this.messageConverter.fromMessage(message, this.defaultTopic);
+		return send(this.defaultTopic, message);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public ListenableFuture<SendResult<K, V>> send(String topic, Message<?> message) {
+		ProducerRecord<?, ?> producerRecord = this.messageConverter.fromMessage(message, topic);
 		if (!producerRecord.headers().iterator().hasNext()) { // possibly no Jackson
 			byte[] correlationId = message.getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
 			if (correlationId != null) {
