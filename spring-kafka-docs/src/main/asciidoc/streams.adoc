@@ -229,8 +229,8 @@ To avoid boilerplate code for most cases, especially when you develop microservi
 All you need is to declare a `KafkaStreamsConfiguration` bean named `defaultKafkaStreamsConfig`.
 A `StreamsBuilderFactoryBean` bean, named `defaultKafkaStreamsBuilder`, is automatically declared in the application context.
 You can declare and use any additional `StreamsBuilderFactoryBean` beans as well.
-Starting with version 2.3, you can perform additional customization of that bean, by providing a bean that implements `StreamsBuilderFactoryBeanCustomizer`.
-There must only be one such bean, or one must be marked `@Primary`.
+You can perform additional customization of that bean, by providing a bean that implements `StreamsBuilderFactoryBeanConfigurer`.
+If there are multiple such beans, they will be applied according to their `Ordered.order` property.
 
 By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
 Starting with version 2.1.2, the factory bean has additional constructors, taking a `CleanupConfig` object that has properties to let you control whether the `cleanUp()` method is called during `start()` or `stop()` or neither.
@@ -339,7 +339,7 @@ public static class KafkaStreamsConfig {
     }
 
     @Bean
-    public StreamsBuilderFactoryBeanCustomizer customizer() {
+    public StreamsBuilderFactoryBeanConfigurer configurer() {
         return fb -> fb.setStateListener((newState, oldState) -> {
             System.out.println("State transition from " + oldState + " to " + newState);
         });

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 
 package org.springframework.kafka.annotation;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,7 +26,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer;
+import org.springframework.kafka.config.StreamsBuilderFactoryBeanConfigurer;
 
 /**
  * {@code @Configuration} class that registers a {@link StreamsBuilderFactoryBean}
@@ -53,17 +56,33 @@ public class KafkaStreamsDefaultConfiguration {
 	 */
 	public static final String DEFAULT_STREAMS_BUILDER_BEAN_NAME = "defaultKafkaStreamsBuilder";
 
+	/**
+	 * Bean for the default {@link StreamsBuilderFactoryBean}.
+	 * @param streamsConfigProvider the streams config.
+	 * @param customizerProvider the customizer.
+	 * @param configurerProvider the configurer.
+	 *
+	 * @return the factory bean.
+	 */
+	@SuppressWarnings("deprecation")
 	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
 			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 					ObjectProvider<KafkaStreamsConfiguration> streamsConfigProvider,
-			ObjectProvider<StreamsBuilderFactoryBeanCustomizer> customizerProvider) {
+			ObjectProvider<org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer> customizerProvider,
+			ObjectProvider<StreamsBuilderFactoryBeanConfigurer> configurerProvider) {
 
 		KafkaStreamsConfiguration streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
 			StreamsBuilderFactoryBean fb = new StreamsBuilderFactoryBean(streamsConfig);
-			StreamsBuilderFactoryBeanCustomizer customizer = customizerProvider.getIfUnique();
-			if (customizer != null) {
+			Set<StreamsBuilderFactoryBeanConfigurer> configuredBy = new HashSet<>();
+			configurerProvider.orderedStream().forEach(configurer -> {
+				configurer.configure(fb);
+				configuredBy.add(configurer);
+			});
+			org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer customizer = customizerProvider
+					.getIfUnique();
+			if (customizer != null && !configuredBy.contains(customizer)) {
 				customizer.configure(fb);
 			}
 			return fb;

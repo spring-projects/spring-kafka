@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,14 @@ package org.springframework.kafka.config;
  * implementation of this interface is found in the application context (or one is marked
  * as {@link org.springframework.context.annotation.Primary}, it will be invoked after the
  * factory bean has been created and before it is started.
+ * @deprecated in favor of {@code StreamsBuilderFactoryBeanConfigurer} due to a name
+ * clash with a similar class in Spring Boot.
  *
  * @author Gary Russell
  * @since 2.3
  *
  */
+@Deprecated
 @FunctionalInterface
 public interface StreamsBuilderFactoryBeanCustomizer {
 
