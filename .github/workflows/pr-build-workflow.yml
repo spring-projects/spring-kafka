@@ -23,3 +23,11 @@ jobs:
           GRADLE_ENTERPRISE_URL: https://ge.spring.io/
         with:
           arguments: check api
+
+      - name: Capture Test Results
+        if: failure()
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results
+          path: '*/build/reports/tests/**/*.*'
+          retention-days: 3
