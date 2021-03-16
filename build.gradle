@@ -181,8 +181,14 @@ subprojects { subproject ->
 	[compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:all,-options']
 
 	test {
-		// suppress all console output during testing unless running `gradle -i`
-		logging.captureStandardOutput(LogLevel.INFO)
+		testLogging {
+			events "skipped", "failed"
+			showStandardStreams = project.hasProperty("showStandardStreams") ?: false
+			showExceptions = true
+			showStackTraces = true
+			exceptionFormat = 'full'
+		}
+
 		maxHeapSize = '1536m'
 //		jvmArgs '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:8111'
 		jacoco {
