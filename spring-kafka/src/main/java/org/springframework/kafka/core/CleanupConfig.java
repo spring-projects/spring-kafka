@@ -28,7 +28,7 @@ public class CleanupConfig {
 	private final boolean onStop;
 
 	public CleanupConfig() {
-		this(false, true);
+		this(false, false);
 	}
 
 	public CleanupConfig(boolean onStart, boolean onStop) {
