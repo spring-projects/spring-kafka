@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -87,41 +88,36 @@ public class KafkaAdminTests {
 
 	@Test
 	public void testAddTopicsAndAddPartitions() throws Exception {
-		try (AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties())) {
-			Map<String, TopicDescription> results = new HashMap<>();
-			await().until(() -> {
-				DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
-				try {
-					results.putAll(topics.all().get(10, TimeUnit.SECONDS));
-					return true;
-				}
-				catch (InterruptedException ie) {
-					Thread.currentThread().interrupt();
-					return true;
-				}
-				catch (ExecutionException ex) {
-					if (ex.getCause() instanceof UnknownTopicOrPartitionException) {
-						return false;
-					}
-					throw ex;
-				}
-			});
-			results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 1));
-			new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(4));
-			new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", Optional.of(3));
-			this.admin.initialize();
-			int n = 0;
-			await().until(() -> {
-				DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
-				results.putAll(topics.all().get());
-				TopicDescription bar = results.values().stream()
-						.filter(tp -> tp.name().equals("bar"))
-						.findFirst()
-						.get();
-				return bar.partitions().size() != 1;
-			});
-			results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 4 : 3));
-		}
+		Map<String, TopicDescription> results = this.admin.describeTopics("foo", "bar");
+		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 1));
+		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(4));
+		new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", Optional.of(3));
+		this.admin.initialize();
+		int n = 0;
+		await().until(() -> {
+			results.putAll(this.admin.describeTopics("foo", "bar"));
+			TopicDescription bar = results.values().stream()
+					.filter(tp -> tp.name().equals("bar"))
+					.findFirst()
+					.get();
+			return bar.partitions().size() != 1;
+		});
+		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 4 : 3));
+		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(5));
+		this.admin.createOrModifyTopics(this.topic1,
+				TopicBuilder.name("qux")
+					.partitions(5)
+					.build());
+		results.clear();
+		await().until(() -> {
+			results.putAll(this.admin.describeTopics("foo", "qux"));
+			TopicDescription foo = results.values().stream()
+					.filter(tp -> tp.name().equals("foo"))
+					.findFirst()
+					.get();
+			return foo.partitions().size() == 5;
+		});
+		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(5));
 	}
 
 	@Test
@@ -251,23 +247,16 @@ public class KafkaAdminTests {
 		}
 
 		@Bean
-		public NewTopic topic4() {
-			return TopicBuilder.name("optBoth")
-					.build();
-		}
-
-		@Bean
-		public NewTopic topic5() {
-			return TopicBuilder.name("optPart")
-					.replicas(1)
-					.build();
-		}
-
-		@Bean
-		public NewTopic topic6() {
-			return TopicBuilder.name("optRepl")
-					.partitions(3)
-					.build();
+		public NewTopics topics456() {
+			return new NewTopics(
+					TopicBuilder.name("optBoth")
+						.build(),
+					TopicBuilder.name("optPart")
+						.replicas(1)
+						.build(),
+					TopicBuilder.name("optRepl")
+						.partitions(3)
+						.build());
 		}
 
 	}

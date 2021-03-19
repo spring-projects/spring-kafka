@@ -164,8 +164,8 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 	private DestinationTopic getNextDestinationTopic(List<DestinationTopic> destinationList, int index) {
 		return index != destinationList.size() - 1
 				? destinationList.get(index + 1)
-				: new DestinationTopic(destinationList.get(index).getDestinationName() + this.NO_OPS_SUFFIX,
-				destinationList.get(index), this.NO_OPS_SUFFIX, DestinationTopic.Type.NO_OPS);
+				: new DestinationTopic(destinationList.get(index).getDestinationName() + NO_OPS_SUFFIX,
+				destinationList.get(index), NO_OPS_SUFFIX, DestinationTopic.Type.NO_OPS);
 	}
 
 	@Override

@@ -27,6 +27,7 @@ import org.apache.kafka.common.config.TopicConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 
 /**
  * Snippet for Configuring Topics section.
@@ -37,7 +38,7 @@ import org.springframework.kafka.core.KafkaAdmin;
  */
 public class Config {
 
-	// tag::topicBeans[]
+    // tag::topicBeans[]
     @Bean
     public KafkaAdmin admin() {
         Map<String, Object> configs = new HashMap<>();
@@ -74,25 +75,39 @@ public class Config {
     }
     // end::topicBeans[]
     // tag::brokerProps[]
-	@Bean
-	public NewTopic topic4() {
-		return TopicBuilder.name("defaultBoth")
-				.build();
-	}
+    @Bean
+    public NewTopic topic4() {
+        return TopicBuilder.name("defaultBoth")
+                .build();
+    }
 
-	@Bean
-	public NewTopic topic5() {
-		return TopicBuilder.name("defaultPart")
-				.replicas(1)
-				.build();
-	}
+    @Bean
+    public NewTopic topic5() {
+        return TopicBuilder.name("defaultPart")
+                .replicas(1)
+                .build();
+    }
 
-	@Bean
-	public NewTopic topic6() {
-		return TopicBuilder.name("defaultRepl")
-				.partitions(3)
-				.build();
-	}
-	// end::brokerProps[]
+    @Bean
+    public NewTopic topic6() {
+        return TopicBuilder.name("defaultRepl")
+                .partitions(3)
+                .build();
+    }
+    // end::brokerProps[]
+    // tag::newTopicsBean[]
+    @Bean
+    public KafkaAdmin.NewTopics topics456() {
+        return new NewTopics(
+                TopicBuilder.name("defaultBoth")
+                    .build(),
+                TopicBuilder.name("defaultPart")
+                    .replicas(1)
+                    .build(),
+                TopicBuilder.name("defaultRepl")
+                    .partitions(3)
+                    .build());
+    }
+    // end::newTopicsBean[]
 
 }

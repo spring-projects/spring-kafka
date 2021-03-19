@@ -61,3 +61,10 @@ See <<replying-template>> for more information.
 
 By default, the `StreamsBuilderFactoryBean` is now configured to not clean up local state.
 See <<streams-config>> for more information.
+
+[[x27-admin]]
+==== `KafkaAdmin` Changes
+
+New methods `createOrModifyTopics` and `describeTopics` have been added.
+`KafkaAdmin.NewTopics` has been added to facilitate configuring multiple topics in a single bean.
+See <<kafka-admin>> for more information.

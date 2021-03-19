@@ -71,5 +71,18 @@ class Config {
     @Bean
     fun topic6() = TopicBuilder.name("defaultRepl").partitions(3).build()
     // end::brokerProps[]
+    // tag::newTopicsBean[]
+    @Bean
+    fun topics456() = KafkaAdmin.NewTopics(
+        TopicBuilder.name("defaultBoth")
+            .build(),
+        TopicBuilder.name("defaultPart")
+            .replicas(1)
+            .build(),
+        TopicBuilder.name("defaultRepl")
+            .partitions(3)
+            .build()
+    )
+    // end::newTopicsBean[]
 
 }

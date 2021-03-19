@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.core;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,7 +57,8 @@ import org.springframework.kafka.KafkaException;
  *
  * @since 1.3
  */
-public class KafkaAdmin extends KafkaResourceFactory implements ApplicationContextAware, SmartInitializingSingleton {
+public class KafkaAdmin extends KafkaResourceFactory
+		implements ApplicationContextAware, SmartInitializingSingleton, KafkaAdminOperations {
 
 	/**
 	 * The default close timeout duration as 10 seconds.
@@ -129,11 +131,7 @@ public class KafkaAdmin extends KafkaResourceFactory implements ApplicationConte
 		this.autoCreate = autoCreate;
 	}
 
-
-	/**
-	 * Get an unmodifiable copy of this admin's configuration.
-	 * @return the configuration map.
-	 */
+	@Override
 	public Map<String, Object> getConfigurationProperties() {
 		Map<String, Object> configs2 = new HashMap<>(this.configs);
 		checkBootstrap(configs2);
@@ -158,13 +156,14 @@ public class KafkaAdmin extends KafkaResourceFactory implements ApplicationConte
 	 * @see #setAutoCreate(boolean)
 	 */
 	public final boolean initialize() {
-		Collection<NewTopic> newTopics = this.applicationContext.getBeansOfType(NewTopic.class, false, false).values();
+		Collection<NewTopic> newTopics = new ArrayList<>(
+				this.applicationContext.getBeansOfType(NewTopic.class, false, false).values());
+		Collection<NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false).values();
+		wrappers.forEach(wrapper -> newTopics.addAll(wrapper.getNewTopics()));
 		if (newTopics.size() > 0) {
 			AdminClient adminClient = null;
 			try {
-				Map<String, Object> configs2 = new HashMap<>(this.configs);
-				checkBootstrap(configs2);
-				adminClient = AdminClient.create(configs2);
+				adminClient = createAdmin();
 			}
 			catch (Exception e) {
 				if (!this.initializingContext || this.fatalIfBrokerNotAvailable) {
@@ -176,7 +175,7 @@ public class KafkaAdmin extends KafkaResourceFactory implements ApplicationConte
 			}
 			if (adminClient != null) {
 				try {
-					addTopicsIfNeeded(adminClient, newTopics);
+					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
 				catch (Exception e) {
@@ -197,7 +196,39 @@ public class KafkaAdmin extends KafkaResourceFactory implements ApplicationConte
 		return false;
 	}
 
-	private void addTopicsIfNeeded(AdminClient adminClient, Collection<NewTopic> topics) {
+	@Override
+	public void createOrModifyTopics(NewTopic... topics) {
+		try (AdminClient client = createAdmin()) {
+			addOrModifyTopicsIfNeeded(client, Arrays.asList(topics));
+		}
+	}
+
+	@Override
+	public Map<String, TopicDescription> describeTopics(String... topicNames) {
+		try (AdminClient admin = createAdmin()) {
+			Map<String, TopicDescription> results = new HashMap<>();
+			DescribeTopicsResult topics = admin.describeTopics(Arrays.asList(topicNames));
+			try {
+				results.putAll(topics.all().get(this.operationTimeout, TimeUnit.SECONDS));
+				return results;
+			}
+			catch (InterruptedException ie) {
+				Thread.currentThread().interrupt();
+				throw new KafkaException("Interrupted while getting topic descriptions", ie);
+			}
+			catch (TimeoutException | ExecutionException ex) {
+				throw new KafkaException("Failed to obtain topic descriptions", ex);
+			}
+		}
+	}
+
+	private AdminClient createAdmin() {
+		Map<String, Object> configs2 = new HashMap<>(this.configs);
+		checkBootstrap(configs2);
+		return AdminClient.create(configs2);
+	}
+
+	private void addOrModifyTopicsIfNeeded(AdminClient adminClient, Collection<NewTopic> topics) {
 		if (topics.size() > 0) {
 			Map<String, NewTopic> topicNameToTopic = new HashMap<>();
 			topics.forEach(t -> topicNameToTopic.compute(t.name(), (k, v) -> t));
@@ -296,6 +327,31 @@ public class KafkaAdmin extends KafkaResourceFactory implements ApplicationConte
 				}
 			}
 		}
+	}
+
+	/**
+	 * Wrapper for a collection of {@link NewTopic} to facilitated declaring multiple
+	 * topics as as single bean.
+	 *
+	 * @since 2.7
+	 *
+	 */
+	public static class NewTopics {
+
+		final Collection<NewTopic> newTopics = new ArrayList<>();
+
+		/**
+		 * Construct an instance with the {@link NewTopic}s.
+		 * @param newTopics the topics.
+		 */
+		public NewTopics(NewTopic... newTopics) {
+			this.newTopics.addAll(Arrays.asList(newTopics));
+		}
+
+		Collection<NewTopic> getNewTopics() {
+			return this.newTopics;
+		}
+
 	}
 
 }
