@@ -765,7 +765,7 @@ Starting with version 2.3, you can customize the header names - the template has
 This is useful if your server is not a Spring application (or does not use the `@KafkaListener`).
 
 [[exchanging-messages]]
-====== Exchanging `Message<?>` s
+====== Request/Reply with `Message<?>` s
 
 Version 2.7 added methods to the `ReplyingKafkaTemplate` to send and receive `spring-messaging` 's `Message<?>` abstraction:
 
