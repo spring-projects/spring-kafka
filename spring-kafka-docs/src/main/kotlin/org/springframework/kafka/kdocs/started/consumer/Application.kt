@@ -17,6 +17,9 @@ package org.springframework.kafka.kdocs.started.consumer
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.apache.kafka.common.serialization.ByteArraySerializer
+import org.slf4j.LoggerFactory
 import org.springframework.kafka.config.TopicBuilder
 import org.springframework.kafka.annotation.KafkaListener
 import kotlin.jvm.JvmStatic
@@ -44,7 +47,10 @@ class Application {
         println(`in`)
     }
 
-    fun main(args: Array<String>) = runApplication<Application>(*args)
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) = runApplication<Application>(*args)
+    }
 
 }
 // end::startedConsumer[]

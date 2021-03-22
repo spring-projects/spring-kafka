@@ -61,6 +61,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -80,6 +81,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -201,6 +203,50 @@ public class ReplyingKafkaTemplateTests {
 			assertThatExceptionOfType(ExecutionException.class)
 					.isThrownBy(() -> template.sendAndReceive(record2, Duration.ZERO).get(10, TimeUnit.SECONDS))
 					.withCauseExactlyInstanceOf(KafkaReplyTimeoutException.class);
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@Test
+	public void testGoodWithMessage() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
+		try {
+			template.setMessageConverter(new StringJsonMessageConverter());
+			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+			RequestReplyMessageFuture<Integer, String> fut = template.sendAndReceive(MessageBuilder.withPayload("foo")
+					.setHeader(KafkaHeaders.TOPIC, A_REQUEST)
+					.build());
+			fut.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			Message<?> reply = fut.get(30, TimeUnit.SECONDS);
+			assertThat(reply.getPayload()).isEqualTo("FOO");
+
+			RequestReplyTypedMessageFuture<Integer, String, Foo> fooFut = template.sendAndReceive(
+						MessageBuilder.withPayload("getAFoo")
+						.setHeader(KafkaHeaders.TOPIC, A_REQUEST)
+						.build(),
+					new ParameterizedTypeReference<Foo>() {
+					});
+			fooFut.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			@SuppressWarnings("unchecked")
+			Message<Foo> typed = fooFut.get(30, TimeUnit.SECONDS);
+			assertThat(typed.getPayload().getBar()).isEqualTo("baz");
+
+			RequestReplyTypedMessageFuture<Integer, String, List<Foo>> foosFut = template.sendAndReceive(
+						MessageBuilder.withPayload("getFoos")
+						.setHeader(KafkaHeaders.TOPIC, A_REQUEST)
+						.build(),
+					new ParameterizedTypeReference<List<Foo>>() {
+					});
+			foosFut.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			@SuppressWarnings("unchecked")
+			Message<List<Foo>> typedFoos = foosFut.get(30, TimeUnit.SECONDS);
+			List<Foo> foos = typedFoos.getPayload();
+			assertThat(foos).hasSize(2);
+			assertThat(foos.get(0).getBar()).isEqualTo("baz");
+			assertThat(foos.get(1).getBar()).isEqualTo("qux");
 		}
 		finally {
 			template.stop();
@@ -697,6 +743,12 @@ public class ReplyingKafkaTemplateTests {
 			if (in.equals("slow")) {
 				Thread.sleep(50);
 			}
+			if (in.equals("\"getAFoo\"")) {
+				return ("{\"bar\":\"baz\"}");
+			}
+			if (in.equals("\"getFoos\"")) {
+				return ("[{\"bar\":\"baz\"},{\"bar\":\"qux\"}]");
+			}
 			return in.toUpperCase();
 		}
 
@@ -807,6 +859,25 @@ public class ReplyingKafkaTemplateTests {
 		@Override
 		public Object deserialize(String topic, Headers headers, byte[] data) {
 			throw new IllegalStateException("test reply deserialization failure");
+		}
+
+	}
+
+	public static class Foo {
+
+		private String bar;
+
+		public String getBar() {
+			return this.bar;
+		}
+
+		public void setBar(String bar) {
+			this.bar = bar;
+		}
+
+		@Override
+		public String toString() {
+			return "Foo [bar=" + this.bar + "]";
 		}
 
 	}

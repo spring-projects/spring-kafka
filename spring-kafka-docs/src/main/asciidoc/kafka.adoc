@@ -545,6 +545,8 @@ RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record,
 ----
 ====
 
+(Also see <<exchanging-messages>>).
+
 The result is a `ListenableFuture` that is asynchronously populated with the result (or an exception, for a timeout).
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
 You can use this future to determine the result of the send operation.
@@ -761,6 +763,57 @@ These header names are used by the `@KafkaListener` infrastructure to route the 
 
 Starting with version 2.3, you can customize the header names - the template has 3 properties `correlationHeaderName`, `replyTopicHeaderName`, and `replyPartitionHeaderName`.
 This is useful if your server is not a Spring application (or does not use the `@KafkaListener`).
+
+[[exchanging-messages]]
+====== Exchanging `Message<?>` s
+
+Version 2.7 added methods to the `ReplyingKafkaTemplate` to send and receive `spring-messaging` 's `Message<?>` abstraction:
+
+====
+[source, java]
+----
+RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message);
+
+<P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message,
+        ParameterizedTypeReference<P> returnType);
+----
+====
+
+These will use the template's default `replyTimeout`, there are also overloaded versions that can take a timeout in the method call.
+
+Use the first method if the consumer's `Deserializer` or the template's `MessageConverter` can convert the payload without any additional information, either via configuration or type metadata in the reply message.
+
+Use the second method if you need to provide type information for the return type, to assist the message converter.
+This also allows the same template to receive different types, even if there is no type metadata in the replies, such as when the server side is not a Spring application.
+The following is an example of the latter:
+
+.Template Bean
+====
+[source, java, role="primary", indent=0]
+.Java
+----
+include::{java-examples}/requestreply/Application.java[tag=beans]
+----
+[source, kotlin, role="secondary",indent=0]
+.Kotlin
+----
+include::{kotlin-examples}/requestreply/Application.kt[tag=beans]
+----
+====
+
+.Using the template
+====
+[source, java, role="primary", indent=0]
+.Java
+----
+include::{java-examples}/requestreply/Application.java[tag=sendReceive]
+----
+[source, kotlin, role="secondary", indent=0]
+.Kotlin
+----
+include::{kotlin-examples}/requestreply/Application.kt[tag=sendReceive]
+----
+====
 
 [[reply-message]]
 ===== Reply Type Message<?>

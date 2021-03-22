@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import java.time.Duration;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
 
 /**
  * Request/reply operations.
@@ -36,6 +38,57 @@ import org.springframework.lang.Nullable;
 public interface ReplyingKafkaOperations<K, V, R> {
 
 	/**
+	 * 	 * Send a request message and receive a reply message with the default timeout.
+	 * @param message the message to send.
+	 * @return a RequestReplyMessageFuture.
+	 * @since 2.7
+	 *
+	 */
+	default RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message) {
+		throw new UnsupportedOperationException();
+	}
+
+	/**
+	 * Send a request message and receive a reply message.
+	 * @param message the message to send.
+	 * @param replyTimeout the reply timeout; if null, the default will be used.
+	 * @return a RequestReplyMessageFuture.
+	 * @since 2.7
+	 */
+	default RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message, @Nullable Duration replyTimeout) {
+		throw new UnsupportedOperationException();
+	}
+
+	/**
+	 * Send a request message and receive a reply message.
+	 * @param message the message to send.
+	 * @param returnType a hint to the message converter for the reply payload type.
+	 * @param <P> the reply payload type.
+	 * @return a RequestReplyMessageFuture.
+	 * @since 2.7
+	 */
+	default <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message,
+			ParameterizedTypeReference<P> returnType) {
+
+		throw new UnsupportedOperationException();
+	}
+
+	/**
+	 * Send a request message and receive a reply message.
+	 * @param message the message to send.
+	 * @param replyTimeout the reply timeout; if null, the default will be used.
+	 * @param returnType a hint to the message converter for the reply payload type.
+	 * @param <P> the reply payload type.
+	 * @return a RequestReplyMessageFuture.
+	 * @since 2.7
+	 */
+	default <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message, Duration replyTimeout,
+			ParameterizedTypeReference<P> returnType) {
+
+		throw new UnsupportedOperationException();
+	}
+
+	/**
 	 * Send a request and receive a reply with the default timeout.
 	 * @param record the record to send.
 	 * @return a RequestReplyFuture.
@@ -49,6 +102,6 @@ public interface ReplyingKafkaOperations<K, V, R> {
 	 * @return a RequestReplyFuture.
 	 * @since 2.3
 	 */
-	RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, @Nullable Duration replyTimeout);
+	RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, Duration replyTimeout);
 
 }

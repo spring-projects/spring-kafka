@@ -356,6 +356,8 @@ project ('spring-kafka-docs') {
 	dependencies {
 		api "org.springframework.boot:spring-boot-starter:$springBootVersion"
 		api project (':spring-kafka')
+		optionalApi 'com.fasterxml.jackson.core:jackson-core'
+		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
 	}
 
 	compileKotlin {

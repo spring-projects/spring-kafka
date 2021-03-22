@@ -41,7 +41,10 @@ class Application {
     fun runner(template: KafkaTemplate<String?, String?>) =
         ApplicationRunner { template.send("topic1", "test") }
 
-    fun main(args: Array<String>) = runApplication<Application>(*args)
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) = runApplication<Application>(*args)
+    }
 
 }
 // end::startedProducer[]

@@ -35,10 +35,5 @@ class Sender(private val template: KafkaTemplate<Int, String>) {
         template.send("topic1", key, toSend)
     }
 
-    fun main(args: Array<String>) {
-        val context = runApplication<Sender>(*args)
-        context.getBean(Sender::class.java).send("test", 42)
-    }
-
 }
 // end::startedNoBootSender[]

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,31 +16,33 @@
 
 package org.springframework.kafka.requestreply;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-
 import org.springframework.kafka.support.SendResult;
+import org.springframework.messaging.Message;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
- * A listenable future for requests/replies.
+ * A listenable future for {@link Message} replies.
  *
  * @param <K> the key type.
  * @param <V> the outbound data type.
- * @param <R> the reply data type.
  *
  * @author Gary Russell
- * @since 2.1.3
+ * @since 2.7
  *
  */
-public class RequestReplyFuture<K, V, R> extends SettableListenableFuture<ConsumerRecord<K, R>> {
+public class RequestReplyMessageFuture<K, V> extends SettableListenableFuture<Message<?>> {
 
-	private volatile ListenableFuture<SendResult<K, V>> sendFuture;
+	private final ListenableFuture<SendResult<K, V>> sendFuture;
 
-	protected void setSendFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
+	RequestReplyMessageFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
 		this.sendFuture = sendFuture;
 	}
 
+	/**
+	 * Return the send future.
+	 * @return the send future.
+	 */
 	public ListenableFuture<SendResult<K, V>> getSendFuture() {
 		return this.sendFuture;
 	}

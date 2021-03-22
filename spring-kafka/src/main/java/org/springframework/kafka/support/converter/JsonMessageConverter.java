@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,8 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
  *
  */
 public class JsonMessageConverter extends MessagingMessageConverter {
+
+	private static final JavaType OBJECT = TypeFactory.defaultInstance().constructType(Object.class);
 
 	private final ObjectMapper objectMapper;
 
@@ -100,11 +102,16 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 			return KafkaNull.INSTANCE;
 		}
 
-		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED)
+		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED) && type != null
 				? TypeFactory.defaultInstance().constructType(type)
 				: this.typeMapper.toJavaType(record.headers());
 		if (javaType == null) { // no headers
-			javaType = TypeFactory.defaultInstance().constructType(type);
+			if (type != null) {
+				javaType = TypeFactory.defaultInstance().constructType(type);
+			}
+			else {
+				javaType = OBJECT;
+			}
 		}
 		if (value instanceof Bytes) {
 			value = ((Bytes) value).get();

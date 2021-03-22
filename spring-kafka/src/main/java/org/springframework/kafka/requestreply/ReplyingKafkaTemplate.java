@@ -37,6 +37,7 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -50,6 +51,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
@@ -313,12 +315,52 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	@Override
-	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record) {
-		return sendAndReceive(record, null);
+	public RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message) {
+		return sendAndReceive(message, this.defaultReplyTimeout, null);
 	}
 
 	@Override
-	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, @Nullable Duration replyTimeout) {
+	public RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message, Duration replyTimeout) {
+		return sendAndReceive(message, replyTimeout, null);
+	}
+
+	@Override
+	public <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message,
+			@Nullable ParameterizedTypeReference<P> returnType) {
+
+		return sendAndReceive(message, this.defaultReplyTimeout, returnType);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message, Duration replyTimeout,
+			@Nullable ParameterizedTypeReference<P> returnType) {
+
+		RequestReplyFuture<K, V, R> future = sendAndReceive((ProducerRecord<K, V>) getMessageConverter()
+				.fromMessage(message, getDefaultTopic()));
+		RequestReplyTypedMessageFuture<K, V, P> replyFuture =
+				new RequestReplyTypedMessageFuture<>(future.getSendFuture());
+		future.addCallback(
+				result -> {
+					try {
+						replyFuture.set(getMessageConverter()
+							.toMessage(result, null, null, returnType == null ? null : returnType.getType()));
+					}
+					catch (Exception ex) { // NOSONAR
+						replyFuture.setException(ex);
+					}
+				},
+				ex -> replyFuture.setException(ex));
+		return replyFuture;
+	}
+
+	@Override
+	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record) {
+		return sendAndReceive(record, this.defaultReplyTimeout);
+	}
+
+	@Override
+	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, Duration replyTimeout) {
 		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
 		CorrelationKey correlationId = this.correlationStrategy.apply(record);
 		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
@@ -341,7 +383,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			this.futures.remove(correlationId);
 			throw new KafkaException("Send failed", e);
 		}
-		scheduleTimeout(record, correlationId, replyTimeout == null ? this.defaultReplyTimeout : replyTimeout);
+		scheduleTimeout(record, correlationId, replyTimeout);
 		return future;
 	}
 

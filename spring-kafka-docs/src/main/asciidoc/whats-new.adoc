@@ -54,6 +54,9 @@ See <<transactions>> for more information.
 ==== `ReplyingKafkaTemplate` Changes
 
 There is now a mechanism to examine a reply and fail the future exceptionally if some condition exists.
+
+Support for sending and receiving `spring-messaging` `Message<?>` s has been added.
+
 See <<replying-template>> for more information.
 
 [[x27-streams]]

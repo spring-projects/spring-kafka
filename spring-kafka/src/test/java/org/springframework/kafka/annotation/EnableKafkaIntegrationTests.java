@@ -474,16 +474,21 @@ public class EnableKafkaIntegrationTests {
 		Object messageListener = container.getContainerProperties().getMessageListener();
 		DefaultJackson2JavaTypeMapper typeMapper = KafkaTestUtils.getPropertyValue(messageListener,
 				"messageConverter.typeMapper", DefaultJackson2JavaTypeMapper.class);
-		typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID);
-		assertThat(container).isNotNull();
-		Foo foo = new Foo("bar");
-		this.kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
-				.setHeader(KafkaHeaders.TOPIC, "annotated31")
-				.setHeader(KafkaHeaders.PARTITION_ID, 0)
-				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
-				.build());
-		assertThat(this.listener.latch19.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
+		try {
+			typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID);
+			assertThat(container).isNotNull();
+			Foo foo = new Foo("bar");
+			this.kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
+					.setHeader(KafkaHeaders.TOPIC, "annotated31")
+					.setHeader(KafkaHeaders.PARTITION_ID, 0)
+					.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+					.build());
+			assertThat(this.listener.latch19.await(60, TimeUnit.SECONDS)).isTrue();
+			assertThat(this.listener.foo.getBar()).isEqualTo("bar");
+		}
+		finally {
+			typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.INFERRED);
+		}
 	}
 
 	@Test
@@ -1977,7 +1982,6 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "validated", topics = "annotated35", errorHandler = "validationErrorHandler",
 				containerFactory = "kafkaJsonListenerContainerFactory")
 		public void validatedListener(@Payload @Valid ValidatedClass val) {
-			// NOSONAR
 		}
 
 		@KafkaListener(id = "projection", topics = "annotated37",
