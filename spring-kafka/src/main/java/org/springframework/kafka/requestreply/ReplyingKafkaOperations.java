@@ -38,7 +38,7 @@ import org.springframework.messaging.Message;
 public interface ReplyingKafkaOperations<K, V, R> {
 
 	/**
-	 * 	 * Send a request message and receive a reply message with the default timeout.
+	 * Send a request message and receive a reply message with the default timeout.
 	 * @param message the message to send.
 	 * @return a RequestReplyMessageFuture.
 	 * @since 2.7

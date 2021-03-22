@@ -47,6 +47,9 @@ import java.util.function.Consumer
  */
 @SpringBootApplication
 class Application {
+
+    private val log = LoggerFactory.getLogger(Application::class.java)
+
     @Bean
     fun topics(): NewTopics {
         return NewTopics(
@@ -61,12 +64,8 @@ class Application {
         )
     }
 
-    /* This is ok in Intellij but fails in gradle
     @Bean
-    fun kafkaTemplate(pf: ProducerFactory<Any, Any>?): KafkaTemplate<Any, Any> {
-        return KafkaTemplate(pf)
-    }
-     */
+    fun kafkaTemplate(pf: ProducerFactory<Any, Any>?) = KafkaTemplate(pf)
 
 // tag::beans[]
     @Bean
@@ -123,14 +122,10 @@ class Application {
         }
     }
 
-    companion object {
-        private val log = LoggerFactory.getLogger(Application::class.java)
-        @JvmStatic
-        fun main(args: Array<String>) {
-            System.setProperty("spring.kafka.producer.value-serializer", ByteArraySerializer::class.java.name)
-            System.setProperty("spring.kafka.consumer.value-deserializer", ByteArrayDeserializer::class.java.name)
-            SpringApplication.run(Application::class.java, *args).close()
-        }
-    }
+}
 
+fun main(args: Array<String>) {
+    System.setProperty("spring.kafka.producer.value-serializer", ByteArraySerializer::class.java.name)
+    System.setProperty("spring.kafka.consumer.value-deserializer", ByteArrayDeserializer::class.java.name)
+    SpringApplication.run(Application::class.java, *args).close()
 }
