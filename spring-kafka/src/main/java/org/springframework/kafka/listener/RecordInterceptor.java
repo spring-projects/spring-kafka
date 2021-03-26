@@ -40,7 +40,10 @@ public interface RecordInterceptor<K, V> {
 	 * the record will be skipped. Invoked before the listener.
 	 * @param record the record.
 	 * @return the record or null.
+	 * @deprecated in favor of {@link #intercept(ConsumerRecord, Consumer)} which will
+	 * become the required method in a future release.
 	 */
+	@Deprecated
 	@Nullable
 	ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record);
 

@@ -31,8 +31,10 @@ import org.springframework.lang.Nullable;
  * @since 2.7
  *
  */
+@FunctionalInterface
 public interface ConsumerAwareRecordInterceptor<K, V> extends RecordInterceptor<K, V> {
 
+	@SuppressWarnings("deprecation")
 	@Override
 	@Nullable
 	default ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record) {
