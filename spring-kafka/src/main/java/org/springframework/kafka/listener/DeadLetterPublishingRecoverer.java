@@ -44,7 +44,9 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
@@ -97,6 +99,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	private boolean throwIfNoDestinationReturned = false;
 
+	private long timeoutBuffer = Duration.ofSeconds(FIVE).toMillis();
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
@@ -274,13 +277,26 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	/**
-	 * Time to wait for message sending. Default is 30 seconds.
+	 * Set the minumum time to wait for message sending. Default is the producer
+	 * configuration {@code delivery.timeout.ms} plus the {@link #setTimeoutBuffer(long)}.
 	 * @param waitForSendResultTimeout the timeout.
 	 * @since 2.7
 	 * @see #setFailIfSendResultIsError(boolean)
+	 * @see #setTimeoutBuffer(long)
 	 */
 	public void setWaitForSendResultTimeout(Duration waitForSendResultTimeout) {
 		this.waitForSendResultTimeout = waitForSendResultTimeout;
+	}
+
+	/**
+	 * Set the number of milliseconds to add to the producer configuration {@code delivery.timeout.ms}
+	 * property to avoid timing out before the Kafka producer. Default 5000.
+	 * @param buffer the buffer.
+	 * @since 2.7
+	 * @see #setWaitForSendResultTimeout(Duration)
+	 */
+	public void setTimeoutBuffer(long buffer) {
+		this.timeoutBuffer = buffer;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -447,17 +463,20 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 			this.logger.error(e, () -> "Dead-letter publication failed for: " + outRecord);
 		}
 		if (this.failIfSendResultIsError) {
-			verifySendResult(outRecord, sendResult);
+			verifySendResult(kafkaTemplate, outRecord, sendResult);
 		}
 	}
 
-	private void verifySendResult(ProducerRecord<Object, Object> outRecord,
-								@Nullable ListenableFuture<SendResult<Object, Object>> sendResult) {
+	private void verifySendResult(KafkaOperations<Object, Object> kafkaTemplate,
+			ProducerRecord<Object, Object> outRecord,
+			@Nullable ListenableFuture<SendResult<Object, Object>> sendResult) {
+
+		Duration sendTimeout = determineSendTimeout(kafkaTemplate);
 		if (sendResult == null) {
 			throw new KafkaException("Dead-letter publication failed for: " + outRecord);
 		}
 		try {
-			sendResult.get(this.waitForSendResultTimeout.toMillis(), TimeUnit.MILLISECONDS);
+			sendResult.get(sendTimeout.toMillis(), TimeUnit.MILLISECONDS);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -466,6 +485,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		catch (ExecutionException | TimeoutException e) {
 			throw new KafkaException("Publication failed for: " + outRecord, e);
 		}
+	}
+
+	private Duration determineSendTimeout(KafkaOperations<?, ?> template) {
+		ProducerFactory<? extends Object, ? extends Object> producerFactory = template.getProducerFactory();
+		if (producerFactory != null) { // NOSONAR - will only occur in mock tests
+			Map<String, Object> props = producerFactory.getConfigurationProperties();
+			if (props != null) { // NOSONAR - will only occur in mock tests
+				return KafkaUtils.determineSendTimeout(props, this.timeoutBuffer,
+						this.waitForSendResultTimeout.toMillis());
+			}
+		}
+		return Duration.ofSeconds(THIRTY);
 	}
 
 	private void enhanceHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {

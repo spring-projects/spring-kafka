@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,11 @@ package org.springframework.kafka.support;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.Collection;
+import java.util.Map;
+
+import org.apache.kafka.clients.producer.ProducerConfig;
 
 import org.springframework.messaging.Message;
 import org.springframework.util.ClassUtils;
@@ -97,6 +101,39 @@ public final class KafkaUtils {
 	public static void clearConsumerGroupId() {
 		KafkaUtils.GROUP_IDS.remove();
 	}
+
+	/**
+	 * Return the timeout to use when sending records. If the
+	 * {@link ProducerConfig#DELIVERY_TIMEOUT_MS_CONFIG} is not configured, or is not a
+	 * number or a String that can be parsed as a long, the {@link ProducerConfig} default
+	 * value (plus the buffer) is used.
+	 * @param producerProps the producer properties.
+	 * @param buffer a buffer to add to the configured
+	 * {@link ProducerConfig#DELIVERY_TIMEOUT_MS_CONFIG} to prevent timing out before the
+	 * Kafka producer.
+	 * @param min a minimum value to apply after adding the buffer to the configured
+	 * timeout.
+	 * @return the timeout to use.
+	 * @since 2.7
+	 */
+	public static Duration determineSendTimeout(Map<String, Object> producerProps, long buffer, long min) {
+		Object dt = producerProps.get(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG);
+		if (dt instanceof Number) {
+			return Duration.ofMillis(Math.max(((Number) dt).longValue() + buffer, min));
+		}
+		else if (dt instanceof String) {
+			try {
+				return Duration.ofMillis(Math.max(Long.parseLong((String) dt) + buffer, min));
+			}
+			catch (@SuppressWarnings("unused") NumberFormatException ex) {
+			}
+		}
+		return Duration.ofMillis(Math.max(
+				((Integer) ProducerConfig.configDef().defaultValues()
+						.get(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG)).longValue() + buffer,
+				min));
+	}
+
 
 	private KafkaUtils() {
 	}

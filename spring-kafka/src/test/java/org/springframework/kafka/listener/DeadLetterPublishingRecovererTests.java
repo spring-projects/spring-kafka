@@ -27,6 +27,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -36,6 +37,7 @@ import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +45,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.header.Header;
@@ -56,7 +59,9 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaOperations.OperationsCallback;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -357,10 +362,15 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotEqualTo(originalTimestampType);
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void failIfSendResultIsError() throws Exception {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Map<String, Object> props = new HashMap<>();
+		props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 10L);
+		given(pf.getConfigurationProperties()).willReturn(props);
+		given(template.getProducerFactory()).willReturn(pf);
 		ListenableFuture<?> future = mock(ListenableFuture.class);
 		ArgumentCaptor<Long> timeoutCaptor = ArgumentCaptor.forClass(Long.class);
 		given(template.send(any(ProducerRecord.class))).willReturn(future);
@@ -370,9 +380,59 @@ public class DeadLetterPublishingRecovererTests {
 		recoverer.setFailIfSendResultIsError(true);
 		Duration waitForSendResultTimeout = Duration.ofSeconds(1);
 		recoverer.setWaitForSendResultTimeout(waitForSendResultTimeout);
+		recoverer.setTimeoutBuffer(0L);
 		assertThatThrownBy(() -> recoverer.accept(record, new RuntimeException()))
 				.isExactlyInstanceOf(KafkaException.class);
 		assertThat(timeoutCaptor.getValue()).isEqualTo(waitForSendResultTimeout.toMillis());
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void sendTimeoutDefault() throws Exception {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Map<String, Object> props = new HashMap<>();
+		given(pf.getConfigurationProperties()).willReturn(props);
+		given(template.getProducerFactory()).willReturn(pf);
+		SettableListenableFuture<SendResult> future = spy(new SettableListenableFuture<>());
+		ArgumentCaptor<Long> timeoutCaptor = ArgumentCaptor.forClass(Long.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		willAnswer(inv -> {
+			future.set(new SendResult(null, null));
+			return null;
+		}).given(future).get(timeoutCaptor.capture(), eq(TimeUnit.MILLISECONDS));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setFailIfSendResultIsError(true);
+		Duration waitForSendResultTimeout = Duration.ofSeconds(1);
+		recoverer.setWaitForSendResultTimeout(waitForSendResultTimeout);
+		recoverer.accept(record, new RuntimeException());
+		assertThat(timeoutCaptor.getValue()).isEqualTo(Duration.ofSeconds(125).toMillis());
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void sendTimeoutConfig() throws Exception {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Map<String, Object> props = new HashMap<>();
+		props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 30_000L);
+		given(pf.getConfigurationProperties()).willReturn(props);
+		given(template.getProducerFactory()).willReturn(pf);
+		SettableListenableFuture<SendResult> future = spy(new SettableListenableFuture<>());
+		ArgumentCaptor<Long> timeoutCaptor = ArgumentCaptor.forClass(Long.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		willAnswer(inv -> {
+			future.set(new SendResult(null, null));
+			return null;
+		}).given(future).get(timeoutCaptor.capture(), eq(TimeUnit.MILLISECONDS));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setFailIfSendResultIsError(true);
+		Duration waitForSendResultTimeout = Duration.ofSeconds(1);
+		recoverer.setWaitForSendResultTimeout(waitForSendResultTimeout);
+		recoverer.accept(record, new RuntimeException());
+		assertThat(timeoutCaptor.getValue()).isEqualTo(Duration.ofSeconds(35).toMillis());
 	}
 
 	@SuppressWarnings("unchecked")
