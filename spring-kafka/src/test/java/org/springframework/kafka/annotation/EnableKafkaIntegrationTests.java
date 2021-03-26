@@ -1084,7 +1084,7 @@ public class EnableKafkaIntegrationTests {
 			factory.setRecordFilterStrategy(recordFilter());
 			// always send to the same partition so the replies are in order for the test
 			factory.setReplyTemplate(partitionZeroReplyTemplate());
-			factory.setBatchInterceptor(records -> {
+			factory.setBatchInterceptor((records, consumer) -> {
 				this.batchIntercepted = true;
 				return records;
 			});

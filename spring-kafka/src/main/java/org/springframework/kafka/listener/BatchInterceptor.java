@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.lang.Nullable;
@@ -37,24 +38,27 @@ public interface BatchInterceptor<K, V> {
 	 * Perform some action on the records or return a different one. If null is returned
 	 * the records will be skipped. Invoked before the listener.
 	 * @param records the records.
+	 * @param consumer the consumer.
 	 * @return the records or null.
 	 */
 	@Nullable
-	ConsumerRecords<K, V> intercept(ConsumerRecords<K, V> records);
+	ConsumerRecords<K, V> intercept(ConsumerRecords<K, V> records, Consumer<K, V> consumer);
 
 	/**
 	 * Called after the listener exits normally.
 	 * @param records the records.
+	 * @param consumer the consumer.
 	 */
-	default void success(ConsumerRecords<K, V> records) {
+	default void success(ConsumerRecords<K, V> records, Consumer<K, V> consumer) {
 	}
 
 	/**
 	 * Called after the listener throws an exception.
 	 * @param records the records.
 	 * @param exception the exception.
+	 * @param consumer the consumer.
 	 */
-	default void failure(ConsumerRecords<K, V> records, Exception exception) {
+	default void failure(ConsumerRecords<K, V> records, Exception exception, Consumer<K, V> consumer) {
 	}
 
 }

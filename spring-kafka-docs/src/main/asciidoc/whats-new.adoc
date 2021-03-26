@@ -25,6 +25,7 @@ Error handlers and after rollback processors that extend `FailedRecordProcessor`
 See See <<after-rollback>>, <<seek-to-current>>, and <<recovering-batch-eh>> for more information.
 
 The `RecordInterceptor` now has additional methods called after the listener returns (normally, or by throwing an exception).
+It also has a sub-interface `ConsumerAwareRecordInterceptor`.
 In addition, there is now a `BatchInterceptor` for batch listeners.
 See <<message-listener-container>> for more information.
 

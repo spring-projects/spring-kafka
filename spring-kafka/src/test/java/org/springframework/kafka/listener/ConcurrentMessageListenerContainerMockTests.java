@@ -516,24 +516,24 @@ public class ConcurrentMessageListenerContainerMockTests {
 		CountDownLatch interceptedLatch = new CountDownLatch(2);
 		CountDownLatch successCalled = new CountDownLatch(1);
 		CountDownLatch failureCalled = new CountDownLatch(1);
-		container.setRecordInterceptor(new RecordInterceptor() {
+		container.setRecordInterceptor(new ConsumerAwareRecordInterceptor() {
 
 			@Override
 			@Nullable
-			public ConsumerRecord intercept(ConsumerRecord rec) {
+			public ConsumerRecord intercept(ConsumerRecord rec, Consumer consumer) {
 				order.add("interceptor");
 				latch.countDown();
 				return rec;
 			}
 
 			@Override
-			public void success(ConsumerRecord record) {
+			public void success(ConsumerRecord record, Consumer consumer) {
 				order.add("success");
 				successCalled.countDown();
 			}
 
 			@Override
-			public void failure(ConsumerRecord record, Exception exception) {
+			public void failure(ConsumerRecord record, Exception exception, Consumer consumer) {
 				order.add("failure");
 				failureCalled.countDown();
 			}
@@ -543,20 +543,20 @@ public class ConcurrentMessageListenerContainerMockTests {
 
 			@Override
 			@Nullable
-			public ConsumerRecords intercept(ConsumerRecords recs) {
+			public ConsumerRecords intercept(ConsumerRecords recs, Consumer consumer) {
 				order.add("interceptor");
 				latch.countDown();
 				return recs;
 			}
 
 			@Override
-			public void success(ConsumerRecords records) {
+			public void success(ConsumerRecords records, Consumer consumer) {
 				order.add("success");
 				successCalled.countDown();
 			}
 
 			@Override
-			public void failure(ConsumerRecords records, Exception exception) {
+			public void failure(ConsumerRecords records, Exception exception, Consumer consumer) {
 				order.add("failure");
 				failureCalled.countDown();
 			}

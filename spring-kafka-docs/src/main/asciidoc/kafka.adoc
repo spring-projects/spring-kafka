@@ -1009,6 +1009,8 @@ Access to the `Consumer` object is provided.
 IMPORTANT: The `Consumer` object is not thread-safe.
 You must only invoke its methods on the thread that calls the listener.
 
+IMPORTANT: You should not execute any `Consumer<?, ?>` methods that affect the consumer's positions and or committed offsets in your listener; the container needs to manage such information.
+
 [[message-listener-container]]
 ===== Message Listener Containers
 
@@ -1024,8 +1026,12 @@ Starting with version 2.2.7, you can add a `RecordInterceptor` to the listener c
 If the interceptor returns null, the listener is not called.
 Starting with version 2.7, it has additional methods which are called after the listener exits (normally, or by throwing an exception).
 Also, starting with version 2.7, there is now a `BatchInterceptor`, providing similar functionality for <<batch-listeners>>.
+In addition, the `ConsumerAwareRecordInterceptor` (and `BatchInterceptor`) provide access to the `Consumer<?, ?>`.
+This might be used, for example, to access the consumer metrics in the interceptor.
 
-Starting with version 2.3, the `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
+IMPORTANT: You should not execute any methods that affect the consumer's positions and or committed offsets in these interceptors; the container needs to manage such information.
+
+The `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
 
 By default, when using transactions, the interceptor is invoked after the transaction has started.
 Starting with version 2.3.4, you can set the listener container's `interceptBeforeTx` property to invoke the interceptor before the transaction has started instead.

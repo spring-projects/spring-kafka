@@ -1789,7 +1789,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void batchAfterRollback(final ConsumerRecords<K, V> records,
-				final List<ConsumerRecord<K, V>> recordList, RuntimeException e,
+				@Nullable final List<ConsumerRecord<K, V>> recordList, RuntimeException e,
 				AfterRollbackProcessor<K, V> afterRollbackProcessorToUse) {
 
 			RuntimeException rollbackException = decorateException(e);
@@ -1888,10 +1888,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.commonBatchInterceptor != null) {
 				try {
 					if (exception == null) {
-						this.commonBatchInterceptor.success(records);
+						this.commonBatchInterceptor.success(records, this.consumer);
 					}
 					else {
-						this.commonBatchInterceptor.failure(records, exception);
+						this.commonBatchInterceptor.failure(records, exception, this.consumer);
 					}
 				}
 				catch (Exception e) {
@@ -1961,7 +1961,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			ConsumerRecords<K, V> records = recordsArg;
 			if (this.batchInterceptor != null) {
-				records = this.batchInterceptor.intercept(recordsArg);
+				records = this.batchInterceptor.intercept(recordsArg, this.consumer);
 			}
 			if (this.wantsFullRecords) {
 				this.batchListener.onMessage(records, // NOSONAR
@@ -2143,7 +2143,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private ConsumerRecords<K, V> checkEarlyIntercept(ConsumerRecords<K, V> nextArg) {
 			ConsumerRecords<K, V> next = nextArg;
 			if (this.earlyBatchInterceptor != null) {
-				next = this.earlyBatchInterceptor.intercept(next);
+				next = this.earlyBatchInterceptor.intercept(next, this.consumer);
 				if (next == null) {
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
 						+ nextArg + " with " + nextArg.count() + " records");
@@ -2156,7 +2156,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> nextArg) {
 			ConsumerRecord<K, V> next = nextArg;
 			if (this.earlyRecordInterceptor != null) {
-				next = this.earlyRecordInterceptor.intercept(next);
+				next = this.earlyRecordInterceptor.intercept(next, this.consumer);
 				if (next == null) {
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
 						+ ListenerUtils.recordToString(nextArg));
@@ -2258,10 +2258,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.commonRecordInterceptor != null) {
 				try {
 					if (exception == null) {
-						this.commonRecordInterceptor.success(records);
+						this.commonRecordInterceptor.success(records, this.consumer);
 					}
 					else {
-						this.commonRecordInterceptor.failure(records, exception);
+						this.commonRecordInterceptor.failure(records, exception, this.consumer);
 					}
 				}
 				catch (Exception e) {
@@ -2301,7 +2301,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
 			ConsumerRecord<K, V> record = recordArg;
 			if (this.recordInterceptor != null) {
-				record = this.recordInterceptor.intercept(record);
+				record = this.recordInterceptor.intercept(record, this.consumer);
 			}
 			if (record == null) {
 				this.logger.debug(() -> "RecordInterceptor returned null, skipping: "

@@ -20,8 +20,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -53,22 +55,39 @@ public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V>
 	}
 
 	@Override
+	@Nullable
 	public ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record) {
 		ConsumerRecord<K, V> recordToIntercept = record;
 		for (RecordInterceptor<K, V> delegate : this.delegates) {
 			recordToIntercept = delegate.intercept(recordToIntercept);
+			if (recordToIntercept == null) {
+				break;
+			}
 		}
 		return recordToIntercept;
 	}
 
 	@Override
-	public void success(ConsumerRecord<K, V> record) {
-		this.delegates.forEach(del -> del.success(record));
+	@Nullable
+	public ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record, Consumer<K, V> consumer) {
+		ConsumerRecord<K, V> recordToIntercept = record;
+		for (RecordInterceptor<K, V> delegate : this.delegates) {
+			recordToIntercept = delegate.intercept(recordToIntercept, consumer);
+			if (recordToIntercept == null) {
+				break;
+			}
+		}
+		return recordToIntercept;
 	}
 
 	@Override
-	public void failure(ConsumerRecord<K, V> record, Exception exception) {
-		this.delegates.forEach(del -> del.failure(record, exception));
+	public void success(ConsumerRecord<K, V> record, Consumer<K, V> consumer) {
+		this.delegates.forEach(del -> del.success(record, consumer));
+	}
+
+	@Override
+	public void failure(ConsumerRecord<K, V> record, Exception exception, Consumer<K, V> consumer) {
+		this.delegates.forEach(del -> del.failure(record, exception, consumer));
 	}
 
 }
