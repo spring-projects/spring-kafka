@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -296,7 +296,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
-	 * Set a customized type mapper.
+	 * Set a customized type mapper. If the mapper is an {@link AbstractJavaTypeMapper},
+	 * any class mappings configured in the mapper will be added to the trusted packages.
 	 * @param typeMapper the type mapper.
 	 * @since 2.1
 	 */
@@ -304,6 +305,9 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 		this.typeMapperExplicitlySet = true;
+		if (typeMapper instanceof AbstractJavaTypeMapper) {
+			addMappingsToTrusted(((AbstractJavaTypeMapper) typeMapper).getIdClassMapping());
+		}
 	}
 
 	/**
@@ -375,13 +379,19 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		}
 		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
 				&& this.typeMapper instanceof AbstractJavaTypeMapper) {
-			((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(
-					JsonSerializer.createMappings(configs.get(JsonSerializer.TYPE_MAPPINGS).toString()));
+			((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(createMappings(configs));
 		}
 		if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
 			this.removeTypeHeaders = Boolean.parseBoolean(configs.get(REMOVE_TYPE_INFO_HEADERS).toString());
 		}
 		setUpTypeMethod(configs, isKey);
+	}
+
+	private Map<String, Class<?>> createMappings(Map<String, ?> configs) {
+		Map<String, Class<?>> mappings =
+				JsonSerializer.createMappings(configs.get(JsonSerializer.TYPE_MAPPINGS).toString());
+		addMappingsToTrusted(mappings);
+		return mappings;
 	}
 
 	private void setUpTypeMethod(Map<String, ?> configs, boolean isKey) {
@@ -469,6 +479,13 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void addTrustedPackages(String... packages) {
 		doAddTrustedPackages(packages);
+	}
+
+	private void addMappingsToTrusted(Map<String, Class<?>> mappings) {
+		mappings.values().forEach(clazz -> {
+			doAddTrustedPackages(clazz.getPackageName());
+			doAddTrustedPackages(clazz.getPackageName() + ".*");
+		});
 	}
 
 	private void addTargetPackageToTrusted() {

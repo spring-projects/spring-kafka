@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 						ClassUtils.forName(split[1].trim(), ClassUtils.getDefaultClassLoader()));
 			}
 			catch (ClassNotFoundException | LinkageError e) {
-				throw new IllegalArgumentException(e);
+				throw new IllegalArgumentException("Failed to load: " + split[1] + " for " + split[0], e);
 			}
 		}
 		return mappingsMap;

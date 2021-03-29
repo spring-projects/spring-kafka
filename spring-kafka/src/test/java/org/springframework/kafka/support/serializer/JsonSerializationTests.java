@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -289,6 +289,32 @@ public class JsonSerializationTests {
 		deser.configure(props, false);
 		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
 				.contains("foo", "bar", "baz");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testTrustMappingPackages() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		Map<String, Object> props = Collections.singletonMap(JsonDeserializer.TYPE_MAPPINGS,
+				"foo:" + Foo.class.getName());
+		deser.configure(props, false);
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
+				.contains(Foo.class.getPackageName());
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
+			.contains(Foo.class.getPackageName() + ".*");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testTrustMappingPackagesMapper() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		DefaultJackson2JavaTypeMapper mapper = new DefaultJackson2JavaTypeMapper();
+		mapper.setIdClassMapping(Collections.singletonMap("foo", Foo.class));
+		deser.setTypeMapper(mapper);
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
+				.contains(Foo.class.getPackageName());
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
+			.contains(Foo.class.getPackageName() + ".*");
 	}
 
 	@Test
