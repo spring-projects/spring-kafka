@@ -49,7 +49,7 @@ NOTE: You can have separate `ListenerContainerFactory` instances for the main an
 
 ===== Using the `@RetryableTopic` annotation
 
-To configure the retry topic and dlt for a `@KafkaListener` annotated method, you just have to add the `@RetryableTopic` annotation to it and Spring Kafka will bootstrap all the necessary topics and consumers with the default configurations.
+To configure the retry topic and dlt for a `@KafkaListener` annotated method, you just have to add the `@RetryableTopic` annotation to it and Spring for Apache Kafka will bootstrap all the necessary topics and consumers with the default configurations.
 
 ====
 [source, java]

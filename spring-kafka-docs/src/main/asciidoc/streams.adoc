@@ -1,9 +1,9 @@
 [[streams-kafka-streams]]
-=== Kafka Streams Support
+=== Apache Kafka Streams Support
 
 Starting with version 1.1.4, Spring for Apache Kafka provides first-class support for https://kafka.apache.org/documentation/streams[Kafka Streams].
 To use it from a Spring application, the `kafka-streams` jar must be present on classpath.
-It is an optional dependency of the `spring-kafka` project and is not downloaded transitively.
+It is an optional dependency of the Spring for Apache Kafka project and is not downloaded transitively.
 
 ==== Basics
 
@@ -157,7 +157,7 @@ streamsBuilderFactoryBean.setListener(new KafkaStreamsMicrometerListener(meterRe
 [[serde]]
 ==== Streams JSON Serialization and Deserialization
 
-For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes>>.
+For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring for Apache Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes>>.
 The `JsonSerde` implementation provides the same configuration options through its constructor (target type or `ObjectMapper`).
 In the following example, we use the `JsonSerde` to serialize and deserialize the `Cat` payload of a Kafka stream (the `JsonSerde` can be used in a similar fashion wherever an instance is required):
 

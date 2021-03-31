@@ -2,7 +2,7 @@
 === Quick Tour
 
 Prerequisites: You must install and run Apache Kafka.
-Then you must put the spring-kafka JAR and all of its dependencies on your class path.
+Then you must put the Spring for Apache Kafka (`spring-kafka`) JAR and all of its dependencies on your class path.
 The easiest way to do that is to declare a dependency in your build tool.
 
 If you are not using Spring Boot, declare the `spring-kafka` jar as a dependency in your project.
