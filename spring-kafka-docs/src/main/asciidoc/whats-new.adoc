@@ -35,6 +35,10 @@ See <<message-listener-container>> for more information.
 You can now validate the payload parameter of `@KafkaHandler` methods (class-level listeners).
 See <<kafka-validation>> for more information.
 
+You can now set the `rawRecordHeader` property on the `MessagingMessageConverter` and `BatchMessagingMessageConverter` which causes the raw `ConsumerRecord` to be added to the converted `Message<?>`.
+This is useful, for example, if you wish to use a `DeadLetterPublishingRecoverer` in a listener error handler.
+See <<listener-error-handlers>> for more information.
+
 [[x27-dlt]]
 ==== `DeadLetterPublishingRecover` Changes
 

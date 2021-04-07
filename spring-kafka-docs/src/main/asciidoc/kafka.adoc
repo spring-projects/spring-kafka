@@ -4663,6 +4663,7 @@ TIP: See <<tip-assign-all-parts>>.
 
 This section describes how to handle various exceptions that may arise when you use Spring for Apache Kafka.
 
+[[listener-error-handlers]]
 ===== Listener Error Handlers
 
 Starting with version 2.0, the `@KafkaListener` annotation has a new attribute: `errorHandler`.
@@ -4685,6 +4686,26 @@ public interface KafkaListenerErrorHandler {
 You have access to the spring-messaging `Message<?>` object produced by the message converter and the exception that was thrown by the listener, which is wrapped in a `ListenerExecutionFailedException`.
 The error handler can throw the original or a new exception, which is thrown to the container.
 Anything returned by the error handler is ignored.
+
+Starting with version 2.7, you can set the `rawRecordHeader` property on the `MessagingMessageConverter` and `BatchMessagingMessageConverter` which causes the raw `ConsumerRecord` to be added to the converted `Message<?>` in the `KafkaHeaders.RAW_DATA` header.
+This is useful, for example, if you wish to use a `DeadLetterPublishingRecoverer` in a listener error handler.
+It might be used in a request/reply scenario where you wish to send a failure result to the sender, after some number of retries, after capturing the failed record in a dead letter topic.
+
+====
+[source, java]
+----
+@Bean
+KafkaListenerErrorHandler eh(DeadLetterPublishingRecoverer recoverer) {
+    return (msg, ex) -> {
+        if (msg.getHeaders().get(KafkaHeaders.DELIVERY_ATTEMPT, Integer.class) > 9) {
+            recoverer.accept(msg.getHeaders().get(KafkaHeaders.RAW_DATA, ConsumerRecord.class), ex);
+            return "FAILED";
+        }
+        throw ex;
+    };
+}
+----
+====
 
 It has a sub-interface (`ConsumerAwareListenerErrorHandler`) that has access to the consumer object, through the following method:
 
