@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,6 +71,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	private KafkaHeaderMapper headerMapper;
 
+	private boolean rawRecordHeader;
+
 	/**
 	 * Create an instance that does not convert the record values.
 	 */
@@ -123,6 +125,16 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		return this.recordConverter;
 	}
 
+	/**
+	 * Set to true to add the raw {@code List<ConsumerRecord<?, ?>>} as a header
+	 * {@link KafkaHeaders#RAW_DATA}.
+	 * @param rawRecordHeader true to add the header.
+	 * @since 2.7
+	 */
+	public void setRawRecordHeader(boolean rawRecordHeader) {
+		this.rawRecordHeader = rawRecordHeader;
+	}
+
 	@Override
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer, Type type) {
@@ -140,11 +152,15 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		List<Long> timestamps = new ArrayList<>();
 		List<Map<String, Object>> convertedHeaders = new ArrayList<>();
 		List<Headers> natives = new ArrayList<>();
+		List<ConsumerRecord<?, ?>> raws = new ArrayList<>();
 		if (this.headerMapper != null) {
 			rawHeaders.put(KafkaHeaders.BATCH_CONVERTED_HEADERS, convertedHeaders);
 		}
 		else {
 			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, natives);
+		}
+		if (this.rawRecordHeader) {
+			rawHeaders.put(KafkaHeaders.RAW_DATA, raws);
 		}
 		commonHeaders(acknowledgment, consumer, rawHeaders, keys, topics, partitions, offsets, timestampTypes,
 				timestamps);
@@ -176,6 +192,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 					logged = true;
 				}
 				natives.add(record.headers());
+			}
+			if (this.rawRecordHeader) {
+				raws.add(record);
 			}
 		}
 		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);

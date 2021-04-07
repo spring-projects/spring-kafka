@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,6 +62,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	private KafkaHeaderMapper headerMapper;
 
+	private boolean rawRecordHeader;
+
 	public MessagingMessageConverter() {
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
@@ -98,6 +100,16 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		this.headerMapper = headerMapper;
 	}
 
+	/**
+	 * Set to true to add the raw {@link ConsumerRecord} as a header
+	 * {@link KafkaHeaders#RAW_DATA}.
+	 * @param rawRecordHeader true to add the header.
+	 * @since 2.7
+	 */
+	public void setRawRecordHeader(boolean rawRecordHeader) {
+		this.rawRecordHeader = rawRecordHeader;
+	}
+
 	@Override
 	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Type type) {
@@ -119,7 +131,9 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		String ttName = record.timestampType() != null ? record.timestampType().name() : null;
 		commonHeaders(acknowledgment, consumer, rawHeaders, record.key(), record.topic(), record.partition(),
 				record.offset(), ttName, record.timestamp());
-
+		if (this.rawRecordHeader) {
+			rawHeaders.put(KafkaHeaders.RAW_DATA, record);
+		}
 		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);
 	}
 

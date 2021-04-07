@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,13 +44,14 @@ import org.springframework.messaging.MessageHeaders;
 /**
  * @author Biju Kunjummen
  * @author Artem Bilan
+ * @author Gary Russell
  *
  * @since 1.3
  */
 public class BatchMessageConverterTests {
 
 	@Test
-	public void testBatchConverters() {
+	void testBatchConverters() {
 		BatchMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
 
 		MessageHeaders headers = testGuts(batchMessageConverter);
@@ -61,10 +62,11 @@ public class BatchMessageConverterTests {
 		Map<String, Object> map = converted.get(0);
 		assertThat(map).hasSize(1);
 		assertThat(new String((byte[]) map.get("foo"))).isEqualTo("bar");
+		assertThat(headers.get(KafkaHeaders.RAW_DATA)).isNull();
 	}
 
 	@Test
-	public void testNoMapper() {
+	void testNoMapper() {
 		BatchMessagingMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
 		batchMessageConverter.setHeaderMapper(null);
 
@@ -79,16 +81,26 @@ public class BatchMessageConverterTests {
 		assertThat(new String(next.value())).isEqualTo("bar");
 	}
 
+	@Test
+	void raw() {
+		BatchMessagingMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
+		batchMessageConverter.setRawRecordHeader(true);
+		MessageHeaders headers = testGuts(batchMessageConverter);
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> converted = (List<Map<String, Object>>) headers
+				.get(KafkaHeaders.BATCH_CONVERTED_HEADERS);
+		assertThat(converted).hasSize(3);
+		Map<String, Object> map = converted.get(0);
+		assertThat(map).hasSize(1);
+		assertThat(new String((byte[]) map.get("foo"))).isEqualTo("bar");
+		@SuppressWarnings("unchecked")
+		List<ConsumerRecord<?, ?>> rawHeader = headers.get(KafkaHeaders.RAW_DATA, List.class);
+		assertThat(rawHeader).extracting(rec -> (String) rec.value())
+				.containsExactly("value1", "value2", "value3");
+	}
+
 	private MessageHeaders testGuts(BatchMessageConverter batchMessageConverter) {
-		Header header = new RecordHeader("foo", "bar".getBytes());
-		Headers kHeaders = new RecordHeaders(new Header[] { header });
-		List<ConsumerRecord<?, ?>> consumerRecords = new ArrayList<>();
-		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 1, 1487694048607L,
-				TimestampType.CREATE_TIME, 123L, 2, 3, "key1", "value1", kHeaders));
-		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 2, 1487694048608L,
-				TimestampType.CREATE_TIME, 123L, 2, 3, "key2", "value2", kHeaders));
-		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 3, 1487694048609L,
-				TimestampType.CREATE_TIME, 123L, 2, 3, "key3", "value3", kHeaders));
+		List<ConsumerRecord<?, ?>> consumerRecords = recordList();
 
 
 		Acknowledgment ack = mock(Acknowledgment.class);
@@ -116,6 +128,19 @@ public class BatchMessageConverterTests {
 		assertThat(headers.get(KafkaHeaders.GROUP_ID)).isEqualTo("test.g");
 		KafkaUtils.clearConsumerGroupId();
 		return headers;
+	}
+
+	private List<ConsumerRecord<?, ?>> recordList() {
+		Header header = new RecordHeader("foo", "bar".getBytes());
+		Headers kHeaders = new RecordHeaders(new Header[] { header });
+		List<ConsumerRecord<?, ?>> consumerRecords = new ArrayList<>();
+		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 1, 1487694048607L,
+				TimestampType.CREATE_TIME, 123L, 2, 3, "key1", "value1", kHeaders));
+		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 2, 1487694048608L,
+				TimestampType.CREATE_TIME, 123L, 2, 3, "key2", "value2", kHeaders));
+		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 3, 1487694048609L,
+				TimestampType.CREATE_TIME, 123L, 2, 3, "key3", "value3", kHeaders));
+		return consumerRecords;
 	}
 
 	@SuppressWarnings("unchecked")
