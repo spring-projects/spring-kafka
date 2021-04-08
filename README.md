@@ -79,7 +79,7 @@ None of these is essential for a pull request, but they will all help.
 * Add yourself as an @author to the .java files that you modify substantially (more than cosmetic changes).
 * Add some Javadocs and, if you change the namespace, some XSD doc elements.
 * A few unit tests would help a lot as well - someone has to do it.
-* If no-one else is using your branch, please rebase it against the current master (or another target branch in the main project).
+* If no-one else is using your branch, please rebase it against the current main (or another target branch in the main project).
 
 # License
 
