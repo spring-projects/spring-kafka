@@ -2299,7 +2299,7 @@ If you need retry capabilities when you use a batch listener, we recommend that 
 ===== Stateful Retry
 
 IMPORTANT: Now that the `SeekToCurrentErrorHandler` can be configured with a `BackOff` and has the ability to retry only certain exceptions (since version 2.3), the use of stateful retry, via the listener adapter retry configuration, is no longer necessary.
-You can provide the same functionality with appropriate configuration of the error handler and remove all retry configuration from the listener adatper.
+You can provide the same functionality with appropriate configuration of the error handler and remove all retry configuration from the listener adapter.
 See <<seek-to-current>> for more information.
 
 You should understand that the retry discussed in the <<retrying-deliveries,preceding section>> suspends the consumer thread (if a `BackOffPolicy` is used).
