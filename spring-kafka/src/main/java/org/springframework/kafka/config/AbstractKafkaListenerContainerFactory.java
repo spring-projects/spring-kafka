@@ -51,7 +51,6 @@ import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
  * Base {@link KafkaListenerContainerFactory} for Spring's base container implementation.
@@ -427,10 +426,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(this.phase, instance::setPhase)
 				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)
 				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
-				.acceptIfCondition(StringUtils.hasText(endpoint.getGroupId()), endpoint.getGroupId(),
-						instance.getContainerProperties()::setGroupId)
-				.acceptIfCondition(StringUtils.hasText(endpoint.getClientIdPrefix()), endpoint.getClientIdPrefix(),
-						instance.getContainerProperties()::setClientId)
+				.acceptIfHasText(endpoint.getGroupId(), instance.getContainerProperties()::setGroupId)
+				.acceptIfHasText(endpoint.getClientIdPrefix(), instance.getContainerProperties()::setClientId)
 				.acceptIfNotNull(endpoint.getConsumerProperties(),
 						instance.getContainerProperties()::setKafkaConsumerProperties);
 	}
