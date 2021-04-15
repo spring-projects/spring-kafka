@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.config.AbstractKafkaListenerEndpoint;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
+import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
@@ -36,7 +41,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 public class ContainerFactoryTests {
 
 	@Test
-	public void testConfigContainer() {
+	void testConfigContainer() {
 		ConcurrentKafkaListenerContainerFactory<String, String> factory =
 				new ConcurrentKafkaListenerContainerFactory<>();
 		factory.setAutoStartup(false);
@@ -54,6 +59,35 @@ public class ContainerFactoryTests {
 		assertThat(container.getContainerProperties().getAckCount()).isEqualTo(123);
 		assertThat(KafkaTestUtils.getPropertyValue(container, "concurrency", Integer.class)).isEqualTo(22);
 		assertThat(customized).isTrue();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void clientIdAndGroupIdTransferred() {
+		ConcurrentKafkaListenerContainerFactory<String, String> factory =
+				new ConcurrentKafkaListenerContainerFactory<>();
+		factory.getContainerProperties().setClientId("myClientId");
+		factory.getContainerProperties().setGroupId("myGroup");
+		factory.setConsumerFactory(mock(ConsumerFactory.class));
+		AbstractKafkaListenerEndpoint<String, String> endpoint = new AbstractKafkaListenerEndpoint<String, String>() {
+
+			@Override
+			protected MessagingMessageListenerAdapter<String, String> createMessageListener(
+					MessageListenerContainer container, MessageConverter messageConverter) {
+
+				RecordMessagingMessageListenerAdapter<String, String> adapter =
+						new RecordMessagingMessageListenerAdapter<String, String>(null, null);
+				return adapter;
+			}
+
+		};
+		endpoint.setTopics("test");
+		endpoint.setClientIdPrefix("");
+		endpoint.setGroupId("");
+		ConcurrentMessageListenerContainer<String, String> container = factory.createListenerContainer(
+				endpoint);
+		assertThat(container.getContainerProperties().getClientId()).isEqualTo("myClientId");
+		assertThat(container.getContainerProperties().getGroupId()).isEqualTo("myGroup");
 	}
 
 }
