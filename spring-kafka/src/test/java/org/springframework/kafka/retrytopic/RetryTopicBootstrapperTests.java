@@ -120,6 +120,9 @@ class RetryTopicBootstrapperTests {
 		then(this.applicationContext).should(times(1))
 				.registerBeanDefinition(RetryTopicInternalBeanNames.BACKOFF_SLEEPER_BEAN_NAME,
 						new RootBeanDefinition(ThreadWaitSleeper.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_NAMES_PROVIDER_FACTORY,
+						new RootBeanDefinition(DefaultRetryTopicNamesProviderFactory.class));
 	}
 
 	@Test
@@ -157,6 +160,9 @@ class RetryTopicBootstrapperTests {
 		then(this.applicationContext).should(times(0))
 				.registerBeanDefinition(RetryTopicInternalBeanNames.BACKOFF_SLEEPER_BEAN_NAME,
 						new RootBeanDefinition(ThreadWaitSleeper.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_NAMES_PROVIDER_FACTORY,
+						new RootBeanDefinition(DefaultRetryTopicNamesProviderFactory.class));
 	}
 
 	@Test

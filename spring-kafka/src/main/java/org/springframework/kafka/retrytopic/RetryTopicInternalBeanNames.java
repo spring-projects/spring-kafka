@@ -53,6 +53,8 @@ public abstract class RetryTopicInternalBeanNames {
 
 	static final String INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY = "internalKafkaConsumerBackOffManagerFactory";
 
+	static final String RETRY_TOPIC_NAMES_PROVIDER_FACTORY = "internalRetryTopicNamesProviderFactory";
+
 	/**
 	 * Internal Back Off Clock Bean Name.
 	 */

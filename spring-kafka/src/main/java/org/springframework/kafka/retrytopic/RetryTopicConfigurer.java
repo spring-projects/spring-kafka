@@ -36,7 +36,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.ListenerUtils;
-import org.springframework.kafka.support.Suffixer;
+import org.springframework.kafka.retrytopic.RetryTopicNamesProviderFactory.RetryTopicNamesProvider;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 
@@ -221,14 +221,18 @@ public class RetryTopicConfigurer {
 
 	private final BeanFactory beanFactory;
 
+	private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
+
 	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
-						ListenerContainerFactoryResolver containerFactoryResolver,
-						ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
-						BeanFactory beanFactory) {
+								ListenerContainerFactoryResolver containerFactoryResolver,
+								ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
+								BeanFactory beanFactory,
+								RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
 		this.destinationTopicProcessor = destinationTopicProcessor;
 		this.containerFactoryResolver = containerFactoryResolver;
 		this.listenerContainerFactoryConfigurer = listenerContainerFactoryConfigurer;
 		this.beanFactory = beanFactory;
+		this.retryTopicNamesProviderFactory = retryTopicNamesProviderFactory;
 	}
 
 	/**
@@ -340,7 +344,8 @@ public class RetryTopicConfigurer {
 
 		return new EndpointCustomizerFactory(destinationTopicProperties,
 				endpointBeanMethod,
-				this.beanFactory)
+				this.beanFactory,
+				this.retryTopicNamesProviderFactory)
 				.createEndpointCustomizer();
 	}
 
@@ -405,40 +410,42 @@ public class RetryTopicConfigurer {
 
 		private final BeanFactory beanFactory;
 
-		EndpointCustomizerFactory(DestinationTopic.Properties destinationProperties,
-								EndpointHandlerMethod beanMethod,
-								BeanFactory beanFactory) {
+		private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
+
+		EndpointCustomizerFactory(DestinationTopic.Properties destinationProperties, EndpointHandlerMethod beanMethod,
+			BeanFactory beanFactory, RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
 
 			this.destinationProperties = destinationProperties;
 			this.beanMethod = beanMethod;
 			this.beanFactory = beanFactory;
+			this.retryTopicNamesProviderFactory = retryTopicNamesProviderFactory;
 		}
 
 		public EndpointCustomizer createEndpointCustomizer() {
-			return addSuffixesAndMethod(this.destinationProperties.suffix(), this.beanMethod.resolveBean(this.beanFactory),
+			return addSuffixesAndMethod(this.destinationProperties, this.beanMethod.resolveBean(this.beanFactory),
 					this.beanMethod.getMethod());
 		}
 
-		private EndpointCustomizer addSuffixesAndMethod(String topicSuffix, Object bean, Method method) {
-			Suffixer suffixer = new Suffixer(topicSuffix);
+		private EndpointCustomizer addSuffixesAndMethod(DestinationTopic.Properties properties, Object bean, Method method) {
+			RetryTopicNamesProvider namesProvider = this.retryTopicNamesProviderFactory.createRetryTopicNamesProvider(properties);
 			return endpoint -> {
-				Collection<TopicNamesHolder> topics = customizeAndRegisterTopics(suffixer, endpoint);
-				endpoint.setId(suffixer.maybeAddTo(endpoint.getId()));
-				endpoint.setGroupId(suffixer.maybeAddTo(endpoint.getGroupId()));
+				Collection<TopicNamesHolder> topics = customizeAndRegisterTopics(namesProvider, endpoint);
+				endpoint.setId(namesProvider.getEndpointId(endpoint));
+				endpoint.setGroupId(namesProvider.getGroupId(endpoint));
 				endpoint.setTopics(topics.stream().map(TopicNamesHolder::getProcessedTopic).toArray(String[]::new));
-				endpoint.setClientIdPrefix(suffixer.maybeAddTo(endpoint.getClientIdPrefix()));
-				endpoint.setGroup(suffixer.maybeAddTo(endpoint.getGroup()));
+				endpoint.setClientIdPrefix(namesProvider.getClientIdPrefix(endpoint));
+				endpoint.setGroup(namesProvider.getGroup(endpoint));
 				endpoint.setBean(bean);
 				endpoint.setMethod(method);
 				return topics;
 			};
 		}
 
-		private Collection<TopicNamesHolder> customizeAndRegisterTopics(Suffixer suffixer,
+		private Collection<TopicNamesHolder> customizeAndRegisterTopics(RetryTopicNamesProvider namesProvider,
 																		MethodKafkaListenerEndpoint<?, ?> endpoint) {
 			return getTopics(endpoint)
 					.stream()
-					.map(topic -> new TopicNamesHolder(topic, suffixer.maybeAddTo(topic)))
+					.map(topic -> new TopicNamesHolder(topic, namesProvider.getTopicName(topic)))
 					.collect(Collectors.toList());
 		}
 
@@ -494,4 +501,6 @@ public class RetryTopicConfigurer {
 			}
 		}
 	}
+
+
 }
