@@ -119,12 +119,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
 
-	private static final String clientVersion;
-
 	private static final Method getBrokerState;
 
 	static {
-		clientVersion = AppInfoParser.getVersion();
 		try {
 			Method method = KafkaServer.class.getDeclaredMethod("brokerState");
 			if (method.getReturnType().equals(AtomicReference.class)) {
@@ -136,7 +133,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		catch (NoSuchMethodException | SecurityException e) {
 			throw new RuntimeException("Failed to determine KafkaServer.brokerState() method; client version: "
-					+ clientVersion);
+					+ AppInfoParser.getVersion());
 		}
 	}
 
