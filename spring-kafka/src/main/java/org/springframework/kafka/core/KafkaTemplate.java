@@ -170,7 +170,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 		Assert.notNull(producerFactory, "'producerFactory' cannot be null");
 		this.autoFlush = autoFlush;
-		this.transactional = producerFactory.transactionCapable();
 		this.micrometerEnabled = KafkaUtils.MICROMETER_PRESENT;
 		this.customProducerFactory = configOverrides != null && configOverrides.size() > 0;
 		if (this.customProducerFactory) {
@@ -186,6 +185,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		else {
 			this.producerFactory = producerFactory;
 		}
+		this.transactional = this.producerFactory.transactionCapable();
 	}
 
 	@Override

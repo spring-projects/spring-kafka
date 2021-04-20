@@ -447,12 +447,14 @@ public class KafkaTemplateTests {
 		pf.setProducerPerThread(true);
 		Map<String, Object> overrides = new HashMap<>();
 		overrides.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		overrides.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "TX");
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true, overrides);
 		assertThat(template.getProducerFactory().getConfigurationProperties()
 				.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)).isEqualTo(StringSerializer.class);
 		assertThat(template.getProducerFactory().getPhysicalCloseTimeout()).isEqualTo(Duration.ofSeconds(6));
 		assertThat(template.getProducerFactory().isProducerPerConsumerPartition()).isFalse();
 		assertThat(template.getProducerFactory().isProducerPerThread()).isTrue();
+		assertThat(template.isTransactional()).isTrue();
 	}
 
 	@Test
