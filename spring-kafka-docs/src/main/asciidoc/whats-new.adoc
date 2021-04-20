@@ -7,6 +7,7 @@ For changes in earlier version, see <<history>>.
 ==== Kafka Client Version
 
 This version requires the 2.7.0 `kafka-clients`.
+It is also compatible with the 2.8.0 clients, since version 2.7.1; see <<update-deps>>.
 
 [[x-27-nonblock-retry]]
 ==== Non-Blocking Delayed Retries Using Topics

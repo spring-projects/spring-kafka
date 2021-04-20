@@ -1,8 +1,8 @@
 [[update-deps]]
 == Override Spring Boot Dependencies
 
-When using Spring for Apache Kafka in a Spring Boot application, the Kafka dependency versions are determined by Spring Boot's dependency management.
-If you wish to use a different version, you need to override all of the associated dependencies.
+When using Spring for Apache Kafka in a Spring Boot application, the Apache Kafka dependency versions are determined by Spring Boot's dependency management.
+If you wish to use a different version of `kafka-clients` or `kafka-streams`, such as 2.8.0, you need to override all of the associated dependencies.
 This is especially true when using the embedded Kafka broker in `spring-kafka-test`.
 
 IMPORTANT: Backwards compatibility is not supported for all Boot versions; Spring for Apache Kafka 2.7 has been tested with Spring Boot 2.4 and 2.5.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package org.springframework.kafka.test;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.time.Duration;
@@ -38,6 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -51,6 +54,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
+import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
@@ -114,6 +118,27 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = 6000;
 
 	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
+
+	private static final String clientVersion;
+
+	private static final Method getBrokerState;
+
+	static {
+		clientVersion = AppInfoParser.getVersion();
+		try {
+			Method method = KafkaServer.class.getDeclaredMethod("brokerState");
+			if (method.getReturnType().equals(AtomicReference.class)) {
+				getBrokerState = method;
+			}
+			else {
+				getBrokerState = null;
+			}
+		}
+		catch (NoSuchMethodException | SecurityException e) {
+			throw new RuntimeException("Failed to determine KafkaServer.brokerState() method; client version: "
+					+ clientVersion);
+		}
+	}
 
 	private final int count;
 
@@ -527,7 +552,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		System.getProperties().remove(SPRING_EMBEDDED_ZOOKEEPER_CONNECT);
 		for (KafkaServer kafkaServer : this.kafkaServers) {
 			try {
-				if (kafkaServer.brokerState().currentState() != (NotRunning.state())) {
+				if (brokerRunning(kafkaServer)) {
 					kafkaServer.shutdown();
 					kafkaServer.awaitShutdown();
 				}
@@ -554,6 +579,18 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		catch (Exception e) {
 			// do nothing
 		}
+	}
+
+	private boolean brokerRunning(KafkaServer kafkaServer) {
+		if (getBrokerState != null) {
+			try {
+				return !getBrokerState.invoke(kafkaServer).toString().equals("NOT_RUNNING");
+			}
+			catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+				throw new IllegalStateException(ex);
+			}
+		}
+		return kafkaServer.brokerState().currentState() != NotRunning.state();
 	}
 
 	public Set<String> getTopics() {
