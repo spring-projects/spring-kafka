@@ -31,6 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.config.SingletonBeanRegistry;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
@@ -69,6 +70,9 @@ class RetryTopicBootstrapperTests {
 	@Mock
 	private KafkaConsumerBackoffManager kafkaConsumerBackOffManager;
 
+	@Mock
+	private RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
+
 	@Test
 	void shouldThrowIfACDoesntImplementInterfaces() {
 		assertThatIllegalStateException()
@@ -93,7 +97,9 @@ class RetryTopicBootstrapperTests {
 				RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
 				KafkaBackOffManagerFactory.class))
 				.willReturn(kafkaBackOffManagerFactory);
-
+		given(this.applicationContext.getBean(
+				RetryTopicNamesProviderFactory.class))
+				.willThrow(NoSuchBeanDefinitionException.class);
 		// when
 		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
 		bootstrapper.bootstrapRetryTopic();
@@ -133,6 +139,9 @@ class RetryTopicBootstrapperTests {
 		given(this.applicationContext.getBean(
 				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
 				.willReturn(defaultDestinationTopicResolver);
+		given(this.applicationContext.getBean(
+				RetryTopicNamesProviderFactory.class))
+				.willReturn(this.retryTopicNamesProviderFactory);
 
 		// when
 		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
@@ -174,6 +183,10 @@ class RetryTopicBootstrapperTests {
 		given(this.applicationContext
 				.getBean(RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
 					KafkaBackOffManagerFactory.class)).willReturn(kafkaBackOffManagerFactory);
+		given(this.applicationContext
+				.getBean(RetryTopicNamesProviderFactory.class))
+				.willThrow(NoSuchBeanDefinitionException.class);
+
 		given(kafkaBackOffManagerFactory.create()).willReturn(kafkaConsumerBackOffManager);
 
 		// when
@@ -222,7 +235,9 @@ class RetryTopicBootstrapperTests {
 				RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
 				KafkaBackOffManagerFactory.class))
 				.willReturn(kafkaBackOffManagerFactory);
-
+		given(this.applicationContext.getBean(
+				RetryTopicNamesProviderFactory.class))
+				.willThrow(NoSuchBeanDefinitionException.class);
 		// when
 		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
 		bootstrapper.bootstrapRetryTopic();

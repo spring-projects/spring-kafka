@@ -429,6 +429,50 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 
 NOTE: The default behavior is to suffix with the delay values, except for fixed delay configurations with multiple topics, in which case the topics are suffixed with the topic's index.
 
+===== Custom naming strategies
+
+More complex naming strategies can be accomplished by registering a bean that implements `RetryTopicNamesProviderFactory`. The default implementation is `SuffixingRetryTopicNamesProviderFactory` and a different implementation can be registered in the following way:
+
+====
+[source, java]
+----
+@Bean
+public RetryTopicNamesProviderFactory myRetryNamingProviderFactory() {
+    return new CustomRetryTopicNamesProviderFactory();
+}
+----
+====
+
+As an example the following implementation, in addition to the standard suffix, add a prefix to retry/dl topics names:
+
+====
+[source, java]
+----
+public class CustomRetryTopicNamesProviderFactory implements RetryTopicNamesProviderFactory {
+
+	@Override
+    public RetryTopicNamesProvider createRetryTopicNamesProvider(
+                DestinationTopic.Properties properties) {
+
+        if(properties.isMainEndpoint()) {
+            return new SuffixingRetryTopicNamesProvider(properties);
+        }
+        else {
+            return new SuffixingRetryTopicNamesProvider(properties) {
+
+                @Override
+                public String getTopicName(String topic) {
+                    return "my-prefix-" + super.getTopicName(topic);
+                }
+
+            };
+        }
+    }
+
+}
+----
+====
+
 ==== Dlt Strategies
 
 The framework provides a few strategies for working with DLTs. You can provide a method for DLT processing, use the default logging method, or have no DLT at all. Also you can choose what happens if DLT processing fails.
