@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,6 +41,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -337,10 +338,14 @@ public class DefaultKafkaConsumerFactoryTests {
 		KafkaTemplate<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache1Group", "false", this.embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
-		AtomicBoolean ppCalled = new AtomicBoolean();
+		AtomicReference<Consumer<Integer, String>> wrapped = new AtomicReference<>();
 		cf.addPostProcessor(consumer -> {
-			ppCalled.set(true);
-			return consumer;
+			ProxyFactory prox = new ProxyFactory();
+			prox.setTarget(consumer);
+			@SuppressWarnings("unchecked")
+			Consumer<Integer, String> proxy =  (Consumer<Integer, String>) prox.getProxy();
+			wrapped.set(proxy);
+			return proxy;
 		});
 		ContainerProperties containerProps = new ContainerProperties("txCache1");
 		CountDownLatch latch = new CountDownLatch(1);
@@ -362,13 +367,13 @@ public class DefaultKafkaConsumerFactoryTests {
 			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
 			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(1);
 			assertThat(pfTx.getCache()).hasSize(1);
+			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer")).isSameAs(wrapped.get());
 		}
 		finally {
 			container.stop();
 			pf.destroy();
 			pfTx.destroy();
 		}
-		assertThat(ppCalled.get()).isTrue();
 	}
 
 	@SuppressWarnings("unchecked")

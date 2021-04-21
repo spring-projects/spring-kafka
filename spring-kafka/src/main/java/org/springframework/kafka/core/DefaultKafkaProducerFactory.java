@@ -739,9 +739,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	protected Producer<K, V> createRawProducer(Map<String, Object> rawConfigs) {
-		KafkaProducer<K, V> kafkaProducer =
+		Producer<K, V> kafkaProducer =
 				new KafkaProducer<>(rawConfigs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
-		this.postProcessors.forEach(pp -> pp.apply(kafkaProducer));
+		for (ProducerPostProcessor<K, V> pp : this.postProcessors) {
+			kafkaProducer = pp.apply(kafkaProducer);
+		}
 		return kafkaProducer;
 	}
 

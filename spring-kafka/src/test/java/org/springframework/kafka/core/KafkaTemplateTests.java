@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -64,6 +63,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.CompositeProducerListener;
@@ -120,10 +120,14 @@ public class KafkaTemplateTests {
 	void testTemplate() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		AtomicBoolean ppCalled = new AtomicBoolean();
+		AtomicReference<Producer<Integer, String>> wrapped = new AtomicReference<>();
 		pf.addPostProcessor(prod -> {
-			ppCalled.set(true);
-			return prod;
+			ProxyFactory prox = new ProxyFactory();
+			prox.setTarget(prod);
+			@SuppressWarnings("unchecked")
+			Producer<Integer, String> proxy =  (Producer<Integer, String>) prox.getProxy();
+			wrapped.set(proxy);
+			return proxy;
 		});
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 
@@ -166,8 +170,8 @@ public class KafkaTemplateTests {
 		List<PartitionInfo> partitions = template.partitionsFor(INT_KEY_TOPIC);
 		assertThat(partitions).isNotNull();
 		assertThat(partitions).hasSize(2);
+		assertThat(KafkaTestUtils.getPropertyValue(pf.createProducer(), "delegate")).isSameAs(wrapped.get());
 		pf.destroy();
-		assertThat(ppCalled.get()).isTrue();
 	}
 
 	@Test
