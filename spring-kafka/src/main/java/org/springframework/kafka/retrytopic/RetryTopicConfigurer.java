@@ -224,10 +224,6 @@ public class RetryTopicConfigurer {
 
 	private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
 
-	/**
-	 * @deprecated use {@link #RetryTopicConfigurer(DestinationTopicProcessor, ListenerContainerFactoryResolver,
-	 * ListenerContainerFactoryConfigurer, BeanFactory, RetryTopicNamesProviderFactory)}
-	 */
 	@Deprecated
 	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
 								ListenerContainerFactoryResolver containerFactoryResolver,
