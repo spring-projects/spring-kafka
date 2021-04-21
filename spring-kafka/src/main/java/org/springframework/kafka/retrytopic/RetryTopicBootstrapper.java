@@ -92,7 +92,8 @@ public class RetryTopicBootstrapper {
 		// Register a RetryTopicNamesProviderFactory implementation only if none is already present in the context
 		try {
 			this.applicationContext.getBean(RetryTopicNamesProviderFactory.class);
-		} catch(NoSuchBeanDefinitionException e) {
+		}
+		catch (NoSuchBeanDefinitionException e) {
 			((BeanDefinitionRegistry) this.applicationContext).registerBeanDefinition(
 					RetryTopicInternalBeanNames.RETRY_TOPIC_NAMES_PROVIDER_FACTORY,
 					new RootBeanDefinition(SuffixingRetryTopicNamesProviderFactory.class));
