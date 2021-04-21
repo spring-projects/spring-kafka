@@ -20,20 +20,23 @@ import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.support.Suffixer;
 
 /**
- * Default handling of retry and dead letter naming.
+ * Retry and dead letter naming handling that add a suffix to each name.
+ * The suffix is taken from {@link DestinationTopic.Properties#suffix()}
  *
  * @author Andrea Polci
  */
-public class DefaultRetryTopicNamesProviderFactory implements RetryTopicNamesProviderFactory {
+public class SuffixingRetryTopicNamesProviderFactory implements RetryTopicNamesProviderFactory {
+
 	@Override
 	public RetryTopicNamesProvider createRetryTopicNamesProvider(DestinationTopic.Properties properties) {
-		return new DefaultRetryTopicNamesProvider(properties);
+		return new SuffixingRetryTopicNamesProvider(properties);
 	}
 
-	public static class DefaultRetryTopicNamesProvider implements RetryTopicNamesProvider {
+	public static class SuffixingRetryTopicNamesProvider implements RetryTopicNamesProvider {
+
 		private final Suffixer suffixer;
 
-		public DefaultRetryTopicNamesProvider(DestinationTopic.Properties properties) {
+		public SuffixingRetryTopicNamesProvider(DestinationTopic.Properties properties) {
 			this.suffixer = new Suffixer(properties.suffix());
 		}
 
@@ -61,5 +64,7 @@ public class DefaultRetryTopicNamesProviderFactory implements RetryTopicNamesPro
 		public String getTopicName(String topic) {
 			return this.suffixer.maybeAddTo(topic);
 		}
+
 	}
+
 }

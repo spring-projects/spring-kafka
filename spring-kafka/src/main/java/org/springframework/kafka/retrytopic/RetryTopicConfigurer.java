@@ -28,6 +28,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -223,11 +224,26 @@ public class RetryTopicConfigurer {
 
 	private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
 
+	/**
+	 * @deprecated use {@link #RetryTopicConfigurer(DestinationTopicProcessor, ListenerContainerFactoryResolver,
+	 * ListenerContainerFactoryConfigurer, BeanFactory, RetryTopicNamesProviderFactory)}
+	 */
+	@Deprecated
+	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
+								ListenerContainerFactoryResolver containerFactoryResolver,
+								ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
+								BeanFactory beanFactory) {
+
+		this(destinationTopicProcessor, containerFactoryResolver, listenerContainerFactoryConfigurer, beanFactory, new SuffixingRetryTopicNamesProviderFactory());
+	}
+
+	@Autowired
 	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
 								ListenerContainerFactoryResolver containerFactoryResolver,
 								ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
 								BeanFactory beanFactory,
 								RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
+
 		this.destinationTopicProcessor = destinationTopicProcessor;
 		this.containerFactoryResolver = containerFactoryResolver;
 		this.listenerContainerFactoryConfigurer = listenerContainerFactoryConfigurer;
@@ -443,6 +459,7 @@ public class RetryTopicConfigurer {
 
 		private Collection<TopicNamesHolder> customizeAndRegisterTopics(RetryTopicNamesProvider namesProvider,
 																		MethodKafkaListenerEndpoint<?, ?> endpoint) {
+
 			return getTopics(endpoint)
 					.stream()
 					.map(topic -> new TopicNamesHolder(topic, namesProvider.getTopicName(topic)))
@@ -501,6 +518,5 @@ public class RetryTopicConfigurer {
 			}
 		}
 	}
-
 
 }

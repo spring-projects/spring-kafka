@@ -82,7 +82,7 @@ public class RetryTopicBootstrapper {
 		registerIfNotContains(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME,
 				DeadLetterPublishingRecovererFactory.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.RETRY_TOPIC_NAMES_PROVIDER_FACTORY,
-				DefaultRetryTopicNamesProviderFactory.class);
+				SuffixingRetryTopicNamesProviderFactory.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, RetryTopicConfigurer.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME,
 				DefaultDestinationTopicResolver.class);

@@ -22,21 +22,49 @@ import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
  * Handles the naming related to the retry and dead letter topics.
  *
  * @author Andrea Polci
- * @see DefaultRetryTopicNamesProviderFactory
+ * @see SuffixingRetryTopicNamesProviderFactory
  */
 public interface RetryTopicNamesProviderFactory {
 
 	RetryTopicNamesProvider createRetryTopicNamesProvider(DestinationTopic.Properties properties);
 
 	interface RetryTopicNamesProvider {
+
+		/**
+		 * Return the endpoint id that will override the endpoint's current id
+		 * @param endpoint the endpoint to override
+		 * @return The endpoint id
+		 */
 		String getEndpointId(MethodKafkaListenerEndpoint<?, ?> endpoint);
 
+		/**
+		 * Return the groupId that will override the endpoint's groupId
+		 * @param endpoint the endpoint to override
+		 * @return The groupId
+		 */
 		String getGroupId(MethodKafkaListenerEndpoint<?, ?> endpoint);
 
+		/**
+		 * Return the clientId prefix that will override the endpoint's clientId prefix
+		 * @param endpoint the endpoint to override
+		 * @return The clientId prefix
+		 */
 		String getClientIdPrefix(MethodKafkaListenerEndpoint<?, ?> endpoint);
 
+		/**
+		 * Return the group that will override the endpoint's group
+		 * @param endpoint the endpoint to override
+		 * @return The clientId prefix
+		 */
 		String getGroup(MethodKafkaListenerEndpoint<?, ?> endpoint);
 
+		/**
+		 * Return the tropic name that will override the base topic name
+		 * @param topic the base topic name
+		 * @return The topic name
+		 */
 		String getTopicName(String topic);
+
 	}
+
 }
