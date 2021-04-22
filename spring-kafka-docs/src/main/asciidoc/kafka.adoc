@@ -3920,6 +3920,55 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 Starting with version 2.2, the type information headers (if added by the serializer) are removed by the deserializer.
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
+[[serdes-customize-object-mapper]]
+====== Customize the ObjectMapper
+
+Occasionally, the only way to configure the way information is serialized is by customizing the ObjectMapper used in (de)serialization.
+Because Kafka uses its own ObjectMapper separate from the normal Spring-Boot ObjectMapper, customizing the ObjectMapper typically involved (re)implementing various Kafka factories.
+Since 2.7.1, a new interface `ObjectMapperCustomizer` has been introduced and implemented by the `JsonSerializer<T>` and `JsonDeserializer<T>` classes.
+This makes it simpler to configure the ObjectMapper without losing the convenience of the Spring property configuration capabilities.
+
+The following is an example of how to provide a simple customized serializer class (derived from `JsonSerializer<T>`) to do the configuration.
+
+====
+[source, java]
+----
+package com.example;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
+import org.springframework.kafka.support.serializer.JsonSerializer;
+
+public class CustomJsonSerializer<T> extends JsonSerializer<T> {
+
+	/**
+	 * constructor for custom json serializer.
+	 */
+	public CustomJsonSerializer() {
+		super();
+	}
+
+	@Override
+	public ObjectMapper customizeObjectMapper(ObjectMapper mapper) {
+		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+		return mapper;
+	}
+}
+----
+====
+
+Then in your properties file, configure your `CustomJsonSerializer<T>` class as the `value-serializer`:
+
+====
+[source, properties]
+----
+spring.kafka.producer.value-serializer=com.example.CustomJsonSerializer
+----
+====
+
+The same general pattern can be applied to create and configure a `CustomJsonDeserializer<T>` class to configure how Json data is deserialized.
+
 [[serdes-mapping-types]]
 ====== Mapping Types
 

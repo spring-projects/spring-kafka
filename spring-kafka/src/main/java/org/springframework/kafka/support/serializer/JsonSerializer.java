@@ -49,7 +49,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
  * @author Gary Russell
  * @author Elliot Kennedy
  */
-public class JsonSerializer<T> implements Serializer<T> {
+public class JsonSerializer<T> implements Serializer<T>, ObjectMapperCustomizer {
 
 	/**
 	 * Kafka config property for disabling adding type headers.
@@ -90,7 +90,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 
 	public JsonSerializer(JavaType targetType, ObjectMapper objectMapper) {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = objectMapper;
+		this.objectMapper = customizeObjectMapper(objectMapper);
 		this.writer = objectMapper.writerFor(targetType);
 	}
 
@@ -132,6 +132,17 @@ public class JsonSerializer<T> implements Serializer<T> {
 			((AbstractJavaTypeMapper) getTypeMapper())
 					.setUseForKey(isKey);
 		}
+	}
+
+	/**
+	 * Configure the ObjectMapper before it is used to construct the ObjectWriter.
+	 * @param objectMapper configurable (or replaceable) ObjectMapper instance
+	 * @return configured (or replaced) ObjectMapper instance
+	 * @since 2.7.1
+	 */
+	public ObjectMapper customizeObjectMapper(ObjectMapper objectMapper) {
+		// by default, we do nothing
+		return objectMapper;
 	}
 
 	@Override

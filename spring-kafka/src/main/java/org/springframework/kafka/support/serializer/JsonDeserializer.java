@@ -243,7 +243,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = objectMapper;
+		this.objectMapper = customizeObjectMapper(objectMapper);
 		JavaType javaType = null;
 		if (targetType == null) {
 			Class<?> genericType = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
@@ -287,7 +287,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = objectMapper;
+		this.objectMapper = customizeObjectMapper(objectMapper);
 		initialize(targetType, useHeadersIfPresent);
 	}
 
@@ -308,6 +308,17 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (typeMapper instanceof AbstractJavaTypeMapper) {
 			addMappingsToTrusted(((AbstractJavaTypeMapper) typeMapper).getIdClassMapping());
 		}
+	}
+
+	/**
+	 * Configure the ObjectMapper before it is used to construct the ObjectWriter.
+	 * @param objectMapper configurable (or replaceable) ObjectMapper instance
+	 * @return configured (or replaced) ObjectMapper instance
+	 * @since 2.7.1
+	 */
+	public ObjectMapper customizeObjectMapper(ObjectMapper objectMapper) {
+		// by default, we do nothing
+		return objectMapper;
 	}
 
 	/**
