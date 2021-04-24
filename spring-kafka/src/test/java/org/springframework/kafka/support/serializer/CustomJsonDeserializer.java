@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.Map;
+
 import org.springframework.lang.Nullable;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,7 +44,7 @@ public class CustomJsonDeserializer<T> extends JsonDeserializer<T> {
 	}
 
 	@Override
-	public ObjectMapper customizeObjectMapper(ObjectMapper mapper) {
+	public ObjectMapper customizeObjectMapper(Map<String, ?> configs, ObjectMapper mapper) {
 		mapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
 		return mapper;
 	}

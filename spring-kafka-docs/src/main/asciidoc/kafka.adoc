@@ -3795,6 +3795,7 @@ Also since version 2.7 `ConsumerPartitionPausedEvent` and `ConsumerPartitionResu
 [[serdes]]
 ==== Serialization, Deserialization, and Message Conversion
 
+[[serdes-overview]]
 ===== Overview
 
 Apache Kafka provides a high-level API for serializing and deserializing record values as well as their keys.
@@ -3921,25 +3922,19 @@ Starting with version 2.2, the type information headers (if added by the seriali
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
 [[serdes-customize-object-mapper]]
-====== Customize the ObjectMapper
+====== Customize the `ObjectMapper`
 
-Occasionally, the only way to configure the way information is serialized is by customizing the ObjectMapper used in (de)serialization.
-Because Kafka uses its own ObjectMapper separate from the normal Spring-Boot ObjectMapper, customizing the ObjectMapper typically involved (re)implementing various Kafka factories.
-Since 2.7.1, a new interface `ObjectMapperCustomizer` has been introduced and implemented by the `JsonSerializer<T>` and `JsonDeserializer<T>` classes.
-This makes it simpler to configure the ObjectMapper without losing the convenience of the Spring property configuration capabilities.
+Occasionally, the only way to configure the way information is serialized is by customizing the `ObjectMapper` used in (de)serialization.
+When instantiated by Apache Kafka, the Spring JSON Serializer and Deserializer use a locally declared `ObjectMapper`.
+The only way to customize the `ObjectMapper` was to inject instances into the producer and consumer factories as discussed <<serdes-overview,here>> rather than by using properties.
+Since version 2.5.13, a new interface `ObjectMapperCustomizer` has been introduced and implemented by the `JsonSerializer<T>` and `JsonDeserializer<T>` classes.
+This makes it simpler to configure the `ObjectMapper` without losing the convenience of the Spring property configuration capabilities.
 
 The following is an example of how to provide a simple customized serializer class (derived from `JsonSerializer<T>`) to do the configuration.
 
 ====
 [source, java]
 ----
-package com.example;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-
-import org.springframework.kafka.support.serializer.JsonSerializer;
-
 public class CustomJsonSerializer<T> extends JsonSerializer<T> {
 
 	/**
@@ -3958,7 +3953,7 @@ public class CustomJsonSerializer<T> extends JsonSerializer<T> {
 ----
 ====
 
-Then in your properties file, configure your `CustomJsonSerializer<T>` class as the `value-serializer`:
+Then in your Spring Boot properties file, for example, configure your `CustomJsonSerializer<T>` class as the `value-serializer`:
 
 ====
 [source, properties]

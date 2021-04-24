@@ -88,7 +88,6 @@ public class CustomJsonSerializationTests {
 
 	private String timestamp;
 
-
 	@BeforeEach
 	void init() {
 		timestamp = "2021-04-10T19:00:30.123456-04:00";
@@ -114,11 +113,11 @@ public class CustomJsonSerializationTests {
 		jsonWriter.configure(new HashMap<>(), false);
 		jsonWriter.close(); // does nothing, so may be called any time, or not called at all
 		stringReader = new StringDeserializer();
-		stringReader.configure(new HashMap<>(), false);
 		stringWriter = new StringSerializer();
-		stringWriter.configure(new HashMap<>(), false);
-		dummyEntityJsonDeserializer = new DummyEntityWithTimestampJsonSerializer();
+		dummyEntityJsonDeserializer = new DummyEntityWithTimestampJsonDeserializer();
+		dummyEntityJsonDeserializer.configure(new HashMap<>(), false);
 		dummyEntityArrayJsonDeserializer = new DummyEntityWithTimestampArrayJsonDeserializer();
+		dummyEntityArrayJsonDeserializer.configure(new HashMap<>(), false);
 	}
 
 	/*
@@ -229,7 +228,9 @@ public class CustomJsonSerializationTests {
 	@Test
 	void testDeserializerTypeReference() {
 		JsonSerializer<List<DummyEntityWithTimestamp>> ser = new CustomJsonSerializer<>();
+		ser.configure(new HashMap<>(), false);
 		JsonDeserializer<List<DummyEntityWithTimestamp>> de = new CustomJsonDeserializer<>(new TypeReference<List<DummyEntityWithTimestamp>>() { });
+		de.configure(new HashMap<>(), false);
 		List<DummyEntityWithTimestamp> dummy = Arrays.asList(this.entityArray);
 		assertThat(de.deserialize(this.topic, ser.serialize(this.topic, dummy))).isEqualTo(dummy);
 		ser.close();
@@ -366,6 +367,7 @@ public class CustomJsonSerializationTests {
 		JsonDeserializer<Object> deser = new CustomJsonDeserializer<>()
 				.trustedPackages("*")
 				.typeFunction(CustomJsonSerializationTests::fooBarJavaType);
+		deser.configure(new HashMap<>(), false);
 		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
 		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
 				.isInstanceOf(Bar.class);
@@ -377,6 +379,7 @@ public class CustomJsonSerializationTests {
 		JsonDeserializer<Object> deser = new CustomJsonDeserializer<>()
 				.trustedPackages("*")
 				.typeResolver(CustomJsonSerializationTests::fooBarJavaTypeForTopic);
+		deser.configure(new HashMap<>(), false);
 		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
 		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
 				.isInstanceOf(Bar.class);
@@ -386,7 +389,9 @@ public class CustomJsonSerializationTests {
 	@Test
 	void testCopyWithType() {
 		JsonDeserializer<Object> deser = new CustomJsonDeserializer<>();
+		deser.configure(new HashMap<>(), false);
 		JsonSerializer<Object> ser = new CustomJsonSerializer<>();
+		ser.configure(new HashMap<>(), false);
 		JsonDeserializer<Parent> typedDeser = deser.copyWithType(Parent.class);
 		JsonSerializer<Parent> typedSer = ser.copyWithType(Parent.class);
 		Child serializedValue = new Child(1);
@@ -423,7 +428,7 @@ public class CustomJsonSerializationTests {
 		return TypeFactory.defaultInstance().constructType(String.class);
 	}
 
-	static class DummyEntityWithTimestampJsonSerializer extends CustomJsonDeserializer<DummyEntityWithTimestamp> {
+	static class DummyEntityWithTimestampJsonDeserializer extends CustomJsonDeserializer<DummyEntityWithTimestamp> {
 
 	}
 

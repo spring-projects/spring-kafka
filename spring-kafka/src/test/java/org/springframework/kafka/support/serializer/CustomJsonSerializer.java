@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.Map;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -33,7 +35,7 @@ public class CustomJsonSerializer<T> extends JsonSerializer<T> {
 	}
 
 	@Override
-	public ObjectMapper customizeObjectMapper(ObjectMapper mapper) {
+	public ObjectMapper customizeObjectMapper(Map<String, ?> configs, ObjectMapper mapper) {
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		return mapper;
 	}

@@ -66,7 +66,9 @@ public class JsonSerializer<T> implements Serializer<T>, ObjectMapperCustomizer 
 
 	protected boolean addTypeInfo = true; // NOSONAR
 
-	private ObjectWriter writer;
+	protected CachedObjectWriter cachedWriter;
+
+	private JavaType targetType;
 
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
@@ -90,8 +92,9 @@ public class JsonSerializer<T> implements Serializer<T>, ObjectMapperCustomizer 
 
 	public JsonSerializer(JavaType targetType, ObjectMapper objectMapper) {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = customizeObjectMapper(objectMapper);
-		this.writer = objectMapper.writerFor(targetType);
+		this.objectMapper = objectMapper;
+		this.targetType = targetType;
+		this.cachedWriter = new CachedObjectWriter();
 	}
 
 	public boolean isAddTypeInfo() {
@@ -134,19 +137,9 @@ public class JsonSerializer<T> implements Serializer<T>, ObjectMapperCustomizer 
 		}
 	}
 
-	/**
-	 * Configure the ObjectMapper before it is used to construct the ObjectWriter.
-	 * @param objectMapper configurable (or replaceable) ObjectMapper instance
-	 * @return configured (or replaced) ObjectMapper instance
-	 * @since 2.7.1
-	 */
-	public ObjectMapper customizeObjectMapper(ObjectMapper objectMapper) {
-		// by default, we do nothing
-		return objectMapper;
-	}
-
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
+		customizeObjectMapper(configs, this.objectMapper);
 		setUseTypeMapperForKey(isKey);
 		if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
 			Object config = configs.get(ADD_TYPE_INFO_HEADERS);
@@ -203,7 +196,9 @@ public class JsonSerializer<T> implements Serializer<T>, ObjectMapperCustomizer 
 			return null;
 		}
 		try {
-			return this.writer.writeValueAsBytes(data);
+			ObjectWriter writer = this.cachedWriter.getWriter(this.objectMapper, this.targetType);
+			Assert.state(writer != null, "No type information provided");
+			return writer.writeValueAsBytes(data);
 		}
 		catch (IOException ex) {
 			throw new SerializationException("Can't serialize data [" + data + "] for topic [" + topic + "]", ex);
@@ -287,6 +282,30 @@ public class JsonSerializer<T> implements Serializer<T>, ObjectMapperCustomizer 
 	public JsonSerializer<T> typeMapper(Jackson2JavaTypeMapper mapper) {
 		setTypeMapper(mapper);
 		return this;
+	}
+
+	protected class CachedObjectWriter {
+
+		private ObjectWriter writer = null;
+		private int mapperHash = -1;
+		private int typeHash = -1;
+
+		public ObjectWriter getWriter(ObjectMapper mapper, JavaType type) {
+			if (null == mapper) {
+				return null;
+			}
+
+			// If not already cached
+			if ((null == this.writer) ||
+					(mapper.hashCode() != this.mapperHash) ||
+					((null == type && -1 != this.typeHash) ||
+							((null != type) && (type.hashCode() != this.typeHash)))) {
+				this.mapperHash = mapper.hashCode();
+				this.typeHash = (null == type) ? -1 : type.hashCode();
+				this.writer = mapper.writerFor(type);
+			}
+			return this.writer;
+		}
 	}
 
 }

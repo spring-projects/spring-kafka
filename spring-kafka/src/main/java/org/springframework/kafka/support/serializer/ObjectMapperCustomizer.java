@@ -16,22 +16,30 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Provide hook to configure the ObjectMapper used in Json(De)Serializer.
  *
+ * This will get called from the JsonSerializer.configure() function.
  * @author Carl Nygard
- * @since 2.7.1
+ * @since 2.5.13
  *
  */
-@FunctionalInterface
 public interface ObjectMapperCustomizer {
 
 	/**
 	 * Customize (or replace) the ObjectMapper used in serialization.
-	 * @param objectMapper the ObjectMapper instance.
+	 * @param configs map of configuration values
+	 * @param objectMapper configurable (or replaceable) ObjectMapper instance
 	 * @return the configured (or possibly new) ObjectMapper instance.
+	 * @since 2.5.13
 	 */
-	ObjectMapper customizeObjectMapper(ObjectMapper objectMapper);
+	default ObjectMapper customizeObjectMapper(Map<String, ?> configs, ObjectMapper objectMapper) {
+		// by default, we do nothing
+		return objectMapper;
+	}
+
 }

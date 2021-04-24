@@ -60,7 +60,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
  * @author Torsten Schleede
  * @author Ivan Ponomarev
  */
-public class JsonDeserializer<T> implements Deserializer<T> {
+public class JsonDeserializer<T> implements Deserializer<T>, ObjectMapperCustomizer {
 
 	private static final String KEY_DEFAULT_TYPE_STRING = "spring.json.key.default.type";
 
@@ -114,7 +114,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
-	private ObjectReader reader;
+	protected CachedObjectReader cachedReader;
 
 	private boolean typeMapperExplicitlySet = false;
 
@@ -243,7 +243,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = customizeObjectMapper(objectMapper);
+		this.objectMapper = objectMapper;
+		this.cachedReader = new CachedObjectReader();
 		JavaType javaType = null;
 		if (targetType == null) {
 			Class<?> genericType = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
@@ -287,7 +288,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = customizeObjectMapper(objectMapper);
+		this.objectMapper = objectMapper;
+		this.cachedReader = new CachedObjectReader();
 		initialize(targetType, useHeadersIfPresent);
 	}
 
@@ -308,17 +310,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (typeMapper instanceof AbstractJavaTypeMapper) {
 			addMappingsToTrusted(((AbstractJavaTypeMapper) typeMapper).getIdClassMapping());
 		}
-	}
-
-	/**
-	 * Configure the ObjectMapper before it is used to construct the ObjectWriter.
-	 * @param objectMapper configurable (or replaceable) ObjectMapper instance
-	 * @return configured (or replaced) ObjectMapper instance
-	 * @since 2.7.1
-	 */
-	public ObjectMapper customizeObjectMapper(ObjectMapper objectMapper) {
-		// by default, we do nothing
-		return objectMapper;
 	}
 
 	/**
@@ -380,6 +371,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
+		customizeObjectMapper(configs, this.objectMapper);
 		setUseTypeMapperForKey(isKey);
 		setUpTypePrecedence(configs);
 		setupTarget(configs, isKey);
@@ -462,10 +454,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 
-		if (this.targetType != null) {
-			this.reader = this.objectMapper.readerFor(this.targetType);
-		}
-
 		addTargetPackageToTrusted();
 		this.typeMapper.setTypePrecedence(useHeadersIfPresent ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
 	}
@@ -538,7 +526,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			this.typeMapper.removeHeaders(headers);
 		}
 		if (deserReader == null) {
-			deserReader = this.reader;
+			deserReader = this.cachedReader.getReader(this.objectMapper, this.targetType);
 		}
 		Assert.state(deserReader != null, "No type information in headers and no default type provided");
 		try {
@@ -555,7 +543,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (data == null) {
 			return null;
 		}
-		ObjectReader localReader = this.reader;
+		ObjectReader localReader = this.cachedReader.getReader(this.objectMapper, this.targetType);
 		if (this.typeResolver != null) {
 			JavaType javaType = this.typeResolver.resolveType(topic, data, null);
 			if (javaType != null) {
@@ -727,6 +715,29 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 				throw new IllegalStateException(e);
 			}
 		};
+	}
+
+	protected class CachedObjectReader {
+
+		private ObjectReader reader = null;
+		private int mapperHash = -1;
+		private int typeHash = -1;
+
+		public ObjectReader getReader(ObjectMapper mapper, JavaType type) {
+			if (null == mapper) {
+				return null;
+			}
+			// If not already cached
+			if ((null == this.reader) ||
+					(mapper.hashCode() != this.mapperHash) ||
+					((null == type && -1 != this.typeHash) ||
+							((null != type) && (type.hashCode() != this.typeHash)))) {
+				this.mapperHash = mapper.hashCode();
+				this.typeHash = (null == type) ? -1 : type.hashCode();
+				this.reader = mapper.readerFor(type);
+			}
+			return this.reader;
+		}
 	}
 
 }
