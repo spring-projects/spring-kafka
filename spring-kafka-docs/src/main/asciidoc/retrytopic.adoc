@@ -443,7 +443,7 @@ public RetryTopicNamesProviderFactory myRetryNamingProviderFactory() {
 ----
 ====
 
-As an example the following implementation, in addition to the standard suffix, add a prefix to retry/dl topics names:
+As an example the following implementation, in addition to the standard suffix, adds a prefix to retry/dl topics names:
 
 ====
 [source, java]
