@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,10 +33,16 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
+import org.springframework.kafka.listener.BatchErrorHandler
+import org.springframework.kafka.listener.BatchMessageListener
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
+import org.springframework.kafka.listener.ErrorHandler
+import org.springframework.kafka.listener.MessageListener
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
+import java.lang.Exception
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -48,7 +54,7 @@ import java.util.concurrent.TimeUnit
 
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = ["kotlinTestTopic"])
+@EmbeddedKafka(topics = ["kotlinTestTopic1", "kotlinBatchTestTopic1", "kotlinTestTopic2", "kotlinBatchTestTopic2"])
 class EnableKafkaKotlinTests {
 
 	@Autowired
@@ -59,26 +65,55 @@ class EnableKafkaKotlinTests {
 
 	@Test
 	fun `test listener`() {
-		this.template.send("kotlinTestTopic", "foo")
-		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue()
+		this.template.send("kotlinTestTopic1", "foo")
+		assertThat(this.config.latch1.await(10, TimeUnit.SECONDS)).isTrue()
 		assertThat(this.config.received).isEqualTo("foo")
 	}
 
 	@Test
+	fun `test checkedEx`() {
+		this.template.send("kotlinTestTopic2", "fail")
+		assertThat(this.config.latch2.await(10, TimeUnit.SECONDS)).isTrue()
+		assertThat(this.config.error).isTrue()
+	}
+
+	@Test
 	fun `test batch listener`() {
-		this.template.send("kotlinTestTopic", "foo")
-		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue()
+		this.template.send("kotlinBatchTestTopic1", "foo")
+		assertThat(this.config.batchLatch1.await(10, TimeUnit.SECONDS)).isTrue()
 		assertThat(this.config.batchReceived).isEqualTo("foo")
+	}
+
+	@Test
+	fun `test batch checkedEx`() {
+		this.template.send("kotlinBatchTestTopic2", "fail")
+		assertThat(this.config.batchLatch2.await(10, TimeUnit.SECONDS)).isTrue()
+		assertThat(this.config.batchError).isTrue()
 	}
 
 	@Configuration
 	@EnableKafka
 	class Config {
 
+		@Volatile
 		lateinit var received: String
+
+		@Volatile
 		lateinit var batchReceived: String
 
-		val latch = CountDownLatch(2)
+		@Volatile
+		var error: Boolean = false
+
+		@Volatile
+		var batchError: Boolean = false
+
+		val latch1 = CountDownLatch(1)
+
+		val latch2 = CountDownLatch(1)
+
+		val batchLatch1 = CountDownLatch(1)
+
+		val batchLatch2 = CountDownLatch(1)
 
 		@Value("\${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private lateinit var brokerAddresses: String
@@ -108,12 +143,27 @@ class EnableKafkaKotlinTests {
 			return KafkaTemplate(kpf())
 		}
 
+		val eh = ErrorHandler { _, recs : ConsumerRecord<*, *>? ->
+			if (recs != null) {
+				this.error = true;
+				this.latch2.countDown()
+			}
+		}
+
 		@Bean
 		fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
 			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
 				= ConcurrentKafkaListenerContainerFactory()
 			factory.consumerFactory = kcf()
+			factory.setErrorHandler(eh)
 			return factory
+		}
+
+		val beh = BatchErrorHandler { _, recs ->
+			if (!recs.isEmpty) {
+				this.batchError = true;
+				this.batchLatch2.countDown()
+			}
 		}
 
 		@Bean
@@ -122,19 +172,49 @@ class EnableKafkaKotlinTests {
 					= ConcurrentKafkaListenerContainerFactory()
 			factory.isBatchListener = true
 			factory.consumerFactory = kcf()
+			factory.setBatchErrorHandler(beh)
 			return factory
 		}
 
-		@KafkaListener(id = "kotlin", topics = ["kotlinTestTopic"], containerFactory = "kafkaListenerContainerFactory")
+		@KafkaListener(id = "kotlin", topics = ["kotlinTestTopic1"], containerFactory = "kafkaListenerContainerFactory")
 		fun listen(value: String) {
 			this.received = value
-			this.latch.countDown()
+			this.latch1.countDown()
 		}
 
-		@KafkaListener(id = "kotlin-batch", topics = ["kotlinTestTopic"], containerFactory = "kafkaBatchListenerContainerFactory")
+		@KafkaListener(id = "kotlin-batch", topics = ["kotlinBatchTestTopic1"], containerFactory = "kafkaBatchListenerContainerFactory")
 		fun batchListen(values: List<ConsumerRecord<String, String>>) {
 			this.batchReceived = values.first().value()
-			this.latch.countDown()
+			this.batchLatch1.countDown()
+		}
+
+		@Bean
+		fun checkedEx(kafkaListenerContainerFactory : ConcurrentKafkaListenerContainerFactory<String, String>) :
+				ConcurrentMessageListenerContainer<String, String> {
+
+			val container = kafkaListenerContainerFactory.createContainer("kotlinTestTopic2")
+			container.containerProperties.groupId = "checkedEx"
+			container.containerProperties.messageListener = MessageListener<String, String> {
+				if (it.value() == "fail") {
+					throw Exception("checked")
+				}
+			}
+			return container;
+		}
+
+		@Bean
+		fun batchCheckedEx(kafkaBatchListenerContainerFactory :
+						   ConcurrentKafkaListenerContainerFactory<String, String>) :
+				ConcurrentMessageListenerContainer<String, String> {
+
+			val container = kafkaBatchListenerContainerFactory.createContainer("kotlinBatchTestTopic2")
+			container.containerProperties.groupId = "batchCheckedEx"
+			container.containerProperties.messageListener = BatchMessageListener<String, String> {
+				if (it.first().value() == "fail") {
+					throw Exception("checked")
+				}
+			}
+			return container;
 		}
 
 	}

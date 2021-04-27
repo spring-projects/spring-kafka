@@ -1789,10 +1789,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void batchAfterRollback(final ConsumerRecords<K, V> records,
-				@Nullable final List<ConsumerRecord<K, V>> recordList, RuntimeException e,
+				@Nullable final List<ConsumerRecord<K, V>> recordList, RuntimeException rollbackException,
 				AfterRollbackProcessor<K, V> afterRollbackProcessorToUse) {
 
-			RuntimeException rollbackException = decorateException(e);
 			try {
 				if (recordList == null) {
 					afterRollbackProcessorToUse.process(createRecordList(records), this.consumer,
@@ -1978,32 +1977,37 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void doInvokeBatchOnMessage(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList) {
 
-			switch (this.listenerType) {
-				case ACKNOWLEDGING_CONSUMER_AWARE:
-					this.batchListener.onMessage(recordList,
-							this.isAnyManualAck
-									? new ConsumerBatchAcknowledgment(records)
-									: null, this.consumer);
-					break;
-				case ACKNOWLEDGING:
-					this.batchListener.onMessage(recordList,
-							this.isAnyManualAck
-									? new ConsumerBatchAcknowledgment(records)
-									: null);
-					break;
-				case CONSUMER_AWARE:
-					this.batchListener.onMessage(recordList, this.consumer);
-					break;
-				case SIMPLE:
-					this.batchListener.onMessage(recordList);
-					break;
+			try {
+				switch (this.listenerType) {
+					case ACKNOWLEDGING_CONSUMER_AWARE:
+						this.batchListener.onMessage(recordList,
+								this.isAnyManualAck
+										? new ConsumerBatchAcknowledgment(records)
+										: null, this.consumer);
+						break;
+					case ACKNOWLEDGING:
+						this.batchListener.onMessage(recordList,
+								this.isAnyManualAck
+										? new ConsumerBatchAcknowledgment(records)
+										: null);
+						break;
+					case CONSUMER_AWARE:
+						this.batchListener.onMessage(recordList, this.consumer);
+						break;
+					case SIMPLE:
+						this.batchListener.onMessage(recordList);
+						break;
+				}
+			}
+			catch (Exception ex) { //  NOSONAR
+				throw decorateException(ex);
 			}
 		}
 
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
-				@Nullable List<ConsumerRecord<K, V>> list, RuntimeException e) {
+				@Nullable List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
-			this.batchErrorHandler.handle(decorateException(e), records, this.consumer,
+			this.batchErrorHandler.handle(rte, records, this.consumer,
 					KafkaMessageListenerContainer.this.thisOrParentContainer,
 					() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 		}
@@ -2043,9 +2047,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 					break;
 				}
-				catch (RuntimeException e) {
-					this.logger.error(e, "Transaction rolled back");
-					recordAfterRollback(iterator, record, decorateException(e));
+				catch (RuntimeException ex) {
+					this.logger.error(ex, "Transaction rolled back");
+					recordAfterRollback(iterator, record, ex);
 				}
 				finally {
 					if (this.producerPerConsumerPartition) {
@@ -2308,31 +2312,36 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						+ ListenerUtils.recordToString(recordArg));
 			}
 			else {
-				switch (this.listenerType) {
-					case ACKNOWLEDGING_CONSUMER_AWARE:
-						this.listener.onMessage(record,
-								this.isAnyManualAck
-										? new ConsumerAcknowledgment(record)
-										: null, this.consumer);
-						break;
-					case CONSUMER_AWARE:
-						this.listener.onMessage(record, this.consumer);
-						break;
-					case ACKNOWLEDGING:
-						this.listener.onMessage(record,
-								this.isAnyManualAck
-										? new ConsumerAcknowledgment(record)
-										: null);
-						break;
-					case SIMPLE:
-						this.listener.onMessage(record);
-						break;
+				try {
+					switch (this.listenerType) {
+						case ACKNOWLEDGING_CONSUMER_AWARE:
+							this.listener.onMessage(record,
+									this.isAnyManualAck
+											? new ConsumerAcknowledgment(record)
+											: null, this.consumer);
+							break;
+						case CONSUMER_AWARE:
+							this.listener.onMessage(record, this.consumer);
+							break;
+						case ACKNOWLEDGING:
+							this.listener.onMessage(record,
+									this.isAnyManualAck
+											? new ConsumerAcknowledgment(record)
+											: null);
+							break;
+						case SIMPLE:
+							this.listener.onMessage(record);
+							break;
+					}
+				}
+				catch (Exception ex) { // NOSONAR
+					throw decorateException(ex);
 				}
 			}
 		}
 
 		private void invokeErrorHandler(final ConsumerRecord<K, V> record,
-				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException e) {
+				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException rte) {
 
 			if (this.errorHandler instanceof RemainingRecordsErrorHandler) {
 				if (this.producer == null) {
@@ -2343,16 +2352,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				while (iterator.hasNext()) {
 					records.add(iterator.next());
 				}
-				this.errorHandler.handle(decorateException(e), records, this.consumer,
+				this.errorHandler.handle(rte, records, this.consumer,
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
 			}
 			else {
-				this.errorHandler.handle(decorateException(e), record, this.consumer);
+				this.errorHandler.handle(rte, record, this.consumer);
 			}
 		}
 
-		private RuntimeException decorateException(RuntimeException e) {
-			RuntimeException toHandle = e;
+		private RuntimeException decorateException(Exception ex) {
+			Exception toHandle = ex;
 			if (toHandle instanceof ListenerExecutionFailedException) {
 				toHandle = new ListenerExecutionFailedException(toHandle.getMessage(), this.consumerGroupId,
 						toHandle.getCause()); // NOSONAR
@@ -2360,13 +2369,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				toHandle = new ListenerExecutionFailedException("Listener failed", this.consumerGroupId, toHandle);
 			}
-			return toHandle;
+			return (RuntimeException) toHandle;
 		}
 
 		public void checkDeser(final ConsumerRecord<K, V> record, String headerName) {
 			DeserializationException exception = ListenerUtils.getExceptionFromHeader(record, headerName, this.logger);
 			if (exception != null) {
-				throw exception;
+				/*
+				 * Wrapping in a LEFE is not strictly correct, but required for backwards compatibility.
+				 */
+				throw decorateException(exception);
 			}
 		}
 
