@@ -237,12 +237,12 @@ public final class ListenerUtils {
 	/**
 	 * Sleep for the desired timeout, as long as the container continues to run.
 	 * @param container the container.
-	 * @param timeout the timeout.
+	 * @param interval the timeout.
 	 * @throws InterruptedException if the thread is interrupted.
 	 * @since 2.7
 	 */
-	public static void stoppableSleep(MessageListenerContainer container, long timeout) throws InterruptedException {
-
+	public static void stoppableSleep(MessageListenerContainer container, long interval) throws InterruptedException {
+		long timeout = System.currentTimeMillis() + interval;
 		do {
 			Thread.sleep(SLEEP_INTERVAL);
 			if (!container.isRunning()) {
