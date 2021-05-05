@@ -185,7 +185,7 @@ public class DelegatingInvocableHandler {
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
 		Class<? extends Object> payloadClass = message.getPayload().getClass();
 		InvocableHandlerMethod handler = getHandlerForPayload(payloadClass);
-		if (this.validator != null) {
+		if (this.validator != null && this.defaultHandler != null) {
 			MethodParameter parameter = this.payloadMethodParameters.get(handler);
 			if (parameter != null) {
 				this.validator.validate(message, parameter, message.getPayload());

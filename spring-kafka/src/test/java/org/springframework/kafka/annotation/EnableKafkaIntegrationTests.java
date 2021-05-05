@@ -172,7 +172,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
-		"annotated38", "annotated38reply", "annotated39" })
+		"annotated38", "annotated38reply", "annotated39", "annotated40" })
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
@@ -196,6 +196,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	public MultiJsonListenerBean multiJsonListener;
+
+	@Autowired
+	public MultiListenerNoDefault multiNoDefault;
 
 	@Autowired
 	public KafkaTemplate<Integer, String> template;
@@ -438,7 +441,19 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.multiJsonListener.baz.getBar()).isEqualTo("two");
 		assertThat(this.multiJsonListener.bar.getBar()).isEqualTo("three");
 		assertThat(this.multiJsonListener.bar).isInstanceOf(Qux.class);
+		assertThat(this.multiJsonListener.validated).isNotNull();
 		assertThat(this.multiJsonListener.validated.isValidated()).isTrue();
+		assertThat(this.multiJsonListener.validated.valCount).isEqualTo(1);
+	}
+
+	@Test
+	public void testMultiValidateNoDefaultHandler() throws Exception {
+		this.kafkaJsonTemplate.setDefaultTopic("annotated40");
+		this.kafkaJsonTemplate.send(new GenericMessage<>(new ValidatedClass(5)));
+		assertThat(this.multiNoDefault.latch1.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiNoDefault.validated).isNotNull();
+		assertThat(this.multiNoDefault.validated.isValidated()).isTrue();
+		assertThat(this.multiNoDefault.validated.valCount).isEqualTo(1);
 	}
 
 	@Test
@@ -1275,6 +1290,11 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public MultiJsonListenerBean multiJsonListener() {
 			return new MultiJsonListenerBean();
+		}
+
+		@Bean
+		public MultiListenerNoDefault multiNoDefault() {
+			return new MultiListenerNoDefault();
 		}
 
 		@Bean
@@ -2198,6 +2218,21 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
+	@KafkaListener(id = "multiNoDefault", topics = "annotated40", containerFactory = "kafkaJsonListenerContainerFactory2")
+	static class MultiListenerNoDefault {
+
+		final CountDownLatch latch1 = new CountDownLatch(1);
+
+		volatile ValidatedClass validated;
+
+		@KafkaHandler
+		public void bar(@Valid ValidatedClass val) {
+			this.validated = val;
+			this.latch1.countDown();
+		}
+
+	}
+
 	@KafkaListener(id = "multiSendTo", topics = "annotated25")
 	@SendTo("annotated25reply1")
 	static class MultiListenerSendTo {
@@ -2328,6 +2363,7 @@ public class EnableKafkaIntegrationTests {
 
 		private volatile boolean validated;
 
+		volatile int valCount;
 
 		public ValidatedClass() {
 		}
@@ -2350,6 +2386,9 @@ public class EnableKafkaIntegrationTests {
 
 		public void setValidated(boolean validated) {
 			this.validated = validated;
+			if (validated) { // don't count the json deserialization call
+				this.valCount++;
+			}
 		}
 
 	}
