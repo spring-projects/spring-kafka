@@ -84,6 +84,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.PayloadMethodArgumentResolver;
@@ -490,6 +491,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (StringUtils.hasText(errorHandlerBeanName)) {
 			resolveErrorHandler(endpoint, kafkaListener);
 		}
+		String converterBeanName = resolveExpressionAsString(kafkaListener.contentTypeConverter(), "contentTypeConverter");
+		if (StringUtils.hasText(converterBeanName)) {
+			resolveContentTypeConverter(endpoint, kafkaListener);
+		}
 		if (StringUtils.hasText(beanRef)) {
 			this.listenerScope.removeListener(beanRef);
 		}
@@ -533,6 +538,21 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			if (StringUtils.hasText(errorHandlerBeanName)) {
 				endpoint.setErrorHandler(
 						this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
+			}
+		}
+	}
+
+	private void resolveContentTypeConverter(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+		Object converter = resolveExpression(kafkaListener.contentTypeConverter());
+		if (converter instanceof SmartMessageConverter) {
+			endpoint.setMessagingConverter((SmartMessageConverter) converter);
+		}
+		else {
+			String converterBeanName = resolveExpressionAsString(kafkaListener.contentTypeConverter(),
+					"contentTypeConverter");
+			if (StringUtils.hasText(converterBeanName)) {
+				endpoint.setMessagingConverter(
+						this.beanFactory.getBean(converterBeanName, SmartMessageConverter.class));
 			}
 		}
 	}

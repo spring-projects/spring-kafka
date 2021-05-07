@@ -57,6 +57,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
@@ -108,6 +109,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
 
+	private boolean converterSet;
+
 	private Type fallbackType = Object.class;
 
 	private Expression replyTopicExpression;
@@ -136,6 +139,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	public void setMessageConverter(RecordMessageConverter messageConverter) {
 		this.messageConverter = messageConverter;
+		this.converterSet = true;
 	}
 
 	/**
@@ -146,6 +150,19 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	protected final RecordMessageConverter getMessageConverter() {
 		return this.messageConverter;
+	}
+
+	/**
+	 * Set the {@link SmartMessageConverter} to use with the default
+	 * {@link MessagingMessageConverter}. Not allowed when a custom
+	 * {@link #setMessageConverter(RecordMessageConverter) messageConverter} is provided.
+	 * @param messageConverter the converter.
+	 * @since 2.7.1
+	 */
+	public void setMessagingConverter(SmartMessageConverter messageConverter) {
+		Assert.isTrue(!this.converterSet, "Cannot set the SmartMessageConverter when setting the messageConverter, "
+				+ "add the SmartConverter to the message converter instead");
+		((MessagingMessageConverter) this.messageConverter).setMessagingConverter(messageConverter);
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -135,6 +135,17 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 			this.rawMappedHeaders.clear();
 			this.rawMappedHeaders.putAll(rawMappedHeaders);
 		}
+	}
+
+	/**
+	 * Add a raw mapped header.
+	 * @param name the header name.
+	 * @param toString convert to string on inbound when true.
+	 * @since 2.7.1
+	 * @see #setRawMappedHeaders(Map)
+	 */
+	public void addRawMappedHeader(String name, boolean toString) {
+		this.rawMappedHeaders.put(name, toString);
 	}
 
 	protected boolean matches(String header, Object value) {

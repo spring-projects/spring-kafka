@@ -129,8 +129,11 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.converter.AbstractMessageConverter;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -145,6 +148,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.MimeType;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
@@ -172,7 +176,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
-		"annotated38", "annotated38reply", "annotated39", "annotated40" })
+		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41" })
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
@@ -935,6 +939,16 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.customMethodArgument.topic).isEqualTo("annotated39");
 	}
 
+	@Test
+	public void testContentConversion() throws InterruptedException {
+		template.send(MessageBuilder.withPayload("foo")
+				.setHeader(KafkaHeaders.TOPIC, "annotated41")
+				.setHeader(MessageHeaders.CONTENT_TYPE, "application/foo")
+				.build());
+		assertThat(this.listener.contentLatch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.contentFoo).isEqualTo(new Foo("bar"));
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -1595,6 +1609,26 @@ public class EnableKafkaIntegrationTests {
 			};
 		}
 
+		@Bean
+		public SmartMessageConverter fooContentConverter() {
+			return new AbstractMessageConverter(MimeType.valueOf("application/foo")) {
+
+				@Override
+				protected boolean supports(Class<?> clazz) {
+					return Foo.class.isAssignableFrom(clazz);
+				}
+
+				@Override
+				@Nullable
+				protected Object convertFromInternal(Message<?> message, Class<?> targetClass,
+						@Nullable Object conversionHint) {
+
+					return new Foo("bar");
+				}
+
+			};
+		}
+
 	}
 
 	@Component
@@ -1662,6 +1696,8 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch customMethodArgumentResolverLatch = new CountDownLatch(1);
 
+		final CountDownLatch contentLatch = new CountDownLatch(1);
+
 		volatile Integer partition;
 
 		volatile ConsumerRecord<?, ?> capturedRecord;
@@ -1709,6 +1745,8 @@ public class EnableKafkaIntegrationTests {
 		volatile String name;
 
 		volatile CustomMethodArgument customMethodArgument;
+
+		volatile Foo contentFoo;
 
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory",
@@ -2018,6 +2056,12 @@ public class EnableKafkaIntegrationTests {
 			this.customMethodArgumentResolverLatch.countDown();
 		}
 
+		@KafkaListener(id = "smartConverter", topics = "annotated41", contentTypeConverter = "fooContentConverter")
+		public void smart(Foo foo) {
+			this.contentFoo = foo;
+			this.contentLatch.countDown();
+		}
+
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
 			this.seekCallBack.set(callback);
@@ -2276,6 +2320,37 @@ public class EnableKafkaIntegrationTests {
 
 		public void setBar(String bar) {
 			this.bar = bar;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((this.bar == null) ? 0 : this.bar.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			Foo other = (Foo) obj;
+			if (this.bar == null) {
+				if (other.bar != null) {
+					return false;
+				}
+			}
+			else if (!this.bar.equals(other.bar)) {
+				return false;
+			}
+			return true;
 		}
 
 	}

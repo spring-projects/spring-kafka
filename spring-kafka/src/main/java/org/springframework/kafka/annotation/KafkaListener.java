@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -259,5 +259,20 @@ public @interface KafkaListener {
 	 * @since 2.3.5
 	 */
 	boolean splitIterables() default true;
+
+	/**
+	 * Set the bean name of a
+	 * {@link org.springframework.messaging.converter.SmartMessageConverter} (such as the
+	 * {@link org.springframework.messaging.converter.CompositeMessageConverter}) to use
+	 * in conjunction with the
+	 * {@link org.springframework.messaging.MessageHeaders#CONTENT_TYPE} header to perform
+	 * the conversion to the required type. If a SpEL expression is provided
+	 * ({@code #{...}}), the expression can either evaluate to a
+	 * {@link org.springframework.messaging.converter.SmartMessageConverter} instance or a
+	 * bean name.
+	 * @return the bean name.
+	 * @since 2.7.1
+	 */
+	String contentTypeConverter() default "";
 
 }

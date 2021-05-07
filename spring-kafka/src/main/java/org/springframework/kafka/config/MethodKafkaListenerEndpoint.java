@@ -40,6 +40,8 @@ import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -68,6 +70,8 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	private MessageHandlerMethodFactory messageHandlerMethodFactory;
 
 	private KafkaListenerErrorHandler errorHandler;
+
+	private SmartMessageConverter messagingConverter;
 
 	/**
 	 * Set the object instance that should manage this endpoint.
@@ -111,6 +115,17 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 */
 	public void setErrorHandler(KafkaListenerErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
+	}
+
+	/**
+	 * Set a spring-messaging {@link SmartMessageConverter} to convert the record value to
+	 * the desired type. This will also cause the {@link MessageHeaders#CONTENT_TYPE} to be
+	 * converted to String when mapped inbound.
+	 * @param messagingConverter the converter.
+	 * @since 2.7.1
+	 */
+	public void setMessagingConverter(SmartMessageConverter messagingConverter) {
+		this.messagingConverter = messagingConverter;
 	}
 
 	@Nullable
@@ -208,6 +223,9 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 				messageListener.setMessageConverter((RecordMessageConverter) messageConverter);
 			}
 			listener = messageListener;
+		}
+		if (this.messagingConverter != null) {
+			listener.setMessagingConverter(this.messagingConverter);
 		}
 		BeanResolver resolver = getBeanResolver();
 		if (resolver != null) {

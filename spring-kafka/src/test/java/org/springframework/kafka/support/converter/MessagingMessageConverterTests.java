@@ -18,11 +18,23 @@ package org.springframework.kafka.support.converter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.converter.AbstractMessageConverter;
+import org.springframework.messaging.converter.CompositeMessageConverter;
+import org.springframework.messaging.converter.MessageConverter;
+import org.springframework.util.MimeType;
 
 /**
  * @author Gary Russell
@@ -64,6 +76,151 @@ public class MessagingMessageConverterTests {
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo("bar");
 		assertThat(message.getHeaders().get(KafkaHeaders.RAW_DATA)).isSameAs(record);
+	}
+
+	@Test
+	void delegate() {
+		MessagingMessageConverter converter = new MessagingMessageConverter();
+		converter.setMessagingConverter(new MappingJacksonParameterizedConverter());
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/json".getBytes()));
+		ConsumerRecord<String, String> record =
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "{ \"foo\":\"bar\"}", headers);
+		Message<?> message = converter.toMessage(record, null, null, Foo.class);
+		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
+	}
+
+	@Test
+	void delegateNoContentType() {
+		// this works because of the type hint
+		MessagingMessageConverter converter = new MessagingMessageConverter();
+		converter.setMessagingConverter(new MappingJacksonParameterizedConverter());
+		ConsumerRecord<String, String> record =
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "{ \"foo\":\"bar\"}");
+		Message<?> message = converter.toMessage(record, null, null, Foo.class);
+		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
+	}
+
+	@Test
+	void contentNegotiation() {
+		MessagingMessageConverter converter = new MessagingMessageConverter();
+		Collection<MessageConverter> converters = Arrays.asList(new FooConverter(MimeType.valueOf("application/foo")),
+				new BarConverter(MimeType.valueOf("application/bar")));
+		converter.setMessagingConverter(new CompositeMessageConverter(converters));
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/foo".getBytes()));
+		ConsumerRecord<String, String> record =
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "foo", headers);
+		Message<?> message = converter.toMessage(record, null, null, Foo.class);
+		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
+		headers.remove(MessageHeaders.CONTENT_TYPE);
+		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/bar".getBytes()));
+		message = converter.toMessage(record, null, null, Bar.class);
+		assertThat(message.getPayload()).isEqualTo(new Bar("bar"));
+		headers.remove(MessageHeaders.CONTENT_TYPE);
+		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/baz".getBytes()));
+		message = converter.toMessage(record, null, null, Bar.class);
+		assertThat(message.getPayload()).isEqualTo("foo"); // no contentType match
+	}
+
+	static class FooConverter extends AbstractMessageConverter {
+
+		FooConverter(MimeType supportedMimeType) {
+			super(supportedMimeType);
+		}
+
+		@Override
+		protected boolean supports(Class<?> clazz) {
+			return Foo.class.isAssignableFrom(clazz);
+		}
+
+		@Override
+		@Nullable
+		protected Object convertFromInternal(Message<?> message, Class<?> targetClass,
+				@Nullable Object conversionHint) {
+
+			return new Foo("bar");
+		}
+
+	}
+
+	static class BarConverter extends FooConverter {
+
+		BarConverter(MimeType supportedMimeType) {
+			super(supportedMimeType);
+		}
+
+		@Override
+		@Nullable
+		protected Object convertFromInternal(Message<?> message, Class<?> targetClass,
+				@Nullable Object conversionHint) {
+
+			return new Bar("bar");
+		}
+
+	}
+
+	public static class Foo {
+
+		private String foo;
+
+		public Foo() {
+		}
+
+		public Foo(String foo) {
+			this.foo = foo;
+		}
+
+		public String getFoo() {
+			return this.foo;
+		}
+
+		public void setFoo(String foo) {
+			this.foo = foo;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((this.foo == null) ? 0 : this.foo.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			Foo other = (Foo) obj;
+			if (this.foo == null) {
+				if (other.foo != null) {
+					return false;
+				}
+			}
+			else if (!this.foo.equals(other.foo)) {
+				return false;
+			}
+			return true;
+		}
+
+	}
+
+	public static class Bar extends Foo {
+
+		public Bar() {
+		}
+
+		public Bar(String foo) {
+			super(foo);
+		}
+
 	}
 
 }

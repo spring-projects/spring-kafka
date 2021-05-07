@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.converter;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -28,6 +29,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.AbstractKafkaHeaderMapper;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.JacksonPresent;
@@ -35,8 +37,11 @@ import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.converter.SmartMessageConverter;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 
@@ -63,6 +68,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	private KafkaHeaderMapper headerMapper;
 
 	private boolean rawRecordHeader;
+
+	private SmartMessageConverter messagingConverter;
 
 	public MessagingMessageConverter() {
 		if (JacksonPresent.isJackson2Present()) {
@@ -110,6 +117,25 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		this.rawRecordHeader = rawRecordHeader;
 	}
 
+
+	protected org.springframework.messaging.converter.MessageConverter getMessagingConverter() {
+		return this.messagingConverter;
+	}
+
+	/**
+	 * Set a spring-messaging {@link SmartMessageConverter} to convert the record value to
+	 * the desired type. This will also cause the {@link MessageHeaders#CONTENT_TYPE} to be
+	 * converted to String when mapped inbound.
+	 * @param messagingConverter the converter.
+	 * @since 2.7.1
+	 */
+	public void setMessagingConverter(SmartMessageConverter messagingConverter) {
+		this.messagingConverter = messagingConverter;
+		if (messagingConverter != null && this.headerMapper instanceof AbstractKafkaHeaderMapper) {
+			((AbstractKafkaHeaderMapper) this.headerMapper).addRawMappedHeader(MessageHeaders.CONTENT_TYPE, true);
+		}
+	}
+
 	@Override
 	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Type type) {
@@ -118,6 +144,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 				this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
+		boolean removeNative = true;
 		if (this.headerMapper != null && record.headers() != null) {
 			this.headerMapper.toHeaders(record.headers(), rawHeaders);
 		}
@@ -126,15 +153,22 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 					"No header mapper is available; Jackson is required for the default mapper; "
 					+ "headers (if present) are not mapped but provided raw in "
 					+ KafkaHeaders.NATIVE_HEADERS);
-			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
+			removeNative = false;
 		}
+		rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
 		String ttName = record.timestampType() != null ? record.timestampType().name() : null;
 		commonHeaders(acknowledgment, consumer, rawHeaders, record.key(), record.topic(), record.partition(),
 				record.offset(), ttName, record.timestamp());
 		if (this.rawRecordHeader) {
 			rawHeaders.put(KafkaHeaders.RAW_DATA, record);
 		}
-		return MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);
+		Object value = this.messagingConverter == null
+				? extractAndConvertValue(record, type)
+				: extractAndConvertValue(record, type, kafkaMessageHeaders);
+		if (removeNative) {
+			rawHeaders.remove(KafkaHeaders.NATIVE_HEADERS);
+		}
+		return MessageBuilder.createMessage(value, kafkaMessageHeaders);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -194,13 +228,38 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	}
 
 	/**
-	 * Subclasses can convert the value; by default, it's returned as provided by Kafka.
+	 * Subclasses can convert the value; by default, it's returned as provided by Kafka
+	 * unless there is a {@link SmartMessageConverter} that can convert it.
 	 * @param record the record.
 	 * @param type the required type.
 	 * @return the value.
 	 */
 	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
-		return record.value() == null ? KafkaNull.INSTANCE : record.value();
+		return extractAndConvertValue(record, type, null);
+	}
+
+	/**
+	 * Subclasses can convert the value; by default, it's returned as provided by Kafka
+	 * unless there is a {@link SmartMessageConverter} that can convert it.
+	 * @param record the record.
+	 * @param type the required type.
+	 * @param headers the mapped headers.
+	 * @return the value.
+	 */
+	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type, @Nullable MessageHeaders headers) {
+		if (record.value() == null) {
+			return KafkaNull.INSTANCE;
+		}
+		if (this.messagingConverter != null) {
+			Class<?> clazz = type instanceof Class ? (Class<?>) type : type instanceof ParameterizedType
+					? (Class<?>) ((ParameterizedType) type).getRawType() : Object.class;
+			Object payload = this.messagingConverter
+					.fromMessage(new GenericMessage<>(record.value(), headers), clazz, type);
+			if (payload != null) {
+				return payload;
+			}
+		}
+		return record.value();
 	}
 
 }
