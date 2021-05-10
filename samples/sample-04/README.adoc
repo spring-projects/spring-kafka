@@ -1,0 +1,28 @@
+== Sample 4
+
+This sample demonstrates a simple producer and consumer; the producer sends Strings posted to the rest controller.
+
+Strings starting with `fail` are rejected and retried.
+
+Run the application and use curl to send some data:
+
+`$ curl -X POST http://localhost:8080/send/fail; curl -X POST http://localhost:8080/send/good`
+
+
+Console:
+
+`2021-05-11 16:17:55.372  INFO 75520 --- [ fooGroup-0-C-1] com.example.Application : Received: fail from topic4 @ xx`
+
+`2021-05-11 16:17:55.399  INFO 75520 --- [ fooGroup-0-C-1] com.example.Application : Received: good from topic4 @ xx`
+
+`2021-05-11 16:17:57.384  INFO 75520 --- [etry-2000-0-C-1] com.example.Application : Received: fail from topic4-retry-2000 @ xx`
+
+`2021-05-11 16:18:01.390  INFO 75520 --- [etry-4000-0-C-1] com.example.Application : Received: fail from topic4-retry-4000 @ xx`
+
+`2021-05-11 16:18:09.399  INFO 75520 --- [etry-8000-0-C-1] com.example.Application : Received: fail from topic4-retry-8000 @ xx`
+
+`2021-05-11 16:18:19.407  INFO 75520 --- [try-10000-0-C-1] com.example.Application : Received: fail from topic4-retry-10000 @ xx`
+
+`2021-05-11 16:18:19.918  INFO 75520 --- [Group-dlt-0-C-1] com.example.Application : DLT Received: fail from topic4-dlt @ xx`
+
+As you can see the "good" record is processed while the failed record is retried by the series of retry topics.
