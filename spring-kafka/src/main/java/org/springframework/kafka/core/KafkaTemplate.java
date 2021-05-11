@@ -54,6 +54,7 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -108,6 +109,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private Duration closeTimeout = ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT;
 
 	private boolean allowNonTransactional;
+
+	private boolean converterSet;
 
 	private volatile boolean micrometerEnabled = true;
 
@@ -244,7 +247,22 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	public void setMessageConverter(RecordMessageConverter messageConverter) {
 		Assert.notNull(messageConverter, "'messageConverter' cannot be null");
 		this.messageConverter = messageConverter;
+		this.converterSet = true;
 	}
+
+	/**
+	 * Set the {@link SmartMessageConverter} to use with the default
+	 * {@link MessagingMessageConverter}. Not allowed when a custom
+	 * {@link #setMessageConverter(RecordMessageConverter) messageConverter} is provided.
+	 * @param messageConverter the converter.
+	 * @since 2.7.1
+	 */
+	public void setMessagingConverter(SmartMessageConverter messageConverter) {
+		Assert.isTrue(!this.converterSet, "Cannot set the SmartMessageConverter when setting the messageConverter, "
+				+ "add the SmartConverter to the message converter instead");
+		((MessagingMessageConverter) this.messageConverter).setMessagingConverter(messageConverter);
+	}
+
 
 	@Override
 	public boolean isTransactional() {

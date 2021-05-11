@@ -237,6 +237,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	private MeterRegistry meterRegistry;
 
+	@Autowired
+	private SmartMessageConverter fooContentConverter;
+
 	@Test
 	public void testAnonymous() {
 		MessageListenerContainer container = this.registry
@@ -941,7 +944,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testContentConversion() throws InterruptedException {
-		template.send(MessageBuilder.withPayload("foo")
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(this.template.getProducerFactory());
+		template.setMessagingConverter(this.fooContentConverter);
+		template.send(MessageBuilder.withPayload(new Foo("bar"))
 				.setHeader(KafkaHeaders.TOPIC, "annotated41")
 				.setHeader(MessageHeaders.CONTENT_TYPE, "application/foo")
 				.build());
@@ -1624,6 +1629,14 @@ public class EnableKafkaIntegrationTests {
 						@Nullable Object conversionHint) {
 
 					return new Foo("bar");
+				}
+
+				@Override
+				@Nullable
+				protected Object convertToInternal(Object payload, @Nullable MessageHeaders headers,
+						@Nullable Object conversionHint) {
+
+					return payload instanceof Foo ? ((Foo) payload).getBar() : null;
 				}
 
 			};

@@ -223,6 +223,12 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 			return null;
 		}
 		else {
+			if (this.messagingConverter != null) {
+				Message<?> message2 = this.messagingConverter.toMessage(payload, message.getHeaders());
+				if (message2 != null) {
+					return message2.getPayload();
+				}
+			}
 			return payload;
 		}
 	}

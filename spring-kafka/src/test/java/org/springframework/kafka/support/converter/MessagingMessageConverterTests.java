@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -110,17 +111,26 @@ public class MessagingMessageConverterTests {
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/foo".getBytes()));
 		ConsumerRecord<String, String> record =
-				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "foo", headers);
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "qux", headers);
 		Message<?> message = converter.toMessage(record, null, null, Foo.class);
 		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
+		ProducerRecord<?, ?> pr = converter.fromMessage(message, "test");
+		assertThat(pr.topic()).isEqualTo("test");
+		assertThat(pr.value()).isEqualTo("foo".getBytes());
 		headers.remove(MessageHeaders.CONTENT_TYPE);
 		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/bar".getBytes()));
 		message = converter.toMessage(record, null, null, Bar.class);
 		assertThat(message.getPayload()).isEqualTo(new Bar("bar"));
+		pr = converter.fromMessage(message, "test");
+		assertThat(pr.topic()).isEqualTo("test");
+		assertThat(pr.value()).isEqualTo("bar".getBytes());
 		headers.remove(MessageHeaders.CONTENT_TYPE);
 		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/baz".getBytes()));
 		message = converter.toMessage(record, null, null, Bar.class);
-		assertThat(message.getPayload()).isEqualTo("foo"); // no contentType match
+		assertThat(message.getPayload()).isEqualTo("qux"); // no contentType match
+		pr = converter.fromMessage(message, "test");
+		assertThat(pr.topic()).isEqualTo("test");
+		assertThat(pr.value()).isEqualTo("qux");
 	}
 
 	static class FooConverter extends AbstractMessageConverter {
@@ -142,6 +152,14 @@ public class MessagingMessageConverterTests {
 			return new Foo("bar");
 		}
 
+		@Override
+		@Nullable
+		protected Object convertToInternal(Object payload, @Nullable MessageHeaders headers,
+				@Nullable Object conversionHint) {
+
+			return "foo".getBytes();
+		}
+
 	}
 
 	static class BarConverter extends FooConverter {
@@ -156,6 +174,14 @@ public class MessagingMessageConverterTests {
 				@Nullable Object conversionHint) {
 
 			return new Bar("bar");
+		}
+
+		@Override
+		@Nullable
+		protected Object convertToInternal(Object payload, @Nullable MessageHeaders headers,
+				@Nullable Object conversionHint) {
+
+			return "bar".getBytes();
 		}
 
 	}
