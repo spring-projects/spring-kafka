@@ -4207,11 +4207,11 @@ For convenience, starting with version 2.3, the framework also provides a `Strin
 
 Starting with version 2.7.1, message payload conversion can be delegated to a `spring-messaging` `SmartMessageConverter`; this enables conversion, for example, to be based on the `MessageHeaders.CONTENT_TYPE` header.
 
-IMPORTANT:	The `KafkaMessageConverter` 's `fromMessage()`` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
-`toMessage()` is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
-The `SmartMessageConverter.toMessage() method is called to create a new outbound `Message<?>` from the `Message` passed to`fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
-Similarly, in the `KafkaMessageConverter` 's `toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
-In either case, if the `SmartMessageConverter1 returns `null`, theoriginal message is used.
+IMPORTANT:	The `KafkaMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
+The `KafkaMessageConverter.toMessage()` method is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
+The `SmartMessageConverter.toMessage()` method is called to create a new outbound `Message<?>` from the `Message` passed to`fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
+Similarly, in the `KafkaMessageConverter.toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
+In either case, if the `SmartMessageConverter` returns `null`, the original message is used.
 
 When the default converter is used in the `KafkaTemplate` and listener container factory, you configure the `SmartMessageConverter` by calling `setMessagingConverter()` on the template and via the `contentMessageConverter` property on `@KafkaListener` methods.
 
