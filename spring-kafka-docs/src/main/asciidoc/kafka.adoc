@@ -4205,6 +4205,36 @@ Again, using `byte[]` or `Bytes` is more efficient because they avoid a `String`
 For convenience, starting with version 2.3, the framework also provides a `StringOrBytesSerializer` which can serialize all three value types so it can be used with any of the message converters.
 ====
 
+Starting with version 2.7.1, message payload conversion can be delegated to a `spring-messaging` `SmartMessageConverter`; this enables conversion, for example, to be based on the `MessageHeaders.CONTENT_TYPE` header.
+
+IMPORTANT:	The `KafkaMessageConverter` 's `fromMessage()`` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
+`toMessage()` is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
+The `SmartMessageConverter.toMessage() method is called to create a new outbound `Message<?>` from the `Message` passed to`fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
+Similarly, in the `KafkaMessageConverter` 's `toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
+In either case, if the `SmartMessageConverter1 returns `null`, theoriginal message is used.
+
+When the default converter is used in the `KafkaTemplate` and listener container factory, you configure the `SmartMessageConverter` by calling `setMessagingConverter()` on the template and via the `contentMessageConverter` property on `@KafkaListener` methods.
+
+Examples:
+
+====
+[source, java]
+----
+template.setMessagingConverter(mySmartConverter);
+----
+====
+
+====
+[source, java]
+----
+@KafkaListener(id = "withSmartConverter", topics = "someTopic",
+    contentTypeConverter = "mySmartConverter")
+public void smart(Thing thing) {
+    ...
+}
+----
+====
+
 [[data-projection]]
 ====== Using Spring Data Projection Interfaces
 

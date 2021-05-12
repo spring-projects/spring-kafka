@@ -85,3 +85,9 @@ See <<streams-config>> for more information.
 New methods `createOrModifyTopics` and `describeTopics` have been added.
 `KafkaAdmin.NewTopics` has been added to facilitate configuring multiple topics in a single bean.
 See <<configuring-topics>> for more information.
+
+[[x27-conv]]
+==== `MessageConverter` Changes
+
+It is now possible to add a `spring-messaging` `SmartMessageConverter` to the `MessagingMessageConverter`, allowing content negotiation based on the `contentType` header.
+See <<messaging-message-conversion>> for more information.

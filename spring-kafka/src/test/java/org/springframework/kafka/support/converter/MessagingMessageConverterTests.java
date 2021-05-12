@@ -133,6 +133,24 @@ public class MessagingMessageConverterTests {
 		assertThat(pr.value()).isEqualTo("qux");
 	}
 
+	@Test
+	void contentNegotiationNoHeaderMapper() {
+		MessagingMessageConverter converter = new MessagingMessageConverter();
+		converter.setHeaderMapper(null);
+		Collection<MessageConverter> converters = Arrays.asList(new FooConverter(MimeType.valueOf("application/foo")),
+				new BarConverter(MimeType.valueOf("application/bar")));
+		converter.setMessagingConverter(new CompositeMessageConverter(converters));
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/foo".getBytes()));
+		ConsumerRecord<String, String> record =
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "qux", headers);
+		Message<?> message = converter.toMessage(record, null, null, Foo.class);
+		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
+		headers.remove(MessageHeaders.CONTENT_TYPE);
+		message = converter.toMessage(record, null, null, Foo.class);
+		assertThat(message.getPayload()).isEqualTo(new Foo("bar")); // no contentType header
+	}
+
 	static class FooConverter extends AbstractMessageConverter {
 
 		FooConverter(MimeType supportedMimeType) {
