@@ -237,12 +237,12 @@ public class KafkaAdmin extends KafkaResourceFactory
 							.map(NewTopic::name)
 							.collect(Collectors.toList()));
 			List<NewTopic> topicsToAdd = new ArrayList<>();
-			Map<String, NewPartitions> topicsToModify = checkPartitions(topicNameToTopic, topicInfo, topicsToAdd);
+			Map<String, NewPartitions> topicsWithPartitionsMismatch = checkPartitions(topicNameToTopic, topicInfo, topicsToAdd);
 			if (topicsToAdd.size() > 0) {
 				addTopics(adminClient, topicsToAdd);
 			}
-			if (topicsToModify.size() > 0) {
-				modifyTopics(adminClient, topicsToModify);
+			if (topicsWithPartitionsMismatch.size() > 0) {
+				createMissingParitions(adminClient, topicsWithPartitionsMismatch);
 			}
 		}
 	}
@@ -304,7 +304,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 	}
 
-	private void modifyTopics(AdminClient adminClient, Map<String, NewPartitions> topicsToModify) {
+	private void createMissingParitions(AdminClient adminClient, Map<String, NewPartitions> topicsToModify) {
 		CreatePartitionsResult partitionsResult = adminClient.createPartitions(topicsToModify);
 		try {
 			partitionsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
