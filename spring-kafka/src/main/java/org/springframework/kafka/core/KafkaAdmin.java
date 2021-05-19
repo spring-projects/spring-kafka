@@ -242,7 +242,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 				addTopics(adminClient, topicsToAdd);
 			}
 			if (topicsWithPartitionsMismatch.size() > 0) {
-				createMissingParitions(adminClient, topicsWithPartitionsMismatch);
+				createMissingPartitions(adminClient, topicsWithPartitionsMismatch);
 			}
 		}
 	}
@@ -304,7 +304,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 	}
 
-	private void createMissingParitions(AdminClient adminClient, Map<String, NewPartitions> topicsToModify) {
+	private void createMissingPartitions(AdminClient adminClient, Map<String, NewPartitions> topicsToModify) {
 		CreatePartitionsResult partitionsResult = adminClient.createPartitions(topicsToModify);
 		try {
 			partitionsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
