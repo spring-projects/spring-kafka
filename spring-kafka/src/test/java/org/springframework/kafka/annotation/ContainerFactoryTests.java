@@ -19,8 +19,10 @@ package org.springframework.kafka.annotation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.config.AbstractKafkaListenerEndpoint;
@@ -90,4 +92,36 @@ public class ContainerFactoryTests {
 		assertThat(container.getContainerProperties().getGroupId()).isEqualTo("myGroup");
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	void consumerPropertiesCopiedFromFactory() {
+		ConcurrentKafkaListenerContainerFactory<String, String> factory =
+				new ConcurrentKafkaListenerContainerFactory<>();
+		factory.setConsumerFactory(mock(ConsumerFactory.class));
+		Properties factoryConsumerProperties = new Properties();
+		String factoryOffsetResetPolicy = "latest";
+		factoryConsumerProperties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, factoryOffsetResetPolicy);
+		factory.getContainerProperties().setKafkaConsumerProperties(factoryConsumerProperties);
+
+		ConcurrentMessageListenerContainer<String, String> listenerLatest =
+				factory.createContainer("topic");
+		listenerLatest.getContainerProperties().getKafkaConsumerProperties()
+				.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+
+		ConcurrentMessageListenerContainer<String, String> listenerEarliest =
+				factory.createContainer("topic");
+		listenerEarliest.getContainerProperties().getKafkaConsumerProperties()
+				.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+		assertThat(factory.getContainerProperties().getKafkaConsumerProperties())
+				.isNotSameAs(listenerLatest.getContainerProperties().getKafkaConsumerProperties());
+		assertThat(factory.getContainerProperties().getKafkaConsumerProperties())
+				.isNotSameAs(listenerEarliest.getContainerProperties().getKafkaConsumerProperties());
+		assertThat(factory.getContainerProperties().getKafkaConsumerProperties()
+				.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo(factoryOffsetResetPolicy);
+		assertThat(listenerLatest.getContainerProperties().getKafkaConsumerProperties()
+				.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("latest");
+		assertThat(listenerEarliest.getContainerProperties().getKafkaConsumerProperties()
+				.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("earliest");
+	}
 }
