@@ -59,6 +59,9 @@ public class ContainerFactoryTests {
 		assertThat(container.getContainerProperties().getAckCount()).isEqualTo(123);
 		assertThat(KafkaTestUtils.getPropertyValue(container, "concurrency", Integer.class)).isEqualTo(22);
 		assertThat(customized).isTrue();
+		ConcurrentMessageListenerContainer<String, String> container2 = factory.createContainer("foo");
+		assertThat(container.getContainerProperties().getKafkaConsumerProperties())
+				.isNotSameAs(container2.getContainerProperties().getKafkaConsumerProperties());
 	}
 
 	@SuppressWarnings("unchecked")
