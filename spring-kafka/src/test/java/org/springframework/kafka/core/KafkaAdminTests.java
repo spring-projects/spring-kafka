@@ -23,18 +23,26 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.AlterConfigOp.OpType;
+import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.config.ConfigResource.Type;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.junit.jupiter.api.Test;
@@ -54,7 +62,6 @@ import org.springframework.util.StringUtils;
 /**
  * @author Gary Russell
  * @since 1.3
- *
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -64,6 +71,9 @@ public class KafkaAdminTests {
 	private KafkaAdmin admin;
 
 	@Autowired
+	private AdminClient adminClient;
+
+	@Autowired
 	private NewTopic topic1;
 
 	@Autowired
@@ -71,6 +81,9 @@ public class KafkaAdminTests {
 
 	@Autowired
 	private NewTopic topic3;
+
+	@Autowired
+	private NewTopic mismatchconfig;
 
 	@Test
 	public void testTopicConfigs() {
@@ -93,6 +106,7 @@ public class KafkaAdminTests {
 		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(4));
 		new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", Optional.of(3));
 		this.admin.initialize();
+
 		int n = 0;
 		await().until(() -> {
 			results.putAll(this.admin.describeTopics("foo", "bar"));
@@ -118,6 +132,29 @@ public class KafkaAdminTests {
 			return foo.partitions().size() == 5;
 		});
 		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(5));
+
+		await().until(() -> {
+			adminClient.incrementalAlterConfigs(
+					Map.of(
+							new ConfigResource(Type.TOPIC, "mismatchconfig"),
+							List.of(new AlterConfigOp(new ConfigEntry("retention.bytes", "10"), OpType.SET))));
+			DescribeConfigsResult describeConfigsResult = this.adminClient
+					.describeConfigs(List.of(new ConfigResource(Type.TOPIC, "mismatchconfig")));
+			Map<ConfigResource, org.apache.kafka.clients.admin.Config> configResourceConfigMap = describeConfigsResult.all()
+					.get();
+			return configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig")).get("retention.bytes").value().equals("10");
+		});
+
+		this.admin.createOrModifyTopics(mismatchconfig);
+
+		await().until(() -> {
+			DescribeConfigsResult describeConfigsResult = this.adminClient
+					.describeConfigs(List.of(new ConfigResource(Type.TOPIC, "mismatchconfig")));
+			Map<ConfigResource, org.apache.kafka.clients.admin.Config> configResourceConfigMap = describeConfigsResult.all()
+					.get();
+			return configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig"))
+					.get("retention.bytes").value().equals("1024");
+		});
 	}
 
 	@Test
@@ -171,11 +208,9 @@ public class KafkaAdminTests {
 			if (m.getName().equals("addTopics")) {
 				addTopics.set(m);
 			}
-			else if (m.getName().equals("modifyTopics")) {
+			else if (m.getName().equals("createMissingPartitions")) {
 				modifyTopics.set(m);
 			}
-		}, m -> {
-			return m.getName().endsWith("Topics");
 		});
 		try (AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties())) {
 			addTopics.get().invoke(this.admin, adminClient, Collections.singletonList(this.topic1));
@@ -220,6 +255,14 @@ public class KafkaAdminTests {
 		}
 
 		@Bean
+		public AdminClient adminClient() {
+			Map<String, Object> configs = new HashMap<>();
+			configs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+					StringUtils.arrayToCommaDelimitedString(kafkaEmbedded().getBrokerAddresses()));
+			return AdminClient.create(configs);
+		}
+
+		@Bean
 		public NewTopic topic1() {
 			return TopicBuilder.name("foo")
 					.partitions(2)
@@ -243,6 +286,15 @@ public class KafkaAdminTests {
 					.assignReplicas(1, Arrays.asList(1, 2))
 					.assignReplicas(2, Arrays.asList(2, 0))
 					.config(TopicConfig.COMPRESSION_TYPE_CONFIG, "zstd")
+					.build();
+		}
+
+		@Bean
+		public NewTopic mismatchconfig() {
+			return TopicBuilder.name("mismatchconfig")
+					.partitions(2)
+					.replicas(1)
+					.config("retention.bytes", "1024")
 					.build();
 		}
 
