@@ -264,43 +264,44 @@ public class KafkaAdmin extends KafkaResourceFactory
 
 	private Map<ConfigResource, List<ConfigEntry>> checkTopicsForConfigMismatches(
 			AdminClient adminClient, Collection<NewTopic> topics) {
-		Map<ConfigResource, List<ConfigEntry>> configMismatches = new HashMap<>();
+		List<ConfigResource> configResources = topics.stream()
+				.map(topic -> new ConfigResource(Type.TOPIC, topic.name()))
+				.collect(Collectors.toList());
 
-		for (NewTopic topic : topics) {
-			List<ConfigResource> configResources = List.of(new ConfigResource(Type.TOPIC, topic.name()));
-			DescribeConfigsResult describeConfigsResult = adminClient.describeConfigs(configResources);
+		DescribeConfigsResult describeConfigsResult = adminClient.describeConfigs(configResources);
+		try {
+			Map<ConfigResource, Config> topicsConfig = describeConfigsResult.all()
+					.get(this.operationTimeout, TimeUnit.SECONDS);
 
-			try {
-				Map<ConfigResource, Config> topicsConfig = describeConfigsResult.all()
-						.get(this.operationTimeout, TimeUnit.SECONDS);
+			Map<ConfigResource, List<ConfigEntry>> configMismatches = new HashMap<>();
+			for (Map.Entry<ConfigResource, Config> topicConfig : topicsConfig.entrySet()) {
+				Optional<NewTopic> topicOptional = topics.stream()
+						.filter(p -> p.name().equals(topicConfig.getKey().name()))
+						.findFirst();
 
-				for (Map.Entry<ConfigResource, Config> topicConfig : topicsConfig.entrySet()) {
-					List<ConfigEntry> configMismatchesEntries = new ArrayList<>();
+				List<ConfigEntry> configMismatchesEntries = new ArrayList<>();
+				if (topicOptional.isPresent() && topicOptional.get().configs() != null) {
+					for (Map.Entry<String, String> desiredConfigParameter : topicOptional.get().configs().entrySet()) {
+						ConfigEntry actualConfigParameter = topicConfig.getValue().get(desiredConfigParameter.getKey());
+						if (!actualConfigParameter.value().equals(desiredConfigParameter.getValue())) {
+							configMismatchesEntries.add(actualConfigParameter);
+						}
 
-					if (topic.configs() != null) {
-						for (Map.Entry<String, String> desiredConfigParameter : topic.configs().entrySet()) {
-							ConfigEntry actualConfigParameter = topicConfig.getValue().get(desiredConfigParameter.getKey());
-							if (!actualConfigParameter.value().equals(desiredConfigParameter.getValue())) {
-								configMismatchesEntries.add(actualConfigParameter);
-							}
-
-							if (configMismatchesEntries.size() > 0) {
-								configMismatches.put(topicConfig.getKey(), configMismatchesEntries);
-							}
+						if (configMismatchesEntries.size() > 0) {
+							configMismatches.put(topicConfig.getKey(), configMismatchesEntries);
 						}
 					}
 				}
 			}
-			catch (InterruptedException ie) {
-				Thread.currentThread().interrupt();
-				throw new KafkaException("Interrupted while getting topic descriptions", ie);
-			}
-			catch (ExecutionException | TimeoutException ex) {
-				throw new KafkaException("Failed to obtain topic descriptions", ex);
-			}
+			return configMismatches;
 		}
-
-		return configMismatches;
+		catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+			throw new KafkaException("Interrupted while getting topic descriptions", ie);
+		}
+		catch (ExecutionException | TimeoutException ex) {
+			throw new KafkaException("Failed to obtain topic descriptions", ex);
+		}
 	}
 
 	private void adjustConfigMismatches(AdminClient adminClient, Collection<NewTopic> topics,
