@@ -93,7 +93,7 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 
 	@Override
 	public void setupListenerContainer(MessageListenerContainer listenerContainer,
-			MessageConverter messageConverter) {
+			@Nullable MessageConverter messageConverter) {
 	}
 
 	@Override
