@@ -65,7 +65,12 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
 			throws ParameterResolutionException {
 
-		return parameterContext.getParameter().getType().equals(EmbeddedKafkaBroker.class);
+		if (BROKERS.get() == null) {
+			return false;
+		}
+		else {
+			return parameterContext.getParameter().getType().equals(EmbeddedKafkaBroker.class);
+		}
 	}
 
 	@Override
