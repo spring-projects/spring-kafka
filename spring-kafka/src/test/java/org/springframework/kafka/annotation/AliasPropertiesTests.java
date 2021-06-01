@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.AliasFor;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.annotation.AliasPropertiesTests.Config.ClassLevelListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
@@ -76,6 +78,10 @@ public class AliasPropertiesTests {
 		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.kafkaListenerEndpointRegistry()).isSameAs(this.kafkaListenerEndpointRegistry);
 		assertThat(this.classLevel.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethod").getGroupId())
+				.isEqualTo("onMethod.Config.listen1");
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClass").getGroupId())
+				.isEqualTo("onClass.ClassLevelListener");
 	}
 
 	@Configuration
@@ -83,6 +89,21 @@ public class AliasPropertiesTests {
 	public static class Config {
 
 		private final CountDownLatch latch = new CountDownLatch(1);
+
+		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
+		public static KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp() {
+			KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp =
+					new KafkaListenerAnnotationBeanPostProcessor<>();
+			bpp.setEnhancer((ann, element) -> {
+				Map<String, Object> attrs = AnnotationUtils.getAnnotationAttributes(ann);
+				attrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
+						? ((Class<?>) element).getSimpleName()
+						: ((Method) element).getDeclaringClass().getSimpleName()
+								+  "." + ((Method) element).getName()));
+				return AnnotationUtils.synthesizeAnnotation(attrs, KafkaListener.class, null);
+			});
+			return bpp;
+		}
 
 		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
 		public KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry() {

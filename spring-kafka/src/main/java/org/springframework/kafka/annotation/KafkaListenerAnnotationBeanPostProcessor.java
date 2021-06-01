@@ -18,6 +18,7 @@ package org.springframework.kafka.annotation;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +34,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -149,12 +151,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final ListenerScope listenerScope = new ListenerScope();
 
-	private KafkaListenerEndpointRegistry endpointRegistry;
-
-	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
-
-	private BeanFactory beanFactory;
-
 	private final KafkaHandlerMethodFactoryAdapter messageHandlerMethodFactory =
 			new KafkaHandlerMethodFactoryAdapter();
 
@@ -162,11 +158,19 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final AtomicInteger counter = new AtomicInteger();
 
+	private KafkaListenerEndpointRegistry endpointRegistry;
+
+	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
+
+	private BeanFactory beanFactory;
+
 	private BeanExpressionResolver resolver = new StandardBeanExpressionResolver();
 
 	private BeanExpressionContext expressionContext;
 
 	private Charset charset = StandardCharsets.UTF_8;
+
+	private AnnotationEnhancer enhancer = (ann, element) -> ann;
 
 	@Override
 	public int getOrder() {
@@ -238,6 +242,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	public void setCharset(Charset charset) {
 		Assert.notNull(charset, "'charset' cannot be null");
 		this.charset = charset;
+	}
+
+	/**
+	 * Set an {@link AnnotationEnhancer} to modify any found {@link KafkaListener}s.
+	 * @param enhancer the enhancer.
+	 */
+	public void setEnhancer(AnnotationEnhancer enhancer) {
+		Assert.notNull(enhancer, "'enhancer' cannot be null");
+		this.enhancer = enhancer;
 	}
 
 	@Override
@@ -333,11 +346,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Set<KafkaListener> listeners = new HashSet<>();
 		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(clazz, KafkaListener.class);
 		if (ann != null) {
+			ann = this.enhancer.apply(ann, clazz);
 			listeners.add(ann);
 		}
 		KafkaListeners anns = AnnotationUtils.findAnnotation(clazz, KafkaListeners.class);
 		if (anns != null) {
-			listeners.addAll(Arrays.asList(anns.value()));
+			listeners.addAll(Arrays.stream(anns.value())
+					.map(anno -> this.enhancer.apply(anno, clazz))
+					.collect(Collectors.toList()));
 		}
 		return listeners;
 	}
@@ -349,11 +365,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Set<KafkaListener> listeners = new HashSet<>();
 		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(method, KafkaListener.class);
 		if (ann != null) {
+			ann = this.enhancer.apply(ann, method);
 			listeners.add(ann);
 		}
 		KafkaListeners anns = AnnotationUtils.findAnnotation(method, KafkaListeners.class);
 		if (anns != null) {
-			listeners.addAll(Arrays.asList(anns.value()));
+			listeners.addAll(Arrays.stream(anns.value())
+					.map(anno -> this.enhancer.apply(anno, method))
+					.collect(Collectors.toList()));
 		}
 		return listeners;
 	}
@@ -1067,6 +1086,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		protected boolean isEmptyPayload(Object payload) {
 			return payload == null || payload instanceof KafkaNull;
 		}
+
+	}
+
+	/**
+	 * Post processes each annotation.
+	 *
+	 * @since 2.7.2
+	 *
+	 */
+	public interface AnnotationEnhancer extends BiFunction<KafkaListener, AnnotatedElement, KafkaListener> {
 
 	}
 

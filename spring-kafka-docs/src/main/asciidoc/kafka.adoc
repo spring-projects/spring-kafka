@@ -1863,6 +1863,36 @@ void listen(Object in, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetad
 ----
 ====
 
+[[kafkalistener-attrs]]
+===== `@KafkaListener` Attribute Modification
+
+Starting with version 2.7.2, you can now programmatically modify annotation attributes before the container is created.
+To do so, override the framework's `KafkaListenerAnnotationBeanPostProcessor` bean and add an `AnnotationEnhancer` to it.
+`AnnotationEnhancer` is a `BiFunction<Annotation, AnnotatedElement, Annotation>` and must return an annotation.
+The attributes can contain SpEL and/or property placeholders; the enhancer is called before any resolution is performed.
+
+An example follows:
+
+====
+[source, java]
+----
+@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
+public static KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp() {
+    KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp =
+            new KafkaListenerAnnotationBeanPostProcessor<>();
+    bpp.setEnhancer((ann, element) -> {
+        Map<String, Object> attrs = AnnotationUtils.getAnnotationAttributes(ann);
+        attrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
+                ? ((Class<?>) element).getSimpleName()
+                : ((Method) element).getDeclaringClass().getSimpleName()
+                        +  "." + ((Method) element).getName()));
+        return AnnotationUtils.synthesizeAnnotation(attrs, KafkaListener.class, null);
+    });
+    return bpp;
+}
+----
+====
+
 [[kafkalistener-lifecycle]]
 ===== `@KafkaListener` Lifecycle Management
 
