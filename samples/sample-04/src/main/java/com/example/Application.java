@@ -45,7 +45,7 @@ public class Application {
 	}
 
 	@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 2_000, maxDelay = 10_000, multiplier = 2))
-	@KafkaListener(id = "fooGroup", topics = "topic4")
+	@KafkaListener(id = "fooGroup", topics = "topic4", clientIdPrefix = "test")
 	public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
 			@Header(KafkaHeaders.OFFSET) long offset) {
 
