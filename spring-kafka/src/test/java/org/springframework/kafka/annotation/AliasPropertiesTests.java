@@ -22,6 +22,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -32,9 +33,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AliasFor;
-import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.kafka.annotation.AliasPropertiesTests.Config.ClassLevelListener;
+import org.springframework.kafka.annotation.AliasPropertiesTests.Config.ClassAndMethodLevelListener;
+import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor.AnnotationEnhancer;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -70,39 +72,55 @@ public class AliasPropertiesTests {
 	private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
 	@Autowired
-	private ClassLevelListener classLevel;
+	private ClassAndMethodLevelListener classLevel;
+
+	@Autowired
+	private ClassAndMethodLevelListener repeatable;
 
 	@Test
 	public void testAliasFor() throws Exception {
 		this.template.send("alias.tests", "foo");
-		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.config.kafkaListenerEndpointRegistry()).isSameAs(this.kafkaListenerEndpointRegistry);
 		assertThat(this.classLevel.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.repeatable.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.kafkaListenerEndpointRegistry()).isSameAs(this.kafkaListenerEndpointRegistry);
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethod").getGroupId())
-				.isEqualTo("onMethod.Config.listen1");
+				.isEqualTo("onMethod.ClassAndMethodLevelListener.listen1");
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClass").getGroupId())
-				.isEqualTo("onClass.ClassLevelListener");
+				.isEqualTo("onClass.ClassAndMethodLevelListener");
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethodRepeatable1").getGroupId())
+				.isEqualTo("onMethodRepeatable1.RepeatableClassAndMethodLevelListener.listen1");
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClassRepeatable1").getGroupId())
+				.isEqualTo("onClassRepeatable1.RepeatableClassAndMethodLevelListener");
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethodRepeatable2").getGroupId())
+				.isEqualTo("onMethodRepeatable2.RepeatableClassAndMethodLevelListener.listen1");
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClassRepeatable2").getGroupId())
+				.isEqualTo("onClassRepeatable2.RepeatableClassAndMethodLevelListener");
+		assertThat(this.config.orderedCalledFirst).isTrue();
 	}
 
 	@Configuration
 	@EnableKafka
 	public static class Config {
 
-		private final CountDownLatch latch = new CountDownLatch(1);
+		final CountDownLatch latch = new CountDownLatch(1);
 
-		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
-		public static KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp() {
-			KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp =
-					new KafkaListenerAnnotationBeanPostProcessor<>();
-			bpp.setEnhancer((ann, element) -> {
-				Map<String, Object> attrs = AnnotationUtils.getAnnotationAttributes(ann);
+		boolean orderedCalledFirst = true;
+
+		@Bean
+		public AnnotationEnhancer mainEnhancer() {
+			return (attrs, element) -> {
 				attrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
 						? ((Class<?>) element).getSimpleName()
 						: ((Method) element).getDeclaringClass().getSimpleName()
 								+  "." + ((Method) element).getName()));
-				return AnnotationUtils.synthesizeAnnotation(attrs, KafkaListener.class, null);
-			});
-			return bpp;
+				this.orderedCalledFirst = true;
+				return attrs;
+			};
+		}
+
+		@Bean
+		OrderedEnhancer ordered() {
+			return new OrderedEnhancer();
 		}
 
 		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
@@ -150,20 +168,55 @@ public class AliasPropertiesTests {
 			return KafkaTestUtils.producerProps(embeddedKafka());
 		}
 
-		@MyListener(id = "onMethod", value = "alias.tests")
-		public void listen1(String in) {
-			this.latch.countDown();
-		}
-
 		@Component
 		@MyListener(id = "onClass", value = "alias.tests")
-		public static class ClassLevelListener {
+		public static class ClassAndMethodLevelListener {
 
-			private final CountDownLatch latch = new CountDownLatch(1);
+			private final CountDownLatch latch = new CountDownLatch(2);
 
 			@KafkaHandler
 			void listen(String in) {
 				this.latch.countDown();
+			}
+
+			@MyListener(id = "onMethod", value = "alias.tests")
+			public void listen1(String in) {
+				this.latch.countDown();
+			}
+
+		}
+
+		@Component
+		@KafkaListener(id = "onClassRepeatable1", topics = "alias.tests")
+		@KafkaListener(id = "onClassRepeatable2", topics = "alias.tests")
+		public static class RepeatableClassAndMethodLevelListener {
+
+			private final CountDownLatch latch = new CountDownLatch(4);
+
+			@KafkaHandler
+			void listen(String in) {
+				this.latch.countDown();
+			}
+
+			@KafkaListener(id = "onMethodRepeatable1", topics = "alias.tests")
+			@KafkaListener(id = "onMethodRepeatable2", topics = "alias.tests")
+			public void listen1(String in) {
+				this.latch.countDown();
+			}
+
+		}
+
+		public class OrderedEnhancer implements AnnotationEnhancer, Ordered {
+
+			@Override
+			public Map<String, Object> apply(Map<String, Object> attrs, AnnotatedElement ele) {
+				Config.this.orderedCalledFirst = false;
+				return attrs;
+			}
+
+			@Override
+			public int getOrder() {
+				return 0;
 			}
 
 		}
