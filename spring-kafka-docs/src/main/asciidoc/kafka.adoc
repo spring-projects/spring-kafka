@@ -1867,31 +1867,31 @@ void listen(Object in, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetad
 ===== `@KafkaListener` Attribute Modification
 
 Starting with version 2.7.2, you can now programmatically modify annotation attributes before the container is created.
-To do so, override the framework's `KafkaListenerAnnotationBeanPostProcessor` bean and add an `AnnotationEnhancer` to it.
-`AnnotationEnhancer` is a `BiFunction<Annotation, AnnotatedElement, Annotation>` and must return an annotation.
-The attributes can contain SpEL and/or property placeholders; the enhancer is called before any resolution is performed.
+To do so, add one or more `KafkaListenerAnnotationBeanPostProcessor.AnnotationEnhancer` to the application context.
+`AnnotationEnhancer` is a `BiFunction<Map<String, Object>, AnnotatedElement, Map<String, Object>` and must return a a map of attributes.
+The attribute values can contain SpEL and/or property placeholders; the enhancer is called before any resolution is performed.
+If more than one enhancer is present, and they implement `Ordered`, they will be invoked in order.
 
 An example follows:
 
 ====
 [source, java]
 ----
-@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
-public static KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp() {
-    KafkaListenerAnnotationBeanPostProcessor<Object, Object> bpp =
-            new KafkaListenerAnnotationBeanPostProcessor<>();
-    bpp.setEnhancer((ann, element) -> {
-        Map<String, Object> attrs = AnnotationUtils.getAnnotationAttributes(ann);
+@Bean
+public AnnotationEnhancer groupIdEnhancer() {
+    return (attrs, element) -> {
         attrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
                 ? ((Class<?>) element).getSimpleName()
                 : ((Method) element).getDeclaringClass().getSimpleName()
                         +  "." + ((Method) element).getName()));
-        return AnnotationUtils.synthesizeAnnotation(attrs, KafkaListener.class, null);
-    });
-    return bpp;
+        return attrs;
+    };
 }
 ----
 ====
+
+IMPORTANT: `AnnotationEnhancer` bean definitions cannot be declared in the same class as a `@KafkaListener` method (or class).
+It will prevent those listeners from being found by the `KafkaListenerAnnotationBeanPostProcessor`.
 
 [[kafkalistener-lifecycle]]
 ===== `@KafkaListener` Lifecycle Management
