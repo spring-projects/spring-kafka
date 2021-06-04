@@ -135,7 +135,8 @@ public interface KafkaListenerEndpoint {
 	 * @param listenerContainer the listener container to configure
 	 * @param messageConverter the message converter - can be null
 	 */
-	void setupListenerContainer(MessageListenerContainer listenerContainer, MessageConverter messageConverter);
+	void setupListenerContainer(MessageListenerContainer listenerContainer,
+			@Nullable MessageConverter messageConverter);
 
 	/**
 	 * When true, {@link Iterable} return results will be split into discrete records.

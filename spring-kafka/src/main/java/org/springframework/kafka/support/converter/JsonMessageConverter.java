@@ -111,7 +111,7 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 				return this.objectMapper.readValue((String) value, javaType);
 			}
 			catch (IOException e) {
-				throw new ConversionException("Failed to convert from JSON", e);
+				throw new ConversionException("Failed to convert from JSON", record, e);
 			}
 		}
 		else if (value instanceof byte[]) {
@@ -119,7 +119,7 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 				return this.objectMapper.readValue((byte[]) value, javaType);
 			}
 			catch (IOException e) {
-				throw new ConversionException("Failed to convert from JSON", e);
+				throw new ConversionException("Failed to convert from JSON", record, e);
 			}
 		}
 		else {

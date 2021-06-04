@@ -48,6 +48,9 @@ You can now set the `rawRecordHeader` property on the `MessagingMessageConverter
 This is useful, for example, if you wish to use a `DeadLetterPublishingRecoverer` in a listener error handler.
 See <<listener-error-handlers>> for more information.
 
+You can now modify `@KafkaListener` annotations during application initialization.
+See <<kafkalistener-attrs>> for more information.
+
 [[x27-dlt]]
 ==== `DeadLetterPublishingRecover` Changes
 

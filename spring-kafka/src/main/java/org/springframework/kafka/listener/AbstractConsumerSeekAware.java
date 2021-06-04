@@ -130,7 +130,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	 * @since 2.6
 	 */
 	public void seekToTimestamp(long time) {
-		getCallbacksAndTopics().forEach((cb, topcis) -> cb.seekToTimestamp(topcis, time));
+		getCallbacksAndTopics().forEach((cb, topics) -> cb.seekToTimestamp(topics, time));
 	}
 
 }

@@ -93,7 +93,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 				return getObjectMapper().readValue((String) value, javaType);
 			}
 			catch (IOException e) {
-				throw new ConversionException("Failed to convert from JSON", e);
+				throw new ConversionException("Failed to convert from JSON", message, e);
 			}
 		}
 		else if (value instanceof byte[]) {
@@ -101,7 +101,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 				return getObjectMapper().readValue((byte[]) value, javaType);
 			}
 			catch (IOException e) {
-				throw new ConversionException("Failed to convert from JSON", e);
+				throw new ConversionException("Failed to convert from JSON", message, e);
 			}
 		}
 		else {

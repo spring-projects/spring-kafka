@@ -57,6 +57,7 @@ import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
+import reactor.kafka.sender.internals.DefaultKafkaSender;
 import reactor.test.StepVerifier;
 
 /**
@@ -279,8 +280,9 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
-	@LogLevels(categories = "reactor.kafka.receiver.internals.ConsumerEventLoop", level = "DEBUG",
+	@LogLevels(categories = "reactor.kafka.receiver.internals.ConsumerEventLoop", level = "TRACE",
 			classes = { JUnitUtils.class, LogLevelsCondition.class,
+					DefaultKafkaSender.class,
 					ReactiveKafkaProducerTemplateTransactionIntegrationTests.class})
 	@Test
 	public void shouldSendOneRecordTransactionallyViaTemplateAsSenderRecordAndReceiveItExactlyOnce() {
@@ -293,12 +295,11 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.expectComplete()
 				.verify();
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate
-				.receiveExactlyOnce(this.reactiveKafkaProducerTemplate.transactionManager())
-				.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux, false))
-				.onErrorResume(error -> this.reactiveKafkaProducerTemplate.transactionManager()
-						.abort()
-						.then(Mono.error(error))))
+		StepVerifier.create(
+				reactiveKafkaConsumerTemplate
+						.receiveExactlyOnce(this.reactiveKafkaProducerTemplate.transactionManager())
+						.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux, false))
+						.delayElements(Duration.ofMillis(100)))
 				.assertNext(senderResult -> {
 					assertThat(senderResult.correlationMetadata().intValue()).isEqualTo(DEFAULT_KEY);
 					assertThat(senderResult.recordMetadata().offset()).isGreaterThan(0);
@@ -306,11 +307,12 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.thenCancel()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate
-				.receive().doOnNext(receiverRecord -> receiverRecord.receiverOffset().acknowledge()))
+		StepVerifier.create(
+				reactiveKafkaConsumerTemplate
+						.receive().doOnNext(receiverRecord -> receiverRecord.receiverOffset().acknowledge()))
 				.assertNext(receiverRecord -> {
 					logger.info(ListenerUtils.recordToString(receiverRecord, true));
-					assertThat(receiverRecord.value()).isEqualTo(DEFAULT_VALUE + "xyz");
+					assertThat(receiverRecord.value()).startsWith(DEFAULT_VALUE + "xyz");
 					assertThat(receiverRecord.offset()).isGreaterThan(0);
 				})
 				.thenCancel()

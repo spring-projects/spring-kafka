@@ -18,6 +18,7 @@ package org.springframework.kafka.annotation;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +34,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -43,8 +45,8 @@ import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.BeanInitializationException;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.ObjectFactory;
@@ -56,9 +58,13 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.Scope;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.OrderComparator;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -134,7 +140,7 @@ import org.springframework.validation.Validator;
  * @see MethodKafkaListenerEndpoint
  */
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
-		implements BeanPostProcessor, Ordered, BeanFactoryAware, SmartInitializingSingleton {
+		implements BeanPostProcessor, Ordered, ApplicationContextAware, InitializingBean, SmartInitializingSingleton {
 
 	private static final String GENERATED_ID_PREFIX = "org.springframework.kafka.KafkaListenerEndpointContainer#";
 
@@ -149,12 +155,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final ListenerScope listenerScope = new ListenerScope();
 
-	private KafkaListenerEndpointRegistry endpointRegistry;
-
-	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
-
-	private BeanFactory beanFactory;
-
 	private final KafkaHandlerMethodFactoryAdapter messageHandlerMethodFactory =
 			new KafkaHandlerMethodFactoryAdapter();
 
@@ -162,11 +162,21 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final AtomicInteger counter = new AtomicInteger();
 
+	private KafkaListenerEndpointRegistry endpointRegistry;
+
+	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
+
+	private ApplicationContext applicationContext;
+
+	private BeanFactory beanFactory;
+
 	private BeanExpressionResolver resolver = new StandardBeanExpressionResolver();
 
 	private BeanExpressionContext expressionContext;
 
 	private Charset charset = StandardCharsets.UTF_8;
+
+	private AnnotationEnhancer enhancer;
 
 	@Override
 	public int getOrder() {
@@ -213,13 +223,23 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return this.messageHandlerMethodFactory;
 	}
 
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.applicationContext = applicationContext;
+		if (applicationContext instanceof ConfigurableApplicationContext) {
+			setBeanFactory(((ConfigurableApplicationContext) applicationContext).getBeanFactory());
+		}
+		else {
+			setBeanFactory(applicationContext);
+		}
+	}
+
 	/**
 	 * Making a {@link BeanFactory} available is optional; if not set,
 	 * {@link KafkaListenerConfigurer} beans won't get autodetected and an
 	 * {@link #setEndpointRegistry endpoint registry} has to be explicitly configured.
 	 * @param beanFactory the {@link BeanFactory} to be used.
 	 */
-	@Override
 	public void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
 		if (beanFactory instanceof ConfigurableListableBeanFactory) {
@@ -238,6 +258,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	public void setCharset(Charset charset) {
 		Assert.notNull(charset, "'charset' cannot be null");
 		this.charset = charset;
+	}
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		buildEnhancer();
 	}
 
 	@Override
@@ -280,6 +305,25 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		this.registrar.afterPropertiesSet();
 	}
 
+	private void buildEnhancer() {
+		if (this.applicationContext != null) {
+			Map<String, AnnotationEnhancer> enhancersMap =
+					this.applicationContext.getBeansOfType(AnnotationEnhancer.class, false, false);
+			if (enhancersMap.size() > 0) {
+				List<AnnotationEnhancer> enhancers = enhancersMap.values()
+						.stream()
+						.sorted(new OrderComparator())
+						.collect(Collectors.toList());
+				this.enhancer = (attrs, element) -> {
+					Map<String, Object> newAttrs = attrs;
+					for (AnnotationEnhancer enhancer : enhancers) {
+						newAttrs = enhancer.apply(newAttrs, element);
+					}
+					return attrs;
+				};
+			}
+		}
+	}
 
 	@Override
 	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -333,11 +377,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Set<KafkaListener> listeners = new HashSet<>();
 		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(clazz, KafkaListener.class);
 		if (ann != null) {
+			ann = enhance(clazz, ann);
 			listeners.add(ann);
 		}
 		KafkaListeners anns = AnnotationUtils.findAnnotation(clazz, KafkaListeners.class);
 		if (anns != null) {
-			listeners.addAll(Arrays.asList(anns.value()));
+			listeners.addAll(Arrays.stream(anns.value())
+					.map(anno -> enhance(clazz, anno))
+					.collect(Collectors.toList()));
 		}
 		return listeners;
 	}
@@ -349,13 +396,26 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Set<KafkaListener> listeners = new HashSet<>();
 		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(method, KafkaListener.class);
 		if (ann != null) {
+			ann = enhance(method, ann);
 			listeners.add(ann);
 		}
 		KafkaListeners anns = AnnotationUtils.findAnnotation(method, KafkaListeners.class);
 		if (anns != null) {
-			listeners.addAll(Arrays.asList(anns.value()));
+			listeners.addAll(Arrays.stream(anns.value())
+					.map(anno -> enhance(method, anno))
+					.collect(Collectors.toList()));
 		}
 		return listeners;
+	}
+
+	private KafkaListener enhance(AnnotatedElement element, KafkaListener ann) {
+		if (this.enhancer == null) {
+			return ann;
+		}
+		else {
+			return AnnotationUtils.synthesizeAnnotation(
+				this.enhancer.apply(AnnotationUtils.getAnnotationAttributes(ann), element), KafkaListener.class, null);
+		}
 	}
 
 	private void processMultiMethodListeners(Collection<KafkaListener> classLevelListeners, List<Method> multiMethods,
@@ -1067,6 +1127,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		protected boolean isEmptyPayload(Object payload) {
 			return payload == null || payload instanceof KafkaNull;
 		}
+
+	}
+
+	/**
+	 * Post processes each set of annotation attributes.
+	 *
+	 * @since 2.7.2
+	 *
+	 */
+	public interface AnnotationEnhancer extends BiFunction<Map<String, Object>, AnnotatedElement, Map<String, Object>> {
 
 	}
 

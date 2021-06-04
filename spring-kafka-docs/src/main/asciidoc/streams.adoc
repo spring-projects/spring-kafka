@@ -259,6 +259,32 @@ To use the enricher within a stream:
 
 The transformer does not change the `key` or `value`; it simply adds headers.
 
+IMPORTANT: If your stream is multi-threaded, you need a new instance for each record.
+
+====
+[source, java]
+----
+.transform(() -> new HeaderEnricher<..., ...>(expressionMap))
+----
+====
+
+Here is a simple example, adding one literal header and one variable:
+
+====
+[source, java]
+----
+Map<String, Expression> headers = new HashMap<>();
+headers.put("header1", new LiteralExpression("value1"));
+SpelExpressionParser parser = new SpelExpressionParser();
+headers.put("header2", parser.parseExpression("context.timestamp() + ' @' + context.offset()"));
+HeaderEnricher<String, String> enricher = new HeaderEnricher<>(headers);
+KStream<String, String> stream = builder.stream(INPUT);
+stream
+        .transform(() -> enricher)
+        .to(OUTPUT);
+----
+====
+
 [[streams-messaging]]
 ==== `MessagingTransformer`
 

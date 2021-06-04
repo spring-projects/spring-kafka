@@ -482,7 +482,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
-	public void setupListenerContainer(MessageListenerContainer listenerContainer, MessageConverter messageConverter) {
+	public void setupListenerContainer(MessageListenerContainer listenerContainer,
+			@Nullable MessageConverter messageConverter) {
+
 		setupMessageListener(listenerContainer, messageConverter);
 	}
 
@@ -494,10 +496,12 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @return a {@link MessageListener} instance.
 	 */
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
-			MessageConverter messageConverter);
+			@Nullable MessageConverter messageConverter);
 
 	@SuppressWarnings("unchecked")
-	private void setupMessageListener(MessageListenerContainer container, MessageConverter messageConverter) {
+	private void setupMessageListener(MessageListenerContainer container,
+			@Nullable MessageConverter messageConverter) {
+
 		MessagingMessageListenerAdapter<K, V> adapter = createMessageListener(container, messageConverter);
 		if (this.replyHeadersConfigurer != null) {
 			adapter.setReplyHeadersConfigurer(this.replyHeadersConfigurer);

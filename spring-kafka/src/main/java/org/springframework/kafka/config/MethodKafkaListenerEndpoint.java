@@ -169,7 +169,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 
 	@Override
 	protected MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
-			MessageConverter messageConverter) {
+			@Nullable MessageConverter messageConverter) {
 
 		Assert.state(this.messageHandlerMethodFactory != null,
 				"Could not create message listener - MessageHandlerMethodFactory not set");
@@ -202,7 +202,9 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 * @param messageConverter the converter (may be null).
 	 * @return the {@link MessagingMessageListenerAdapter} instance.
 	 */
-	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance(MessageConverter messageConverter) {
+	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance(
+			@Nullable MessageConverter messageConverter) {
+
 		MessagingMessageListenerAdapter<K, V> listener;
 		if (isBatchListener()) {
 			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<K, V>(
