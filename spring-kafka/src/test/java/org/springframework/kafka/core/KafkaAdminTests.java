@@ -137,12 +137,14 @@ public class KafkaAdminTests {
 			adminClient.incrementalAlterConfigs(
 					Map.of(
 							new ConfigResource(Type.TOPIC, "mismatchconfig"),
-							List.of(new AlterConfigOp(new ConfigEntry("retention.bytes", "10"), OpType.SET))));
+							List.of(new AlterConfigOp(new ConfigEntry("retention.bytes", "10"), OpType.SET),
+									new AlterConfigOp(new ConfigEntry("retention.ms", "11"), OpType.SET))));
 			DescribeConfigsResult describeConfigsResult = this.adminClient
 					.describeConfigs(List.of(new ConfigResource(Type.TOPIC, "mismatchconfig")));
 			Map<ConfigResource, org.apache.kafka.clients.admin.Config> configResourceConfigMap = describeConfigsResult.all()
 					.get();
-			return configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig")).get("retention.bytes").value().equals("10");
+			return configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig")).get("retention.bytes").value().equals("10")
+					&& configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig")).get("retention.ms").value().equals("11");
 		});
 
 		this.admin.createOrModifyTopics(mismatchconfig);
@@ -153,7 +155,9 @@ public class KafkaAdminTests {
 			Map<ConfigResource, org.apache.kafka.clients.admin.Config> configResourceConfigMap = describeConfigsResult.all()
 					.get();
 			return configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig"))
-					.get("retention.bytes").value().equals("1024");
+					.get("retention.bytes").value().equals("1024")
+					&& configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig"))
+					.get("retention.ms").value().equals("1111");
 		});
 	}
 
@@ -295,6 +299,7 @@ public class KafkaAdminTests {
 					.partitions(2)
 					.replicas(1)
 					.config("retention.bytes", "1024")
+					.config("retention.ms", "1111")
 					.build();
 		}
 
