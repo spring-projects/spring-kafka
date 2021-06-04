@@ -27,6 +27,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
@@ -80,9 +81,12 @@ public class AliasPropertiesTests {
 	@Test
 	public void testAliasFor() throws Exception {
 		this.template.send("alias.tests", "foo");
+		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.classLevel.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.repeatable.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.kafkaListenerEndpointRegistry()).isSameAs(this.kafkaListenerEndpointRegistry);
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethodInConfigClass").getGroupId())
+				.isEqualTo("onMethodInConfigClass.Config.listen1");
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethod").getGroupId())
 				.isEqualTo("onMethod.ClassAndMethodLevelListener.listen1");
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClass").getGroupId())
@@ -96,6 +100,7 @@ public class AliasPropertiesTests {
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClassRepeatable2").getGroupId())
 				.isEqualTo("onClassRepeatable2.RepeatableClassAndMethodLevelListener");
 		assertThat(this.config.orderedCalledFirst).isTrue();
+		assertThat(Config.orderedCalledFirst.get()).isTrue();
 	}
 
 	@Configuration
@@ -104,23 +109,23 @@ public class AliasPropertiesTests {
 
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		boolean orderedCalledFirst = true;
+		static AtomicBoolean orderedCalledFirst = new AtomicBoolean(true);
 
 		@Bean
-		public AnnotationEnhancer mainEnhancer() {
+		public static AnnotationEnhancer mainEnhancer() {
 			return (attrs, element) -> {
 				attrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
 						? ((Class<?>) element).getSimpleName()
 						: ((Method) element).getDeclaringClass().getSimpleName()
 								+  "." + ((Method) element).getName()));
-				this.orderedCalledFirst = true;
+				orderedCalledFirst.set(true);
 				return attrs;
 			};
 		}
 
 		@Bean
-		OrderedEnhancer ordered() {
-			return new OrderedEnhancer();
+		public static OrderedEnhancer ordered() {
+			return new OrderedEnhancer(orderedCalledFirst);
 		}
 
 		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
@@ -168,6 +173,11 @@ public class AliasPropertiesTests {
 			return KafkaTestUtils.producerProps(embeddedKafka());
 		}
 
+		@MyListener(id = "onMethodInConfigClass", value = "alias.tests")
+		public void listen1(String in) {
+			this.latch.countDown();
+		}
+
 		@Component
 		@MyListener(id = "onClass", value = "alias.tests")
 		public static class ClassAndMethodLevelListener {
@@ -206,11 +216,17 @@ public class AliasPropertiesTests {
 
 		}
 
-		public class OrderedEnhancer implements AnnotationEnhancer, Ordered {
+		public static class OrderedEnhancer implements AnnotationEnhancer, Ordered {
+
+			private final AtomicBoolean orderedCalledFirst;
+
+			public OrderedEnhancer(AtomicBoolean orderedCalledFirst) {
+				this.orderedCalledFirst = orderedCalledFirst;
+			}
 
 			@Override
 			public Map<String, Object> apply(Map<String, Object> attrs, AnnotatedElement ele) {
-				Config.this.orderedCalledFirst = false;
+				this.orderedCalledFirst.set(false);
 				return attrs;
 			}
 

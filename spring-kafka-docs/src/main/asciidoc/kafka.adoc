@@ -1872,13 +1872,15 @@ To do so, add one or more `KafkaListenerAnnotationBeanPostProcessor.AnnotationEn
 The attribute values can contain SpEL and/or property placeholders; the enhancer is called before any resolution is performed.
 If more than one enhancer is present, and they implement `Ordered`, they will be invoked in order.
 
+IMPORTANT: `AnnotationEnhancer` bean definitions must be declared `static` because they are required very early in the application context's lifecycle.
+
 An example follows:
 
 ====
 [source, java]
 ----
 @Bean
-public AnnotationEnhancer groupIdEnhancer() {
+public static AnnotationEnhancer groupIdEnhancer() {
     return (attrs, element) -> {
         attrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
                 ? ((Class<?>) element).getSimpleName()
@@ -1889,9 +1891,6 @@ public AnnotationEnhancer groupIdEnhancer() {
 }
 ----
 ====
-
-IMPORTANT: `AnnotationEnhancer` bean definitions cannot be declared in the same class as a `@KafkaListener` method (or class).
-It will prevent those listeners from being found by the `KafkaListenerAnnotationBeanPostProcessor`.
 
 [[kafkalistener-lifecycle]]
 ===== `@KafkaListener` Lifecycle Management
