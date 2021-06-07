@@ -52,6 +52,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.SenderOptions;
@@ -298,8 +299,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 		StepVerifier.create(
 				reactiveKafkaConsumerTemplate
 						.receiveExactlyOnce(this.reactiveKafkaProducerTemplate.transactionManager())
-						.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux, false))
-						.delayElements(Duration.ofMillis(100)))
+						.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux)))
 				.assertNext(senderResult -> {
 					assertThat(senderResult.correlationMetadata().intValue()).isEqualTo(DEFAULT_KEY);
 					assertThat(senderResult.recordMetadata().offset()).isGreaterThan(0);
@@ -317,6 +317,16 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				})
 				.thenCancel()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
+	}
+
+	private Flux<SenderResult<Integer>> sendAndCommit(Flux<ConsumerRecord<Integer, String>> fluxConsumerRecord) {
+		return reactiveKafkaProducerTemplate
+				.send(fluxConsumerRecord.map(this::toSenderRecord))
+				.publishOn(Schedulers.boundedElastic())
+				.map(sr -> {
+					reactiveKafkaProducerTemplate.transactionManager().commit().block();
+					return sr;
+				});
 	}
 
 	private Flux<SenderResult<Integer>> sendAndCommit(Flux<ConsumerRecord<Integer, String>> fluxConsumerRecord,
