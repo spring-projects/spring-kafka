@@ -115,8 +115,11 @@ public class DeadLetterPublishingRecovererFactory {
 
 		return nextDestination.isNoOpsTopic()
 					? null
-					: new TopicPartition(nextDestination.getDestinationName(),
-				cr.partition() % nextDestination.getDestinationPartitions());
+					: resolveTopicPartition(cr, nextDestination);
+	}
+
+	protected TopicPartition resolveTopicPartition(final ConsumerRecord<?, ?> cr, final DestinationTopic nextDestination) {
+		return new TopicPartition(nextDestination.getDestinationName(), cr.partition());
 	}
 
 	private int getAttempts(ConsumerRecord<?, ?> consumerRecord) {
