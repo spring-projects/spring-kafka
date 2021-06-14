@@ -9,11 +9,19 @@ Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant
 
 ifdef::backend-html5[]
 *{project-version}*
+
+NOTE: This documentation is also available as https://docs.spring.io/spring-kafka/docs/{project-version}/reference/pdf/spring-kafka-reference.pdf[PDF].
+endif::[]
+
+ifdef::backend-pdf[]
+NOTE: This documentation is also available as https://docs.spring.io/spring-kafka/docs/{project-version}/reference/html/index.html[HTML].
 endif::[]
 
 (C) 2016 - 2021 VMware, Inc.
 
 Copies of this document may be made for your own use and for distribution to others, provided that you do not charge any fee for such copies and further provided that each copy contains this Copyright Notice, whether distributed in print or electronically.
+
+
 
 == Preface
 
