@@ -18,6 +18,9 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -63,6 +66,20 @@ public class ContainerGroupSequencerTests {
 		assertThat(config.stopped.await(10, TimeUnit.SECONDS))
 				.as("stopped latch still has a count of %d", config.stopped.getCount())
 				.isTrue();
+		List<String> order = config.order;
+		assertThat(order.get(0))
+				.as("out of order %s")
+				.isIn("one", "two");
+		assertThat(order.get(1))
+				.as("out of order %s")
+				.isIn("one", "two");
+		assertThat(order.get(2))
+				.as("out of order %s")
+				.isIn("three", "four");
+		assertThat(order.get(3))
+				.as("out of order %s")
+				.isIn("three", "four");
+		assertThat(config.receivedAt.get(3) - config.receivedAt.get(0)).isGreaterThanOrEqualTo(1000);
 	}
 
 	@Configuration
@@ -71,20 +88,33 @@ public class ContainerGroupSequencerTests {
 
 		final CountDownLatch stopped = new CountDownLatch(12); // 8 children, 4 parents
 
+		final List<String> order = Collections.synchronizedList(new ArrayList<>());
+
+		final List<Long> receivedAt = Collections.synchronizedList(new ArrayList<>());
+
+
 		@KafkaListener(id = "one", topics = "ContainerGroupSequencerTests", containerGroup = "g1", concurrency = "2")
 		public void listen1(String in) {
+			this.order.add("one");
+			this.receivedAt.add(System.currentTimeMillis());
 		}
 
 		@KafkaListener(id = "two", topics = "ContainerGroupSequencerTests", containerGroup = "g1", concurrency = "2")
 		public void listen2(String in) {
+			this.order.add("two");
+			this.receivedAt.add(System.currentTimeMillis());
 		}
 
 		@KafkaListener(id = "three", topics = "ContainerGroupSequencerTests", containerGroup = "g2", concurrency = "2")
 		public void listen3(String in) {
+			this.order.add("three");
+			this.receivedAt.add(System.currentTimeMillis());
 		}
 
 		@KafkaListener(id = "four", topics = "ContainerGroupSequencerTests", containerGroup = "g2", concurrency = "2")
 		public void listen4(String in) {
+			this.order.add("four");
+			this.receivedAt.add(System.currentTimeMillis());
 		}
 
 		@EventListener

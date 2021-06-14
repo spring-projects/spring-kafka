@@ -278,10 +278,11 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	protected void doStop(final Runnable callback) {
 		final AtomicInteger count = new AtomicInteger();
 		if (isRunning()) {
-			if (!isChildRunning()) {
+			boolean childRunning = isChildRunning();
+			setRunning(false);
+			if (!childRunning) {
 				callback.run();
 			}
-			setRunning(false);
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				if (container.isRunning()) {
 					count.incrementAndGet();
