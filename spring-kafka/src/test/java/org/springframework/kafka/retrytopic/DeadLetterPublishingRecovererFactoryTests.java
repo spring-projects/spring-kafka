@@ -102,7 +102,6 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, failureTimestamp)).willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
-		given(destinationTopic.getDestinationPartitions()).willReturn(3);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		given(destinationTopic.getDestinationDelay()).willReturn(1000L);
 		willReturn(this.kafkaOperations).given(destinationTopic).getKafkaOperations();
@@ -145,7 +144,6 @@ class DeadLetterPublishingRecovererFactoryTests {
 				.willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
-		given(destinationTopic.getDestinationPartitions()).willReturn(1);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(kafkaOperations).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
@@ -175,7 +173,6 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, originalTimestamp)).willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
-		given(destinationTopic.getDestinationPartitions()).willReturn(1);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(this.kafkaOperations).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
@@ -206,7 +203,6 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, timestamp)).willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
-		given(destinationTopic.getDestinationPartitions()).willReturn(1);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(this.kafkaOperations).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
