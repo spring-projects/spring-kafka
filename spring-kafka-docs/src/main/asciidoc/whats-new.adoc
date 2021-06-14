@@ -94,3 +94,8 @@ See <<configuring-topics>> for more information.
 
 It is now possible to add a `spring-messaging` `SmartMessageConverter` to the `MessagingMessageConverter`, allowing content negotiation based on the `contentType` header.
 See <<messaging-message-conversion>> for more information.
+
+[[x27-sequencing]]
+==== Sequencing `@KafkaListener` s
+
+See <<container-sequencing>> for more information.

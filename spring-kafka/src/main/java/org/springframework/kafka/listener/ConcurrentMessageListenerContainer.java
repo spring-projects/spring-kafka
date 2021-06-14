@@ -155,6 +155,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
+	public boolean isChildRunning() {
+		if (!isRunning()) {
+			return false;
+		}
+		for (MessageListenerContainer container : this.containers) {
+			if (container.isRunning()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		synchronized (this.lifecycleMonitor) {
 			Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
@@ -265,6 +278,9 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	protected void doStop(final Runnable callback) {
 		final AtomicInteger count = new AtomicInteger();
 		if (isRunning()) {
+			if (!isChildRunning()) {
+				callback.run();
+			}
 			setRunning(false);
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				if (container.isRunning()) {

@@ -193,4 +193,13 @@ public interface MessageListenerContainer extends SmartLifecycle {
 		throw new UnsupportedOperationException("This container does not support retrieving the listener id");
 	}
 
+	/**
+	 * If this container has child containers, return true if at least one child is running. If there are not
+	 * child containers, returns {@link #isRunning()}.
+	 * @return true if a child is running.
+	 * @since 2.7.3
+	 */
+	default boolean isChildRunning() {
+		return isRunning();
+	}
 }

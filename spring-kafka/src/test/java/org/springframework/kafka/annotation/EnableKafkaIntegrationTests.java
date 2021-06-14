@@ -896,6 +896,7 @@ public class EnableKafkaIntegrationTests {
 		this.seekOnIdleListener.rewindOnePartitionOneRecord("seekOnIdle", 1);
 		assertThat(this.seekOnIdleListener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.getListenerContainer("seekOnIdle").stop();
+		assertThat(this.seekOnIdleListener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(KafkaTestUtils.getPropertyValue(this.seekOnIdleListener, "callbacks", Map.class)).hasSize(0);
 	}
 
@@ -2105,13 +2106,15 @@ public class EnableKafkaIntegrationTests {
 
 	public static class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
 
-		private final CountDownLatch latch1 = new CountDownLatch(10);
+		final CountDownLatch latch1 = new CountDownLatch(10);
 
-		private final CountDownLatch latch2 = new CountDownLatch(12);
+		final CountDownLatch latch2 = new CountDownLatch(12);
 
-		private final CountDownLatch latch3 = new CountDownLatch(13);
+		final CountDownLatch latch3 = new CountDownLatch(13);
 
-		private final Set<Thread> consumerThreads = ConcurrentHashMap.newKeySet();
+		final CountDownLatch latch4 = new CountDownLatch(2);
+
+		final Set<Thread> consumerThreads = ConcurrentHashMap.newKeySet();
 
 		@KafkaListener(id = "seekOnIdle", topics = "seekOnIdle", autoStartup = "false", concurrency = "2",
 				clientIdPrefix = "seekOnIdle", containerFactory = "kafkaManualAckListenerContainerFactory")
@@ -2150,6 +2153,14 @@ public class EnableKafkaIntegrationTests {
 			if (assignments.size() > 0) {
 				this.consumerThreads.add(Thread.currentThread());
 				notifyAll();
+			}
+		}
+
+		@Override
+		public void onPartitionsRevoked(Collection<org.apache.kafka.common.TopicPartition> partitions) {
+			super.onPartitionsRevoked(partitions);
+			if (partitions.isEmpty()) {
+				this.latch4.countDown();
 			}
 		}
 

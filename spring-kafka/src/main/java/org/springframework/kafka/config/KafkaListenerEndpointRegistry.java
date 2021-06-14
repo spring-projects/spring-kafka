@@ -39,6 +39,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+import org.springframework.kafka.listener.ContainerGroup;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.lang.Nullable;
@@ -181,16 +182,22 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 			MessageListenerContainer container = createListenerContainer(endpoint, factory);
 			this.listenerContainers.put(id, container);
 			ConfigurableApplicationContext appContext = this.applicationContext;
-			if (StringUtils.hasText(endpoint.getGroup()) && appContext != null) {
+			String groupName = endpoint.getGroup();
+			if (StringUtils.hasText(groupName) && appContext != null) {
 				List<MessageListenerContainer> containerGroup;
-				if (appContext.containsBean(endpoint.getGroup())) { // NOSONAR - hasText
-					containerGroup = appContext.getBean(endpoint.getGroup(), List.class); // NOSONAR - hasText
+				ContainerGroup group;
+				if (appContext.containsBean(groupName)) { // NOSONAR - hasText
+					containerGroup = appContext.getBean(groupName, List.class); // NOSONAR - hasText
+					group = appContext.getBean(groupName + ".group", ContainerGroup.class);
 				}
 				else {
 					containerGroup = new ArrayList<MessageListenerContainer>();
-					appContext.getBeanFactory().registerSingleton(endpoint.getGroup(), containerGroup); // NOSONAR - hasText
+					appContext.getBeanFactory().registerSingleton(groupName, containerGroup); // NOSONAR - hasText
+					group = new ContainerGroup(groupName);
+					appContext.getBeanFactory().registerSingleton(groupName + ".group", group);
 				}
 				containerGroup.add(container);
+				group.addContainers(container);
 			}
 			if (startImmediately) {
 				startIfNecessary(container);

@@ -81,6 +81,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.listener.ContainerGroupSequencer;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
@@ -305,6 +306,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 		// Actually register all listeners
 		this.registrar.afterPropertiesSet();
+		Map<String, ContainerGroupSequencer> sequencers =
+				this.applicationContext.getBeansOfType(ContainerGroupSequencer.class, false, false);
+		sequencers.values().forEach(seq -> seq.initialize());
 	}
 
 	private void buildEnhancer() {

@@ -99,7 +99,6 @@ public class AliasPropertiesTests {
 				.isEqualTo("onMethodRepeatable2.RepeatableClassAndMethodLevelListener.listen1");
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClassRepeatable2").getGroupId())
 				.isEqualTo("onClassRepeatable2.RepeatableClassAndMethodLevelListener");
-		assertThat(this.config.orderedCalledFirst).isTrue();
 		assertThat(Config.orderedCalledFirst.get()).isTrue();
 	}
 

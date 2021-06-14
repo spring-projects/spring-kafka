@@ -23,6 +23,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.springframework.kafka.listener.ContainerGroup;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 
 /**
@@ -148,11 +149,14 @@ public @interface KafkaListener {
 	TopicPartition[] topicPartitions() default {};
 
 	/**
-	 * If provided, the listener container for this listener will be added to a bean
-	 * with this value as its name, of type {@code Collection<MessageListenerContainer>}.
-	 * This allows, for example, iteration over the collection to start/stop a subset
-	 * of containers.
-	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
+	 * If provided, the listener container for this listener will be added to a bean with
+	 * this value as its name, of type {@code Collection<MessageListenerContainer>}. This
+	 * allows, for example, iteration over the collection to start/stop a subset of
+	 * containers. The {@code Collection} beans are deprecated as of version 2.7.3 and
+	 * will be removed in 2.8. Instead, a bean with name {@code containerGroup + ".group"}
+	 * and type {@link ContainerGroup} should be used instead.
+	 * <p>
+	 * SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
 	 * @return the bean name for the group.
 	 */
 	String containerGroup() default "";
