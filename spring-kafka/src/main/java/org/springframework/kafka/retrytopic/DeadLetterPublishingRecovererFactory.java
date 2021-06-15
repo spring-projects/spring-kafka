@@ -118,6 +118,19 @@ public class DeadLetterPublishingRecovererFactory {
 					: resolveTopicPartition(cr, nextDestination);
 	}
 
+	/**
+	 * Creates and returns the {@link TopicPartition}, where the original record should be forwarded.
+	 * By default, it will use the partition same as original record's partition, in the next destination topic.
+	 *
+	 * <p>{@link DeadLetterPublishingRecoverer#checkPartition} has logic to check whether that partition exists,
+	 * and if it doesn't it sets -1, to allow the Producer itself to assign a partition to the record.</p>
+	 *
+	 * <p>Subclasses can inherit from this method to override the implementation, if necessary.</p>
+	 *
+	 * @param cr The original {@link ConsumerRecord}, which is to be forwarded to DLT
+	 * @param nextDestination The next {@link DestinationTopic}, where the consumerRecord is to be forwarded
+	 * @return An instance of {@link TopicPartition}, specifying the topic and partition, where the cr is to be sent
+	 */
 	protected TopicPartition resolveTopicPartition(final ConsumerRecord<?, ?> cr, final DestinationTopic nextDestination) {
 		return new TopicPartition(nextDestination.getDestinationName(), cr.partition());
 	}
