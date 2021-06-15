@@ -5587,6 +5587,29 @@ Starting with version 2.7, the recoverer checks that the partition selected by t
 If the partition is not present, the partition in the `ProducerRecord` is set to `null`, allowing the `KafkaProducer` to select the partition.
 You can disable this check by setting the `verifyPartition` property to `false`.
 
+[[exp-backoff]]
+===== `ExponentialBackOffWithMaxRetries` Implementation
+
+Spring Framework provides a number of `BackOff` implementations.
+By default, the `ExponentialBackOff` will retry indefinitely; to give up after some number of retry attempts requires calculating the `maxElapsedTime`.
+Since version 2.7.3, Spring for Apache Kafka provides the `ExponentialBackOffWithMaxRetries` which is a subclass that receives the `maxRetries` property and automatically calculates the `maxElapsedTime`, which is a little more convenient.
+
+====
+[source, java]
+----
+@Bean
+SeekToCurrentErrorHandler handler() {
+    ExponentialBackOffWithMaxRetries bo = new ExponentialBackOffWithMaxRetries(6);
+    bo.setInitialInterval(1_000L);
+    bo.setMultiplier(2.0);
+    bo.setMaxInterval(10_000L);
+    return new SeekToCurrentErrorHandler(myRecoverer, bo);
+}
+----
+====
+
+This will retry after `1, 2, 4, 8, 10, 10` seconds, before calling the recoverer.
+
 [[kerberos]]
 ==== JAAS and Kerberos
 
