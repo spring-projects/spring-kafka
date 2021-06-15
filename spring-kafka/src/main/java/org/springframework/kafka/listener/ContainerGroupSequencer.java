@@ -38,7 +38,7 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
  * idle.
  *
  * @author Gary Russell
- * @since 2.8
+ * @since 2.7.3
  *
  */
 public class ContainerGroupSequencer implements ApplicationContextAware,
