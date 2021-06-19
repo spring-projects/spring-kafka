@@ -5207,7 +5207,7 @@ Example:
 [source, java]
 ----
 @Bean
-public RecoveringBatchErrorHandler(KafkaTemplate<String, String> template) {
+public RecoveringBatchErrorHandler batchErrorHandler(KafkaTemplate<String, String> template) {
     DeadLetterPublishingRecoverer recoverer =
             new DeadLetterPublishingRecoverer(template);
     RecoveringBatchErrorHandler errorHandler =
