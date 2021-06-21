@@ -23,6 +23,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.core.log.LogAccessor;
 
+import org.springframework.lang.Nullable;
+
 /**
  * Simple handler that invokes a {@link LoggingErrorHandler} for each record.
  *
@@ -35,7 +37,7 @@ public class BatchLoggingErrorHandler implements BatchErrorHandler {
 			new LogAccessor(LogFactory.getLog(BatchLoggingErrorHandler.class));
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecords<?, ?> data) {
+	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data) {
 		StringBuilder message = new StringBuilder("Error while processing:\n");
 		if (data == null) {
 			message.append("null ");

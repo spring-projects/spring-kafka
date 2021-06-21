@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
+import org.springframework.lang.Nullable;
+
 /**
  * A generic error handler.
  *
@@ -35,7 +37,7 @@ public interface GenericErrorHandler<T> {
 	 * @param thrownException The exception.
 	 * @param data the data.
 	 */
-	void handle(Exception thrownException, T data);
+	void handle(Exception thrownException, @Nullable T data);
 
 	/**
 	 * Handle the exception.

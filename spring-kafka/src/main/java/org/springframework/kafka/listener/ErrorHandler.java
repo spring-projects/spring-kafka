@@ -38,7 +38,7 @@ public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> 
 	 */
 	default void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
-		handle(thrownException, null); // NOSONAR
+		handle(thrownException, null);
 	}
 
 }
