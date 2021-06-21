@@ -22,7 +22,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.core.log.LogAccessor;
-
 import org.springframework.lang.Nullable;
 
 /**
