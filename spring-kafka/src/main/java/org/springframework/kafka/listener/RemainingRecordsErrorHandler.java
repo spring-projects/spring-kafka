@@ -21,6 +21,8 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.lang.Nullable;
+
 /**
  * An error handler that has access to the unprocessed records from the last poll
  * (including the failed record) and the consumer, for example to adjust offsets after an
@@ -35,7 +37,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public interface RemainingRecordsErrorHandler extends ConsumerAwareErrorHandler {
 
 	@Override
-	default void handle(Exception thrownException, ConsumerRecord<?, ?> data, Consumer<?, ?> consumer) {
+	default void handle(Exception thrownException, @Nullable ConsumerRecord<?, ?> data, Consumer<?, ?> consumer) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 

@@ -20,6 +20,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
@@ -33,7 +34,7 @@ public class LoggingErrorHandler implements ErrorHandler {
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(LoggingErrorHandler.class));
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecord<?, ?> record) {
+	public void handle(Exception thrownException, @Nullable ConsumerRecord<?, ?> record) {
 		LOGGER.error(thrownException, () -> "Error while processing: " + ObjectUtils.nullSafeToString(record));
 	}
 

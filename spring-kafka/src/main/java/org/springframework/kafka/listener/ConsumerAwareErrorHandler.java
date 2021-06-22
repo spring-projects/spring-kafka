@@ -21,6 +21,8 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.lang.Nullable;
+
 /**
  * An error handler that has access to the consumer, for example to adjust
  * offsets after an error.
@@ -33,17 +35,17 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public interface ConsumerAwareErrorHandler extends ErrorHandler {
 
 	@Override
-	default void handle(Exception thrownException, ConsumerRecord<?, ?> data) {
+	default void handle(Exception thrownException, @Nullable ConsumerRecord<?, ?> data) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 
 	@Override
-	void handle(Exception thrownException, ConsumerRecord<?, ?> data, Consumer<?, ?> consumer);
+	void handle(Exception thrownException, @Nullable ConsumerRecord<?, ?> data, Consumer<?, ?> consumer);
 
 	@Override
-	default void handle(Exception thrownException, List<ConsumerRecord<?, ?>> data, Consumer<?, ?> consumer,
+	default void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
-		handle(thrownException, null, consumer); // NOSONAR
+		handle(thrownException, null, consumer);
 	}
 
 }
