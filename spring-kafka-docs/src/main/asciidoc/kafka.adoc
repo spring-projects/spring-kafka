@@ -5314,6 +5314,14 @@ The `ContainerStoppingBatchErrorHandler` (used with batch listeners) stops the c
 After the container stops, an exception that wraps the `ListenerExecutionFailedException` is thrown.
 This is to cause the transaction to roll back (if transactions are enabled).
 
+[[cond-eh]]
+===== Conditional Delegating Error Handlers
+
+Introduced in version 2.7.4, the `ConditionalDelegatingErrorHandler` can delegate to different error handlers, depending on the exception type.
+For example, you may wish to invoke a `SeekToCurrentErrorHandler` for most exceptions, or a `ContainerStoppingErrorHandler` for others.
+
+Similarly, the `ConditionalDelegatingBatchErrorHandler` is provided.
+
 [[after-rollback]]
 ===== After-rollback Processor
 

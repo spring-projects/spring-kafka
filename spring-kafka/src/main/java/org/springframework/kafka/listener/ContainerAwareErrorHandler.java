@@ -21,6 +21,8 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.lang.Nullable;
+
 /**
  * An error handler that has access to the unprocessed records from the last poll
  * (including the failed record), the consumer, and the container.
@@ -35,12 +37,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public interface ContainerAwareErrorHandler extends RemainingRecordsErrorHandler {
 
 	@Override
-	default void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer) {
+	default void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records,
+			Consumer<?, ?> consumer) {
+
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 
 	@Override
-	void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
+	void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container);
 
 }

@@ -105,3 +105,9 @@ See <<container-sequencing>> for more information.
 
 A new `BackOff` implementation is provided, making it more convenient to configure the max retries.
 See <<exp-backoff>> for more information.
+
+[[x27-delegating-eh]]
+==== Conditional Delegating Error Handlers
+
+These new error handlers can be configured to delegate to different error handlers, depending on the exception type.
+See <<cond-eh>> for more information.
