@@ -85,13 +85,11 @@ public class ConditionalDelegatingErrorHandler implements ContainerAwareErrorHan
 				if (entry.getKey().equals(causeClass)) {
 					handled = true;
 					entry.getValue().handle(thrownException, records, consumer, container);
-					break;
+					return;
 				}
 			}
 		}
-		if (!handled) {
-			this.defaultErrorHandler.handle(thrownException, records, consumer, container);
-		}
+		this.defaultErrorHandler.handle(thrownException, records, consumer, container);
 	}
 
 }

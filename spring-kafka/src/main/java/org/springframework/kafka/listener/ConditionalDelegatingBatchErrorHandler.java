@@ -87,7 +87,6 @@ public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBat
 	protected void doHandle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container, @Nullable Runnable invokeListener) {
 
-		boolean handled = false;
 		Throwable cause = thrownException;
 		if (cause instanceof ListenerExecutionFailedException) {
 			cause = thrownException.getCause();
@@ -96,15 +95,12 @@ public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBat
 			Class<? extends Throwable> causeClass = cause.getClass();
 			for (Entry<Class<? extends Throwable>, ContainerAwareBatchErrorHandler> entry : this.delegates.entrySet()) {
 				if (entry.getKey().equals(causeClass)) {
-					handled = true;
 					entry.getValue().handle(thrownException, records, consumer, container, invokeListener);
-					break;
+					return;
 				}
 			}
 		}
-		if (!handled) {
-			this.defaultErrorHandler.handle(thrownException, records, consumer, container, invokeListener);
-		}
+		this.defaultErrorHandler.handle(thrownException, records, consumer, container, invokeListener);
 	}
 
 }
