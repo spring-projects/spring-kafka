@@ -44,7 +44,7 @@ public class ConditionalDelegatingErrorHandler implements ContainerAwareErrorHan
 	/**
 	 * Construct an instance with a default error handler that will be invoked if the
 	 * exception has no matches.
-	 * @param defaultErrorHandler
+	 * @param defaultErrorHandler the default error handler.
 	 */
 	public ConditionalDelegatingErrorHandler(ContainerAwareErrorHandler defaultErrorHandler) {
 		Assert.notNull(defaultErrorHandler, "'defaultErrorHandler' cannot be null");
@@ -75,7 +75,10 @@ public class ConditionalDelegatingErrorHandler implements ContainerAwareErrorHan
 			MessageListenerContainer container) {
 
 		boolean handled = false;
-		Throwable cause = thrownException.getCause();
+		Throwable cause = thrownException;
+		if (cause instanceof ListenerExecutionFailedException) {
+			cause = thrownException.getCause();
+		}
 		if (cause != null) {
 			Class<? extends Throwable> causeClass = cause.getClass();
 			for (Entry<Class<? extends Throwable>, ContainerAwareErrorHandler> entry : this.delegates.entrySet()) {

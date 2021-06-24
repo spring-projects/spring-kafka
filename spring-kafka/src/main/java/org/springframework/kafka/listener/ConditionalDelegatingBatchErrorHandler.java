@@ -23,6 +23,7 @@ import java.util.Map.Entry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -42,7 +43,7 @@ public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBat
 	/**
 	 * Construct an instance with a default error handler that will be invoked if the
 	 * exception has no matches.
-	 * @param defaultErrorHandler
+	 * @param defaultErrorHandler the default error handler.
 	 */
 	public ConditionalDelegatingBatchErrorHandler(ContainerAwareBatchErrorHandler defaultErrorHandler) {
 		Assert.notNull(defaultErrorHandler, "'defaultErrorHandler' cannot be null");
@@ -73,31 +74,24 @@ public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBat
 			MessageListenerContainer container) {
 
 		// Never called but, just in case
-
-		boolean handled = false;
-		Throwable cause = thrownException.getCause();
-		if (cause != null) {
-			Class<? extends Throwable> causeClass = cause.getClass();
-			for (Entry<Class<? extends Throwable>, ContainerAwareBatchErrorHandler> entry : this.delegates.entrySet()) {
-				if (entry.getKey().equals(causeClass)) {
-					handled = true;
-					entry.getValue().handle(thrownException, records, consumer, container);
-					break;
-				}
-			}
-		}
-		if (!handled) {
-			this.defaultErrorHandler.handle(thrownException, records, consumer, container);
-		}
-
+		doHandle(thrownException, records, consumer, container, null);
 	}
 
 	@Override
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 
+		doHandle(thrownException, records, consumer, container, invokeListener);
+	}
+
+	protected void doHandle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
+			MessageListenerContainer container, @Nullable Runnable invokeListener) {
+
 		boolean handled = false;
-		Throwable cause = thrownException.getCause();
+		Throwable cause = thrownException;
+		if (cause instanceof ListenerExecutionFailedException) {
+			cause = thrownException.getCause();
+		}
 		if (cause != null) {
 			Class<? extends Throwable> causeClass = cause.getClass();
 			for (Entry<Class<? extends Throwable>, ContainerAwareBatchErrorHandler> entry : this.delegates.entrySet()) {
