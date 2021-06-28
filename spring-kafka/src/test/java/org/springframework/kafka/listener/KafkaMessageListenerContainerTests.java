@@ -2508,6 +2508,39 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testIdleEarlyExit() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		final CountDownLatch latch = new CountDownLatch(1);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			latch.countDown();
+			Thread.sleep(50);
+			return emptyRecords;
+		});
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> { });
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setIdleBetweenPolls(60_000L);
+		containerProps.setShutdownTimeout(20_000);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		new DirectFieldAccessor(container).setPropertyValue("listenerConsumer.assignedPartitions",
+				Arrays.asList(new TopicPartition("foo", 0)));
+		Thread.sleep(500);
+		long t1 = System.currentTimeMillis();
+		container.stop();
+		assertThat(System.currentTimeMillis() - t1).isLessThan(10_000L);
+	}
+
 	@Test
 	public void testExceptionWhenCommitAfterRebalance() throws Exception {
 		final CountDownLatch rebalanceLatch = new CountDownLatch(2);

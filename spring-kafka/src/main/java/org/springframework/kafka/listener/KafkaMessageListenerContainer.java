@@ -1526,13 +1526,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void idleBetweenPollIfNecessary() {
 			long idleBetweenPolls = this.containerProperties.getIdleBetweenPolls();
-			if (idleBetweenPolls > 0) {
+			Collection<TopicPartition> assigned = getAssignedPartitions();
+			if (idleBetweenPolls > 0 && assigned != null && assigned.size() > 0) {
 				idleBetweenPolls = Math.min(idleBetweenPolls,
 						this.maxPollInterval - (System.currentTimeMillis() - this.lastPoll)
 								- 5000); // NOSONAR - less by five seconds to avoid race condition with rebalance
 				if (idleBetweenPolls > 0) {
 					try {
-						TimeUnit.MILLISECONDS.sleep(idleBetweenPolls);
+						ListenerUtils.stoppableSleep(KafkaMessageListenerContainer.this, idleBetweenPolls);
 					}
 					catch (InterruptedException ex) {
 						Thread.currentThread().interrupt();

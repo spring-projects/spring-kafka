@@ -49,7 +49,11 @@ public final class ListenerUtils {
 
 	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
 
-	private static final int SLEEP_INTERVAL = 100;
+	private static final int DEFAULT_SLEEP_INTERVAL = 100;
+
+	private static final int SMALL_SLEEP_INTERVAL = 10;
+
+	private static final long SMALL_INTERVAL_THRESHOLD = 500;
 
 	/**
 	 * Determine the type of the listener.
@@ -243,8 +247,9 @@ public final class ListenerUtils {
 	 */
 	public static void stoppableSleep(MessageListenerContainer container, long interval) throws InterruptedException {
 		long timeout = System.currentTimeMillis() + interval;
+		long sleepInterval = interval > SMALL_INTERVAL_THRESHOLD ? DEFAULT_SLEEP_INTERVAL : SMALL_SLEEP_INTERVAL;
 		do {
-			Thread.sleep(SLEEP_INTERVAL);
+			Thread.sleep(sleepInterval);
 			if (!container.isRunning()) {
 				break;
 			}
