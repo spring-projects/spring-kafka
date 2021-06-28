@@ -171,3 +171,29 @@ public void sendToKafka(String in) {
 }
 ----
 ====
+
+[[tip-json]]
+=== Customizing the JsonSerializer and JsonDeserializer
+
+The serializer and deserializer support a number of cusomizations using properties, see <<json-serde>> for more information.
+The `kafka-clients` code, not Spring, instantiates these objects, unless you inject them directly into the consumer and producer factories.
+If you wish to configure the (de)serializer using properties, but wish to use, say, a custom `ObjectMapper`, simply create a subclass and pass the custom mapper into the `super` constructor. For example:
+
+====
+[source, java]
+----
+public class CustomJsonSerializer extends JsonSerializer<Object> {
+
+    public CustomJsonSerializer() {
+        super(customizedObjectMapper());
+    }
+
+    private static ObjectMapper customizedObjectMapper() {
+        ObjectMapper mapper = JacksonUtils.enhancedObjectMapper();
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
+    }
+
+}
+----
+====

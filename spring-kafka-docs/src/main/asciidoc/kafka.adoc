@@ -4002,6 +4002,8 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 Starting with version 2.2, the type information headers (if added by the serializer) are removed by the deserializer.
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
+See also <<tip-json>>.
+
 [[serdes-mapping-types]]
 ====== Mapping Types
 
