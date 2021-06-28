@@ -4510,6 +4510,7 @@ This lets you further customize listener deserialization without changing the de
 
 IMPORTANT: Setting a custom `MessageHandlerMethodFactory` on the `KafkaListenerEndpointRegistrar` through a `KafkaListenerConfigurer` bean disables this feature.
 
+[[custom-arg-resolve]]
 ===== Adding custom `HandlerMethodArgumentResolver` to `@KafkaListener`
 
 Starting with version 2.4.2 you are able to add your own `HandlerMethodArgumentResolver` and resolve custom method parameters.
@@ -4544,6 +4545,12 @@ class CustomKafkaConfig implements KafkaListenerConfigurer {
 }
 ----
 ====
+
+You can also completely replace the framework's argument resolution by adding a custom `MessageHandlerMethodFactory` to the `KafkaListenerEndpointRegistrar` bean.
+If you do this, and your application needs to handle tombstone records, with a `null` `value()` (e.g. from a compacted topic), you should add a `KafkaNullAwarePayloadArgumentResolver` to the factory; it must be the last resolver because it supports all types and can match arguments without a `@Payload` annotation.
+If you are using a `DefaultMessageHandlerMethodFactory`, set this resolver as the last custom resolver; the factory will ensure that this resolver will be used before the standard `PayloadMethodArgumentResolver`, which has no knowledge of `KafkaNull` payloads.
+
+See also <<tombstones>>.
 
 [[headers]]
 ==== Message Headers
@@ -4769,6 +4776,9 @@ static class MultiListenerBean {
 Note that the argument is `null`, not `KafkaNull`.
 
 TIP: See <<tip-assign-all-parts>>.
+
+IMPORTANT: This feature requires the use of a `KafkaNullAwarePayloadArgumentResolver` which the framework will configure when using the default `MessageHandlerMethodFactory`.
+When using a custom `MessageHandlerMethodFactory`, see <<custom-arg-resolve>>.
 
 [[annotation-error-handling]]
 ==== Handling Exceptions
