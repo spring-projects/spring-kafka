@@ -82,7 +82,7 @@ public class ConditionalDelegatingErrorHandler implements ContainerAwareErrorHan
 		if (cause != null) {
 			Class<? extends Throwable> causeClass = cause.getClass();
 			for (Entry<Class<? extends Throwable>, ContainerAwareErrorHandler> entry : this.delegates.entrySet()) {
-				if (entry.getKey().equals(causeClass)) {
+				if (entry.getKey().isAssignableFrom(causeClass)) {
 					handled = true;
 					entry.getValue().handle(thrownException, records, consumer, container);
 					return;

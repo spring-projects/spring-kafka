@@ -28,6 +28,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.KafkaException;
+
 /**
  * @author Gary Russell
  * @since 2.7.4
@@ -48,7 +50,7 @@ public class ConditionalDelegatingErrorHandlerTests {
 		eh.handle(wrap(new IOException()), Collections.emptyList(), mock(Consumer.class),
 				mock(MessageListenerContainer.class));
 		verify(def).handle(any(), any(), any(), any());
-		eh.handle(wrap(new RuntimeException()), Collections.emptyList(), mock(Consumer.class),
+		eh.handle(wrap(new KafkaException("test")), Collections.emptyList(), mock(Consumer.class),
 				mock(MessageListenerContainer.class));
 		verify(three).handle(any(), any(), any(), any());
 		eh.handle(wrap(new IllegalArgumentException()), Collections.emptyList(), mock(Consumer.class),
@@ -72,7 +74,7 @@ public class ConditionalDelegatingErrorHandlerTests {
 		eh.handle(wrap(new IOException()), mock(ConsumerRecords.class), mock(Consumer.class),
 				mock(MessageListenerContainer.class), mock(Runnable.class));
 		verify(def).handle(any(), any(), any(), any(), any());
-		eh.handle(wrap(new RuntimeException()), mock(ConsumerRecords.class), mock(Consumer.class),
+		eh.handle(wrap(new KafkaException("test")), mock(ConsumerRecords.class), mock(Consumer.class),
 				mock(MessageListenerContainer.class), mock(Runnable.class));
 		verify(three).handle(any(), any(), any(), any(), any());
 		eh.handle(wrap(new IllegalArgumentException()), mock(ConsumerRecords.class), mock(Consumer.class),

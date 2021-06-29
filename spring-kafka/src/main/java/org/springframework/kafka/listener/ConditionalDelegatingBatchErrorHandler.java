@@ -94,7 +94,7 @@ public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBat
 		if (cause != null) {
 			Class<? extends Throwable> causeClass = cause.getClass();
 			for (Entry<Class<? extends Throwable>, ContainerAwareBatchErrorHandler> entry : this.delegates.entrySet()) {
-				if (entry.getKey().equals(causeClass)) {
+				if (entry.getKey().isAssignableFrom(causeClass)) {
 					entry.getValue().handle(thrownException, records, consumer, container, invokeListener);
 					return;
 				}
