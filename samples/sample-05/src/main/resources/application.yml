@@ -1,0 +1,6 @@
+logging:
+  level.root: info
+input-topic:
+  name: input
+output-topic:
+  name: output
