@@ -96,6 +96,10 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
+		if (records.count() == 0) {
+			LOGGER.error(thrownException, "Called with no records; consumer exception");
+			return;
+		}
 		BackOffExecution execution = this.backOff.start();
 		long nextBackOff = execution.nextBackOff();
 		String failed = null;

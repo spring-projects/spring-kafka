@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,10 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.Map;
@@ -28,15 +32,18 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -204,6 +211,33 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 		pf.destroy();
 		consumer.close();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void consumerEx() throws InterruptedException {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(consumer.poll(any())).willThrow(new RuntimeException("test"));
+		given(cf.createConsumer(any(), any(), isNull(), any())).willReturn(consumer);
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0));
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
+				containerProps);
+		CountDownLatch called = new CountDownLatch(1);
+		container.setBatchErrorHandler(new RetryingBatchErrorHandler() {
+
+			@Override
+			public void handle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
+					MessageListenerContainer container, Runnable invokeListener) {
+
+				called.countDown();
+				super.handle(thrownException, records, consumer, container, invokeListener);
+			}
+		});
+		container.setupMessageListener((BatchMessageListener<Integer, String>) (recs -> { }));
+		container.start();
+		assertThat(called.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
 	}
 
 }

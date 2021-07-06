@@ -1602,7 +1602,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				else if (this.isBatchListener && this.batchErrorHandler != null) {
 					this.batchErrorHandler.handle(e, new ConsumerRecords<K, V>(Collections.emptyMap()), this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer);
+							KafkaMessageListenerContainer.this.thisOrParentContainer, () -> {
+							});
 				}
 				else {
 					this.logger.error(e, "Consumer exception");
