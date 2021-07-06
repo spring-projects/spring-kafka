@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,6 +93,7 @@ public final class KafkaStreamBrancher<K, V> {
 		}
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		Predicate<? super K, ? super V>[] predicates = this.predicateList.toArray(new Predicate[0]);
+		@SuppressWarnings("deprecation")
 		KStream<K, V>[] result = stream.branch(predicates);
 		for (int i = 0; i < this.consumerList.size(); i++) {
 			this.consumerList.get(i).accept(result[i]);

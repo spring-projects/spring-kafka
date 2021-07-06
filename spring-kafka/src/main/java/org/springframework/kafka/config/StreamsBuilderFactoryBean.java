@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 
@@ -89,6 +90,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private StateRestoreListener stateRestoreListener;
 
 	private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
+
+	private StreamsUncaughtExceptionHandler streamsUncaughtExceptionHandler;
 
 	private boolean autoStartup = true;
 
@@ -188,8 +191,25 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		this.stateListener = stateListener; // NOSONAR (sync)
 	}
 
+	/**
+	 * Obsolete.
+	 * @deprecated in favor of
+	 * {@link #setStreamsUncaughtExceptionHandler(StreamsUncaughtExceptionHandler)}.
+	 * @param exceptionHandler the handler.
+	 */
+	@Deprecated
 	public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
 		this.uncaughtExceptionHandler = exceptionHandler; // NOSONAR (sync)
+	}
+
+	/**
+	 * Set a {@link StreamsUncaughtExceptionHandler}. Supercedes
+	 * {@link #setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)}.
+	 * @param streamsUncaughtExceptionHandler the handler.
+	 * @since 2.8
+	 */
+	public void setStreamsUncaughtExceptionHandler(StreamsUncaughtExceptionHandler streamsUncaughtExceptionHandler) {
+		this.streamsUncaughtExceptionHandler = streamsUncaughtExceptionHandler;
 	}
 
 	public void setStateRestoreListener(StateRestoreListener stateRestoreListener) {
@@ -303,6 +323,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		}
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public synchronized void start() {
 		if (!this.running) {
@@ -316,7 +337,12 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
-				this.kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
+				if (this.streamsUncaughtExceptionHandler != null) {
+					this.kafkaStreams.setUncaughtExceptionHandler(this.streamsUncaughtExceptionHandler);
+				}
+				else {
+					this.kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
+				}
 				if (this.kafkaStreamsCustomizer != null) {
 					this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
 				}

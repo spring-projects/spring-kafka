@@ -19,8 +19,6 @@ package org.springframework.kafka.test;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.time.Duration;
@@ -40,7 +38,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -54,10 +51,10 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
-import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
+import org.apache.kafka.metadata.BrokerState;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
 
@@ -73,7 +70,6 @@ import org.springframework.util.Assert;
 import kafka.common.KafkaException;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
-import kafka.server.NotRunning;
 import kafka.utils.CoreUtils;
 import kafka.utils.TestUtils;
 import kafka.zk.ZkFourLetterWords;
@@ -118,24 +114,6 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = 6000;
 
 	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
-
-	private static final Method GET_BROKER_STATE_METHOD;
-
-	static {
-		try {
-			Method method = KafkaServer.class.getDeclaredMethod("brokerState");
-			if (method.getReturnType().equals(AtomicReference.class)) {
-				GET_BROKER_STATE_METHOD = method;
-			}
-			else {
-				GET_BROKER_STATE_METHOD = null;
-			}
-		}
-		catch (NoSuchMethodException | SecurityException e) {
-			throw new IllegalStateException("Failed to determine KafkaServer.brokerState() method; client version: "
-					+ AppInfoParser.getVersion(), e);
-		}
-	}
 
 	private final int count;
 
@@ -579,15 +557,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	private boolean brokerRunning(KafkaServer kafkaServer) {
-		if (GET_BROKER_STATE_METHOD != null) {
-			try {
-				return !GET_BROKER_STATE_METHOD.invoke(kafkaServer).toString().equals("NOT_RUNNING");
-			}
-			catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-				throw new IllegalStateException(ex);
-			}
-		}
-		return kafkaServer.brokerState().currentState() != NotRunning.state();
+		return !kafkaServer.brokerState().get().equals(BrokerState.NOT_RUNNING);
 	}
 
 	public Set<String> getTopics() {

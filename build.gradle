@@ -59,7 +59,7 @@ ext {
 	jaywayJsonPathVersion = '2.4.0'
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.7.2'
-	kafkaVersion = '2.7.1'
+	kafkaVersion = '2.8.0'
 	log4jVersion = '2.14.1'
 	micrometerVersion = '1.6.7'
 	mockitoVersion = '3.9.0'

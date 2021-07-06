@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -156,9 +157,10 @@ public class KafkaStreamsTests {
 
 		KafkaStreams kafkaStreams = this.streamsBuilderFactoryBean.getKafkaStreams();
 
-		StreamThread[] threads = KafkaTestUtils.getPropertyValue(kafkaStreams, "threads", StreamThread[].class);
+		@SuppressWarnings("unchecked")
+		List<StreamThread> threads = KafkaTestUtils.getPropertyValue(kafkaStreams, "threads", List.class);
 		assertThat(threads).isNotEmpty();
-		assertThat(threads[0].getUncaughtExceptionHandler()).isSameAs(exceptionHandler);
+		assertThat(threads.get(0).getUncaughtExceptionHandler()).isSameAs(exceptionHandler);
 		assertThat(this.stateChangeCalled.get()).isTrue();
 	}
 
