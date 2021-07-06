@@ -279,6 +279,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean stopImmediate;
 
+	private boolean asyncAcks;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -828,6 +830,28 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setStopImmediate(boolean stopImmediate) {
 		this.stopImmediate = stopImmediate;
+	}
+
+	/**
+	 * When true, async manual acknowledgments are supported.
+	 * @return true for async ack support.
+	 * @since 2.8
+	 */
+	public boolean isAsyncAcks() {
+		return this.asyncAcks;
+	}
+
+	/**
+	 * Set to true to support asynchronous record acknowledgments. Only applies with
+	 * {@link AckMode#MANUAL} or {@link AckMode#MANUAL_IMMEDIATE}. Out of order offset
+	 * commits are deferred until all previous offsets in the partition have been
+	 * committed. The consumer is paused, if necessary, until all acks have been
+	 * completed.
+	 * @param asyncAcks true to use async acks.
+	 * @since 2.8
+	 */
+	public void setAsyncAcks(boolean asyncAcks) {
+		this.asyncAcks = asyncAcks;
 	}
 
 	private void adviseListenerIfNeeded() {

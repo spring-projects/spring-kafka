@@ -101,6 +101,7 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.LogIfLevelEnabled.Level;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
@@ -645,6 +646,220 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
 		assertThat(advised).containsExactly("one", "two", "one", "two");
+	}
+
+	@Test
+	void testInOrderAckManual() throws Exception {
+		testInOrderAck(AckMode.MANUAL);
+	}
+
+	@Test
+	void testInOrderAckManualImm() throws Exception {
+		testInOrderAck(AckMode.MANUAL_IMMEDIATE);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void testInOrderAck(AckMode ackMode) throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar"),
+				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
+				new ConsumerRecord<>("foo", 0, 3L, 1, "qux")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionOffset topicPartition = new TopicPartitionOffset("foo", 0);
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(ackMode);
+		containerProps.setAsyncAcks(true);
+		final CountDownLatch latch = new CountDownLatch(4);
+		final List<Acknowledgment> acks = new ArrayList<>();
+		AcknowledgingMessageListener<Integer, String> messageListener = (data, ack) -> {
+			latch.countDown();
+			acks.add(ack);
+			if (latch.getCount() == 0) {
+				records.clear();
+				acks.get(3).acknowledge();
+				acks.get(2).acknowledge();
+				acks.get(1).acknowledge();
+				acks.get(0).acknowledge();
+			}
+		};
+
+		final CountDownLatch commitLatch = new CountDownLatch(1);
+
+		willAnswer(i -> {
+					commitLatch.countDown();
+					return null;
+				}
+		).given(consumer).commitSync(anyMap(), any());
+
+		containerProps.setMessageListener(messageListener);
+		containerProps.setClientId("clientId");
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer, times(1)).commitSync(any(), any());
+		verify(consumer).commitSync(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(4L)),
+				Duration.ofMinutes(1));
+		container.stop();
+	}
+
+	@Test
+	void testInOrderAckPauseUntilAckedManual() throws Exception {
+		testInOrderAckPauseUntilAcked(AckMode.MANUAL, false);
+	}
+
+	@Test
+	void testInOrderAckPauseUntilAckedManualImm() throws Exception {
+		testInOrderAckPauseUntilAcked(AckMode.MANUAL_IMMEDIATE, false);
+	}
+
+	@Test
+	void testInOrderAckPauseUntilAckedManualBatch() throws Exception {
+		testInOrderAckPauseUntilAcked(AckMode.MANUAL, true);
+	}
+
+	@Test
+	void testInOrderAckPauseUntilAckedManualImmBatch() throws Exception {
+		testInOrderAckPauseUntilAcked(AckMode.MANUAL_IMMEDIATE, true);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void testInOrderAckPauseUntilAcked(AckMode ackMode, boolean batch) throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records1 = new HashMap<>();
+		records1.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar"),
+				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
+				new ConsumerRecord<>("foo", 0, 3L, 1, "qux")));
+		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1);
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records2 = new HashMap<>();
+		records2.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 4L, 1, "fiz")));
+		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2);
+		ConsumerRecords<Integer, String> empty = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean paused = new AtomicBoolean();
+		AtomicBoolean polledWhilePaused = new AtomicBoolean();
+		AtomicReference<Collection<TopicPartition>> pausedParts = new AtomicReference<>(Collections.emptySet());
+		final CountDownLatch pauseLatch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			paused.set(true);
+			pausedParts.set(inv.getArgument(0));
+			pauseLatch.countDown();
+			return null;
+		}).given(consumer).pause(any());
+		willAnswer(inv -> {
+			paused.set(false);
+			pausedParts.set(Collections.emptySet());
+			return null;
+		}).given(consumer).resume(any());
+		willAnswer(inv -> {
+			return pausedParts.get();
+		}).given(consumer).paused();
+		willAnswer(inv -> {
+			return Collections.singleton(new TopicPartition("foo", 0));
+		}).given(consumer).assignment();
+		AtomicInteger polled = new AtomicInteger();
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			if (paused.get()) {
+				polledWhilePaused.set(true);
+				return empty;
+			}
+			else {
+				if (polled.incrementAndGet() == 1) {
+					return consumerRecords1;
+				}
+				else if (polled.get() == 2) {
+					return consumerRecords2;
+				}
+				return empty;
+			}
+		});
+		TopicPartitionOffset topicPartition = new TopicPartitionOffset("foo", 0);
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.MANUAL);
+		containerProps.setAsyncAcks(true);
+		containerProps.setCommitLogLevel(Level.WARN);
+		final CountDownLatch latch1 = new CountDownLatch(4);
+		final CountDownLatch latch2 = new CountDownLatch(5);
+		final List<Acknowledgment> acks = new ArrayList<>();
+		if (batch) {
+			BatchAcknowledgingMessageListener<Integer, String> batchML = (data, ack) -> {
+				acks.add(ack);
+				data.forEach(rec -> {
+					latch1.countDown();
+					latch2.countDown();
+					if (latch2.getCount() == 0) {
+						ack.acknowledge();
+					}
+				});
+			};
+			containerProps.setMessageListener(batchML);
+		}
+		else {
+			AcknowledgingMessageListener<Integer, String> messageListener = (data, ack) -> {
+				latch1.countDown();
+				latch2.countDown();
+				acks.add(ack);
+				if (latch1.getCount() == 0 && records1.values().size() > 0
+						&& records1.values().iterator().next().size() == 4) {
+					acks.get(3).acknowledge();
+					acks.get(2).acknowledge();
+					acks.get(1).acknowledge();
+				}
+				if (latch2.getCount() == 0) {
+					acks.get(4).acknowledge();
+				}
+			};
+			containerProps.setMessageListener(messageListener);
+		}
+
+		final CountDownLatch commitLatch = new CountDownLatch(2);
+		final List<Long> committed = new ArrayList<>();
+
+		willAnswer(inv -> {
+					Map<TopicPartition, OffsetAndMetadata> offsets = inv.getArgument(0);
+					committed.add(offsets.values().iterator().next().offset());
+					commitLatch.countDown();
+					return null;
+				}
+		).given(consumer).commitSync(anyMap(), any());
+
+		containerProps.setClientId("clientId");
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		acks.get(0).acknowledge();
+		assertThat(latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(committed.get(0)).isEqualTo(4L);
+		assertThat(committed.get(1)).isEqualTo(5L);
+		assertThat(polledWhilePaused.get()).isTrue();
+		verify(consumer, times(2)).commitSync(any(), any());
+		verify(consumer).commitSync(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(4L)),
+				Duration.ofMinutes(1));
+		verify(consumer).commitSync(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(5L)),
+				Duration.ofMinutes(1));
+		verify(consumer).pause(any());
+		verify(consumer).resume(any());
+		container.stop();
 	}
 
 	@SuppressWarnings("unchecked")

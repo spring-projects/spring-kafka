@@ -1267,6 +1267,13 @@ The containers are started in a late phase (`Integer.MAX-VALUE - 100`).
 Other components that implement `SmartLifecycle`, to handle data from listeners, should be started in an earlier phase.
 The `- 100` leaves room for later phases to enable components to be auto-started after the containers.
 
+[[ooo-commits]]
+===== Manually Committing Offsets
+
+Normally, when using `AckMode.MANUAL` or `AckMode.MANUAL_IMMEDIATE`, the acknowledgments must be acknowledged in order, because Kafka does not maintain state for each record, only a committed offset for each group/partition.
+Starting with version 2.8, you can now set the container property `asyncAcks`, which allows the acknowledgments for records returned by the poll to be acknowledged in any order.
+The listener container will defer the out-of-order commits until the missing acknowledgments are received.
+The consumer will be paused (no new records delivered) until all the offsets for the previous poll have been committed.
 
 [[kafka-listener-annotation]]
 ===== `@KafkaListener` Annotation

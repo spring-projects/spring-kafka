@@ -1,113 +1,16 @@
-=== What's New in 2.7 Since 2.6
+=== What's New in 2.8 Since 2.7
 
-This section covers the changes made from version 2.6 to version 2.7.
+This section covers the changes made from version 2.7 to version 2.8.
 For changes in earlier version, see <<history>>.
 
-[[x27-kafka-client]]
+[[x28-kafka-client]]
 ==== Kafka Client Version
 
-This version requires the 2.7.0 `kafka-clients`.
-It is also compatible with the 2.8.0 clients, since version 2.7.1; see <<update-deps>>.
+This version requires the 2.8.0 `kafka-clients`.
 
-[[x-27-nonblock-retry]]
-==== Non-Blocking Delayed Retries Using Topics
+[[x28-ooo-commits]]
+==== Out of Order Manual Commits
 
-This significant new feature is added in this release.
-When strict ordering is not important, failed deliveries can be sent to another topic to be consumed later.
-A series of such retry topics can be configured, with increasing delays.
-See <<retry-topic>> for more information.
-
-[[x27-container]]
-==== Listener Container Changes
-
-The `onlyLogRecordMetadata` container property is now `true` by default.
-
-A new container property `stopImmediate` is now available.
-
-See <<container-props>> for more information.
-
-Error handlers that use a `BackOff` between delivery attempts (e.g. `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor`) will now exit the back off interval soon after the container is stopped, rather than delaying the stop.
-See <<after-rollback>> and <<seek-to-current>> for more information.
-
-Error handlers and after rollback processors that extend `FailedRecordProcessor` can now be configured with one or more `RetryListener` s to receive information about retry and recovery progress.
-
-See See <<after-rollback>>, <<seek-to-current>>, and <<recovering-batch-eh>> for more information.
-
-The `RecordInterceptor` now has additional methods called after the listener returns (normally, or by throwing an exception).
-It also has a sub-interface `ConsumerAwareRecordInterceptor`.
-In addition, there is now a `BatchInterceptor` for batch listeners.
-See <<message-listener-container>> for more information.
-
-[[x27-listener]]
-==== `@KafkaListener` Changes
-
-You can now validate the payload parameter of `@KafkaHandler` methods (class-level listeners).
-See <<kafka-validation>> for more information.
-
-You can now set the `rawRecordHeader` property on the `MessagingMessageConverter` and `BatchMessagingMessageConverter` which causes the raw `ConsumerRecord` to be added to the converted `Message<?>`.
-This is useful, for example, if you wish to use a `DeadLetterPublishingRecoverer` in a listener error handler.
-See <<listener-error-handlers>> for more information.
-
-You can now modify `@KafkaListener` annotations during application initialization.
-See <<kafkalistener-attrs>> for more information.
-
-[[x27-dlt]]
-==== `DeadLetterPublishingRecover` Changes
-
-Now, if both the key and value fail deserialization, the original values are published to the DLT.
-Previously, the value was populated but the key `DeserializationException` remained in the headers.
-There is a breaking API change, if you subclassed the recoverer and overrode the `createProducerRecord` method.
-
-In addition, the recoverer verifies that the partition selected by the destination resolver actually exists before publishing to it.
-
-See <<dead-letters>> for more information.
-
-[[x27-CKTM]]
-==== `ChainedKafkaTransactionManager` is Deprecated
-
-See <<transactions>> for more information.
-
-[[x27-RKT]]
-==== `ReplyingKafkaTemplate` Changes
-
-There is now a mechanism to examine a reply and fail the future exceptionally if some condition exists.
-
-Support for sending and receiving `spring-messaging` `Message<?>` s has been added.
-
-See <<replying-template>> for more information.
-
-[[x27-streams]]
-==== Kafka Streams Changes
-
-By default, the `StreamsBuilderFactoryBean` is now configured to not clean up local state.
-See <<streams-config>> for more information.
-
-[[x27-admin]]
-==== `KafkaAdmin` Changes
-
-New methods `createOrModifyTopics` and `describeTopics` have been added.
-`KafkaAdmin.NewTopics` has been added to facilitate configuring multiple topics in a single bean.
-See <<configuring-topics>> for more information.
-
-[[x27-conv]]
-==== `MessageConverter` Changes
-
-It is now possible to add a `spring-messaging` `SmartMessageConverter` to the `MessagingMessageConverter`, allowing content negotiation based on the `contentType` header.
-See <<messaging-message-conversion>> for more information.
-
-[[x27-sequencing]]
-==== Sequencing `@KafkaListener` s
-
-See <<sequencing>> for more information.
-
-[[x27-exp-backoff]]
-==== `ExponentialBackOffWithMaxRetries`
-
-A new `BackOff` implementation is provided, making it more convenient to configure the max retries.
-See <<exp-backoff>> for more information.
-
-[[x27-delegating-eh]]
-==== Conditional Delegating Error Handlers
-
-These new error handlers can be configured to delegate to different error handlers, depending on the exception type.
-See <<cond-eh>> for more information.
+The listener container can now be configured to accept manual offset commits out of order (usually asynchronously).
+The container will defer the commit until the missing offset is acknowledged.
+See <<ooo-commits>> for more information.
