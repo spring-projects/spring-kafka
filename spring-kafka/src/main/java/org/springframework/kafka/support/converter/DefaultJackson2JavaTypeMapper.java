@@ -78,6 +78,9 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 	 */
 	@Override
 	public void addTrustedPackages(String... packagesToTrust) {
+		if (this.trustedPackages.size() == 0) {
+			return;
+		}
 		if (packagesToTrust != null) {
 			for (String trusted : packagesToTrust) {
 				if ("*".equals(trusted)) {

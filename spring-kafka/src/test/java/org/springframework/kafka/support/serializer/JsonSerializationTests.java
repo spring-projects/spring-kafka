@@ -306,6 +306,17 @@ public class JsonSerializationTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
+	void testTrustMappingPackagesWithAll() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		Map<String, Object> props = Map.of(
+				JsonDeserializer.TRUSTED_PACKAGES, "*",
+				JsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo.class.getName());
+		deser.configure(props, false);
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class)).isEmpty();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
 	void testTrustMappingPackagesMapper() {
 		JsonDeserializer<Object> deser = new JsonDeserializer<>();
 		DefaultJackson2JavaTypeMapper mapper = new DefaultJackson2JavaTypeMapper();
