@@ -171,6 +171,12 @@ public class KafkaTemplateTests {
 		assertThat(partitions).isNotNull();
 		assertThat(partitions).hasSize(2);
 		assertThat(KafkaTestUtils.getPropertyValue(pf.createProducer(), "delegate")).isSameAs(wrapped.get());
+		template.setConsumerFactory(
+				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("xx", "false", embeddedKafka)));
+		ConsumerRecord<Integer, String> receive = template.receive(INT_KEY_TOPIC, 0, received.offset());
+		assertThat(receive).has(allOf(keyValue(2, "buz"), partition(0)))
+				.extracting(rec -> rec.offset())
+				.isEqualTo(received.offset());
 		pf.destroy();
 	}
 

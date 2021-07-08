@@ -17,14 +17,20 @@
 package org.springframework.kafka.core;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -80,6 +86,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
+	private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(5);
+
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass())); //NOSONAR
 
 	private final ProducerFactory<K, V> producerFactory;
@@ -111,6 +119,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private boolean allowNonTransactional;
 
 	private boolean converterSet;
+
+	private ConsumerFactory<K, V> consumerFactory;
 
 	private volatile boolean micrometerEnabled = true;
 
@@ -347,6 +357,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		return this.producerFactory;
 	}
 
+	/**
+	 * Set a consumer factory for receive operations.
+	 * @param consumerFactory the consumer factory.
+	 * @since 2.8
+	 */
+	public void setConsumerFactory(ConsumerFactory<K, V> consumerFactory) {
+		this.consumerFactory = consumerFactory;
+	}
+
 	@Override
 	public void onApplicationEvent(ContextStoppedEvent event) {
 		if (this.customProducerFactory) {
@@ -539,6 +558,31 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			ConsumerGroupMetadata groupMetadata) {
 
 		producerForOffsets().sendOffsetsToTransaction(offsets, groupMetadata);
+	}
+
+
+	@Override
+	@Nullable
+	public ConsumerRecord<K, V> receive(String topic, int partition, long offset) {
+		return receive(topic, partition, offset, DEFAULT_POLL_TIMEOUT);
+	}
+
+	@Override
+	@Nullable
+	public ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout) {
+		Assert.notNull(this.consumerFactory, "A consumerFactory is required");
+		Properties props = new Properties();
+		props.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1");
+		try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(null, null, null, props)) {
+			TopicPartition topicPartition = new TopicPartition(topic, partition);
+			consumer.assign(Collections.singletonList(topicPartition));
+			consumer.seek(topicPartition, offset);
+			ConsumerRecords<K, V> records = consumer.poll(pollTimeout);
+			if (records.count() == 1) {
+				return records.iterator().next();
+			}
+			return null;
+		}
 	}
 
 	private Producer<K, V> producerForOffsets() {

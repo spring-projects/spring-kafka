@@ -14,3 +14,9 @@ This version requires the 2.8.0 `kafka-clients`.
 The listener container can now be configured to accept manual offset commits out of order (usually asynchronously).
 The container will defer the commit until the missing offset is acknowledged.
 See <<ooo-commits>> for more information.
+
+[[x28-template]]
+==== `KafkaTemplate` Changes
+
+You can now receive a single record, given the topic, partition and offset.
+See <<kafka-template-receive>> for more information.

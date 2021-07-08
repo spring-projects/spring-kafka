@@ -2457,6 +2457,24 @@ As an aside; previously, containers in each group were added to a bean of type `
 These collections are now deprecated in favor of beans of type `ContainerGroup` with a bean name that is the group name, suffixed with `.group`; in the example above, there would be 2 beans `g1.group` and `g2.group`.
 The `Collection` beans will be removed in a future release.
 
+[[kafka-template-receive]]
+===== Using `KafkaTemplate` to Receive
+
+This section covers how to use `KafkaTemplate` to receive messages.
+
+Starting with version 2.8, the template has two `receive()` methods:
+
+====
+[source, jvava]
+----
+ConsumerRecord<K, V> receive(String topic, int partition, long offset);
+
+ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout);
+----
+====
+
+As you can see, you need to know the partition and offset of the record you need to retrieve; a new `Consumer` is created (and closed) for each operation.
+
 [[container-props]]
 ==== Listener Container Properties
 
