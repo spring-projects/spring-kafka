@@ -56,6 +56,11 @@ import org.springframework.util.concurrent.ListenableFuture;
 public interface KafkaOperations<K, V> {
 
 	/**
+	 * Default timeout for {@link #receive(String, int, long)}.
+	 */
+	Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(5);
+
+	/**
 	 * Send the data to the default topic with no key or partition.
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
@@ -276,6 +281,7 @@ public interface KafkaOperations<K, V> {
 	 * @param offset the offset.
 	 * @return the record or null.
 	 * @since 2.8
+	 * @see #DEFAULT_POLL_TIMEOUT
 	 */
 	@Nullable
 	ConsumerRecord<K, V> receive(String topic, int partition, long offset);

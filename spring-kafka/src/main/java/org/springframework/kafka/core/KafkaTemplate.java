@@ -86,8 +86,6 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
-	private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(5);
-
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass())); //NOSONAR
 
 	private final ProducerFactory<K, V> producerFactory;
