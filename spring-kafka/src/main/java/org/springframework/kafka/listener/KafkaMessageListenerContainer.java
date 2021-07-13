@@ -1524,6 +1524,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.consumerPaused && !isPaused() && !this.pausedForAsyncAcks) {
 				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
 				Set<TopicPartition> paused = this.consumer.paused();
+				paused.forEach(part -> resumePartition(part));
 				this.consumer.resume(paused);
 				this.consumerPaused = false;
 				publishConsumerResumedEvent(paused);
