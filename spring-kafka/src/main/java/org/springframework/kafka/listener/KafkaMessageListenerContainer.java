@@ -1270,7 +1270,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			debugRecords(records);
 			resumeConsumerIfNeccessary();
-			resumePartitionsIfNecessary();
+			if (this.consumerPaused && !isPaused()) {
+				resumePartitionsIfNecessary();
+			}
 
 			invokeIfHaveRecords(records);
 		}
@@ -1497,8 +1499,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.debug(() -> "Pausing for incomplete async acks: " + this.offsetsInThisBatch);
 			}
 			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks)) {
-				this.consumer.assignment().forEach(part -> pausePartition(part));
-				this.pausedPartitions.addAll(this.consumer.assignment());
 				this.consumer.pause(this.consumer.assignment());
 				this.consumerPaused = true;
 				this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
@@ -1525,8 +1525,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.consumerPaused && !isPaused() && !this.pausedForAsyncAcks) {
 				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
 				Set<TopicPartition> paused = this.consumer.paused();
-				paused.forEach(part -> resumePartition(part));
-				this.pausedPartitions.removeAll(paused);
 				this.consumer.resume(paused);
 				this.consumerPaused = false;
 				publishConsumerResumedEvent(paused);
