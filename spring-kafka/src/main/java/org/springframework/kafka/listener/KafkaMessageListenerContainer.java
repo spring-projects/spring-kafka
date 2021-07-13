@@ -1497,6 +1497,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.debug(() -> "Pausing for incomplete async acks: " + this.offsetsInThisBatch);
 			}
 			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks)) {
+				this.consumer.assignment().forEach(part -> pausePartition(part));
 				this.consumer.pause(this.consumer.assignment());
 				this.consumerPaused = true;
 				this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
