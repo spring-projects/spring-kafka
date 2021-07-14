@@ -1270,7 +1270,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			debugRecords(records);
 			resumeConsumerIfNeccessary();
-			resumePartitionsIfNecessary();
+			if (!this.consumerPaused) {
+				resumePartitionsIfNecessary();
+			}
 
 			invokeIfHaveRecords(records);
 		}
@@ -1522,7 +1524,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			if (this.consumerPaused && !isPaused() && !this.pausedForAsyncAcks) {
 				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
-				Set<TopicPartition> paused = this.consumer.paused();
+				Collection<TopicPartition> paused = new LinkedList<>(this.consumer.paused());
+				paused.removeAll(this.pausedPartitions);
 				this.consumer.resume(paused);
 				this.consumerPaused = false;
 				publishConsumerResumedEvent(paused);
@@ -1531,8 +1534,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void pausePartitionsIfNecessary() {
 			Set<TopicPartition> pausedConsumerPartitions = this.consumer.paused();
-			List<TopicPartition> partitionsToPause = this
-					.assignedPartitions
+			List<TopicPartition> partitionsToPause = getAssignedPartitions()
 					.stream()
 					.filter(tp -> isPartitionPauseRequested(tp)
 							&& !pausedConsumerPartitions.contains(tp))

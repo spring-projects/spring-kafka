@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -2553,14 +2554,6 @@ public class KafkaMessageListenerContainerTests {
 		AtomicBoolean first = new AtomicBoolean(true);
 		AtomicBoolean rebalance = new AtomicBoolean(true);
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
-		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
-			Thread.sleep(50);
-			if (rebalance.getAndSet(false)) {
-				rebal.get().onPartitionsRevoked(Collections.emptyList());
-				rebal.get().onPartitionsAssigned(records.keySet());
-			}
-			return first.getAndSet(false) ? consumerRecords : emptyRecords;
-		});
 		final CountDownLatch seekLatch = new CountDownLatch(7);
 		willAnswer(i -> {
 			seekLatch.countDown();
@@ -2569,17 +2562,32 @@ public class KafkaMessageListenerContainerTests {
 		given(consumer.assignment()).willReturn(records.keySet());
 		final CountDownLatch pauseLatch1 = new CountDownLatch(2); // consumer, event publisher
 		final CountDownLatch pauseLatch2 = new CountDownLatch(2); // consumer, consumer
+		Set<TopicPartition> pausedParts = new HashSet<>();
 		willAnswer(i -> {
 			pauseLatch1.countDown();
 			pauseLatch2.countDown();
+			pausedParts.addAll(i.getArgument(0));
 			return null;
 		}).given(consumer).pause(records.keySet());
-		given(consumer.paused()).willReturn(records.keySet());
+		given(consumer.paused()).willReturn(pausedParts);
+		CountDownLatch pollWhilePausedLatch = new CountDownLatch(2);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			if (pauseLatch1.getCount() == 0) {
+				pollWhilePausedLatch.countDown();
+			}
+			if (rebalance.getAndSet(false)) {
+				rebal.get().onPartitionsRevoked(Collections.emptyList());
+				rebal.get().onPartitionsAssigned(records.keySet());
+			}
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
 		final CountDownLatch resumeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
 			resumeLatch.countDown();
+			pausedParts.removeAll(i.getArgument(0));
 			return null;
-		}).given(consumer).resume(records.keySet());
+		}).given(consumer).resume(any());
 		willAnswer(invoc -> {
 			rebal.set(invoc.getArgument(1));
 			return null;
@@ -2671,6 +2679,8 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(container.isPaused()).isTrue();
 		assertThat(pauseLatch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isContainerPaused()).isTrue();
+		assertThat(pollWhilePausedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer, never()).resume(any());
 		rebalance.set(true); // force a re-pause
 		assertThat(pauseLatch2.await(10, TimeUnit.SECONDS)).isTrue();
 		container.resume();
@@ -2678,6 +2688,59 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(consumer, times(6)).commitSync(anyMap(), eq(Duration.ofSeconds(41)));
+	}
+
+	@SuppressWarnings({ "unchecked" })
+	@Test
+	public void dontResumePausedPartition() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0), new TopicPartition("foo", 1)));
+		final CountDownLatch pauseLatch1 = new CountDownLatch(1);
+		final CountDownLatch pauseLatch2 = new CountDownLatch(2);
+		Set<TopicPartition> pausedParts = new HashSet<>();
+		willAnswer(i -> {
+			pauseLatch1.countDown();
+			pauseLatch2.countDown();
+			pausedParts.addAll(i.getArgument(0));
+			return null;
+		}).given(consumer).pause(any());
+		given(consumer.paused()).willReturn(pausedParts);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return emptyRecords;
+		});
+		final CountDownLatch resumeLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			resumeLatch.countDown();
+			pausedParts.removeAll(i.getArgument(0));
+			return null;
+		}).given(consumer).resume(any());
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0),
+				new TopicPartitionOffset("foo", 1));
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setIdleEventInterval(100L);
+		containerProps.setMessageListener((MessageListener) rec -> { });
+		containerProps.setMissingTopicsFatal(false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		InOrder inOrder = inOrder(consumer);
+		container.pausePartition(new TopicPartition("foo", 1));
+		assertThat(pauseLatch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pausedParts).hasSize(1);
+		container.pause();
+		assertThat(pauseLatch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pausedParts).hasSize(2);
+		container.resume();
+		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pausedParts).hasSize(1);
+		container.stop();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

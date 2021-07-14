@@ -18,11 +18,11 @@ package org.springframework.kafka.listener;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -109,7 +109,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private ApplicationContext applicationContext;
 
-	private final Set<TopicPartition> pauseRequestedPartitions;
+	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -159,8 +159,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		if (this.containerProperties.getConsumerRebalanceListener() == null) {
 			this.containerProperties.setConsumerRebalanceListener(createSimpleLoggingConsumerRebalanceListener());
 		}
-
-		this.pauseRequestedPartitions = new HashSet<>();
 	}
 
 	@Override
@@ -263,23 +261,17 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public boolean isPartitionPauseRequested(TopicPartition topicPartition) {
-		synchronized (this.pauseRequestedPartitions) {
-			return this.pauseRequestedPartitions.contains(topicPartition);
-		}
+		return this.pauseRequestedPartitions.contains(topicPartition);
 	}
 
 	@Override
 	public void pausePartition(TopicPartition topicPartition) {
-		synchronized (this.pauseRequestedPartitions) {
-			this.pauseRequestedPartitions.add(topicPartition);
-		}
+		this.pauseRequestedPartitions.add(topicPartition);
 	}
 
 	@Override
 	public void resumePartition(TopicPartition topicPartition) {
-		synchronized (this.pauseRequestedPartitions) {
-			this.pauseRequestedPartitions.remove(topicPartition);
-		}
+		this.pauseRequestedPartitions.remove(topicPartition);
 	}
 
 	@Override
