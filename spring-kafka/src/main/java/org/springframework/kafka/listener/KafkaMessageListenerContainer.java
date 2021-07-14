@@ -1270,7 +1270,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			debugRecords(records);
 			resumeConsumerIfNeccessary();
-			if (this.consumerPaused && !isPaused()) {
+			if (!this.consumerPaused && !isPaused()) {
 				resumePartitionsIfNecessary();
 			}
 
