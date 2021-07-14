@@ -2703,9 +2703,9 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch pauseLatch2 = new CountDownLatch(2);
 		Set<TopicPartition> pausedParts = new HashSet<>();
 		willAnswer(i -> {
+			pausedParts.addAll(i.getArgument(0));
 			pauseLatch1.countDown();
 			pauseLatch2.countDown();
-			pausedParts.addAll(i.getArgument(0));
 			return null;
 		}).given(consumer).pause(any());
 		given(consumer.paused()).willReturn(pausedParts);
