@@ -29,7 +29,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
  * sub-interfaces.
  *
  * @author Gary Russell
- * @since 2.7.4
+ * @since 2.8
  *
  */
 public interface CommonErrorHandler extends DeliveryAttemptAware {
@@ -48,8 +48,8 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * When true (default), all remaining records including the failed record are passed
 	 * to the error handler.
 	 * @return false to receive only the failed record.
-	 * @see #handle(Exception, ConsumerRecord, Consumer, MessageListenerContainer)
-	 * @see #handle(Exception, List, Consumer, MessageListenerContainer)
+	 * @see #handleRecord(Exception, ConsumerRecord, Consumer, MessageListenerContainer)
+	 * @see #handleRemaining(Exception, List, Consumer, MessageListenerContainer)
 	 */
 	default boolean remainingRecords() {
 		return true;
@@ -70,43 +70,50 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * @param consumer the consumer.
 	 * @param container the container.
 	 */
-	default void handleConsumerException(Exception thrownException, Consumer<?, ?> consumer,
+	default void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 	}
 
 	/**
-	 * Handle the exception for a record listener when {@link #remainingRecords()} returns false.
+	 * Handle the exception for a record listener when {@link #remainingRecords()} returns
+	 * false. Use this to handle just the single failed record; remaining records from the
+	 * poll will be sent to the listener.
 	 * @param thrownException the exception.
 	 * @param record the record.
 	 * @param consumer the consumer.
 	 * @param container the container.
 	 * @see #remainingRecords()
 	 */
-	default void handle(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+	default void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 	}
 
 	/**
-	 * Handle the exception for a record listener when {@link #remainingRecords()} returns true.
+	 * Handle the exception for a record listener when {@link #remainingRecords()} returns
+	 * true. The failed record and all the remaining records from the poll are passed in.
+	 * Usually used when the error handler performs seeks so that the remaining records
+	 * will be redelivered on the next poll.
 	 * @param thrownException the exception.
 	 * @param records the remaining records including the one that failed.
 	 * @param consumer the consumer.
 	 * @param container the container.
 	 * @see #remainingRecords()
 	 */
-	default void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
+	default void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 	}
 
 	/**
-	 * Handle the exception for a batch listener.
+	 * Handle the exception for a batch listener. The complete {@link ConsumerRecords}
+	 * from the poll is supplied. The error handler needs to perform seeks if you wish to
+	 * reprocess the records in the batch.
 	 * @param thrownException the exception.
 	 * @param data the consumer records.
 	 * @param consumer the consumer.
 	 * @param container the container.
 	 * @param invokeListener a callback to re-invoke the listener.
 	 */
-	default void handle(Exception thrownException, ConsumerRecords<?, ?> data,
+	default void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 	}
 

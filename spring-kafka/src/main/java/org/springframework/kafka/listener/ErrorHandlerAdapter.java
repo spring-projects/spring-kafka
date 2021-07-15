@@ -115,7 +115,7 @@ public class ErrorHandlerAdapter implements CommonErrorHandler {
 
 	@SuppressWarnings({ "unchecked" })
 	@Override
-	public void handleConsumerException(Exception thrownException, Consumer<?, ?> consumer,
+	public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		if (this.errorHandler != null) {
@@ -127,21 +127,21 @@ public class ErrorHandlerAdapter implements CommonErrorHandler {
 	}
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		this.errorHandler.handle(thrownException, record, consumer);
 	}
 
 	@Override
-	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
+	public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		this.errorHandler.handle(thrownException, records, consumer, container);
 	}
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+	public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 
 		this.batchErrorHandler.handle(thrownException, data, consumer, container, invokeListener);

@@ -1673,7 +1673,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			try {
 				if (this.commonErrorHandler != null) {
-						this.commonErrorHandler.handleConsumerException(e, this.consumer,
+						this.commonErrorHandler.handleOtherException(e, this.consumer,
 								KafkaMessageListenerContainer.this.thisOrParentContainer);
 				}
 				else {
@@ -2128,7 +2128,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
 				@Nullable List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
-			this.commonErrorHandler.handle(rte, records, this.consumer,
+			this.commonErrorHandler.handleBatch(rte, records, this.consumer,
 					KafkaMessageListenerContainer.this.thisOrParentContainer,
 					() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 		}
@@ -2473,11 +2473,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				while (iterator.hasNext()) {
 					records.add(iterator.next());
 				}
-				this.commonErrorHandler.handle(rte, records, this.consumer,
+				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
 			}
 			else {
-				this.commonErrorHandler.handle(rte, record, this.consumer,
+				this.commonErrorHandler.handleRecord(rte, record, this.consumer,
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
 			}
 		}
