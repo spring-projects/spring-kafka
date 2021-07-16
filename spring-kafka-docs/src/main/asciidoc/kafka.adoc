@@ -3675,24 +3675,24 @@ public class Application {
     }
 
     @Bean
-    public ConsumerFactory<?, ?> kafkaConsumerFactory(KafkaProperties properties, SomeBean someBean) {
-        Map<String, Object> consumerProperties = properties.buildConsumerProperties();
+    public ConsumerFactory<?, ?> kafkaConsumerFactory(SomeBean someBean) {
+        Map<String, Object> consumerProperties = new HashMap<>();
+        // consumerProperties.put(..., ...)
+        // ...
         consumerProperties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, MyConsumerInterceptor.class.getName());
         consumerProperties.put("some.bean", someBean);
         return new DefaultKafkaConsumerFactory<>(consumerProperties);
     }
 
     @Bean
-    public ProducerFactory<?, ?> kafkaProducerFactory(KafkaProperties properties, SomeBean someBean) {
+    public ProducerFactory<?, ?> kafkaProducerFactory(SomeBean someBean) {
+        Map<String, Object> producerProperties = new HashMap<>();
+        // producerProperties.put(..., ...)
+        // ...
         Map<String, Object> producerProperties = properties.buildProducerProperties();
         producerProperties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MyProducerInterceptor.class.getName());
         producerProperties.put("some.bean", someBean);
         DefaultKafkaProducerFactory<?, ?> factory = new DefaultKafkaProducerFactory<>(producerProperties);
-        String transactionIdPrefix = properties.getProducer()
-                .getTransactionIdPrefix();
-        if (transactionIdPrefix != null) {
-            factory.setTransactionIdPrefix(transactionIdPrefix);
-        }
         return factory;
     }
 
@@ -4075,19 +4075,19 @@ The following Spring Boot example overrides the default factories:
 [source, java]
 ----
 @Bean
-public ConsumerFactory<Foo, Bar> kafkaConsumerFactory(KafkaProperties properties,
-    JsonDeserializer customDeserializer) {
-
-    return new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties(),
-        customDeserializer, customDeserializer);
+public ConsumerFactory<String, Thing> kafkaConsumerFactory(JsonDeserializer customValueDeserializer) {
+    Map<String, Object> properties = new HashMap<>();
+    // properties.put(..., ...)
+    // ...
+    return new DefaultKafkaConsumerFactory<>(properties,
+        new StringDeserializer(), customValueDeserializer);
 }
 
 @Bean
-public ProducerFactory<Foo, Bar> kafkaProducerFactory(KafkaProperties properties,
-    JsonSerializer customSerializer) {
+public ProducerFactory<String, Thing> kafkaProducerFactory(JsonSerializer customValueSerializer) {
 
     return new DefaultKafkaProducerFactory<>(properties.buildProducerProperties(),
-        customSerializer, customSerializer);
+        new StringSerializer(), customValueSerializer);
 }
 ----
 =====
@@ -4163,31 +4163,35 @@ public static JavaType thing1Thing2JavaTypeForTopic(String topic, byte[] data, H
 
 When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
 
-The following example assumes you are using Spring Boot:
-
 ====
 [source, java]
 ----
 @Bean
-public DefaultKafkaProducerFactory pf(KafkaProperties properties) {
-    Map<String, Object> props = properties.buildProducerProperties();
-    DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(props,
-        new JsonSerializer<>(MyKeyType.class)
+public ProducerFactory<MyKeyType, MyValueType> pf() {
+    Map<String, Object> props = new HashMap<>();
+    // props.put(..., ...)
+    // ...
+    DefaultKafkaProducerFactory<MyKeyType, MyValueType> pf = new DefaultKafkaProducerFactory<>(props,
+        new JsonSerializer<MyKeyType>()
             .forKeys()
             .noTypeInfo(),
-        new JsonSerializer<>(MyValueType.class)
+        new JsonSerializer<MyValueType>()
             .noTypeInfo());
+    return pf;
 }
 
 @Bean
-public DefaultKafkaConsumerFactory pf(KafkaProperties properties) {
-    Map<String, Object> props = properties.buildConsumerProperties();
-    DefaultKafkaConsumerFactory pf = new DefaultKafkaConsumerFactory(props,
+public ConsumerFactory<MyKeyType, MyValueType> cf() {
+    Map<String, Object> props = new HashMap<>();
+    // props.put(..., ...)
+    // ...
+    DefaultKafkaConsumerFactory<MyKeyType, MyValueType> cf = new DefaultKafkaConsumerFactory<>(props,
         new JsonDeserializer<>(MyKeyType.class)
             .forKeys()
             .ignoreTypeHeaders(),
         new JsonDeserializer<>(MyValueType.class)
             .ignoreTypeHeaders());
+    return cf;
 }
 ----
 ====
