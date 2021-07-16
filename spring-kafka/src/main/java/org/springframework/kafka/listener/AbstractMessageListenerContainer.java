@@ -88,6 +88,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private GenericErrorHandler<?> errorHandler;
 
+	private CommonErrorHandler commonErrorHandler;
+
 	private boolean autoStartup = true;
 
 	private int phase = DEFAULT_PHASE;
@@ -234,6 +236,26 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Nullable
 	public GenericErrorHandler<?> getGenericErrorHandler() {
 		return this.errorHandler;
+	}
+
+	/**
+	 * Get the {@link CommonErrorHandler}.
+	 * @return the handler.
+	 * @since 2.8
+	 */
+	@Nullable
+	public CommonErrorHandler getCommonErrorHandler() {
+		return this.commonErrorHandler;
+	}
+
+	/**
+	 * Set the {@link CommonErrorHandler} which can handle errors for both record
+	 * and batch listeners. Replaces the use of {@link GenericErrorHandler}s.
+	 * @param commonErrorHandler the handler.
+	 * @since 2.8
+	 */
+	public void setCommonErrorHandler(@Nullable CommonErrorHandler commonErrorHandler) {
+		this.commonErrorHandler = commonErrorHandler;
 	}
 
 	@Override

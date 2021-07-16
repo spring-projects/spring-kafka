@@ -33,7 +33,7 @@ import org.springframework.util.Assert;
  * @since 2.7.4
  *
  */
-public class ErrorHandlerAdapter implements CommonErrorHandler {
+class ErrorHandlerAdapter implements CommonErrorHandler {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private static final ConsumerRecords EMPTY_BATCH = new ConsumerRecords(Collections.emptyMap());
@@ -46,7 +46,7 @@ public class ErrorHandlerAdapter implements CommonErrorHandler {
 	 * Adapt an {@link ErrorHandler}.
 	 * @param errorHandler the handler.
 	 */
-	public ErrorHandlerAdapter(ErrorHandler errorHandler) {
+	ErrorHandlerAdapter(ErrorHandler errorHandler) {
 		Assert.notNull(errorHandler, "'errorHandler' cannot be null");
 		this.errorHandler = errorHandler;
 		this.batchErrorHandler = null;
@@ -56,15 +56,10 @@ public class ErrorHandlerAdapter implements CommonErrorHandler {
 	 * Adapt a {@link BatchErrorHandler}.
 	 * @param batchErrorHandler the handler.
 	 */
-	public ErrorHandlerAdapter(BatchErrorHandler batchErrorHandler) {
+	ErrorHandlerAdapter(BatchErrorHandler batchErrorHandler) {
 		Assert.notNull(batchErrorHandler, "'batchErrorHandler' cannot be null");
 		this.errorHandler = null;
 		this.batchErrorHandler = batchErrorHandler;
-	}
-
-	@Override
-	public boolean isBatch() {
-		return this.batchErrorHandler != null;
 	}
 
 	@Override
@@ -130,21 +125,36 @@ public class ErrorHandlerAdapter implements CommonErrorHandler {
 	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		this.errorHandler.handle(thrownException, record, consumer);
+		if (this.errorHandler != null) {
+			this.errorHandler.handle(thrownException, record, consumer);
+		}
+		else {
+			CommonErrorHandler.super.handleRecord(thrownException, record, consumer, container);
+		}
 	}
 
 	@Override
 	public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		this.errorHandler.handle(thrownException, records, consumer, container);
+		if (this.errorHandler != null) {
+			this.errorHandler.handle(thrownException, records, consumer, container);
+		}
+		else {
+			CommonErrorHandler.super.handleRemaining(thrownException, records, consumer, container);
+		}
 	}
 
 	@Override
 	public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 
-		this.batchErrorHandler.handle(thrownException, data, consumer, container, invokeListener);
+		if (this.batchErrorHandler != null) {
+			this.batchErrorHandler.handle(thrownException, data, consumer, container, invokeListener);
+		}
+		else {
+			CommonErrorHandler.super.handleBatch(thrownException, data, consumer, container, invokeListener);
+		}
 	}
 
 }

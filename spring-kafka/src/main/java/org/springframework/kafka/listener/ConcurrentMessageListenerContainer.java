@@ -221,6 +221,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 		container.setClientIdSuffix(this.concurrency > 1 || this.alwaysClientIdSuffix ? "-" + index : "");
 		container.setGenericErrorHandler(getGenericErrorHandler());
+		container.setCommonErrorHandler(getCommonErrorHandler());
 		container.setAfterRollbackProcessor(getAfterRollbackProcessor());
 		container.setRecordInterceptor(getRecordInterceptor());
 		container.setBatchInterceptor(getBatchInterceptor());

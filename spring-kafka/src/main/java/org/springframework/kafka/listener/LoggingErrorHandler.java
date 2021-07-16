@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,21 +21,23 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
-import org.springframework.util.ObjectUtils;
 
 /**
  * The {@link ErrorHandler} implementation for logging purpose.
  *
+ * @deprecated - use the {@link CommonLoggingErrorHandler} instead.
+ *
  * @author Marius Bogoevici
  * @author Gary Russell
  */
+@Deprecated
 public class LoggingErrorHandler implements ErrorHandler {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(LoggingErrorHandler.class));
 
 	@Override
 	public void handle(Exception thrownException, @Nullable ConsumerRecord<?, ?> record) {
-		LOGGER.error(thrownException, () -> "Error while processing: " + ObjectUtils.nullSafeToString(record));
+		LOGGER.error(thrownException, () -> "Error while processing: " + ListenerUtils.recordToString(record));
 	}
 
 }

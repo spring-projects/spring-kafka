@@ -37,6 +37,7 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AfterRollbackProcessor;
 import org.springframework.kafka.listener.BatchErrorHandler;
 import org.springframework.kafka.listener.BatchInterceptor;
+import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.GenericErrorHandler;
@@ -74,6 +75,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null); // NOSONAR
 
 	private GenericErrorHandler<?> errorHandler;
+
+	private CommonErrorHandler commonErrorHandler;
 
 	private ConsumerFactory<? super K, ? super V> consumerFactory;
 
@@ -263,6 +266,16 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Set the {@link CommonErrorHandler} which can handle errors for both record
+	 * and batch listeners. Replaces the use of {@link GenericErrorHandler}s.
+	 * @param commonErrorHandler the handler.
+	 * @since 2.8
+	 */
+	public void setCommonErrorHandler(CommonErrorHandler commonErrorHandler) {
+		this.commonErrorHandler = commonErrorHandler;
+	}
+
+	/**
 	 * Set a processor to invoke after a transaction rollback; typically will
 	 * seek the unprocessed topic/partition to reprocess the records.
 	 * The default does so, including the failed record.
@@ -342,7 +355,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	@Override
 	public void afterPropertiesSet() {
-		if (this.errorHandler != null) {
+		if (this.commonErrorHandler == null && this.errorHandler != null) {
 			if (Boolean.TRUE.equals(this.batchListener)) {
 				Assert.state(this.errorHandler instanceof BatchErrorHandler,
 						() -> "The error handler must be a BatchErrorHandler, not " +
@@ -412,6 +425,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(this.containerProperties.getSubBatchPerPartition(),
 						properties::setSubBatchPerPartition)
 				.acceptIfNotNull(this.errorHandler, instance::setGenericErrorHandler)
+				.acceptIfNotNull(this.commonErrorHandler, instance::setCommonErrorHandler)
 				.acceptIfNotNull(this.missingTopicsFatal, instance.getContainerProperties()::setMissingTopicsFatal);
 		Boolean autoStart = endpoint.getAutoStartup();
 		if (autoStart != null) {

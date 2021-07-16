@@ -96,6 +96,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
+import org.springframework.kafka.listener.CommonLoggingErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ConsumerAwareErrorHandler;
 import org.springframework.kafka.listener.ConsumerAwareListenerErrorHandler;
@@ -871,6 +872,9 @@ public class EnableKafkaIntegrationTests {
 					.collect(Collectors.toList()), e);
 			throw e;
 		}
+		MessageListenerContainer container = this.registry.getListenerContainer("bytesKey");
+		assertThat(KafkaTestUtils.getPropertyValue(container, "commonErrorHandler"))
+				.isInstanceOf(CommonLoggingErrorHandler.class);
 	}
 
 	@Test
@@ -1107,6 +1111,7 @@ public class EnableKafkaIntegrationTests {
 				this.intercepted = true;
 				return record;
 			});
+			factory.setCommonErrorHandler(new CommonLoggingErrorHandler());
 			return factory;
 		}
 

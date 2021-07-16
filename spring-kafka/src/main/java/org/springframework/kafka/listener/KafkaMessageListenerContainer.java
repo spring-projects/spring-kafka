@@ -734,7 +734,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.commitCurrentOnAssignment = determineCommitCurrent(consumerProperties,
 					KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties());
 			subscribeOrAssignTopics(this.consumer);
-			GenericErrorHandler<?> errHandler = KafkaMessageListenerContainer.this.getGenericErrorHandler();
+			GenericErrorHandler<?> errHandler = getGenericErrorHandler();
 			if (listener instanceof BatchMessageListener) {
 				this.listener = null;
 				this.batchListener = (BatchMessageListener<K, V>) listener;
@@ -798,6 +798,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Nullable
 		private CommonErrorHandler determineCommonErrorHandler(GenericErrorHandler<?> errHandler) {
+			CommonErrorHandler common = getCommonErrorHandler();
+			if (common != null) {
+				if (errHandler != null) {
+					this.logger.debug("GenericErrorHandler is ignored when a CommonErrorHandler is provided");
+				}
+				return common;
+			}
 			if (this.isBatchListener) {
 				validateErrorHandler(true);
 				BatchErrorHandler batchErrorHandler = determineBatchErrorHandler(errHandler);
@@ -1111,13 +1118,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Nullable
-		protected BatchErrorHandler determineBatchErrorHandler(GenericErrorHandler<?> errHandler) {
+		protected BatchErrorHandler determineBatchErrorHandler(@Nullable GenericErrorHandler<?> errHandler) {
 			return errHandler != null ? (BatchErrorHandler) errHandler
 					: this.transactionManager != null ? null : new RecoveringBatchErrorHandler();
 		}
 
 		@Nullable
-		protected ErrorHandler determineErrorHandler(GenericErrorHandler<?> errHandler) {
+		protected ErrorHandler determineErrorHandler(@Nullable GenericErrorHandler<?> errHandler) {
 			return errHandler != null ? (ErrorHandler) errHandler
 					: this.transactionManager != null ? null : new SeekToCurrentErrorHandler();
 		}

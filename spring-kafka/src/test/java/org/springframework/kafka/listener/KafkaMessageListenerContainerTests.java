@@ -1380,7 +1380,6 @@ public class KafkaMessageListenerContainerTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testBatchListenerErrors");
 		container.setBatchErrorHandler((t, messages) -> {
-			new BatchLoggingErrorHandler().handle(t, messages);
 			for (int i = 0; i < messages.count(); i++) {
 				latch.countDown();
 			}
@@ -2415,7 +2414,8 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		badContainer.setBatchErrorHandler(new BatchLoggingErrorHandler());
+		badContainer.setBatchErrorHandler((thrownException,  data) -> {
+		});
 		badContainer.setupMessageListener((MessageListener<String, String>) m -> {
 		});
 		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
@@ -2431,7 +2431,8 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		badContainer.setErrorHandler(new LoggingErrorHandler());
+		badContainer.setErrorHandler((thrownException, data) -> {
+		});
 		badContainer.setupMessageListener((BatchMessageListener<String, String>) m -> {
 		});
 		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
