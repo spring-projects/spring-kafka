@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.time.Duration;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.LogFactory;
@@ -24,10 +23,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
-import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -51,7 +48,7 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 
 	private final BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer;
 
-	private final SeekToCurrentBatchErrorHandler seeker = new SeekToCurrentBatchErrorHandler();
+	private final CommonErrorHandler seeker = new ErrorHandlerAdapter(new SeekToCurrentBatchErrorHandler());
 
 	private boolean ackAfterHandle = true;
 
@@ -74,7 +71,7 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 		this.backOff = backOff;
 		this.recoverer = (crs, ex) -> {
 			if (recoverer == null) {
-				LOGGER.error(ex, () -> "Records discarded: " + tpos(crs));
+				LOGGER.error(ex, () -> "Records discarded: " + ErrorHandlingUtils.recordsToString(crs));
 			}
 			else {
 				crs.spliterator().forEachRemaining(rec -> recoverer.accept(rec, ex));
@@ -100,58 +97,8 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 			LOGGER.error(thrownException, "Called with no records; consumer exception");
 			return;
 		}
-		BackOffExecution execution = this.backOff.start();
-		long nextBackOff = execution.nextBackOff();
-		String failed = null;
-		consumer.pause(consumer.assignment());
-		try {
-			while (nextBackOff != BackOffExecution.STOP) {
-				consumer.poll(Duration.ZERO);
-				try {
-					ListenerUtils.stoppableSleep(container, nextBackOff);
-				}
-				catch (InterruptedException e1) {
-					Thread.currentThread().interrupt();
-					this.seeker.handle(thrownException, records, consumer, container);
-					throw new KafkaException("Interrupted during retry", getLogLevel(), e1);
-				}
-				try {
-					invokeListener.run();
-					return;
-				}
-				catch (Exception e) {
-					if (failed == null) {
-						failed = tpos(records);
-					}
-					String toLog = failed;
-					LOGGER.debug(e, () -> "Retry failed for: " + toLog);
-				}
-				nextBackOff = execution.nextBackOff();
-			}
-			try {
-				this.recoverer.accept(records, thrownException);
-			}
-			catch (Exception e) {
-				LOGGER.error(e, () -> "Recoverer threw an exception; re-seeking batch");
-				this.seeker.handle(thrownException, records, consumer, container);
-			}
-		}
-		finally {
-			consumer.resume(consumer.assignment());
-		}
-	}
-
-	private String tpos(ConsumerRecords<?, ?> records) {
-		StringBuffer sb = new StringBuffer();
-		records.spliterator().forEachRemaining(rec -> sb
-				.append(rec.topic())
-				.append('-')
-				.append(rec.partition())
-				.append('@')
-				.append(rec.offset())
-				.append(','));
-		sb.deleteCharAt(sb.length() - 1);
-		return sb.toString();
+		ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
+				this.seeker, this.recoverer, LOGGER, getLogLevel());
 	}
 
 }

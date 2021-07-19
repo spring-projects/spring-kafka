@@ -797,13 +797,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Nullable
-		private CommonErrorHandler determineCommonErrorHandler(GenericErrorHandler<?> errHandler) {
+		private CommonErrorHandler determineCommonErrorHandler(@Nullable GenericErrorHandler<?> errHandler) {
 			CommonErrorHandler common = getCommonErrorHandler();
 			if (common != null) {
 				if (errHandler != null) {
 					this.logger.debug("GenericErrorHandler is ignored when a CommonErrorHandler is provided");
 				}
 				return common;
+			}
+			if (errHandler == null && this.transactionManager == null) {
+				return new DefaultErrorHandler();
 			}
 			if (this.isBatchListener) {
 				validateErrorHandler(true);

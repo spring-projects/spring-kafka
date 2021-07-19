@@ -16,25 +16,12 @@
 
 package org.springframework.kafka.listener;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.OffsetCommitCallback;
-import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 
@@ -53,12 +40,8 @@ import org.springframework.util.backoff.BackOff;
  * @since 2.5
  *
  */
-public class RecoveringBatchErrorHandler extends FailedRecordProcessor
+public class RecoveringBatchErrorHandler extends FailedBatchProcessor
 		implements ContainerAwareBatchErrorHandler {
-
-	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
-
-	private final SeekToCurrentBatchErrorHandler fallbackHandler = new SeekToCurrentBatchErrorHandler();
 
 	private boolean ackAfterHandle = true;
 
@@ -100,8 +83,13 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 	public RecoveringBatchErrorHandler(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 			BackOff backOff) {
 
-		super(recoverer, backOff);
-		this.fallbackHandler.setBackOff(backOff);
+		super(recoverer, backOff, createFallback(backOff));
+	}
+
+	private static CommonErrorHandler createFallback(BackOff backOff) {
+		SeekToCurrentBatchErrorHandler eh = new SeekToCurrentBatchErrorHandler();
+		eh.setBackOff(backOff);
+		return new ErrorHandlerAdapter(eh);
 	}
 
 	@Override
@@ -118,118 +106,7 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		BatchListenerFailedException batchListenerFailedException = getBatchListenerFailedException(thrownException);
-		if (batchListenerFailedException == null) {
-			this.logger.debug(thrownException, "Expected a BatchListenerFailedException; re-seeking batch");
-			this.fallbackHandler.handle(thrownException, data, consumer, container);
-		}
-		else {
-			ConsumerRecord<?, ?> record = batchListenerFailedException.getRecord();
-			int index = record != null ? findIndex(data, record) : batchListenerFailedException.getIndex();
-			if (index < 0 || index >= data.count()) {
-				this.logger.warn(batchListenerFailedException, () ->
-						String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
-								record.topic(), record.partition(), record.offset()));
-				this.fallbackHandler.handle(thrownException, data, consumer, container);
-			}
-			else {
-				seekOrRecover(thrownException, data, consumer, container, index);
-			}
-		}
+		doHandle(thrownException, data, consumer, container, () -> { });
 	}
 
-	private int findIndex(ConsumerRecords<?, ?> data, ConsumerRecord<?, ?> record) {
-		if (record == null) {
-			return -1;
-		}
-		int i = 0;
-		Iterator<?> iterator = data.iterator();
-		while (iterator.hasNext()) {
-			ConsumerRecord<?, ?> candidate = (ConsumerRecord<?, ?>) iterator.next();
-			if (candidate.topic().equals(record.topic()) && candidate.partition() == record.partition()
-					&& candidate.offset() == record.offset()) {
-				break;
-			}
-			i++;
-		}
-		return i;
-	}
-
-	private void seekOrRecover(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
-			MessageListenerContainer container, int indexArg) {
-
-		if (data == null) {
-			return;
-		}
-		Iterator<?> iterator = data.iterator();
-		List<ConsumerRecord<?, ?>> toCommit = new ArrayList<>();
-		List<ConsumerRecord<?, ?>> remaining = new ArrayList<>();
-		int index = indexArg;
-		while (iterator.hasNext()) {
-			ConsumerRecord<?, ?> record = (ConsumerRecord<?, ?>) iterator.next();
-			if (index-- > 0) {
-				toCommit.add(record);
-			}
-			else {
-				remaining.add(record);
-			}
-		}
-		Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-		toCommit.forEach(rec -> offsets.compute(new TopicPartition(rec.topic(), rec.partition()),
-				(key, val) -> new OffsetAndMetadata(rec.offset() + 1)));
-		if (offsets.size() > 0) {
-			commit(consumer, container, offsets);
-		}
-		if (remaining.size() > 0) {
-			SeekUtils.seekOrRecover(thrownException, remaining, consumer, container, false,
-				getRecoveryStrategy(remaining, thrownException), this.logger, getLogLevel());
-			ConsumerRecord<?, ?> recovered = remaining.get(0);
-			commit(consumer, container,
-					Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
-							new OffsetAndMetadata(recovered.offset() + 1)));
-			if (remaining.size() > 1) {
-				throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
-			}
-		}
-	}
-
-	private void commit(Consumer<?, ?> consumer, MessageListenerContainer container,
-			Map<TopicPartition, OffsetAndMetadata> offsets) {
-
-		boolean syncCommits = container.getContainerProperties().isSyncCommits();
-		Duration timeout = container.getContainerProperties().getSyncCommitTimeout();
-		if (syncCommits) {
-			consumer.commitSync(offsets, timeout);
-		}
-		else {
-			OffsetCommitCallback commitCallback = container.getContainerProperties().getCommitCallback();
-			if (commitCallback == null) {
-				commitCallback = LOGGING_COMMIT_CALLBACK;
-			}
-			consumer.commitAsync(offsets, commitCallback);
-		}
-	}
-
-	@Nullable
-	private BatchListenerFailedException getBatchListenerFailedException(Throwable throwableArg) {
-		if (throwableArg == null || throwableArg instanceof BatchListenerFailedException) {
-			return (BatchListenerFailedException) throwableArg;
-		}
-
-		BatchListenerFailedException target = null;
-
-		Throwable throwable = throwableArg;
-		Set<Throwable> checked = new HashSet<>();
-		while (throwable.getCause() != null && !checked.contains(throwable.getCause())) {
-			throwable = throwable.getCause();
-			checked.add(throwable);
-
-			if (throwable instanceof BatchListenerFailedException) {
-				target = (BatchListenerFailedException) throwable;
-				break;
-			}
-		}
-
-		return target;
-	}
 }
