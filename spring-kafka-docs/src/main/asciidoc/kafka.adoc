@@ -385,7 +385,7 @@ public void sendToKafka(final MyOutputData data) {
     final ProducerRecord<String, String> record = createRecord(data);
 
     ListenableFuture<SendResult<Integer, String>> future = template.send(record);
-    future.addCallback(new KafkaSendCallback<SendResult<Integer, String>>() {
+    future.addCallback(new KafkaSendCallback<Integer, String>() {
 
         @Override
         public void onSuccess(SendResult<Integer, String> result) {
