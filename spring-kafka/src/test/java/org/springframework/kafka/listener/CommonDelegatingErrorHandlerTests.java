@@ -31,59 +31,61 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.KafkaException;
 
 /**
+ * Tests for {@link CommonDelegatingErrorHandler}. Copied from
+ * {@link ConditionalDelegatingErrorHandlerTests} with changed handler type.
+ *
  * @author Gary Russell
- * @since 2.7.4
+ * @since 2.8
  *
  */
-@SuppressWarnings("deprecation")
-public class ConditionalDelegatingErrorHandlerTests {
+public class CommonDelegatingErrorHandlerTests {
 
 	@Test
 	void testRecordDelegates() {
-		var def = mock(ContainerAwareErrorHandler.class);
-		var one = mock(ContainerAwareErrorHandler.class);
-		var two = mock(ContainerAwareErrorHandler.class);
-		var three = mock(ContainerAwareErrorHandler.class);
-		var eh = new ConditionalDelegatingErrorHandler(def);
+		var def = mock(CommonErrorHandler.class);
+		var one = mock(CommonErrorHandler.class);
+		var two = mock(CommonErrorHandler.class);
+		var three = mock(CommonErrorHandler.class);
+		var eh = new CommonDelegatingErrorHandler(def);
 		eh.setErrorHandlers(Map.of(IllegalStateException.class, one, IllegalArgumentException.class, two));
 		eh.addDelegate(RuntimeException.class, three);
 
-		eh.handle(wrap(new IOException()), Collections.emptyList(), mock(Consumer.class),
+		eh.handleRemaining(wrap(new IOException()), Collections.emptyList(), mock(Consumer.class),
 				mock(MessageListenerContainer.class));
-		verify(def).handle(any(), any(), any(), any());
-		eh.handle(wrap(new KafkaException("test")), Collections.emptyList(), mock(Consumer.class),
+		verify(def).handleRemaining(any(), any(), any(), any());
+		eh.handleRemaining(wrap(new KafkaException("test")), Collections.emptyList(), mock(Consumer.class),
 				mock(MessageListenerContainer.class));
-		verify(three).handle(any(), any(), any(), any());
-		eh.handle(wrap(new IllegalArgumentException()), Collections.emptyList(), mock(Consumer.class),
+		verify(three).handleRemaining(any(), any(), any(), any());
+		eh.handleRemaining(wrap(new IllegalArgumentException()), Collections.emptyList(), mock(Consumer.class),
 				mock(MessageListenerContainer.class));
-		verify(two).handle(any(), any(), any(), any());
-		eh.handle(wrap(new IllegalStateException()), Collections.emptyList(), mock(Consumer.class),
+		verify(two).handleRemaining(any(), any(), any(), any());
+		eh.handleRemaining(wrap(new IllegalStateException()), Collections.emptyList(), mock(Consumer.class),
 				mock(MessageListenerContainer.class));
-		verify(one).handle(any(), any(), any(), any());
+		verify(one).handleRemaining(any(), any(), any(), any());
 	}
 
 	@Test
 	void testBatchDelegates() {
-		var def = mock(ContainerAwareBatchErrorHandler.class);
-		var one = mock(ContainerAwareBatchErrorHandler.class);
-		var two = mock(ContainerAwareBatchErrorHandler.class);
-		var three = mock(ContainerAwareBatchErrorHandler.class);
-		var eh = new ConditionalDelegatingBatchErrorHandler(def);
+		var def = mock(CommonErrorHandler.class);
+		var one = mock(CommonErrorHandler.class);
+		var two = mock(CommonErrorHandler.class);
+		var three = mock(CommonErrorHandler.class);
+		var eh = new CommonDelegatingErrorHandler(def);
 		eh.setErrorHandlers(Map.of(IllegalStateException.class, one, IllegalArgumentException.class, two));
 		eh.addDelegate(RuntimeException.class, three);
 
-		eh.handle(wrap(new IOException()), mock(ConsumerRecords.class), mock(Consumer.class),
+		eh.handleBatch(wrap(new IOException()), mock(ConsumerRecords.class), mock(Consumer.class),
 				mock(MessageListenerContainer.class), mock(Runnable.class));
-		verify(def).handle(any(), any(), any(), any(), any());
-		eh.handle(wrap(new KafkaException("test")), mock(ConsumerRecords.class), mock(Consumer.class),
+		verify(def).handleBatch(any(), any(), any(), any(), any());
+		eh.handleBatch(wrap(new KafkaException("test")), mock(ConsumerRecords.class), mock(Consumer.class),
 				mock(MessageListenerContainer.class), mock(Runnable.class));
-		verify(three).handle(any(), any(), any(), any(), any());
-		eh.handle(wrap(new IllegalArgumentException()), mock(ConsumerRecords.class), mock(Consumer.class),
+		verify(three).handleBatch(any(), any(), any(), any(), any());
+		eh.handleBatch(wrap(new IllegalArgumentException()), mock(ConsumerRecords.class), mock(Consumer.class),
 				mock(MessageListenerContainer.class), mock(Runnable.class));
-		verify(two).handle(any(), any(), any(), any(), any());
-		eh.handle(wrap(new IllegalStateException()), mock(ConsumerRecords.class), mock(Consumer.class),
+		verify(two).handleBatch(any(), any(), any(), any(), any());
+		eh.handleBatch(wrap(new IllegalStateException()), mock(ConsumerRecords.class), mock(Consumer.class),
 				mock(MessageListenerContainer.class), mock(Runnable.class));
-		verify(one).handle(any(), any(), any(), any(), any());
+		verify(one).handleBatch(any(), any(), any(), any(), any());
 	}
 
 	private Exception wrap(Exception ex) {
