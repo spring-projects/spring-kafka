@@ -69,6 +69,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.consumer.RetriableCommitFailedException;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -138,7 +139,7 @@ import org.springframework.util.backoff.FixedBackOff;
 		KafkaMessageListenerContainerTests.topic17, KafkaMessageListenerContainerTests.topic18,
 		KafkaMessageListenerContainerTests.topic19, KafkaMessageListenerContainerTests.topic20,
 		KafkaMessageListenerContainerTests.topic21, KafkaMessageListenerContainerTests.topic22,
-		KafkaMessageListenerContainerTests.topic23 })
+		KafkaMessageListenerContainerTests.topic23, KafkaMessageListenerContainerTests.topic24 })
 public class KafkaMessageListenerContainerTests {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass()));
@@ -190,6 +191,8 @@ public class KafkaMessageListenerContainerTests {
 	public static final String topic23 = "testTopic23";
 
 	public static final String topic24 = "testTopic24";
+
+	public static final String topic25 = "testTopic24";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -2758,15 +2761,20 @@ public class KafkaMessageListenerContainerTests {
 			Thread.sleep(50);
 			return emptyRecords;
 		});
-		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+
+		Map<TopicPartition, OffsetAndTimestamp> offsets = new HashMap<>();
+		offsets.put(new TopicPartition("foo", 6), new OffsetAndTimestamp(42L, 1234L));
+		offsets.put(new TopicPartition("foo", 7), null);
+		given(consumer.offsetsForTimes(any())).willReturn(offsets);
+		ContainerProperties containerProps = new ContainerProperties(
 				new TopicPartitionOffset("foo", 0, SeekPosition.BEGINNING),
 				new TopicPartitionOffset("foo", 1, SeekPosition.END),
 				new TopicPartitionOffset("foo", 2, 0L),
 				new TopicPartitionOffset("foo", 3, Long.MAX_VALUE),
 				new TopicPartitionOffset("foo", 4, SeekPosition.BEGINNING),
 				new TopicPartitionOffset("foo", 5, SeekPosition.END),
-		};
-		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+				new TopicPartitionOffset("foo", 6, 1234L, SeekPosition.TIMESTAMP),
+				new TopicPartitionOffset("foo", 7, 1234L, SeekPosition.TIMESTAMP));
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setClientId("clientId");
@@ -2782,9 +2790,11 @@ public class KafkaMessageListenerContainerTests {
 				.isEqualTo(new HashSet<>(Arrays.asList(new TopicPartition("foo", 0), new TopicPartition("foo", 4))));
 		verify(consumer).seekToEnd(captor.capture());
 		assertThat(captor.getValue())
-				.isEqualTo(new HashSet<>(Arrays.asList(new TopicPartition("foo", 1), new TopicPartition("foo", 5))));
+				.isEqualTo(new HashSet<>(Arrays.asList(new TopicPartition("foo", 1), new TopicPartition("foo", 5),
+						new TopicPartition("foo", 7))));
 		verify(consumer).seek(new TopicPartition("foo", 2), 0L);
 		verify(consumer).seek(new TopicPartition("foo", 3), Long.MAX_VALUE);
+		verify(consumer).seek(new TopicPartition("foo", 6), 42L);
 		container.stop();
 	}
 

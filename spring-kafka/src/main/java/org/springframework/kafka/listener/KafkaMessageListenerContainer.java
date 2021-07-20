@@ -2629,7 +2629,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = this.consumer
 								.offsetsForTimes(
 										Collections.singletonMap(offset.getTopicPartition(), offset.getOffset()));
-						offsetsForTimes.forEach((tp, ot) -> this.consumer.seek(tp, ot.offset()));
+						offsetsForTimes.forEach((tp, ot) -> {
+							if (ot != null) {
+								this.consumer.seek(tp, ot.offset());
+							}
+						});
 					}
 					else {
 						this.consumer.seekToEnd(Collections.singletonList(offset.getTopicPartition()));
@@ -2693,6 +2697,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					.map(Entry::getKey)
 					.collect(Collectors.toSet());
 			ends.forEach(partitions::remove);
+			Map<TopicPartition, Long> times = partitions.entrySet().stream()
+					.filter(e -> SeekPosition.TIMESTAMP.equals(e.getValue().seekPosition))
+					.collect(Collectors.toMap(Entry::getKey, entry -> entry.getValue().offset));
+			Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = this.consumer.offsetsForTimes(times);
+			offsetsForTimes.forEach((tp, off) -> {
+				if (off == null) {
+					ends.add(tp);
+				}
+				else {
+					partitions.put(tp, new OffsetMetadata(off.offset(), false, SeekPosition.TIMESTAMP));
+				}
+			});
 			if (beginnings.size() > 0) {
 				this.consumer.seekToBeginning(beginnings);
 			}
@@ -3279,11 +3295,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private static final class OffsetMetadata {
 
-		private final Long offset;
+		final Long offset; // NOSONAR
 
-		private final boolean relativeToCurrent;
+		final boolean relativeToCurrent; // NOSONAR
 
-		private final SeekPosition seekPosition;
+		final SeekPosition seekPosition; // NOSONAR
 
 		OffsetMetadata(Long offset, boolean relativeToCurrent, SeekPosition seekPosition) {
 			this.offset = offset;

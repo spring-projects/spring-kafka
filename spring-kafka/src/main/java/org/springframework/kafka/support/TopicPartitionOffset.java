@@ -62,7 +62,8 @@ public class TopicPartitionOffset {
 		END,
 
 		/**
-		 * Seek to the time stamp.
+		 * Seek to the time stamp; if no records exist with a timestamp greater than or
+		 * equal to the timestamp seek to the end.
 		 */
 		TIMESTAMP
 
