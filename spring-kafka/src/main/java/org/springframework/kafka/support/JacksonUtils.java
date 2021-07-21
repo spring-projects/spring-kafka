@@ -76,6 +76,15 @@ public final class JacksonUtils {
 		}
 
 		try {
+			Class<? extends Module> parameterNamesModule = (Class<? extends Module>)
+					ClassUtils.forName("com.fasterxml.jackson.module.paramnames.ParameterNamesModule", classLoader);
+			objectMapper.registerModule(BeanUtils.instantiateClass(parameterNamesModule));
+		}
+		catch (@SuppressWarnings(UNUSED) ClassNotFoundException ex) {
+			// jackson-parameter-names not available
+		}
+
+		try {
 			Class<? extends Module> javaTimeModule = (Class<? extends Module>)
 					ClassUtils.forName("com.fasterxml.jackson.datatype.jsr310.JavaTimeModule", classLoader);
 			objectMapper.registerModule(BeanUtils.instantiateClass(javaTimeModule));
