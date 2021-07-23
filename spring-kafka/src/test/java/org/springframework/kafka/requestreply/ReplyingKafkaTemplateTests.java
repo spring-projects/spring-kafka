@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -45,9 +46,11 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -673,6 +676,67 @@ public class ReplyingKafkaTemplateTests {
 		finally {
 			template.stop();
 			template.destroy();
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void nullDuration() throws Exception {
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Producer producer = mock(Producer.class);
+		willAnswer(invocation -> {
+			Callback callback = invocation.getArgument(1);
+			SettableListenableFuture<Object> future = new SettableListenableFuture<>();
+			future.set("done");
+			callback.onCompletion(new RecordMetadata(new TopicPartition("foo", 0), 0, 0, 0, null, 0, 0), null);
+			return future;
+		}).given(producer).send(any(), any());
+		given(pf.createProducer()).willReturn(producer);
+		GenericMessageListenerContainer container = mock(GenericMessageListenerContainer.class);
+		ContainerProperties properties = new ContainerProperties("two");
+		given(container.getContainerProperties()).willReturn(properties);
+		ReplyingKafkaTemplate template = new ReplyingKafkaTemplate(pf, container);
+		template.start();
+		Message<?> msg = MessageBuilder.withPayload("foo".getBytes())
+				.setHeader(KafkaHeaders.TOPIC, "foo")
+				.build();
+		// was NPE here
+		template.sendAndReceive(new ProducerRecord("foo", 0, "bar", "baz"), null).getSendFuture().get();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void requestTimeoutWithMessage() {
+		ProducerFactory pf = mock(ProducerFactory.class);
+		Producer producer = mock(Producer.class);
+		willAnswer(invocation -> {
+			return new SettableListenableFuture<>();
+		}).given(producer).send(any(), any());
+		given(pf.createProducer()).willReturn(producer);
+		GenericMessageListenerContainer container = mock(GenericMessageListenerContainer.class);
+		ContainerProperties properties = new ContainerProperties("two");
+		given(container.getContainerProperties()).willReturn(properties);
+		ReplyingKafkaTemplate template = new ReplyingKafkaTemplate(pf, container);
+		template.start();
+		Message<?> msg = MessageBuilder.withPayload("foo".getBytes())
+				.setHeader(KafkaHeaders.TOPIC, "foo")
+				.build();
+		long t1 = System.currentTimeMillis();
+		RequestReplyTypedMessageFuture<String, String, Foo> future = template.sendAndReceive(msg, Duration.ofMillis(10),
+				new ParameterizedTypeReference<Foo>() {
+				});
+		try {
+			future.get(10, TimeUnit.SECONDS);
+		}
+		catch (TimeoutException ex) {
+			fail("get timed out");
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			fail("Interrupted");
+		}
+		catch (ExecutionException e) {
+			assertThat(System.currentTimeMillis() - t1).isLessThan(3000L);
 		}
 	}
 

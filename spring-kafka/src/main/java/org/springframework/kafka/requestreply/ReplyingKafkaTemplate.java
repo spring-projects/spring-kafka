@@ -333,11 +333,12 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message, Duration replyTimeout,
+	public <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message,
+			@Nullable Duration replyTimeout,
 			@Nullable ParameterizedTypeReference<P> returnType) {
 
 		RequestReplyFuture<K, V, R> future = sendAndReceive((ProducerRecord<K, V>) getMessageConverter()
-				.fromMessage(message, getDefaultTopic()));
+				.fromMessage(message, getDefaultTopic()), replyTimeout);
 		RequestReplyTypedMessageFuture<K, V, P> replyFuture =
 				new RequestReplyTypedMessageFuture<>(future.getSendFuture());
 		future.addCallback(
@@ -360,8 +361,12 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	@Override
-	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, Duration replyTimeout) {
+	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, @Nullable Duration replyTimeout) {
 		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
+		Duration timeout = replyTimeout;
+		if (timeout == null) {
+			timeout = this.defaultReplyTimeout;
+		}
 		CorrelationKey correlationId = this.correlationStrategy.apply(record);
 		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
 		Headers headers = record.headers();
@@ -383,7 +388,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			this.futures.remove(correlationId);
 			throw new KafkaException("Send failed", e);
 		}
-		scheduleTimeout(record, correlationId, replyTimeout);
+		scheduleTimeout(record, correlationId, timeout);
 		return future;
 	}
 
