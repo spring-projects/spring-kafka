@@ -255,6 +255,7 @@ public class EnableKafkaIntegrationTests {
 		container.stop();
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testSimple() throws Exception {
 		this.recordFilter.called = false;
