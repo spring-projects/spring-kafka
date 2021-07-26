@@ -37,6 +37,7 @@ import org.springframework.retry.support.RetryTemplate;
  * @since 2.0
  *
  */
+@SuppressWarnings("deprecation")
 public class RetryingMessageListenerAdapterTests {
 
 	@Test

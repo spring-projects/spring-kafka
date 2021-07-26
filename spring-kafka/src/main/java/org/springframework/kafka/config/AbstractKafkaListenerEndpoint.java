@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2020 the original author or authors.
+ * Copyright 2014-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,6 @@ import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapte
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
-import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.lang.Nullable;
@@ -324,7 +323,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	/**
 	 * Set a retryTemplate.
 	 * @param retryTemplate the template.
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
+	@Deprecated
 	public void setRetryTemplate(RetryTemplate retryTemplate) {
 		this.retryTemplate = retryTemplate;
 	}
@@ -498,7 +499,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter);
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	private void setupMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter) {
 
@@ -514,7 +515,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 				"A 'RetryTemplate' is not supported with a batch listener; consider configuring the container "
 				+ "with a suitably configured 'SeekToCurrentBatchErrorHandler' instead");
 		if (this.retryTemplate != null) {
-			messageListener = new RetryingMessageListenerAdapter<>((MessageListener<K, V>) messageListener,
+			messageListener = new org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter<>(
+							(MessageListener<K, V>) messageListener,
 					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
 		}
 		if (this.recordFilterStrategy != null) {

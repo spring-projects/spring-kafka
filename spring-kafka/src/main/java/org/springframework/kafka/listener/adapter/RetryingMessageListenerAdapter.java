@@ -35,9 +35,12 @@ import org.springframework.util.Assert;
  * @param <K> the key type.
  * @param <V> the value type.
  *
+ * @deprecated since 2.8 - use a suitably configured error handler instead.
+ *
  * @author Gary Russell
  *
  */
+@Deprecated
 public class RetryingMessageListenerAdapter<K, V>
 		extends AbstractRetryingMessageListenerAdapter<K, V, MessageListener<K, V>>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {

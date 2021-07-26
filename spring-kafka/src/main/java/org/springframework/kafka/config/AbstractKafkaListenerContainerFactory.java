@@ -180,7 +180,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	/**
 	 * Set a retryTemplate.
 	 * @param retryTemplate the template.
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
+	@Deprecated
 	public void setRetryTemplate(RetryTemplate retryTemplate) {
 		this.retryTemplate = retryTemplate;
 	}
@@ -385,6 +387,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		return instance;
 	}
 
+	@SuppressWarnings("deprecation")
 	private void configureEndpoint(AbstractKafkaListenerEndpoint<K, V> aklEndpoint) {
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::setRecordFilterStrategy)

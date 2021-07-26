@@ -1197,6 +1197,7 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
+		@SuppressWarnings("deprecation")
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
 				kafkaManualAckListenerContainerFactory() {
 

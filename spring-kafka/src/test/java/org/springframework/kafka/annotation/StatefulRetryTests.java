@@ -82,6 +82,7 @@ public class StatefulRetryTests {
 
 		private boolean seekPerformed;
 
+		@SuppressWarnings("deprecation")
 		@Bean
 		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka) {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
