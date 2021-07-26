@@ -111,7 +111,6 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
-import org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
@@ -304,7 +303,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.ackDiscarded",
 				Boolean.class)).isTrue();
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate"))
-				.isInstanceOf(RetryingMessageListenerAdapter.class);
+				.isInstanceOf(org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter.class);
 		assertThat(KafkaTestUtils
 				.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate.recoveryCallback")
 				.getClass().getName()).contains("EnableKafkaIntegrationTests$Config$");
