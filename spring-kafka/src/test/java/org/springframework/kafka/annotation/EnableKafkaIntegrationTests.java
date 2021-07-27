@@ -144,6 +144,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -177,6 +178,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
 		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41" })
+@TestPropertySource(properties = "spel.props=fetch.min.bytes=420000,max.poll.records=10")
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
@@ -350,6 +352,10 @@ public class EnableKafkaIntegrationTests {
 				.isEqualTo("fiz");
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.clientId"))
 				.isEqualTo("clientIdViaAnnotation-0");
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.fetcher.maxPollRecords"))
+				.isEqualTo(10);
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.fetcher.minBytes"))
+				.isEqualTo(420000);
 
 		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
 		assertThat(rebalanceConcurrentContainer).isNotNull();
@@ -488,6 +494,10 @@ public class EnableKafkaIntegrationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
 						"listenerConsumer.consumer.groupId", Optional.class).get())
 				.isEqualTo("buz.explicitGroupId");
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.fetcher.maxPollRecords"))
+				.isEqualTo(5);
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.fetcher.minBytes"))
+				.isEqualTo(123456);
 	}
 
 	@Test
@@ -1649,6 +1659,11 @@ public class EnableKafkaIntegrationTests {
 			};
 		}
 
+		@Bean
+		List<String> buzProps() {
+			return List.of("max.poll.records: 5", "fetch.min.bytes: 123456");
+		}
+
 	}
 
 	@Component
@@ -1845,14 +1860,14 @@ public class EnableKafkaIntegrationTests {
 				@TopicPartition(topic = "annotated6", partitions = "0",
 						partitionOffsets = @PartitionOffset(partition = "${xxx:1}", initialOffset = "${yyy:0}",
 								relativeToCurrent = "${zzz:true}"))
-		}, clientIdPrefix = "${foo.xxx:clientIdViaAnnotation}")
+		}, clientIdPrefix = "${foo.xxx:clientIdViaAnnotation}", properties = "#{'${spel.props}'.split(',')}")
 		public void listen5(ConsumerRecord<?, ?> record) {
 			this.capturedRecord = record;
 			this.latch5.countDown();
 		}
 
 		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory",
-				groupId = "buz.explicitGroupId")
+				groupId = "buz.explicitGroupId", properties = "#{@buzProps}")
 		public void listen6(Foo foo) {
 			this.foo = foo;
 			this.latch6.countDown();

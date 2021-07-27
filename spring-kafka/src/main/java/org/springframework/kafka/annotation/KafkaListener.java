@@ -247,6 +247,10 @@ public @interface KafkaListener {
 	 * <li>{@code key value}</li>
 	 * </ul>
 	 * {@code group.id} and {@code client.id} are ignored.
+	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
+	 * SpEL expressions must resolve to a {@link String}, a @{link String[]} or a
+	 * {@code Collection<String>} where each member of the array or collection is a
+	 * property name + value with the above formats.
 	 * @return the properties.
 	 * @since 2.2.4
 	 * @see org.apache.kafka.clients.consumer.ConsumerConfig

@@ -676,21 +676,43 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				+ requestedBeanName + "' was found in the application context";
 	}
 
+	@SuppressWarnings("unchecked")
 	private void resolveKafkaProperties(MethodKafkaListenerEndpoint<?, ?> endpoint, String[] propertyStrings) {
 		if (propertyStrings.length > 0) {
 			Properties properties = new Properties();
 			for (String property : propertyStrings) {
-				String value = resolveExpressionAsString(property, "property");
-				if (value != null) {
-					try {
-						properties.load(new StringReader(value));
+				Object value = resolveExpression(property);
+				if (value instanceof String) {
+					loadProperty(properties, property, value);
+				}
+				else if (value instanceof String[]) {
+					for (String prop : (String[]) value) {
+						loadProperty(properties, prop, prop);
 					}
-					catch (IOException e) {
-						this.logger.error(e, () -> "Failed to load property " + property + ", continuing...");
+				}
+				else if (value instanceof Collection) {
+					Collection<?> values = (Collection<?>) value;
+					if (values.size() > 0 && values.iterator().next() instanceof String) {
+						for (String prop : (Collection<String>) value) {
+							loadProperty(properties, prop, prop);
+						}
 					}
+				}
+				else {
+					throw new IllegalStateException("'properties' must resolve to a String, a String[] or "
+							+ "Collection<String>");
 				}
 			}
 			endpoint.setConsumerProperties(properties);
+		}
+	}
+
+	private void loadProperty(Properties properties, String property, Object value) {
+		try {
+			properties.load(new StringReader((String) value));
+		}
+		catch (IOException e) {
+			this.logger.error(e, () -> "Failed to load property " + property + ", continuing...");
 		}
 	}
 
