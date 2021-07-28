@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,56 +21,76 @@ import java.util.concurrent.Executor;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.util.Assert;
 
 /**
- * A container error handler that stops the container after an exception
- * is thrown by the listener.
- *
- * @deprecated in favor of {@link CommonContainerStoppingErrorHandler}.
+ * A {@link CommonErrorHandler} that stops the container when an error occurs. Replaces
+ * the legacy {@link ContainerStoppingErrorHandler} and
+ * {@link ContainerStoppingBatchErrorHandler}.
  *
  * @author Gary Russell
- * @since 2.1
+ * @since 2.8
  *
  */
-@Deprecated
-public class ContainerStoppingErrorHandler extends KafkaExceptionLogLevelAware implements ContainerAwareErrorHandler {
+public class CommonContainerStoppingErrorHandler extends KafkaExceptionLogLevelAware implements CommonErrorHandler {
 
 	private final Executor executor;
 
 	/**
 	 * Construct an instance with a default {@link SimpleAsyncTaskExecutor}.
 	 */
-	public ContainerStoppingErrorHandler() {
-		this.executor = new SimpleAsyncTaskExecutor();
+	public CommonContainerStoppingErrorHandler() {
+		this(new SimpleAsyncTaskExecutor("containerStop-"));
 	}
 
 	/**
 	 * Construct an instance with the provided {@link Executor}.
 	 * @param executor the executor.
 	 */
-	public ContainerStoppingErrorHandler(Executor executor) {
+	public CommonContainerStoppingErrorHandler(Executor executor) {
 		Assert.notNull(executor, "'executor' cannot be null");
 		this.executor = executor;
 	}
 
 	@Override
-	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
+	public boolean remainingRecords() {
+		return true;
+	}
+
+	@Override
+	public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
+			MessageListenerContainer container, boolean batchListener) {
+
+		stopContainer(container, thrownException);
+	}
+
+
+	@Override
+	public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
+
+		stopContainer(container, thrownException);
+	}
+
+	@Override
+	public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+			MessageListenerContainer container, Runnable invokeListener) {
+
+		stopContainer(container, thrownException);
+	}
+
+	private void stopContainer(MessageListenerContainer container, Exception thrownException) {
 		this.executor.execute(() -> container.stop());
 		// isRunning is false before the container.stop() waits for listener thread
-		int n = 0;
-		while (container.isRunning() && n++ < 100) { // NOSONAR magic #
-			try {
-				Thread.sleep(100); // NOSONAR magic #
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				break;
-			}
+		try {
+			ListenerUtils.stoppableSleep(container, 10_000);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
 		throw new KafkaException("Stopped container", getLogLevel(), thrownException);
 	}

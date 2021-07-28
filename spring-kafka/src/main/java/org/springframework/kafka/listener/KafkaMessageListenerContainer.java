@@ -1684,7 +1684,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			try {
 				if (this.commonErrorHandler != null) {
 						this.commonErrorHandler.handleOtherException(e, this.consumer,
-								KafkaMessageListenerContainer.this.thisOrParentContainer);
+								KafkaMessageListenerContainer.this.thisOrParentContainer, this.isBatchListener);
 				}
 				else {
 					this.logger.error(e, "Consumer exception");

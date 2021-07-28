@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,16 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,13 +57,16 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
+ * Copied from {@link ContainerStoppingErrorHandlerBatchModeTests} with a new error
+ * handler.
+ *
  * @author Gary Russell
- * @since 2.1
+ * @since 2.8
  *
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class ContainerStoppingBatchErrorHandlerTests {
+public class CommonContainerStoppingErrorHandler2Tests {
 
 	private static final String CONTAINER_ID = "container";
 
@@ -97,39 +99,34 @@ public class ContainerStoppingBatchErrorHandlerTests {
 		inOrder.verify(this.consumer).unsubscribe();
 		inOrder.verify(this.consumer).close();
 		inOrder.verifyNoMoreInteractions();
-		assertThat(this.registry.getListenerContainers()).hasSize(1);
-		Collection<MessageListenerContainer> containers = this.registry.getAllListenerContainers();
-		assertThat(containers).hasSize(2);
-		Iterator<MessageListenerContainer> iterator = containers.iterator();
-		MessageListenerContainer one = iterator.next();
-		MessageListenerContainer two = iterator.next();
-		assertThat(one).isNotSameAs(two);
-		assertThat(two).isSameAs(this.config.springManagedContainer());
-		assertThat(one.getListenerId()).isEqualTo(CONTAINER_ID);
-		assertThat(two.getListenerId()).isEqualTo("springManagedContainer");
-		assertThat(this.config.customized).isEqualTo(2);
+		assertThat(this.config.count).isEqualTo(4);
+		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
+				{ "foo", "bar", "baz", "qux" });
 	}
 
 	@Configuration
 	@EnableKafka
 	public static class Config {
 
+		private final List<String> contents = new ArrayList<>();
+
 		private final CountDownLatch pollLatch = new CountDownLatch(1);
 
-		private final CountDownLatch deliveryLatch = new CountDownLatch(1);
+		private final CountDownLatch deliveryLatch = new CountDownLatch(3);
 
 		private final CountDownLatch errorLatch = new CountDownLatch(1);
 
 		private final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		private final CountDownLatch commitLatch = new CountDownLatch(3);
-
-		private volatile int customized;
+		private int count;
 
 		@KafkaListener(id = CONTAINER_ID, topics = "foo")
-		public void foo(List<String> in) {
+		public void foo(String in) {
+			this.contents.add(in);
 			this.deliveryLatch.countDown();
-			throw new RuntimeException("foo");
+			if (++this.count == 4) { // part 1, offset 1, first time
+				throw new RuntimeException("foo");
+			}
 		}
 
 		@SuppressWarnings({ "rawtypes" })
@@ -181,29 +178,25 @@ public class ContainerStoppingBatchErrorHandlerTests {
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {
-				this.commitLatch.countDown();
-				return null;
-			}).given(consumer).commitSync(anyMap(), any());
-			willAnswer(i -> {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
 			return consumer;
 		}
 
-		@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setBatchErrorHandler(new ContainerStoppingBatchErrorHandler() {
+			factory.setCommonErrorHandler(new CommonContainerStoppingErrorHandler() {
 
 				@Override
-				public void handle(Exception thrownException, ConsumerRecords<?, ?> records,
+				public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 						Consumer<?, ?> consumer, MessageListenerContainer container) {
 					RuntimeException exception = null;
 					try {
-						super.handle(thrownException, records, consumer, container);
+						super.handleRemaining(thrownException, records, consumer, container);
 					}
 					catch (RuntimeException e) {
 						exception = e;
@@ -213,18 +206,10 @@ public class ContainerStoppingBatchErrorHandlerTests {
 				}
 
 			});
-			factory.setBatchListener(true);
-			factory.setContainerCustomizer(container -> this.customized++);
+			factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
 			return factory;
 		}
 
-		@Bean
-		public ConcurrentMessageListenerContainer<String, String> springManagedContainer() {
-			ConcurrentMessageListenerContainer<String, String> container = kafkaListenerContainerFactory()
-					.createContainer("springManaged");
-			container.setAutoStartup(false);
-			return container;
-		}
 	}
 
 }

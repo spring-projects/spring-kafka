@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,13 +58,16 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
+ * Copied from {@link ContainerStoppingBatchErrorHandlerTests} with a new error
+ * handler.
+ *
  * @author Gary Russell
- * @since 2.1
+ * @since 2.8
  *
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class ContainerStoppingBatchErrorHandlerTests {
+public class CommonContainerStoppingErrorHandler3Tests {
 
 	private static final String CONTAINER_ID = "container";
 
@@ -191,19 +194,20 @@ public class ContainerStoppingBatchErrorHandlerTests {
 			return consumer;
 		}
 
-		@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setBatchErrorHandler(new ContainerStoppingBatchErrorHandler() {
+			factory.setCommonErrorHandler(new CommonContainerStoppingErrorHandler() {
 
 				@Override
-				public void handle(Exception thrownException, ConsumerRecords<?, ?> records,
-						Consumer<?, ?> consumer, MessageListenerContainer container) {
+				public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> records,
+						Consumer<?, ?> consumer, MessageListenerContainer container, Runnable runnable) {
+
 					RuntimeException exception = null;
 					try {
-						super.handle(thrownException, records, consumer, container);
+						super.handleBatch(thrownException, records, consumer, container, runnable);
 					}
 					catch (RuntimeException e) {
 						exception = e;

@@ -66,7 +66,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 
 	@Override
 	public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
-			MessageListenerContainer container) {
+			MessageListenerContainer container, boolean batchListener) {
 
 		LOGGER.error(thrownException, () -> "Error occurred while not processing records");
 	}

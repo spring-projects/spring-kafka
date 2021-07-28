@@ -133,7 +133,7 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 
 	@Override
 	public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
-			MessageListenerContainer container) {
+			MessageListenerContainer container, boolean batchListener) {
 
 		if (thrownException instanceof SerializationException) {
 			throw new IllegalStateException("This error handler cannot process 'SerializationException's directly; "

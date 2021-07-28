@@ -62,9 +62,10 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * @param thrownException the exception.
 	 * @param consumer the consumer.
 	 * @param container the container.
+	 * @param batchListener true if the listener is a batch listener.
 	 */
 	default void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
-			MessageListenerContainer container) {
+			MessageListenerContainer container, boolean batchListener) {
 
 		LogFactory.getLog(getClass()).error("'handleOtherException' is not implemented by this handler",
 				thrownException);

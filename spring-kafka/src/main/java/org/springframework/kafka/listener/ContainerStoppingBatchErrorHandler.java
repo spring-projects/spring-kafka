@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,13 @@ import org.springframework.util.Assert;
  * A container error handler that stops the container after an exception
  * is thrown by the listener.
  *
+ * @deprecated in favor of {@link CommonContainerStoppingErrorHandler}.
+ *
  * @author Gary Russell
  * @since 2.1
  *
  */
+@Deprecated
 public class ContainerStoppingBatchErrorHandler extends KafkaExceptionLogLevelAware
 		implements ContainerAwareBatchErrorHandler {
 
@@ -58,6 +61,7 @@ public class ContainerStoppingBatchErrorHandler extends KafkaExceptionLogLevelAw
 	@Override
 	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
+
 		this.executor.execute(() -> container.stop());
 		// isRunning is false before the container.stop() waits for listener thread
 		int n = 0;

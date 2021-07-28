@@ -111,7 +111,7 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 	@SuppressWarnings({ "unchecked" })
 	@Override
 	public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
-			MessageListenerContainer container) {
+			MessageListenerContainer container, boolean batchListener) {
 
 		if (this.errorHandler != null) {
 			this.errorHandler.handle(thrownException, Collections.EMPTY_LIST, consumer, container);

@@ -135,14 +135,14 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	@Override
 	public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
-			MessageListenerContainer container) {
+			MessageListenerContainer container, boolean batchListener) {
 
 		CommonErrorHandler handler = findDelegate(thrownException);
 		if (handler != null) {
-			handler.handleOtherException(thrownException, consumer, container);
+			handler.handleOtherException(thrownException, consumer, container, batchListener);
 		}
 		else {
-			this.defaultErrorHandler.handleOtherException(thrownException, consumer, container);
+			this.defaultErrorHandler.handleOtherException(thrownException, consumer, container, batchListener);
 		}
 	}
 
