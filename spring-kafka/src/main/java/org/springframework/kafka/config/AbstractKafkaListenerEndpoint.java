@@ -100,7 +100,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private boolean statefulRetry;
 
-	private boolean batchListener;
+	private Boolean batchListener;
 
 	private KafkaTemplate<?, ?> replyTemplate;
 
@@ -263,6 +263,17 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @since 1.1
 	 */
 	public boolean isBatchListener() {
+		return this.batchListener == null ? false : this.batchListener;
+	}
+
+	/**
+	 * Return the current batch listener flag for this endpoint, or null if not explicitly
+	 * set.
+	 * @return the batch listener flag.
+	 * @since 2.8
+	 */
+	@Nullable
+	public Boolean getBatchListener() {
 		return this.batchListener;
 	}
 
@@ -509,9 +520,10 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		}
 		adapter.setSplitIterables(this.splitIterables);
 		Object messageListener = adapter;
+		boolean isBatchListener = isBatchListener();
 		Assert.state(messageListener != null,
 				() -> "Endpoint [" + this + "] must provide a non null message listener");
-		Assert.state(this.retryTemplate == null || !this.batchListener,
+		Assert.state(this.retryTemplate == null || !isBatchListener,
 				"A 'RetryTemplate' is not supported with a batch listener; consider configuring the container "
 				+ "with a suitably configured 'SeekToCurrentBatchErrorHandler' instead");
 		if (this.retryTemplate != null) {
@@ -520,9 +532,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
 		}
 		if (this.recordFilterStrategy != null) {
-			if (this.batchListener) {
+			if (isBatchListener) {
 				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {
-					this.logger.warn(() -> "Filter strategy ignored when consuming 'ConsumerRecords'"
+					this.logger.warn(() -> "Filter strategy ignored when consuming 'ConsumerRecords' instead of a List"
 							+ (this.id != null ? " id: " + this.id : ""));
 				}
 				else {

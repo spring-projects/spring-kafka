@@ -283,4 +283,18 @@ public @interface KafkaListener {
 	 */
 	String contentTypeConverter() default "";
 
+	/**
+	 * Override the container factory's {@code batchListener} property. The listener
+	 * method signature should receive a {@code List<?>}; refer to the reference
+	 * documentation. This allows a single container factory to be used for both record
+	 * and batch listeners; previously separate container factories were required.
+	 * @return "true" for the annotated method to be a batch listener or "false" for a
+	 * record listener. If not set, the container factory setting is used. SpEL and
+	 * property placeholders are not supported because the listener type cannot be
+	 * variable.
+	 * @since 2.8
+	 * @see Boolean#parseBoolean(String)
+	 */
+	String batch() default "";
+
 }

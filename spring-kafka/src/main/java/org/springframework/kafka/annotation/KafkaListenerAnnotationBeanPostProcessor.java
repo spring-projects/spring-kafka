@@ -560,12 +560,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean) {
+	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint,
+			KafkaListener kafkaListener, Object bean) {
+
 		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean);
 		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
 	}
 
-	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean) {
+	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
+			KafkaListener kafkaListener, Object bean) {
+
 		endpoint.setBean(bean);
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
 		endpoint.setId(getEndpointId(kafkaListener));
@@ -591,9 +595,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		resolveKafkaProperties(endpoint, kafkaListener.properties());
 		endpoint.setSplitIterables(kafkaListener.splitIterables());
+		if (StringUtils.hasText(kafkaListener.batch())) {
+			endpoint.setBatchListener(Boolean.parseBoolean(kafkaListener.batch()));
+		}
 	}
 
-	private void processKafkaListenerEndpointAfterRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+	private void processKafkaListenerEndpointAfterRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
+			KafkaListener kafkaListener) {
+
 		endpoint.setBeanFactory(this.beanFactory);
 		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
 		if (StringUtils.hasText(errorHandlerBeanName)) {

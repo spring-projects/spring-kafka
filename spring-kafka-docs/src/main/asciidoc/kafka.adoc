@@ -1524,6 +1524,9 @@ public KafkaListenerContainerFactory<?, ?> batchFactory() {
 ----
 ====
 
+NOTE: Starting with version 2.8, you can override the factory's `batchListener` propery using the `batch` property on the `@KafkaListener` annotation.
+This, together with the changes to <<error-handlers>> allows the same factory to be used for both record and batch listeners.
+
 The following example shows how to receive a list of payloads:
 
 ====

@@ -395,10 +395,14 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(this.retryTemplate, aklEndpoint::setRetryTemplate)
 				.acceptIfNotNull(this.recoveryCallback, aklEndpoint::setRecoveryCallback)
 				.acceptIfNotNull(this.statefulRetry, aklEndpoint::setStatefulRetry)
-				.acceptIfNotNull(this.batchListener, aklEndpoint::setBatchListener)
 				.acceptIfNotNull(this.replyTemplate, aklEndpoint::setReplyTemplate)
 				.acceptIfNotNull(this.replyHeadersConfigurer, aklEndpoint::setReplyHeadersConfigurer)
 				.acceptIfNotNull(this.batchToRecordAdapter, aklEndpoint::setBatchToRecordAdapter);
+		if (aklEndpoint.getBatchListener() == null) {
+			JavaUtils.INSTANCE
+					.acceptIfNotNull(this.batchListener, aklEndpoint::setBatchListener);
+
+		}
 	}
 
 	/**

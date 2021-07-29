@@ -27,6 +27,8 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.Collection;
@@ -104,6 +106,7 @@ import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
@@ -261,9 +264,12 @@ public class EnableKafkaIntegrationTests {
 	public void testSimple() throws Exception {
 		this.recordFilter.called = false;
 		template.send("annotated1", 0, "foo");
+		template.send("annotated1", 0, "bar");
 		assertThat(this.listener.latch1.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.globalErrorThrowable).isNotNull();
 		assertThat(this.listener.receivedGroupId).isEqualTo("foo");
+		assertThat(this.listener.latch1Batch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.batchOverrideStackTrace).contains("BatchMessagingMessageListenerAdapter");
 
 		template.send("annotated2", 0, 123, "foo");
 		assertThat(this.listener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1010,11 +1016,20 @@ public class EnableKafkaIntegrationTests {
 			factory.setConsumerFactory(consumerFactory());
 			factory.setRecordFilterStrategy(recordFilter());
 			factory.setReplyTemplate(partitionZeroReplyTemplate());
-			factory.setErrorHandler((ConsumerAwareErrorHandler) (t, d, c) -> {
-				this.globalErrorThrowable = t;
-				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
+			factory.setCommonErrorHandler(new DefaultErrorHandler() {
+
+				@Override
+				public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
+						Consumer<?, ?> consumer, MessageListenerContainer container) {
+
+					Config.this.globalErrorThrowable = thrownException;
+					super.handleRemaining(thrownException, records, consumer, container);
+				}
+
 			});
 			factory.getContainerProperties().setMicrometerTags(Collections.singletonMap("extraTag", "foo"));
+			// ensure annotation wins, even with explicitly set here
+			factory.setBatchListener(false);
 			return factory;
 		}
 
@@ -1671,7 +1686,9 @@ public class EnableKafkaIntegrationTests {
 
 		private final ThreadLocal<ConsumerSeekCallback> seekCallBack = new ThreadLocal<>();
 
-		final CountDownLatch latch1 = new CountDownLatch(1);
+		final CountDownLatch latch1 = new CountDownLatch(2);
+
+		final CountDownLatch latch1Batch = new CountDownLatch(2);
 
 		final CountDownLatch latch2 = new CountDownLatch(2); // seek
 
@@ -1783,6 +1800,8 @@ public class EnableKafkaIntegrationTests {
 
 		volatile Foo contentFoo;
 
+		volatile String batchOverrideStackTrace;
+
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory",
 				properties = { ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG + ":301000",
@@ -1799,6 +1818,15 @@ public class EnableKafkaIntegrationTests {
 				throw new RuntimeException("reposition");
 			}
 			this.latch1.countDown();
+		}
+
+		@KafkaListener(id = "fooBatch", topics = "annotated1", batch = "true")
+		public void listen1Batch(List<String> foo) {
+			StringWriter stringWriter = new StringWriter();
+			PrintWriter printWriter = new PrintWriter(stringWriter, true);
+			new RuntimeException().printStackTrace(printWriter);
+			this.batchOverrideStackTrace = stringWriter.getBuffer().toString();
+			foo.forEach(s ->  this.latch1Batch.countDown());
 		}
 
 		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}")

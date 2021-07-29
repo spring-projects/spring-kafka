@@ -15,6 +15,13 @@ The listener container can now be configured to accept manual offset commits out
 The container will defer the commit until the missing offset is acknowledged.
 See <<ooo-commits>> for more information.
 
+[[x28-batch-overrude]]
+==== `@KafkaListener` Changes
+
+It is now possible to specify whether the listener method is a batch listener on the method itself.
+This allows the same container factory to be used for both record and batch listeners.
+See <<batch-listeners>> for more information.
+
 [[x28-template]]
 ==== `KafkaTemplate` Changes
 
