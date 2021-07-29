@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +37,8 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -88,18 +88,18 @@ public class StatefulRetryTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory(embeddedKafka));
-			SeekToCurrentErrorHandler errorHandler = new SeekToCurrentErrorHandler() {
+			DefaultErrorHandler errorHandler = new DefaultErrorHandler() {
 
 				@Override
-				public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
+				public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 						Consumer<?, ?> consumer, MessageListenerContainer container) {
 					Config.this.seekPerformed = true;
-					super.handle(thrownException, records, consumer, container);
+					super.handleRemaining(thrownException, records, consumer, container);
 				}
 
 			};
 			errorHandler.setLogLevel(Level.INFO);
-			factory.setErrorHandler(errorHandler);
+			factory.setCommonErrorHandler(errorHandler);
 			factory.setStatefulRetry(true);
 			factory.setRetryTemplate(new RetryTemplate());
 			factory.setRecoveryCallback(c -> {

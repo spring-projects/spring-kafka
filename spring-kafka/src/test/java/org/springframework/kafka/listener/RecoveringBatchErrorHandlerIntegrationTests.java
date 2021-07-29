@@ -48,6 +48,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.5
  *
  */
+@SuppressWarnings("deprecation")
 @EmbeddedKafka(topics = {
 		RecoveringBatchErrorHandlerIntegrationTests.topic1,
 		RecoveringBatchErrorHandlerIntegrationTests.topic1DLT,

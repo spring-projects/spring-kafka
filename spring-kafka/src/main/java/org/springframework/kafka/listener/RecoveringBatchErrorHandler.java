@@ -35,11 +35,14 @@ import org.springframework.util.backoff.BackOff;
  * exception, error handling is delegated to a {@link SeekToCurrentBatchErrorHandler} with
  * this handler's {@link BackOff}. If the record is recovered, its offset is committed.
  *
+ * @deprecated in favor of {@link DefaultErrorHandler}.
+ *
  * @author Gary Russell
  * @author Myeonghyeon Lee
  * @since 2.5
  *
  */
+@Deprecated
 public class RecoveringBatchErrorHandler extends FailedBatchProcessor
 		implements ContainerAwareBatchErrorHandler {
 

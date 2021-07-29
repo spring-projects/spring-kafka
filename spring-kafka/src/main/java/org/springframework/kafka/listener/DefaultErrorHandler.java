@@ -117,6 +117,16 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	}
 
 	@Override
+	public boolean remainingRecords() {
+		return true;
+	}
+
+	@Override
+	public boolean deliveryAttemptHeader() {
+		return true;
+	}
+
+	@Override
 	public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 

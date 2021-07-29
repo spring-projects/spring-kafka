@@ -18,7 +18,6 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -41,7 +40,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -137,8 +135,8 @@ public class SeekToCurrentRecovererTests {
 			}
 
 		};
-		SeekToCurrentErrorHandler errorHandler = spy(new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 2)));
-		container.setErrorHandler(errorHandler);
+		DefaultErrorHandler errorHandler = spy(new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 2)));
+		container.setCommonErrorHandler(errorHandler);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
 			if (e instanceof ConsumerStoppedEvent) {
@@ -169,24 +167,24 @@ public class SeekToCurrentRecovererTests {
 		dltPf.destroy();
 		consumer.close();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		verify(errorHandler, times(4)).handle(any(), any(), any(), any());
+		verify(errorHandler, times(4)).handleRemaining(any(), any(), any(), any());
 		verify(errorHandler).clearThreadState();
 	}
 
 	@Test
 	public void seekToCurrentErrorHandlerRecovers() {
 		@SuppressWarnings("unchecked")
-		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
+		DefaultErrorHandler eh = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
-				eh.handle(new RuntimeException(), records, consumer, null));
+				eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
-		eh.handle(new RuntimeException(), records, consumer, null);
+		eh.handleRemaining(new RuntimeException(), records, consumer, null);
 		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer).accept(eq(records.get(0)), any());
@@ -195,7 +193,7 @@ public class SeekToCurrentRecovererTests {
 	@Test
 	public void seekToCurrentErrorHandlerRecovererFailsBackOffReset() {
 		@SuppressWarnings("unchecked")
-		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
 		AtomicBoolean fail = new AtomicBoolean(true);
 		willAnswer(incovation -> {
 			if (fail.getAndSet(false)) {
@@ -203,7 +201,7 @@ public class SeekToCurrentRecovererTests {
 			}
 			return null;
 		}).given(recoverer).accept(any(), any());
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		DefaultErrorHandler eh = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
 		AtomicInteger failedDeliveryAttempt = new AtomicInteger();
 		AtomicReference<Exception> recoveryFailureEx = new AtomicReference<>();
 		AtomicBoolean isRecovered = new AtomicBoolean();
@@ -230,16 +228,16 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(
-				() -> eh.handle(new RuntimeException(), records, consumer, null));
+				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(
-				() -> eh.handle(new RuntimeException(), records, consumer, null));
+				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(
-				() -> eh.handle(new RuntimeException(), records, consumer, null));
+				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
-		eh.handle(new RuntimeException(), records, consumer, null);
+		eh.handleRemaining(new RuntimeException(), records, consumer, null);
 		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
 		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
 		verifyNoMoreInteractions(consumer);
@@ -255,7 +253,7 @@ public class SeekToCurrentRecovererTests {
 	@Test
 	public void seekToCurrentErrorHandlerRecovererFailsBackOffNotReset() {
 		@SuppressWarnings("unchecked")
-		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
 		AtomicBoolean fail = new AtomicBoolean(true);
 		willAnswer(incovation -> {
 			if (fail.getAndSet(false)) {
@@ -263,20 +261,20 @@ public class SeekToCurrentRecovererTests {
 			}
 			return null;
 		}).given(recoverer).accept(any(), any());
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		DefaultErrorHandler eh = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
 		eh.setResetStateOnRecoveryFailure(false);
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(
-				() -> eh.handle(new RuntimeException(), records, consumer, null));
+				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(
-				() -> eh.handle(new RuntimeException(), records, consumer, null));
+				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
-		eh.handle(new RuntimeException(), records, consumer, null); // immediate re-attempt recovery
+		eh.handleRemaining(new RuntimeException(), records, consumer, null); // immediate re-attempt recovery
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
 		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
 		verifyNoMoreInteractions(consumer);
@@ -295,8 +293,8 @@ public class SeekToCurrentRecovererTests {
 
 	private void seekToCurrentErrorHandlerRecoversManualAcks(boolean syncCommits) {
 		@SuppressWarnings("unchecked")
-		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, 1));
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
+		DefaultErrorHandler eh = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
 		eh.setCommitRecovered(true);
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
@@ -310,17 +308,12 @@ public class SeekToCurrentRecovererTests {
 		OffsetCommitCallback commitCallback = (offsets, ex) -> { };
 		properties.setCommitCallback(commitCallback);
 		given(container.getContainerProperties()).willReturn(properties);
-		try {
-			eh.handle(new RuntimeException(), records, consumer, container);
-			fail("Expected exception");
-		}
-		catch (@SuppressWarnings("unused") KafkaException e) {
-			// NOSONAR
-		}
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			eh.handleRemaining(new RuntimeException(), records, consumer, container));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verify(consumer).seek(new TopicPartition("foo", 1),  0L);
 		verifyNoMoreInteractions(consumer);
-		eh.handle(new RuntimeException(), records, consumer, container);
+		eh.handleRemaining(new RuntimeException(), records, consumer, container);
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 1),  0L);
 		if (syncCommits) {
 			verify(consumer)
@@ -340,20 +333,15 @@ public class SeekToCurrentRecovererTests {
 	@Test
 	public void testNeverRecover() {
 		@SuppressWarnings("unchecked")
-		BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer = mock(BiConsumer.class);
-		SeekToCurrentErrorHandler eh = new SeekToCurrentErrorHandler(recoverer, new FixedBackOff(0L, Long.MAX_VALUE));
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
+		DefaultErrorHandler eh = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, Long.MAX_VALUE));
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		for (int i = 0; i < 20; i++) {
-			try {
-				eh.handle(new RuntimeException(), records, consumer, null);
-				fail("Expected exception");
-			}
-			catch (@SuppressWarnings("unused") KafkaException e) {
-				// NOSONAR
-			}
+			assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+				eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		}
 		verify(consumer, times(20)).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);

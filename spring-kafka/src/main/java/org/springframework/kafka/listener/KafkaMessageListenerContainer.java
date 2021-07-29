@@ -810,7 +810,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			if (this.isBatchListener) {
 				validateErrorHandler(true);
-				BatchErrorHandler batchErrorHandler = determineBatchErrorHandler(errHandler);
+				BatchErrorHandler batchErrorHandler = (BatchErrorHandler) errHandler;
 				if (batchErrorHandler != null) {
 					return new ErrorHandlerAdapter(batchErrorHandler);
 				}
@@ -820,7 +820,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				validateErrorHandler(false);
-				ErrorHandler eh = determineErrorHandler(errHandler);
+				ErrorHandler eh = (ErrorHandler) errHandler;
 				if (eh != null) {
 					return new ErrorHandlerAdapter(eh);
 				}
@@ -1118,18 +1118,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					> this.containerProperties.getNoPollThreshold()) {
 				publishNonResponsiveConsumerEvent(timeSinceLastPoll, this.consumer);
 			}
-		}
-
-		@Nullable
-		protected BatchErrorHandler determineBatchErrorHandler(@Nullable GenericErrorHandler<?> errHandler) {
-			return errHandler != null ? (BatchErrorHandler) errHandler
-					: this.transactionManager != null ? null : new RecoveringBatchErrorHandler();
-		}
-
-		@Nullable
-		protected ErrorHandler determineErrorHandler(@Nullable GenericErrorHandler<?> errHandler) {
-			return errHandler != null ? (ErrorHandler) errHandler
-					: this.transactionManager != null ? null : new SeekToCurrentErrorHandler();
 		}
 
 		@Nullable

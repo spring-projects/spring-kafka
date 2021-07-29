@@ -31,10 +31,14 @@ import org.springframework.util.backoff.BackOffExecution;
  * An error handler that seeks to the current offset for each topic in a batch of records.
  * Used to rewind partitions after a message failure so that the batch can be replayed.
  *
+ * @deprecated with no replacement - use {@link DefaultErrorHandler} with an infinite
+ * {@link BackOff}.
+ *
  * @author Gary Russell
  * @since 2.1
  *
  */
+@Deprecated
 public class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
 		implements ContainerAwareBatchErrorHandler {
 

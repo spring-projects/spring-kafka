@@ -47,12 +47,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.ContainerCustomizer;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
+import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.listener.ErrorHandler;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.listener.adapter.AbstractDelegatingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
@@ -78,7 +78,7 @@ class ListenerContainerFactoryConfigurerTests {
 	private ContainerProperties containerProperties;
 
 	@Captor
-	private ArgumentCaptor<ErrorHandler> errorHandlerCaptor;
+	private ArgumentCaptor<CommonErrorHandler> errorHandlerCaptor;
 
 	private final ConsumerRecord<?, ?> record =
 			new ConsumerRecord<>("test-topic", 1, 1234L, new Object(), new Object());
@@ -95,7 +95,7 @@ class ListenerContainerFactoryConfigurerTests {
 	private OffsetCommitCallback offsetCommitCallback;
 
 	@Mock
-	private java.util.function.Consumer<ErrorHandler> errorHandlerCustomizer;
+	private java.util.function.Consumer<CommonErrorHandler> errorHandlerCustomizer;
 
 	@SuppressWarnings("rawtypes")
 	@Captor
@@ -134,7 +134,7 @@ class ListenerContainerFactoryConfigurerTests {
 
 	private final long backOffValue = 2000L;
 
-	private ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration =
+	private final ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration =
 			new ListenerContainerFactoryConfigurer.Configuration(Collections.singletonList(backOffValue));
 
 	@Test
@@ -156,13 +156,13 @@ class ListenerContainerFactoryConfigurerTests {
 				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
 
 		// then
-		then(containerFactory).should(times(1)).setErrorHandler(errorHandlerCaptor.capture());
-		ErrorHandler errorHandler = errorHandlerCaptor.getValue();
-		assertThat(SeekToCurrentErrorHandler.class.isAssignableFrom(errorHandler.getClass())).isTrue();
-		SeekToCurrentErrorHandler seekToCurrent = (SeekToCurrentErrorHandler) errorHandler;
+		then(containerFactory).should(times(1)).setCommonErrorHandler(errorHandlerCaptor.capture());
+		CommonErrorHandler errorHandler = errorHandlerCaptor.getValue();
+		assertThat(DefaultErrorHandler.class.isAssignableFrom(errorHandler.getClass())).isTrue();
+		DefaultErrorHandler seekToCurrent = (DefaultErrorHandler) errorHandler;
 
 		RuntimeException ex = new RuntimeException();
-		seekToCurrent.handle(ex, records, consumer, container);
+		seekToCurrent.handleRemaining(ex, records, consumer, container);
 
 		then(recoverer).should(times(1)).accept(record, consumer, ex);
 		then(consumer).should(times(1)).commitAsync(any(Map.class), eq(offsetCommitCallback));
@@ -379,6 +379,6 @@ class ListenerContainerFactoryConfigurerTests {
 		// then
 		assertThat(secondFactory).isEqualTo(factory);
 		then(containerFactory).should(times(1)).setContainerCustomizer(any());
-		then(containerFactory).should(times(1)).setErrorHandler(any());
+		then(containerFactory).should(times(1)).setCommonErrorHandler(any());
 	}
 }

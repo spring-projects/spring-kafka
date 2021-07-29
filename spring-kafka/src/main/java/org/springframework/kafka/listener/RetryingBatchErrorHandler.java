@@ -48,6 +48,7 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 
 	private final BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer;
 
+	@SuppressWarnings("deprecation")
 	private final CommonErrorHandler seeker = new ErrorHandlerAdapter(new SeekToCurrentBatchErrorHandler());
 
 	private boolean ackAfterHandle = true;

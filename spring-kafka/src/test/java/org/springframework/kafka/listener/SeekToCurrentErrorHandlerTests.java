@@ -48,6 +48,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.3
  *
  */
+@SuppressWarnings("deprecation")
 public class SeekToCurrentErrorHandlerTests {
 
 	@Test

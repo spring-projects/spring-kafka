@@ -30,12 +30,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
+import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.listener.ErrorHandler;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.FixedBackOff;
@@ -43,7 +43,7 @@ import org.springframework.util.backoff.FixedBackOff;
 /**
  *
  * Configures the provided {@link ConcurrentKafkaListenerContainerFactory} with a
- * {@link SeekToCurrentErrorHandler}, the {@link DeadLetterPublishingRecoverer} created by
+ * {@link DefaultErrorHandler}, the {@link DeadLetterPublishingRecoverer} created by
  * the {@link DeadLetterPublishingRecovererFactory}.
  *
  * Mind that the same factory can be used by many different
@@ -76,7 +76,7 @@ public class ListenerContainerFactoryConfigurer {
 	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> {
 	};
 
-	private Consumer<ErrorHandler> errorHandlerCustomizer = errorHandler -> {
+	private Consumer<CommonErrorHandler> errorHandlerCustomizer = errorHandler -> {
 	};
 
 	private final DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory;
@@ -108,12 +108,13 @@ public class ListenerContainerFactoryConfigurer {
 				: doConfigure(containerFactory, Collections.emptyList());
 	}
 
-	private ConcurrentKafkaListenerContainerFactory<?, ?> doConfigure(ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory,
-																	List<Long> backOffValues) {
-		containerFactory.setContainerCustomizer(container ->
-				setupBackoffAwareMessageListenerAdapter(container, backOffValues));
+	private ConcurrentKafkaListenerContainerFactory<?, ?> doConfigure(
+			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory, List<Long> backOffValues) {
+
 		containerFactory
-				.setErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create()));
+				.setContainerCustomizer(container -> setupBackoffAwareMessageListenerAdapter(container, backOffValues));
+		containerFactory
+				.setCommonErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create()));
 		return containerFactory;
 	}
 
@@ -135,12 +136,12 @@ public class ListenerContainerFactoryConfigurer {
 		this.containerCustomizer = containerCustomizer;
 	}
 
-	public void setErrorHandlerCustomizer(Consumer<ErrorHandler> errorHandlerCustomizer) {
+	public void setErrorHandlerCustomizer(Consumer<CommonErrorHandler> errorHandlerCustomizer) {
 		this.errorHandlerCustomizer = errorHandlerCustomizer;
 	}
 
-	private ErrorHandler createErrorHandler(DeadLetterPublishingRecoverer deadLetterPublishingRecoverer) {
-		SeekToCurrentErrorHandler errorHandler = new SeekToCurrentErrorHandler(deadLetterPublishingRecoverer,
+	private CommonErrorHandler createErrorHandler(DeadLetterPublishingRecoverer deadLetterPublishingRecoverer) {
+		DefaultErrorHandler errorHandler = new DefaultErrorHandler(deadLetterPublishingRecoverer,
 				new FixedBackOff(0, 0));
 		errorHandler.setCommitRecovered(true);
 		this.errorHandlerCustomizer.accept(errorHandler);

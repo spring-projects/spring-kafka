@@ -70,6 +70,7 @@ import org.springframework.util.backoff.FixedBackOff;
  */
 @SpringJUnitConfig
 @DirtiesContext
+@SuppressWarnings("deprecation")
 public class RecoveringBatchErrorHandlerTests {
 
 	private static final String CONTAINER_ID = "container";

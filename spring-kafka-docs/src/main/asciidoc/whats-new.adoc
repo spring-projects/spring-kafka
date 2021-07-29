@@ -20,3 +20,9 @@ See <<ooo-commits>> for more information.
 
 You can now receive a single record, given the topic, partition and offset.
 See <<kafka-template-receive>> for more information.
+
+[[x28-eh]]
+==== `CommonErrorHandler` Added
+
+The legacy `GenericErrorHandler` and its sub-interface hierarchies for record an batch listeners have been replaced by a new single interface `CommonErrorHandler` with implementations corresponding to most legacy implementations of `GenericErrorHandler`.
+See <<error-handlers>> for more information.

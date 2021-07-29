@@ -59,7 +59,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer;
+import org.springframework.kafka.config.StreamsBuilderFactoryBeanConfigurer;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -211,9 +211,8 @@ public class KafkaStreamsTests {
 			return new AtomicBoolean();
 		}
 
-		@SuppressWarnings("deprecation")
 		@Bean
-		public StreamsBuilderFactoryBeanCustomizer customizer() {
+		public StreamsBuilderFactoryBeanConfigurer customizer() {
 			return fb -> fb.setStateListener((newState, oldState) -> {
 				stateChangeCalled().set(true);
 			});

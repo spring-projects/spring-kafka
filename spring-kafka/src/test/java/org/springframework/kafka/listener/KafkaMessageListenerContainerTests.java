@@ -917,8 +917,8 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setClientId("clientId");
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		SeekToCurrentErrorHandler errorHandler = spy(new SeekToCurrentErrorHandler(new FixedBackOff(0L, 0)));
-		container.setErrorHandler(errorHandler);
+		DefaultErrorHandler errorHandler = spy(new DefaultErrorHandler(new FixedBackOff(0L, 0)));
+		container.setCommonErrorHandler(errorHandler);
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -927,7 +927,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
-		inOrder.verify(errorHandler).handle(any(), any(), any(), any());
+		inOrder.verify(errorHandler).handleRemaining(any(), any(), any(), any());
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
 	}
@@ -2879,7 +2879,6 @@ public class KafkaMessageListenerContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testContainerException");
-		container.setErrorHandler(new SeekToCurrentErrorHandler());
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		template.sendDefault(0, 0, "a");
@@ -3438,7 +3437,7 @@ public class KafkaMessageListenerContainerTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		AtomicBoolean recovered = new AtomicBoolean();
 		CountDownLatch latch = new CountDownLatch(1);
-		container.setErrorHandler(new SeekToCurrentErrorHandler((rec, ex) -> {
+		container.setCommonErrorHandler(new DefaultErrorHandler((rec, ex) -> {
 					recovered.set(true);
 					latch.countDown();
 				},
