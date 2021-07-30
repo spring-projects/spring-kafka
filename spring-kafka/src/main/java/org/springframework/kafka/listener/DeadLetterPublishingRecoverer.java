@@ -514,14 +514,14 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	private void enhanceHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {
-		maybeAddOriginalHeaders(kafkaHeaders, record);
+		maybeAddOriginalHeaders(kafkaHeaders, record, exception);
 		Headers headers = this.headersFunction.apply(record, exception);
 		if (headers != null) {
 			headers.forEach(kafkaHeaders::add);
 		}
 	}
 
-	private void maybeAddOriginalHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record) {
+	private void maybeAddOriginalHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception ex) {
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.topicHeader,
 				record.topic().getBytes(StandardCharsets.UTF_8));
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.partitionHeader,
@@ -532,6 +532,13 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array());
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.timestampTypeHeader,
 				record.timestampType().toString().getBytes(StandardCharsets.UTF_8));
+		if (ex instanceof ListenerExecutionFailedException) {
+			String consumerGroup = ((ListenerExecutionFailedException) ex).getGroupId();
+			if (consumerGroup != null) {
+				maybeAddHeader(kafkaHeaders, this.headerNames.original.consumerGroup,
+						consumerGroup.getBytes(StandardCharsets.UTF_8));
+			}
+		}
 	}
 
 	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value) {
@@ -540,11 +547,14 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		}
 	}
 
-	void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception,
-								boolean isKey) {
+	void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception, boolean isKey) {
 		kafkaHeaders.add(new RecordHeader(isKey ? this.headerNames.exceptionInfo.keyExceptionFqcn
 				: this.headerNames.exceptionInfo.exceptionFqcn,
 				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)));
+		if (!isKey && exception.getCause() != null) {
+			kafkaHeaders.add(new RecordHeader(this.headerNames.exceptionInfo.exceptionCauseFqcn,
+					exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8)));
+		}
 		String message = exception.getMessage();
 		if (message != null) {
 			kafkaHeaders.add(new RecordHeader(isKey
@@ -579,9 +589,11 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 					.timestampTypeHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)
 					.topicHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)
 					.partitionHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)
+					.consumerGroupHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)
 				.exception()
 					.keyExceptionFqcn(KafkaHeaders.DLT_KEY_EXCEPTION_FQCN)
 					.exceptionFqcn(KafkaHeaders.DLT_EXCEPTION_FQCN)
+					.exceptionCauseFqcn(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)
 					.keyExceptionMessage(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE)
 					.exceptionMessage(KafkaHeaders.DLT_EXCEPTION_MESSAGE)
 					.keyExceptionStacktrace(KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE)
@@ -605,49 +617,66 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		}
 
 		static class Original {
-			private final String offsetHeader;
-			private final String timestampHeader;
-			private final String timestampTypeHeader;
-			private final String topicHeader;
-			private final String partitionHeader;
+
+			final String offsetHeader;
+
+			final String timestampHeader;
+
+			final String timestampTypeHeader;
+
+			final String topicHeader;
+
+			final String partitionHeader;
+
+			final String consumerGroup;
 
 			Original(String offsetHeader,
 					String timestampHeader,
 					String timestampTypeHeader,
 					String topicHeader,
-					String partitionHeader) {
+					String partitionHeader,
+					String consumerGroup) {
 				this.offsetHeader = offsetHeader;
 				this.timestampHeader = timestampHeader;
 				this.timestampTypeHeader = timestampTypeHeader;
 				this.topicHeader = topicHeader;
 				this.partitionHeader = partitionHeader;
+				this.consumerGroup = consumerGroup;
 			}
 		}
 
 		static class ExceptionInfo {
 
-			private final String keyExceptionFqcn;
-			private final String exceptionFqcn;
-			private final String keyExceptionMessage;
-			private final String exceptionMessage;
-			private final String keyExceptionStacktrace;
-			private final String exceptionStacktrace;
+			final String keyExceptionFqcn;
+
+			final String exceptionFqcn;
+
+			final String exceptionCauseFqcn;
+
+			final String keyExceptionMessage;
+
+			final String exceptionMessage;
+
+			final String keyExceptionStacktrace;
+
+			final String exceptionStacktrace;
 
 			ExceptionInfo(String keyExceptionFqcn,
-						String exceptionFqcn,
-						String keyExceptionMessage,
-						String exceptionMessage,
-						String keyExceptionStacktrace,
-						String exceptionStacktrace) {
+					String exceptionFqcn,
+					String exceptionCauseFqcn,
+					String keyExceptionMessage,
+					String exceptionMessage,
+					String keyExceptionStacktrace,
+					String exceptionStacktrace) {
 				this.keyExceptionFqcn = keyExceptionFqcn;
 				this.exceptionFqcn = exceptionFqcn;
+				this.exceptionCauseFqcn = exceptionCauseFqcn;
 				this.keyExceptionMessage = keyExceptionMessage;
 				this.exceptionMessage = exceptionMessage;
 				this.keyExceptionStacktrace = keyExceptionStacktrace;
 				this.exceptionStacktrace = exceptionStacktrace;
 			}
 		}
-
 
 		/**
 		 * Provides a convenient API for creating
@@ -684,6 +713,8 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				private String topicHeader;
 
 				private String partitionHeader;
+
+				private String consumerGroupHeader;
 
 				/**
 				 * Sets the name of the header that will be used to store the offset
@@ -746,6 +777,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				}
 
 				/**
+				 * Sets the name of the header that will be used to store the consumer
+				 * group that failed to consume the original record.
+				 * @param consumerGroup the consumer group header name.
+				 * @return the Original builder instance
+				 * @since 2.8
+				 */
+				public Builder.Original consumerGroupHeader(String consumerGroupHeader) {
+					this.consumerGroupHeader = consumerGroupHeader;
+					return this;
+				}
+
+				/**
 				 * Returns the exception builder.
 				 * @return the exception builder.
 				 * @since 2.7
@@ -760,16 +803,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				 * @since 2.7
 				 */
 				private DeadLetterPublishingRecoverer.HeaderNames.Original build() {
-					Assert.notNull(this.offsetHeader, "offsetHeader header cannot be null");
-					Assert.notNull(this.timestampHeader, "timestampHeader header cannot be null");
-					Assert.notNull(this.timestampTypeHeader, "timestampTypeHeader header cannot be null");
-					Assert.notNull(this.topicHeader, "topicHeader header cannot be null");
-					Assert.notNull(this.partitionHeader, "partitionHeader header cannot be null");
+					Assert.notNull(this.offsetHeader, "offsetHeader cannot be null");
+					Assert.notNull(this.timestampHeader, "timestampHeader cannot be null");
+					Assert.notNull(this.timestampTypeHeader, "timestampTypeHeader cannot be null");
+					Assert.notNull(this.topicHeader, "topicHeader cannot be null");
+					Assert.notNull(this.partitionHeader, "partitionHeader cannot be null");
+					Assert.notNull(this.consumerGroupHeader, "consumerGroupHeader cannot be null");
 					return new DeadLetterPublishingRecoverer.HeaderNames.Original(this.offsetHeader,
 							this.timestampHeader,
 							this.timestampTypeHeader,
 							this.topicHeader,
-							this.partitionHeader);
+							this.partitionHeader,
+							this.consumerGroupHeader);
 				}
 			}
 
@@ -784,6 +829,8 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				private String keyExceptionFqcn;
 
 				private String exceptionFqcn;
+
+				private String exceptionCauseFqcn;
 
 				private String keyExceptionMessage;
 
@@ -817,6 +864,17 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 					return this;
 				}
 
+				/**
+				 * Sets the name of the header that will be used to store the exceptionCauseFqcn
+				 * of the original record.
+				 * @param exceptionFqcn the exceptionFqcn header name.
+				 * @return the Exception builder instance
+				 * @since 2.8
+				 */
+				public ExceptionInfo exceptionCauseFqcn(String exceptionCauseFqcn) {
+					this.exceptionCauseFqcn = exceptionCauseFqcn;
+					return this;
+				}
 				/**
 				 * Sets the name of the header that will be used to store the keyExceptionMessage
 				 * of the original record.
@@ -873,6 +931,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				public DeadLetterPublishingRecoverer.HeaderNames build() {
 					Assert.notNull(this.keyExceptionFqcn, "keyExceptionFqcn header cannot be null");
 					Assert.notNull(this.exceptionFqcn, "exceptionFqcn header cannot be null");
+					Assert.notNull(this.exceptionCauseFqcn, "exceptionCauseFqcn header cannot be null");
 					Assert.notNull(this.keyExceptionMessage, "keyExceptionMessage header cannot be null");
 					Assert.notNull(this.exceptionMessage, "exceptionMessage header cannot be null");
 					Assert.notNull(this.keyExceptionStacktrace, "keyExceptionStacktrace header cannot be null");
@@ -880,6 +939,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 					return new DeadLetterPublishingRecoverer.HeaderNames(Builder.this.original.build(),
 							new HeaderNames.ExceptionInfo(this.keyExceptionFqcn,
 									this.exceptionFqcn,
+									this.exceptionCauseFqcn,
 									this.keyExceptionMessage,
 									this.exceptionMessage,
 									this.keyExceptionStacktrace,

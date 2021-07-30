@@ -694,7 +694,8 @@ public class TransactionalContainerTests {
 	public void testMaxFailures() throws Exception {
 		logger.info("Start testMaxFailures");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("txTestMaxFailures", "false", embeddedKafka);
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "groupInARBP");
+		String group = "groupInARBP";
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, group);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic3);
@@ -769,6 +770,8 @@ public class TransactionalContainerTests {
 		MessageHeaders headers = new MessageHeaders(map);
 		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_FQCN, byte[].class)))
 				.contains("ListenerExecutionFailedException");
+		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN, byte[].class)))
+				.isEqualTo("java.lang.RuntimeException");
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_MESSAGE, byte[].class))
 				.contains("fail for max failures".getBytes());
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
@@ -777,6 +780,7 @@ public class TransactionalContainerTests {
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP, byte[].class)).isNotNull();
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE, byte[].class)).isNotNull();
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TOPIC, byte[].class)).isEqualTo(topic3.getBytes());
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isEqualTo(group.getBytes());
 		assertThat(headers.get("baz")).isEqualTo("qux".getBytes());
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();

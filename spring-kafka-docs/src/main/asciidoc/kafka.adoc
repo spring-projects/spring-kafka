@@ -5321,7 +5321,8 @@ ErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(
 
 The record sent to the dead-letter topic is enhanced with the following headers:
 
-* `KafkaHeaders.DLT_EXCEPTION_FQCN`: The Exception class name.
+* `KafkaHeaders.DLT_EXCEPTION_FQCN`: The Exception class name (generally a `ListenerExecutionFailedException`, but can be others).
+* `KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN`: The Exception cause class name, if present (since version 2.8).
 * `KafkaHeaders.DLT_EXCEPTION_STACKTRACE`: The Exception stack trace.
 * `KafkaHeaders.DLT_EXCEPTION_MESSAGE`: The  Exception message.
 * `KafkaHeaders.DLT_KEY_EXCEPTION_FQCN`: The Exception class name (key deserialization errors only).
@@ -5332,6 +5333,9 @@ The record sent to the dead-letter topic is enhanced with the following headers:
 * `KafkaHeaders.DLT_ORIGINAL_OFFSET`: The original offset.
 * `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP`: The original timestamp.
 * `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE`: The original timestamp type.
+* `KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP`: The original consumer group that failed to process the record (since version 2.8).
+
+Key exceptions are only caused by `DeserializationException` s so there is no `DLT_KEY_EXCEPTION_CAUSE_FQCN`.
 
 There are two mechanisms to add more headers.
 

@@ -148,6 +148,12 @@ public abstract class KafkaHeaders {
 	public static final String DLT_EXCEPTION_FQCN = PREFIX + "dlt-exception-fqcn";
 
 	/**
+	 * Exception cause class name for a record published sent to a dead-letter topic.
+	 * @since 2.8
+	 */
+	public static final String DLT_EXCEPTION_CAUSE_FQCN = PREFIX + "dlt-exception-cause-fqcn";
+
+	/**
 	 * Exception stack trace for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
@@ -199,6 +205,12 @@ public abstract class KafkaHeaders {
 	public static final String DLT_ORIGINAL_OFFSET = PREFIX + "dlt-original-offset";
 
 	/**
+	 * Consumer group that failed to consumer a record published to a dead-letter topic.
+	 * @since 2.8
+	 */
+	public static final String DLT_ORIGINAL_CONSUMER_GROUP = PREFIX + "dlt-original-consumer-group";
+
+	/**
 	 * Original timestamp for a record published to a dead-letter topic.
 	 * @since 2.2
 	 */
@@ -227,6 +239,12 @@ public abstract class KafkaHeaders {
 	 * @since 2.2
 	 */
 	public static final String EXCEPTION_FQCN = PREFIX + "exception-fqcn";
+
+	/**
+	 * Exception class name for a record published sent to another topic.
+	 * @since 2.8
+	 */
+	public static final String EXCEPTION_CAUSE_FQCN = PREFIX + "exception-fqcn";
 
 	/**
 	 * Exception stack trace for a record published to another topic.
@@ -278,6 +296,12 @@ public abstract class KafkaHeaders {
 	 * @since 2.2
 	 */
 	public static final String ORIGINAL_OFFSET = PREFIX + "original-offset";
+
+	/**
+	 * Consumer group that failed to consumer a record published to another topic.
+	 * @since 2.8
+	 */
+	public static final String ORIGINAL_CONSUMER_GROUP = PREFIX + "dlt-original-consumer-group";
 
 	/**
 	 * Original timestamp for a record published to another topic.
