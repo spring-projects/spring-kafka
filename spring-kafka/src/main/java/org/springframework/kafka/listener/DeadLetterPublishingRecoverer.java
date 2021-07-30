@@ -779,7 +779,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				/**
 				 * Sets the name of the header that will be used to store the consumer
 				 * group that failed to consume the original record.
-				 * @param consumerGroup the consumer group header name.
+				 * @param consumerGroupHeader the consumer group header name.
 				 * @return the Original builder instance
 				 * @since 2.8
 				 */
@@ -867,7 +867,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				/**
 				 * Sets the name of the header that will be used to store the exceptionCauseFqcn
 				 * of the original record.
-				 * @param exceptionFqcn the exceptionFqcn header name.
+				 * @param exceptionCauseFqcn the exceptionFqcn header name.
 				 * @return the Exception builder instance
 				 * @since 2.8
 				 */
