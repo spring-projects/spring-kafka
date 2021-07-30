@@ -2484,12 +2484,49 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Exception toHandle = ex;
 			if (toHandle instanceof ListenerExecutionFailedException) {
 				toHandle = new ListenerExecutionFailedException(toHandle.getMessage(), this.consumerGroupId,
-						toHandle.getCause()); // NOSONAR
+						toHandle.getCause()); // NOSONAR restored below
+				fixStackTrace(ex, toHandle);
 			}
 			else {
 				toHandle = new ListenerExecutionFailedException("Listener failed", this.consumerGroupId, toHandle);
 			}
 			return (RuntimeException) toHandle;
+		}
+
+		private void fixStackTrace(Exception ex, Exception toHandle) {
+			try {
+				StackTraceElement[] stackTrace = ex.getStackTrace();
+				if (stackTrace != null && stackTrace.length > 0) {
+					StackTraceElement[] stackTrace2 = toHandle.getStackTrace();
+					if (stackTrace2 != null) {
+						int matching = -1;
+						for (int i = 0; i < stackTrace2.length; i++) {
+							StackTraceElement se2 = stackTrace[i];
+							for (StackTraceElement se : stackTrace2) {
+								if (se2.equals(se)) {
+									matching = i;
+									break;
+								}
+							}
+							if (matching >= 0) {
+								break;
+							}
+						}
+						if (matching >= 0) {
+							StackTraceElement[] merged = new StackTraceElement[matching];
+							System.arraycopy(stackTrace, 0, merged, 0, matching);
+							ListenerExecutionFailedException suppressed =
+									new ListenerExecutionFailedException("Restored Stack Trace");
+							suppressed.setStackTrace(merged);
+							toHandle.addSuppressed(suppressed);
+						}
+					}
+				}
+			}
+			catch (Exception ex2) {
+				this.logger.debug(ex2,
+						"Could not restore the stack trace when decorating the LEFE with the group id");
+			}
 		}
 
 		public void checkDeser(final ConsumerRecord<K, V> record, String headerName) {
