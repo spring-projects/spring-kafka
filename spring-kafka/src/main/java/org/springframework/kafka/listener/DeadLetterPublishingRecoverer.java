@@ -315,19 +315,33 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		DeserializationException kDeserEx = ListenerUtils.getExceptionFromHeader(record,
 					ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		Headers headers = new RecordHeaders(record.headers().toArray());
-		if (kDeserEx != null && !this.retainExceptionHeader) {
-			headers.remove(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER);
-			addExceptionInfoHeaders(headers, kDeserEx, true);
-		}
-		if (vDeserEx != null && !this.retainExceptionHeader) {
-			headers.remove(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER);
-		}
-		enhanceHeaders(headers, record, exception); // NOSONAR headers are never null
+		addAndEnhanceHeaders(record, exception, vDeserEx, kDeserEx, headers);
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
 				kDeserEx == null ? null : kDeserEx.getData(), vDeserEx == null ? null : vDeserEx.getData());
 		KafkaOperations<Object, Object> kafkaTemplate =
 				(KafkaOperations<Object, Object>) this.templateResolver.apply(outRecord);
 		sendOrThrow(outRecord, kafkaTemplate);
+	}
+
+	private void addAndEnhanceHeaders(ConsumerRecord<?, ?> record, Exception exception,
+			@Nullable DeserializationException vDeserEx, @Nullable DeserializationException kDeserEx, Headers headers) {
+
+		if (kDeserEx != null) {
+			if (!this.retainExceptionHeader) {
+				headers.remove(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER);
+			}
+			addExceptionInfoHeaders(headers, kDeserEx, true);
+		}
+		if (vDeserEx != null) {
+			if (!this.retainExceptionHeader) {
+				headers.remove(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+			}
+			addExceptionInfoHeaders(headers, vDeserEx, false);
+		}
+		if (kDeserEx == null && vDeserEx == null) {
+			addExceptionInfoHeaders(headers, exception, false);
+		}
+		enhanceHeaders(headers, record, exception); // NOSONAR headers are never null
 	}
 
 	private void sendOrThrow(ProducerRecord<Object, Object> outRecord,
@@ -501,7 +515,6 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	private void enhanceHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {
 		maybeAddOriginalHeaders(kafkaHeaders, record);
-		addExceptionInfoHeaders(kafkaHeaders, exception, false);
 		Headers headers = this.headersFunction.apply(record, exception);
 		if (headers != null) {
 			headers.forEach(kafkaHeaders::add);

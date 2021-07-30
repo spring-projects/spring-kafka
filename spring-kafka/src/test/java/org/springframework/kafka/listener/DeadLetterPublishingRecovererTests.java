@@ -207,6 +207,29 @@ public class DeadLetterPublishingRecovererTests {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
+	void keyDeserOnly() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		Headers headers = new RecordHeaders();
+		DeserializationException deserEx = createDeserEx(true);
+		headers.add(
+				new RecordHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, header(true, deserEx)));
+		SettableListenableFuture future = new SettableListenableFuture();
+		future.set(new Object());
+		willReturn(future).given(template).send(any(ProducerRecord.class));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
+				0L, 0, 0, "bar", "baz", headers);
+		recoverer.accept(record, deserEx);
+		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(captor.capture());
+		headers = captor.getValue().headers();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE).value()).isEqualTo("testK".getBytes());
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNull();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
 	void headersNotStripped() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
@@ -225,6 +248,8 @@ public class DeadLetterPublishingRecovererTests {
 		headers = captor.getValue().headers();
 		assertThat(headers.lastHeader(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
 		assertThat(headers.lastHeader(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE).value()).isEqualTo("testK".getBytes());
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE).value()).isEqualTo("testV".getBytes());
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -262,11 +287,19 @@ public class DeadLetterPublishingRecovererTests {
 	}
 
 	private byte[] header(boolean isKey) {
+		return header(isKey, createDeserEx(isKey));
+	}
+
+	private DeserializationException createDeserEx(boolean isKey) {
+		return new DeserializationException(
+				isKey ? "testK" : "testV",
+				isKey ? "key".getBytes() : "value".getBytes(), isKey, null);
+	}
+
+	private byte[] header(boolean isKey, DeserializationException deserEx) {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
-			new ObjectOutputStream(baos).writeObject(new DeserializationException(
-					isKey ? "testK" : "testV",
-					isKey ? "key".getBytes() : "value".getBytes(), isKey, null));
+			new ObjectOutputStream(baos).writeObject(deserEx);
 		}
 		catch (IOException e) {
 			throw new UncheckedIOException(e);
