@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 	 */
 	public static final int DEFAULT_MAX_CONTENT_LOGGED = 100;
 
-	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(LoggingProducerListener.class));
+	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private boolean includeContents = true;
 
@@ -68,15 +68,15 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 
 	@Override
 	public void onError(ProducerRecord<K, V> record, @Nullable RecordMetadata recordMetadata, Exception exception) {
-		LOGGER.error(exception, () -> {
+		this.logger.error(exception, () -> {
 			StringBuffer logOutput = new StringBuffer();
 			logOutput.append("Exception thrown when sending a message");
 			if (this.includeContents) {
 				logOutput.append(" with key='")
-					.append(toDisplayString(ObjectUtils.nullSafeToString(record.key()), this.maxContentLogged))
+					.append(keyOrValue(record.key()))
 					.append("'")
 					.append(" and payload='")
-					.append(toDisplayString(ObjectUtils.nullSafeToString(record.value()), this.maxContentLogged))
+					.append(keyOrValue(record.value()))
 					.append("'");
 			}
 			logOutput.append(" to topic ").append(record.topic());
@@ -88,6 +88,15 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 			logOutput.append(":");
 			return logOutput.toString();
 		});
+	}
+
+	private String keyOrValue(Object keyOrValue) {
+		if (keyOrValue instanceof byte[]) {
+			return "byte[" + ((byte[]) keyOrValue).length + "]";
+		}
+		else {
+			return toDisplayString(ObjectUtils.nullSafeToString(keyOrValue), this.maxContentLogged);
+		}
 	}
 
 	private String toDisplayString(String original, int maxCharacters) {
