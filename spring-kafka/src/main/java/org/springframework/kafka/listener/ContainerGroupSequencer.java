@@ -64,6 +64,10 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 
 	private ContainerGroup currentGroup;
 
+	private boolean autoStartup = true;
+
+	private int phase = AbstractMessageListenerContainer.DEFAULT_PHASE;
+
 	private boolean running;
 
 	/**
@@ -99,6 +103,34 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 	}
 
 	@Override
+	public boolean isAutoStartup() {
+		return this.autoStartup;
+	}
+
+	/**
+	 * Set to false to not automatically start.
+	 * @param autoStartup false to not start;
+	 * @since 2.7.6
+	 */
+	public void setAutoStartup(boolean autoStartup) {
+		this.autoStartup = autoStartup;
+	}
+
+	@Override
+	public int getPhase() {
+		return this.phase;
+	}
+
+	/**
+	 * Set the {@link SmartLifecycle#getPhase()}.
+	 * @param phase the phase.
+	 * @since 2.7.6
+	 */
+	public void setPhase(int phase) {
+		this.phase = phase;
+	}
+
+	@Override
 	public synchronized void onApplicationEvent(ListenerContainerIdleEvent event) {
 		LOGGER.debug(() -> event.toString());
 		MessageListenerContainer parent = event.getContainer(MessageListenerContainer.class);
@@ -127,7 +159,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 					if (this.currentGroup.allStopped()) {
 						if (this.iterator.hasNext()) {
 							this.currentGroup = this.iterator.next();
-							LOGGER.debug(() -> "starting next group: " + this.currentGroup);
+							LOGGER.debug(() -> "Starting next group: " + this.currentGroup);
 							this.currentGroup.start();
 						}
 						else {
@@ -142,7 +174,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 	@Override
 	public synchronized void start() {
 		if (this.currentGroup != null) {
-			LOGGER.debug(() -> "starting first group: " + this.currentGroup);
+			LOGGER.debug(() -> "Starting first group: " + this.currentGroup);
 			this.currentGroup.start();
 		}
 		this.running = true;
