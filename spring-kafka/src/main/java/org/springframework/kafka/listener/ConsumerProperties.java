@@ -439,24 +439,26 @@ public class ConsumerProperties {
 
 	protected final String renderProperties() {
 		return renderTopics()
-				+ ", pollTimeout=" + this.pollTimeout
-				+ (this.groupId != null ? ", groupId=" + this.groupId : "")
-				+ (StringUtils.hasText(this.clientId) ? ", clientId=" + this.clientId : "")
+				+ "\n pollTimeout=" + this.pollTimeout
+				+ (this.groupId != null ? "\n groupId=" + this.groupId : "")
+				+ (StringUtils.hasText(this.clientId) ? "\n clientId=" + this.clientId : "")
 				+ (this.consumerRebalanceListener != null
-						? ", consumerRebalanceListener=" + this.consumerRebalanceListener
+						? "\n consumerRebalanceListener=" + this.consumerRebalanceListener
 						: "")
-				+ (this.commitCallback != null ? ", commitCallback=" + this.commitCallback : "")
-				+ ", syncCommits=" + this.syncCommits
-				+ (this.syncCommitTimeout != null ? ", syncCommitTimeout=" + this.syncCommitTimeout : "")
-				+ (this.kafkaConsumerProperties.size() > 0 ? ", properties=" + this.kafkaConsumerProperties : ""
-				+ ", authorizationExceptionRetryInterval=" + this.authorizationExceptionRetryInterval);
+				+ (this.commitCallback != null ? "\n commitCallback=" + this.commitCallback : "")
+				+ "\n syncCommits=" + this.syncCommits
+				+ (this.syncCommitTimeout != null ? "\n syncCommitTimeout=" + this.syncCommitTimeout : "")
+				+ (this.kafkaConsumerProperties.size() > 0 ? "\n properties=" + this.kafkaConsumerProperties : "")
+				+ "\n authorizationExceptionRetryInterval=" + this.authorizationExceptionRetryInterval
+				+ "\n commitRetries=" + this.commitRetries
+				+ "\n fixTxOffsets" + this.fixTxOffsets;
 	}
 
 	private String renderTopics() {
-		return (this.topics != null ? "topics=" + Arrays.toString(this.topics) : "")
-				+ (this.topicPattern != null ? ", topicPattern=" + this.topicPattern : "")
+		return (this.topics != null ? "\n topics=" + Arrays.toString(this.topics) : "")
+				+ (this.topicPattern != null ? "\n topicPattern=" + this.topicPattern : "")
 				+ (this.topicPartitions != null
-						? ", topicPartitions=" + Arrays.toString(this.topicPartitions)
+						? "\n topicPartitions=" + Arrays.toString(this.topicPartitions)
 						: "");
 	}
 

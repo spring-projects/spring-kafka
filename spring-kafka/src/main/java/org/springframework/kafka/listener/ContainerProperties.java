@@ -874,29 +874,33 @@ public class ContainerProperties extends ConsumerProperties {
 	public String toString() {
 		return "ContainerProperties ["
 				+ renderProperties()
-				+ ", ackMode=" + this.ackMode
-				+ ", ackCount=" + this.ackCount
-				+ ", ackTime=" + this.ackTime
-				+ ", messageListener=" + this.messageListener
+				+ "\n ackMode=" + this.ackMode
+				+ "\n ackCount=" + this.ackCount
+				+ "\n ackTime=" + this.ackTime
+				+ "\n messageListener=" + this.messageListener
 				+ (this.consumerTaskExecutor != null
-						? ", consumerTaskExecutor=" + this.consumerTaskExecutor
+						? "\n consumerTaskExecutor=" + this.consumerTaskExecutor
 						: "")
-				+ ", shutdownTimeout=" + this.shutdownTimeout
-				+ ", idleEventInterval="
+				+ "\n shutdownTimeout=" + this.shutdownTimeout
+				+ "\n idleEventInterval="
 				+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
-				+ ", idlePartitionEventInterval="
+				+ "\n idlePartitionEventInterval="
 				+ (this.idlePartitionEventInterval == null ? "not enabled" : this.idlePartitionEventInterval)
 				+ (this.transactionManager != null
-						? ", transactionManager=" + this.transactionManager
+						? "\n transactionManager=" + this.transactionManager
 						: "")
-				+ ", monitorInterval=" + this.monitorInterval
-				+ (this.scheduler != null ? ", scheduler=" + this.scheduler : "")
-				+ ", noPollThreshold=" + this.noPollThreshold
-				+ ", subBatchPerPartition=" + this.subBatchPerPartition
-				+ ", assignmentCommitOption=" + this.assignmentCommitOption
-				+ ", deliveryAttemptHeader=" + this.deliveryAttemptHeader
-				+ ", eosMode=" + this.eosMode
-				+ "]";
+				+ "\n monitorInterval=" + this.monitorInterval
+				+ (this.scheduler != null ? "\n scheduler=" + this.scheduler : "")
+				+ "\n noPollThreshold=" + this.noPollThreshold
+				+ "\n subBatchPerPartition=" + this.subBatchPerPartition
+				+ "\n assignmentCommitOption=" + this.assignmentCommitOption
+				+ "\n deliveryAttemptHeader=" + this.deliveryAttemptHeader
+				+ "\n eosMode=" + this.eosMode
+				+ "\n transactionDefinition=" + this.transactionDefinition
+				+ "\n stopContainerWhenFenced=" + this.stopContainerWhenFenced
+				+ "\n stopImmediate=" + this.stopImmediate
+				+ "\n asyncAcks=" + this.asyncAcks
+				+ "\n]";
 	}
 
 }

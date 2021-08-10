@@ -771,7 +771,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.monitorTask = this.taskScheduler.scheduleAtFixedRate(this::checkConsumer, // NOSONAR
 					Duration.ofSeconds(this.containerProperties.getMonitorInterval()));
 			if (this.containerProperties.isLogContainerConfig()) {
-				this.logger.info(this.toString());
+				this.logger.info(toString());
 			}
 			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
 			this.checkNullKeyForExceptions = checkDeserializer(findDeserializerClass(props, consumerProperties, false));
@@ -2922,14 +2922,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@Override
 		public String toString() {
 			return "KafkaMessageListenerContainer.ListenerConsumer ["
-					+ "containerProperties=" + this.containerProperties
-					+ ", listenerType=" + this.listenerType
-					+ ", isConsumerAwareListener=" + this.isConsumerAwareListener
-					+ ", isBatchListener=" + this.isBatchListener
-					+ ", autoCommit=" + this.autoCommit
-					+ ", consumerGroupId=" + this.consumerGroupId
-					+ ", clientIdSuffix=" + KafkaMessageListenerContainer.this.clientIdSuffix
-					+ "]";
+					+ "\ncontainerProperties=" + this.containerProperties
+					+ "\nother properties ["
+					+ "\n listenerType=" + this.listenerType
+					+ "\n isConsumerAwareListener=" + this.isConsumerAwareListener
+					+ "\n isBatchListener=" + this.isBatchListener
+					+ "\n autoCommit=" + this.autoCommit
+					+ "\n consumerGroupId=" + this.consumerGroupId
+					+ "\n clientIdSuffix=" + KafkaMessageListenerContainer.this.clientIdSuffix
+					+ "\n]";
 		}
 
 		private void closeProducers(@Nullable Collection<TopicPartition> partitions) {
