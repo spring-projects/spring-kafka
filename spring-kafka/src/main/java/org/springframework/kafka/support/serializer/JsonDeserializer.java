@@ -49,6 +49,10 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 /**
  * Generic {@link org.apache.kafka.common.serialization.Deserializer Deserializer} for
  * receiving JSON from Kafka and return Java objects.
+ * <p>
+ * IMPORTANT: Configuration must be done completely with property setters or via
+ * {@link #configure(Map, boolean)}, not a mixture. If any setters have been called,
+ * {@link #configure(Map, boolean)} will be a no-op.
  *
  * @param <T> class of the entity, representing messages
  *
@@ -123,6 +127,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	private boolean useTypeHeaders = true;
 
 	private JsonTypeResolver typeResolver;
+
+	private boolean configured;
 
 	/**
 	 * Construct an instance with a default {@link ObjectMapper}.
@@ -308,6 +314,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (typeMapper instanceof AbstractJavaTypeMapper) {
 			addMappingsToTrusted(((AbstractJavaTypeMapper) typeMapper).getIdClassMapping());
 		}
+		this.configured = true;
 	}
 
 	/**
@@ -320,6 +327,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 				&& this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
 			((AbstractJavaTypeMapper) this.getTypeMapper()).setUseForKey(isKey);
 		}
+		this.configured = true;
 	}
 
 	/**
@@ -330,6 +338,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void setRemoveTypeHeaders(boolean removeTypeHeaders) {
 		this.removeTypeHeaders = removeTypeHeaders;
+		this.configured = true;
 	}
 
 	/**
@@ -345,6 +354,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			this.useTypeHeaders = useTypeHeaders;
 			setUpTypePrecedence(Collections.emptyMap());
 		}
+		this.configured = true;
 	}
 
 	/**
@@ -355,6 +365,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void setTypeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
 		this.typeResolver = (topic, data, headers) -> typeFunction.apply(data, headers);
+		this.configured = true;
 	}
 
 	/**
@@ -365,10 +376,14 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void setTypeResolver(JsonTypeResolver typeResolver) {
 		this.typeResolver = typeResolver;
+		this.configured = true;
 	}
 
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
+		if (this.configured) {
+			return;
+		}
 		setUseTypeMapperForKey(isKey);
 		setUpTypePrecedence(configs);
 		setupTarget(configs, isKey);
@@ -385,6 +400,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			this.removeTypeHeaders = Boolean.parseBoolean(configs.get(REMOVE_TYPE_INFO_HEADERS).toString());
 		}
 		setUpTypeMethod(configs, isKey);
+		this.configured = true;
 	}
 
 	private Map<String, Class<?>> createMappings(Map<String, ?> configs) {
@@ -448,6 +464,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private void initialize(@Nullable JavaType type, boolean useHeadersIfPresent) {
 		this.targetType = type;
+		this.useTypeHeaders = useHeadersIfPresent;
 		Assert.isTrue(this.targetType != null || useHeadersIfPresent,
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 
@@ -479,6 +496,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void addTrustedPackages(String... packages) {
 		doAddTrustedPackages(packages);
+		this.configured = true;
 	}
 
 	private void addMappingsToTrusted(Map<String, Class<?>> mappings) {

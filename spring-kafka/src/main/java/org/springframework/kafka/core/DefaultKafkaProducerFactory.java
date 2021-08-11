@@ -137,6 +137,10 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private Supplier<Serializer<V>> valueSerializerSupplier;
 
+	private Supplier<Serializer<K>> rawKeySerializerSupplier;
+
+	private Supplier<Serializer<V>> rawValueSerializerSupplier;
+
 	private Duration physicalCloseTimeout = DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
 
 	private ApplicationContext applicationContext;
@@ -168,6 +172,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * Also configures a {@link #transactionIdPrefix} as a value from the
 	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided.
 	 * This config is going to be overridden with a suffix for target {@link Producer} instance.
+	 * The serializers' {@code configure()} methods will be called with the
+	 * configuration map.
 	 * @param configs the configuration.
 	 * @param keySerializer the key {@link Serializer}.
 	 * @param valueSerializer the value {@link Serializer}.
@@ -184,6 +190,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * Also configures a {@link #transactionIdPrefix} as a value from the
 	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided.
 	 * This config is going to be overridden with a suffix for target {@link Producer} instance.
+	 * When the suppliers are invoked to get an instance, the serializers'
+	 * {@code configure()} methods will be called with the configuration map.
 	 * @param configs the configuration.
 	 * @param keySerializerSupplier the key {@link Serializer} supplier function.
 	 * @param valueSerializerSupplier the value {@link Serializer} supplier function.
@@ -194,18 +202,43 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
 
 		this.configs = new ConcurrentHashMap<>(configs);
-		this.keySerializerSupplier = keySerializerSupplier == null ? () -> null : keySerializerSupplier;
-		this.valueSerializerSupplier = valueSerializerSupplier == null ? () -> null : valueSerializerSupplier;
+		this.keySerializerSupplier = keySerializerSupplier(keySerializerSupplier);
+		this.valueSerializerSupplier = valueSerializerSupplier(valueSerializerSupplier);
 		if (this.clientIdPrefix == null && configs.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String) {
 			this.clientIdPrefix = (String) configs.get(ProducerConfig.CLIENT_ID_CONFIG);
 		}
-
 		String txId = (String) this.configs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		if (StringUtils.hasText(txId)) {
 			setTransactionIdPrefix(txId);
 			this.configs.remove(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		}
 		this.configs.put("internal.auto.downgrade.txn.commit", true);
+	}
+
+	private Supplier<Serializer<K>> keySerializerSupplier(Supplier<Serializer<K>> keySerializerSupplier) {
+		this.rawKeySerializerSupplier = keySerializerSupplier;
+		return keySerializerSupplier == null
+				? () -> null
+				: () -> {
+					Serializer<K> serializer = keySerializerSupplier.get();
+					if (serializer != null) {
+						serializer.configure(this.configs, true);
+					}
+					return serializer;
+				};
+	}
+
+	private Supplier<Serializer<V>> valueSerializerSupplier(Supplier<Serializer<V>> valueSerializerSupplier) {
+		this.rawValueSerializerSupplier = valueSerializerSupplier;
+		return valueSerializerSupplier == null
+				? () -> null
+				: () -> {
+					Serializer<V> serializer = valueSerializerSupplier.get();
+					if (serializer != null) {
+						serializer.configure(this.configs, false);
+					}
+					return serializer;
+				};
 	}
 
 	@Override
@@ -223,7 +256,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @param keySerializer the key serializer.
 	 */
 	public void setKeySerializer(@Nullable Serializer<K> keySerializer) {
-		this.keySerializerSupplier = () -> keySerializer;
+		this.keySerializerSupplier = keySerializerSupplier(() -> keySerializer);
 	}
 
 	/**
@@ -231,7 +264,25 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @param valueSerializer the value serializer.
 	 */
 	public void setValueSerializer(@Nullable Serializer<V> valueSerializer) {
-		this.valueSerializerSupplier = () -> valueSerializer;
+		this.valueSerializerSupplier = valueSerializerSupplier(() -> valueSerializer);
+	}
+
+	/**
+	 * Set a supplier to supply instances of the key serializer.
+	 * @param keySerializerSupplier the supplier.
+	 * @since 2.8
+	 */
+	public void setKeySerializerSupplier(Supplier<Serializer<K>> keySerializerSupplier) {
+		this.keySerializerSupplier = keySerializerSupplier;
+	}
+
+	/**
+	 * Set a supplier to supply instances of the value serializer.
+	 * @param valueSerializerSupplier the supplier.
+	 * @since 2.8
+	 */
+	public void setValueSerializerSupplier(Supplier<Serializer<V>> valueSerializerSupplier) {
+		this.valueSerializerSupplier = valueSerializerSupplier;
 	}
 
 	/**
@@ -313,14 +364,27 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		return this.producerPerConsumerPartition;
 	}
 
+
+	@Override
+	@Nullable
+	public Serializer<K> getKeySerializer() {
+		return this.keySerializerSupplier.get();
+	}
+
+	@Override
+	@Nullable
+	public Serializer<V> getValueSerializer() {
+		return this.valueSerializerSupplier.get();
+	}
+
 	@Override
 	public Supplier<Serializer<K>> getKeySerializerSupplier() {
-		return this.keySerializerSupplier;
+		return this.rawKeySerializerSupplier;
 	}
 
 	@Override
 	public Supplier<Serializer<V>> getValueSerializerSupplier() {
-		return this.valueSerializerSupplier;
+		return this.rawValueSerializerSupplier;
 	}
 
 	/**

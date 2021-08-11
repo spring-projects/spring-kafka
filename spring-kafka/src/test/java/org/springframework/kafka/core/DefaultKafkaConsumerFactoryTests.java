@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 
@@ -457,6 +459,20 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(removals).hasSize(0);
 		consum.close();
 		assertThat(removals).hasSize(1);
+	}
+
+	@Test
+	void configDeserializer() {
+		Deserializer key = mock(Deserializer.class);
+		Deserializer value = mock(Deserializer.class);
+		Map<String, Object> config = new HashMap<>();
+		DefaultKafkaConsumerFactory cf = new DefaultKafkaConsumerFactory<>(config, key, value);
+		Deserializer keyDeserializer = cf.getKeyDeserializer();
+		assertThat(keyDeserializer).isSameAs(key);
+		verify(key).configure(config, true);
+		Deserializer valueDeserializer = cf.getValueDeserializer();
+		assertThat(valueDeserializer).isSameAs(value);
+		verify(value).configure(config, false);
 	}
 
 	@Configuration

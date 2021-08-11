@@ -100,6 +100,8 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	/**
 	 * Construct a factory with the provided configuration and deserializers.
+	 * The deserializers' {@code configure()} methods will be called with the
+	 * configuration map.
 	 * @param configs the configuration.
 	 * @param keyDeserializer the key {@link Deserializer}.
 	 * @param valueDeserializer the value {@link Deserializer}.
@@ -113,8 +115,10 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	/**
 	 * Construct a factory with the provided configuration and deserializer suppliers.
+	 * When the suppliers are invoked to get an instance, the deserializers'
+	 * {@code configure()} methods will be called with the configuration map.
 	 * @param configs the configuration.
-	 * @param keyDeserializerSupplier   the key {@link Deserializer} supplier function.
+	 * @param keyDeserializerSupplier the key {@link Deserializer} supplier function.
 	 * @param valueDeserializerSupplier the value {@link Deserializer} supplier function.
 	 * @since 2.3
 	 */
@@ -123,8 +127,32 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier) {
 
 		this.configs = new ConcurrentHashMap<>(configs);
-		this.keyDeserializerSupplier = keyDeserializerSupplier == null ? () -> null : keyDeserializerSupplier;
-		this.valueDeserializerSupplier = valueDeserializerSupplier == null ? () -> null : valueDeserializerSupplier;
+		this.keyDeserializerSupplier = keyDeserializerSupplier(keyDeserializerSupplier);
+		this.valueDeserializerSupplier = valueDeserializerSupplier(valueDeserializerSupplier);
+	}
+
+	private Supplier<Deserializer<K>> keyDeserializerSupplier(Supplier<Deserializer<K>> keyDeserializerSupplier) {
+		return keyDeserializerSupplier == null
+				? () -> null
+				: () -> {
+					Deserializer<K> deserializer = keyDeserializerSupplier.get();
+					if (deserializer != null) {
+						deserializer.configure(this.configs, true);
+					}
+					return deserializer;
+				};
+	}
+
+	private Supplier<Deserializer<V>> valueDeserializerSupplier(Supplier<Deserializer<V>> valueDeserializerSupplier) {
+		return valueDeserializerSupplier == null
+				? () -> null
+				: () -> {
+					Deserializer<V> deserializer = valueDeserializerSupplier.get();
+					if (deserializer != null) {
+						deserializer.configure(this.configs, false);
+					}
+					return deserializer;
+				};
 	}
 
 	@Override
@@ -137,7 +165,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @param keyDeserializer the deserializer.
 	 */
 	public void setKeyDeserializer(@Nullable Deserializer<K> keyDeserializer) {
-		this.keyDeserializerSupplier = () -> keyDeserializer;
+		this.keyDeserializerSupplier = keyDeserializerSupplier(() -> keyDeserializer);
 	}
 
 	/**
@@ -145,7 +173,25 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @param valueDeserializer the valuee deserializer.
 	 */
 	public void setValueDeserializer(@Nullable Deserializer<V> valueDeserializer) {
-		this.valueDeserializerSupplier = () -> valueDeserializer;
+		this.valueDeserializerSupplier = valueDeserializerSupplier(() -> valueDeserializer);
+	}
+
+	/**
+	 * Set a supplier to supply instances of the key deserializer.
+	 * @param keyDeserializerSupplier the supplier.
+	 * @since 2.8
+	 */
+	public void setKeyDeserializerSupplier(Supplier<Deserializer<K>> keyDeserializerSupplier) {
+		this.keyDeserializerSupplier = keyDeserializerSupplier(keyDeserializerSupplier);
+	}
+
+	/**
+	 * Set a supplier to supply instances of the value deserializer.
+	 * @param valueDeserializerSupplier the supplier.
+	 * @since 2.8
+	 */
+	public void setValueDeserializerSupplier(Supplier<Deserializer<V>> valueDeserializerSupplier) {
+		this.valueDeserializerSupplier = valueDeserializerSupplier(valueDeserializerSupplier);
 	}
 
 	@Override

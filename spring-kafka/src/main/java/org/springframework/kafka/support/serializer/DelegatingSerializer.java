@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,6 +108,7 @@ public class DelegatingSerializer implements Serializer<Object> {
 			((Map<String, Object>) value).forEach((selector, serializer) -> {
 				if (serializer instanceof Serializer) {
 					this.delegates.put(selector, (Serializer<?>) serializer);
+					((Serializer<?>) serializer).configure(configs, isKey);
 				}
 				else if (serializer instanceof Class) {
 					instantiateAndConfigure(configs, isKey, this.delegates, selector, (Class<?>) serializer);

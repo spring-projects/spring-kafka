@@ -251,6 +251,29 @@ public interface ProducerFactory<K, V> {
 	}
 
 	/**
+	 * Return the configured key serializer (if provided as an object instead
+	 * of a class name in the properties).
+	 * @return the serializer.
+	 * @since 2.8
+	 */
+	@Nullable
+	default Serializer<K> getKeySerializer() {
+		return null;
+	}
+
+	/**
+	 * Return the configured value serializer (if provided as an object instead
+	 * of a class name in the properties).
+	 * @return the serializer.
+	 * @since 2.8
+	 */
+	@Nullable
+	default Serializer<V> getValueSerializer() {
+		return null;
+	}
+
+
+	/**
 	 * Called whenever a producer is added or removed.
 	 *
 	 * @param <K> the key type.

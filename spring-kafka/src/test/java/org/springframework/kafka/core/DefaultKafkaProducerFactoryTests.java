@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
@@ -47,6 +48,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.UnknownProducerIdException;
+import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -476,6 +478,20 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(KafkaTestUtils.getPropertyValue(pf1, "transactionIdPrefix")).isEqualTo("tx2-");
 		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, null);
 		assertThatIllegalArgumentException().isThrownBy(() -> pf1.updateConfigs(configs));
+	}
+
+	@Test
+	void configSerializer() {
+		Serializer<String> key = mock(Serializer.class);
+		Serializer<String> value = mock(Serializer.class);
+		Map<String, Object> config = new HashMap<>();
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(config, key, value);
+		Serializer<String> keySerializer = pf.getKeySerializer();
+		assertThat(keySerializer).isSameAs(key);
+		verify(key).configure(any(), eq(true));
+		Serializer<String> valueSerializer = pf.getValueSerializer();
+		assertThat(valueSerializer).isSameAs(value);
+		verify(value).configure(any(), eq(false));
 	}
 
 }

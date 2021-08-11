@@ -529,6 +529,8 @@ void removeConfig(String configKey);
 ----
 ====
 
+Starting with version 2.8, if you provide serializers as objects (in the constructor or via the setters), the factory will invoke the `configure()` method to configure them with the configuration properties.
+
 [[replying-template]]
 ===== Using `ReplyingKafkaTemplate`
 
@@ -1132,6 +1134,8 @@ This can happen when, for example, the configured user is denied access to read 
 Defining `authorizationExceptionRetryInterval` should help the application to recover as soon as proper permissions are granted.
 
 NOTE: By default, no interval is configured - authorization errors are considered fatal, which causes the container to stop.
+
+Starting with version 2.8, when creating the consumer factory, if you provide deserializers as objects (in the constructor or via the setters), the factory will invoke the `configure()` method to configure them with the configuration properties.
 
 [[using-ConcurrentMessageListenerContainer]]
 ====== Using `ConcurrentMessageListenerContainer`
@@ -3943,6 +3947,9 @@ You can revert to the previous behavior by setting the `removeTypeHeaders` prope
 
 See also <<tip-json>>.
 
+IMPORTANT: Starting with version 2.8, if you construct the serializer or deserializer programmatically as shown in <<prog-json>>, the above properties will be applied by the factories, as long as you have not set any properties explicitly (using `set*()` methods or using the fluent API).
+Previously, when creating programmatically, the configuration properties were never applied; this is still the case if you explicitly set properties on the object directly.
+
 [[serdes-mapping-types]]
 ====== Mapping Types
 
@@ -4073,6 +4080,7 @@ public static JavaType thing1Thing2JavaTypeForTopic(String topic, byte[] data, H
 ----
 ====
 
+[[prog-json]]
 ====== Programmatic Construction
 
 When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
@@ -4121,6 +4129,8 @@ JsonDeserializer<Object> deser = new JsonDeserializer<>()
         .typeFunction(MyUtils::thingOneOrThingTwo);
 ----
 ====
+
+Alternatively, as long as you don't use the fluent API to configure properties, or set them using `set*()` methods, the factories will configure the serializer/deserializer using the configuration properties; see <<serdes-json-config>>.
 
 [[delegating-serialization]]
 ===== Delegating Serializer and Deserializer

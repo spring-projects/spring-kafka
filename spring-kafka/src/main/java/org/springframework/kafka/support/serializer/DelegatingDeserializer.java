@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,6 +83,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 			((Map<String, Object>) value).forEach((selector, deser) -> {
 				if (deser instanceof Deserializer) {
 					this.delegates.put(selector, (Deserializer<?>) deser);
+					((Deserializer<?>) deser).configure(configs, isKey);
 				}
 				else if (deser instanceof Class) {
 					instantiateAndConfigure(configs, isKey, this.delegates, selector, (Class<?>) deser);

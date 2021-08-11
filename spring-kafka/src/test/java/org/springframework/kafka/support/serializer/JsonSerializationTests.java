@@ -37,6 +37,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.kafka.support.converter.AbstractJavaTypeMapper;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
@@ -97,13 +98,11 @@ public class JsonSerializationTests {
 		topic = "topic-name";
 
 		jsonReader = new JsonDeserializer<DummyEntity>() { };
-		jsonReader.configure(new HashMap<>(), false);
 		jsonReader.close(); // does nothing, so may be called any time, or not called at all
 		jsonArrayReader = new JsonDeserializer<DummyEntity[]>() { };
 		jsonArrayReader.configure(new HashMap<>(), false);
 		jsonArrayReader.close(); // does nothing, so may be called any time, or not called at all
 		jsonWriter = new JsonSerializer<>();
-		jsonWriter.configure(new HashMap<>(), false);
 		jsonWriter.close(); // does nothing, so may be called any time, or not called at all
 		stringReader = new StringDeserializer();
 		stringReader.configure(new HashMap<>(), false);
@@ -192,17 +191,22 @@ public class JsonSerializationTests {
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.INFERRED);
+		DirectFieldAccessor dfa = new DirectFieldAccessor(this.jsonReader);
+		dfa.setPropertyValue("configured", false);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.TYPE_ID);
+		dfa.setPropertyValue("configured", false);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.INFERRED);
 		this.jsonReader.setUseTypeHeaders(true);
+		dfa.setPropertyValue("configured", false);
 		this.jsonReader.configure(Collections.emptyMap(), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.TYPE_ID);
 		this.jsonReader.setTypeMapper(new DefaultJackson2JavaTypeMapper());
+		dfa.setPropertyValue("configured", false);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.INFERRED);
@@ -340,6 +344,7 @@ public class JsonSerializationTests {
 		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
 				.isInstanceOf(Bar.class);
 
+		new DirectFieldAccessor(deser).setPropertyValue("configured", false);
 		deser.configure(props, true);
 		assertThat(deser.deserialize("", new RecordHeaders(), "\"foo\"".getBytes()))
 				.isEqualTo("foo");
@@ -358,6 +363,7 @@ public class JsonSerializationTests {
 		assertThat(deser.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
 				.isInstanceOf(Bar.class);
 
+		new DirectFieldAccessor(deser).setPropertyValue("configured", false);
 		deser.configure(props, true);
 		assertThat(deser.deserialize("", new RecordHeaders(), "\"foo\"".getBytes()))
 				.isEqualTo("foo");
@@ -398,6 +404,19 @@ public class JsonSerializationTests {
 		ser.close();
 		typedDeser.close();
 		typedSer.close();
+	}
+
+	@Test
+	void configIgnoredAfterPropertiesSet() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		deser.setUseTypeHeaders(false);
+		Map<String, Object> configs = Map.of(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
+		deser.configure(configs, false);
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "useTypeHeaders", Boolean.class)).isFalse();
+		JsonSerializer<Object> ser = new JsonSerializer<>();
+		ser.setAddTypeInfo(false);
+		configs = Map.of(JsonSerializer.ADD_TYPE_INFO_HEADERS, true);
+		assertThat(KafkaTestUtils.getPropertyValue(ser, "addTypeInfo", Boolean.class)).isFalse();
 	}
 
 	public static JavaType fooBarJavaType(byte[] data, Headers headers) {
