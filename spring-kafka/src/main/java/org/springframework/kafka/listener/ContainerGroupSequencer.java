@@ -140,20 +140,22 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 			this.executor.execute(() -> {
 				LOGGER.debug(() -> "Stopping: " + container);
 				container.stop(() -> {
-					if (!parent.isChildRunning()) {
-						this.executor.execute(() -> {
-							stopParentAndCheckGroup(parent);
-						});
+					synchronized (this) {
+						if (!parent.isChildRunning()) {
+							this.executor.execute(() -> {
+								stopParentAndCheckGroup(parent);
+							});
+						}
 					}
 				});
 			});
 		}
 	}
 
-	private void stopParentAndCheckGroup(MessageListenerContainer parent) {
-		LOGGER.debug(() -> "Stopping: " + parent);
-		parent.stop(() -> {
-			synchronized (this) {
+	private synchronized void stopParentAndCheckGroup(MessageListenerContainer parent) {
+		if (parent.isRunning()) {
+			LOGGER.debug(() -> "Stopping: " + parent);
+			parent.stop(() -> {
 				if (this.currentGroup != null) {
 					LOGGER.debug(() -> "Checking group: " + this.currentGroup.toString());
 					if (this.currentGroup.allStopped()) {
@@ -167,8 +169,8 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 						}
 					}
 				}
-			}
-		});
+			});
+		}
 	}
 
 	@Override

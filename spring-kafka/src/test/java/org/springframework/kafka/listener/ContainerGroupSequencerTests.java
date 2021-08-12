@@ -137,7 +137,7 @@ public class ContainerGroupSequencerTests {
 
 		@Bean
 		ContainerGroupSequencer sequencer(KafkaListenerEndpointRegistry registry) {
-			ContainerGroupSequencer sequencer = new ContainerGroupSequencer(registry, 1000, "g1", "g2");
+			ContainerGroupSequencer sequencer = new ContainerGroupSequencer(registry, 3000, "g1", "g2");
 			sequencer.setStopLastGroupWhenIdle(true);
 			sequencer.setAutoStartup(false);
 			return sequencer;
