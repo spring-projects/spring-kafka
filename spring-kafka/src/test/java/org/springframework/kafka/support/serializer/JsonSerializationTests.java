@@ -19,6 +19,7 @@ package org.springframework.kafka.support.serializer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -207,6 +208,7 @@ public class JsonSerializationTests {
 			.isEqualTo(TypePrecedence.TYPE_ID);
 		this.jsonReader.setTypeMapper(new DefaultJackson2JavaTypeMapper());
 		dfa.setPropertyValue("configured", false);
+		dfa.setPropertyValue("setterCalled", false);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
 			.isEqualTo(TypePrecedence.INFERRED);
@@ -407,16 +409,16 @@ public class JsonSerializationTests {
 	}
 
 	@Test
-	void configIgnoredAfterPropertiesSet() {
+	void configRejectedIgnoredAfterPropertiesSet() {
 		JsonDeserializer<Object> deser = new JsonDeserializer<>();
 		deser.setUseTypeHeaders(false);
 		Map<String, Object> configs = Map.of(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
-		deser.configure(configs, false);
+		assertThatIllegalStateException().isThrownBy(() -> deser.configure(configs, false));
 		assertThat(KafkaTestUtils.getPropertyValue(deser, "useTypeHeaders", Boolean.class)).isFalse();
 		JsonSerializer<Object> ser = new JsonSerializer<>();
 		ser.setAddTypeInfo(false);
-		configs = Map.of(JsonSerializer.ADD_TYPE_INFO_HEADERS, true);
-		assertThat(KafkaTestUtils.getPropertyValue(ser, "addTypeInfo", Boolean.class)).isFalse();
+		Map<String, Object> configs2 = Map.of(JsonSerializer.ADD_TYPE_INFO_HEADERS, true);
+		assertThatIllegalStateException().isThrownBy(() -> ser.configure(configs2, false));
 	}
 
 	public static JavaType fooBarJavaType(byte[] data, Headers headers) {

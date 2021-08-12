@@ -22,7 +22,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -66,12 +68,10 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
  */
 public class JsonDeserializer<T> implements Deserializer<T> {
 
-	private static final String KEY_DEFAULT_TYPE_STRING = "spring.json.key.default.type";
-
 	/**
 	 * Kafka config property for the default key type if no header.
 	 */
-	public static final String KEY_DEFAULT_TYPE = KEY_DEFAULT_TYPE_STRING;
+	public static final String KEY_DEFAULT_TYPE = "spring.json.key.default.type";
 
 	/**
 	 * Kafka config property for the default value type if no header.
@@ -112,6 +112,19 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public static final String VALUE_TYPE_METHOD = "spring.json.value.type.method";
 
+	private static final Set<String> OUR_KEYS = new HashSet<>();
+
+	static {
+		OUR_KEYS.add(KEY_DEFAULT_TYPE);
+		OUR_KEYS.add(VALUE_DEFAULT_TYPE);
+		OUR_KEYS.add(TRUSTED_PACKAGES);
+		OUR_KEYS.add(TYPE_MAPPINGS);
+		OUR_KEYS.add(REMOVE_TYPE_INFO_HEADERS);
+		OUR_KEYS.add(USE_TYPE_INFO_HEADERS);
+		OUR_KEYS.add(KEY_TYPE_METHOD);
+		OUR_KEYS.add(VALUE_TYPE_METHOD);
+	}
+
 	protected final ObjectMapper objectMapper; // NOSONAR
 
 	protected JavaType targetType; // NOSONAR
@@ -127,6 +140,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	private boolean useTypeHeaders = true;
 
 	private JsonTypeResolver typeResolver;
+
+	private boolean setterCalled;
 
 	private boolean configured;
 
@@ -314,7 +329,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (typeMapper instanceof AbstractJavaTypeMapper) {
 			addMappingsToTrusted(((AbstractJavaTypeMapper) typeMapper).getIdClassMapping());
 		}
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	/**
@@ -323,11 +338,15 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @since 2.1.3
 	 */
 	public void setUseTypeMapperForKey(boolean isKey) {
+		doSetUseTypeMapperForKey(isKey);
+		this.setterCalled = true;
+	}
+
+	private void doSetUseTypeMapperForKey(boolean isKey) {
 		if (!this.typeMapperExplicitlySet
 				&& this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
 			((AbstractJavaTypeMapper) this.getTypeMapper()).setUseForKey(isKey);
 		}
-		this.configured = true;
 	}
 
 	/**
@@ -338,7 +357,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void setRemoveTypeHeaders(boolean removeTypeHeaders) {
 		this.removeTypeHeaders = removeTypeHeaders;
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	/**
@@ -354,7 +373,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			this.useTypeHeaders = useTypeHeaders;
 			setUpTypePrecedence(Collections.emptyMap());
 		}
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	/**
@@ -365,7 +384,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void setTypeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
 		this.typeResolver = (topic, data, headers) -> typeFunction.apply(data, headers);
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	/**
@@ -376,15 +395,17 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void setTypeResolver(JsonTypeResolver typeResolver) {
 		this.typeResolver = typeResolver;
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	@Override
-	public void configure(Map<String, ?> configs, boolean isKey) {
+	public synchronized void configure(Map<String, ?> configs, boolean isKey) {
 		if (this.configured) {
 			return;
 		}
-		setUseTypeMapperForKey(isKey);
+		Assert.state(!this.setterCalled || !configsHasOurKeys(configs),
+				"JsonDeserializer must be configured with property setters, or via configuration properties; not both");
+		doSetUseTypeMapperForKey(isKey);
 		setUpTypePrecedence(configs);
 		setupTarget(configs, isKey);
 		if (configs.containsKey(TRUSTED_PACKAGES)
@@ -401,6 +422,15 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		}
 		setUpTypeMethod(configs, isKey);
 		this.configured = true;
+	}
+
+	private boolean configsHasOurKeys(Map<String, ?> configs) {
+		for (String key : configs.keySet()) {
+			if (OUR_KEYS.contains(key)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private Map<String, Class<?>> createMappings(Map<String, ?> configs) {
@@ -494,9 +524,9 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param packages the packages.
 	 * @since 2.1
 	 */
-	public void addTrustedPackages(String... packages) {
+	public synchronized void addTrustedPackages(String... packages) {
 		doAddTrustedPackages(packages);
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	private void addMappingsToTrusted(Map<String, Class<?>> mappings) {
@@ -674,7 +704,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return the deserializer.
 	 * @since 2,5
 	 */
-	public JsonDeserializer<T> trustedPackages(String... packages) {
+	public synchronized JsonDeserializer<T> trustedPackages(String... packages) {
 		Assert.isTrue(!this.typeMapperExplicitlySet, "When using a custom type mapper, set the trusted packages there");
 		this.typeMapper.addTrustedPackages(packages);
 		return this;

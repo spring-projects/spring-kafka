@@ -76,6 +76,8 @@ public class JsonSerializer<T> implements Serializer<T> {
 
 	private boolean typeMapperExplicitlySet = false;
 
+	private boolean setterCalled;
+
 	private boolean configured;
 
 	public JsonSerializer() {
@@ -111,7 +113,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 */
 	public void setAddTypeInfo(boolean addTypeInfo) {
 		this.addTypeInfo = addTypeInfo;
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	public Jackson2JavaTypeMapper getTypeMapper() {
@@ -127,7 +129,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 		this.typeMapperExplicitlySet = true;
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	/**
@@ -140,14 +142,17 @@ public class JsonSerializer<T> implements Serializer<T> {
 			((AbstractJavaTypeMapper) getTypeMapper())
 					.setUseForKey(isKey);
 		}
-		this.configured = true;
+		this.setterCalled = true;
 	}
 
 	@Override
-	public void configure(Map<String, ?> configs, boolean isKey) {
+	public synchronized void configure(Map<String, ?> configs, boolean isKey) {
 		if (this.configured) {
 			return;
 		}
+		Assert.state(!this.setterCalled
+				|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
+				"JsonSerializer must be configured with property setters, or via configuration properties; not both");
 		setUseTypeMapperForKey(isKey);
 		if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
 			Object config = configs.get(ADD_TYPE_INFO_HEADERS);

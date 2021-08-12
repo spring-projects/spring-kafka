@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package org.springframework.kafka.support.converter;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -72,9 +72,9 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	 */
 	public static final String KEY_DEFAULT_KEY_CLASSID_FIELD_NAME = "__Key_KeyTypeId__";
 
-	private final Map<String, Class<?>> idClassMapping = new HashMap<String, Class<?>>();
+	private final Map<String, Class<?>> idClassMapping = new ConcurrentHashMap<String, Class<?>>();
 
-	private final Map<Class<?>, byte[]> classIdMapping = new HashMap<Class<?>, byte[]>();
+	private final Map<Class<?>, byte[]> classIdMapping = new ConcurrentHashMap<Class<?>, byte[]>();
 
 	private String classIdFieldName = DEFAULT_CLASSID_FIELD_NAME;
 

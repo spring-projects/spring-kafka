@@ -461,12 +461,13 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(removals).hasSize(1);
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void configDeserializer() {
 		Deserializer key = mock(Deserializer.class);
 		Deserializer value = mock(Deserializer.class);
 		Map<String, Object> config = new HashMap<>();
-		DefaultKafkaConsumerFactory cf = new DefaultKafkaConsumerFactory<>(config, key, value);
+		DefaultKafkaConsumerFactory cf = new DefaultKafkaConsumerFactory(config, key, value);
 		Deserializer keyDeserializer = cf.getKeyDeserializer();
 		assertThat(keyDeserializer).isSameAs(key);
 		verify(key).configure(config, true);

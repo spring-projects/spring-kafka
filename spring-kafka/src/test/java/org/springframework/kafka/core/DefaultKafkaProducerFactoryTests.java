@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -480,6 +480,7 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThatIllegalArgumentException().isThrownBy(() -> pf1.updateConfigs(configs));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	void configSerializer() {
 		Serializer<String> key = mock(Serializer.class);
@@ -488,8 +489,12 @@ public class DefaultKafkaProducerFactoryTests {
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(config, key, value);
 		Serializer<String> keySerializer = pf.getKeySerializer();
 		assertThat(keySerializer).isSameAs(key);
+		keySerializer = pf.getKeySerializerSupplier().get();
+		assertThat(keySerializer).isSameAs(key);
 		verify(key).configure(any(), eq(true));
 		Serializer<String> valueSerializer = pf.getValueSerializer();
+		assertThat(valueSerializer).isSameAs(value);
+		value = pf.getValueSerializerSupplier().get();
 		assertThat(valueSerializer).isSameAs(value);
 		verify(value).configure(any(), eq(false));
 	}
