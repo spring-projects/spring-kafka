@@ -141,7 +141,7 @@ public interface ProducerFactory<K, V> {
 
 	/**
 	 * Return true when there is a producer per thread.
-	 * @return the produver per thread.
+	 * @return the producer per thread.
 	 * @since 2.5
 	 */
 	default boolean isProducerPerThread() {
