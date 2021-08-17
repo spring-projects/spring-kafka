@@ -1291,6 +1291,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			invokeIfHaveRecords(records);
+			finishInvoke();
 		}
 
 		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
@@ -1307,6 +1308,37 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (records == null || records.count() == 0
 					|| records.partitions().size() < this.consumer.assignment().size()) {
 				checkIdlePartitions();
+			}
+		}
+
+		private void finishInvoke() {
+			if (this.isBatchListener) {
+				batchInterceptFinishInvoke();
+			}
+			else {
+				recordInterceptFinishInvoke();
+			}
+		}
+
+		private void batchInterceptFinishInvoke() {
+			if (this.commonBatchInterceptor != null) {
+				try {
+					this.commonBatchInterceptor.finishInvoke(this.consumer);
+				}
+				catch (Exception e) {
+					this.logger.error(e, "BatchInterceptor threw an exception");
+				}
+			}
+		}
+
+		private void recordInterceptFinishInvoke() {
+			if (this.commonRecordInterceptor != null) {
+				try {
+					this.commonRecordInterceptor.finishInvoke(this.consumer);
+				}
+				catch (Exception e) {
+					this.logger.error(e, "RecordInterceptor threw an exception");
+				}
 			}
 		}
 
@@ -1422,6 +1454,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ConsumerRecords<K, V> records;
 			if (this.isBatchListener && this.subBatchPerPartition) {
 				if (this.batchIterator == null) {
+					batchInterceptBeforePoll();
 					this.lastBatch = pollConsumer();
 					captureOffsets(this.lastBatch);
 					if (this.lastBatch.count() == 0) {
@@ -1439,6 +1472,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
+				beforePoll();
 				records = pollConsumer();
 				captureOffsets(records);
 				checkRebalanceCommits();
@@ -1452,6 +1486,37 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			catch (WakeupException ex) {
 				return ConsumerRecords.empty();
+			}
+		}
+
+		private void beforePoll() {
+			if (this.isBatchListener) {
+				batchInterceptBeforePoll();
+			}
+			else {
+				recordInterceptBeforePoll();
+			}
+		}
+
+		private void batchInterceptBeforePoll() {
+			if (this.commonBatchInterceptor != null) {
+				try {
+					this.commonBatchInterceptor.beforePoll(this.consumer);
+				}
+				catch (Exception e) {
+					this.logger.error(e, "BatchInterceptor threw an exception");
+				}
+			}
+		}
+
+		private void recordInterceptBeforePoll() {
+			if (this.commonRecordInterceptor != null) {
+				try {
+					this.commonRecordInterceptor.beforePoll(this.consumer);
+				}
+				catch (Exception e) {
+					this.logger.error(e, "RecordInterceptor threw an exception");
+				}
 			}
 		}
 

@@ -81,4 +81,21 @@ public interface RecordInterceptor<K, V> {
 	default void failure(ConsumerRecord<K, V> record, Exception exception, Consumer<K, V> consumer) {
 	}
 
+	/**
+	 * Called before consumer is polled.
+	 * @param consumer the consumer.
+	 * @since 2.8
+	 */
+	default void beforePoll(Consumer<K, V> consumer) {
+	}
+
+	/**
+	 * Called after listener and error handler were invoked. Last action before the
+	 * next consumer polling.
+	 * @param consumer the consumer.
+	 * @since 2.8
+	 */
+	default void finishInvoke(Consumer<K, V> consumer) {
+	}
+
 }
