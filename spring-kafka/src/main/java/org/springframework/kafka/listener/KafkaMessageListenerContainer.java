@@ -1236,6 +1236,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception e) {
 					handleConsumerException(e);
 				}
+				finally {
+					finishInvoke();
+				}
 			}
 			wrapUp(exitThrowable);
 		}
@@ -1273,6 +1276,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			this.polling.set(true);
+			beforePoll();
 			ConsumerRecords<K, V> records = doPoll();
 			if (!this.polling.compareAndSet(true, false) && records != null) {
 				/*
@@ -1291,7 +1295,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			invokeIfHaveRecords(records);
-			finishInvoke();
 		}
 
 		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
