@@ -65,7 +65,7 @@ public interface BatchInterceptor<K, V> {
 	 * Called before consumer is polled.
 	 * <p>
 	 * It can be used to set up thread-bound resources which will be available for the
-	 * entire duration of the consumer poll operation e.g. logging with MDC.
+	 * entire duration of the record processing e.g. logging with MDC.
 	 * </p>
 	 * @param consumer the consumer.
 	 * @since 2.8
@@ -74,15 +74,16 @@ public interface BatchInterceptor<K, V> {
 	}
 
 	/**
-	 * Called after listener and error handler were invoked.
+	 * Called after records were processed by listener and error handler.
 	 * <p>
-	 * It can be used to clear thread-bound resources as this is the last method called after
-	 * listener was invoked.
+	 * It can be used to clear thread-bound resources which were set up in {@link #beforePoll(Consumer)}.
+	 * This is the last method called by the {@link MessageListenerContainer} before the next record
+	 * processing cycle starts.
 	 * </p>
 	 * @param consumer the consumer.
 	 * @since 2.8
 	 */
-	default void finishInvoke(Consumer<K, V> consumer) {
+	default void afterRecordsProcessed(Consumer<K, V> consumer) {
 	}
 
 }

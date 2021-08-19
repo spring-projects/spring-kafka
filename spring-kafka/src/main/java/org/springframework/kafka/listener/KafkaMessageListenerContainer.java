@@ -1237,7 +1237,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					handleConsumerException(e);
 				}
 				finally {
-					finishInvoke();
+					afterRecordsProcessed();
 				}
 			}
 			wrapUp(exitThrowable);
@@ -1314,33 +1314,33 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void finishInvoke() {
+		private void afterRecordsProcessed() {
 			if (this.isBatchListener) {
-				batchInterceptFinishInvoke();
+				batchInterceptAfterRecordsProcessed();
 			}
 			else {
-				recordInterceptFinishInvoke();
+				recordInterceptAfterRecordsProcessed();
 			}
 		}
 
-		private void batchInterceptFinishInvoke() {
+		private void batchInterceptAfterRecordsProcessed() {
 			if (this.commonBatchInterceptor != null) {
 				try {
-					this.commonBatchInterceptor.finishInvoke(this.consumer);
+					this.commonBatchInterceptor.afterRecordsProcessed(this.consumer);
 				}
 				catch (Exception e) {
-					this.logger.error(e, "BatchInterceptor.finishInvoke threw an exception");
+					this.logger.error(e, "BatchInterceptor.afterRecordsProcessed threw an exception");
 				}
 			}
 		}
 
-		private void recordInterceptFinishInvoke() {
+		private void recordInterceptAfterRecordsProcessed() {
 			if (this.commonRecordInterceptor != null) {
 				try {
-					this.commonRecordInterceptor.finishInvoke(this.consumer);
+					this.commonRecordInterceptor.afterRecordsProcessed(this.consumer);
 				}
 				catch (Exception e) {
-					this.logger.error(e, "RecordInterceptor.finishInvoke threw an exception");
+					this.logger.error(e, "RecordInterceptor.afterRecordsProcessed threw an exception");
 				}
 			}
 		}

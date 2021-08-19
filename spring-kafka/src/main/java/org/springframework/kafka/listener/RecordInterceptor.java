@@ -94,15 +94,16 @@ public interface RecordInterceptor<K, V> {
 	}
 
 	/**
-	 * Called after listener and error handler were invoked.
+	 * Called after records were processed by listener and error handler.
 	 * <p>
-	 * It can be used to clear thread-bound resources as this is the last method called after
-	 * listener was invoked.
+	 * It can be used to clear thread-bound resources which were set up in {@link #beforePoll(Consumer)}.
+	 * This is the last method called by the {@link MessageListenerContainer} before the next record
+	 * processing cycle starts.
 	 * </p>
 	 * @param consumer the consumer.
 	 * @since 2.8
 	 */
-	default void finishInvoke(Consumer<K, V> consumer) {
+	default void afterRecordsProcessed(Consumer<K, V> consumer) {
 	}
 
 }

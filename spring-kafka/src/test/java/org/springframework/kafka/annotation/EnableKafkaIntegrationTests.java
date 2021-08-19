@@ -180,7 +180,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 		"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
+		"annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
 		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42",
 		"annotated43" })
@@ -603,23 +603,16 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.config.listen12Message.getPayload()).isInstanceOf(List.class);
 		List<?> errorPayload = (List<?>) this.config.listen12Message.getPayload();
 		assertThat(errorPayload.size()).isGreaterThanOrEqualTo(1);
-
 	}
 
 	@Test
 	public void testBatchInterceptor() throws Exception {
 		template.send("annotated43", null, "foo");
-		template.send("annotated43", null, "bar");
-		assertThat(this.listener.latch43.await(30, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.listener.payload).isInstanceOf(List.class);
-		List<?> list = (List<?>) this.listener.payload;
-		assertThat(list.size()).isGreaterThan(0);
-		assertThat(list.get(0)).isInstanceOf(ConsumerRecord.class);
+		assertThat(this.config.batchAfterRecordsProcessedLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.batchBeforePoll).isTrue();
 		assertThat(this.config.batchIntercepted).isTrue();
 		assertThat(this.config.batchSuccess).isTrue();
 		assertThat(this.config.batchFailure).isFalse();
-		assertThat(this.config.batchFinishInvoke).isTrue();
 	}
 
 	@Test
@@ -913,13 +906,12 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testRecordInterceptor() throws Exception {
-		this.bytesKeyTemplate.send("annotated42", "fooRecordInterceptor".getBytes(), "barRecordInterceptor");
-		assertThat(this.listener.latch42.await(30, TimeUnit.SECONDS)).isTrue();
+		this.template.send("annotated42", 2, "foo");
+		assertThat(this.config.recordAfterRecordsProcessedLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.recordBeforePoll).isTrue();
 		assertThat(this.config.recordIntercepted).isTrue();
 		assertThat(this.config.recordSuccess).isTrue();
 		assertThat(this.config.recordFailure).isFalse();
-		assertThat(this.config.recordFinishInvoke).isTrue();
 	}
 
 	@Test
@@ -1021,7 +1013,7 @@ public class EnableKafkaIntegrationTests {
 
 		volatile boolean recordFailure;
 
-		volatile boolean recordFinishInvoke;
+		final CountDownLatch recordAfterRecordsProcessedLatch = new CountDownLatch(1);
 
 		volatile boolean batchBeforePoll;
 
@@ -1031,12 +1023,11 @@ public class EnableKafkaIntegrationTests {
 
 		volatile boolean batchFailure;
 
-		volatile boolean batchFinishInvoke;
+		final CountDownLatch batchAfterRecordsProcessedLatch = new CountDownLatch(1);
 
 		@Autowired
 		private EmbeddedKafkaBroker embeddedKafka;
 
-		@SuppressWarnings("unchecked")
 		@Bean
 		public MeterRegistry meterRegistry() {
 			return new SimpleMeterRegistry();
@@ -1177,35 +1168,49 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<byte[], String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(bytesStringConsumerFactory());
-			factory.setRecordInterceptor(new RecordInterceptor<>() {
+			factory.setCommonErrorHandler(new CommonLoggingErrorHandler());
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> recordInterceptedFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			factory.setRecordInterceptor(testRecordInterceptor());
+			factory.setCommonErrorHandler(new CommonLoggingErrorHandler());
+			return factory;
+		}
+
+		private RecordInterceptor<Integer, String> testRecordInterceptor() {
+			return new RecordInterceptor<>() {
 				@Override
-				public ConsumerRecord<byte[], String> intercept(ConsumerRecord<byte[], String> record) {
+				@SuppressWarnings("deprecation")
+				public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record) {
 					Config.this.recordIntercepted = true;
 					return record;
 				}
 
 				@Override
-				public void success(ConsumerRecord<byte[], String> record, Consumer<byte[], String> consumer) {
+				public void success(ConsumerRecord<Integer, String> record, Consumer<Integer, String> consumer) {
 					Config.this.recordSuccess = true;
 				}
 
 				@Override
-				public void failure(ConsumerRecord<byte[], String> record, Exception exception, Consumer<byte[], String> consumer) {
+				public void failure(ConsumerRecord<Integer, String> record, Exception exception, Consumer<Integer, String> consumer) {
 					Config.this.recordFailure = true;
 				}
 
 				@Override
-				public void beforePoll(Consumer<byte[], String> consumer) {
+				public void beforePoll(Consumer<Integer, String> consumer) {
 					Config.this.recordBeforePoll = true;
 				}
 
 				@Override
-				public void finishInvoke(Consumer<byte[], String> consumer) {
-					Config.this.recordFinishInvoke = true;
+				public void afterRecordsProcessed(Consumer<Integer, String> consumer) {
+					Config.this.recordAfterRecordsProcessedLatch.countDown();
 				}
-			});
-			factory.setCommonErrorHandler(new CommonLoggingErrorHandler());
-			return factory;
+			};
 		}
 
 		@Bean
@@ -1217,7 +1222,22 @@ public class EnableKafkaIntegrationTests {
 			factory.setRecordFilterStrategy(recordFilter());
 			// always send to the same partition so the replies are in order for the test
 			factory.setReplyTemplate(partitionZeroReplyTemplate());
-			factory.setBatchInterceptor(new BatchInterceptor<>() {
+			factory.setBatchInterceptor(testBatchInterceptor());
+			return factory;
+		}
+
+		@Bean
+		public KafkaListenerContainerFactory<?> batchInterceptedFactory() {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory());
+			factory.setBatchListener(true);
+			factory.setBatchInterceptor(testBatchInterceptor());
+			return factory;
+		}
+
+		private BatchInterceptor<Integer, String> testBatchInterceptor() {
+			return new BatchInterceptor<>() {
 				@Override
 				public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records, Consumer<Integer, String> consumer) {
 					Config.this.batchIntercepted = true;
@@ -1240,11 +1260,10 @@ public class EnableKafkaIntegrationTests {
 				}
 
 				@Override
-				public void finishInvoke(Consumer<Integer, String> consumer) {
-					Config.this.batchFinishInvoke = true;
+				public void afterRecordsProcessed(Consumer<Integer, String> consumer) {
+					Config.this.batchAfterRecordsProcessedLatch.countDown();
 				}
-			});
-			return factory;
+			};
 		}
 
 		@Bean
@@ -1825,10 +1844,6 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch latch21 = new CountDownLatch(1);
 
-		final CountDownLatch latch42 = new CountDownLatch(1);
-
-		final CountDownLatch latch43 = new CountDownLatch(1);
-
 		final CountDownLatch validationLatch = new CountDownLatch(1);
 
 		final CountDownLatch eventLatch = new CountDownLatch(1);
@@ -2185,19 +2200,12 @@ public class EnableKafkaIntegrationTests {
 			this.keyLatch.countDown();
 		}
 
-		@KafkaListener(topics = "annotated42", containerFactory = "bytesStringListenerContainerFactory")
-		public void recordInterceptorListener(String in) {
-			this.latch42.countDown();
+		@KafkaListener(topics = "annotated42", containerFactory = "recordInterceptedFactory")
+		public void recordInterceptedListener(String in) {
 		}
 
-		@KafkaListener(topics = "annotated43", containerFactory = "batchFactory")
-		public void batchInterceptorListener(List<ConsumerRecord<?, ?>> records) {
-			this.payload = records;
-			this.latch43.countDown();
-		}
-
-		@KafkaListener(topics = "annotated29")
-		public void anonymousListener(String in) {
+		@KafkaListener(topics = "annotated43", containerFactory = "batchInterceptedFactory")
+		public void batchInterceptedListener(List<ConsumerRecord<Integer, String>> records) {
 		}
 
 		@KafkaListener(id = "pollResults", topics = "annotated34", containerFactory = "batchFactory")
