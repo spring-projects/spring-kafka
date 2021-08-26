@@ -49,6 +49,7 @@ import org.springframework.retry.backoff.ThreadWaitSleeper;
 public class RetryTopicBootstrapper {
 
 	private final ApplicationContext applicationContext;
+
 	private final BeanFactory beanFactory;
 
 	public RetryTopicBootstrapper(ApplicationContext applicationContext, BeanFactory beanFactory) {

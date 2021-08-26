@@ -18,6 +18,9 @@ package org.springframework.kafka.retrytopic;
 
 import java.math.BigInteger;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.apache.commons.logging.LogFactory;
@@ -35,6 +38,11 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekUtils;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.converter.ConversionException;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.messaging.handler.invocation.MethodArgumentResolutionException;
+import org.springframework.util.Assert;
 
 /**
  *
@@ -51,10 +59,55 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private final DestinationTopicResolver destinationTopicResolver;
 
+	private final Set<Class<? extends Exception>> fatalExceptions = new LinkedHashSet<>();
+
+	private final Set<Class<? extends Exception>> nonFatalExceptions = new HashSet<>();
+
 	private Consumer<DeadLetterPublishingRecoverer> recovererCustomizer = recoverer -> { };
 
 	public DeadLetterPublishingRecovererFactory(DestinationTopicResolver destinationTopicResolver) {
 		this.destinationTopicResolver = destinationTopicResolver;
+	}
+
+	/**
+	 * Add exception type to the default list. By default, the following exceptions will
+	 * not be retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link ConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried.
+	 * @param exceptionType the exception type.
+	 * @since 2.8
+	 * @see #removeNotRetryableException(Class)
+	 */
+	public final void addNotRetryableException(Class<? extends Exception> exceptionType) {
+		Assert.notNull(exceptionType, "'exceptionType' cannot be null");
+		this.fatalExceptions.add(exceptionType);
+	}
+
+	/**
+	 * Remove an exception type from the configured list. By default, the following
+	 * exceptions will not be retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link ConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried.
+	 * @param exceptionType the exception type.
+	 * @return true if the removal was successful.
+	 * @see #addNotRetryableException(Class)
+	 */
+	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
+		return this.nonFatalExceptions.add(exceptionType);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -90,6 +143,8 @@ public class DeadLetterPublishingRecovererFactory {
 		recoverer.setReplaceOriginalHeaders(false);
 		recoverer.setThrowIfNoDestinationReturned(false);
 		this.recovererCustomizer.accept(recoverer);
+		this.fatalExceptions.forEach(ex -> recoverer.addNotRetryableExceptions(ex));
+		this.nonFatalExceptions.forEach(ex -> recoverer.removeNotRetryableException(ex));
 		return recoverer;
 	}
 

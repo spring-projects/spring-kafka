@@ -267,4 +267,29 @@ class DeadLetterPublishingRecovererFactoryTests {
 		// then
 		then(dlprCustomizer).should(times(1)).accept(deadLetterPublishingRecoverer);
 	}
+
+	@Test
+	void shouldNotSendMessageIfCircularFatal() {
+		// setup
+		TimestampedException e = new TimestampedException(new IllegalStateException(), this.clock);
+		long failureTimestamp = e.getTimestamp();
+		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, failureTimestamp))
+				.willReturn(destinationTopic);
+		given(destinationTopic.isNoOpsTopic()).willReturn(false);
+		given(destinationTopic.getDestinationName()).willReturn(testTopic);
+		this.consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampBytes);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(
+				this.destinationTopicResolver);
+		factory.addNotRetryableException(IllegalStateException.class);
+
+		// when
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
+		deadLetterPublishingRecoverer.setFailIfSendResultIsError(false);
+		deadLetterPublishingRecoverer.accept(this.consumerRecord, e);
+
+		// then
+		then(kafkaOperations).should(times(0)).send(any(ProducerRecord.class));
+	}
+
 }

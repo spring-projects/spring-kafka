@@ -64,7 +64,7 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @since 2.2
  *
  */
-public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecoverer {
+public class DeadLetterPublishingRecoverer extends ExceptionClassifier implements ConsumerAwareRecordRecoverer {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
@@ -305,6 +305,14 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
 		if (tp == null) {
 			maybeThrow(record, exception);
+			this.logger.debug(() -> "Recovery of " + ListenerUtils.recordToString(record, true)
+					+ " skipped because destination resolver returned null");
+			return;
+		}
+		if (tp.topic().equals(record.topic()) && !getClassifier().classify(exception)) {
+			this.logger.error("Recovery of " + ListenerUtils.recordToString(record, true)
+					+ " skipped because not retryable exception " + exception.toString()
+					+ " and the destination resolver routed back to the same topic");
 			return;
 		}
 		if (consumer != null && this.verifyPartition) {
@@ -320,7 +328,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				kDeserEx == null ? null : kDeserEx.getData(), vDeserEx == null ? null : vDeserEx.getData());
 		KafkaOperations<Object, Object> kafkaTemplate =
 				(KafkaOperations<Object, Object>) this.templateResolver.apply(outRecord);
-		sendOrThrow(outRecord, kafkaTemplate);
+		sendOrThrow(outRecord, kafkaTemplate, record);
 	}
 
 	private void addAndEnhanceHeaders(ConsumerRecord<?, ?> record, Exception exception,
@@ -345,10 +353,10 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	private void sendOrThrow(ProducerRecord<Object, Object> outRecord,
-			@Nullable KafkaOperations<Object, Object> kafkaTemplate) {
+			@Nullable KafkaOperations<Object, Object> kafkaTemplate, ConsumerRecord<?, ?> inRecord) {
 
 		if (kafkaTemplate != null) {
-			send(outRecord, kafkaTemplate);
+			send(outRecord, kafkaTemplate, inRecord);
 		}
 		else {
 			throw new IllegalArgumentException("No kafka template returned for record " + outRecord);
@@ -369,17 +377,20 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	 * Send the record.
 	 * @param outRecord the record.
 	 * @param kafkaTemplate the template.
+	 * @param inRecord the consumer record.
 	 * @since 2.7
 	 */
-	protected void send(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
+	protected void send(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate,
+			ConsumerRecord<?, ?> inRecord) {
+
 		if (this.transactional && !kafkaTemplate.inTransaction() && !kafkaTemplate.isAllowNonTransactional()) {
 			kafkaTemplate.executeInTransaction(t -> {
-				publish(outRecord, t);
+				publish(outRecord, t, inRecord);
 				return null;
 			});
 		}
 		else {
-			publish(outRecord, kafkaTemplate);
+			publish(outRecord, kafkaTemplate, inRecord);
 		}
 	}
 
@@ -409,7 +420,8 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	@SuppressWarnings("unchecked")
 	private KafkaOperations<Object, Object> findTemplateForValue(@Nullable Object value,
-																Map<Class<?>, KafkaOperations<?, ?>> templates) {
+			Map<Class<?>, KafkaOperations<?, ?>> templates) {
+
 		if (value == null) {
 			KafkaOperations<?, ?> operations = templates.get(Void.class);
 			if (operations == null) {
@@ -461,44 +473,53 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	 * Override this if you want more than just logging of the send result.
 	 * @param outRecord the record to send.
 	 * @param kafkaTemplate the template.
+	 * @param inRecord the consumer record.
 	 * @since 2.2.5
 	 */
-	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
+	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate,
+			ConsumerRecord<?, ?> inRecord) {
+
 		ListenableFuture<SendResult<Object, Object>> sendResult = null;
 		try {
 			sendResult = kafkaTemplate.send(outRecord);
 			sendResult.addCallback(result -> {
-				this.logger.debug(() -> "Successful dead-letter publication: " + result);
+				this.logger.debug(() -> "Successful dead-letter publication: "
+						+ ListenerUtils.recordToString(inRecord, true) + " to " + result.getRecordMetadata());
 			}, ex -> {
-				this.logger.error(ex, () -> "Dead-letter publication failed for: " + outRecord);
+				this.logger.error(ex, () -> pubFailMessage(outRecord, inRecord));
 			});
 		}
 		catch (Exception e) {
-			this.logger.error(e, () -> "Dead-letter publication failed for: " + outRecord);
+			this.logger.error(e, () -> pubFailMessage(outRecord, inRecord));
 		}
 		if (this.failIfSendResultIsError) {
-			verifySendResult(kafkaTemplate, outRecord, sendResult);
+			verifySendResult(kafkaTemplate, outRecord, sendResult, inRecord);
 		}
 	}
 
 	private void verifySendResult(KafkaOperations<Object, Object> kafkaTemplate,
 			ProducerRecord<Object, Object> outRecord,
-			@Nullable ListenableFuture<SendResult<Object, Object>> sendResult) {
+			@Nullable ListenableFuture<SendResult<Object, Object>> sendResult, ConsumerRecord<?, ?> inRecord) {
 
 		Duration sendTimeout = determineSendTimeout(kafkaTemplate);
 		if (sendResult == null) {
-			throw new KafkaException("Dead-letter publication failed for: " + outRecord);
+			throw new KafkaException(pubFailMessage(outRecord, inRecord));
 		}
 		try {
 			sendResult.get(sendTimeout.toMillis(), TimeUnit.MILLISECONDS);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new KafkaException("Publication failed for: " + outRecord, e);
+			throw new KafkaException(pubFailMessage(outRecord, inRecord));
 		}
 		catch (ExecutionException | TimeoutException e) {
-			throw new KafkaException("Publication failed for: " + outRecord, e);
+			throw new KafkaException(pubFailMessage(outRecord, inRecord), e);
 		}
+	}
+
+	private String pubFailMessage(ProducerRecord<Object, Object> outRecord, ConsumerRecord<?, ?> inRecord) {
+		return "Dead-letter publication to "
+				+ outRecord.topic() + "failed for: " + ListenerUtils.recordToString(inRecord, true);
 	}
 
 	private Duration determineSendTimeout(KafkaOperations<?, ?> template) {

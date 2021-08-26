@@ -532,11 +532,11 @@ public class MyCustomDltProcessor {
 
 NOTE: If no DLT handler is provided, the default RetryTopicConfigurer.LoggingDltListenerHandlerMethod is used.
 
-===== Dlt Failure Behavior
+===== DLT Failure Behavior
 
-Should the Dlt processing fail, there are two possible behaviors available: `ALWAYS_RETRY_ON_ERROR` and `FAIL_ON_ERROR`.
+Should the DLT processing fail, there are two possible behaviors available: `ALWAYS_RETRY_ON_ERROR` and `FAIL_ON_ERROR`.
 
-In the former the message is forwarded back to the dlt topic so it doesn't block other dlt messages' processing.
+In the former the record is forwarded back to the DLT topic so it doesn't block other DLT records' processing.
 In the latter the consumer ends the execution without forwarding the message.
 
 ====
@@ -566,7 +566,21 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> templ
 
 NOTE: The default behavior is to `ALWAYS_RETRY_ON_ERROR`.
 
-===== Configuring No Dlt
+IMPORTANT: Starting with version 2.8, `ALWAYS_RETRY_ON_ERROR` will NOT route a record back to the DLT if the record causes a fatal exception to be thrown,
+such as a `DeserializationException` because, generally, such exceptions will always be thrown.
+
+Exceptions that are considered fatal are
+
+* `DeserializationException`
+* `MessageConversionException`
+* `ConversionException`
+* `MethodArgumentResolutionException`
+* `NoSuchMethodException`
+* `ClassCastException`
+
+You can add exceptions to and remove exceptions from this list using methods on the `DeadLetterPublishingRecovererFactory` bean.
+
+===== Configuring No DLT
 
 The framework also provides the possibility of not configuring a DLT for the topic.
 In this case after retrials are exhausted the processing simply ends.

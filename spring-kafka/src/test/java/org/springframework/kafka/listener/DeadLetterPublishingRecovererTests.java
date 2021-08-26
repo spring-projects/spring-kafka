@@ -48,6 +48,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -504,4 +505,23 @@ public class DeadLetterPublishingRecovererTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template, (cr, e) -> null);
 		recoverer.accept(record, new RuntimeException());
 	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void noCircularRoutingIfFatal() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
+				(cr, e) -> new TopicPartition("foo", 0));
+		recoverer.accept(record, new ClassCastException());
+		verify(template, never()).send(any(ProducerRecord.class));
+		recoverer.addNotRetryableExceptions(IllegalStateException.class);
+		recoverer.accept(record, new IllegalStateException());
+		verify(template, never()).send(any(ProducerRecord.class));
+		recoverer.removeNotRetryableException(IllegalStateException.class);
+		recoverer.setFailIfSendResultIsError(false);
+		recoverer.accept(record, new IllegalStateException());
+		verify(template).send(any(ProducerRecord.class));
+	}
+
 }
