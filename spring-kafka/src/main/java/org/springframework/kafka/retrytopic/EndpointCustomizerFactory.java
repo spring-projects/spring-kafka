@@ -95,6 +95,7 @@ public class EndpointCustomizerFactory {
 			if (topicPartitionsToAssign != null && topicPartitionsToAssign.length > 0) {
 				topics = Arrays.stream(topicPartitionsToAssign)
 						.map(TopicPartitionOffset::getTopic)
+						.distinct()
 						.collect(Collectors.toList());
 			}
 		}

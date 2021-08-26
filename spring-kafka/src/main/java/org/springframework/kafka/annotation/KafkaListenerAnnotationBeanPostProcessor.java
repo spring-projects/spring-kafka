@@ -466,14 +466,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			TopicPartitionOffset[] tps) {
 
 		String[] retryableCandidates = topics;
-		// TODO - support retryable with manual assignment https://github.com/spring-projects/spring-kafka/issues/1919
-//		if (retryableCandidates.length == 0 && tps.length > 0) {
-//			retryableCandidates = Arrays.stream(tps)
-//					.map(tp -> tp.getTopic())
-//					.distinct()
-//					.collect(Collectors.toList())
-//					.toArray(new String[0]);
-//		}
+		if (retryableCandidates.length == 0 && tps.length > 0) {
+			retryableCandidates = Arrays.stream(tps)
+					.map(tp -> tp.getTopic())
+					.distinct()
+					.collect(Collectors.toList())
+					.toArray(new String[0]);
+		}
 
 		RetryTopicConfiguration retryTopicConfiguration = new RetryTopicConfigurationProvider(this.beanFactory,
 				this.resolver, this.expressionContext)
