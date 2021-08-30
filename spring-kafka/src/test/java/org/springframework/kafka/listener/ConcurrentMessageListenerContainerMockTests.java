@@ -62,6 +62,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
+import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -153,6 +154,49 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(errorContainer.get()).isSameAs(container);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void delayedIdleEvent() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		AtomicBoolean firstEvent = new AtomicBoolean(false);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
+		recordMap.put(new TopicPartition("foo", 0),
+				Collections.singletonList(new ConsumerRecord("foo", 0, 0, null, "bar")));
+		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		willAnswer(invocation -> {
+			Thread.sleep(50);
+			return firstEvent.getAndSet(false) ? records : new ConsumerRecords<>(Collections.emptyMap());
+		}).given(consumer).poll(any());
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener) record -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		containerProperties.setIdleEventInterval(100L);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
+				containerProperties);
+		CountDownLatch latch1 = new CountDownLatch(1);
+		CountDownLatch latch2 = new CountDownLatch(2);
+		AtomicReference<Long> eventTime = new AtomicReference<>();
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ListenerContainerIdleEvent) {
+				eventTime.set(System.currentTimeMillis());
+				latch1.countDown();
+				latch2.countDown();
+			}
+		});
+		container.start();
+		long t1 = System.currentTimeMillis();
+		assertThat(latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(500L);
+		firstEvent.set(true);
+		assertThat(latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(System.currentTimeMillis() - t1).isLessThan(1000L);
 		container.stop();
 	}
 

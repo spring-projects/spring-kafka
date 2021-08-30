@@ -669,6 +669,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						? new HashMap<>()
 						: null;
 
+		private final Map<TopicPartition, Long> lastReceivePartition;
+
+		private final Map<TopicPartition, Long> lastAlertPartition;
+
+		private final Map<TopicPartition, Boolean> wasIdlePartition;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -682,10 +688,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private long lastReceive = System.currentTimeMillis();
 
 		private long lastAlertAt = this.lastReceive;
-
-		private final Map<TopicPartition, Long> lastReceivePartition;
-
-		private final Map<TopicPartition, Long> lastAlertPartition;
 
 		private long nackSleep = -1;
 
@@ -703,11 +705,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean wasIdle;
 
-		private final Map<TopicPartition, Boolean> wasIdlePartition;
-
 		private boolean batchFailed;
 
 		private boolean pausedForAsyncAcks;
+
+		private boolean receivedSome;
 
 		private volatile boolean consumerPaused;
 
@@ -1292,6 +1294,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
 			if (records != null && records.count() > 0) {
+				this.receivedSome = true;
 				savePositionsIfNeeded(records);
 				notIdle();
 				notIdlePartitions(records.partitions());
@@ -1312,12 +1315,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void checkIdlePartition(TopicPartition topicPartition) {
-			if (this.containerProperties.getIdlePartitionEventInterval() != null) {
+			Long idlePartitionEventInterval = this.containerProperties.getIdlePartitionEventInterval();
+			if (idlePartitionEventInterval != null) {
 				long now = System.currentTimeMillis();
 				Long lstReceive = this.lastReceivePartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
 				Long lstAlertAt = this.lastAlertPartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
-				if (now > lstReceive + this.containerProperties.getIdlePartitionEventInterval()
-						&& now > lstAlertAt + this.containerProperties.getIdlePartitionEventInterval()) {
+				if (now > lstReceive + idlePartitionEventInterval
+						&& now > lstAlertAt + idlePartitionEventInterval) {
 					this.wasIdlePartition.put(topicPartition, true);
 					publishIdlePartitionEvent(now - lstReceive, topicPartition, this.consumer,
 							isPartitionPauseRequested(topicPartition));
@@ -1582,9 +1586,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void checkIdle() {
 			Long idleEventInterval = this.containerProperties.getIdleEventInterval();
 			if (idleEventInterval != null) {
+				long idleEventInterval2 = idleEventInterval;
 				long now = System.currentTimeMillis();
-				if (now > this.lastReceive + idleEventInterval
-						&& now > this.lastAlertAt + idleEventInterval) {
+				if (!this.receivedSome) {
+					idleEventInterval2 *= this.containerProperties.getIdleBeforeDataMultiplier();
+				}
+				if (now > this.lastReceive + idleEventInterval2
+						&& now > this.lastAlertAt + idleEventInterval2) {
 					this.wasIdle = true;
 					publishIdleContainerEvent(now - this.lastReceive, this.consumer, this.consumerPaused);
 					this.lastAlertAt = now;

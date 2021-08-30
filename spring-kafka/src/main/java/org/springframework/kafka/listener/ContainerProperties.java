@@ -177,6 +177,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private static final int DEFAULT_ACK_TIME = 5000;
 
+	private static final double DEFAULT_IDLE_BEFORE_DATA_MULTIPLIER = 5.0;
+
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
 	private final List<Advice> adviceChain = new ArrayList<>();
@@ -246,6 +248,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private Long idleEventInterval;
 
 	private Long idlePartitionEventInterval;
+
+	private double idleBeforeDataMultiplier = DEFAULT_IDLE_BEFORE_DATA_MULTIPLIER;
 
 	private PlatformTransactionManager transactionManager;
 
@@ -418,9 +422,21 @@ public class ContainerProperties extends ConsumerProperties {
 	 * Set the idle event interval; when set, an event is emitted if a poll returns
 	 * no records and this interval has elapsed since a record was returned.
 	 * @param idleEventInterval the interval.
+	 * @see #setIdleBeforeDataMultiplier(double)
 	 */
 	public void setIdleEventInterval(@Nullable Long idleEventInterval) {
 		this.idleEventInterval = idleEventInterval;
+	}
+
+	/**
+	 * Multiply the {@link #setIdleEventInterval(Long)} by this value until at least
+	 * one record is received. Default 5.0.
+	 * @param idleBeforeDataMultiplier false to allow publishing.
+	 * @since 2.8
+	 * @see #setIdleEventInterval(Long)
+	 */
+	public void setIdleBeforeDataMultiplier(double idleBeforeDataMultiplier) {
+		this.idleBeforeDataMultiplier = idleBeforeDataMultiplier;
 	}
 
 	/**
@@ -461,9 +477,24 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.shutdownTimeout;
 	}
 
+	/**
+	 * Return the idle event interval.
+	 * @return the interval.
+	 */
 	@Nullable
 	public Long getIdleEventInterval() {
 		return this.idleEventInterval;
+	}
+
+	/**
+	 * Multiply the {@link #setIdleEventInterval(Long)} by this value until at least
+	 * one record is received. Default 5.0.
+	 * @return the noIdleBeforeData.
+	 * @since 2.8
+	 * @see #getIdleEventInterval()
+	 */
+	public double getIdleBeforeDataMultiplier() {
+		return this.idleBeforeDataMultiplier;
 	}
 
 	/**
@@ -900,6 +931,7 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n stopContainerWhenFenced=" + this.stopContainerWhenFenced
 				+ "\n stopImmediate=" + this.stopImmediate
 				+ "\n asyncAcks=" + this.asyncAcks
+				+ "\n idleBeforeDataMultiplier" + this.idleBeforeDataMultiplier
 				+ "\n]";
 	}
 

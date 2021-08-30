@@ -137,7 +137,7 @@ public class ContainerGroupSequencerTests {
 
 		@Bean
 		ContainerGroupSequencer sequencer(KafkaListenerEndpointRegistry registry) {
-			ContainerGroupSequencer sequencer = new ContainerGroupSequencer(registry, 3000, "g1", "g2");
+			ContainerGroupSequencer sequencer = new ContainerGroupSequencer(registry, 600, "g1", "g2");
 			sequencer.setStopLastGroupWhenIdle(true);
 			sequencer.setAutoStartup(false);
 			return sequencer;
@@ -165,7 +165,7 @@ public class ContainerGroupSequencerTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
-			factory.getContainerProperties().setPollTimeout(500);
+			factory.getContainerProperties().setPollTimeout(200);
 			return factory;
 		}
 

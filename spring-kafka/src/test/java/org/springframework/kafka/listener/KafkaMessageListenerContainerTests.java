@@ -1622,6 +1622,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setIdleEventInterval(60000L);
+		containerProps.setIdleBeforeDataMultiplier(1.0);
 
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProps);
@@ -1668,7 +1669,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		});
-		assertThat(idleLatch.await(60, TimeUnit.SECONDS));
+		assertThat(idleLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(idleEventPublished.get()).isTrue();
 		assertThat(latch.get().await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
