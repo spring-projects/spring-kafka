@@ -2477,6 +2477,12 @@ See https://issues.apache.org/jira/browse/KAFKA-10683[KAFKA-10683] for more info
 |`null`
 |Overrides the consumer `group.id` property; automatically set by the `@KafkaListener` `id` or `groupId` property.
 
+|idleBeforeDataMultiplier
+|5.0
+|Multiplier for `idleEventInterval` that is applied before any records are received.
+After a record is received, the multiplier is no longer applied.
+Available since version 2.8.
+
 |idleBetweenPolls
 |0
 |Used to slow down deliveries by sleeping the thread between polls.
@@ -2485,6 +2491,7 @@ The time to process a batch of records plus this value must be less than the `ma
 |idleEventInterval
 |`null`
 |When set, enables publication of `ListenerContainerIdleEvent` s, see <<events>> and <<idle-containers>>.
+Also see `idleBeforeDataMultiplier`.
 
 |idlePartitionEventInterval
 |`null`
