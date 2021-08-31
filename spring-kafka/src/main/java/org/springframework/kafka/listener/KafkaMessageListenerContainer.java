@@ -608,23 +608,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Duration syncCommitTimeout;
 
-		private final RecordInterceptor<K, V> recordInterceptor = !isInterceptBeforeTx()
+		private final RecordInterceptor<K, V> recordInterceptor = !isInterceptBeforeTx() && this.kafkaTxManager != null
 				? getRecordInterceptor()
 				: null;
 
-		private final RecordInterceptor<K, V> earlyRecordInterceptor = isInterceptBeforeTx()
-				? getRecordInterceptor()
-				: null;
+		private final RecordInterceptor<K, V> earlyRecordInterceptor =
+				isInterceptBeforeTx() || this.kafkaTxManager == null
+						? getRecordInterceptor()
+						: null;
 
 		private final RecordInterceptor<K, V> commonRecordInterceptor = getRecordInterceptor();
 
-		private final BatchInterceptor<K, V> batchInterceptor = !isInterceptBeforeTx()
+		private final BatchInterceptor<K, V> batchInterceptor = !isInterceptBeforeTx() && this.kafkaTxManager != null
 				? getBatchInterceptor()
 				: null;
 
-		private final BatchInterceptor<K, V> earlyBatchInterceptor = isInterceptBeforeTx()
-				? getBatchInterceptor()
-				: null;
+		private final BatchInterceptor<K, V> earlyBatchInterceptor =
+				isInterceptBeforeTx() || this.kafkaTxManager == null
+						? getBatchInterceptor()
+						: null;
 
 		private final BatchInterceptor<K, V> commonBatchInterceptor = getBatchInterceptor();
 
@@ -2083,11 +2085,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void invokeBatchOnMessageWithRecordsOrList(final ConsumerRecords<K, V> recordsArg,
-				@Nullable List<ConsumerRecord<K, V>> recordList) {
+				@Nullable List<ConsumerRecord<K, V>> recordListArg) {
 
 			ConsumerRecords<K, V> records = recordsArg;
+			List<ConsumerRecord<K, V>> recordList = recordListArg;
 			if (this.batchInterceptor != null) {
 				records = this.batchInterceptor.intercept(recordsArg, this.consumer);
+				if (records == null) {
+					this.logger.debug(() -> "BatchInterceptor returned null, skipping: "
+							+ recordsArg + " with " + recordsArg.count() + " records");
+					return;
+				}
+				else {
+					recordList = createRecordList(records);
+				}
 			}
 			if (this.wantsFullRecords) {
 				this.batchListener.onMessage(records, // NOSONAR
@@ -2276,7 +2287,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.earlyBatchInterceptor != null) {
 				next = this.earlyBatchInterceptor.intercept(next, this.consumer);
 				if (next == null) {
-					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
+					this.logger.debug(() -> "BatchInterceptor returned null, skipping: "
 						+ nextArg + " with " + nextArg.count() + " records");
 				}
 			}
