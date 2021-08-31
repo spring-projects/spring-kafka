@@ -1035,8 +1035,8 @@ IMPORTANT: You should not execute any methods that affect the consumer's positio
 
 The `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
 
-By default, when using transactions, the interceptor is invoked after the transaction has started.
-Starting with version 2.3.4, you can set the listener container's `interceptBeforeTx` property to invoke the interceptor before the transaction has started instead.
+By default, starting with version 2.8, when using transactions, the interceptor is invoked before the transaction has started.
+You can set the listener container's `interceptBeforeTx` property to `false` to invoke the interceptor after the transaction has started instead.
 
 Starting with versions 2.3.8, 2.4.6, the `ConcurrentMessageListenerContainer` now supports https://kafka.apache.org/documentation/#static_membership[Static Membership] when the concurrency is greater than one.
 The `group.instance.id` is suffixed with `-n` with `n` starting at `1`.
@@ -2636,7 +2636,7 @@ See <<error-handlers>>.
 
 |intercept
 BeforeTx
-|`false`
+|`true`
 |Determines whether the `recordInterceptor` is called before or after a transaction starts.
 
 |listenerId

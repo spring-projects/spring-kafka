@@ -103,7 +103,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private BatchInterceptor<K, V> batchInterceptor;
 
-	private boolean interceptBeforeTx;
+	private boolean interceptBeforeTx = true;
 
 	private volatile boolean running = false;
 
@@ -394,8 +394,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * When true, invoke the interceptor before the transaction starts.
-	 * @param interceptBeforeTx true to intercept before the transaction.
+	 * When false, invoke the interceptor after the transaction starts.
+	 * @param interceptBeforeTx false to intercept within the transaction.
+	 * Default true since 2.8.
 	 * @since 2.3.4
 	 * @see #setRecordInterceptor(RecordInterceptor)
 	 * @see #setBatchInterceptor(BatchInterceptor)
