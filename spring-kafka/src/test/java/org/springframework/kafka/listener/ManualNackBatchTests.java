@@ -73,6 +73,12 @@ public class ManualNackBatchTests {
 
 	private static final String CONTAINER_ID = "container";
 
+	protected static AckMode ackMode;
+
+	static {
+		ackMode = AckMode.MANUAL;
+	}
+
 	@SuppressWarnings("rawtypes")
 	@Autowired
 	private Consumer consumer;
@@ -216,7 +222,7 @@ public class ManualNackBatchTests {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setBatchListener(true);
-			factory.getContainerProperties().setAckMode(AckMode.MANUAL);
+			factory.getContainerProperties().setAckMode(ackMode);
 			return factory;
 		}
 
