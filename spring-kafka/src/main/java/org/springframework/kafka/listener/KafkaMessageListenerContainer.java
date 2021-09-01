@@ -2689,6 +2689,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			doSendOffsets(this.producer, commits);
 		}
 
+		@SuppressWarnings("deprecation")
 		private void doSendOffsets(Producer<?, ?> prod, Map<TopicPartition, OffsetAndMetadata> commits) {
 			if (this.eosMode.getMode().equals(EOSMode.V1)) {
 				prod.sendOffsetsToTransaction(commits, this.consumerGroupId);

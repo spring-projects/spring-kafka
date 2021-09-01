@@ -54,6 +54,7 @@ import org.springframework.util.backoff.FixedBackOff;
  */
 public class DefaultAfterRollbackProcessorTests {
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void testClassifier() {
 		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();

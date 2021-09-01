@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
 
@@ -51,7 +53,7 @@ public class RecordMessagingMessageListenerAdapterTests {
 		RecordMessagingMessageListenerAdapter<Object, Object> adapter =
 				(RecordMessagingMessageListenerAdapter<Object, Object>) endpoint.createMessageListener(null, null);
 		ConsumerRecord<Object, Object> record = new ConsumerRecord<>("topic", 0, 42L, 43L, TimestampType.CREATE_TIME,
-				0L, 44, 45, null, "foo");
+				44, 45, null, "foo", new RecordHeaders(), Optional.empty());
 		adapter.onMessage(record, null, null);
 		assertThat(bean.string).isEqualTo("foo");
 		assertThat(bean.metadata.topic()).isEqualTo(record.topic());
@@ -86,7 +88,7 @@ public class RecordMessagingMessageListenerAdapterTests {
 		adapter.onMessage(new ConsumerRecord<>("topic", 0, 0L, null, 42), null, null);
 		assertThat(bean.value).isEqualTo(42);
 		ConsumerRecord<Object, Object> record = new ConsumerRecord<>("topic", 0, 42L, 43L, TimestampType.CREATE_TIME,
-				0L, 44, 45, null, "foo");
+				44, 45, null, "foo", new RecordHeaders(), Optional.empty());
 		adapter.onMessage(record, null, null);
 		assertThat(bean.string).isEqualTo("foo");
 		assertThat(bean.metadata.topic()).isEqualTo(record.topic());

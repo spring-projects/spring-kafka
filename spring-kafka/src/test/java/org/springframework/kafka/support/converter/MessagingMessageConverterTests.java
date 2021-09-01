@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -49,7 +50,8 @@ public class MessagingMessageConverterTests {
 	@Test
 	void missingHeaders() {
 		MessagingMessageConverter converter = new MessagingMessageConverter();
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz");
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "baz",
+				new RecordHeaders(), Optional.empty());
 		Message<?> message = converter.toMessage(record, null, null, null);
 		assertThat(message.getPayload()).isEqualTo("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
@@ -60,7 +62,8 @@ public class MessagingMessageConverterTests {
 	@Test
 	void dontMapNullKey() {
 		MessagingMessageConverter converter = new MessagingMessageConverter();
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, null, "baz");
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, null, "baz",
+				new RecordHeaders(), Optional.empty());
 		Message<?> message = converter.toMessage(record, null, null, null);
 		assertThat(message.getPayload()).isEqualTo("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
@@ -71,7 +74,8 @@ public class MessagingMessageConverterTests {
 	void raw() {
 		MessagingMessageConverter converter = new MessagingMessageConverter();
 		converter.setRawRecordHeader(true);
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz");
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "baz",
+				new RecordHeaders(), Optional.empty());
 		Message<?> message = converter.toMessage(record, null, null, null);
 		assertThat(message.getPayload()).isEqualTo("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
@@ -86,7 +90,8 @@ public class MessagingMessageConverterTests {
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/json".getBytes()));
 		ConsumerRecord<String, String> record =
-				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "{ \"foo\":\"bar\"}", headers);
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "{ \"foo\":\"bar\"}", headers,
+						Optional.empty());
 		Message<?> message = converter.toMessage(record, null, null, Foo.class);
 		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
 	}
@@ -97,7 +102,8 @@ public class MessagingMessageConverterTests {
 		MessagingMessageConverter converter = new MessagingMessageConverter();
 		converter.setMessagingConverter(new MappingJacksonParameterizedConverter());
 		ConsumerRecord<String, String> record =
-				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "{ \"foo\":\"bar\"}");
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "{ \"foo\":\"bar\"}",
+						new RecordHeaders(), Optional.empty());
 		Message<?> message = converter.toMessage(record, null, null, Foo.class);
 		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
 	}
@@ -111,7 +117,7 @@ public class MessagingMessageConverterTests {
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/foo".getBytes()));
 		ConsumerRecord<String, String> record =
-				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "qux", headers);
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "qux", headers, Optional.empty());
 		Message<?> message = converter.toMessage(record, null, null, Foo.class);
 		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
 		ProducerRecord<?, ?> pr = converter.fromMessage(message, "test");
@@ -143,7 +149,7 @@ public class MessagingMessageConverterTests {
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/foo".getBytes()));
 		ConsumerRecord<String, String> record =
-				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "qux", headers);
+				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "qux", headers, Optional.empty());
 		Message<?> message = converter.toMessage(record, null, null, Foo.class);
 		assertThat(message.getPayload()).isEqualTo(new Foo("bar"));
 		headers.remove(MessageHeaders.CONTENT_TYPE);

@@ -208,7 +208,9 @@ public interface KafkaOperations<K, V> {
 	 * the container will take care of sending the offsets to the transaction.
 	 * @param offsets The offsets.
 	 * @since 1.3
+	 * @deprecated in the 3.0.0 KafkaProducer.
 	 */
+	@Deprecated
 	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets);
 
 	/**
@@ -220,7 +222,9 @@ public interface KafkaOperations<K, V> {
 	 * @param offsets The offsets.
 	 * @param consumerGroupId the consumer's group.id.
 	 * @since 1.3
+	 * @deprecated in the 3.0.0 KafkaProducer.
 	 */
+	@Deprecated
 	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId);
 
 	/**

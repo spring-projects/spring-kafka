@@ -39,7 +39,6 @@ import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.config.StreamsBuilderFactoryBeanConfigurer;
-import org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -143,14 +142,6 @@ public class Configurer1Tests {
 				}
 
 			};
-		}
-
-		@SuppressWarnings("deprecation")
-		@Bean
-		public StreamsBuilderFactoryBeanCustomizer wontBeFoundNotUnique(List<Integer> callOrder) {
-			return fb -> fb.setStateListener((newState, oldState) -> {
-				callOrder.add(4);
-			});
 		}
 
 	}

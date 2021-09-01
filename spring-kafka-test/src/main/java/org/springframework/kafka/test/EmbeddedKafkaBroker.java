@@ -55,6 +55,7 @@ import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.metadata.BrokerState;
+import org.apache.zookeeper.client.ZKClientConfig;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
 
@@ -67,6 +68,7 @@ import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
+import kafka.cluster.EndPoint;
 import kafka.common.KafkaException;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
@@ -557,7 +559,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	private boolean brokerRunning(KafkaServer kafkaServer) {
-		return !kafkaServer.brokerState().get().equals(BrokerState.NOT_RUNNING);
+		return !kafkaServer.brokerState().equals(BrokerState.NOT_RUNNING);
 	}
 
 	public Set<String> getTopics() {
@@ -584,7 +586,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	public synchronized ZooKeeperClient getZooKeeperClient() {
 		if (this.zooKeeperClient == null) {
 			this.zooKeeperClient = new ZooKeeperClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
-					1, Time.SYSTEM, "embeddedKafkaZK", "embeddedKafkaZK");
+					1, Time.SYSTEM, "embeddedKafkaZK", "embeddedKafkaZK", new ZKClientConfig(), "embeddedKafkaZK");
 		}
 		return this.zooKeeperClient;
 	}
@@ -595,7 +597,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public BrokerAddress getBrokerAddress(int i) {
 		KafkaServer kafkaServer = this.kafkaServers.get(i);
-		return new BrokerAddress(LOOPBACK, kafkaServer.config().port());
+		return new BrokerAddress(LOOPBACK, kafkaServer.config().listeners().apply(0).port());
 	}
 
 	public BrokerAddress[] getBrokerAddresses() {
@@ -612,7 +614,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public void bounce(BrokerAddress brokerAddress) {
 		for (KafkaServer kafkaServer : getKafkaServers()) {
-			if (brokerAddress.equals(new BrokerAddress(kafkaServer.config().hostName(), kafkaServer.config().port()))) {
+			EndPoint endpoint = kafkaServer.config().listeners().apply(0);
+			if (brokerAddress.equals(new BrokerAddress(endpoint.host(), endpoint.port()))) {
 				kafkaServer.shutdown();
 				kafkaServer.awaitShutdown();
 			}

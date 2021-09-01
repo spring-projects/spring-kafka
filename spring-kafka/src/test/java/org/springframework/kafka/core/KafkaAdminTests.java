@@ -96,11 +96,15 @@ public class KafkaAdminTests {
 		int n = 0;
 		await().until(() -> {
 			results.putAll(this.admin.describeTopics("foo", "bar"));
+			TopicDescription foo = results.values().stream()
+					.filter(tp -> tp.name().equals("foo"))
+					.findFirst()
+					.get();
 			TopicDescription bar = results.values().stream()
 					.filter(tp -> tp.name().equals("bar"))
 					.findFirst()
 					.get();
-			return bar.partitions().size() != 1;
+			return foo.partitions().size() == 4 && bar.partitions().size() == 3;
 		});
 		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 4 : 3));
 		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(5));

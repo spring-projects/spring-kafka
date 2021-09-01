@@ -128,7 +128,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 				"A KafkaOperations is required when 'commitRecovered' is true");
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked", "rawtypes", "deprecation" })
 	@Override
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer,
 			@Nullable MessageListenerContainer container, Exception exception, boolean recoverable, EOSMode eosMode) {

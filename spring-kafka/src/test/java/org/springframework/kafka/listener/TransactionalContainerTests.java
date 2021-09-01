@@ -22,7 +22,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -176,7 +175,7 @@ public class TransactionalContainerTests {
 		testConsumeAndProduceTransactionGuts(handleError, ackMode, eosMode, false);
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
 	private void testConsumeAndProduceTransactionGuts(boolean handleError, AckMode ackMode,
 			EOSMode eosMode, boolean stopWhenFenced) throws Exception {
 
@@ -371,7 +370,7 @@ public class TransactionalContainerTests {
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(producer).send(captor.capture(), any(Callback.class));
 		assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
-		inOrder.verify(producer, never()).sendOffsetsToTransaction(anyMap(), anyString());
+		inOrder.verify(producer, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		inOrder.verify(producer, never()).commitTransaction();
 		inOrder.verify(producer).abortTransaction();
 		inOrder.verify(producer).close(any());
@@ -440,7 +439,7 @@ public class TransactionalContainerTests {
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(producer).send(captor.capture(), any(Callback.class));
 		assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
-		inOrder.verify(producer, never()).sendOffsetsToTransaction(anyMap(), anyString());
+		inOrder.verify(producer, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		inOrder.verify(producer, never()).commitTransaction();
 		inOrder.verify(producer).abortTransaction();
 		inOrder.verify(producer).close(any());
@@ -451,7 +450,7 @@ public class TransactionalContainerTests {
 		verify(pf, times(1)).createProducer(isNull());
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
 	@Test
 	public void testConsumeAndProduceTransactionExternalTM() throws Exception {
 		Consumer consumer = mock(Consumer.class);

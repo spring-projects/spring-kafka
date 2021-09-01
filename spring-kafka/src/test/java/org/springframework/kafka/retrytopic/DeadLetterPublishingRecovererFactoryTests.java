@@ -29,12 +29,14 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -168,7 +170,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		// setup
 		RuntimeException e = new RuntimeException();
 		ConsumerRecord consumerRecord = new ConsumerRecord(testTopic, 0, 0, originalTimestamp,
-				TimestampType.CREATE_TIME, 1234L, -1, -1, key, value);
+				TimestampType.CREATE_TIME, -1, -1, key, value, new RecordHeaders(), Optional.empty());
 
 		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, originalTimestamp)).willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
@@ -198,7 +200,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		RuntimeException e = new RuntimeException();
 		long timestamp = LocalDateTime.now(this.clock).toInstant(ZoneOffset.UTC).minusMillis(5000).toEpochMilli();
 		ConsumerRecord consumerRecord = new ConsumerRecord(testTopic, 0, 0, timestamp,
-				TimestampType.CREATE_TIME, 1234L, -1, -1, key, value);
+				TimestampType.CREATE_TIME, -1, -1, key, value, new RecordHeaders(), Optional.empty());
 
 		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, timestamp)).willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);

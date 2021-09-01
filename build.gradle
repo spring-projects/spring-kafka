@@ -59,7 +59,7 @@ ext {
 	jaywayJsonPathVersion = '2.4.0'
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.7.2'
-	kafkaVersion = '2.8.1'
+	kafkaVersion = '3.0.0'
 	log4jVersion = '2.14.1'
 	micrometerVersion = '1.8.0-M3'
 	mockitoVersion = '3.11.2'
@@ -69,6 +69,7 @@ ext {
 	springDataVersion = '2021.1.0-M3'
 	springRetryVersion = '1.3.1'
 	springVersion = '5.3.10'
+	zookeeperVersion = '3.6.3'
 
 	idPrefix = 'kafka'
 }
@@ -341,8 +342,9 @@ project ('spring-kafka-test') {
 			exclude group: 'org.springframework'
 		}
 
+		api "org.apache.zookeeper:zookeeper:$zookeeperVersion"
 		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-		api "org.apache.kafka:kafka-streams:$kafkaVersion"
+		api "org.apache.kafka:kafka-metadata:$kafkaVersion"
 		api "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"

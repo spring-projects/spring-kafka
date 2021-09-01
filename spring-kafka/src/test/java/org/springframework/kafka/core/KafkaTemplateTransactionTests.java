@@ -98,6 +98,7 @@ public class KafkaTemplateTransactionTests {
 
 	private final EmbeddedKafkaBroker embeddedKafka = EmbeddedKafkaCondition.getBroker();
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testLocalTransaction() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);

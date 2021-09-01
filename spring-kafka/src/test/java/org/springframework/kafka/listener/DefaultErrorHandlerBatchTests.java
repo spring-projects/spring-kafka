@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,6 +44,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -130,7 +132,8 @@ public class DefaultErrorHandlerBatchTests {
 		TopicPartition tp = new TopicPartition("foo", 0);
 		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
 				Collections.singletonList(
-						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"))));
+						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+								new RecordHeaders(), Optional.empty()))));
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
 			beh.handleBatch(new ListenerExecutionFailedException("",
 					new BatchListenerFailedException("", 2)), records, mockConsumer,
@@ -157,9 +160,12 @@ public class DefaultErrorHandlerBatchTests {
 		TopicPartition tp = new TopicPartition("foo", 0);
 		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
 			Arrays.asList(
-				new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"),
-				new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "bar"),
-				new ConsumerRecord("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "baz"))
+				new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+						new RecordHeaders(), Optional.empty()),
+				new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "bar",
+						new RecordHeaders(), Optional.empty()),
+				new ConsumerRecord("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "baz",
+						new RecordHeaders(), Optional.empty()))
 		));
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
 			beh.handleBatch(new ListenerExecutionFailedException("", new MessagingException("",
@@ -187,11 +193,13 @@ public class DefaultErrorHandlerBatchTests {
 		TopicPartition tp = new TopicPartition("foo", 0);
 		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
 				Collections.singletonList(
-						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"))));
+						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+								new RecordHeaders(), Optional.empty()))));
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
 			beh.handleBatch(new ListenerExecutionFailedException("",
 						new BatchListenerFailedException("",
-					new ConsumerRecord("bar", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"))),
+					new ConsumerRecord("bar", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+							new RecordHeaders(), Optional.empty()))),
 					records, mockConsumer, mock(MessageListenerContainer.class), () -> { }))
 				.withMessageStartingWith("Seek to current after exception");
 		verify(mockConsumer).seek(tp, 0L);
@@ -245,14 +253,20 @@ public class DefaultErrorHandlerBatchTests {
 				return null;
 			}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 			List<ConsumerRecord> records1 = new ArrayList<>();
-			records1.add(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "foo"));
-			records1.add(new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "bar"));
+			records1.add(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+					new RecordHeaders(), Optional.empty()));
+			records1.add(new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "bar",
+					new RecordHeaders(), Optional.empty()));
 			List<ConsumerRecord> records2 = new ArrayList<>();
-			records2.add(new ConsumerRecord("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "baz"));
+			records2.add(new ConsumerRecord("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "baz",
+					new RecordHeaders(), Optional.empty()));
 			List<ConsumerRecord> records3 = new ArrayList<>();
-			records3.add(new ConsumerRecord("foo", 0, 3L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "qux"));
-			records3.add(new ConsumerRecord("foo", 0, 4L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "fiz"));
-			records3.add(new ConsumerRecord("foo", 0, 5L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 0, null, "buz"));
+			records3.add(new ConsumerRecord("foo", 0, 3L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "qux",
+					new RecordHeaders(), Optional.empty()));
+			records3.add(new ConsumerRecord("foo", 0, 4L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "fiz",
+					new RecordHeaders(), Optional.empty()));
+			records3.add(new ConsumerRecord("foo", 0, 5L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "buz",
+					new RecordHeaders(), Optional.empty()));
 			List<ConsumerRecord> recordsOne = new ArrayList<>(records1);
 			recordsOne.addAll(records2);
 			recordsOne.addAll(records3);

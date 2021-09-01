@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ public class StringOrBytesSerializerTests {
 		Bytes bytes = Bytes.wrap("baz".getBytes());
 		out = serializer.serialize("x", bytes);
 		assertThat(out).isEqualTo("baz".getBytes());
-		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo("UTF8");
+		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo("UTF-8");
 		Map<String, Object> configs = Collections.singletonMap("serializer.encoding", "UTF-16");
 		serializer.configure(configs, false);
 		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo("UTF-16");

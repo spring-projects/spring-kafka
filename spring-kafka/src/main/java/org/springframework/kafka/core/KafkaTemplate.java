@@ -546,11 +546,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 
 	@Override
+	@Deprecated
 	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets) {
 		sendOffsetsToTransaction(offsets, KafkaUtils.getConsumerGroupId());
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
+	@Deprecated
 	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) {
 		producerForOffsets().sendOffsetsToTransaction(offsets, consumerGroupId);
 	}

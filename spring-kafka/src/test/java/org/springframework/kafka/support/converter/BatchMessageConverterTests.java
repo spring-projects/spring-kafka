@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -135,11 +136,11 @@ public class BatchMessageConverterTests {
 		Headers kHeaders = new RecordHeaders(new Header[] { header });
 		List<ConsumerRecord<?, ?>> consumerRecords = new ArrayList<>();
 		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 1, 1487694048607L,
-				TimestampType.CREATE_TIME, 123L, 2, 3, "key1", "value1", kHeaders));
+				TimestampType.CREATE_TIME, 2, 3, "key1", "value1", kHeaders, Optional.empty()));
 		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 2, 1487694048608L,
-				TimestampType.CREATE_TIME, 123L, 2, 3, "key2", "value2", kHeaders));
+				TimestampType.CREATE_TIME, 2, 3, "key2", "value2", kHeaders, Optional.empty()));
 		consumerRecords.add(new ConsumerRecord<>("topic1", 0, 3, 1487694048609L,
-				TimestampType.CREATE_TIME, 123L, 2, 3, "key3", "value3", kHeaders));
+				TimestampType.CREATE_TIME, 2, 3, "key3", "value3", kHeaders, Optional.empty()));
 		return consumerRecords;
 	}
 
@@ -147,7 +148,8 @@ public class BatchMessageConverterTests {
 	@Test
 	public void missingHeaders() {
 		BatchMessageConverter converter = new BatchMessagingMessageConverter();
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0L, 0, 0, "bar", "baz");
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "baz",
+				new RecordHeaders(), Optional.empty());
 		List<ConsumerRecord<?, ?>> records = Collections.singletonList(record);
 		Message<?> message = converter.toMessage(records, null, null, null);
 		assertThat(((List<String>) message.getPayload())).contains("baz");

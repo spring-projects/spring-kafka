@@ -688,7 +688,7 @@ public class ReplyingKafkaTemplateTests {
 			Callback callback = invocation.getArgument(1);
 			SettableListenableFuture<Object> future = new SettableListenableFuture<>();
 			future.set("done");
-			callback.onCompletion(new RecordMetadata(new TopicPartition("foo", 0), 0, 0, 0, null, 0, 0), null);
+			callback.onCompletion(new RecordMetadata(new TopicPartition("foo", 0), 0L, 0, 0L, 0, 0), null);
 			return future;
 		}).given(producer).send(any(), any());
 		given(pf.createProducer()).willReturn(producer);

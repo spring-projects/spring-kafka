@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -172,7 +173,7 @@ public class DeadLetterPublishingRecovererTests {
 		future.set(new Object());
 		willReturn(future).given(template).send(any(ProducerRecord.class));
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
-				0L, 0, 0, "bar", "baz", headers);
+				0, 0, "bar", "baz", headers, Optional.empty());
 		recoverer.accept(record, new RuntimeException("testV"));
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(template).send(captor.capture());
@@ -198,7 +199,7 @@ public class DeadLetterPublishingRecovererTests {
 		future.set(new Object());
 		willReturn(future).given(template).send(any(ProducerRecord.class));
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
-				0L, 0, 0, "bar", "baz", headers);
+				0, 0, "bar", "baz", headers, Optional.empty());
 		recoverer.accept(record, new RuntimeException());
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(template).send(captor.capture());
@@ -219,7 +220,7 @@ public class DeadLetterPublishingRecovererTests {
 		future.set(new Object());
 		willReturn(future).given(template).send(any(ProducerRecord.class));
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
-				0L, 0, 0, "bar", "baz", headers);
+				0, 0, "bar", "baz", headers, Optional.empty());
 		recoverer.accept(record, deserEx);
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(template).send(captor.capture());
@@ -242,7 +243,7 @@ public class DeadLetterPublishingRecovererTests {
 		future.set(new Object());
 		willReturn(future).given(template).send(any(ProducerRecord.class));
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.CREATE_TIME,
-				0L, 0, 0, "bar", "baz", headers);
+				0, 0, "bar", "baz", headers, Optional.empty());
 		recoverer.accept(record, new RuntimeException());
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(template).send(captor.capture());
@@ -335,7 +336,7 @@ public class DeadLetterPublishingRecovererTests {
 		ListenableFuture future = mock(ListenableFuture.class);
 		given(template.send(any(ProducerRecord.class))).willReturn(future);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 1234L,
-				TimestampType.CREATE_TIME, 4321L, 123, 123, "bar", null);
+				TimestampType.CREATE_TIME, 123, 123, "bar", null, new RecordHeaders(), Optional.empty());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		recoverer.setReplaceOriginalHeaders(false);
 		recoverer.accept(record, new RuntimeException());
@@ -349,7 +350,7 @@ public class DeadLetterPublishingRecovererTests {
 		Header originalTimestampType = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE);
 
 		ConsumerRecord<String, String> anotherRecord = new ConsumerRecord<>("bar", 1, 12L, 4321L,
-				TimestampType.LOG_APPEND_TIME, 1234L, 321, 321, "bar", null);
+				TimestampType.LOG_APPEND_TIME, 321, 321, "bar", null, new RecordHeaders(), Optional.empty());
 		headers.forEach(header -> anotherRecord.headers().add(header));
 		recoverer.accept(anotherRecord, new RuntimeException());
 		ArgumentCaptor<ProducerRecord> anotherProducerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
@@ -369,7 +370,7 @@ public class DeadLetterPublishingRecovererTests {
 		ListenableFuture future = mock(ListenableFuture.class);
 		given(template.send(any(ProducerRecord.class))).willReturn(future);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 1234L,
-				TimestampType.CREATE_TIME, 4321L, 123, 123, "bar", null);
+				TimestampType.CREATE_TIME, 123, 123, "bar", null, new RecordHeaders(), Optional.empty());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		recoverer.setReplaceOriginalHeaders(true);
 		recoverer.accept(record, new RuntimeException());
@@ -383,7 +384,7 @@ public class DeadLetterPublishingRecovererTests {
 		Header originalTimestampType = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE);
 
 		ConsumerRecord<String, String> anotherRecord = new ConsumerRecord<>("bar", 1, 12L, 4321L,
-				TimestampType.LOG_APPEND_TIME, 1234L, 321, 321, "bar", null);
+				TimestampType.LOG_APPEND_TIME, 321, 321, "bar", null, new RecordHeaders(), Optional.empty());
 		headers.forEach(header -> anotherRecord.headers().add(header));
 		recoverer.accept(anotherRecord, new RuntimeException());
 		ArgumentCaptor<ProducerRecord> anotherProducerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);

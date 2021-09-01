@@ -212,7 +212,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			setTransactionIdPrefix(txId);
 			this.configs.remove(ProducerConfig.TRANSACTIONAL_ID_CONFIG);
 		}
-		this.configs.put("internal.auto.downgrade.txn.commit", true);
 	}
 
 	private Supplier<Serializer<K>> keySerializerSupplier(

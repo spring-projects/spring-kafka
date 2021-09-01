@@ -330,7 +330,7 @@ public class KafkaTemplateTests {
 		//Drain the topic
 		KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		pf.destroy();
-		cpl.onError(records.get(0), new RecordMetadata(new TopicPartition(INT_KEY_TOPIC, -1), 0L, 0L, 0L, 0L, 0, 0),
+		cpl.onError(records.get(0), new RecordMetadata(new TopicPartition(INT_KEY_TOPIC, -1), 0L, 0, 0L, 0, 0),
 				new RuntimeException("x"));
 		assertThat(onErrorDelegateCalls.get()).isEqualTo(2);
 	}

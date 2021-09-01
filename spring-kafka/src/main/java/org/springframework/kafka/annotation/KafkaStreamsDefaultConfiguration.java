@@ -59,17 +59,14 @@ public class KafkaStreamsDefaultConfiguration {
 	/**
 	 * Bean for the default {@link StreamsBuilderFactoryBean}.
 	 * @param streamsConfigProvider the streams config.
-	 * @param customizerProvider the customizer.
 	 * @param configurerProvider the configurer.
 	 *
 	 * @return the factory bean.
 	 */
-	@SuppressWarnings("deprecation")
 	@Bean(name = DEFAULT_STREAMS_BUILDER_BEAN_NAME)
 	public StreamsBuilderFactoryBean defaultKafkaStreamsBuilder(
 			@Qualifier(DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 					ObjectProvider<KafkaStreamsConfiguration> streamsConfigProvider,
-			ObjectProvider<org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer> customizerProvider,
 			ObjectProvider<StreamsBuilderFactoryBeanConfigurer> configurerProvider) {
 
 		KafkaStreamsConfiguration streamsConfig = streamsConfigProvider.getIfAvailable();
@@ -80,11 +77,6 @@ public class KafkaStreamsDefaultConfiguration {
 				configurer.configure(fb);
 				configuredBy.add(configurer);
 			});
-			org.springframework.kafka.config.StreamsBuilderFactoryBeanCustomizer customizer = customizerProvider
-					.getIfUnique();
-			if (customizer != null && !configuredBy.contains(customizer)) {
-				customizer.configure(fb);
-			}
 			return fb;
 		}
 		else {

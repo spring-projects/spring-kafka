@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.streams.messaging;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -77,9 +78,9 @@ public class MessagingTransformer<K, V, R> implements Transformer<K, V, KeyValue
 		ConsumerRecord<Object, Object> record = new ConsumerRecord<Object, Object>(this.processorContext.topic(),
 				this.processorContext.partition(), this.processorContext.offset(),
 				this.processorContext.timestamp(), TimestampType.NO_TIMESTAMP_TYPE,
-				null, 0, 0,
+				0, 0,
 				key, value,
-				headers);
+				headers, Optional.empty());
 		Message<?> message = this.converter.toMessage(record, null, null, null);
 		message = this.function.exchange(message);
 		List<String> headerList = new ArrayList<>();

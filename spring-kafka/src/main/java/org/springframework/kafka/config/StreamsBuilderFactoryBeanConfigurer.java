@@ -28,13 +28,12 @@ import org.springframework.core.Ordered;
  *
  */
 @FunctionalInterface
-@SuppressWarnings("deprecation")
-public interface StreamsBuilderFactoryBeanConfigurer extends StreamsBuilderFactoryBeanCustomizer, Ordered {
+public interface StreamsBuilderFactoryBeanConfigurer extends Ordered {
 
 	/**
-	 * Overridden to avoid deprecation warnings.
+	 * Configure the factory bean.
+	 * @param factoryBean the factory bean.
 	 */
-	@Override
 	void configure(StreamsBuilderFactoryBean factoryBean);
 
 	@Override
