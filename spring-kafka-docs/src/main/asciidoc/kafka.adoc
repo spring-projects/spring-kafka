@@ -4179,6 +4179,22 @@ It is not necessary to configure serializers or deserializers for these types, t
 
 For another technique to send different types to different topics, see <<routing-template>>.
 
+2.8 introduced the `DelegatingByTypeSerializer`.
+
+====
+[source, java]
+----
+@Bean
+public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> config) {
+	return new DefaultKafkaProducerFactory<>(config,
+			null, new DelegatingByTypeSerializer(Map.of(
+					byte[].class, new ByteArraySerializer(),
+					Bytes.class, new BytesSerializer(),
+					String.class, new StringSerializer())));
+}
+----
+====
+
 [[retrying-deserialization]]
 ===== Retrying Deserializer
 
@@ -4399,6 +4415,28 @@ consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingD
 consumerProps.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 consumerProps.put(ErrorHandlingDeserializer.VALUE_FUNCTION, FailedFooProvider.class);
 ...
+----
+====
+
+When using an `ErrorHandlingDeserializer` with a batch listener, you must check for the deserialization exceptions in message headers.
+When used with a `RecoveringBatchErrorHandler`, you can use that header to determine which record the exception failed on and communicate to the error handler via a `BatchListenerFailedException`.
+
+====
+[source, java]
+----
+@KafkaListener(id = "test", topics = "test")
+void listen(List<Thing> in, @Header(KafkaHeaders.BATCH_CONVERTED_HEADERS) List<Map<String, Object>> headers) {
+    for (int i = 0; i < in.size(); i++) {
+        Thing thing = in.get(i);
+        if (thing == null
+                && headers.get(i).get(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER) != null) {
+
+            throw new BatchListenerFailedException("deserialization error",
+                    new DeserializationException("Batch listener", null, false, null), i);
+        }
+        process(foo);
+    }
+}
 ----
 ====
 
@@ -4909,6 +4947,7 @@ The container commits any pending offset commits before calling the error handle
 
 If you are using Spring Boot, you simply need to add the error handler as a `@Bean` and Boot will add it to the auto-configured factory.
 
+[[default-eh]]
 ===== DefaultErrorHandler
 
 This new error handler replaces the `SeekToCurrentErrorHandler` and `RecoveringBatchErrorHandler`, which have been the default error handlers for several releases now.
@@ -5067,6 +5106,31 @@ Set `resetStateOnExceptionChange` to `true` and the retry sequence will be resta
 By default, the exception type is not considered.
 
 Also see <<delivery-header>>.
+
+[[batch-listener-conv-errors]]
+==== Conversion Errors with Batch Error Handlers
+
+Starting with version 2.8, batch listeners can now properly handle conversion errors, when using a `MessageConverter` with a `ByteArrayDeserializer`, a `BytesDeserializer` or a `StringDeserializer`, as well as a `DefaultErrorHandler`.
+When a conversion error occurs, the payload is set to null and a deserialization exception is added to the record headers, similar to the `ErrorHandlingDeserializer`.
+A list of `ConversionException` s is available in the listener so the listener can throw a `BatchListenerFailedException` indicating the first index at which a conversion exception occurred.
+
+Example:
+
+====
+[source, java]
+----
+@KafkaListener(id = "test", topics = "topic")
+void listen(List<Thing> in, @Header(KafkaHeaders.CONVERSION_FAILURES) List<ConversionException> exceptions) {
+    for (int i = 0; i < in.size(); i++) {
+        Foo foo = in.get(i);
+        if (foo == null && exceptions.get(i) != null) {
+            throw new BatchListenerFailedException("Conversion error", exceptions.get(i), i);
+        }
+        process(foo);
+    }
+}
+---
+====
 
 [[retrying-batch-eh]]
 ===== Retrying Batch Error Handler

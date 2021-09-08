@@ -20,7 +20,12 @@ See <<ooo-commits>> for more information.
 
 It is now possible to specify whether the listener method is a batch listener on the method itself.
 This allows the same container factory to be used for both record and batch listeners.
+
 See <<batch-listeners>> for more information.
+
+Batch listeners can now handle conversion exceptions.
+
+See <<batch-listener-conv-errors>> for more information.
 
 [[x28-template]]
 ==== `KafkaTemplate` Changes

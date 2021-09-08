@@ -7,7 +7,7 @@
 	<suppress files="[\\/]test[\\/]" checks="RequireThis"/>
 	<suppress files="[\\/]test[\\/]" checks="Javadoc*"/>
 	<suppress files="KafkaMatchersTests" checks="RegexpSinglelineJava"/>
-	<suppress files="DeserializationException" checks="MutableException"/>
+	<suppress files="(DeserializationException|ConversionException)" checks="MutableException"/>
 	<suppress files="[\\/]kafka.jdocs[\\/]" checks="Regexp*"/>
 	<suppress files="[\\/]kafka.kdocs[\\/]" checks="Regexp*"/>
 </suppressions>

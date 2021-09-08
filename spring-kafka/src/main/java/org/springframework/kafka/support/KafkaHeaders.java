@@ -314,4 +314,12 @@ public abstract class KafkaHeaders {
 	 * @since 2.2
 	 */
 	public static final String ORIGINAL_TIMESTAMP_TYPE = PREFIX + "original-timestamp-type";
+
+	/**
+	 * The header containing a list of conversion failures (for batch listeners only).
+	 * Type: List&lt;ConversionException&gt;.
+	 * @since 2.8
+	 */
+	public static final String CONVERSION_FAILURES = PREFIX + "conversionFailures";
+
 }

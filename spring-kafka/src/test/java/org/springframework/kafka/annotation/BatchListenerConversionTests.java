@@ -18,32 +18,42 @@ package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.BytesSerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.common.utils.Bytes;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.BatchListenerFailedException;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
+import org.springframework.kafka.support.converter.ConversionException;
+import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -64,7 +74,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(partitions = 1, topics = { "blc1", "blc2", "blc3", "blc4", "blc5" })
+@EmbeddedKafka(partitions = 1, topics = { "blc1", "blc2", "blc3", "blc4", "blc5", "blc6", "blc6.DLT" })
 public class BatchListenerConversionTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "blc";
@@ -79,7 +89,7 @@ public class BatchListenerConversionTests {
 	private Listener listener2;
 
 	@Autowired
-	private KafkaTemplate<Integer, Foo> template;
+	private KafkaTemplate<Integer, Object> template;
 
 	@Test
 	public void testBatchOfPojos() throws Exception {
@@ -126,18 +136,35 @@ public class BatchListenerConversionTests {
 		assertThat(listener.replies.get(0).bar).isEqualTo("BAR");
 	}
 
+	@Test
+	void conversionError() throws InterruptedException {
+		this.template.send("blc6", 0, null, "{\"bar\":\"baz\"}");
+		this.template.send("blc6", 0, null, "JUNK");
+		this.template.send("blc6", 0, null, "{\"bar\":\"qux\"}");
+		Listener5 listener5 = this.config.listener5();
+		assertThat(listener5.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener5.received).containsExactly(new Foo("baz"), null, new Foo("qux"), new Foo("qux"));
+		assertThat(listener5.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener5.dlt).isEqualTo("JUNK");
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
 
 		@Bean
-		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka) {
+		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka,
+				KafkaTemplate<Integer, Object> template) {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, Foo> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory(embeddedKafka));
 			factory.setBatchListener(true);
 			factory.setMessageConverter(new BatchMessagingMessageConverter(converter()));
 			factory.setReplyTemplate(template(embeddedKafka));
+			DefaultErrorHandler eh = new DefaultErrorHandler(new DeadLetterPublishingRecoverer(template));
+			factory.setCommonErrorHandler(eh);
+			eh.setLogLevel(Level.DEBUG);
 			return factory;
 		}
 
@@ -151,12 +178,14 @@ public class BatchListenerConversionTests {
 			Map<String, Object> consumerProps =
 					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
 			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, BytesDeserializer.class);
+			consumerProps.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1000);
+			consumerProps.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 500);
 			return consumerProps;
 		}
 
 		@Bean
-		public KafkaTemplate<Integer, Foo> template(EmbeddedKafkaBroker embeddedKafka) {
-			KafkaTemplate<Integer, Foo> kafkaTemplate = new KafkaTemplate<>(producerFactory(embeddedKafka));
+		public KafkaTemplate<Integer, Object> template(EmbeddedKafkaBroker embeddedKafka) {
+			KafkaTemplate<Integer, Object> kafkaTemplate = new KafkaTemplate<>(producerFactory(embeddedKafka));
 			kafkaTemplate.setMessageConverter(converter());
 			return kafkaTemplate;
 		}
@@ -167,14 +196,17 @@ public class BatchListenerConversionTests {
 		}
 
 		@Bean
-		public ProducerFactory<Integer, Foo> producerFactory(EmbeddedKafkaBroker embeddedKafka) {
-			return new DefaultKafkaProducerFactory<>(producerConfigs(embeddedKafka));
+		public ProducerFactory<Integer, Object> producerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			return new DefaultKafkaProducerFactory<>(producerConfigs(embeddedKafka),
+					null, new DelegatingByTypeSerializer(Map.of(
+							byte[].class, new ByteArraySerializer(),
+							Bytes.class, new BytesSerializer(),
+							String.class, new StringSerializer())));
 		}
 
 		@Bean
 		public Map<String, Object> producerConfigs(EmbeddedKafkaBroker embeddedKafka) {
 			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka);
-			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, BytesSerializer.class);
 			return props;
 		}
 
@@ -196,6 +228,11 @@ public class BatchListenerConversionTests {
 		@Bean
 		public Listener4 listener4() {
 			return new Listener4();
+		}
+
+		@Bean
+		public Listener5 listener5() {
+			return new Listener5();
 		}
 
 	}
@@ -294,6 +331,40 @@ public class BatchListenerConversionTests {
 
 	}
 
+	public static class Listener5 {
+
+		final CountDownLatch latch1 = new CountDownLatch(2);
+
+		final CountDownLatch latch2 = new CountDownLatch(1);
+
+		final List<Foo> received = new ArrayList<>();
+
+		volatile String dlt;
+
+		@KafkaListener(topics = "blc6", groupId = "blc6")
+		public void listen5(List<Foo> foos,
+				@Header(KafkaHeaders.CONVERSION_FAILURES) List<ConversionException> conversionFailures) {
+
+			this.received.addAll(foos);
+			this.latch1.countDown();
+			for (int i = 0; i < foos.size(); i++) {
+				if (foos.get(i) == null && conversionFailures.get(i) != null) {
+					throw new BatchListenerFailedException("Conversion error", conversionFailures.get(i), i);
+				}
+			}
+		}
+
+		@KafkaListener(topics = "blc6.DLT", groupId = "blc6.DLT",
+				properties = ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG +
+					":org.apache.kafka.common.serialization.StringDeserializer")
+		public void listen5Dlt(String in) {
+
+			this.dlt = in;
+			this.latch2.countDown();
+		}
+
+	}
+
 	public static class Foo {
 
 		public String bar;
@@ -311,6 +382,26 @@ public class BatchListenerConversionTests {
 
 		public void setBar(String bar) {
 			this.bar = bar;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(bar);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			Foo other = (Foo) obj;
+			return Objects.equals(this.bar, other.bar);
 		}
 
 		@Override

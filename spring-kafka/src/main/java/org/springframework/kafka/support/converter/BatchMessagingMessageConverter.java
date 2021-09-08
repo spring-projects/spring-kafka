@@ -18,6 +18,7 @@ package org.springframework.kafka.support.converter;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.utils.Bytes;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.Acknowledgment;
@@ -36,6 +38,7 @@ import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
@@ -153,6 +156,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		List<Map<String, Object>> convertedHeaders = new ArrayList<>();
 		List<Headers> natives = new ArrayList<>();
 		List<ConsumerRecord<?, ?>> raws = new ArrayList<>();
+		List<ConversionException> conversionFailures = new ArrayList<>();
 		if (this.headerMapper != null) {
 			rawHeaders.put(KafkaHeaders.BATCH_CONVERTED_HEADERS, convertedHeaders);
 		}
@@ -164,12 +168,11 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		}
 		commonHeaders(acknowledgment, consumer, rawHeaders, keys, topics, partitions, offsets, timestampTypes,
 				timestamps);
+		rawHeaders.put(KafkaHeaders.CONVERSION_FAILURES, conversionFailures);
 
 		boolean logged = false;
 		for (ConsumerRecord<?, ?> record : records) {
-			payloads.add(this.recordConverter == null || !containerType(type)
-					? extractAndConvertValue(record, type)
-					: convert(record, type));
+			payloads.add(obtainPayload(type, record, conversionFailures));
 			keys.add(record.key());
 			topics.add(record.topic());
 			partitions.add(record.partition());
@@ -200,6 +203,12 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);
 	}
 
+	private Object obtainPayload(Type type, ConsumerRecord<?, ?> record, List<ConversionException> conversionFailures) {
+		return this.recordConverter == null || !containerType(type)
+				? extractAndConvertValue(record, type)
+				: convert(record, type, conversionFailures);
+	}
+
 	@Override
 	public List<ProducerRecord<?, ?>> fromMessage(Message<?> message, String defaultTopic) {
 		throw new UnsupportedOperationException();
@@ -222,11 +231,35 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 * @param record the record.
 	 * @param type the type - must be a {@link ParameterizedType} with a single generic
 	 * type parameter.
+	 * @param conversionFailures Conversion failures.
 	 * @return the converted payload.
 	 */
-	protected Object convert(ConsumerRecord<?, ?> record, Type type) {
-		return this.recordConverter
-			.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
+	protected Object convert(ConsumerRecord<?, ?> record, Type type, List<ConversionException> conversionFailures) {
+		try {
+			Object payload = this.recordConverter
+				.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
+			conversionFailures.add(null);
+			return payload;
+		}
+		catch (ConversionException ex) {
+			byte[] original = null;
+			if (record.value() instanceof byte[]) {
+				original = (byte[]) record.value();
+			}
+			else if (record.value() instanceof Bytes) {
+				original = ((Bytes) record.value()).get();
+			}
+			else if (record.value() instanceof String) {
+				original = ((String) record.value()).getBytes(StandardCharsets.UTF_8);
+			}
+			if (original != null) {
+				ErrorHandlingDeserializer.deserializationException(record.headers(), original, ex, false);
+				conversionFailures.add(ex);
+				return null;
+			}
+			throw new ConversionException("The batch converter can only report conversion failures to the listener "
+					+ "if the record.value() is byte[], Bytes, or String", ex);
+		}
 	}
 
 	/**

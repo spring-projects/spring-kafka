@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -188,7 +188,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 			return this.delegate.deserialize(topic, headers, data);
 		}
 		catch (Exception e) {
-			deserializationException(headers, data, e);
+			deserializationException(headers, data, e, this.isForKey);
 			return recoverFromSupplier(topic, headers, data, e);
 		}
 	}
@@ -211,20 +211,28 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		}
 	}
 
-	private void deserializationException(Headers headers, byte[] data, Exception e) {
+	/**
+	 * Populate the record headers with a serialized {@link DeserializationException}.
+	 * @param headers the headers.
+	 * @param data the data.
+	 * @param ex the exception.
+	 * @param isForKeyArg true if this is a key deserialization problem, otherwise value.
+	 * @since 2.8
+	 */
+	public static void deserializationException(Headers headers, byte[] data, Exception ex, boolean isForKeyArg) {
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
 		DeserializationException exception =
-				new DeserializationException("failed to deserialize", data, this.isForKey, e);
+				new DeserializationException("failed to deserialize", data, isForKeyArg, ex);
 		try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
 			oos.writeObject(exception);
 		}
-		catch (IOException ex) {
+		catch (IOException ioex) {
 			stream = new ByteArrayOutputStream();
 			try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
 				exception = new DeserializationException("failed to deserialize",
-						data, this.isForKey, new RuntimeException("Could not deserialize type "
-						+ e.getClass().getName() + " with message " + e.getMessage()
-						+ " failure: " + ex.getMessage()));
+						data, isForKeyArg, new RuntimeException("Could not deserialize type "
+						+ ioex.getClass().getName() + " with message " + ioex.getMessage()
+						+ " failure: " + ioex.getMessage()));
 				oos.writeObject(exception);
 			}
 			catch (IOException ex2) {
@@ -232,7 +240,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 			}
 		}
 		headers.add(
-				new RecordHeader(this.isForKey
+				new RecordHeader(isForKeyArg
 						? KEY_DESERIALIZER_EXCEPTION_HEADER
 						: VALUE_DESERIALIZER_EXCEPTION_HEADER,
 						stream.toByteArray()));

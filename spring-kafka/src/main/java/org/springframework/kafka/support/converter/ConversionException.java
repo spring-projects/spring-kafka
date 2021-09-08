@@ -35,11 +35,11 @@ import org.springframework.messaging.Message;
 @SuppressWarnings("serial")
 public class ConversionException extends KafkaException {
 
-	private final ConsumerRecord<?, ?> record;
+	private transient ConsumerRecord<?, ?> record;
 
-	private final List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+	private transient List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 
-	private final Message<?> message;
+	private transient Message<?> message;
 
 	/**
 	 * Construct an instance with the provided properties.
