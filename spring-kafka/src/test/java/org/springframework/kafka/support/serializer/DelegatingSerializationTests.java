@@ -217,8 +217,8 @@ public class DelegatingSerializationTests {
 		assertThat(serializer.serialize("foo", bar)).isEqualTo(bar.getBytes());
 		assertThatExceptionOfType(SerializationException.class).isThrownBy(
 						() -> serializer.serialize("foo", new Bytes(foo)))
-				.withMessage("No matching delegate for type: " + Bytes.class.getName()
-						+ "; supported types: [java.lang.String, [B]");
+				.withMessageMatching("No matching delegate for type: " + Bytes.class.getName()
+						+ "; supported types: \\[(java.lang.String, \\[B|\\[B, java.lang.String)\\]");
 	}
 
 }
