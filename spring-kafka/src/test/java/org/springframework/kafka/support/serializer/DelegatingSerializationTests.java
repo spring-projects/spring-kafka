@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -25,9 +26,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
@@ -202,6 +205,20 @@ public class DelegatingSerializationTests {
 		assertThat(spy.deserialize("foo", headers, data)).isSameAs(data);
 		spy.deserialize("foo", headers, data);
 		verify(spy, times(1)).trySerdes("junk");
+	}
+
+	@Test
+	void byTypeBadType() {
+		DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(Map.of(String.class,
+				new StringSerializer(), byte[].class, new ByteArraySerializer()));
+		byte[] foo = "foo".getBytes();
+		assertThat(serializer.serialize("foo", foo)).isSameAs(foo);
+		String bar = "bar";
+		assertThat(serializer.serialize("foo", bar)).isEqualTo(bar.getBytes());
+		assertThatExceptionOfType(SerializationException.class).isThrownBy(
+						() -> serializer.serialize("foo", new Bytes(foo)))
+				.withMessage("No matching delegate for type: " + Bytes.class.getName()
+						+ "; supported types: [java.lang.String, [B]");
 	}
 
 }

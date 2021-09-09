@@ -18,10 +18,13 @@ package org.springframework.kafka.support.serializer;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
+
+import org.springframework.util.Assert;
 
 /**
  * Delegates to a serializer based on type.
@@ -41,6 +44,8 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	 */
 	@SuppressWarnings("rawtypes")
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer> delegates) {
+		Assert.notNull(delegates, "'delegates' cannot be null");
+		Assert.noNullElements(delegates.values(), "Serializers in delegates map cannot be null");
 		this.delegates.putAll(delegates);
 	}
 
@@ -68,7 +73,10 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	private Serializer findDelegate(Object data) {
 		Serializer delegate = this.delegates.get(data.getClass());
 		if (delegate == null) {
-			throw new SerializationException("No matching delegate for type");
+			throw new SerializationException("No matching delegate for type: " + data.getClass().getName()
+					+ "; supported types: " + this.delegates.keySet().stream()
+							.map(clazz -> clazz.getName())
+							.collect(Collectors.toList()));
 		}
 		return delegate;
 	}
