@@ -180,7 +180,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 		"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 		"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
-		"annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
+		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
 		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42",
 		"annotated43" })
@@ -608,6 +608,8 @@ public class EnableKafkaIntegrationTests {
 	@Test
 	public void testBatchInterceptor() throws Exception {
 		template.send("annotated43", null, "foo");
+		// start only after the message is in the topic, we want to see what happens during the first poll() cycle
+		registry.getListenerContainer("batchInterceptorListener").start();
 		assertThat(this.config.batchAfterRecordsProcessedLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.batchBeforePoll).isTrue();
 		assertThat(this.config.batchIntercepted).isTrue();
@@ -906,7 +908,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testRecordInterceptor() throws Exception {
-		this.template.send("annotated42", 2, "foo");
+		template.send("annotated42", 2, "foo");
+		// start only after the message is in the topic, we want to see what happens during the first poll() cycle
+		registry.getListenerContainer("recordInterceptorListener").start();
 		assertThat(this.config.recordAfterRecordsProcessedLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.recordBeforePoll).isTrue();
 		assertThat(this.config.recordIntercepted).isTrue();
@@ -2200,12 +2204,19 @@ public class EnableKafkaIntegrationTests {
 			this.keyLatch.countDown();
 		}
 
-		@KafkaListener(topics = "annotated42", containerFactory = "recordInterceptedFactory")
-		public void recordInterceptedListener(String in) {
+		@KafkaListener(id = "recordInterceptorListener", topics = "annotated42",
+				containerFactory = "recordInterceptedFactory", autoStartup = "false")
+		public void recordInterceptorListener(String in) {
 		}
 
-		@KafkaListener(topics = "annotated43", containerFactory = "batchInterceptedFactory")
+		@KafkaListener(id = "batchInterceptorListener", topics = "annotated43",
+				containerFactory = "batchInterceptedFactory", autoStartup = "false")
 		public void batchInterceptedListener(List<ConsumerRecord<Integer, String>> records) {
+		}
+
+		@KafkaListener(topics = "annotated29")
+		public void anonymousListener(String in) {
+
 		}
 
 		@KafkaListener(id = "pollResults", topics = "annotated34", containerFactory = "batchFactory")
