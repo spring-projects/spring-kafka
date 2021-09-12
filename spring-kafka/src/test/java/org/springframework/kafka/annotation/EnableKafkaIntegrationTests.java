@@ -2216,7 +2216,6 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(topics = "annotated29")
 		public void anonymousListener(String in) {
-
 		}
 
 		@KafkaListener(id = "pollResults", topics = "annotated34", containerFactory = "batchFactory")
