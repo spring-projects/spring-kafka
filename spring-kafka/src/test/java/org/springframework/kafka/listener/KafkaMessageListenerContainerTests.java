@@ -606,11 +606,15 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMissingTopicsFatal(false);
 		List<String> advised = new ArrayList<>();
 		MethodInterceptor advice1 = invoc -> {
-			advised.add("one");
+			if (invoc.getMethod().getName().equals("onMessage")) {
+				advised.add("one");
+			}
 			return invoc.proceed();
 		};
 		MethodInterceptor advice2 = invoc -> {
-			advised.add("two");
+			if (invoc.getMethod().getName().equals("onMessage")) {
+				advised.add("two");
+			}
 			return invoc.proceed();
 		};
 		containerProps.setAdviceChain(advice1, advice2);
