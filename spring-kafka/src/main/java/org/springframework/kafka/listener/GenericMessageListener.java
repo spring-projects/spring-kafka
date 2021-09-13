@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.function.Supplier;
+
 import org.apache.kafka.clients.consumer.Consumer;
 
 import org.springframework.kafka.support.Acknowledgment;
@@ -70,6 +72,14 @@ public interface GenericMessageListener<T> {
 	 */
 	default void onMessage(T data, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		throw new UnsupportedOperationException("Container should never call this");
+	}
+
+	/**
+	 * Provides listener access to the container properties.
+	 * @param containerProperties the supplier.
+	 * @since 2.8
+	 */
+	default void propertiesSupplier(Supplier<ContainerProperties> containerProperties) {
 	}
 
 }

@@ -43,3 +43,9 @@ See <<error-handlers>> for more information.
 ==== Listener Container Changes
 
 The `interceptBeforeTx` container property is now `true` by default.
+
+[[x28-react]]
+==== `ReactiveListenerAdapter`
+
+A new listener adapter is provided to allow processing reactive workloads on the listener container threads.
+See <<reactive-adapter>> for more information.

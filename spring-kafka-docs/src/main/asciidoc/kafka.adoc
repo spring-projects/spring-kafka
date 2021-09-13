@@ -1279,6 +1279,213 @@ The consumer will be paused (no new records delivered) until all the offsets for
 
 IMPORTANT: While this feature allows applications to process records asynchronously, it should be understood that it increases the possibility of duplicate deliveries after a failure.
 
+[[reactive-adapter]]
+===== Reactive Listener Adapter
+
+Starting with version 2.8, the `ReactiveListenerAdapter` is now provided.
+While it is generally recommended to not perform asynchronous operations on the listner container thread, it is sometimes desirable - for example when sending data to a reactive sink.
+The <<ooo-commits,new feature for committing offsets out of order>> has provided the capability for adapting a listener to a `Flux<Mono<ConsumerRecord<?, ?>>>`.
+The adapter provides a hook for configuring each `Mono` (including error handling).
+
+IMPORTANT: Each mono will acknowledge the delivery when terminated (successfully or not), therefore the `Mono` pipeline must handle all errors.
+
+NOTE: True reactor backpressure is not supported, but backpressure is implicitly applied until all records from a poll have been acknowledged.
+
+Here is an example where the records from the poll are processed in parallel.
+
+====
+[source, java]
+----
+ConcurrentMessageListenerContainer<String, String> container =
+        containerFactory.createContainer("someTopic");
+...
+ReactiveListenerAdapter<String, String> adapter = new ReactiveListenerAdapter<>() {
+
+    @Override
+    public Mono<ConsumerRecord<String, String>> assemble(Mono<ConsumerRecord<String, String>> mono) {
+        return mono
+                .doOnNext(rec -> {
+                    ...
+                });
+    }
+
+};
+adapter.parallel(10);
+container.setMessageListener(adapter);
+----
+====
+
+To use the adapter from a `@KafkaListener`, simply invoke it from the listener; the following Spring Boot application shows an example with random processing times for each record, together with the resulting log messages to see how the processing works.
+It sends 20 records and receives them in two batches of 10 - refer to the log to see how the commits are actioned.
+
+====
+[source, java]
+----
+@SpringBootApplication
+public class SkReactorApplication {
+
+    private static final Logger log = LoggerFactory.getLogger(SkReactorApplication.class);
+
+    public static void main(String[] args) {
+        SpringApplication.run(SkReactorApplication.class, args);
+    }
+
+    @Bean
+    NewTopic topic() {
+        return TopicBuilder.name("skReactor").partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    ApplicationRunner runner(KafkaTemplate<String, String> template) {
+        return args -> {
+            IntStream.range(0, 20).forEach(i -> template.send("skReactor", "thing" + i));
+        };
+    }
+
+    @Bean
+    ReactiveListenerAdapter<String, String> adapter(ConcurrentKafkaListenerContainerFactory<?, ?> factory) {
+        factory.getContainerProperties().setAsyncAcks(true);
+        Random random = new Random(System.currentTimeMillis());
+        ReactiveListenerAdapter<String, String> adapter = new ReactiveListenerAdapter<>() {
+
+            @Override
+            public Mono<ConsumerRecord<String, String>> assemble(Mono<ConsumerRecord<String, String>> mono) {
+                return mono
+                        .doOnNext(rec -> {
+                            log.info("Received: {}", ListenerUtils.recordToString(rec, true));
+                            randomSleep(random);
+                            log.info("acking:   {}", ListenerUtils.recordToString(rec, true));
+                        });
+            }
+
+            private void randomSleep(Random random) {
+                try {
+                    Thread.sleep(random.nextInt(3000));
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+        };
+        adapter.setParallel(10);
+        return adapter;
+
+    }
+
+}
+
+@Component
+class Listener {
+
+    private final ReactiveListenerAdapter<String, String> adapter;
+
+    public Listener(ReactiveListenerAdapter<String, String> adapter) {
+        this.adapter = adapter;
+    }
+
+    @KafkaListener(id = "skReactor", topics = "skReactor")
+    public void listen(ConsumerRecord<String, String> record, Acknowledgment ack) {
+        this.adapter.onMessage(record, ack);
+    }
+
+}
+----
+====
+====
+[source, properties]
+----
+logging.level.org.springframework.kafka=debug
+logging.level.org.springframework.kafka.listener.adapter=off
+logging.pattern.console=[%t] %m%n
+
+spring.kafka.consumer.max-poll-records=10
+spring.kafka.consumer.auto-offset-reset=earliest
+spring.kafka.listener.ack-mode=manual
+spring.kafka.listener.poll-timeout=5s
+----
+====
+
+====
+[source, log]
+----
+[skReactor-0-C-1] skReactor: partitions assigned: [skReactor-0]
+[skReactor-0-C-1] Received: 10 records
+[skReactor-0-C-1] Commit list: {}
+[skReactor-0-C-1] Pausing for incomplete async acks: {skReactor-0=[620, 621, 622, 623, 624, 625, 626, 627, 628, 629]}
+[skReactor-0-C-1] Paused consumption from: [skReactor-0]
+[parallel-2] Received: skReactor-0@621
+[parallel-8] Received: skReactor-0@627
+[parallel-1] Received: skReactor-0@620
+[parallel-10] Received: skReactor-0@629
+[parallel-4] Received: skReactor-0@623
+[parallel-5] Received: skReactor-0@624
+[parallel-9] Received: skReactor-0@628
+[parallel-6] Received: skReactor-0@625
+[parallel-7] Received: skReactor-0@626
+[parallel-3] Received: skReactor-0@622
+[parallel-8] acking:   skReactor-0@627
+[parallel-7] acking:   skReactor-0@626
+[parallel-3] acking:   skReactor-0@622
+[parallel-1] acking:   skReactor-0@620
+[skReactor-0-C-1] Received: 0 records
+[skReactor-0-C-1] Commit list: {skReactor-0=OffsetAndMetadata{offset=621, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Committing: {skReactor-0=OffsetAndMetadata{offset=621, leaderEpoch=null, metadata=''}}
+[parallel-2] acking:   skReactor-0@621
+[skReactor-0-C-1] Received: 0 records
+[skReactor-0-C-1] Commit list: {skReactor-0=OffsetAndMetadata{offset=623, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Committing: {skReactor-0=OffsetAndMetadata{offset=623, leaderEpoch=null, metadata=''}}
+[parallel-9] acking:   skReactor-0@628
+[parallel-10] acking:   skReactor-0@629
+[parallel-6] acking:   skReactor-0@625
+[parallel-5] acking:   skReactor-0@624
+[parallel-4] acking:   skReactor-0@623
+[skReactor-0-C-1] Received: 0 records
+[skReactor-0-C-1] Resuming after manual async acks cleared
+[skReactor-0-C-1] Resuming consumption from: [skReactor-0]
+[skReactor-0-C-1] Commit list: {skReactor-0=OffsetAndMetadata{offset=630, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Committing: {skReactor-0=OffsetAndMetadata{offset=630, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Received: 10 records
+[parallel-1] Received: skReactor-0@630
+[parallel-2] Received: skReactor-0@631
+[parallel-3] Received: skReactor-0@632
+[parallel-4] Received: skReactor-0@633
+[parallel-5] Received: skReactor-0@634
+[parallel-6] Received: skReactor-0@635
+[parallel-7] Received: skReactor-0@636
+[parallel-8] Received: skReactor-0@637
+[parallel-9] Received: skReactor-0@638
+[skReactor-0-C-1] Commit list: {}
+[parallel-10] Received: skReactor-0@639
+[skReactor-0-C-1] Pausing for incomplete async acks: {skReactor-0=[630, 631, 632, 633, 634, 635, 636, 637, 638, 639]}
+[skReactor-0-C-1] Paused consumption from: [skReactor-0]
+[parallel-4] acking:   skReactor-0@633
+[parallel-10] acking:   skReactor-0@639
+[parallel-6] acking:   skReactor-0@635
+[parallel-3] acking:   skReactor-0@632
+[parallel-2] acking:   skReactor-0@631
+[parallel-1] acking:   skReactor-0@630
+[skReactor-0-C-1] Received: 0 records
+[skReactor-0-C-1] Commit list: {skReactor-0=OffsetAndMetadata{offset=634, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Committing: {skReactor-0=OffsetAndMetadata{offset=634, leaderEpoch=null, metadata=''}}
+[parallel-7] acking:   skReactor-0@636
+[parallel-8] acking:   skReactor-0@637
+[parallel-5] acking:   skReactor-0@634
+[skReactor-0-C-1] Received: 0 records
+[skReactor-0-C-1] Commit list: {skReactor-0=OffsetAndMetadata{offset=638, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Committing: {skReactor-0=OffsetAndMetadata{offset=638, leaderEpoch=null, metadata=''}}
+[parallel-9] acking:   skReactor-0@638
+[skReactor-0-C-1] Received: 0 records
+[skReactor-0-C-1] Resuming after manual async acks cleared
+[skReactor-0-C-1] Resuming consumption from: [skReactor-0]
+[skReactor-0-C-1] Commit list: {skReactor-0=OffsetAndMetadata{offset=640, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Committing: {skReactor-0=OffsetAndMetadata{offset=640, leaderEpoch=null, metadata=''}}
+[skReactor-0-C-1] Received: 0 records
+----
+====
+
+IMPORTANT: When used as a listener directly in the listener container, the adapter will assert that the container is configured properly (manual ack mode and `asyncAcks=true`); this is not possible when using it from a `@KafkaListener` so you should ensure the proper configuration of the listener container.
+
 [[kafka-listener-annotation]]
 ===== `@KafkaListener` Annotation
 
@@ -4186,11 +4393,11 @@ For another technique to send different types to different topics, see <<routing
 ----
 @Bean
 public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> config) {
-	return new DefaultKafkaProducerFactory<>(config,
-			null, new DelegatingByTypeSerializer(Map.of(
-					byte[].class, new ByteArraySerializer(),
-					Bytes.class, new BytesSerializer(),
-					String.class, new StringSerializer())));
+    return new DefaultKafkaProducerFactory<>(config,
+            null, new DelegatingByTypeSerializer(Map.of(
+                    byte[].class, new ByteArraySerializer(),
+                    Bytes.class, new BytesSerializer(),
+                    String.class, new StringSerializer())));
 }
 ----
 ====
@@ -4269,7 +4476,7 @@ For convenience, starting with version 2.3, the framework also provides a `Strin
 
 Starting with version 2.7.1, message payload conversion can be delegated to a `spring-messaging` `SmartMessageConverter`; this enables conversion, for example, to be based on the `MessageHeaders.CONTENT_TYPE` header.
 
-IMPORTANT:	The `KafkaMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
+IMPORTANT:    The `KafkaMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
 The `KafkaMessageConverter.toMessage()` method is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
 The `SmartMessageConverter.toMessage()` method is called to create a new outbound `Message<?>` from the `Message` passed to`fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
 Similarly, in the `KafkaMessageConverter.toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
@@ -5073,13 +5280,13 @@ The error handler can be configured with one or more `RetryListener` s, receivin
 @FunctionalInterface
 public interface RetryListener {
 
-	void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
+    void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
 
-	default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
-	}
+    default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+    }
 
-	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
-	}
+    default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+    }
 
 }
 ----
@@ -5330,13 +5537,13 @@ Starting with version 2.7, the processor can be configured with one or more `Ret
 @FunctionalInterface
 public interface RetryListener {
 
-	void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
+    void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
 
-	default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
-	}
+    default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+    }
 
-	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
-	}
+    default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+    }
 
 }
 ----

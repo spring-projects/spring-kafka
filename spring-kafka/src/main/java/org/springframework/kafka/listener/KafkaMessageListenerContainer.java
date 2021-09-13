@@ -736,6 +736,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.clientId = determineClientId();
 			this.transactionTemplate = determineTransactionTemplate();
 			this.genericListener = listener;
+			this.genericListener.propertiesSupplier(() -> getContainerProperties());
 			this.consumerSeekAwareListener = checkConsumerSeekAware(listener);
 			this.commitCurrentOnAssignment = determineCommitCurrent(consumerProperties,
 					KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties());
