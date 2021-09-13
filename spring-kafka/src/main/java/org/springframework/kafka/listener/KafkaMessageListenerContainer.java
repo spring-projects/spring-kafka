@@ -1190,9 +1190,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				try {
 					pollAndInvoke();
 				}
-				catch (@SuppressWarnings(UNUSED) WakeupException e) {
-					// Ignore, we're stopping or applying immediate foreign acks
-				}
 				catch (NoOffsetForPartitionException nofpe) {
 					this.fatalError = true;
 					ListenerConsumer.this.logger.error(nofpe, "No offset and no reset policy");
@@ -1425,7 +1422,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ConsumerRecords<K, V> records;
 			if (this.isBatchListener && this.subBatchPerPartition) {
 				if (this.batchIterator == null) {
-					this.lastBatch = this.consumer.poll(this.pollTimeout);
+					this.lastBatch = pollConsumer();
 					captureOffsets(this.lastBatch);
 					if (this.lastBatch.count() == 0) {
 						return this.lastBatch;
@@ -1442,11 +1439,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				records = this.consumer.poll(this.pollTimeout);
+				records = pollConsumer();
 				captureOffsets(records);
 				checkRebalanceCommits();
 			}
 			return records;
+		}
+
+		private ConsumerRecords<K, V> pollConsumer() {
+			try {
+				return this.consumer.poll(this.pollTimeout);
+			}
+			catch (WakeupException ex) {
+				return ConsumerRecords.empty();
+			}
 		}
 
 		private synchronized void captureOffsets(ConsumerRecords<K, V> records) {
@@ -1733,7 +1739,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!Thread.currentThread().equals(this.consumerThread)) {
 				try {
 					this.acks.put(record);
-					if (this.isManualImmediateAck) {
+					if (this.isManualImmediateAck || this.pausedForAsyncAcks) {  // NOSONAR (sync)
 						this.consumer.wakeup();
 					}
 				}
