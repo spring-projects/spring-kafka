@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
  */
 
 package org.springframework.kafka.listener.adapter;
+
+import java.util.Iterator;
+import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
@@ -37,5 +40,22 @@ public interface RecordFilterStrategy<K, V> {
 	 * @return true to discard.
 	 */
 	boolean filter(ConsumerRecord<K, V> consumerRecord);
+
+	/**
+	 * Filter an entire batch of records; to filter all records, return an empty list, not
+	 * null.
+	 * @param records the records.
+	 * @return the filtered records.
+	 * @since 2.8
+	 */
+	default List<ConsumerRecord<K, V>> filterBatch(List<ConsumerRecord<K, V>> records) {
+		Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
+		while (iterator.hasNext()) {
+			if (filter(iterator.next())) {
+				iterator.remove();
+			}
+		}
+		return records;
+	}
 
 }

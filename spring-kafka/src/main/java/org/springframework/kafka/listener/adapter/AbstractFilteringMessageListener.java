@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,10 @@ public abstract class AbstractFilteringMessageListener<K, V, T>
 		super(delegate);
 		Assert.notNull(recordFilterStrategy, "'recordFilterStrategy' cannot be null");
 		this.recordFilterStrategy = recordFilterStrategy;
+	}
+
+	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
+		return this.recordFilterStrategy;
 	}
 
 	protected boolean filter(ConsumerRecord<K, V> consumerRecord) {

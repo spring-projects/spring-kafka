@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -27,6 +26,7 @@ import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.ListenerType;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 
 /**
  * A {@link BatchMessageListener} adapter that implements filter logic
@@ -51,6 +51,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	 */
 	public FilteringBatchMessageListenerAdapter(BatchMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
+
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = false;
 	}
@@ -67,19 +68,17 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	 */
 	public FilteringBatchMessageListenerAdapter(BatchMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy, boolean ackDiscarded) {
+
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = ackDiscarded;
 	}
 
 	@Override
-	public void onMessage(List<ConsumerRecord<K, V>> consumerRecords, @Nullable Acknowledgment acknowledgment,
+	public void onMessage(List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
-		Iterator<ConsumerRecord<K, V>> iterator = consumerRecords.iterator();
-		while (iterator.hasNext()) {
-			if (filter(iterator.next())) {
-				iterator.remove();
-			}
-		}
+
+		List<ConsumerRecord<K, V>> consumerRecords = getRecordFilterStrategy().filterBatch(records);
+		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
 		boolean consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
 						|| this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 		/*

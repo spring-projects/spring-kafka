@@ -552,7 +552,7 @@ public class EnableKafkaIntegrationTests {
 		List<?> list = (List<?>) this.listener.payload;
 		assertThat(list.size()).isGreaterThan(0);
 		assertThat(list.get(0)).isInstanceOf(String.class);
-		assertThat(this.recordFilter.called).isTrue();
+		assertThat(this.recordFilter.batchCalled).isTrue();
 		assertThat(this.config.listen10Exception).isNotNull();
 		assertThat(this.listener.receivedGroupId).isEqualTo("list1");
 
@@ -2474,13 +2474,24 @@ public class EnableKafkaIntegrationTests {
 
 	public static class RecordPassAllFilter implements RecordFilterStrategy<Integer, CharSequence> {
 
-		private boolean called;
+		boolean called;
+
+		boolean batchCalled;
 
 		@Override
 		public boolean filter(ConsumerRecord<Integer, CharSequence> consumerRecord) {
-			called = true;
+			this.called = true;
 			return false;
 		}
+
+		@Override
+		public List<ConsumerRecord<Integer, CharSequence>> filterBatch(
+				List<ConsumerRecord<Integer, CharSequence>> records) {
+
+			this.batchCalled = true;
+			return records;
+		}
+
 
 	}
 
