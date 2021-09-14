@@ -27,6 +27,9 @@ Batch listeners can now handle conversion exceptions.
 
 See <<batch-listener-conv-errors>> for more information.
 
+`RecordFilterStrategy`, when used with batch listeners, can now filter the entire batch in one call.
+See <<>> for more information.
+
 [[x28-template]]
 ==== `KafkaTemplate` Changes
 

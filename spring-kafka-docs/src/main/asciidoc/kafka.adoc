@@ -1624,6 +1624,7 @@ public void pollResults(ConsumerRecords<?, ?> records) {
 
 IMPORTANT: If the container factory has a `RecordFilterStrategy` configured, it is ignored for `ConsumerRecords<?, ?>` listeners, with a `WARN` log message emitted.
 Records can only be filtered with a batch listener if the `<List<?>>` form of listener is used.
+By default, records are filtered one-at-a-time; starting with version 2.8, you can override `filterBatch` to filter the entire batch in one call.
 
 [[annotation-properties]]
 ====== Annotation Properties
