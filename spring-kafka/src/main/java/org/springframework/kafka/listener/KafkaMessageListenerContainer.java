@@ -1276,7 +1276,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			this.polling.set(true);
-			beforePoll();
 			ConsumerRecords<K, V> records = doPoll();
 			if (!this.polling.compareAndSet(true, false) && records != null) {
 				/*
@@ -1457,7 +1456,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ConsumerRecords<K, V> records;
 			if (this.isBatchListener && this.subBatchPerPartition) {
 				if (this.batchIterator == null) {
-					batchInterceptBeforePoll();
 					this.lastBatch = pollConsumer();
 					captureOffsets(this.lastBatch);
 					if (this.lastBatch.count() == 0) {
@@ -1475,7 +1473,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				beforePoll();
 				records = pollConsumer();
 				captureOffsets(records);
 				checkRebalanceCommits();
@@ -1484,6 +1481,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private ConsumerRecords<K, V> pollConsumer() {
+			beforePoll();
 			try {
 				return this.consumer.poll(this.pollTimeout);
 			}

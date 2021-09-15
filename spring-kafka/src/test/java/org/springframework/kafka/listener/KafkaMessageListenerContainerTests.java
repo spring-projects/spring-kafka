@@ -3497,6 +3497,280 @@ public class KafkaMessageListenerContainerTests {
 		verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))), any());
 	}
 
+	@Test
+	public void shouldInvokeRecordInterceptorSuccess() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
+		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setMissingTopicsFatal(false);
+
+		CountDownLatch latch = new CountDownLatch(2);
+		MessageListener<Integer, String> messageListener = spy(
+				new MessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
+
+					@Override
+					public void onMessage(ConsumerRecord<Integer, String> data) {
+						latch.countDown();
+						if (latch.getCount() == 0) {
+							records.clear();
+						}
+					}
+
+				});
+		containerProps.setMessageListener(messageListener);
+		containerProps.setClientId("clientId");
+
+		CountDownLatch afterLatch = new CountDownLatch(1);
+		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
+			@Override
+			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record) {
+				return record;
+			}
+
+			@Override
+			public void afterRecordsProcessed(Consumer<Integer, String> consumer) {
+				afterLatch.countDown();
+			}
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setRecordInterceptor(recordInterceptor);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		InOrder inOrder = inOrder(recordInterceptor, messageListener, consumer);
+		inOrder.verify(recordInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(recordInterceptor).intercept(eq(firstRecord), eq(consumer));
+		inOrder.verify(messageListener).onMessage(eq(firstRecord));
+		inOrder.verify(recordInterceptor).success(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor).intercept(eq(secondRecord), eq(consumer));
+		inOrder.verify(messageListener).onMessage(eq(secondRecord));
+		inOrder.verify(recordInterceptor).success(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor).afterRecordsProcessed(eq(consumer));
+		container.stop();
+	}
+
+	@Test
+	public void shouldInvokeRecordInterceptorFailure() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecord<Integer, String> record = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(record));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+
+		CountDownLatch latch = new CountDownLatch(1);
+		MessageListener<Integer, String> messageListener = spy(
+				new MessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
+
+					@Override
+					public void onMessage(ConsumerRecord<Integer, String> data) {
+						latch.countDown();
+						records.clear();
+						throw new IllegalArgumentException("Failed record");
+					}
+
+				});
+
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setMessageListener(messageListener);
+		containerProps.setClientId("clientId");
+
+		CountDownLatch afterLatch = new CountDownLatch(1);
+		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
+			@Override
+			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record) {
+				return record;
+			}
+
+			@Override
+			public void afterRecordsProcessed(Consumer<Integer, String> consumer) {
+				afterLatch.countDown();
+			}
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setRecordInterceptor(recordInterceptor);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		InOrder inOrder = inOrder(recordInterceptor, messageListener, consumer);
+		inOrder.verify(recordInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(recordInterceptor).intercept(eq(record), eq(consumer));
+		inOrder.verify(messageListener).onMessage(eq(record));
+		inOrder.verify(recordInterceptor).failure(eq(record), any(), eq(consumer));
+		inOrder.verify(recordInterceptor).afterRecordsProcessed(eq(consumer));
+		container.stop();
+	}
+
+	@Test
+	public void shouldInvokeBatchInterceptorSuccess() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
+		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+
+		CountDownLatch latch = new CountDownLatch(1);
+		BatchMessageListener<Integer, String> batchMessageListener = spy(
+				new BatchMessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
+
+					@Override
+					public void onMessage(List<ConsumerRecord<Integer, String>> data) {
+						latch.countDown();
+						records.clear();
+					}
+
+				});
+
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.BATCH);
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setMessageListener(batchMessageListener);
+		containerProps.setClientId("clientId");
+
+		CountDownLatch afterLatch = new CountDownLatch(1);
+		BatchInterceptor<Integer, String> batchInterceptor = spy(new BatchInterceptor<Integer, String>() {
+
+			@Override
+			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records, Consumer<Integer, String> consumer) {
+				return records;
+			}
+
+			@Override
+			public void afterRecordsProcessed(Consumer<Integer, String> consumer) {
+				afterLatch.countDown();
+			}
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBatchInterceptor(batchInterceptor);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		InOrder inOrder = inOrder(batchInterceptor, batchMessageListener, consumer);
+		inOrder.verify(batchInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
+		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
+		inOrder.verify(batchInterceptor).success(eq(consumerRecords), eq(consumer));
+		inOrder.verify(batchInterceptor).afterRecordsProcessed(eq(consumer));
+		container.stop();
+	}
+
+	@Test
+	public void shouldInvokeBatchInterceptorFailure() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
+		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+
+		CountDownLatch latch = new CountDownLatch(1);
+		BatchMessageListener<Integer, String> batchMessageListener = spy(
+				new BatchMessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
+
+					@Override
+					public void onMessage(List<ConsumerRecord<Integer, String>> data) {
+						latch.countDown();
+						records.clear();
+						throw new IllegalArgumentException("Failed record");
+					}
+
+				});
+
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.BATCH);
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setMessageListener(batchMessageListener);
+		containerProps.setClientId("clientId");
+
+		CountDownLatch afterLatch = new CountDownLatch(1);
+		BatchInterceptor<Integer, String> batchInterceptor = spy(
+				new BatchInterceptor<Integer, String>() {
+
+			@Override
+			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
+															Consumer<Integer, String> consumer) {
+				return records;
+			}
+
+			@Override
+			public void afterRecordsProcessed(Consumer<Integer, String> consumer) {
+				afterLatch.countDown();
+			}
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBatchInterceptor(batchInterceptor);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		InOrder inOrder = inOrder(batchInterceptor, batchMessageListener, consumer);
+		inOrder.verify(batchInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
+		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
+		inOrder.verify(batchInterceptor).failure(eq(consumerRecords), any(), eq(consumer));
+		inOrder.verify(batchInterceptor).afterRecordsProcessed(eq(consumer));
+		container.stop();
+	}
+
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
 		Consumer<?, ?> consumer =
 				KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer", Consumer.class);
