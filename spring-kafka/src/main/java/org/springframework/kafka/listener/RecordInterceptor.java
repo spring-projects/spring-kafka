@@ -33,7 +33,7 @@ import org.springframework.lang.Nullable;
  *
  */
 @FunctionalInterface
-public interface RecordInterceptor<K, V> {
+public interface RecordInterceptor<K, V> extends BeforeAfterPollProcessor<K, V> {
 
 	/**
 	 * Perform some action on the record or return a different one. If null is returned
@@ -79,31 +79,6 @@ public interface RecordInterceptor<K, V> {
 	 * @since 2.7
 	 */
 	default void failure(ConsumerRecord<K, V> record, Exception exception, Consumer<K, V> consumer) {
-	}
-
-	/**
-	 * Called before consumer is polled.
-	 * <p>
-	 * It can be used to set up thread-bound resources which will be available for the
-	 * entire duration of the consumer poll operation e.g. logging with MDC.
-	 * </p>
-	 * @param consumer the consumer.
-	 * @since 2.8
-	 */
-	default void beforePoll(Consumer<K, V> consumer) {
-	}
-
-	/**
-	 * Called after records were processed by listener and error handler.
-	 * <p>
-	 * It can be used to clear thread-bound resources which were set up in {@link #beforePoll(Consumer)}.
-	 * This is the last method called by the {@link MessageListenerContainer} before the next record
-	 * processing cycle starts.
-	 * </p>
-	 * @param consumer the consumer.
-	 * @since 2.8
-	 */
-	default void afterRecordsProcessed(Consumer<K, V> consumer) {
 	}
 
 }

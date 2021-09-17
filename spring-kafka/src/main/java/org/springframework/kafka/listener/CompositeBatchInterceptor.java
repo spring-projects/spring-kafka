@@ -80,8 +80,8 @@ public class CompositeBatchInterceptor<K, V> implements BatchInterceptor<K, V> {
 	}
 
 	@Override
-	public void afterRecordsProcessed(Consumer<K, V> consumer) {
-		this.delegates.forEach(del -> del.afterRecordsProcessed(consumer));
+	public void afterPoll(Consumer<K, V> consumer) {
+		this.delegates.forEach(del -> del.afterPoll(consumer));
 	}
 
 }
