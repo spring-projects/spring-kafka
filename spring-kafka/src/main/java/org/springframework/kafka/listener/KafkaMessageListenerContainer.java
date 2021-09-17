@@ -1237,7 +1237,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					handleConsumerException(e);
 				}
 				finally {
-					afterPollConsumer();
+					clearThreadState();
 				}
 			}
 			wrapUp(exitThrowable);
@@ -1313,22 +1313,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void afterPollConsumer() {
+		private void clearThreadState() {
 			if (this.isBatchListener) {
-				interceptAfterPoll(this.commonBatchInterceptor);
+				interceptClearThreadState(this.commonBatchInterceptor);
 			}
 			else {
-				interceptAfterPoll(this.commonRecordInterceptor);
+				interceptClearThreadState(this.commonRecordInterceptor);
 			}
 		}
 
-		private void interceptAfterPoll(BeforeAfterPollProcessor<K, V> processor) {
+		private void interceptClearThreadState(BeforeAfterPollProcessor<K, V> processor) {
 			if (processor != null) {
 				try {
-					processor.afterPoll(this.consumer);
+					processor.clearThreadState(this.consumer);
 				}
 				catch (Exception e) {
-					this.logger.error(e, "BeforeAfterPollProcessor.afterPoll threw an exception");
+					this.logger.error(e, "BeforeAfterPollProcessor.clearThreadState threw an exception");
 				}
 			}
 		}
@@ -1470,7 +1470,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private ConsumerRecords<K, V> pollConsumer() {
-			beforePollConsumer();
+			beforePoll();
 			try {
 				return this.consumer.poll(this.pollTimeout);
 			}
@@ -1479,7 +1479,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void beforePollConsumer() {
+		private void beforePoll() {
 			if (this.isBatchListener) {
 				interceptBeforePoll(this.commonBatchInterceptor);
 			}

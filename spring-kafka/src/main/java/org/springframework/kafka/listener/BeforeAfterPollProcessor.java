@@ -54,7 +54,7 @@ public interface BeforeAfterPollProcessor<K, V> {
 	 *
 	 * @param consumer the consumer.
 	 */
-	default void afterPoll(Consumer<K, V> consumer) {
+	default void clearThreadState(Consumer<K, V> consumer) {
 	}
 
 }

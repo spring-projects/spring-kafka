@@ -3543,7 +3543,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 			@Override
-			public void afterPoll(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<Integer, String> consumer) {
 				afterLatch.countDown();
 			}
 		});
@@ -3564,7 +3564,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(recordInterceptor).intercept(eq(secondRecord), eq(consumer));
 		inOrder.verify(messageListener).onMessage(eq(secondRecord));
 		inOrder.verify(recordInterceptor).success(eq(secondRecord), eq(consumer));
-		inOrder.verify(recordInterceptor).afterPoll(eq(consumer));
+		inOrder.verify(recordInterceptor).clearThreadState(eq(consumer));
 		container.stop();
 	}
 
@@ -3612,7 +3612,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 			@Override
-			public void afterPoll(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<Integer, String> consumer) {
 				afterLatch.countDown();
 			}
 		});
@@ -3630,7 +3630,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(recordInterceptor).intercept(eq(record), eq(consumer));
 		inOrder.verify(messageListener).onMessage(eq(record));
 		inOrder.verify(recordInterceptor).failure(eq(record), any(), eq(consumer));
-		inOrder.verify(recordInterceptor).afterPoll(eq(consumer));
+		inOrder.verify(recordInterceptor).clearThreadState(eq(consumer));
 		container.stop();
 	}
 
@@ -3679,7 +3679,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 			@Override
-			public void afterPoll(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<Integer, String> consumer) {
 				afterLatch.countDown();
 			}
 		});
@@ -3697,7 +3697,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
 		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
 		inOrder.verify(batchInterceptor).success(eq(consumerRecords), eq(consumer));
-		inOrder.verify(batchInterceptor).afterPoll(eq(consumer));
+		inOrder.verify(batchInterceptor).clearThreadState(eq(consumer));
 		container.stop();
 	}
 
@@ -3749,7 +3749,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 			@Override
-			public void afterPoll(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<Integer, String> consumer) {
 				afterLatch.countDown();
 			}
 		});
@@ -3767,7 +3767,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
 		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
 		inOrder.verify(batchInterceptor).failure(eq(consumerRecords), any(), eq(consumer));
-		inOrder.verify(batchInterceptor).afterPoll(eq(consumer));
+		inOrder.verify(batchInterceptor).clearThreadState(eq(consumer));
 		container.stop();
 	}
 

@@ -83,7 +83,7 @@ public class CompositeRecordInterceptor<K, V> implements ConsumerAwareRecordInte
 	}
 
 	@Override
-	public void afterPoll(Consumer<K, V> consumer) {
-		this.delegates.forEach(del -> del.afterPoll(consumer));
+	public void clearThreadState(Consumer<K, V> consumer) {
+		this.delegates.forEach(del -> del.clearThreadState(consumer));
 	}
 }
