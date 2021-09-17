@@ -3498,7 +3498,8 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	public void shouldInvokeRecordInterceptorSuccess() throws Exception {
+	@SuppressWarnings({"unchecked", "deprecated"})
+	public void testInvokeRecordInterceptorSuccess() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -3569,7 +3570,8 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	public void shouldInvokeRecordInterceptorFailure() throws Exception {
+	@SuppressWarnings({"unchecked", "deprecated"})
+	public void testInvokeRecordInterceptorFailure() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -3635,7 +3637,8 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	public void shouldInvokeBatchInterceptorSuccess() throws Exception {
+	@SuppressWarnings("unchecked")
+	public void testInvokeBatchInterceptorSuccess() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -3702,7 +3705,8 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	public void shouldInvokeBatchInterceptorFailure() throws Exception {
+	@SuppressWarnings("unchecked")
+	public void testInvokeBatchInterceptorFailure() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
