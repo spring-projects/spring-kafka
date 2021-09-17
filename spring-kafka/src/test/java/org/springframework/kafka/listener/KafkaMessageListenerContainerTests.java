@@ -3498,7 +3498,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecated"})
+	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testInvokeRecordInterceptorSuccess() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
@@ -3538,15 +3538,17 @@ public class KafkaMessageListenerContainerTests {
 
 		CountDownLatch afterLatch = new CountDownLatch(1);
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
+
 			@Override
 			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record) {
 				return record;
 			}
 
 			@Override
-			public void clearThreadState(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<?, ?> consumer) {
 				afterLatch.countDown();
 			}
+
 		});
 
 		KafkaMessageListenerContainer<Integer, String> container =
@@ -3557,20 +3559,22 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		InOrder inOrder = inOrder(recordInterceptor, messageListener, consumer);
-		inOrder.verify(recordInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(recordInterceptor).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(recordInterceptor).intercept(eq(firstRecord), eq(consumer));
 		inOrder.verify(messageListener).onMessage(eq(firstRecord));
 		inOrder.verify(recordInterceptor).success(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor).afterRecord(eq(firstRecord), eq(consumer));
 		inOrder.verify(recordInterceptor).intercept(eq(secondRecord), eq(consumer));
 		inOrder.verify(messageListener).onMessage(eq(secondRecord));
 		inOrder.verify(recordInterceptor).success(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor).afterRecord(eq(secondRecord), eq(consumer));
 		inOrder.verify(recordInterceptor).clearThreadState(eq(consumer));
 		container.stop();
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecated"})
+	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testInvokeRecordInterceptorFailure() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
@@ -3608,15 +3612,17 @@ public class KafkaMessageListenerContainerTests {
 
 		CountDownLatch afterLatch = new CountDownLatch(1);
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
+
 			@Override
 			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record) {
 				return record;
 			}
 
 			@Override
-			public void clearThreadState(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<?, ?> consumer) {
 				afterLatch.countDown();
 			}
+
 		});
 
 		KafkaMessageListenerContainer<Integer, String> container =
@@ -3627,11 +3633,12 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		InOrder inOrder = inOrder(recordInterceptor, messageListener, consumer);
-		inOrder.verify(recordInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(recordInterceptor).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(recordInterceptor).intercept(eq(record), eq(consumer));
 		inOrder.verify(messageListener).onMessage(eq(record));
 		inOrder.verify(recordInterceptor).failure(eq(record), any(), eq(consumer));
+		inOrder.verify(recordInterceptor).afterRecord(eq(record), eq(consumer));
 		inOrder.verify(recordInterceptor).clearThreadState(eq(consumer));
 		container.stop();
 	}
@@ -3677,14 +3684,17 @@ public class KafkaMessageListenerContainerTests {
 		BatchInterceptor<Integer, String> batchInterceptor = spy(new BatchInterceptor<Integer, String>() {
 
 			@Override
-			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records, Consumer<Integer, String> consumer) {
+			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
+					Consumer<Integer, String> consumer) {
+
 				return records;
 			}
 
 			@Override
-			public void clearThreadState(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<?, ?> consumer) {
 				afterLatch.countDown();
 			}
+
 		});
 
 		KafkaMessageListenerContainer<Integer, String> container =
@@ -3695,7 +3705,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		InOrder inOrder = inOrder(batchInterceptor, batchMessageListener, consumer);
-		inOrder.verify(batchInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(batchInterceptor).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
 		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
@@ -3743,8 +3753,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setClientId("clientId");
 
 		CountDownLatch afterLatch = new CountDownLatch(1);
-		BatchInterceptor<Integer, String> batchInterceptor = spy(
-				new BatchInterceptor<Integer, String>() {
+		BatchInterceptor<Integer, String> batchInterceptor = spy(new BatchInterceptor<Integer, String>() {
 
 			@Override
 			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
@@ -3753,9 +3762,10 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 			@Override
-			public void clearThreadState(Consumer<Integer, String> consumer) {
+			public void clearThreadState(Consumer<?, ?> consumer) {
 				afterLatch.countDown();
 			}
+
 		});
 
 		KafkaMessageListenerContainer<Integer, String> container =
@@ -3766,7 +3776,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		InOrder inOrder = inOrder(batchInterceptor, batchMessageListener, consumer);
-		inOrder.verify(batchInterceptor).beforePoll(eq(consumer));
+		inOrder.verify(batchInterceptor).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
 		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));

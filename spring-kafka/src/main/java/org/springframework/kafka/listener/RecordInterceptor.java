@@ -33,7 +33,7 @@ import org.springframework.lang.Nullable;
  *
  */
 @FunctionalInterface
-public interface RecordInterceptor<K, V> extends BeforeAfterPollProcessor<K, V> {
+public interface RecordInterceptor<K, V> extends ConsumerAwareThreadStateProcessor {
 
 	/**
 	 * Perform some action on the record or return a different one. If null is returned
@@ -79,6 +79,17 @@ public interface RecordInterceptor<K, V> extends BeforeAfterPollProcessor<K, V> 
 	 * @since 2.7
 	 */
 	default void failure(ConsumerRecord<K, V> record, Exception exception, Consumer<K, V> consumer) {
+	}
+
+	/**
+	 * Called when processing the record is complete either
+	 * {@link #success(ConsumerRecord, Consumer)} or
+	 * {@link #failure(ConsumerRecord, Exception, Consumer)}.
+	 * @param record the record.
+	 * @param consumer the consumer.
+	 * @since 2.8
+	 */
+	default void afterRecord(ConsumerRecord<K, V> record, Consumer<K, V> consumer) {
 	}
 
 }

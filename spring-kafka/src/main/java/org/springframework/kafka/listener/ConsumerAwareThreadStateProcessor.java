@@ -18,43 +18,34 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
+import org.springframework.kafka.support.ThreadStateProcessor;
+
 /**
- * An interceptor for consumer poll operation.
+ * A {@link ThreadStateProcessor} involving a {@link Consumer}.
  *
- * @param <K> the key type.
- * @param <V> the value type.
- *
- * @author Gary Russell
  * @author Karol Dowbecki
- * @author Artem Bilan
+ * @author Gary Russell
  * @since 2.8
  *
  */
-public interface BeforeAfterPollProcessor<K, V> {
+public interface ConsumerAwareThreadStateProcessor extends ThreadStateProcessor {
 
 	/**
-	 * Called before consumer is polled.
-	 * <p>
-	 * It can be used to set up thread-bound resources which will be available for the
-	 * entire duration of the consumer poll operation e.g. logging with MDC.
-	 * </p>
+	 * Call to set up thread-bound resources which will be available for the
+	 * entire duration of enclosed operation involving a {@link Consumer}.
 	 *
 	 * @param consumer the consumer.
 	 */
-	default void beforePoll(Consumer<K, V> consumer) {
+	default void setupThreadState(Consumer<?, ?> consumer) {
 	}
 
 	/**
-	 * Called after records were processed by listener and error handler.
-	 * <p>
-	 * It can be used to clear thread-bound resources which were set up in {@link #beforePoll(Consumer)}.
-	 * This is the last method called by the {@link MessageListenerContainer} before the next record
-	 * processing cycle starts.
-	 * </p>
+	 * Call to clear thread-bound resources which were set up in
+	 * {@link #beforePoll(Consumer)}.
 	 *
 	 * @param consumer the consumer.
 	 */
-	default void clearThreadState(Consumer<K, V> consumer) {
+	default void clearThreadState(Consumer<?, ?> consumer) {
 	}
 
 }

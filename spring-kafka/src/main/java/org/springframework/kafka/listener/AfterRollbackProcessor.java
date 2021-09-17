@@ -22,6 +22,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
+import org.springframework.kafka.support.ThreadStateProcessor;
 
 /**
  * Invoked by a listener container with remaining, unprocessed, records
@@ -39,7 +40,7 @@ import org.springframework.kafka.listener.ContainerProperties.EOSMode;
  *
  */
 @FunctionalInterface
-public interface AfterRollbackProcessor<K, V> {
+public interface AfterRollbackProcessor<K, V> extends ThreadStateProcessor {
 
 	/**
 	 * Process the remaining records. Recoverable will be true if the container is
@@ -62,14 +63,6 @@ public interface AfterRollbackProcessor<K, V> {
 	 */
 	void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer,
 			MessageListenerContainer container, Exception exception, boolean recoverable, EOSMode eosMode);
-
-	/**
-	 * Optional method to clear thread state; will be called just before a consumer
-	 * thread terminates.
-	 * @since 2.2
-	 */
-	default void clearThreadState() {
-	}
 
 	/**
 	 * Return true to invoke
