@@ -632,7 +632,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final BatchInterceptor<K, V> commonBatchInterceptor = getBatchInterceptor();
 
-		private final ConsumerAwareThreadStateProcessor pollThreadStateProcessor;
+		private final ThreadStateProcessor pollThreadStateProcessor;
 
 		private final ConsumerSeekCallback seekCallback = new InitialOrIdleSeekCallback();
 
@@ -807,7 +807,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Nullable
-		private ConsumerAwareThreadStateProcessor setUpPollProcessor(boolean batch) {
+		private ThreadStateProcessor setUpPollProcessor(boolean batch) {
 			if (batch) {
 				if (this.commonBatchInterceptor != null) {
 					return this.commonBatchInterceptor;

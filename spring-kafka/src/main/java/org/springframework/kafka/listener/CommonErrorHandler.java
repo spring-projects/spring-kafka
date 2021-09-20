@@ -23,7 +23,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
-import org.springframework.kafka.support.ThreadStateProcessor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 
 /**
@@ -34,7 +33,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
  * @since 2.8
  *
  */
-public interface CommonErrorHandler extends DeliveryAttemptAware, ThreadStateProcessor {
+public interface CommonErrorHandler extends DeliveryAttemptAware {
 
 	/**
 	 * Return false if this error handler should only receive the current failed record;
@@ -124,6 +123,13 @@ public interface CommonErrorHandler extends DeliveryAttemptAware, ThreadStatePro
 	@Override
 	default int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
 		return 0;
+	}
+
+	/**
+	 * Optional method to clear thread state; will be called just before a consumer
+	 * thread terminates.
+	 */
+	default void clearThreadState() {
 	}
 
 	/**

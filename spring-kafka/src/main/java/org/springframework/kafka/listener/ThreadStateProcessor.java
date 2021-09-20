@@ -18,17 +18,16 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
-import org.springframework.kafka.support.ThreadStateProcessor;
-
 /**
- * A {@link ThreadStateProcessor} involving a {@link Consumer}.
+ * A general interface for managing thread-bound resources when a {@link Consumer} is
+ * available.
  *
  * @author Karol Dowbecki
  * @author Gary Russell
  * @since 2.8
  *
  */
-public interface ConsumerAwareThreadStateProcessor extends ThreadStateProcessor {
+public interface ThreadStateProcessor {
 
 	/**
 	 * Call to set up thread-bound resources which will be available for the
@@ -41,7 +40,7 @@ public interface ConsumerAwareThreadStateProcessor extends ThreadStateProcessor 
 
 	/**
 	 * Call to clear thread-bound resources which were set up in
-	 * {@link #beforePoll(Consumer)}.
+	 * {@link #setupThreadState(Consumer)}.
 	 *
 	 * @param consumer the consumer.
 	 */

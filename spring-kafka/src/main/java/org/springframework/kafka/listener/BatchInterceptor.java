@@ -32,7 +32,7 @@ import org.springframework.lang.Nullable;
  *
  */
 @FunctionalInterface
-public interface BatchInterceptor<K, V> extends ConsumerAwareThreadStateProcessor {
+public interface BatchInterceptor<K, V> extends ThreadStateProcessor {
 
 	/**
 	 * Perform some action on the records or return a different one. If null is returned
