@@ -87,4 +87,9 @@ public class CompositeRecordInterceptor<K, V> implements ConsumerAwareRecordInte
 		this.delegates.forEach(del -> del.clearThreadState(consumer));
 	}
 
+	@Override
+	public void afterRecord(ConsumerRecord<K, V> record, Consumer<K, V> consumer) {
+		this.delegates.forEach(del -> del.afterRecord(record, consumer));
+	}
+
 }
