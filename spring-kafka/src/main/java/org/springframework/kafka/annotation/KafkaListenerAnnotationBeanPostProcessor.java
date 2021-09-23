@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -68,6 +69,8 @@ import org.springframework.core.OrderComparator;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.core.convert.converter.ConditionalGenericConverter;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.GenericConverter;
 import org.springframework.core.log.LogAccessor;
@@ -1081,6 +1084,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			defaultFactory.setBeanFactory(KafkaListenerAnnotationBeanPostProcessor.this.beanFactory);
 			this.defaultFormattingConversionService.addConverter(
 					new BytesToStringConverter(KafkaListenerAnnotationBeanPostProcessor.this.charset));
+			this.defaultFormattingConversionService.addConverter(new BytesToNumberConverter());
 			defaultFactory.setConversionService(this.defaultFormattingConversionService);
 			GenericMessageConverter messageConverter = new GenericMessageConverter(this.defaultFormattingConversionService);
 			defaultFactory.setMessageConverter(messageConverter);
@@ -1162,6 +1166,64 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 *
 	 */
 	public interface AnnotationEnhancer extends BiFunction<Map<String, Object>, AnnotatedElement, Map<String, Object>> {
+
+	}
+
+	private final class BytesToNumberConverter implements ConditionalGenericConverter {
+
+		BytesToNumberConverter() {
+		}
+
+		@Override
+		@Nullable
+		public Set<ConvertiblePair> getConvertibleTypes() {
+			HashSet<ConvertiblePair> pairs = new HashSet<>();
+			pairs.add(new ConvertiblePair(byte[].class, long.class));
+			pairs.add(new ConvertiblePair(byte[].class, int.class));
+			pairs.add(new ConvertiblePair(byte[].class, short.class));
+			pairs.add(new ConvertiblePair(byte[].class, byte.class));
+			pairs.add(new ConvertiblePair(byte[].class, Long.class));
+			pairs.add(new ConvertiblePair(byte[].class, Integer.class));
+			pairs.add(new ConvertiblePair(byte[].class, Short.class));
+			pairs.add(new ConvertiblePair(byte[].class, Byte.class));
+			return pairs;
+		}
+
+		@Override
+		@Nullable
+		public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
+			byte[] bytes = (byte[]) source;
+			if (targetType.getType().equals(long.class) || targetType.getType().equals(Long.class)) {
+				Assert.state(bytes.length >= 8, "At least 8 bytes needed to convert a byte[] to a long");
+				return ByteBuffer.wrap(bytes).getLong();
+			}
+			else if (targetType.getType().equals(int.class) || targetType.getType().equals(Integer.class)) {
+				Assert.state(bytes.length >= 4, "At least 4 bytes needed to convert a byte[] to an integer");
+				return ByteBuffer.wrap(bytes).getInt();
+			}
+			else if (targetType.getType().equals(short.class) || targetType.getType().equals(Short.class)) {
+				Assert.state(bytes.length >= 2, "At least 2 bytes needed to convert a byte[] to a short");
+				return ByteBuffer.wrap(bytes).getShort();
+			}
+			else if (targetType.getType().equals(byte.class) || targetType.getType().equals(Byte.class)) {
+				Assert.state(bytes.length >= 1, "At least 1 byte needed to convert a byte[] to a byte");
+				return ByteBuffer.wrap(bytes).get();
+			}
+			return null;
+		}
+
+		@Override
+		public boolean matches(TypeDescriptor sourceType, TypeDescriptor targetType) {
+			if (sourceType.getType().equals(byte[].class)) {
+				Class<?> target = targetType.getType();
+				return target.equals(long.class) || target.equals(int.class) || target.equals(short.class)
+						|| target.equals(byte.class) || target.equals(Long.class) || target.equals(Integer.class)
+						|| target.equals(Short.class) || target.equals(Byte.class);
+			}
+			else {
+				return false;
+			}
+		}
 
 	}
 
