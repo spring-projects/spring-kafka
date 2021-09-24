@@ -17,8 +17,11 @@
 package org.springframework.kafka.core;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -54,6 +57,7 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
@@ -558,7 +562,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		producerForOffsets().sendOffsetsToTransaction(offsets, groupMetadata);
 	}
 
-
 	@Override
 	@Nullable
 	public ConsumerRecord<K, V> receive(String topic, int partition, long offset) {
@@ -568,19 +571,51 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	@Override
 	@Nullable
 	public ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout) {
+		Properties props = oneOnly();
+		try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(null, null, null, props)) {
+			TopicPartition topicPartition = new TopicPartition(topic, partition);
+			return receiveOne(topicPartition, offset, pollTimeout, consumer);
+		}
+	}
+
+	@Override
+	@Nullable
+	public ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested) {
+		return receive(requested, DEFAULT_POLL_TIMEOUT);
+	}
+
+	@Override
+	@Nullable
+	public ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout) {
+		Properties props = oneOnly();
+		Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
+		try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(null, null, null, props)) {
+			requested.forEach(tpo -> {
+				ConsumerRecord<K, V> one = receiveOne(tpo.getTopicPartition(), tpo.getOffset(), pollTimeout, consumer);
+				records.computeIfAbsent(tpo.getTopicPartition(), tp -> new ArrayList<>()).add(one);
+			});
+			return new ConsumerRecords<>(records);
+		}
+	}
+
+	private Properties oneOnly() {
 		Assert.notNull(this.consumerFactory, "A consumerFactory is required");
 		Properties props = new Properties();
 		props.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1");
-		try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(null, null, null, props)) {
-			TopicPartition topicPartition = new TopicPartition(topic, partition);
-			consumer.assign(Collections.singletonList(topicPartition));
-			consumer.seek(topicPartition, offset);
-			ConsumerRecords<K, V> records = consumer.poll(pollTimeout);
-			if (records.count() == 1) {
-				return records.iterator().next();
-			}
-			return null;
+		return props;
+	}
+
+	@Nullable
+	private ConsumerRecord<K, V> receiveOne(TopicPartition topicPartition, long offset, Duration pollTimeout,
+			Consumer<K, V> consumer) {
+
+		consumer.assign(Collections.singletonList(topicPartition));
+		consumer.seek(topicPartition, offset);
+		ConsumerRecords<K, V> records = consumer.poll(pollTimeout);
+		if (records.count() == 1) {
+			return records.iterator().next();
 		}
+		return null;
 	}
 
 	private Producer<K, V> producerForOffsets() {

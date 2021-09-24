@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +45,7 @@ import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -72,6 +74,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
@@ -144,9 +147,9 @@ public class KafkaTemplateTests {
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(allOf(keyValue(2, "baz"), partition(0)));
 
-		template.send(INT_KEY_TOPIC, 0, null, "qux");
+		template.send(INT_KEY_TOPIC, 1, null, "qux");
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
-		assertThat(received).has(allOf(keyValue(null, "qux"), partition(0)));
+		assertThat(received).has(allOf(keyValue(null, "qux"), partition(1)));
 
 		template.send(MessageBuilder.withPayload("fiz")
 				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
@@ -157,11 +160,11 @@ public class KafkaTemplateTests {
 		assertThat(received).has(allOf(keyValue(2, "fiz"), partition(0)));
 
 		template.send(MessageBuilder.withPayload("buz")
-				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.PARTITION_ID, 1)
 				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
 				.build());
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
-		assertThat(received).has(allOf(keyValue(2, "buz"), partition(0)));
+		assertThat(received).has(allOf(keyValue(2, "buz"), partition(1)));
 
 		Map<MetricName, ? extends Metric> metrics = template.execute(Producer::metrics);
 		assertThat(metrics).isNotNull();
@@ -173,10 +176,26 @@ public class KafkaTemplateTests {
 		assertThat(KafkaTestUtils.getPropertyValue(pf.createProducer(), "delegate")).isSameAs(wrapped.get());
 		template.setConsumerFactory(
 				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("xx", "false", embeddedKafka)));
-		ConsumerRecord<Integer, String> receive = template.receive(INT_KEY_TOPIC, 0, received.offset());
-		assertThat(receive).has(allOf(keyValue(2, "buz"), partition(0)))
+		ConsumerRecord<Integer, String> receive = template.receive(INT_KEY_TOPIC, 1, received.offset());
+		assertThat(receive).has(allOf(keyValue(2, "buz"), partition(1)))
 				.extracting(rec -> rec.offset())
 				.isEqualTo(received.offset());
+		ConsumerRecords<Integer, String> records = template.receive(List.of(
+				new TopicPartitionOffset(INT_KEY_TOPIC, 1, 1L),
+				new TopicPartitionOffset(INT_KEY_TOPIC, 0, 1L),
+				new TopicPartitionOffset(INT_KEY_TOPIC, 0, 0L),
+				new TopicPartitionOffset(INT_KEY_TOPIC, 1, 0L)));
+		assertThat(records.count()).isEqualTo(4);
+		Set<TopicPartition> partitions2 = records.partitions();
+		assertThat(partitions2).containsExactly(
+				new TopicPartition(INT_KEY_TOPIC, 1),
+				new TopicPartition(INT_KEY_TOPIC, 0));
+		assertThat(records.records(new TopicPartition(INT_KEY_TOPIC, 1)))
+			.extracting(rec -> rec.offset())
+			.containsExactly(1L, 0L);
+		assertThat(records.records(new TopicPartition(INT_KEY_TOPIC, 0)))
+		.extracting(rec -> rec.offset())
+		.containsExactly(1L, 0L);
 		pf.destroy();
 	}
 

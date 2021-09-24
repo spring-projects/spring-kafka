@@ -2378,18 +2378,25 @@ The `Collection` beans will be removed in a future release.
 
 This section covers how to use `KafkaTemplate` to receive messages.
 
-Starting with version 2.8, the template has two `receive()` methods:
+Starting with version 2.8, the template has four `receive()` methods:
 
 ====
-[source, jvava]
+[source, java]
 ----
 ConsumerRecord<K, V> receive(String topic, int partition, long offset);
 
 ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout);
+
+ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested);
+
+ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout);
 ----
 ====
 
-As you can see, you need to know the partition and offset of the record you need to retrieve; a new `Consumer` is created (and closed) for each operation.
+As you can see, you need to know the partition and offset of the record(s) you need to retrieve; a new `Consumer` is created (and closed) for each operation.
+
+With the last two methods, each record is retrieved individually and the results assembled into a `ConsumerRecords` object.
+When creating the `TopicPartitionOffset` s for the request, only positive, absolute offsets are supported.
 
 [[container-props]]
 ==== Listener Container Properties

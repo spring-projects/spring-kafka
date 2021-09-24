@@ -17,11 +17,13 @@
 package org.springframework.kafka.core;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -31,6 +33,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -297,6 +300,25 @@ public interface KafkaOperations<K, V> {
 	 */
 	@Nullable
 	ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout);
+
+	/**
+	 * Receive a multiple records with the default poll timeout (5 seconds). Only
+	 * absolute, positive offsets are supported.
+	 * @param requested a collection of record requests (topic/partition/offset).
+	 * @return the records
+	 * @since 2.8
+	 * @see #DEFAULT_POLL_TIMEOUT
+	 */
+	ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested);
+
+	/**
+	 * Receive multiple records. Only absolute, positive offsets are supported.
+	 * @param requested a collection of record requests (topic/partition/offset).
+	 * @param pollTimeout the timeout.
+	 * @return the record or null.
+	 * @since 2.8
+	 */
+	ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout);
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.
