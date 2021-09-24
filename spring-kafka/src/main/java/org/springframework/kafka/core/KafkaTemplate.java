@@ -579,13 +579,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	@Override
-	@Nullable
 	public ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested) {
 		return receive(requested, DEFAULT_POLL_TIMEOUT);
 	}
 
 	@Override
-	@Nullable
 	public ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout) {
 		Properties props = oneOnly();
 		Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
