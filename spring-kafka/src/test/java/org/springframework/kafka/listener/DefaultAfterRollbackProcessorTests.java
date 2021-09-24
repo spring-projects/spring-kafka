@@ -75,18 +75,18 @@ public class DefaultAfterRollbackProcessorTests {
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
-		processor.process(records, consumer, container, illegalState, true, EOSMode.ALPHA);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V1);
 		processor.process(records, consumer, container,
-				new DeserializationException("intended", null, false, illegalState), true, EOSMode.ALPHA);
+				new DeserializationException("intended", null, false, illegalState), true, EOSMode.V1);
 		verify(template).sendOffsetsToTransaction(anyMap());
 		verify(template, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		processor.addNotRetryableExceptions(IllegalStateException.class);
 		recovered.set(null);
 		recovererShouldFail.set(true);
-		processor.process(records, consumer, container, illegalState, true, EOSMode.ALPHA);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V1);
 		verify(template, times(1)).sendOffsetsToTransaction(anyMap()); // recovery failed
-		processor.process(records, consumer, container, illegalState, true, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
 		verify(template, times(1)).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		InOrder inOrder = inOrder(consumer);
@@ -123,12 +123,12 @@ public class DefaultAfterRollbackProcessorTests {
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
-		processor.process(records, consumer, container, illegalState, false, EOSMode.BETA);
-		processor.process(records, consumer, container, illegalState, false, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, false, EOSMode.V2);
+		processor.process(records, consumer, container, illegalState, false, EOSMode.V2);
 		verify(backOff, times(2)).start();
 		verify(execution.get(), times(2)).nextBackOff();
 		processor.clearThreadState();
-		processor.process(records, consumer, container, illegalState, false, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, false, EOSMode.V2);
 		verify(backOff, times(3)).start();
 	}
 
@@ -144,7 +144,7 @@ public class DefaultAfterRollbackProcessorTests {
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(false);
 		long t1 = System.currentTimeMillis();
-		processor.process(records, consumer, container, illegalState, true, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
 		assertThat(System.currentTimeMillis() < t1 + 5_000);
 	}
 
@@ -161,7 +161,7 @@ public class DefaultAfterRollbackProcessorTests {
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		long t1 = System.currentTimeMillis();
-		processor.process(records, consumer, container, illegalState, true, EOSMode.BETA);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
 		assertThat(System.currentTimeMillis() >= t1 + 200);
 	}
 

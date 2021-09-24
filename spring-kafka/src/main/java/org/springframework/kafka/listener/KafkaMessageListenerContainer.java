@@ -905,7 +905,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.transactionManager == null) {
 				return false;
 			}
-			return this.eosMode.equals(EOSMode.ALPHA);
+			return this.eosMode.getMode().equals(EOSMode.V1);
 		}
 
 		@Nullable
@@ -2689,7 +2689,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void doSendOffsets(Producer<?, ?> prod, Map<TopicPartition, OffsetAndMetadata> commits) {
-			if (this.eosMode.equals(EOSMode.ALPHA)) {
+			if (this.eosMode.getMode().equals(EOSMode.V1)) {
 				prod.sendOffsetsToTransaction(commits, this.consumerGroupId);
 			}
 			else {

@@ -146,27 +146,27 @@ public class TransactionalContainerTests {
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.ALPHA);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V1);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionHandleError() throws Exception {
-		testConsumeAndProduceTransactionGuts(true, AckMode.RECORD, EOSMode.ALPHA);
+		testConsumeAndProduceTransactionGuts(true, AckMode.RECORD, EOSMode.V1);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTMManual() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL_IMMEDIATE, EOSMode.ALPHA);
+		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL_IMMEDIATE, EOSMode.V1);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM_BETA() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.BETA);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V1);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionStopWhenFenced() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.BETA, true);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V2, true);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -272,7 +272,7 @@ public class TransactionalContainerTests {
 		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(producer);
 		inOrder.verify(producer).beginTransaction();
-		if (eosMode.equals(EOSMode.ALPHA)) {
+		if (eosMode.equals(EOSMode.V1)) {
 			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
 					new OffsetAndMetadata(0)), "group");
 		}
@@ -291,7 +291,7 @@ public class TransactionalContainerTests {
 			ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 			inOrder.verify(producer).send(captor.capture(), any(Callback.class));
 			assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
-			if (eosMode.equals(EOSMode.ALPHA)) {
+			if (eosMode.equals(EOSMode.V1)) {
 				inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
 						new OffsetAndMetadata(1)), "group");
 			}

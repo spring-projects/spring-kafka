@@ -2462,7 +2462,7 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 |See <<delivery-header>>.
 
 |[[eosMode]]<<eosMode,`eosMode`>>
-|`BETA`
+|`V2`
 |Exactly Once Semantics mode; see <<exactly-once>>.
 
 |[[fixTxOffsets]]<<fixTxOffsets,`fixTxOffsets`>>
@@ -3534,32 +3534,39 @@ This means that, for a `read->process-write` sequence, it is guaranteed that the
 
 Spring for Apache Kafka version 2.5 and later supports two EOS modes:
 
-* `ALPHA` - aka `transactional.id` fencing (since version 0.11.0.0)
-* `BETA` - aka fetch-offset-request fencing (since version 2.5)
+* `ALPHA` - alias for `V1` (deprecated)
+* `BETA` - alias for `V2` (deprecated)
+* `V1` - aka `transactional.id` fencing (since version 0.11.0.0)
+* `V2` - aka fetch-offset-request fencing (since version 2.5)
 
-With mode `ALPHA`, the producer is "fenced" if another instance with the same `transactional.id` is started.
+With mode `V1`, the producer is "fenced" if another instance with the same `transactional.id` is started.
 Spring manages this by using a `Producer` for each `group.id/topic/partition`; when a rebalance occurs a new instance will use the same `transactional.id` and the old producer is fenced.
 
-With mode `BETA`, it is not necessary to have a producer for each `group.id/topic/partition` because consumer metadata is sent along with the offsets to the transaction and the broker can determine if the producer is fenced using that information instead.
+With mode `V2`, it is not necessary to have a producer for each `group.id/topic/partition` because consumer metadata is sent along with the offsets to the transaction and the broker can determine if the producer is fenced using that information instead.
 
-Starting with version 2.6, the default `EOSMode` is `BETA`.
+Starting with version 2.6, the default `EOSMode` is `V2`.
 
 To configure the container to use mode `ALPHA`, set the container property `EOSMode` to `ALPHA`, to revert to the previous behavior.
 
-IMPORTANT: With `BETA`, your brokers must be version 2.5 or later, however with `kafka-clients` version 2.6, the producer will automatically fall back to `ALPHA` if the broker does not support `BETA`.
+IMPORTANT: With `V2`, your brokers must be version 2.5 or later, however with `kafka-clients` version 2.6, the producer will automatically fall back to `ALPHA` if the broker does not support `BETA`.
 The `DefaultKafkaProducerFactory` is configured to enable that behavior.
 If your brokers are earlier than 2.5, be sure to leave the `DefaultKafkaProducerFactory` `producerPerConsumerPartition` set to `true` and, if you are using a batch listener, you should set `subBatchPerPartition` to `true`.
 
-When your brokers are upgraded to 2.5 or later, the producer will automatically switch to using mode `BETA`, but the number of producers will remain as before.
+When your brokers are upgraded to 2.5 or later, the producer will automatically use mode `V2`, but the number of producers will remain as before.
 You can then do a rolling upgrade of your application with `producerPerConsumerPartition` set to `false` to reduce the number of producers; you should also no longer set the `subBatchPerPartition` container property.
 
 If your brokers are already 2.5 or newer, you should set the `DefaultKafkaProducerFactory` `producerPerConsumerPartition` property to `false`, to reduce the number of producers needed.
 
-IMPORTANT: When using `EOSMode.BETA` with `producerPerConsumerPartition=false` the `transactional.id` must be unique across all application instances.
+IMPORTANT: When using `EOSMode.V2` with `producerPerConsumerPartition=false` the `transactional.id` must be unique across all application instances.
 
-When using `BETA` mode, it is no longer necessary to set the `subBatchPerPartition` to `true`; it will default to `false` when the `EOSMode` is `BETA`.
+When using `V2` mode, it is no longer necessary to set the `subBatchPerPartition` to `true`; it will default to `false` when the `EOSMode` is `V2`.
 
 Refer to https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics[KIP-447] for more information.
+
+IMPORTANT: `kafka-clients` 3.0.0 and later no longer support `V2` (and automatic fallback to `V1`) with brokers earlier than 2.5; you must therefore override the default (`V2`) with `V1` if your brokers are older (or upgrade your brokers).
+
+`V1` and `V2` were previously `ALPHA` and `BETA`; they have been changed to align the framework with https://cwiki.apache.org/confluence/display/KAFKA/KIP-732%3A+Deprecate+eos-alpha+and+replace+eos-beta+with+eos-v2[KIP-732].
+
 
 [[interceptors]]
 ==== Wiring Spring Beans into Producer/Consumer Interceptors

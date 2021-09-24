@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -156,7 +156,7 @@ public class SubBatchPerPartitionTests {
 		containerProps = new ContainerProperties("sbpp");
 		containerProps.setMessageListener(mock(MessageListener.class));
 		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
-		containerProps.setEosMode(EOSMode.ALPHA);
+		containerProps.setEosMode(EOSMode.V1);
 		container = new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
 		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
@@ -166,7 +166,7 @@ public class SubBatchPerPartitionTests {
 		containerProps = new ContainerProperties("sbpp");
 		containerProps.setMessageListener(mock(MessageListener.class));
 		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
-		containerProps.setEosMode(EOSMode.BETA);
+		containerProps.setEosMode(EOSMode.V2);
 		container = new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
 		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))

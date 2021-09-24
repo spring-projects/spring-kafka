@@ -137,7 +137,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 				getRecoveryStrategy((List) records, exception), container, this.logger)
 					&& isCommitRecovered() && this.kafkaTemplate.isTransactional()) {
 			ConsumerRecord<K, V> skipped = records.get(0);
-			if (EOSMode.ALPHA.equals(eosMode)) {
+			if (EOSMode.V1.equals(eosMode.getMode())) {
 				this.kafkaTemplate.sendOffsetsToTransaction(
 						Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
 								new OffsetAndMetadata(skipped.offset() + 1)));

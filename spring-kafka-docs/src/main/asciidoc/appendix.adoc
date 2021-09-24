@@ -2,10 +2,12 @@
 == Override Spring Boot Dependencies
 
 When using Spring for Apache Kafka in a Spring Boot application, the Apache Kafka dependency versions are determined by Spring Boot's dependency management.
-If you wish to use a different version of `kafka-clients` or `kafka-streams`, such as 2.8.0, you need to override all of the associated dependencies.
+If you wish to use a different version of `kafka-clients` or `kafka-streams`, such as 3.0.0, you need to override all of the associated dependencies.
 This is especially true when using the embedded Kafka broker in `spring-kafka-test`.
 
-IMPORTANT: Backwards compatibility is not supported for all Boot versions; Spring for Apache Kafka 2.7 has been tested with Spring Boot 2.4 and 2.5.
+IMPORTANT: Backwards compatibility is not supported for all Boot versions; Spring for Apache Kafka 2.8 has been tested with Spring Boot 2.5 and 2.6.
+
+IMPORTANT: When using the 3.0.0 clients, the default `EOSMode.V2` is not supported unless the broker is 2.5 or higher; if you wish to use the 3.0.0 clients with an earlier broker, you must change the container's `EOSMode` to `V1`.
 
 ====
 [source, xml, subs="+attributes", role="primary"]

@@ -149,12 +149,49 @@ public class ContainerProperties extends ConsumerProperties {
 		/**
 		 * 'transactional.id' fencing (0.11 - 2.4 brokers).
 		 */
-		ALPHA,
+		V1,
 
 		/**
 		 *  fetch-offset-request fencing (2.5+ brokers).
 		 */
-		BETA,
+		V2,
+
+		/**
+		 * 'transactional.id' fencing (0.11 - 2.4 brokers).
+		 * @deprecated in favor of {@link #V1}.
+		 */
+		@Deprecated
+		ALPHA(V1),
+
+		/**
+		 *  fetch-offset-request fencing (2.5+ brokers).
+		 *  @deprecated in favor of {@link #V2}.
+		 */
+		@Deprecated
+		BETA(V2);
+
+
+		final EOSMode mode;
+
+		EOSMode() {
+			this.mode = this;
+		}
+
+		/**
+		 * Create an alias.
+		 * @param v22 the mode for which this is an alias.
+		 */
+		EOSMode(EOSMode v12) {
+			this.mode = v12;
+		}
+
+		/**
+		 * Return the mode or the aliased mode.
+		 * @return the mode.
+		 */
+		public EOSMode getMode() {
+			return this.mode;
+		}
 
 	}
 
@@ -275,7 +312,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean deliveryAttemptHeader;
 
-	private EOSMode eosMode = EOSMode.BETA;
+	private EOSMode eosMode = EOSMode.V2;
 
 	private TransactionDefinition transactionDefinition;
 
@@ -755,12 +792,14 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set the exactly once semantics mode. When {@link EOSMode#ALPHA} a producer per
+	 * Set the exactly once semantics mode. When {@link EOSMode#V1} a producer per
 	 * group/topic/partition is used (enabling 'transactional.id fencing`).
-	 * {@link EOSMode#BETA} enables fetch-offset-request fencing, and requires brokers 2.5
-	 * or later. With the 2.6 client, the default is now BETA because the 2.6 client can
+	 * {@link EOSMode#V2} enables fetch-offset-request fencing, and requires brokers 2.5
+	 * or later. With the 2.6 client, the default is now V2 because the 2.6 client can
 	 * automatically fall back to ALPHA.
-	 * @param eosMode the mode; default BETA.
+	 * IMPORTANT the 3.0 clients cannot be used with {@link EOSMode#V2} unless the broker
+	 * is 2.5 or higher.
+	 * @param eosMode the mode; default V2.
 	 * @since 2.5
 	 */
 	public void setEosMode(EOSMode eosMode) {
