@@ -104,6 +104,7 @@ import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.SchedulingAwareRunnable;
@@ -2516,10 +2517,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				throw (DeserializationException) record.key();
 			}
 			if (record.value() == null && this.checkNullValueForExceptions) {
-				checkDeser(record, ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+				checkDeser(record, SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			if (record.key() == null && this.checkNullKeyForExceptions) {
-				checkDeser(record, ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER);
+				checkDeser(record, SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			if (this.deliveryAttemptAware != null) {
 				byte[] buff = new byte[4]; // NOSONAR (magic #)

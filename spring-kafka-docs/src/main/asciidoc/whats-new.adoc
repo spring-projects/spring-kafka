@@ -6,7 +6,17 @@ For changes in earlier version, see <<history>>.
 [[x28-kafka-client]]
 ==== Kafka Client Version
 
-This version requires the 2.8.0 `kafka-clients`.
+This version requires the 2.8.0 `kafka-clients
+
+[[x28-packages]]
+==== Package Changes
+
+Classes and interfaces related to type mapping have been moved from `...support.converter` to `...support.mapping`.
+
+* `AbstractJavaTypeMapper`
+* `ClassMapper`
+* `DefaultJackson2JavaTypeMapper`
+* `Jackson2JavaTypeMapper`
 
 [[x28-ooo-commits]]
 ==== Out of Order Manual Commits

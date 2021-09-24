@@ -49,7 +49,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
@@ -319,9 +319,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			tp = checkPartition(tp, consumer);
 		}
 		DeserializationException vDeserEx = ListenerUtils.getExceptionFromHeader(record,
-				ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
+				SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		DeserializationException kDeserEx = ListenerUtils.getExceptionFromHeader(record,
-					ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
+				SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		Headers headers = new RecordHeaders(record.headers().toArray());
 		addAndEnhanceHeaders(record, exception, vDeserEx, kDeserEx, headers);
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
@@ -336,13 +336,13 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 		if (kDeserEx != null) {
 			if (!this.retainExceptionHeader) {
-				headers.remove(ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER);
+				headers.remove(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			addExceptionInfoHeaders(headers, kDeserEx, true);
 		}
 		if (vDeserEx != null) {
 			if (!this.retainExceptionHeader) {
-				headers.remove(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+				headers.remove(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			addExceptionInfoHeaders(headers, vDeserEx, false);
 		}

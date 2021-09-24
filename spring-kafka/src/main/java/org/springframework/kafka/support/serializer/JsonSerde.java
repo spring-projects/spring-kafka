@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.kafka.support.JacksonUtils;
-import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper;
+import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 

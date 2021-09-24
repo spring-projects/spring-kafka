@@ -16,14 +16,10 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.Map;
 import java.util.function.Function;
 
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.Deserializer;
 
 import org.springframework.util.Assert;
@@ -46,18 +42,25 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 
 	/**
 	 * Header name for deserialization exceptions.
+	 * @deprecated in favor of {@link SerializationUtils#DESERIALIZER_EXCEPTION_HEADER_PREFIX}.
 	 */
-	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX = "springDeserializerException";
+	@Deprecated
+	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX =
+			SerializationUtils.DESERIALIZER_EXCEPTION_HEADER_PREFIX;
 
 	/**
 	 * Header name for deserialization exceptions.
+	 * @deprecated in favor of {@link SerializationUtils#KEY_DESERIALIZER_EXCEPTION_HEADER}.
 	 */
-	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Key";
+	@Deprecated
+	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER;
 
 	/**
 	 * Header name for deserialization exceptions.
+	 * @deprecated in favor of {@link SerializationUtils#VALUE_DESERIALIZER_EXCEPTION_HEADER}.
 	 */
-	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
+	@Deprecated
+	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER;
 
 	/**
 	 * Supplier for a T when deserialization fails.
@@ -188,7 +191,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 			return this.delegate.deserialize(topic, headers, data);
 		}
 		catch (Exception e) {
-			deserializationException(headers, data, e, this.isForKey);
+			SerializationUtils.deserializationException(headers, data, e, this.isForKey);
 			return recoverFromSupplier(topic, headers, data, e);
 		}
 	}
@@ -209,41 +212,6 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		if (this.delegate != null) {
 			this.delegate.close();
 		}
-	}
-
-	/**
-	 * Populate the record headers with a serialized {@link DeserializationException}.
-	 * @param headers the headers.
-	 * @param data the data.
-	 * @param ex the exception.
-	 * @param isForKeyArg true if this is a key deserialization problem, otherwise value.
-	 * @since 2.8
-	 */
-	public static void deserializationException(Headers headers, byte[] data, Exception ex, boolean isForKeyArg) {
-		ByteArrayOutputStream stream = new ByteArrayOutputStream();
-		DeserializationException exception =
-				new DeserializationException("failed to deserialize", data, isForKeyArg, ex);
-		try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
-			oos.writeObject(exception);
-		}
-		catch (IOException ioex) {
-			stream = new ByteArrayOutputStream();
-			try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
-				exception = new DeserializationException("failed to deserialize",
-						data, isForKeyArg, new RuntimeException("Could not deserialize type "
-						+ ioex.getClass().getName() + " with message " + ioex.getMessage()
-						+ " failure: " + ioex.getMessage()));
-				oos.writeObject(exception);
-			}
-			catch (IOException ex2) {
-				throw new IllegalStateException("Could not serialize a DeserializationException", ex2); // NOSONAR
-			}
-		}
-		headers.add(
-				new RecordHeader(isForKeyArg
-						? KEY_DESERIALIZER_EXCEPTION_HEADER
-						: VALUE_DESERIALIZER_EXCEPTION_HEADER,
-						stream.toByteArray()));
 	}
 
 }

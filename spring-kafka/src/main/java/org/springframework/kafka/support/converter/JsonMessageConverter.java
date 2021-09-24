@@ -26,7 +26,9 @@ import org.apache.kafka.common.utils.Bytes;
 
 import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.KafkaNull;
-import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
+import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
+import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 

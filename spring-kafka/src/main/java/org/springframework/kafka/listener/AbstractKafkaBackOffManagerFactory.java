@@ -34,6 +34,7 @@ public abstract class AbstractKafkaBackOffManagerFactory
 		implements KafkaBackOffManagerFactory, ApplicationContextAware {
 
 	private ApplicationContext applicationContext;
+
 	private ListenerContainerRegistry listenerContainerRegistry;
 
 	/**

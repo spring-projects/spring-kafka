@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.support.converter;
+package org.springframework.kafka.support.mapping;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;

@@ -38,7 +38,7 @@ import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
@@ -253,7 +253,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				original = ((String) record.value()).getBytes(StandardCharsets.UTF_8);
 			}
 			if (original != null) {
-				ErrorHandlingDeserializer.deserializationException(record.headers(), original, ex, false);
+				SerializationUtils.deserializationException(record.headers(), original, ex, false);
 				conversionFailures.add(ex);
 				return null;
 			}

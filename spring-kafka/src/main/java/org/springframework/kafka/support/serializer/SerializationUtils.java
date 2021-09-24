@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,15 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.BiFunction;
 
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -33,6 +37,24 @@ import org.springframework.util.ClassUtils;
  *
  */
 public final class SerializationUtils {
+
+	/**
+	 * Header name for deserialization exceptions.
+	 * @since 2.8
+	 */
+	public static final String DESERIALIZER_EXCEPTION_HEADER_PREFIX = "springDeserializerException";
+
+	/**
+	 * Header name for deserialization exceptions.
+	 * @since 2.8
+	 */
+	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Key";
+
+	/**
+	 * Header name for deserialization exceptions.
+	 * @since 2.8
+	 */
+	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
 
 	private SerializationUtils() {
 	}
@@ -113,6 +135,41 @@ public final class SerializationUtils {
 			};
 		}
 		return function;
+	}
+
+	/**
+	 * Populate the record headers with a serialized {@link DeserializationException}.
+	 * @param headers the headers.
+	 * @param data the data.
+	 * @param ex the exception.
+	 * @param isForKeyArg true if this is a key deserialization problem, otherwise value.
+	 * @since 2.8
+	 */
+	public static void deserializationException(Headers headers, byte[] data, Exception ex, boolean isForKeyArg) {
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		DeserializationException exception =
+				new DeserializationException("failed to deserialize", data, isForKeyArg, ex);
+		try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
+			oos.writeObject(exception);
+		}
+		catch (IOException ioex) {
+			stream = new ByteArrayOutputStream();
+			try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
+				exception = new DeserializationException("failed to deserialize",
+						data, isForKeyArg, new RuntimeException("Could not deserialize type "
+						+ ioex.getClass().getName() + " with message " + ioex.getMessage()
+						+ " failure: " + ioex.getMessage()));
+				oos.writeObject(exception);
+			}
+			catch (IOException ex2) {
+				throw new IllegalStateException("Could not serialize a DeserializationException", ex2); // NOSONAR
+			}
+		}
+		headers.add(
+				new RecordHeader(isForKeyArg
+						? KEY_DESERIALIZER_EXCEPTION_HEADER
+						: VALUE_DESERIALIZER_EXCEPTION_HEADER,
+						stream.toByteArray()));
 	}
 
 }

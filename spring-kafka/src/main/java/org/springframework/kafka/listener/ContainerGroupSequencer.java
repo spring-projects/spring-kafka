@@ -30,7 +30,6 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 
 /**
@@ -46,7 +45,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(ContainerGroupSequencer.class));
 
-	private final KafkaListenerEndpointRegistry registry;
+	private final ListenerContainerRegistry registry;
 
 	private final long defaultIdleEventInterval;
 
@@ -78,7 +77,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 	 * @param defaultIdleEventInterval the idle event interval if not already set.
 	 * @param containerGroups The list of container groups, in order.
 	 */
-	public ContainerGroupSequencer(KafkaListenerEndpointRegistry registry, long defaultIdleEventInterval,
+	public ContainerGroupSequencer(ListenerContainerRegistry registry, long defaultIdleEventInterval,
 			String... containerGroups) {
 
 		this.registry = registry;
