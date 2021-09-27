@@ -40,6 +40,7 @@ import org.springframework.kafka.listener.TimestampedException;
 
 /**
  * @author Tomaz Fernandes
+ * @author Yvette Quinby
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)

@@ -41,6 +41,7 @@ import org.springframework.kafka.listener.TimestampedException;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Yvette Quinby
  * @since 2.7
  *
  */
