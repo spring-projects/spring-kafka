@@ -287,7 +287,9 @@ public interface KafkaOperations<K, V> {
 	 * @see #DEFAULT_POLL_TIMEOUT
 	 */
 	@Nullable
-	ConsumerRecord<K, V> receive(String topic, int partition, long offset);
+	default ConsumerRecord<K, V> receive(String topic, int partition, long offset) {
+		return receive(topic, partition, offset, DEFAULT_POLL_TIMEOUT);
+	}
 
 	/**
 	 * Receive a single record.
@@ -309,7 +311,9 @@ public interface KafkaOperations<K, V> {
 	 * @since 2.8
 	 * @see #DEFAULT_POLL_TIMEOUT
 	 */
-	ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested);
+	default ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested) {
+		return receive(requested, DEFAULT_POLL_TIMEOUT);
+	}
 
 	/**
 	 * Receive multiple records. Only absolute, positive offsets are supported.

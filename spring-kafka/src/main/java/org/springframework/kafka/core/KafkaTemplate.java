@@ -564,23 +564,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	@Override
 	@Nullable
-	public ConsumerRecord<K, V> receive(String topic, int partition, long offset) {
-		return receive(topic, partition, offset, DEFAULT_POLL_TIMEOUT);
-	}
-
-	@Override
-	@Nullable
 	public ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout) {
 		Properties props = oneOnly();
 		try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(null, null, null, props)) {
 			TopicPartition topicPartition = new TopicPartition(topic, partition);
 			return receiveOne(topicPartition, offset, pollTimeout, consumer);
 		}
-	}
-
-	@Override
-	public ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested) {
-		return receive(requested, DEFAULT_POLL_TIMEOUT);
 	}
 
 	@Override
