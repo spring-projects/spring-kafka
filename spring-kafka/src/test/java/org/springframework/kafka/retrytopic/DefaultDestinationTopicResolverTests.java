@@ -19,6 +19,7 @@ package org.springframework.kafka.retrytopic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.mockito.BDDMockito.given;
 
 import java.math.BigInteger;
 import java.time.Clock;
@@ -28,7 +29,12 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.TimestampedException;
 
@@ -36,13 +42,20 @@ import org.springframework.kafka.listener.TimestampedException;
  * @author Tomaz Fernandes
  * @since 2.7
  */
+@ExtendWith(MockitoExtension.class)
 class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 
 	private Map<String, DefaultDestinationTopicResolver.DestinationTopicHolder> destinationTopicMap;
 
+	@Mock
+	private ApplicationContext applicationContext;
+
+	@Mock
+	private ApplicationContext otherApplicationContext;
+
 	private final Clock clock = TestClockUtils.CLOCK;
 
-	private final DestinationTopicResolver defaultDestinationTopicContainer = new DefaultDestinationTopicResolver(clock);
+	private DestinationTopicResolver defaultDestinationTopicContainer;
 
 	private final long originalTimestamp = Instant.now(this.clock).toEpochMilli();
 
@@ -53,6 +66,7 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 	@BeforeEach
 	public void setup() {
 
+		defaultDestinationTopicContainer = new DefaultDestinationTopicResolver(clock, applicationContext);
 		defaultDestinationTopicContainer.addDestinationTopics(allFirstDestinationsTopics);
 		defaultDestinationTopicContainer.addDestinationTopics(allSecondDestinationTopics);
 		defaultDestinationTopicContainer.addDestinationTopics(allThirdDestinationTopics);
@@ -152,8 +166,28 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 
 	@Test
 	void shouldThrowIfAddsDestinationsAfterClosed() {
-		((DefaultDestinationTopicResolver) defaultDestinationTopicContainer).onApplicationEvent(null);
+		given(applicationContext.getId()).willReturn("the-context_id");
+		((DefaultDestinationTopicResolver) defaultDestinationTopicContainer)
+				.onApplicationEvent(new ContextRefreshedEvent(applicationContext));
 		assertThatIllegalStateException().isThrownBy(() ->
 				defaultDestinationTopicContainer.addDestinationTopics(Collections.emptyList()));
 	}
+
+	@Test
+	void shouldCloseContainerOnContextRefresh() {
+		given(applicationContext.getId()).willReturn("the-context_id");
+		((DefaultDestinationTopicResolver) defaultDestinationTopicContainer)
+				.onApplicationEvent(new ContextRefreshedEvent(applicationContext));
+		assertThat(((DefaultDestinationTopicResolver) defaultDestinationTopicContainer).isContainerClosed()).isTrue();
+	}
+
+	@Test
+	void shouldNotCloseContainerOnOtherContextRefresh() {
+		given(applicationContext.getId()).willReturn("the-context_id");
+		given(otherApplicationContext.getId()).willReturn("other-context_id");
+		((DefaultDestinationTopicResolver) defaultDestinationTopicContainer)
+				.onApplicationEvent(new ContextRefreshedEvent(otherApplicationContext));
+		assertThat(((DefaultDestinationTopicResolver) defaultDestinationTopicContainer).isContainerClosed()).isFalse();
+	}
+
 }

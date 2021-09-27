@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
@@ -56,9 +57,12 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 
 	private final Clock clock;
 
+	private final ApplicationContext applicationContext;
+
 	private boolean containerClosed;
 
-	public DefaultDestinationTopicResolver(Clock clock) {
+	public DefaultDestinationTopicResolver(Clock clock, ApplicationContext applicationContext) {
+		this.applicationContext = applicationContext;
 		this.clock = clock;
 		this.sourceDestinationsHolderMap = new HashMap<>();
 		this.destinationsTopicMap = new HashMap<>();
@@ -170,7 +174,13 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent event) {
-		this.containerClosed = true;
+		if (Objects.equals(event.getApplicationContext().getId(), this.applicationContext.getId())) {
+			this.containerClosed = true;
+		}
+	}
+
+	public boolean isContainerClosed() {
+		return this.containerClosed;
 	}
 
 	public static class DestinationTopicHolder {
