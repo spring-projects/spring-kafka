@@ -60,14 +60,14 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 
 	private final ApplicationContext applicationContext;
 
-	private boolean containerClosed;
+	private boolean contextRefreshed;
 
 	public DefaultDestinationTopicResolver(Clock clock, ApplicationContext applicationContext) {
 		this.applicationContext = applicationContext;
 		this.clock = clock;
 		this.sourceDestinationsHolderMap = new HashMap<>();
 		this.destinationsTopicMap = new HashMap<>();
-		this.containerClosed = false;
+		this.contextRefreshed = false;
 	}
 
 	@Override
@@ -127,7 +127,7 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 	}
 
 	private DestinationTopicHolder getDestinationHolderFor(String topic) {
-		return this.containerClosed
+		return this.contextRefreshed
 				? doGetDestinationFor(topic)
 				: getDestinationTopicSynchronized(topic);
 	}
@@ -145,9 +145,9 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 
 	@Override
 	public void addDestinationTopics(List<DestinationTopic> destinationsToAdd) {
-		if (this.containerClosed) {
+		if (this.contextRefreshed) {
 			throw new IllegalStateException("Cannot add new destinations, "
-					+ DefaultDestinationTopicResolver.class.getSimpleName() + " is already closed.");
+					+ DefaultDestinationTopicResolver.class.getSimpleName() + " is already refreshed.");
 		}
 		synchronized (this.sourceDestinationsHolderMap) {
 			this.destinationsTopicMap.putAll(destinationsToAdd
@@ -175,13 +175,18 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent event) {
-		if (Objects.equals(event.getApplicationContext().getId(), this.applicationContext.getId())) {
-			this.containerClosed = true;
+		if (Objects.equals(event.getApplicationContext(), this.applicationContext)) {
+			this.contextRefreshed = true;
 		}
 	}
 
-	public boolean isContainerClosed() {
-		return this.containerClosed;
+	/**
+	 * Return true if the application context is refreshed.
+	 * @return true if refreshed.
+	 * @since 2.7.8
+	 */
+	public boolean isContextRefreshed() {
+		return this.contextRefreshed;
 	}
 
 	public static class DestinationTopicHolder {

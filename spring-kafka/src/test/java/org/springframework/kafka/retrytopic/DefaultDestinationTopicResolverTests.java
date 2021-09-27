@@ -19,7 +19,6 @@ package org.springframework.kafka.retrytopic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
-import static org.mockito.BDDMockito.given;
 
 import java.math.BigInteger;
 import java.time.Clock;
@@ -167,7 +166,6 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 
 	@Test
 	void shouldThrowIfAddsDestinationsAfterClosed() {
-		given(applicationContext.getId()).willReturn("the-context_id");
 		((DefaultDestinationTopicResolver) defaultDestinationTopicContainer)
 				.onApplicationEvent(new ContextRefreshedEvent(applicationContext));
 		assertThatIllegalStateException().isThrownBy(() ->
@@ -176,19 +174,16 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 
 	@Test
 	void shouldCloseContainerOnContextRefresh() {
-		given(applicationContext.getId()).willReturn("the-context_id");
 		((DefaultDestinationTopicResolver) defaultDestinationTopicContainer)
 				.onApplicationEvent(new ContextRefreshedEvent(applicationContext));
-		assertThat(((DefaultDestinationTopicResolver) defaultDestinationTopicContainer).isContainerClosed()).isTrue();
+		assertThat(((DefaultDestinationTopicResolver) defaultDestinationTopicContainer).isContextRefreshed()).isTrue();
 	}
 
 	@Test
-	void shouldNotCloseContainerOnOtherContextRefresh() {
-		given(applicationContext.getId()).willReturn("the-context_id");
-		given(otherApplicationContext.getId()).willReturn("other-context_id");
+	void shouldNotMarkContainerRefeshedOnOtherContextRefresh() {
 		((DefaultDestinationTopicResolver) defaultDestinationTopicContainer)
 				.onApplicationEvent(new ContextRefreshedEvent(otherApplicationContext));
-		assertThat(((DefaultDestinationTopicResolver) defaultDestinationTopicContainer).isContainerClosed()).isFalse();
+		assertThat(((DefaultDestinationTopicResolver) defaultDestinationTopicContainer).isContextRefreshed()).isFalse();
 	}
 
 }
