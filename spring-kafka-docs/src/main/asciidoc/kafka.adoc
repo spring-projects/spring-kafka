@@ -4136,6 +4136,8 @@ Alternatively, as long as you don't use the fluent API to configure properties, 
 [[delegating-serialization]]
 ===== Delegating Serializer and Deserializer
 
+===== Using Headers
+
 Version 2.3 introduced the `DelegatingSerializer` and `DelegatingDeserializer`, which allow producing and consuming records with different key and/or value types.
 Producers must set a header `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR` to a selector value that is used to select which serializer to use for the value and `DelegatingSerializer.KEY_SERIALIZATION_SELECTOR` for the key; if a match is not found, an `IllegalStateException` is thrown.
 
@@ -4178,14 +4180,54 @@ For another technique to send different types to different topics, see <<routing
 ----
 @Bean
 public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> config) {
-	return new DefaultKafkaProducerFactory<>(config,
-			null, new DelegatingByTypeSerializer(Map.of(
-					byte[].class, new ByteArraySerializer(),
-					Bytes.class, new BytesSerializer(),
-					String.class, new StringSerializer())));
+    return new DefaultKafkaProducerFactory<>(config,
+            null, new DelegatingByTypeSerializer(Map.of(
+                    byte[].class, new ByteArraySerializer(),
+                    Bytes.class, new BytesSerializer(),
+                    String.class, new StringSerializer())));
 }
 ----
 ====
+
+===== By Topic
+
+Starting with version 2.8, the `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` allow selection of a serializer/deserializer based on the topic name.
+Regex `Pattern` s are used to lookup the instance to use.
+The map can be configured using a constructor, or via properties (a comma delimited list of `pattern:serializer`).
+
+====
+[source, java]
+----
+producerConfigs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG,
+            "topic[0-4]:" + ByteArraySerializer.class.getName()
+        + ", topic[5-9]:" + StringSerializer.class.getName());
+...
+ConsumerConfigs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG,
+            "topic[0-4]:" + ByteArrayDeserializer.class.getName()
+        + ", topic[5-9]:" + StringDeserializer.class.getName());
+----
+====
+
+Similar configuration is available for the deserializer.
+
+Use `KEY_SERIALIZATION_TOPIC_CONFIG` when using this for keys.
+
+====
+[source, java]
+----
+@Bean
+public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> config) {
+    return new DefaultKafkaProducerFactory<>(config,
+            new DelegatingByTopicSerializer(Map.of(
+                    Pattern.compile(".*"), new StringSerializer())),
+            new DelegatingByTopicSerializer(Map.of(
+                    Pattern.compile("topic[0-4]"), new ByteArraySerializer(),
+                    Pattern.compile("topic[5-9]"), new StringSerializer())));
+}
+----
+====
+
+An additional property `DelegatingByTopicSerializer.CASE_SENSITIVE` (default `true`), when set to `false` makes the topic lookup case insensitive.
 
 [[retrying-deserialization]]
 ===== Retrying Deserializer
@@ -4261,7 +4303,7 @@ For convenience, starting with version 2.3, the framework also provides a `Strin
 
 Starting with version 2.7.1, message payload conversion can be delegated to a `spring-messaging` `SmartMessageConverter`; this enables conversion, for example, to be based on the `MessageHeaders.CONTENT_TYPE` header.
 
-IMPORTANT:	The `KafkaMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
+IMPORTANT:    The `KafkaMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
 The `KafkaMessageConverter.toMessage()` method is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
 The `SmartMessageConverter.toMessage()` method is called to create a new outbound `Message<?>` from the `Message` passed to`fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
 Similarly, in the `KafkaMessageConverter.toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
@@ -5065,13 +5107,13 @@ The error handler can be configured with one or more `RetryListener` s, receivin
 @FunctionalInterface
 public interface RetryListener {
 
-	void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
+    void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
 
-	default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
-	}
+    default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+    }
 
-	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
-	}
+    default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+    }
 
 }
 ----
@@ -5322,13 +5364,13 @@ Starting with version 2.7, the processor can be configured with one or more `Ret
 @FunctionalInterface
 public interface RetryListener {
 
-	void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
+    void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt);
 
-	default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
-	}
+    default void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+    }
 
-	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
-	}
+    default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+    }
 
 }
 ----

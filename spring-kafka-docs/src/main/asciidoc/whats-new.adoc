@@ -56,3 +56,9 @@ See <<error-handlers>> for more information.
 ==== Listener Container Changes
 
 The `interceptBeforeTx` container property is now `true` by default.
+
+[[x28-serializers]]
+==== Serializer/Deserializer Changes
+
+The `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` are now provided.
+See <<delegating-serialization>> for more information.
