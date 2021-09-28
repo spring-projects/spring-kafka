@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
@@ -46,24 +48,28 @@ public class DelegatingByTopicSerializationTests {
 		serializers.put("baz", StringSerializer.class);
 		configs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG, serializers);
 		configs.put(DelegatingByTopicSerializer.CASE_SENSITIVE, "false");
+		configs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_DEFAULT, ByteArraySerializer.class);
 		serializer.configure(configs, false);
-		assertThat(serializer.findSerializer("foo")).isInstanceOf(BytesSerializer.class);
-		assertThat(serializer.findSerializer("bar")).isInstanceOf(IntegerSerializer.class);
-		assertThat(serializer.findSerializer("baz")).isInstanceOf(StringSerializer.class);
-		assertThat(serializer.findSerializer("Foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("bar")).isInstanceOf(IntegerSerializer.class);
+		assertThat(serializer.findDelegate("baz")).isInstanceOf(StringSerializer.class);
+		assertThat(serializer.findDelegate("Foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("qux")).isInstanceOf(ByteArraySerializer.class);
 		DelegatingByTopicDeserializer deserializer = new DelegatingByTopicDeserializer();
 		Map<String, Object> deserializers = new HashMap<>();
 		deserializers.put("fo.*", new BytesDeserializer());
 		deserializers.put("bar", IntegerDeserializer.class);
 		deserializers.put("baz", StringDeserializer.class);
-		configs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG, deserializers);
-		configs.put(DelegatingByTopicSerializer.CASE_SENSITIVE, "false");
+		configs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_CONFIG, deserializers);
+		configs.put(DelegatingByTopicDeserializer.CASE_SENSITIVE, false);
+		configs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, false);
-		assertThat(deserializer.findDeserializer("foo")).isInstanceOf(BytesDeserializer.class);
-		assertThat(deserializer.findDeserializer("bar")).isInstanceOf(IntegerDeserializer.class);
-		assertThat(deserializer.findDeserializer("baz")).isInstanceOf(StringDeserializer.class);
+		assertThat(deserializer.findDelegate("foo")).isInstanceOf(BytesDeserializer.class);
+		assertThat(deserializer.findDelegate("bar")).isInstanceOf(IntegerDeserializer.class);
+		assertThat(deserializer.findDelegate("baz")).isInstanceOf(StringDeserializer.class);
 		assertThat(deserializer.deserialize("baz", null, serializer.serialize("baz", null, "qux"))).isEqualTo("qux");
-		assertThat(deserializer.findDeserializer("Foo")).isInstanceOf(BytesDeserializer.class);
+		assertThat(deserializer.findDelegate("Foo")).isInstanceOf(BytesDeserializer.class);
+		assertThat(deserializer.findDelegate("qux")).isInstanceOf(ByteArrayDeserializer.class);
 	}
 
 	@Test
@@ -72,15 +78,21 @@ public class DelegatingByTopicSerializationTests {
 		Map<String, Object> configs = new HashMap<>();
 		configs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG, "fo*:" + BytesSerializer.class.getName()
 				+ ", bar:" + IntegerSerializer.class.getName() + ", baz: " + StringSerializer.class.getName());
+		configs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_DEFAULT, ByteArraySerializer.class);
 		serializer.configure(configs, false);
-		assertThat(serializer.findSerializer("foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("bar")).isInstanceOf(IntegerSerializer.class);
+		assertThat(serializer.findDelegate("baz")).isInstanceOf(StringSerializer.class);
+		assertThat(serializer.findDelegate("qux")).isInstanceOf(ByteArraySerializer.class);
 		DelegatingByTopicDeserializer deserializer = new DelegatingByTopicDeserializer();
-		configs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG, "fo*:" + BytesDeserializer.class.getName()
+		configs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_CONFIG, "fo*:" + BytesDeserializer.class.getName()
 				+ ", bar:" + IntegerDeserializer.class.getName() + ", baz: " + StringDeserializer.class.getName());
+		configs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, false);
-		assertThat(deserializer.findDeserializer("foo")).isInstanceOf(BytesDeserializer.class);
-		assertThat(deserializer.findDeserializer("bar")).isInstanceOf(IntegerDeserializer.class);
-		assertThat(deserializer.findDeserializer("baz")).isInstanceOf(StringDeserializer.class);
+		assertThat(deserializer.findDelegate("foo")).isInstanceOf(BytesDeserializer.class);
+		assertThat(deserializer.findDelegate("bar")).isInstanceOf(IntegerDeserializer.class);
+		assertThat(deserializer.findDelegate("baz")).isInstanceOf(StringDeserializer.class);
+		assertThat(deserializer.findDelegate("qux")).isInstanceOf(ByteArrayDeserializer.class);
 	}
 
 	@Test
@@ -92,21 +104,25 @@ public class DelegatingByTopicSerializationTests {
 		serializers.put("bar", IntegerSerializer.class);
 		serializers.put("baz", StringSerializer.class);
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_CONFIG, serializers);
+		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArraySerializer.class);
 		serializer.configure(configs, true);
-		assertThat(serializer.findSerializer("foo")).isInstanceOf(BytesSerializer.class);
-		assertThat(serializer.findSerializer("bar")).isInstanceOf(IntegerSerializer.class);
-		assertThat(serializer.findSerializer("baz")).isInstanceOf(StringSerializer.class);
+		assertThat(serializer.findDelegate("foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("bar")).isInstanceOf(IntegerSerializer.class);
+		assertThat(serializer.findDelegate("baz")).isInstanceOf(StringSerializer.class);
+		assertThat(serializer.findDelegate("qux")).isInstanceOf(ByteArraySerializer.class);
 		DelegatingByTopicDeserializer deserializer = new DelegatingByTopicDeserializer();
 		Map<String, Object> deserializers = new HashMap<>();
 		deserializers.put("fo.*", new BytesDeserializer());
 		deserializers.put("bar", IntegerDeserializer.class);
 		deserializers.put("baz", StringDeserializer.class);
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_CONFIG, deserializers);
+		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, true);
-		assertThat(deserializer.findDeserializer("foo")).isInstanceOf(BytesDeserializer.class);
-		assertThat(deserializer.findDeserializer("bar")).isInstanceOf(IntegerDeserializer.class);
-		assertThat(deserializer.findDeserializer("baz")).isInstanceOf(StringDeserializer.class);
+		assertThat(deserializer.findDelegate("foo")).isInstanceOf(BytesDeserializer.class);
+		assertThat(deserializer.findDelegate("bar")).isInstanceOf(IntegerDeserializer.class);
+		assertThat(deserializer.findDelegate("baz")).isInstanceOf(StringDeserializer.class);
 		assertThat(deserializer.deserialize("baz", null, serializer.serialize("baz", null, "qux"))).isEqualTo("qux");
+		assertThat(deserializer.findDelegate("qux")).isInstanceOf(ByteArrayDeserializer.class);
 	}
 
 	@Test
@@ -115,15 +131,21 @@ public class DelegatingByTopicSerializationTests {
 		Map<String, Object> configs = new HashMap<>();
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_CONFIG, "fo*:" + BytesSerializer.class.getName()
 				+ ", bar:" + IntegerSerializer.class.getName() + ", baz: " + StringSerializer.class.getName());
+		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArraySerializer.class);
 		serializer.configure(configs, true);
-		assertThat(serializer.findSerializer("foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("foo")).isInstanceOf(BytesSerializer.class);
+		assertThat(serializer.findDelegate("bar")).isInstanceOf(IntegerSerializer.class);
+		assertThat(serializer.findDelegate("baz")).isInstanceOf(StringSerializer.class);
+		assertThat(serializer.findDelegate("qux")).isInstanceOf(ByteArraySerializer.class);
 		DelegatingByTopicDeserializer deserializer = new DelegatingByTopicDeserializer();
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_CONFIG, "fo*:" + BytesDeserializer.class.getName()
 				+ ", bar:" + IntegerDeserializer.class.getName() + ", baz: " + StringDeserializer.class.getName());
+		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, true);
-		assertThat(deserializer.findDeserializer("foo")).isInstanceOf(BytesDeserializer.class);
-		assertThat(deserializer.findDeserializer("bar")).isInstanceOf(IntegerDeserializer.class);
-		assertThat(deserializer.findDeserializer("baz")).isInstanceOf(StringDeserializer.class);
+		assertThat(deserializer.findDelegate("foo")).isInstanceOf(BytesDeserializer.class);
+		assertThat(deserializer.findDelegate("bar")).isInstanceOf(IntegerDeserializer.class);
+		assertThat(deserializer.findDelegate("baz")).isInstanceOf(StringDeserializer.class);
+		assertThat(deserializer.findDelegate("qux")).isInstanceOf(ByteArrayDeserializer.class);
 	}
 
 }

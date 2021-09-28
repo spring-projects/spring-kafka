@@ -4202,13 +4202,11 @@ producerConfigs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG
             "topic[0-4]:" + ByteArraySerializer.class.getName()
         + ", topic[5-9]:" + StringSerializer.class.getName());
 ...
-ConsumerConfigs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG,
+ConsumerConfigs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_CONFIG,
             "topic[0-4]:" + ByteArrayDeserializer.class.getName()
         + ", topic[5-9]:" + StringDeserializer.class.getName());
 ----
 ====
-
-Similar configuration is available for the deserializer.
 
 Use `KEY_SERIALIZATION_TOPIC_CONFIG` when using this for keys.
 
@@ -4218,16 +4216,18 @@ Use `KEY_SERIALIZATION_TOPIC_CONFIG` when using this for keys.
 @Bean
 public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> config) {
     return new DefaultKafkaProducerFactory<>(config,
-            new DelegatingByTopicSerializer(Map.of(
-                    Pattern.compile(".*"), new StringSerializer())),
+            null,
             new DelegatingByTopicSerializer(Map.of(
                     Pattern.compile("topic[0-4]"), new ByteArraySerializer(),
-                    Pattern.compile("topic[5-9]"), new StringSerializer())));
+                    Pattern.compile("topic[5-9]"), new StringSerializer())),
+                    new JsonSerializer<Object>());  // default
 }
 ----
 ====
 
-An additional property `DelegatingByTopicSerializer.CASE_SENSITIVE` (default `true`), when set to `false` makes the topic lookup case insensitive.
+You can specify a default serializer/deserializer to use when there is no pattern match using `DelegatingByTopicSerialization.KEY_SERIALIZATION_TOPIC_DEFAULT` and `DelegatingByTopicSerialization.VALUE_SERIALIZATION_TOPIC_DEFAULT`.
+
+An additional property `DelegatingByTopicSerialization.CASE_SENSITIVE` (default `true`), when set to `false` makes the topic lookup case insensitive.
 
 [[retrying-deserialization]]
 ===== Retrying Deserializer
