@@ -3555,7 +3555,7 @@ Starting with version 2.6, the default `EOSMode` is `V2`.
 
 To configure the container to use mode `ALPHA`, set the container property `EOSMode` to `ALPHA`, to revert to the previous behavior.
 
-IMPORTANT: With `V2` (default), your brokers must be version 2.5 or later; `kafka-clients` version 3.0, the producer will no lomger fall back to `V1`; if the broker does not support `V2`, an exception is thrown.
+IMPORTANT: With `V2` (default), your brokers must be version 2.5 or later; `kafka-clients` version 3.0, the producer will no longer fall back to `V1`; if the broker does not support `V2`, an exception is thrown.
 If your brokers are earlier than 2.5, you must set the `EOSMode` to `V1`, leave the `DefaultKafkaProducerFactory` `producerPerConsumerPartition` set to `true` and, if you are using a batch listener, you should set `subBatchPerPartition` to `true`.
 
 When your brokers are upgraded to 2.5 or later, you should switch the mode to `V2`, but the number of producers will remain as before.
