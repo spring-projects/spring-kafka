@@ -592,7 +592,7 @@ public class KRequestingApplication {
             ConcurrentKafkaListenerContainerFactory<String, String> containerFactory) {
 
         ConcurrentMessageListenerContainer<String, String> repliesContainer =
-                containerFactory.createContainer("replies");
+                containerFactory.createContainer("kReplies");
         repliesContainer.getContainerProperties().setGroupId("repliesGroup");
         repliesContainer.setAutoStartup(false);
         return repliesContainer;
