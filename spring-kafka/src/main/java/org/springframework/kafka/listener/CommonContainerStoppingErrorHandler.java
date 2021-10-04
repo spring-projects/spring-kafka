@@ -84,7 +84,8 @@ public class CommonContainerStoppingErrorHandler extends KafkaExceptionLogLevelA
 	}
 
 	private void stopContainer(MessageListenerContainer container, Exception thrownException) {
-		this.executor.execute(() -> container.stop());
+		this.executor.execute(() -> container.stopAbnormally(() -> {
+		}));
 		// isRunning is false before the container.stop() waits for listener thread
 		try {
 			ListenerUtils.stoppableSleep(container, 10_000); // NOSONAR

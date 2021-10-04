@@ -113,6 +113,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
 
+	private volatile boolean stoppedNormally = true;
+
 	/**
 	 * Construct an instance with the provided factory and properties.
 	 * @param consumerFactory the factory.
@@ -256,6 +258,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	public void setCommonErrorHandler(@Nullable CommonErrorHandler commonErrorHandler) {
 		this.commonErrorHandler = commonErrorHandler;
+	}
+
+	protected boolean isStoppedNormally() {
+		return this.stoppedNormally;
+	}
+
+	protected void setStoppedNormally(boolean stoppedNormally) {
+		this.stoppedNormally = stoppedNormally;
 	}
 
 	@Override
@@ -532,7 +542,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		synchronized (this.lifecycleMonitor) {
 			if (isRunning()) {
 				doStop(callback);
-				publishContainerStoppedEvent();
 			}
 			else {
 				callback.run();
@@ -540,7 +549,24 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		}
 	}
 
-	protected abstract void doStop(Runnable callback);
+	@Override
+	public void stopAbnormally(Runnable callback) {
+		doStop(callback, false);
+		publishContainerStoppedEvent();
+	}
+
+	protected void doStop(Runnable callback) {
+		doStop(callback, true);
+		publishContainerStoppedEvent();
+	}
+
+	/**
+	 * Stop the container normally or abnormally.
+	 * @param callback the callback.
+	 * @param normal true for an expected stop.
+	 * @since 2.8
+	 */
+	protected abstract void doStop(Runnable callback, boolean normal);
 
 	/**
 	 * Return default implementation of {@link ConsumerRebalanceListener} instance.

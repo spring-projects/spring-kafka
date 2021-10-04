@@ -202,4 +202,27 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	default boolean isChildRunning() {
 		return isRunning();
 	}
+
+	/**
+	 * Return true if the container is running, has never been started, or has been
+	 * stopped.
+	 * @return true if the state is as expected.
+	 * @since 2.8
+	 * @see #stopAbnormally(Runnable)
+	 */
+	default boolean isInExpectedState() {
+		return true;
+	}
+
+	/**
+	 * Stop the container after some exception so that {@link #isInExpectedState()} will
+	 * return false.
+	 * @param callback the callback.
+	 * @since 2.8
+	 * @see #isInExpectedState()
+ 	 */
+	default void stopAbnormally(Runnable callback) {
+		stop(callback);
+	}
+
 }

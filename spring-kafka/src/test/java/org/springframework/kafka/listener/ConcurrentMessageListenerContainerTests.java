@@ -149,7 +149,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.setConcurrency(2);
 		container.setBeanName("testAuto");
 		List<KafkaEvent> events = new ArrayList<>();
-		CountDownLatch stopLatch = new CountDownLatch(3);
+		CountDownLatch stopLatch = new CountDownLatch(4);
 		container.setApplicationEventPublisher(e -> {
 			events.add((KafkaEvent) e);
 			if (e instanceof ContainerStoppedEvent) {
@@ -193,8 +193,13 @@ public class ConcurrentMessageListenerContainerTests {
 		}
 		assertThat(container.metrics()).isNotNull();
 		Set<KafkaMessageListenerContainer<Integer, String>> children = new HashSet<>(containers);
+		assertThat(container.isInExpectedState()).isTrue();
+		container.getContainers().get(0).stopAbnormally(() -> { });
+		assertThat(container.isInExpectedState()).isFalse();
+		container.getContainers().get(0).start();
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isTrue();
 		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
 		events.forEach(e -> {
 			assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);

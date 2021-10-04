@@ -227,10 +227,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		container.setBatchInterceptor(getBatchInterceptor());
 		container.setInterceptBeforeTx(isInterceptBeforeTx());
 		container.setEmergencyStop(() -> {
-			stop(() -> {
-				// NOSONAR
+			stopAbnormally(() -> {
 			});
-			publishContainerStoppedEvent();
 		});
 	}
 
@@ -276,7 +274,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * Under lifecycle lock.
 	 */
 	@Override
-	protected void doStop(final Runnable callback) {
+	protected void doStop(final Runnable callback, boolean normal) {
 		final AtomicInteger count = new AtomicInteger();
 		if (isRunning()) {
 			boolean childRunning = isChildRunning();
@@ -291,14 +289,24 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				if (container.isRunning()) {
-					container.stop(() -> {
-						if (count.decrementAndGet() <= 0) {
-							callback.run();
-						}
-					});
+					if (normal) {
+						container.stop(() -> {
+							if (count.decrementAndGet() <= 0) {
+								callback.run();
+							}
+						});
+					}
+					else {
+						container.stopAbnormally(() -> {
+							if (count.decrementAndGet() <= 0) {
+								callback.run();
+							}
+						});
+					}
 				}
 			}
 			this.containers.clear();
+			setStoppedNormally(normal);
 		}
 	}
 
@@ -346,6 +354,14 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				.containers
 				.stream()
 				.anyMatch(container -> container.isPartitionPaused(topicPartition));
+	}
+
+	@Override
+	public boolean isInExpectedState() {
+		return (isRunning() || isStoppedNormally()) && this.containers
+				.stream()
+				.map(container -> container.isInExpectedState())
+				.allMatch(bool -> Boolean.TRUE.equals(bool));
 	}
 
 	private boolean containsPartition(TopicPartition topicPartition, KafkaMessageListenerContainer<K, V> container) {

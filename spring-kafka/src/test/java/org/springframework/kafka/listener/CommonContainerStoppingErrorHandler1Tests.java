@@ -116,6 +116,7 @@ public class CommonContainerStoppingErrorHandler1Tests {
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
 				{ "foo", "bar", "baz", "qux" });
+		assertThat(container.isInExpectedState()).isFalse();
 	}
 
 	@Configuration

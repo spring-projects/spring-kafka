@@ -160,7 +160,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private String clientIdSuffix;
 
-	private Runnable emergencyStop = () -> stop(() -> {
+	private Runnable emergencyStop = () -> stopAbnormally(() -> {
 		// NOSONAR
 	});
 
@@ -288,6 +288,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	@Override
+	public boolean isInExpectedState() {
+		return isRunning() || isStoppedNormally();
+	}
+
+	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		ListenerConsumer listenerConsumerForMetrics = this.listenerConsumer;
 		if (listenerConsumerForMetrics != null) {
@@ -360,11 +365,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	@Override
-	protected void doStop(final Runnable callback) {
+	protected void doStop(final Runnable callback, boolean normal) {
 		if (isRunning()) {
 			this.listenerConsumerFuture.addCallback(new StopCallback(callback));
 			setRunning(false);
 			this.listenerConsumer.wakeIfNecessary();
+			setStoppedNormally(normal);
 		}
 	}
 
