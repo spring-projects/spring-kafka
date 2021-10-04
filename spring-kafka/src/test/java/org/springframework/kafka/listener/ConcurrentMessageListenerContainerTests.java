@@ -181,6 +181,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
 		for (String threadName : listenerThreadNames) {
 			assertThat(threadName).contains("-C-");
 		}
@@ -200,7 +201,6 @@ public class ConcurrentMessageListenerContainerTests {
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isInExpectedState()).isTrue();
-		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
 		events.forEach(e -> {
 			assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
 			if (e instanceof ContainerStoppedEvent) {
