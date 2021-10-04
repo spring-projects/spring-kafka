@@ -40,6 +40,8 @@ public class CommonContainerStoppingErrorHandler extends KafkaExceptionLogLevelA
 
 	private final Executor executor;
 
+	private boolean stopContainerAbnormally = true;
+
 	/**
 	 * Construct an instance with a default {@link SimpleAsyncTaskExecutor}.
 	 */
@@ -54,6 +56,18 @@ public class CommonContainerStoppingErrorHandler extends KafkaExceptionLogLevelA
 	public CommonContainerStoppingErrorHandler(Executor executor) {
 		Assert.notNull(executor, "'executor' cannot be null");
 		this.executor = executor;
+	}
+
+	/**
+	 * Set to false to stop the container normally. By default, the container is stopped
+	 * abnormally, so that {@code container.isInExpectedState()} returns false. If you
+	 * want to container to remain "healthy" when using this error handler, set the
+	 * property to false.
+	 * @param stopContainerAbnormally false for normal stop.
+	 * @since 2.8
+	 */
+	public void setStopContainerAbnormally(boolean stopContainerAbnormally) {
+		this.stopContainerAbnormally = stopContainerAbnormally;
 	}
 
 	@Override
@@ -84,8 +98,16 @@ public class CommonContainerStoppingErrorHandler extends KafkaExceptionLogLevelA
 	}
 
 	private void stopContainer(MessageListenerContainer container, Exception thrownException) {
-		this.executor.execute(() -> container.stopAbnormally(() -> {
-		}));
+		this.executor.execute(() -> {
+			if (this.stopContainerAbnormally) {
+				container.stopAbnormally(() -> {
+				});
+			}
+			else {
+				container.stop(() -> {
+				});
+			}
+		});
 		// isRunning is false before the container.stop() waits for listener thread
 		try {
 			ListenerUtils.stoppableSleep(container, 10_000); // NOSONAR

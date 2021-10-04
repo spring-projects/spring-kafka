@@ -104,6 +104,7 @@ public class CommonContainerStoppingErrorHandler2Tests {
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
 				{ "foo", "bar", "baz", "qux" });
+		assertThat(container.isInExpectedState()).isTrue();
 	}
 
 	@Configuration
@@ -202,6 +203,8 @@ public class CommonContainerStoppingErrorHandler2Tests {
 				@Override
 				public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 						Consumer<?, ?> consumer, MessageListenerContainer container) {
+
+					setStopContainerAbnormally(false);
 					RuntimeException exception = null;
 					try {
 						super.handleRemaining(thrownException, records, consumer, container);
