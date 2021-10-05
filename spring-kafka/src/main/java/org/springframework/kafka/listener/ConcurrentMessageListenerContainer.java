@@ -214,9 +214,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private void configureChildContainer(int index, KafkaMessageListenerContainer<K, V> container) {
 		String beanName = getBeanName();
-		if (beanName == null) {
-			beanName = "consumer" + "-" + index;
-		}
+		beanName = (beanName == null ? "consumer" : beanName) + "-" + index;
 		container.setBeanName(beanName);
 		ApplicationContext applicationContext = getApplicationContext();
 		if (applicationContext != null) {
@@ -243,7 +241,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				exec = this.executors.get(index);
 			}
 			else {
-				exec = new SimpleAsyncTaskExecutor(beanName);
+				exec = new SimpleAsyncTaskExecutor(beanName + "-C-");
 				this.executors.add(exec);
 			}
 			container.getContainerProperties().setConsumerTaskExecutor(exec);
