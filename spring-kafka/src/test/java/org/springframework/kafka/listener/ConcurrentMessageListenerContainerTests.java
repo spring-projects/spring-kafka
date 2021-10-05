@@ -79,7 +79,8 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 		ConcurrentMessageListenerContainerTests.topic6, ConcurrentMessageListenerContainerTests.topic7,
 		ConcurrentMessageListenerContainerTests.topic8, ConcurrentMessageListenerContainerTests.topic9,
 		ConcurrentMessageListenerContainerTests.topic10, ConcurrentMessageListenerContainerTests.topic11,
-		ConcurrentMessageListenerContainerTests.topic12 })
+		ConcurrentMessageListenerContainerTests.topic12 },
+			brokerProperties = "group.initial.rebalance.delay.ms:500")
 public class ConcurrentMessageListenerContainerTests {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass()));
@@ -321,6 +322,19 @@ public class ConcurrentMessageListenerContainerTests {
 			latch.countDown();
 		});
 
+		Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
+		CountDownLatch rebalLatch = new CountDownLatch(5);
+		containerProps.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
+
+			@Override
+			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+				if (listenerThreadNames.add(Thread.currentThread().getName())) {
+					rebalLatch.countDown();
+				}
+			}
+
+		});
+
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setConcurrency(2);
@@ -340,8 +354,15 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		container.stop();
-		this.logger.info("Stop manual");
+		container.setConcurrency(3);
+		container.start();
+		assertThat(rebalLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		assertThat(listenerThreadNames)
+				.extracting(str -> str.substring(str.length() - 5))
+				.containsExactlyInAnyOrder("0-C-1", "1-C-1", "0-C-2", "1-C-2", "2-C-1");
 		assertThat(overrides.get().getProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)).isEqualTo("false");
+		this.logger.info("Stop manual");
 	}
 
 	@Test
