@@ -151,7 +151,7 @@ public class MyTests {
 By default, `addTopics` will throw an exception when problems arise (such as adding a topic that already exists).
 Version 2.6 added a new version of that method that returns a `Map<String, Exception>`; the key is the topic name and the value is `null` for success, or an `Exception` for a failure.
 
-==== Using the Same Brokers for Multiple Test Classes
+==== Using the Same Broker(s) for Multiple Test Classes
 
 There is no built-in support for doing so, but you can use the same broker for multiple test classes with something similar to the following:
 
@@ -160,17 +160,18 @@ There is no built-in support for doing so, but you can use the same broker for m
 ----
 public final class EmbeddedKafkaHolder {
 
-    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false);
+    private static EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(1, false)
+            .brokerListProperty("spring.kafka.bootstrap-servers");
 
     private static boolean started;
 
-    public static EmbeddedKafkaRule getEmbeddedKafka() {
+    public static EmbeddedKafkaBroker getEmbeddedKafka() {
         if (!started) {
             try {
-                embeddedKafka.before();
+                embeddedKafka.afterPropertiesSet();
             }
             catch (Exception e) {
-                throw new KafkaException(e);
+                throw new KafkaException("Embedded broker failed to start", e);
             }
             started = true;
         }
@@ -185,20 +186,24 @@ public final class EmbeddedKafkaHolder {
 ----
 ====
 
+This assumes a Spring Boot environment and the embedded broker replaces the bootstrap servers property.
+
 Then, in each test class, you can use something similar to the following:
 
 ====
 [source, java]
 ----
 static {
-    EmbeddedKafkaHolder.getEmbeddedKafka().addTopics(topic1, topic2);
+    EmbeddedKafkaHolder.getEmbeddedKafka().addTopics("topic1", "topic2");
 }
 
-private static EmbeddedKafkaRule embeddedKafka = EmbeddedKafkaHolder.getEmbeddedKafka();
+private static final EmbeddedKafkaBroker broker = EmbeddedKafkaHolder.getEmbeddedKafka();
 ----
 ====
 
-IMPORTANT: The preceding example provides no mechanism for shutting down the brokers when all tests are complete.
+If you are not using Spring Boot, you can obtain the bootstrap servers using `broker.getBrokersAsString()`.
+
+IMPORTANT: The preceding example provides no mechanism for shutting down the broker(s) when all tests are complete.
 This could be a problem if, say, you run your tests in a Gradle daemon.
 You should not use this technique in such a situation, or you should use something to call `destroy()` on the `EmbeddedKafkaBroker` when your tests are complete.
 
@@ -293,11 +298,11 @@ When *not* using the spring test context, the `EmbdeddedKafkaCondition` creates 
 @EmbeddedKafka
 public class EmbeddedKafkaConditionTests {
 
-	@Test
-	public void test(EmbeddedKafkaBroker broker) {
-		String brokerList = broker.getBrokersAsString();
+    @Test
+    public void test(EmbeddedKafkaBroker broker) {
+        String brokerList = broker.getBrokersAsString();
         ...
-	}
+    }
 
 }
 ----
