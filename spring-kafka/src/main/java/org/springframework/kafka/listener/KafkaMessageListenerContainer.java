@@ -293,6 +293,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	@Override
+	public void pause() {
+		super.pause();
+		KafkaMessageListenerContainer<K, V>.ListenerConsumer consumer = this.listenerConsumer;
+		if (consumer != null) {
+			consumer.wakeIfNecessary();
+		}
+	}
+
+	@Override
+	public void resume() {
+		super.resume();
+		KafkaMessageListenerContainer<K, V>.ListenerConsumer consumer = this.listenerConsumer;
+		if (consumer != null) {
+			this.listenerConsumer.wakeIfNecessary();
+		}
+	}
+
+	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		ListenerConsumer listenerConsumerForMetrics = this.listenerConsumer;
 		if (listenerConsumerForMetrics != null) {
@@ -369,7 +387,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		if (isRunning()) {
 			this.listenerConsumerFuture.addCallback(new StopCallback(callback));
 			setRunning(false);
-			this.listenerConsumer.wakeIfNecessary();
+			this.listenerConsumer.wakeIfNecessaryForStop();
 			setStoppedNormally(normal);
 		}
 	}
@@ -1303,7 +1321,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ConsumerRecords<K, V> records = doPoll();
 			if (!this.polling.compareAndSet(true, false) && records != null) {
 				/*
-				 * There is a small race condition where wakeIfNecessary was called between
+				 * There is a small race condition where wakeIfNecessaryForStop was called between
 				 * exiting the poll and before we reset the boolean.
 				 */
 				if (records.count() > 0) {
@@ -1521,8 +1539,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		void wakeIfNecessary() {
+		void wakeIfNecessaryForStop() {
 			if (this.polling.getAndSet(false)) {
+				this.consumer.wakeup();
+			}
+		}
+
+		void wakeIfNecessary() {
+			if (this.polling.get()) {
 				this.consumer.wakeup();
 			}
 		}
@@ -2427,7 +2451,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void nackSleepAndReset() {
 			try {
-				Thread.sleep(this.nackSleep);
+				ListenerUtils.stoppableSleep(KafkaMessageListenerContainer.this.thisOrParentContainer, this.nackSleep);
 			}
 			catch (@SuppressWarnings(UNUSED) InterruptedException e) {
 				Thread.currentThread().interrupt();
