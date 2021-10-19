@@ -532,6 +532,12 @@ public class MyCustomDltProcessor {
 
 NOTE: If no DLT handler is provided, the default RetryTopicConfigurer.LoggingDltListenerHandlerMethod is used.
 
+Starting with version 2.8, if you don't want to consume from the DLT in this application at all, including by the default handler (or you wish to defer consumption), you can control whether or not the DLT container starts, independent of the container factory's `autoStartup` property.
+
+When using the `@RetryableTopic` annotation, set the `autoStartDltHandler` property to `false`; when using the configuration builder, use `.autoStartDltHandler(false)` .
+
+You can later start the DLT handler via the `KafkaListenerEndpointRegistry`.
+
 ===== DLT Failure Behavior
 
 Should the DLT processing fail, there are two possible behaviors available: `ALWAYS_RETRY_ON_ERROR` and `FAIL_ON_ERROR`.

@@ -125,6 +125,10 @@ public class RetryableTopicAnnotationProcessor {
 				traverse = includes.size() > 0 || excludes.size() > 0;
 			}
 		}
+		Boolean autoStartDlt = null;
+		if (StringUtils.hasText(annotation.autoStartDltHandler())) {
+			autoStartDlt = resolveExpressionAsBoolean(annotation.autoStartDltHandler(), "autoStartDltContainer");
+		}
 		return RetryTopicConfigurationBuilder.newInstance()
 				.maxAttempts(resolveExpressionAsInteger(annotation.attempts(), "attempts", true))
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
@@ -141,6 +145,7 @@ public class RetryableTopicAnnotationProcessor {
 				.traversingCauses(traverse)
 				.useSingleTopicForFixedDelays(annotation.fixedDelayTopicStrategy())
 				.dltProcessingFailureStrategy(annotation.dltStrategy())
+				.autoStartDltHandler(autoStartDlt)
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
 				.timeoutAfter(timeout)
 				.create(getKafkaTemplate(annotation.kafkaTemplate(), topics));

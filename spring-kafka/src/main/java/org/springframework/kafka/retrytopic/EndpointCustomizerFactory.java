@@ -31,6 +31,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
  * to customize the main, retry and DLT endpoints.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7.2
  *
  * @see RetryTopicConfigurer
@@ -74,6 +75,10 @@ public class EndpointCustomizerFactory {
 			endpoint.setGroup(namesProvider.getGroup(endpoint));
 			endpoint.setBean(bean);
 			endpoint.setMethod(method);
+			Boolean autoStartDltHandler = properties.autoStartDltHandler();
+			if (autoStartDltHandler != null && properties.isDltTopic()) {
+				endpoint.setAutoStartup(autoStartDltHandler);
+			}
 			return topics;
 		};
 	}

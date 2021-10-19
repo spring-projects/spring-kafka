@@ -20,12 +20,14 @@ import java.util.Objects;
 import java.util.function.BiPredicate;
 
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.lang.Nullable;
 
 /**
  *
  * Representation of a Destination Topic to which messages can be forwarded, such as retry topics and dlt.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */
@@ -135,11 +137,64 @@ public class DestinationTopic {
 
 		private final long timeout;
 
+		private final Boolean autoStartDltHandler;
+
+		/**
+		 * Create an instance with the provided properties with the DLT container starting
+		 * automatically (if the container factory is so configured).
+		 * @param delayMs the delay in ms.
+		 * @param suffix the suffix.
+		 * @param type the type.
+		 * @param maxAttempts the max attempts.
+		 * @param numPartitions the number of partitions.
+		 * @param dltStrategy the DLT strategy.
+		 * @param kafkaOperations the {@link KafkaOperations}.
+		 * @param shouldRetryOn the exception classifications.
+		 * @param timeout the timeout.
+		 */
 		public Properties(long delayMs, String suffix, Type type,
 						int maxAttempts, int numPartitions,
 						DltStrategy dltStrategy,
 						KafkaOperations<?, ?> kafkaOperations,
 						BiPredicate<Integer, Throwable> shouldRetryOn, long timeout) {
+
+			this(delayMs, suffix, type, maxAttempts, numPartitions, dltStrategy, kafkaOperations, shouldRetryOn,
+					timeout, null);
+		}
+
+		/**
+		 * Create an instance with the provided properties with the DLT container starting
+		 * automatically.
+		 * @param sourceProperties the source properties.
+		 * @param suffix the suffix.
+		 * @param type the type.
+		 */
+		public Properties(Properties sourceProperties, String suffix, Type type) {
+			this(sourceProperties.delayMs, suffix, type, sourceProperties.maxAttempts, sourceProperties.numPartitions,
+					sourceProperties.dltStrategy, sourceProperties.kafkaOperations, sourceProperties.shouldRetryOn,
+					sourceProperties.timeout, null);
+		}
+
+		/**
+		 * Create an instance with the provided properties.
+		 * @param delayMs the delay in ms.
+		 * @param suffix the suffix.
+		 * @param type the type.
+		 * @param maxAttempts the max attempts.
+		 * @param numPartitions the number of partitions.
+		 * @param dltStrategy the DLT strategy.
+		 * @param kafkaOperations the {@link KafkaOperations}.
+		 * @param shouldRetryOn the exception classifications.
+		 * @param timeout the timeout.
+		 * @param autoStartDltHandler whether or not to start the DLT handler.
+		 * @since 2.8
+		 */
+		public Properties(long delayMs, String suffix, Type type,
+				int maxAttempts, int numPartitions,
+				DltStrategy dltStrategy,
+				KafkaOperations<?, ?> kafkaOperations,
+				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler) {
+
 			this.delayMs = delayMs;
 			this.suffix = suffix;
 			this.type = type;
@@ -149,18 +204,7 @@ public class DestinationTopic {
 			this.kafkaOperations = kafkaOperations;
 			this.shouldRetryOn = shouldRetryOn;
 			this.timeout = timeout;
-		}
-
-		public Properties(Properties sourceProperties, String suffix, Type type) {
-			this.delayMs = sourceProperties.delayMs;
-			this.suffix = suffix;
-			this.type = type;
-			this.maxAttempts = sourceProperties.maxAttempts;
-			this.numPartitions = sourceProperties.numPartitions;
-			this.dltStrategy = sourceProperties.dltStrategy;
-			this.kafkaOperations = sourceProperties.kafkaOperations;
-			this.shouldRetryOn = sourceProperties.shouldRetryOn;
-			this.timeout = sourceProperties.timeout;
+			this.autoStartDltHandler = autoStartDltHandler;
 		}
 
 		public boolean isDltTopic() {
@@ -173,6 +217,10 @@ public class DestinationTopic {
 
 		public long delay() {
 			return this.delayMs;
+		}
+
+		public Boolean autoStartDltHandler() {
+			return this.autoStartDltHandler;
 		}
 
 		@Override

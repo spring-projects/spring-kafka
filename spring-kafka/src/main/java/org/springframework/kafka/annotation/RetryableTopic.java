@@ -185,4 +185,12 @@ public @interface RetryableTopic {
 	 */
 	FixedDelayStrategy fixedDelayTopicStrategy() default FixedDelayStrategy.MULTIPLE_TOPICS;
 
+	/**
+	 * Override the container factory's {@code autoStartup} property for just the DLT container.
+	 * Usually used to not start the DLT container when {@code autoStartup} is true.
+	 * @return whether or not to override the factory.
+	 * @since 2.8
+	 */
+	String autoStartDltHandler() default "";
+
 }

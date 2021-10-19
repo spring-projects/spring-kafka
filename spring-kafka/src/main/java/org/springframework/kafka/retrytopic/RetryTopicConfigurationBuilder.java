@@ -24,6 +24,7 @@ import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.AllowDenyCollectionManager;
+import org.springframework.lang.Nullable;
 import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.backoff.ExponentialRandomBackOffPolicy;
@@ -76,6 +77,8 @@ public class RetryTopicConfigurationBuilder {
 
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
+	private Boolean autoStartDltHandler;
+
 	/* ---------------- DLT Behavior -------------- */
 	public RetryTopicConfigurationBuilder dltHandlerMethod(Class<?> clazz, String methodName) {
 		this.dltHandlerMethod = RetryTopicConfigurer.createHandlerMethodWith(clazz, methodName);
@@ -104,6 +107,18 @@ public class RetryTopicConfigurationBuilder {
 	public RetryTopicConfigurationBuilder doNotConfigureDlt() {
 		this.dltStrategy =
 				DltStrategy.NO_DLT;
+		return this;
+	}
+
+	/**
+	 * Set to false to not start the DLT handler (configured or default); overrides
+	 * the container factory's autoStartup property.
+	 * @param autoStart false to not auto start.
+	 * @return this builder.
+	 * @since 2.8
+	 */
+	public RetryTopicConfigurationBuilder autoStartDltHandler(@Nullable Boolean autoStart) {
+		this.autoStartDltHandler = autoStart;
 		return this;
 	}
 
@@ -333,7 +348,8 @@ public class RetryTopicConfigurationBuilder {
 						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
 						sendToTopicKafkaTemplate, this.fixedDelayStrategy, this.dltStrategy,
 						this.topicSuffixingStrategy, this.timeout)
-						.createProperties();
+								.autoStartDltHandler(this.autoStartDltHandler)
+								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
 				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager,
 				factoryResolverConfig, factoryConfigurerConfig);

@@ -32,6 +32,7 @@ import org.springframework.util.StringUtils;
  * provided configurations.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */
@@ -59,6 +60,8 @@ public class DestinationTopicPropertiesFactory {
 
 	private final long timeout;
 
+	private Boolean autoStartDltHandler;
+
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,
 			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
@@ -78,6 +81,17 @@ public class DestinationTopicPropertiesFactory {
 		this.backOffValues = backOffValues;
 		// Max Attempts include the initial try.
 		this.maxAttempts = this.backOffValues.size() + 1;
+	}
+
+	/**
+	 * Set to false to not start the DLT handler.
+	 * @param autoStart false to not start.
+	 * @return this factory.
+	 * @since 2.8
+	 */
+	public DestinationTopicPropertiesFactory autoStartDltHandler(Boolean autoStart) {
+		this.autoStartDltHandler = autoStart;
+		return this;
 	}
 
 	public List<DestinationTopic.Properties> createProperties() {
@@ -132,7 +146,7 @@ public class DestinationTopicPropertiesFactory {
 	private DestinationTopic.Properties createDltProperties() {
 		return new DestinationTopic.Properties(0, this.destinationTopicSuffixes.getDltSuffix(),
 				DestinationTopic.Type.DLT, this.maxAttempts, this.numPartitions, this.dltStrategy,
-				this.kafkaOperations, (a, e) -> false, this.timeout);
+				this.kafkaOperations, (a, e) -> false, this.timeout, this.autoStartDltHandler);
 	}
 
 	private BiPredicate<Integer, Throwable> getShouldRetryOn() {
