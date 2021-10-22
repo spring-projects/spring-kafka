@@ -219,6 +219,7 @@ public class DestinationTopic {
 			return this.delayMs;
 		}
 
+		@Nullable
 		public Boolean autoStartDltHandler() {
 			return this.autoStartDltHandler;
 		}
