@@ -137,8 +137,6 @@ import org.springframework.context.annotation.Import;
  * specify an explicit default {@code KafkaListenerContainerFactory}
  *
  * <pre class="code">
- * {
- * 	&#64;code
  * 	&#064;Configuration
  * 	&#064;EnableKafka
  * 	public class AppConfig implements KafkaListenerConfigurer {
@@ -157,7 +155,6 @@ import org.springframework.context.annotation.Import;
  * 			return new MyService();
  * 		}
  * 	}
- * }
  * </pre>
  *
  * It is also possible to specify a custom
@@ -171,8 +168,6 @@ import org.springframework.context.annotation.Import;
  * validated against a custom {@code Validator}.
  *
  * <pre class="code">
- * {
- * 	&#64;code
  * 	&#064;Configuration
  * 	&#064;EnableKafka
  * 	public class AppConfig implements KafkaListenerConfigurer {
@@ -200,7 +195,6 @@ import org.springframework.context.annotation.Import;
  * 			return new MyService();
  * 		}
  * 	}
- * }
  * </pre>
  *
  * Implementing {@code KafkaListenerConfigurer} also allows for fine-grained control over
@@ -208,8 +202,6 @@ import org.springframework.context.annotation.Import;
  * following configures an extra endpoint:
  *
  * <pre class="code">
- * {
- * 	&#64;code
  * 	&#064;Configuration
  * 	&#064;EnableKafka
  * 	public class AppConfig implements KafkaListenerConfigurer {
@@ -232,7 +224,6 @@ import org.springframework.context.annotation.Import;
  *
  * 		// Kafka infrastructure setup
  * 	}
- * }
  * </pre>
  *
  * Note that all beans implementing {@code KafkaListenerConfigurer} will be detected and
