@@ -34,6 +34,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.ListenerUtils;
+import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.lang.Nullable;
 
 
@@ -387,8 +388,8 @@ public class RetryTopicConfigurer {
 		}
 	}
 
-	public static EndpointHandlerMethod createHandlerMethodWith(Class<?> beanClass, String methodName) {
-		return new EndpointHandlerMethod(beanClass, methodName);
+	public static EndpointHandlerMethod createHandlerMethodWith(Object beanOrClass, String methodName) {
+		return new EndpointHandlerMethod(beanOrClass, methodName);
 	}
 
 	public static EndpointHandlerMethod createHandlerMethodWith(Object bean, Method method) {

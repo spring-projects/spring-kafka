@@ -19,6 +19,7 @@ package org.springframework.kafka.retrytopic;
 import java.util.List;
 
 import org.springframework.kafka.support.AllowDenyCollectionManager;
+import org.springframework.kafka.support.EndpointHandlerMethod;
 
 /**
  * Contains the provided configuration for the retryable topics.

@@ -40,6 +40,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.RetryableTopicAnnotationProcessor;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
@@ -136,7 +137,8 @@ class RetryableTopicAnnotationProcessorTests {
 
 		// then
 		EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
-		Method method = (Method) ReflectionTestUtils.getField(dltHandlerMethod, "method");
+		dltHandlerMethod.resolveBean(this.beanFactory);
+		Method method = dltHandlerMethod.getMethod();
 		assertThat(method.getName())
 				.isEqualTo(RetryTopicConfigurer.LoggingDltListenerHandlerMethod.DEFAULT_DLT_METHOD_NAME);
 

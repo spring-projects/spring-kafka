@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
+import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.kafka.support.TopicPartitionOffset;
 
 /**

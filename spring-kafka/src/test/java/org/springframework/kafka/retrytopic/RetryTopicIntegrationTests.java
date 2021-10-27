@@ -314,6 +314,7 @@ public class RetryTopicIntegrationTests {
 
 		private static final String DLT_METHOD_NAME = "processDltMessage";
 
+		@SuppressWarnings("deprecation")
 		@Bean
 		public RetryTopicConfiguration firstRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
@@ -327,6 +328,7 @@ public class RetryTopicIntegrationTests {
 					.create(template);
 		}
 
+		@SuppressWarnings("deprecation")
 		@Bean
 		public RetryTopicConfiguration secondRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder

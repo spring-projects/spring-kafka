@@ -24,6 +24,7 @@ import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.AllowDenyCollectionManager;
+import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.lang.Nullable;
 import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
@@ -80,8 +81,28 @@ public class RetryTopicConfigurationBuilder {
 	private Boolean autoStartDltHandler;
 
 	/* ---------------- DLT Behavior -------------- */
+	/**
+	 * Configure a DLT handler method.
+	 * @param clazz the class containing the method.
+	 * @param methodName the method name.
+	 * @return the builder.
+	 * @deprecated in favor of {@link #dltHandlerMethod(String, String)}.
+	 */
+	@Deprecated
 	public RetryTopicConfigurationBuilder dltHandlerMethod(Class<?> clazz, String methodName) {
 		this.dltHandlerMethod = RetryTopicConfigurer.createHandlerMethodWith(clazz, methodName);
+		return this;
+	}
+
+	/**
+	 * Configure a DLT handler method.
+	 * @param beanName the bean name.
+	 * @param methodName the method name.
+	 * @return the builder.
+	 * @since 2.8
+	 */
+	public RetryTopicConfigurationBuilder dltHandlerMethod(String beanName, String methodName) {
+		this.dltHandlerMethod = RetryTopicConfigurer.createHandlerMethodWith(beanName, methodName);
 		return this;
 	}
 

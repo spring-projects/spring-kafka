@@ -119,6 +119,7 @@ class RetryTopicConfigurationIntegrationTests {
 			return new KafkaAdmin(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString()));
 		}
 
+		@SuppressWarnings("deprecation")
 		@Bean
 		RetryTopicConfiguration retryTopicConfiguration1(KafkaTemplate<Integer, String> template) {
 			return RetryTopicConfigurationBuilder.newInstance()
