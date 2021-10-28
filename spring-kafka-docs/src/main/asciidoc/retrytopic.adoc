@@ -500,8 +500,7 @@ public void processMessage(MyPojo message) {
 ----
 ====
 
-The DLT handler method can also be provided through the RetryTopicConfigurationBuilder.dltHandlerMethod(Class, String) method, passing as arguments the class and method name that should process the DLT's messages.
-If a bean instance of the provided class is found in the application context that bean is used for Dlt processing, otherwise an instance is created with full dependency injection support.
+The DLT handler method can also be provided through the RetryTopicConfigurationBuilder.dltHandlerMethod(String, String) method, passing as arguments the bean name and method name that should process the DLT's messages.
 
 ====
 [source, java]
@@ -510,7 +509,7 @@ If a bean instance of the provided class is found in the application context tha
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
+            .dltProcessor("myCustomDltProcessor", "processDltMessage")
             .create(template);
 }
 
