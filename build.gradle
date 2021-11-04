@@ -342,7 +342,10 @@ project ('spring-kafka-test') {
 			exclude group: 'org.springframework'
 		}
 
-		api "org.apache.zookeeper:zookeeper:$zookeeperVersion"
+		api ("org.apache.zookeeper:zookeeper:$zookeeperVersion") {
+			exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+			exclude group: 'log4j'
+		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
 		api "org.apache.kafka:kafka-metadata:$kafkaVersion"
 		api "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
