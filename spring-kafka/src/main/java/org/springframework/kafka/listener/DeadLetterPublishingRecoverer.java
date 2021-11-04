@@ -93,13 +93,15 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	private Duration waitForSendResultTimeout = Duration.ofSeconds(THIRTY);
 
-	private boolean replaceOriginalHeaders = true;
+	private boolean appendOriginalHeaders = true;
 
 	private boolean failIfSendResultIsError = true;
 
 	private boolean throwIfNoDestinationReturned = false;
 
 	private long timeoutBuffer = Duration.ofSeconds(FIVE).toMillis();
+
+	private boolean stripPreviousExceptionHeaders;
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
@@ -246,13 +248,27 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	/**
-	 * Set to false if you don't want to replace the dead letter original headers if
-	 * they are already present.
+	 * Set to false if you don't want to append the current "original" headers (topic,
+	 * partition etc.) if they are already present. When false, only the first "original"
+	 * headers are retained.
 	 * @param replaceOriginalHeaders set to false not to replace.
 	 * @since 2.7
+	 * @deprecated in favor of {@link #setAppendOriginalHeaders(boolean)}.
 	 */
+	@Deprecated
 	public void setReplaceOriginalHeaders(boolean replaceOriginalHeaders) {
-		this.replaceOriginalHeaders = replaceOriginalHeaders;
+		this.appendOriginalHeaders = replaceOriginalHeaders;
+	}
+
+	/**
+	 * Set to false if you don't want to append the current "original" headers (topic,
+	 * partition etc.) if they are already present. When false, only the first "original"
+	 * headers are retained.
+	 * @param appendOriginalHeaders set to false not to replace.
+	 * @since 2.7.9
+	 */
+	public void setAppendOriginalHeaders(boolean appendOriginalHeaders) {
+		this.appendOriginalHeaders = appendOriginalHeaders;
 	}
 
 	/**
@@ -297,6 +313,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	 */
 	public void setTimeoutBuffer(long buffer) {
 		this.timeoutBuffer = buffer;
+	}
+
+	/**
+	 * Set to true to remove previous exception headers and only retain headers for the
+	 * current exception. Default is false, which means all exception header values are
+	 * retained; this can cause a growth in record size when a record is republished many
+	 * times.
+	 * @param stripPreviousExceptionHeaders true to strip.
+	 * @since 2.7.9
+	 */
+	public void setStripPreviousExceptionHeaders(boolean stripPreviousExceptionHeaders) {
+		this.stripPreviousExceptionHeaders = stripPreviousExceptionHeaders;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -535,27 +563,33 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value) {
-		if (this.replaceOriginalHeaders || kafkaHeaders.lastHeader(header) == null) {
+		if (this.appendOriginalHeaders || kafkaHeaders.lastHeader(header) == null) {
 			kafkaHeaders.add(header, value);
 		}
 	}
 
-	void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception,
-								boolean isKey) {
-		kafkaHeaders.add(new RecordHeader(isKey ? this.headerNames.exceptionInfo.keyExceptionFqcn
+	void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception, boolean isKey) {
+		appendOrReplace(kafkaHeaders, new RecordHeader(isKey ? this.headerNames.exceptionInfo.keyExceptionFqcn
 				: this.headerNames.exceptionInfo.exceptionFqcn,
 				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)));
 		String message = exception.getMessage();
 		if (message != null) {
-			kafkaHeaders.add(new RecordHeader(isKey
+			appendOrReplace(kafkaHeaders, new RecordHeader(isKey
 					? this.headerNames.exceptionInfo.keyExceptionMessage
 					: this.headerNames.exceptionInfo.exceptionMessage,
 					exception.getMessage().getBytes(StandardCharsets.UTF_8)));
 		}
-		kafkaHeaders.add(new RecordHeader(isKey
+		appendOrReplace(kafkaHeaders, new RecordHeader(isKey
 				? this.headerNames.exceptionInfo.keyExceptionStacktrace
 				: this.headerNames.exceptionInfo.exceptionStacktrace,
 				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)));
+	}
+
+	private void appendOrReplace(Headers headers, RecordHeader header) {
+		if (this.stripPreviousExceptionHeaders) {
+			headers.remove(header.key());
+		}
+		headers.add(header);
 	}
 
 	private String getStackTraceAsString(Throwable cause) {

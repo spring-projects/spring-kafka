@@ -62,6 +62,10 @@ In addition, the recoverer verifies that the partition selected by the destinati
 
 See <<dead-letters>> for more information.
 
+There is now an option (`stripPreviousExceptionHeaders`) to prevent build-up of multiple large headers when republishing dead letter records.
+
+See <<dlpr-headers>> for more information.
+
 [[x27-CKTM]]
 ==== `ChainedKafkaTransactionManager` is Deprecated
 

@@ -52,7 +52,16 @@ public abstract class RetryTopicInternalBeanNames {
 	/**
 	 * {@link DeadLetterPublishingRecovererFactory} bean name.
 	 */
-	public static final String DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME = "internalDeadLetterPublishingRecovererProvider";
+	public static final String DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME =
+			"internalDeadLetterPublishingRecovererProvider";
+
+	/**
+	 * {@link DeadLetterPublishingRecovererFactory} bean name.
+	 * @deprecated in favor of {@link #DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME}
+	 */
+	@Deprecated
+	public static final String DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME =
+			DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME;
 
 	/**
 	 * {@link DestinationTopicContainer} bean name.

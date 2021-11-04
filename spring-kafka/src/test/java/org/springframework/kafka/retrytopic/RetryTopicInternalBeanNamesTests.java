@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  */
 class RetryTopicInternalBeanNamesTests {
@@ -47,14 +48,22 @@ class RetryTopicInternalBeanNamesTests {
 	@Test
 	public void assertRetryTopicInternalBeanNamesConstants() {
 		new RetryTopicInternalBeanNames() { }; // for coverage
-		assertThat(RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME).isEqualTo(DESTINATION_TOPIC_PROCESSOR_NAME);
-		assertThat(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER).isEqualTo(KAFKA_CONSUMER_BACKOFF_MANAGER);
+		assertThat(RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME)
+				.isEqualTo(DESTINATION_TOPIC_PROCESSOR_NAME);
+		assertThat(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER)
+				.isEqualTo(KAFKA_CONSUMER_BACKOFF_MANAGER);
 		assertThat(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER).isEqualTo(RETRY_TOPIC_CONFIGURER);
-		assertThat(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME).isEqualTo(LISTENER_CONTAINER_FACTORY_RESOLVER_NAME);
-		assertThat(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME).isEqualTo(LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME);
-		assertThat(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME).isEqualTo(DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME);
-		assertThat(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME).isEqualTo(DESTINATION_TOPIC_CONTAINER_NAME);
-		assertThat(RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME).isEqualTo(DEFAULT_LISTENER_FACTORY_BEAN_NAME);
-		assertThat(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME).isEqualTo(DEFAULT_KAFKA_TEMPLATE_BEAN_NAME);
+		assertThat(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME)
+				.isEqualTo(LISTENER_CONTAINER_FACTORY_RESOLVER_NAME);
+		assertThat(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME)
+				.isEqualTo(LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME);
+		assertThat(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME)
+				.isEqualTo(DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME);
+		assertThat(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME)
+				.isEqualTo(DESTINATION_TOPIC_CONTAINER_NAME);
+		assertThat(RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME)
+				.isEqualTo(DEFAULT_LISTENER_FACTORY_BEAN_NAME);
+		assertThat(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME)
+				.isEqualTo(DEFAULT_KAFKA_TEMPLATE_BEAN_NAME);
 	}
 }

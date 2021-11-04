@@ -38,6 +38,7 @@ import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -329,15 +330,16 @@ public class DeadLetterPublishingRecovererTests {
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Test
-	void dontReplaceOriginalHeaders() {
+	void dontAppendOriginalHeaders() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		ListenableFuture future = mock(ListenableFuture.class);
 		given(template.send(any(ProducerRecord.class))).willReturn(future);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 1234L,
 				TimestampType.CREATE_TIME, 4321L, 123, 123, "bar", null);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
-		recoverer.setReplaceOriginalHeaders(false);
-		recoverer.accept(record, new RuntimeException());
+		recoverer.setStripPreviousExceptionHeaders(true);
+		recoverer.setAppendOriginalHeaders(false);
+		recoverer.accept(record, new RuntimeException(new IllegalStateException()));
 		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
 		then(template).should(times(1)).send(producerRecordCaptor.capture());
 		Headers headers = producerRecordCaptor.getValue().headers();
@@ -346,32 +348,46 @@ public class DeadLetterPublishingRecovererTests {
 		Header originalOffsetHeader = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET);
 		Header originalTimestampHeader = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP);
 		Header originalTimestampType = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE);
+		Header firstExceptionType = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN);
+		Header firstExceptionMessage = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE);
+		Header firstExceptionStackTrace = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE);
 
 		ConsumerRecord<String, String> anotherRecord = new ConsumerRecord<>("bar", 1, 12L, 4321L,
 				TimestampType.LOG_APPEND_TIME, 1234L, 321, 321, "bar", null);
 		headers.forEach(header -> anotherRecord.headers().add(header));
-		recoverer.accept(anotherRecord, new RuntimeException());
+		recoverer.accept(anotherRecord, new RuntimeException(new IllegalStateException()));
 		ArgumentCaptor<ProducerRecord> anotherProducerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
-		then(template).should(times(2)).send(producerRecordCaptor.capture());
-		Headers anotherHeaders = producerRecordCaptor.getAllValues().get(1).headers();
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isEqualTo(originalTopicHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isEqualTo(originalPartitionHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isEqualTo(originalOffsetHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isEqualTo(originalTimestampHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isEqualTo(originalTimestampType);
+		then(template).should(times(2)).send(anotherProducerRecordCaptor.capture());
+		Headers anotherHeaders = anotherProducerRecordCaptor.getAllValues().get(1).headers();
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isSameAs(originalTopicHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isSameAs(originalPartitionHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isSameAs(originalOffsetHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isSameAs(originalTimestampHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE))
+				.isSameAs(originalTimestampType);
+		Iterator<Header> originalTopics = anotherHeaders.headers(KafkaHeaders.DLT_ORIGINAL_TOPIC).iterator();
+		assertThat(originalTopics.next()).isSameAs(originalTopicHeader);
+		assertThat(originalTopics.hasNext()).isFalse();
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotSameAs(firstExceptionType);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotSameAs(firstExceptionMessage);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE))
+				.isNotSameAs(firstExceptionStackTrace);
+		Iterator<Header> exceptionHeaders = anotherHeaders.headers(KafkaHeaders.DLT_EXCEPTION_FQCN).iterator();
+		assertThat(exceptionHeaders.next()).isNotSameAs(firstExceptionType);
+		assertThat(exceptionHeaders.hasNext()).isFalse();
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Test
-	void replaceOriginalHeaders() {
+	void appendOriginalHeaders() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		ListenableFuture future = mock(ListenableFuture.class);
 		given(template.send(any(ProducerRecord.class))).willReturn(future);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 1234L,
 				TimestampType.CREATE_TIME, 4321L, 123, 123, "bar", null);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
-		recoverer.setReplaceOriginalHeaders(true);
-		recoverer.accept(record, new RuntimeException());
+		recoverer.setAppendOriginalHeaders(true);
+		recoverer.accept(record, new RuntimeException(new IllegalStateException()));
 		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
 		then(template).should(times(1)).send(producerRecordCaptor.capture());
 		Headers headers = producerRecordCaptor.getValue().headers();
@@ -380,19 +396,37 @@ public class DeadLetterPublishingRecovererTests {
 		Header originalOffsetHeader = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET);
 		Header originalTimestampHeader = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP);
 		Header originalTimestampType = headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE);
+		Header firstExceptionType = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN);
+		Header firstExceptionMessage = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE);
+		Header firstExceptionStackTrace = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE);
 
 		ConsumerRecord<String, String> anotherRecord = new ConsumerRecord<>("bar", 1, 12L, 4321L,
 				TimestampType.LOG_APPEND_TIME, 1234L, 321, 321, "bar", null);
 		headers.forEach(header -> anotherRecord.headers().add(header));
-		recoverer.accept(anotherRecord, new RuntimeException());
+		recoverer.accept(anotherRecord, new RuntimeException(new IllegalStateException()));
 		ArgumentCaptor<ProducerRecord> anotherProducerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
 		then(template).should(times(2)).send(anotherProducerRecordCaptor.capture());
 		Headers anotherHeaders = anotherProducerRecordCaptor.getAllValues().get(1).headers();
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotEqualTo(originalTopicHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotEqualTo(originalPartitionHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotEqualTo(originalOffsetHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotEqualTo(originalTimestampHeader);
-		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotEqualTo(originalTimestampType);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotSameAs(originalTopicHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION))
+				.isNotSameAs(originalPartitionHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotSameAs(originalOffsetHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP))
+				.isNotSameAs(originalTimestampHeader);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE))
+				.isNotSameAs(originalTimestampType);
+		Iterator<Header> originalTopics = anotherHeaders.headers(KafkaHeaders.DLT_ORIGINAL_TOPIC).iterator();
+		assertThat(originalTopics.next()).isSameAs(originalTopicHeader);
+		assertThat(originalTopics.next()).isNotNull();
+		assertThat(originalTopics.hasNext()).isFalse();
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotSameAs(firstExceptionType);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotSameAs(firstExceptionMessage);
+		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE))
+				.isNotSameAs(firstExceptionStackTrace);
+		Iterator<Header> exceptionHeaders = anotherHeaders.headers(KafkaHeaders.DLT_EXCEPTION_FQCN).iterator();
+		assertThat(exceptionHeaders.next()).isSameAs(firstExceptionType);
+		assertThat(exceptionHeaders.next()).isNotNull();
+		assertThat(exceptionHeaders.hasNext()).isFalse();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
