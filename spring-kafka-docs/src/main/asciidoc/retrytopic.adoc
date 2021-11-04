@@ -378,7 +378,7 @@ DeadLetterPublishingRecovererFactory factory(DestinationTopicResolver resolver) 
     DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(resolver);
     factory.setDeadLetterPublishingRecovererCustomizer(dlpr -> {
         dlpr.appendOriginalHeaders(true);
-        dlpr.setStripPreviousExceptionHeaders(true);
+        dlpr.setStripPreviousExceptionHeaders(false);
     });
     return factory;
 }

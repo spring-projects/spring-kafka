@@ -101,7 +101,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private long timeoutBuffer = Duration.ofSeconds(FIVE).toMillis();
 
-	private boolean stripPreviousExceptionHeaders;
+	private boolean stripPreviousExceptionHeaders = true;
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
@@ -316,11 +316,11 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Set to true to remove previous exception headers and only retain headers for the
-	 * current exception. Default is false, which means all exception header values are
-	 * retained; this can cause a growth in record size when a record is republished many
-	 * times.
-	 * @param stripPreviousExceptionHeaders true to strip.
+	 * Set to false to retain previous exception headers as well as headers for the
+	 * current exception. Default is true, which means only the current headers are
+	 * retained; setting it to false this can cause a growth in record size when a record
+	 * is republished many times.
+	 * @param stripPreviousExceptionHeaders false to retain all.
 	 * @since 2.7.9
 	 */
 	public void setStripPreviousExceptionHeaders(boolean stripPreviousExceptionHeaders) {

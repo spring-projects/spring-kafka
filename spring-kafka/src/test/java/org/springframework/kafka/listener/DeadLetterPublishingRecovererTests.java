@@ -339,7 +339,6 @@ public class DeadLetterPublishingRecovererTests {
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 1234L,
 				TimestampType.CREATE_TIME, 123, 123, "bar", null, new RecordHeaders(), Optional.empty());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
-		recoverer.setStripPreviousExceptionHeaders(true);
 		recoverer.setAppendOriginalHeaders(false);
 		recoverer.accept(record, new RuntimeException(new IllegalStateException()));
 		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
@@ -392,6 +391,7 @@ public class DeadLetterPublishingRecovererTests {
 				TimestampType.CREATE_TIME, 123, 123, "bar", null, new RecordHeaders(), Optional.empty());
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		recoverer.setAppendOriginalHeaders(true);
+		recoverer.setStripPreviousExceptionHeaders(false);
 		recoverer.accept(record, new RuntimeException(new IllegalStateException()));
 		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
 		then(template).should(times(1)).send(producerRecordCaptor.capture());

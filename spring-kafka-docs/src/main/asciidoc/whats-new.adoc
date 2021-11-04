@@ -66,3 +66,10 @@ The `interceptBeforeTx` container property is now `true` by default.
 
 The `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` are now provided.
 See <<delegating-serialization>> for more information.
+
+[[x28-dlpr]]
+==== `DeadLetterPublishingRecover` Changes
+
+The property `stripPreviousExceptionHeaders` is now `true` by default.
+
+See <<dlpr-headers>> for more information.

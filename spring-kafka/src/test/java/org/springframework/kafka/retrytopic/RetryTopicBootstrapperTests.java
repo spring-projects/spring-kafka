@@ -115,7 +115,7 @@ class RetryTopicBootstrapperTests {
 				.registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME,
 						new RootBeanDefinition(ListenerContainerFactoryConfigurer.class));
 		then(this.applicationContext).should(times(1))
-				.registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME,
+				.registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME,
 						new RootBeanDefinition(DeadLetterPublishingRecovererFactory.class));
 		then(this.applicationContext).should(times(1))
 				.registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER,
