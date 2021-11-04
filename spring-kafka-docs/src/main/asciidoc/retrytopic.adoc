@@ -357,6 +357,33 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> 
 
 NOTE: By default the topics are autocreated with one partition and a replication factor of one.
 
+[[retry-headers]]
+===== Failure Header Management
+
+When considering how to manage failure headers (original headers and exception headers), the framework delegates to the `DeadLetterPublishingRecover` to decide whether to append or replace the headers.
+
+By default, it explicitly sets `appendOriginalHeaders` to `false` and leaves `stripPreviousExceptionHeaders` to the default used by the `DeadLetterPublishingRecover`.
+
+This means that, currently, records published to multiple retry topics may grow to large size, especially when the stack trace is large.
+
+See <<dlpr-headers>> for more information.
+
+To reconfigure the framework to use different settings for these properties, replace standard `DeadLetterPublishingRecovererFactory` bean by adding a `recovererCustomizer`:
+
+====
+[source, java]
+----
+@Bean(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME)
+DeadLetterPublishingRecovererFactory factory(DestinationTopicResolver resolver) {
+    DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(resolver);
+    factory.setDeadLetterPublishingRecovererCustomizer(dlpr -> {
+        dlpr.appendOriginalHeaders(true);
+        dlpr.setStripPreviousExceptionHeaders(true);
+    });
+    return factory;
+}
+----
+====
 
 ==== Topic Naming
 

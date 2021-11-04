@@ -5532,6 +5532,24 @@ Starting with version 2.7, the recoverer checks that the partition selected by t
 If the partition is not present, the partition in the `ProducerRecord` is set to `null`, allowing the `KafkaProducer` to select the partition.
 You can disable this check by setting the `verifyPartition` property to `false`.
 
+[[dlpr-headers]]
+===== Managing Dead Letter Record Headers
+
+Referring to <<dead-letters>> above, the `DeadLetterPublishingRecoverer` has two properties used to manage headers when those headers already exist (such as when reprocessing a dead letter record that failed, including when using <<retry-topic>>).
+
+* `appendOriginalHeaders` (default `true`)
+* `stripPreviousExceptionHeaders` (default `false` - will be `true` in version 2.8 and later)
+
+Apache Kafka supports multiple headers with the same name; to obtain the "latest" value, you can use `headers.lastHeader(headerName)`; to get an iterator over multiple headers, use `headers.headers(headerName).iterator()`.
+
+WHen repeatedly republishing a failed record, these headers can grow (and eventually cause publication to fail due to a `RecordTooLargeException`); this is expecially true for the exception headers and particuarly for the stack trace headers.
+
+The reason for the two properties is because, while you might want to retain only the last exception information, you might want to retain the history of which topic(s) the record passed through for each failure.
+
+`appendOriginalHeaders` is applied to all headers named `*ORIGINAL*` while `stripPreviousExceptionHeaders` is applied to all headers named `*EXCEPTION*`.
+
+Also see <<retry-headers>>.
+
 [[exp-backoff]]
 ===== `ExponentialBackOffWithMaxRetries` Implementation
 

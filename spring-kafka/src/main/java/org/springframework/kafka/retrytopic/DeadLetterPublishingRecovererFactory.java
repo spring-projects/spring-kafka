@@ -137,7 +137,7 @@ public class DeadLetterPublishingRecovererFactory {
 
 		recoverer.setHeadersFunction((consumerRecord, e) -> addHeaders(consumerRecord, e, getAttempts(consumerRecord)));
 		recoverer.setFailIfSendResultIsError(true);
-		recoverer.setReplaceOriginalHeaders(false);
+		recoverer.setAppendOriginalHeaders(false);
 		recoverer.setThrowIfNoDestinationReturned(false);
 		this.recovererCustomizer.accept(recoverer);
 		this.fatalExceptions.forEach(ex -> recoverer.addNotRetryableExceptions(ex));
