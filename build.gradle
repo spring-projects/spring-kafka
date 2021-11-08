@@ -1,8 +1,8 @@
 buildscript {
-	ext.kotlinVersion = '1.4.32'
+	ext.kotlinVersion = '1.5.0'
 	repositories {
 		mavenCentral()
-		maven { url 'https://plugins.gradle.org/m2' }
+		gradlePluginPortal()
 		maven { url 'https://repo.spring.io/plugins-release' }
 	}
 	dependencies {
@@ -44,6 +44,11 @@ ext {
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
 	docResourcesVersion = '0.2.5'
 
+	javadocLinks = [
+		'https://docs.oracle.com/en/java/javase/17/docs/api/',
+		'https://docs.spring.io/spring-framework/docs/current/javadoc-api/'
+	] as String[]
+
 
 	if (gitPresent) {
 		modifiedFiles =
@@ -56,9 +61,9 @@ ext {
 	hamcrestVersion = '2.2'
 	hibernateValidationVersion = '6.2.0.Final'
 	jacksonBomVersion = '2.12.5'
-	jaywayJsonPathVersion = '2.4.0'
+	jaywayJsonPathVersion = '2.6.0'
 	junit4Version = '4.13.2'
-	junitJupiterVersion = '5.7.2'
+	junitJupiterVersion = '5.8.1'
 	kafkaVersion = '3.0.0'
 	log4jVersion = '2.14.1'
 	micrometerVersion = '1.8.0-RC1'
@@ -68,7 +73,7 @@ ext {
 	springBootVersion = '2.5.5' // docs module
 	springDataVersion = '2021.1.0-RC1'
 	springRetryVersion = '1.3.1'
-	springVersion = '5.3.11'
+	springVersion = '6.0.0-SNAPSHOT'
 	zookeeperVersion = '3.6.3'
 
 	idPrefix = 'kafka'
@@ -136,25 +141,25 @@ subprojects { subproject ->
 	}
 
 	compileJava {
-		sourceCompatibility = 1.8
-		targetCompatibility = 1.8
+		sourceCompatibility = 17
+		targetCompatibility = 17
 	}
 
 	compileTestJava {
-		sourceCompatibility = 11
+		sourceCompatibility = 17
 		options.encoding = 'UTF-8'
 	}
 
 	compileTestKotlin {
 		kotlinOptions {
-			jvmTarget = '1.8'
+			jvmTarget = '16'
 		}
 	}
 
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 	jacoco {
-		toolVersion = '0.8.6'
+		toolVersion = '0.8.7'
 	}
 
 	// dependencies that are common across all java projects
@@ -407,6 +412,7 @@ task prepareAsciidocBuild(type: Sync) {
 	from {
 		configurations.docs.collect { zipTree(it) }
 	}
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	from 'spring-kafka-docs/src/main/asciidoc/','spring-kafka-docs/src/main/java','spring-kafka-docs/src/main/kotlin'
 	into "$buildDir/asciidoc"
 }
@@ -484,10 +490,17 @@ task api(type: Javadoc) {
 	group = 'Documentation'
 	description = 'Generates aggregated Javadoc API documentation.'
 	title = "${rootProject.description} ${version} API"
-	options.memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PROTECTED
-	options.author = true
-	options.header = rootProject.description
-	options.overview = 'src/api/overview.html'
+	options {
+		encoding = 'UTF-8'
+		memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PROTECTED
+		author = true
+		header = rootProject.description
+		use = true
+		overview = 'src/api/overview.html'
+		splitIndex = true
+		links(project.ext.javadocLinks)
+		addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
+	}
 
 	source subprojects.collect { project ->
 		project.sourceSets.main.allJava
@@ -497,6 +510,11 @@ task api(type: Javadoc) {
 		project.sourceSets.main.compileClasspath
 	})
 	destinationDir = new File(buildDir, 'api')
+}
+
+tasks.withType(Javadoc) {
+	options.addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
+	options.addBooleanOption('Werror', true) // fail build on Javadoc warnings
 }
 
 task docsZip(type: Zip, dependsOn: [reference]) {
