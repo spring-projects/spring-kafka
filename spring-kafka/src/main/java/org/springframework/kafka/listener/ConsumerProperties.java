@@ -349,9 +349,11 @@ public class ConsumerProperties {
 	}
 
 	/**
-	 *
+	 * Get the authentication/authorization retry interval.
 	 * @return the interval.
+	 * @deprecated in favor of {@link #getAuthExceptionRetryInterval()}.
 	 */
+	@Deprecated
 	@Nullable
 	public Duration getAuthorizationExceptionRetryInterval() {
 		return this.authExceptionRetryInterval;
