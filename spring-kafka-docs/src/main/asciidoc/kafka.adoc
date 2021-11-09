@@ -3404,7 +3404,7 @@ See <<ex-jdbc-sync>> for examples of an application that synchronizes JDBC and K
 
 NOTE: Starting with versions 2.5.17, 2.6.12, 2.7.9 and 2.8.0, if the commit fails on the synchronized transaction (after the primary transaction has committed), the exception will be thrown to the caller.
 Previously, this was silently ignored (logged at debug).
-Applications should take remedial action, if necessary, to compensate for the comitted primary transaction.
+Applications should take remedial action, if necessary, to compensate for the committed primary transaction.
 
 [[container-transaction-manager]]
 ===== Using Consumer-Initiated Transactions
