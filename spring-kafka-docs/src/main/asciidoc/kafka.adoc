@@ -4455,8 +4455,8 @@ public ProducerFactory<String, Object> producerFactory() {
 }
 
 @Bean
-public KafkaTemplate<String, Object> helloKafkaTemplate() {
-  return new KafkaTemplate<>(helloProducerFactory());
+public KafkaTemplate<String, Object> kafkaTemplate() {
+  return new KafkaTemplate<>(producerFactory());
 }
 ----
 ====
