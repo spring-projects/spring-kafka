@@ -17,6 +17,7 @@
 package org.springframework.kafka.retrytopic;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -191,9 +192,20 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private int getAttempts(ConsumerRecord<?, ?> consumerRecord) {
 		Header header = consumerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
-		return header != null
-				? header.value()[0]
-				: 1;
+		if (header != null) {
+			byte[] value = header.value();
+			if (value.length == 1) { // backwards compatibility
+				return value[0];
+			}
+			else if (value.length == 4) {
+				return ByteBuffer.wrap(value).getInt();
+			}
+			else {
+				LOGGER.debug(() -> "Unexected size for " + RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS + " header: "
+						+ value.length);
+			}
+		}
+		return 1;
 	}
 
 	private Headers addHeaders(ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts) {
@@ -201,7 +213,7 @@ public class DeadLetterPublishingRecovererFactory {
 		byte[] originalTimestampHeader = getOriginalTimestampHeaderBytes(consumerRecord);
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampHeader);
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
-				BigInteger.valueOf(attempts + 1).toByteArray());
+				ByteBuffer.wrap(new byte[4]).putInt(attempts + 1).array());
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
 				BigInteger.valueOf(getNextExecutionTimestamp(consumerRecord, e, originalTimestampHeader))
 						.toByteArray());

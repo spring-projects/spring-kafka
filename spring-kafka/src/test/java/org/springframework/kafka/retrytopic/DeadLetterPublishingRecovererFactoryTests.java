@@ -25,6 +25,7 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.times;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -127,22 +128,22 @@ class DeadLetterPublishingRecovererFactoryTests {
 		// assert headers
 		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
 		assertThat(attemptsHeader).isNotNull();
-		assertThat(attemptsHeader.value()[0]).isEqualTo(Integer.valueOf(2).byteValue());
+		assertThat(ByteBuffer.wrap(attemptsHeader.value()).getInt()).isEqualTo(2);
 		Header timestampHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP);
 		assertThat(timestampHeader).isNotNull();
 		assertThat(new BigInteger(timestampHeader.value()).longValue()).isEqualTo(failureTimestamp + 1000L);
 	}
 
 	@Test
-	void shouldIncreaseAttempts() {
+	void shouldIncreaseAttemptsInLegacyHeader() {
 
 		// setup
 		RuntimeException e = new RuntimeException();
 		ConsumerRecord consumerRecord = new ConsumerRecord(testTopic, 0, 0, key, value);
-		consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, BigInteger.valueOf(1).toByteArray());
+		consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, BigInteger.valueOf(127).toByteArray());
 		consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, this.originalTimestampBytes);
 
-		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, originalTimestamp))
+		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 127, e, originalTimestamp))
 				.willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
@@ -161,7 +162,41 @@ class DeadLetterPublishingRecovererFactoryTests {
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
 		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
 		assertThat(attemptsHeader).isNotNull();
-		assertThat(attemptsHeader.value()[0]).isEqualTo(Integer.valueOf(2).byteValue());
+		assertThat(attemptsHeader.value().length).isEqualTo(4); // handled a legacy one byte header ok
+		assertThat(ByteBuffer.wrap(attemptsHeader.value()).getInt()).isEqualTo(128);
+	}
+
+	@Test
+	void shouldIncreaseAttemptsInNewHeader() {
+
+		// setup
+		RuntimeException e = new RuntimeException();
+		ConsumerRecord consumerRecord = new ConsumerRecord(testTopic, 0, 0, key, value);
+		consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
+				ByteBuffer.wrap(new byte[4]).putInt(127).array());
+		consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, this.originalTimestampBytes);
+
+		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 127, e, originalTimestamp))
+				.willReturn(destinationTopic);
+		given(destinationTopic.isNoOpsTopic()).willReturn(false);
+		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
+		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
+		willReturn(kafkaOperations).given(destinationTopic).getKafkaOperations();
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
+
+		// when
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
+		deadLetterPublishingRecoverer.accept(consumerRecord, e);
+
+		// then
+		then(kafkaOperations).should(times(1)).send(producerRecordCaptor.capture());
+		ProducerRecord producerRecord = producerRecordCaptor.getValue();
+		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
+		assertThat(attemptsHeader).isNotNull();
+		assertThat(attemptsHeader.value().length).isEqualTo(4);
+		assertThat(ByteBuffer.wrap(attemptsHeader.value()).getInt()).isEqualTo(128);
 	}
 
 	@Test
