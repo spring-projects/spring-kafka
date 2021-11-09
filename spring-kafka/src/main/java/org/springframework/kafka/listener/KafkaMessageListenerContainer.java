@@ -58,6 +58,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.ProducerFencedException;
@@ -488,7 +489,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else if (throwable instanceof StopAfterFenceException || throwable instanceof FencedInstanceIdException) {
 				reason = Reason.FENCED;
 			}
-			else if (throwable instanceof AuthorizationException) {
+			else if (throwable instanceof AuthenticationException || throwable instanceof AuthorizationException) {
 				reason = Reason.AUTH;
 			}
 			else if (throwable instanceof NoOffsetForPartitionException) {
@@ -669,8 +670,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean subBatchPerPartition;
 
-		private final Duration authorizationExceptionRetryInterval =
-				this.containerProperties.getAuthorizationExceptionRetryInterval();
+		private final Duration authExceptionRetryInterval =
+				this.containerProperties.getAuthExceptionRetryInterval();
 
 		private final AssignmentCommitOption autoCommitOption = this.containerProperties.getAssignmentCommitOption();
 
@@ -1238,20 +1239,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					exitThrowable = nofpe;
 					break;
 				}
-				catch (AuthorizationException ae) {
-					if (this.authorizationExceptionRetryInterval == null) {
-						ListenerConsumer.this.logger.error(ae, "Authorization Exception and no authorizationExceptionRetryInterval set");
+				catch (AuthenticationException | AuthorizationException ae) {
+					if (this.authExceptionRetryInterval == null) {
+						ListenerConsumer.this.logger.error(ae,
+								"Authentcation/Authorization Exception and no authExceptionRetryInterval set");
 						this.fatalError = true;
 						exitThrowable = ae;
 						break;
 					}
 					else {
-						ListenerConsumer.this.logger.error(ae, "Authorization Exception, retrying in " + this.authorizationExceptionRetryInterval.toMillis() + " ms");
+						ListenerConsumer.this.logger.error(ae,
+								"Authentcation/Authorization Exception, retrying in "
+										+ this.authExceptionRetryInterval.toMillis() + " ms");
 						// We can't pause/resume here, as KafkaConsumer doesn't take pausing
 						// into account when committing, hence risk of being flooded with
 						// GroupAuthorizationExceptions.
 						// see: https://github.com/spring-projects/spring-kafka/pull/1337
-						sleepFor(this.authorizationExceptionRetryInterval);
+						sleepFor(this.authExceptionRetryInterval);
 					}
 				}
 				catch (FencedInstanceIdException fie) {

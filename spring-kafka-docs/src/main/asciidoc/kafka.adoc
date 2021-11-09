@@ -1128,12 +1128,12 @@ It does not apply if the container is configured to listen to a topic pattern (r
 Previously, the container threads looped within the `consumer.poll()` method waiting for the topic to appear while logging many messages.
 Aside from the logs, there was no indication that there was a problem.
 
-As of version 2.3.5, a new container property called `authorizationExceptionRetryInterval` has been introduced.
-This causes the container to retry fetching messages after getting any `AuthorizationException` from `KafkaConsumer`.
-This can happen when, for example, the configured user is denied access to read certain topic.
-Defining `authorizationExceptionRetryInterval` should help the application to recover as soon as proper permissions are granted.
+As of version 2.8, a new container property `authExceptionRetryInterval` has been introduced.
+This causes the container to retry fetching messages after getting any `AuthenticationException` or `AuthorizationException` from the `KafkaConsumer`.
+This can happen when, for example, the configured user is denied access to read a certain topic or credentials are incorrect.
+Defining `authExceptionRetryInterval` allows the container to recover when proper permissions are granted.
 
-NOTE: By default, no interval is configured - authorization errors are considered fatal, which causes the container to stop.
+NOTE: By default, no interval is configured - authentication and authorization errors are considered fatal, which causes the container to stop.
 
 Starting with version 2.8, when creating the consumer factory, if you provide deserializers as objects (in the constructor or via the setters), the factory will invoke the `configure()` method to configure them with the configuration properties.
 
@@ -2433,9 +2433,9 @@ When creating the `TopicPartitionOffset` s for the request, only positive, absol
 |Whether or not to commit the initial position on assignment; by default, the initial offset will only be committed if the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` is `latest` and it won't run in a transaction even if there is a transaction manager present.
 See the javadocs for `ContainerProperties.AssignmentCommitOption` for more information about the available options.
 
-|[[authorizationExceptionRetryInterval]]<<authorizationExceptionRetryInterval,`authorizationExceptionRetryInterval`>>
+|[[authExceptionRetryInterval]]<<authExceptionRetryInterval,`authExceptionRetryInterval`>>
 |`null`
-|When not null, a `Duration` to sleep between polls when an `AuthorizationException` is thrown by the Kafka client.
+|When not null, a `Duration` to sleep between polls when an `AuthenticationException` or `AuthorizationException` is thrown by the Kafka client.
 When null, such exceptions are considered fatal and the container will stop.
 
 |[[clientId]]<<clientId,`clientId`>>
@@ -2805,7 +2805,7 @@ In addition, the `ConsumerStoppedEvent` has the following additional property:
 ** `NORMAL` - the consumer stopped normally (container was stopped).
 ** `ERROR` - a `java.lang.Error` was thrown.
 ** `FENCED` - the transactional producer was fenced and the `stopContainerWhenFenced` container property is `true`.
-** `AUTH` - an `AuthorizationException` was thrown and the `authorizationExceptionRetryInterval` is not configured.
+** `AUTH` - an `AuthenticationException` or `AuthorizationException` was thrown and the `authExceptionRetryInterval` is not configured.
 ** `NO_OFFSET` - there is no offset for a partition and the `auto.offset.reset` policy is `none`.
 
 You can use this event to restart the container after such a condition:

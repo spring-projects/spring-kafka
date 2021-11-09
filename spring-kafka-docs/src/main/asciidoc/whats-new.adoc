@@ -61,6 +61,11 @@ See <<error-handlers>> for more information.
 
 The `interceptBeforeTx` container property is now `true` by default.
 
+The `authorizationExceptionRetryInterval` property has been renamed to `authExceptionRetryInterval` and now applies to `AuthenticationException` s in addition to `AuthorizationException` s previously.
+Both exceptions are considered fatal and the container will stop by default, unless this property is set.
+
+See <<kafka-container>> and <<container-props>> for more information.
+
 [[x28-serializers]]
 ==== Serializer/Deserializer Changes
 

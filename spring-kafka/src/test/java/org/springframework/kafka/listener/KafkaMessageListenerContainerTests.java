@@ -74,6 +74,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.consumer.RetriableCommitFailedException;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
@@ -3031,6 +3032,44 @@ public class KafkaMessageListenerContainerTests {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
+	void testFatalErrorOnAuthenticationException() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
+
+		willThrow(AuthenticationException.class)
+				.given(consumer).poll(any());
+
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> { });
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+
+		AtomicReference<ConsumerStoppedEvent.Reason> reason = new AtomicReference<>();
+		CountDownLatch stopped = new CountDownLatch(1);
+
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerStoppedEvent) {
+				reason.set(((ConsumerStoppedEvent) e).getReason());
+				stopped.countDown();
+			}
+		});
+
+		container.start();
+		try {
+			assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(reason.get()).isEqualTo(Reason.AUTH);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
 	void testFatalErrorOnAuthorizationException() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
@@ -3080,7 +3119,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setGroupId("grp");
 		containerProps.setClientId("clientId");
 		containerProps.setMessageListener((MessageListener) r -> { });
-		containerProps.setAuthorizationExceptionRetryInterval(Duration.ofMillis(100));
+		containerProps.setAuthExceptionRetryInterval(Duration.ofMillis(100));
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
