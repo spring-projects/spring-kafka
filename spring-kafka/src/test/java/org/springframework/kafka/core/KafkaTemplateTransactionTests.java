@@ -72,10 +72,13 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -296,14 +299,15 @@ public class KafkaTemplateTransactionTests {
 
 		ResourcelessTransactionManager tm = new ResourcelessTransactionManager();
 
-		new TransactionTemplate(tm)
-				.execute(s -> {
-					template.sendDefault("foo", "bar");
+		assertThatExceptionOfType(ProducerFencedException.class).isThrownBy(() ->
+			new TransactionTemplate(tm)
+					.execute(s -> {
+						template.sendDefault("foo", "bar");
 
-					// Mark the mock producer as fenced so it throws when committing the transaction
-					producer.fenceProducer();
-					return null;
-				});
+						// Mark the mock producer as fenced so it throws when committing the transaction
+						producer.fenceProducer();
+						return null;
+					}));
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.closed()).isTrue();
@@ -574,6 +578,28 @@ public class KafkaTemplateTransactionTests {
 		pf.destroy();
 	}
 
+	@Test
+	void syncCommitFails() {
+		DummyTM tm = new DummyTM();
+		MockProducer<String, String> producer =
+				new MockProducer<>(true, new StringSerializer(), new StringSerializer());
+		producer.initTransactions();
+		producer.commitTransactionException = new IllegalStateException();
+
+		@SuppressWarnings("unchecked")
+		ProducerFactory<String, String> pf = mock(ProducerFactory.class);
+		given(pf.transactionCapable()).willReturn(true);
+		given(pf.createProducer(isNull())).willReturn(producer);
+
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+
+		assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() ->
+				new TransactionTemplate(tm).execute(status -> template.sendDefault("foo")));
+
+		assertThat(tm.committed).isTrue();
+	}
+
 	@Configuration
 	@EnableTransactionManagement
 	public static class DeclarativeConfig {
@@ -677,6 +703,31 @@ public class KafkaTemplateTransactionTests {
 		@Transactional(propagation = Propagation.REQUIRES_NEW, transactionManager = "customTM")
 		public void anotherTxMethod() {
 			template.send("fiz", "buz");
+		}
+
+	}
+
+	@SuppressWarnings("serial")
+	private static final class DummyTM extends AbstractPlatformTransactionManager {
+
+		boolean committed;
+
+		@Override
+		protected Object doGetTransaction() throws TransactionException {
+			return new Object();
+		}
+
+		@Override
+		protected void doBegin(Object transaction, TransactionDefinition definition) throws TransactionException {
+		}
+
+		@Override
+		protected void doCommit(DefaultTransactionStatus status) throws TransactionException {
+			this.committed = true;
+		}
+
+		@Override
+		protected void doRollback(DefaultTransactionStatus status) throws TransactionException {
 		}
 
 	}
