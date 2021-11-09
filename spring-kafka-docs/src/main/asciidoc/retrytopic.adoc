@@ -127,6 +127,27 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<String, MyOtherPo
 
 NOTE: The retry topics' and dlt's consumers will be assigned to a consumer group with a group id that is the combination of the one with you provide in the `groupId` parameter of the `@KafkaListener` annotation with the topic's suffix. If you don't provide any they'll all belong to the same group, and rebalance on a retry topic will cause an unnecessary rebalance on the main topic.
 
+IMPORTANT: If the consumer is configured with an <<error-handling-deserializer,`ErrorHandlingDeserializer`>>, to handle deserilialization exceptions, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
+The generic value type of the template should be `Object`.
+One technique is to use the `DelegatingByTypeSerializer`; an example follows:
+
+====
+[source, java]
+----
+@Bean
+public ProducerFactory<String, Object> producerFactory() {
+  return new DefaultKafkaProducerFactory<>(producerConfiguration(), new StringSerializer(),
+    new DelegatingByTypeSerializer(Map.of(byte[].class, new ByteArraySerializer(),
+          MyNormalObject.class, new JsonSerializer<Object>())));
+}
+
+@Bean
+public KafkaTemplate<String, Object> helloKafkaTemplate() {
+  return new KafkaTemplate<>(helloProducerFactory());
+}
+----
+====
+
 ==== Features
 
 Most of the features are available both for the `@RetryableTopic` annotation and the `RetryTopicConfiguration` beans.
