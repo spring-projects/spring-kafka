@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.5.0'
+	ext.kotlinVersion = '1.5.31'
 	repositories {
 		mavenCentral()
 		gradlePluginPortal()
@@ -60,7 +60,7 @@ ext {
 	googleJsr305Version = '3.0.2'
 	hamcrestVersion = '2.2'
 	hibernateValidationVersion = '6.2.0.Final'
-	jacksonBomVersion = '2.12.5'
+	jacksonBomVersion = '2.13.0'
 	jaywayJsonPathVersion = '2.6.0'
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.8.1'
@@ -70,8 +70,8 @@ ext {
 	mockitoVersion = '3.11.2'
 	reactorVersion = '2020.0.12'
 	scalaVersion = '2.13'
-	springBootVersion = '2.5.5' // docs module
-	springDataVersion = '2021.1.0-RC1'
+	springBootVersion = '2.6.0-SNAPSHOT' // docs module
+	springDataVersion = '2022.1.0-SNAPSHOT'
 	springRetryVersion = '1.3.1'
 	springVersion = '6.0.0-SNAPSHOT'
 	zookeeperVersion = '3.6.3'
@@ -296,6 +296,11 @@ subprojects { subproject ->
 		}
 	}
 
+	tasks.withType(Javadoc) {
+		options.addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
+		options.addBooleanOption('Werror', true) // fail build on Javadoc warnings
+    }
+
 }
 
 project ('spring-kafka') {
@@ -379,7 +384,7 @@ project ('spring-kafka-docs') {
 
 	compileKotlin {
 		kotlinOptions {
-			jvmTarget = '1.8'
+			jvmTarget = '16'
 		}
 	}
 
@@ -510,11 +515,6 @@ task api(type: Javadoc) {
 		project.sourceSets.main.compileClasspath
 	})
 	destinationDir = new File(buildDir, 'api')
-}
-
-tasks.withType(Javadoc) {
-	options.addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
-	options.addBooleanOption('Werror', true) // fail build on Javadoc warnings
 }
 
 task docsZip(type: Zip, dependsOn: [reference]) {
