@@ -5005,7 +5005,7 @@ If you are using Spring Boot, you simply need to add the error handler as a `@Be
 ===== DefaultErrorHandler
 
 This new error handler replaces the `SeekToCurrentErrorHandler` and `RecoveringBatchErrorHandler`, which have been the default error handlers for several releases now.
-One difference is that the fallback behavior for batch listeners (when an exception other than a `BatchListenerFailedException` is thrown) is the equivalent of the <<retrying-beh>>.
+One difference is that the fallback behavior for batch listeners (when an exception other than a `BatchListenerFailedException` is thrown) is the equivalent of the <<retrying-batch-eh,`BatchErrorHandler`>>.
 
 The error handler can recover (skip) a record that keeps failing.
 By default, after ten failures, the failed record is logged (at the `ERROR` level).
