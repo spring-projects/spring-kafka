@@ -1257,7 +1257,7 @@ This is similar functionality to throwing an exception when the container is con
 When using a batch listener, you can specify the index within the batch where the failure occurred.
 When `nack()` is called, offsets will be committed for records before the index and seeks are performed on the partitions for the failed and discarded records so that they will be redelivered on the next `poll()`.
 
-See <<serror-handlers>> for more information.
+See <<error-handlers>> for more information.
 
 IMPORTANT: When using partition assignment via group management, it is important to ensure the `sleep` argument (plus the time spent processing records from the previous poll) is less than the consumer `max.poll.interval.ms` property.
 
