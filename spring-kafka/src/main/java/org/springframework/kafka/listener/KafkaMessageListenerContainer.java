@@ -1242,14 +1242,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (AuthenticationException | AuthorizationException ae) {
 					if (this.authExceptionRetryInterval == null) {
 						ListenerConsumer.this.logger.error(ae,
-								"Authentcation/Authorization Exception and no authExceptionRetryInterval set");
+								"Authentication/Authorization Exception and no authExceptionRetryInterval set");
 						this.fatalError = true;
 						exitThrowable = ae;
 						break;
 					}
 					else {
 						ListenerConsumer.this.logger.error(ae,
-								"Authentcation/Authorization Exception, retrying in "
+								"Authentication/Authorization Exception, retrying in "
 										+ this.authExceptionRetryInterval.toMillis() + " ms");
 						// We can't pause/resume here, as KafkaConsumer doesn't take pausing
 						// into account when committing, hence risk of being flooded with
