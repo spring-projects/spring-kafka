@@ -149,7 +149,7 @@ Introduced in version 2.5.3, you can configure a `KafkaStreamsMicrometerListener
 ====
 [source, java]
 ----
-streamsBuilderFactoryBean.setListener(new KafkaStreamsMicrometerListener(meterRegistry,
+streamsBuilderFactoryBean.addListener(new KafkaStreamsMicrometerListener(meterRegistry,
         Collections.singletonList(new ImmutableTag("customTag", "customTagValue"))));
 ----
 ====
