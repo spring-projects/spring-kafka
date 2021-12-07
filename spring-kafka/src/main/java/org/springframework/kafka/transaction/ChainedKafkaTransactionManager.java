@@ -50,7 +50,7 @@ public class ChainedKafkaTransactionManager<K, V> extends org.springframework.da
 		for (PlatformTransactionManager tm : transactionManagers) {
 			if (tm instanceof KafkaAwareTransactionManager) {
 				Assert.isNull(uniqueKafkaTransactionManager, "Only one KafkaAwareTransactionManager is allowed");
-				uniqueKafkaTransactionManager = (KafkaTransactionManager<K, V>) tm;
+				uniqueKafkaTransactionManager = (KafkaAwareTransactionManager<K, V>) tm;
 			}
 		}
 		Assert.notNull(uniqueKafkaTransactionManager, "Exactly one KafkaAwareTransactionManager is required");
