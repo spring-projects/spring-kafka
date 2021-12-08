@@ -4385,9 +4385,6 @@ An object of type `FailedDeserializationInfo`, which contains all the contextual
 You can find the `DeserializationException` (as a serialized Java object) in headers.
 See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/ErrorHandlingDeserializer.html[Javadoc] for the `ErrorHandlingDeserializer` for more information.
 
-CAUTION: When you use a `BatchMessageListener`, you must provide a `failedDeserializationFunction`.
-Otherwise, the batch of records are not type safe.
-
 You can use the `DefaultKafkaConsumerFactory` constructor that takes key and value `Deserializer` objects and wire in appropriate `ErrorHandlingDeserializer` instances that you have configured with the proper delegates.
 Alternatively, you can use consumer configuration properties (which are used by the `ErrorHandlingDeserializer`) to instantiate the delegates.
 The property names are `ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS` and `ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS`.
@@ -4483,12 +4480,40 @@ void listen(List<Thing> in, @Header(KafkaHeaders.BATCH_CONVERTED_HEADERS) List<M
     for (int i = 0; i < in.size(); i++) {
         Thing thing = in.get(i);
         if (thing == null
-                && headers.get(i).get(ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER) != null) {
-
-            throw new BatchListenerFailedException("deserialization error",
-                    new DeserializationException("Batch listener", null, false, null), i);
+                && headers.get(i).get(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER) != null) {
+            DeserializationException deserEx = ListenerUtils.byteArrayToDeserializationException(this.logger,
+                    (byte[]) headers.get(i).get(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
+            if (deserEx != null) {
+                logger.error(deserEx, "Record at index " + i + " could not be deserialized");
+            }
+            throw new BatchListenerFailedException("Deserialization", deserEx, i);
         }
-        process(foo);
+        process(thing);
+    }
+}
+----
+====
+
+`ListenerUtils.byteArrayToDeserializationException()` can be used to convert the header to a `DeserializationException`.
+
+When consuming `List<ConsumerRecord<?, ?>`, `ListenerUtils.getExceptionFromHeader()` is used instead:
+
+====
+[source, java]
+----
+@KafkaListener(id = "kgh2036", topics = "kgh2036")
+void listen(List<ConsumerRecord<String, Thing>> in) {
+    for (int i = 0; i < in.size(); i++) {
+        ConsumerRecord<String, Thing> rec = in.get(i);
+        if (rec.value() == null) {
+            DeserializationException deserEx = ListenerUtils.getExceptionFromHeader(rec,
+                    SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
+            if (deserEx != null) {
+                logger.error(deserEx, "Record at offset " + rec.offset() + " could not be deserialized");
+                throw new BatchListenerFailedException("Deserialization", deserEx, i);
+            }
+        }
+        process(rec.value());
     }
 }
 ----

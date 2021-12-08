@@ -99,19 +99,36 @@ public final class ListenerUtils {
 
 		Header header = record.headers().lastHeader(headerName);
 		if (header != null) {
-			try {
-				DeserializationException ex = (DeserializationException) new ObjectInputStream(
-						new ByteArrayInputStream(header.value())).readObject();
+			byte[] value = header.value();
+			DeserializationException exception = byteArrayToDeserializationException(logger, value);
+			if (exception != null) {
 				Headers headers = new RecordHeaders(record.headers().toArray());
 				headers.remove(headerName);
-				ex.setHeaders(headers);
-				return ex;
+				exception.setHeaders(headers);
 			}
-			catch (IOException | ClassNotFoundException | ClassCastException e) {
-				logger.error(e, "Failed to deserialize a deserialization exception");
-			}
+			return exception;
 		}
 		return null;
+	}
+
+	/**
+	 * Convert a byte array containing a serialized {@link DeserializationException} to the
+	 * {@link DeserializationException}.
+	 * @param logger a log accessor to log errors.
+	 * @param value the bytes.
+	 * @return the exception or null if deserialization fails.
+	 * @since 2.8.1
+	 */
+	@Nullable
+	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, byte[] value) {
+		try {
+			return (DeserializationException) new ObjectInputStream(
+					new ByteArrayInputStream(value)).readObject();
+		}
+		catch (IOException | ClassNotFoundException | ClassCastException e) {
+			logger.error(e, "Failed to deserialize a deserialization exception");
+			return null;
+		}
 	}
 
 	/**
