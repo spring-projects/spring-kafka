@@ -188,6 +188,12 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	@Override
 	public T deserialize(String topic, Headers headers, byte[] data) {
 		try {
+			if (this.isForKey) {
+				headers.remove(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
+			}
+			else {
+				headers.remove(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+			}
 			return this.delegate.deserialize(topic, headers, data);
 		}
 		catch (Exception e) {
