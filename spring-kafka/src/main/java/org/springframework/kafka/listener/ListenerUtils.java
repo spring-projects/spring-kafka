@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -122,8 +123,18 @@ public final class ListenerUtils {
 	@Nullable
 	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, byte[] value) {
 		try {
-			return (DeserializationException) new ObjectInputStream(
-					new ByteArrayInputStream(value)).readObject();
+			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(value)) {
+
+				@Override
+				protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+					Assert.state(desc.getName().equals(DeserializationException.class.getName()),
+							"Header does not contain a DeserializationException");
+					return super.resolveClass(desc);
+				}
+
+
+			};
+			return (DeserializationException) ois.readObject();
 		}
 		catch (IOException | ClassNotFoundException | ClassCastException e) {
 			logger.error(e, "Failed to deserialize a deserialization exception");
