@@ -125,10 +125,15 @@ public final class ListenerUtils {
 		try {
 			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(value)) {
 
+				boolean first = true;
+
 				@Override
 				protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
-					Assert.state(desc.getName().equals(DeserializationException.class.getName()),
-							"Header does not contain a DeserializationException");
+					if (this.first) {
+						this.first = false;
+						Assert.state(desc.getName().equals(DeserializationException.class.getName()),
+								"Header does not contain a DeserializationException");
+					}
 					return super.resolveClass(desc);
 				}
 
