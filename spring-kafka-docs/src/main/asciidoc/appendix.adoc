@@ -31,6 +31,7 @@ When using 2.8.1, you also need to exclude `zookeeper` dependency from `spring-k
     <groupId>org.springframework.kafka</groupId>
     <artifactId>spring-kafka-test</artifactId>
     <scope>test</scope>
+     <!-- needed if downgrading to Apache Kafka 2.8.1 -->
     <exclusions>
         <exclusion>
             <groupId>org.apache.zookeeper</groupId>
