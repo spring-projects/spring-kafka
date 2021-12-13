@@ -2,7 +2,7 @@
 == Override Spring Boot Dependencies
 
 When using Spring for Apache Kafka in a Spring Boot application, the Apache Kafka dependency versions are determined by Spring Boot's dependency management.
-If you wish to use a different version of `kafka-clients` or `kafka-streams`, and use the embedded kafka broker for testing, you need to override their version Spring Boot dependency management and add two `test` artifacts for Apache Kafka.
+If you wish to use a different version of `kafka-clients` or `kafka-streams`, and use the embedded kafka broker for testing, you need to override their version used by Spring Boot dependency management and add two `test` artifacts for Apache Kafka.
 
 IMPORTANT: There is a bug in Apache Kafka 3.0.0 when running the embedded broker on Microsoft Windows https://issues.apache.org/jira/browse/KAFKA-13391[KAFKA-13391].
 To use the embedded broker on Windows, you need to downgrade the Apache Kafka version to 2.8.1 until 3.0.1 is available.
