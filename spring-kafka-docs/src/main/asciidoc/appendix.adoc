@@ -2,50 +2,35 @@
 == Override Spring Boot Dependencies
 
 When using Spring for Apache Kafka in a Spring Boot application, the Apache Kafka dependency versions are determined by Spring Boot's dependency management.
-If you wish to use a different version of `kafka-clients` or `kafka-streams`, you need to override all of the associated dependencies.
+If you wish to use a different version of `kafka-clients` or `kafka-streams`, you need to override their version Spring Boot dependency management and add two `test` artifact for Apache Kafka.
 This is especially true when using the embedded Kafka broker in `spring-kafka-test`.
 
 IMPORTANT: There is a bug in Apache Kafka 3.0.0 when running the embedded broker on Microsoft Windows https://issues.apache.org/jira/browse/KAFKA-13391[KAFKA-13391].
 To use the embedded broker on Windows, you need to downgrade the Apache Kafka version to 2.8.1 until 3.0.1 is available.
-When using 2.8.1, you also need to exclude `spring-kafka-test` 's `zookeeper` dependency.
+When using 2.8.1, you also need to exclude `zookeeper` dependency from `spring-kafka-test`.
 
 ====
 [source, xml, subs="+attributes", role="primary"]
 .Maven
 ----
+<properties>
+    <kafka.version>2.8.1</kafka.version>
+</properties>
+
 <dependency>
     <groupId>org.springframework.kafka</groupId>
     <artifactId>spring-kafka</artifactId>
-    <version>{project-version}</version>
+</dependency>
+<!-- optional - only needed when using kafka-streams -->
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka-streams</artifactId>
 </dependency>
 
 <dependency>
     <groupId>org.springframework.kafka</groupId>
     <artifactId>spring-kafka-test</artifactId>
-    <version>{project-version}</version>
     <scope>test</scope>
-</dependency>
-
-<dependency>
-    <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka-clients</artifactId>
-    <version>{kafka-version}</version>
-</dependency>
-
-<!-- optional - only needed when using kafka-streams -->
-<dependency>
-    <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka-streams</artifactId>
-    <version>{kafka-version}</version>
-</dependency>
-
-<dependency>
-    <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka-clients</artifactId>
-    <version>{kafka-version}</version>
-    <classifier>test</classifier>
-    <scope>test</scope>
-    <!-- needed if downgrading to Apache Kafka 2.8.1 -->
     <exclusions>
         <exclusion>
             <groupId>org.apache.zookeeper</groupId>
@@ -56,37 +41,35 @@ When using 2.8.1, you also need to exclude `spring-kafka-test` 's `zookeeper` de
 
 <dependency>
     <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka_2.13</artifactId>
-    <version>{kafka-version}</version>
+    <artifactId>kafka-clients</artifactId>
+    <classifier>test</classifier>
     <scope>test</scope>
+    <version>${kafka.version}</version>
 </dependency>
 
 <dependency>
     <groupId>org.apache.kafka</groupId>
     <artifactId>kafka_2.13</artifactId>
-    <version>{kafka-version}</version>
     <classifier>test</classifier>
     <scope>test</scope>
+    <version>${kafka.version}</version>
 </dependency>
 ----
 
 [source, groovy, subs="+attributes", role="secondary"]
 .Gradle
 ----
+ext['kafka.version'] = '2.8.1'
+
 dependencies {
-
-    implementation 'org.springframework.kafka:spring-kafka:{project-version}'
-
-    implementation "org.apache.kafka:kafka-clients:$kafkaVersion"
-    implementation "org.apache.kafka:kafka-streams:$kafkaVersion" // optional - only needed when using kafka-streams
-    testImplementation ('org.springframework.kafka:spring-kafka-test:{project-version}') {
-        // needed if downgrading to Apache Kafka 2.8.1
-        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
-    }
-    testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-    testImplementation "org.apache.kafka:kafka_2.13:$kafkaVersion"
-    testImplementation "org.apache.kafka:kafka_2.13:$kafkaVersion:test"
-
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation "org.apache.kafka:kafka-streams" // optional - only needed when using kafka-streams
+    testImplementation ('org.springframework.kafka:spring-kafka-test') {
+            // needed if downgrading to Apache Kafka 2.8.1
+            exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+        }
+    testImplementation "org.apache.kafka:kafka-clients:${kafka.version}:test"
+    testImplementation "org.apache.kafka:kafka_2.13:${kafka.version}:test"
 }
 ----
 ====
