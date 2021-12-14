@@ -226,10 +226,6 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	private T createInstanceAndConfigure(Map<String, ?> configs, boolean isKey,
 			Map<Pattern, T> delegates2, @Nullable Pattern pattern, String className) {
 
-		if (pattern != null && !this.patterns.add(pattern.pattern())) {
-			LOGGER.debug(() -> "Delegate already configured for " + pattern.pattern());
-			return null;
-		}
 		try {
 			Class<?> clazz = ClassUtils.forName(className.trim(), ClassUtils.getDefaultClassLoader());
 			return instantiateAndConfigure(configs, isKey, delegates2, pattern, clazz);
