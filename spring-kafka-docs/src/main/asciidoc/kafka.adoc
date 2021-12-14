@@ -2443,6 +2443,16 @@ When null, such exceptions are considered fatal and the container will stop.
 |A prefix for the `client.id` consumer property.
 Overrides the consumer factory `client.id` property; in a concurrent container, `-n` is added as a suffix for each consumer instance.
 
+|[[checkDeserExWhenKeyNull]]<<checkDeserExWhenKeyNull,`checkDeserExWhenKeyNull`>>
+|false
+|Set to `true` to always check for a `DeserializationException` header when a `null` `key` is received.
+Useful when the consumer code cannot determine that an `ErrorHandlingDeserializer` has been configured, such as when using a delegating deserializer.
+
+|[[checkDeserExWhenValueNull]]<<checkDeserExWhenValueNull,`checkDeserExWhenValueNull`>>
+|false
+|Set to `true` to always check for a `DeserializationException` header when a `null` `value` is received.
+Useful when the consumer code cannot determine that an `ErrorHandlingDeserializer` has been configured, such as when using a delegating deserializer.
+
 |[[commitCallback]]<<commitCallback,`commitCallback`>>
 |`null`
 |When present and `syncCommits` is `false` a callback invoked after the commit completes.

@@ -810,8 +810,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.info(toString());
 			}
 			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
-			this.checkNullKeyForExceptions = checkDeserializer(findDeserializerClass(props, consumerProperties, false));
-			this.checkNullValueForExceptions = checkDeserializer(findDeserializerClass(props, consumerProperties, true));
+			this.checkNullKeyForExceptions = this.containerProperties.isCheckDeserExWhenKeyNull()
+					|| checkDeserializer(findDeserializerClass(props, consumerProperties, false));
+			this.checkNullValueForExceptions = this.containerProperties.isCheckDeserExWhenValueNull()
+					|| checkDeserializer(findDeserializerClass(props, consumerProperties, true));
 			this.syncCommitTimeout = determineSyncCommitTimeout();
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
 				// update the property so we can use it directly from code elsewhere

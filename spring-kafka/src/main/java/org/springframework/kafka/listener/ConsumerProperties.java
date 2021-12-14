@@ -107,6 +107,10 @@ public class ConsumerProperties {
 
 	private boolean fixTxOffsets;
 
+	private boolean checkDeserExWhenKeyNull;
+
+	private boolean checkDeserExWhenValueNull;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -464,6 +468,52 @@ public class ConsumerProperties {
 	 */
 	public void setFixTxOffsets(boolean fixTxOffsets) {
 		this.fixTxOffsets = fixTxOffsets;
+	}
+
+	/**
+	 * Always check for a deserialization exception header with a null key.
+	 * @return true to check.
+	 * @since 2.8.1
+	 */
+	public boolean isCheckDeserExWhenKeyNull() {
+		return this.checkDeserExWhenKeyNull;
+	}
+
+	/**
+	 * Set to true to always check for
+	 * {@link org.springframework.kafka.support.serializer.DeserializationException}
+	 * header when a null key is received. Useful when the consumer code cannot determine
+	 * that an
+	 * {@link org.springframework.kafka.support.serializer.ErrorHandlingDeserializer} has
+	 * been configured, for example when using a delegating deserializer.
+	 * @param checkDeserExWhenKeyNull true to always check.
+	 * @since 2.8.1
+	 */
+	public void setCheckDeserExWhenKeyNull(boolean checkDeserExWhenKeyNull) {
+		this.checkDeserExWhenKeyNull = checkDeserExWhenKeyNull;
+	}
+
+	/**
+	 * Always check for a deserialization exception header with a null value.
+	 * @return true to check.
+	 * @since 2.8.1
+	 */
+	public boolean isCheckDeserExWhenValueNull() {
+		return this.checkDeserExWhenValueNull;
+	}
+
+	/**
+	 * Set to true to always check for
+	 * {@link org.springframework.kafka.support.serializer.DeserializationException}
+	 * header when a null value is received. Useful when the consumer code cannot
+	 * determine that an
+	 * {@link org.springframework.kafka.support.serializer.ErrorHandlingDeserializer} has
+	 * been configured, for example when using a delegating deserializer.
+	 * @param checkDeserExWhenKeyNull true to always check.
+	 * @since 2.8.1
+	 */
+	public void setCheckDeserExWhenValueNull(boolean checkDeserExWhenValueNull) {
+		this.checkDeserExWhenValueNull = checkDeserExWhenValueNull;
 	}
 
 	@Override

@@ -58,6 +58,8 @@ public class SerializationIntegrationTests {
 				new DefaultKafkaConsumerFactory<String, Object>(consumerProps,
 					new StringDeserializer(), delegating);
 		ContainerProperties props = new ContainerProperties(DBTD_TOPIC);
+		props.setCheckDeserExWhenKeyNull(true);
+		props.setCheckDeserExWhenValueNull(true);
 		props.setMessageListener(mock(MessageListener.class));
 		KafkaMessageListenerContainer<String, Object> container = new KafkaMessageListenerContainer<>(cFact, props);
 		container.start();
@@ -67,6 +69,10 @@ public class SerializationIntegrationTests {
 		assertThat(delegates).hasSize(1);
 		assertThat(delegates.values().iterator().next()).isSameAs(testDeser);
 		assertThat(testDeser.configured).isTrue();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.checkNullKeyForExceptions",
+				Boolean.class)).isTrue();
+		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.checkNullValueForExceptions",
+				Boolean.class)).isTrue();
 		container.stop();
 	}
 
