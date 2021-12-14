@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -74,6 +75,8 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 
 	private final Map<Pattern, T> delegates = new ConcurrentHashMap<>();
 
+	private final Set<String> patterns = ConcurrentHashMap.newKeySet();
+
 	private T defaultDelegate;
 
 	private boolean forKeys;
@@ -84,7 +87,11 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	}
 
 	public DelegatingByTopicSerialization(Map<Pattern, T> delegates, T defaultDelegate) {
+		Assert.notNull(delegates, "'delegates' cannot be null");
+		Assert.notNull(defaultDelegate, "'defaultDelegate' cannot be null");
 		this.delegates.putAll(delegates);
+		delegates.keySet().forEach(pattern -> Assert.isTrue(this.patterns.add(pattern.pattern()),
+				"Duplicate pattern: " + pattern.pattern()));
 		this.defaultDelegate = defaultDelegate;
 	}
 
@@ -98,6 +105,9 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 
 	@SuppressWarnings(UNCHECKED)
 	protected void configure(Map<String, ?> configs, boolean isKey) {
+		if (this.delegates.size() > 0) {
+			this.delegates.values().forEach(delegate -> configureDelegate(configs, isKey, delegate));
+		}
 		this.forKeys = isKey;
 		Object insensitive = configs.get(CASE_SENSITIVE);
 		if (insensitive instanceof String) {
@@ -107,7 +117,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 			this.cased = (Boolean) insensitive;
 		}
 		String configKey = defaultKey();
-		if (configKey != null) {
+		if (configKey != null && configs.containsKey(configKey)) {
 			buildDefault(configs, configKey, isKey, configs.get(configKey));
 		}
 		configKey = configKey();
@@ -145,6 +155,10 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	@SuppressWarnings(UNCHECKED)
 	protected void build(Map<String, ?> configs, boolean isKey, String configKey, Object delegate, Pattern pattern) {
 
+		if (!this.patterns.add(pattern.pattern())) {
+			LOGGER.debug(() -> "Delegate already configured for " + pattern.pattern());
+			return;
+		}
 		if (isInstance(delegate)) {
 			this.delegates.put(pattern, (T) delegate);
 			configureDelegate(configs, isKey, (T) delegate);
@@ -208,9 +222,14 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		return delegateMap;
 	}
 
+	@Nullable
 	private T createInstanceAndConfigure(Map<String, ?> configs, boolean isKey,
-			Map<Pattern, T> delegates2, Pattern pattern, String className) {
+			Map<Pattern, T> delegates2, @Nullable Pattern pattern, String className) {
 
+		if (pattern != null && !this.patterns.add(pattern.pattern())) {
+			LOGGER.debug(() -> "Delegate already configured for " + pattern.pattern());
+			return null;
+		}
 		try {
 			Class<?> clazz = ClassUtils.forName(className.trim(), ClassUtils.getDefaultClassLoader());
 			return instantiateAndConfigure(configs, isKey, delegates2, pattern, clazz);
@@ -240,6 +259,10 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	protected T instantiateAndConfigure(Map<String, ?> configs, boolean isKey, Map<Pattern, T> delegates2,
 			@Nullable Pattern pattern, Class<?> clazz) {
 
+		if (pattern != null && !this.patterns.add(pattern.pattern())) {
+			LOGGER.debug(() -> "Delegate already configured for " + pattern.pattern());
+			return null;
+		}
 		try {
 			@SuppressWarnings(UNCHECKED)
 			T delegate = (T) clazz.getDeclaredConstructor().newInstance();
@@ -282,7 +305,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		}
 		if (delegate == null) {
 			throw new IllegalStateException(
-					"No serializer found for topic '" + topic + "'");
+					"No (de)serializer found for topic '" + topic + "'");
 		}
 		return delegate;
 	}
