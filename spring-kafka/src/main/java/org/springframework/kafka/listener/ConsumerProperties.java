@@ -485,7 +485,7 @@ public class ConsumerProperties {
 	 * header when a null key is received. Useful when the consumer code cannot determine
 	 * that an
 	 * {@link org.springframework.kafka.support.serializer.ErrorHandlingDeserializer} has
-	 * been configured, for example when using a delegating deserializer.
+	 * been configured, such as when using a delegating deserializer.
 	 * @param checkDeserExWhenKeyNull true to always check.
 	 * @since 2.8.1
 	 */
@@ -508,8 +508,8 @@ public class ConsumerProperties {
 	 * header when a null value is received. Useful when the consumer code cannot
 	 * determine that an
 	 * {@link org.springframework.kafka.support.serializer.ErrorHandlingDeserializer} has
-	 * been configured, for example when using a delegating deserializer.
-	 * @param checkDeserExWhenKeyNull true to always check.
+	 * been configured, such as when using a delegating deserializer.
+	 * @param checkDeserExWhenValueNull true to always check.
 	 * @since 2.8.1
 	 */
 	public void setCheckDeserExWhenValueNull(boolean checkDeserExWhenValueNull) {
