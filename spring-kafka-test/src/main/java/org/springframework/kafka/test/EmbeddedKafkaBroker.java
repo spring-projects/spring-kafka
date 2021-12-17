@@ -595,7 +595,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				}
 			}
 			else {
-				this.logger.debug("Could not determine broker state during shutdown");
+				logger.debug("Could not determine broker state during shutdown");
 				return true;
 			}
 		}

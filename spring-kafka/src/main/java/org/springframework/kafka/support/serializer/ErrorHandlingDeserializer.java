@@ -132,11 +132,15 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
-		setupDelegate(configs, isKey ? KEY_DESERIALIZER_CLASS : VALUE_DESERIALIZER_CLASS);
+		if (this.delegate == null) {
+			setupDelegate(configs, isKey ? KEY_DESERIALIZER_CLASS : VALUE_DESERIALIZER_CLASS);
+		}
 		Assert.state(this.delegate != null, "No delegate deserializer configured");
 		this.delegate.configure(configs, isKey);
 		this.isForKey = isKey;
-		setupFunction(configs, isKey ? KEY_FUNCTION : VALUE_FUNCTION);
+		if (this.failedDeserializationFunction == null) {
+			setupFunction(configs, isKey ? KEY_FUNCTION : VALUE_FUNCTION);
+		}
 	}
 
 	public void setupDelegate(Map<String, ?> configs, String configKey) {

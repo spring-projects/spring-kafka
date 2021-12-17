@@ -2257,7 +2257,8 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeIgnoreTypeHeadersInbound() throws Exception {
 		this.logger.info("Start JSON4");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
-
+		props.put("spring.deserializer.value.delegate.class",
+				"org.apache.kafka.common.serialization.StringDeserializer");
 		ErrorHandlingDeserializer<Foo1> errorHandlingDeserializer =
 				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(Foo1.class, false));
 
