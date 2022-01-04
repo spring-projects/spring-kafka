@@ -25,7 +25,7 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.kafka.annotation.KafkaListenerConfigurer;
-import org.springframework.kafka.annotation.MediaMessage;
+import org.springframework.kafka.annotation.ResolvableType;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.*;
@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * @author Scruel Tao
  */
-public class MediaMessageResolverTests {
+public class ResolvableTypeResolverTests {
 	private static final String TEXT = "kafka";
 
 	@Test
@@ -62,7 +62,7 @@ public class MediaMessageResolverTests {
 		method.invoke(new GenericMessage<>(s.getBytes(StandardCharsets.UTF_8)));
 	}
 
-	public void onMessageWithFoo(@MediaMessage Foo payload) {
+	public void onMessageWithFoo(@ResolvableType Foo payload) {
 		assertThat(payload.getText()).isEqualTo(TEXT);
 	}
 
@@ -80,7 +80,7 @@ public class MediaMessageResolverTests {
 		forceMethod.invoke(new GenericMessage<>(s, contentType));
 	}
 
-	public void onForceJsonMessageWithFoo(@MediaMessage(force = true) Foo payload) {
+	public void onForceJsonMessageWithFoo(@ResolvableType(force = true) Foo payload) {
 		assertThat(payload.getText()).isEqualTo(TEXT);
 	}
 
@@ -145,7 +145,7 @@ public class MediaMessageResolverTests {
 
 		@Override
 		public void configureKafkaListeners(@JsonDeserialize KafkaListenerEndpointRegistrar registrar) {
-			registrar.setCustomMethodArgumentResolvers(new MediaMessageResolver(createMessageConverter()));
+			registrar.setCustomMethodArgumentResolvers(new ResolvableTypeResolver(createMessageConverter()));
 		}
 	}
 

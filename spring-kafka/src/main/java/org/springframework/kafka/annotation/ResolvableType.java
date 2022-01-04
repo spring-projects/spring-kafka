@@ -28,7 +28,7 @@ import java.lang.annotation.*;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})
-public @interface MediaMessage {
+public @interface ResolvableType {
 	/**
 	 * The string value of the content type of message, which can support parse,
 	 * Default application/json.

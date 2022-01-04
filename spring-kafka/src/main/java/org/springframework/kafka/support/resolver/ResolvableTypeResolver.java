@@ -17,7 +17,7 @@
 package org.springframework.kafka.support.resolver;
 
 import org.springframework.core.MethodParameter;
-import org.springframework.kafka.annotation.MediaMessage;
+import org.springframework.kafka.annotation.ResolvableType;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.MessageConverter;
@@ -30,25 +30,25 @@ import org.springframework.messaging.support.MessageBuilder;
  *
  * @author Scruel Tao
  */
-public class MediaMessageResolver extends PayloadMethodArgumentResolver {
+public class ResolvableTypeResolver extends PayloadMethodArgumentResolver {
 	/**
 	 * Create a new {@code MediaMessageResolver} with the given
 	 * {@link MessageConverter}.
 	 *
 	 * @param messageConverter the MessageConverter to use (required)
 	 */
-	public MediaMessageResolver(MessageConverter messageConverter) {
+	public ResolvableTypeResolver(MessageConverter messageConverter) {
 		super(messageConverter);
 	}
 
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
-		return parameter.hasParameterAnnotation(MediaMessage.class);
+		return parameter.hasParameterAnnotation(ResolvableType.class);
 	}
 
 	@Override
 	public Object resolveArgument(MethodParameter parameter, Message<?> message) throws Exception {
-		MediaMessage ann = parameter.getParameterAnnotation(MediaMessage.class);
+		ResolvableType ann = parameter.getParameterAnnotation(ResolvableType.class);
 		if (null == ann) {
 			throw new IllegalStateException("Annotation parsing failed.");
 		}
