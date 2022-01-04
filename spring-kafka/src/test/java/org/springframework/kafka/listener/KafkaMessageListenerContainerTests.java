@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -650,8 +650,9 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
 		inOrder.verify(consumer).commitSync(anyMap(), any());
-		container.stop();
+		container.destroy();
 		assertThat(advised).containsExactly("one", "two", "one", "two");
+		assertThat(container.isRunning()).isFalse();
 	}
 
 	@Test
