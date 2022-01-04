@@ -53,7 +53,8 @@ public class MediaMessageResolver extends PayloadMethodArgumentResolver {
 			throw new IllegalStateException("Annotation parsing failed.");
 		}
 		// If not present, parse content type from annotation
-		if (message.getHeaders().get(MessageHeaders.CONTENT_TYPE) == null) {
+		Object type = message.getHeaders().get(MessageHeaders.CONTENT_TYPE);
+		if (ann.force() || type == null) {
 			message = MessageBuilder.fromMessage(message)
 					.setHeader(MessageHeaders.CONTENT_TYPE, ann.type())
 					.build();
