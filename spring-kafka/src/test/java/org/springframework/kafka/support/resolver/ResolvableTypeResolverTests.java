@@ -144,7 +144,7 @@ public class ResolvableTypeResolverTests {
 		}
 
 		@Override
-		public void configureKafkaListeners(@JsonDeserialize KafkaListenerEndpointRegistrar registrar) {
+		public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
 			registrar.setCustomMethodArgumentResolvers(new ResolvableTypeResolver(createMessageConverter()));
 		}
 	}
