@@ -25,7 +25,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used to define the content type of {@code Message} with {@code MediaMessageResolver}.
+ * Used to define the content type of {@code Message} with {@code ResolvableTypeResolver}.
  *
  * @author Scruel Tao
  */

@@ -26,13 +26,13 @@ import org.springframework.messaging.support.MessageBuilder;
 
 /**
  * A resolver to extract and convert the payload of a message using a MessageConverter.
- * This HandlerMethodArgumentResolver only work with MediaMessage annotation now.
+ * This HandlerMethodArgumentResolver only work with ResolvableType annotation now.
  *
  * @author Scruel Tao
  */
 public class ResolvableTypeResolver extends PayloadMethodArgumentResolver {
 	/**
-	 * Create a new {@code MediaMessageResolver} with the given
+	 * Create a new {@code ResolvableTypeResolver} with the given
 	 * {@link MessageConverter}.
 	 *
 	 * @param messageConverter the MessageConverter to use (required)

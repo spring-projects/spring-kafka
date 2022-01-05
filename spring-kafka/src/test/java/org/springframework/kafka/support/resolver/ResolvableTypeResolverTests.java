@@ -127,14 +127,14 @@ public class ResolvableTypeResolverTests {
 			return new HashMap<>() {
 				{
 					if (KafkaListenerConfigurer.class.equals(type)) {
-						put("bean", (T) new MediaMessageConfig());
+						put("bean", (T) new ResolvableTypeConfig());
 					}
 				}
 			};
 		}
 	}
 
-	static class MediaMessageConfig implements KafkaListenerConfigurer {
+	static class ResolvableTypeConfig implements KafkaListenerConfigurer {
 		public CompositeMessageConverter createMessageConverter() {
 			List<MessageConverter> converters = new ArrayList<>();
 			converters.add(new StringMessageConverter());
