@@ -37,10 +37,17 @@ public static Map<String, Object> producerProps(EmbeddedKafkaBroker embeddedKafk
 ----
 ====
 
-NOTE: Starting with version 2.5, the `consumerProps` method sets the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` to `earliest`.
+[NOTE]
+====
+Starting with version 2.5, the `consumerProps` method sets the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` to `earliest`.
 This is because, in most cases, you want the consumer to consume any messages sent in a test case.
 The `ConsumerConfig` default is `latest` which means that messages already sent by a test, before the consumer starts, will not receive those records.
 To revert to the previous behavior, set the property to `latest` after calling the method.
+
+When using the embedded broker, it is generally best practice to use a different topic for each test, to prevent cross-talk.
+If this is not possible for some reason, note that the `consumeFromEmbeddedTopics` method's default behavior is to seek the assigned partitions to the beginning after assignment.
+Since it does not have access to the consumer properties, you must use the overloaded method that takes a `seekToEnd` boolean parameter to seek to the end instead of the beginning.
+====
 
 A JUnit 4 `@Rule` wrapper for the `EmbeddedKafkaBroker` is provided to create an embedded Kafka and an embedded Zookeeper server.
 (See <<embedded-kafka-annotation>> for information about using `@EmbeddedKafka` with JUnit 5).

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -701,12 +700,33 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	/**
+	 * Subscribe a consumer to all the embedded topics.
+	 * @param seekToEnd true to seek to the end instead of the beginning.
+	 * @param consumer the consumer.
+	 * @since 2.8.2
+	 */
+	public void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer, boolean seekToEnd) {
+		consumeFromEmbeddedTopics(consumer, seekToEnd, this.topics.toArray(new String[0]));
+	}
+
+	/**
 	 * Subscribe a consumer to one of the embedded topics.
 	 * @param consumer the consumer.
 	 * @param topic the topic.
 	 */
 	public void consumeFromAnEmbeddedTopic(Consumer<?, ?> consumer, String topic) {
 		consumeFromEmbeddedTopics(consumer, topic);
+	}
+
+	/**
+	 * Subscribe a consumer to one of the embedded topics.
+	 * @param consumer the consumer.
+	 * @param seekToEnd true to seek to the end instead of the beginning.
+	 * @param topic the topic.
+	 * @since 2.8.2
+	 */
+	public void consumeFromAnEmbeddedTopic(Consumer<?, ?> consumer, boolean seekToEnd, String topic) {
+		consumeFromEmbeddedTopics(consumer, seekToEnd, topic);
 	}
 
 	/**
@@ -717,13 +737,26 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * the list of embedded topics (since 2.3.4).
 	 */
 	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topicsToConsume) {
+		consumeFromEmbeddedTopics(consumer, false, topicsToConsume);
+	}
+
+	/**
+	 * Subscribe a consumer to one or more of the embedded topics.
+	 * @param consumer the consumer.
+	 * @param topicsToConsume the topics.
+	 * @param seekToEnd true to seek to the end instead of the beginning.
+	 * @throws IllegalStateException if you attempt to consume from a topic that is not in
+	 * the list of embedded topics.
+	 * @since 2.8.2
+	 */
+	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, boolean seekToEnd, String... topicsToConsume) {
 		List<String> notEmbedded = Arrays.stream(topicsToConsume)
 				.filter(topic -> !this.topics.contains(topic))
 				.collect(Collectors.toList());
 		if (notEmbedded.size() > 0) {
 			throw new IllegalStateException("topic(s):'" + notEmbedded + "' are not in embedded topic list");
 		}
-		final AtomicBoolean assigned = new AtomicBoolean();
+		final AtomicReference<Collection<TopicPartition>> assigned = new AtomicReference<>();
 		consumer.subscribe(Arrays.asList(topicsToConsume), new ConsumerRebalanceListener() {
 
 			@Override
@@ -732,27 +765,30 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				assigned.set(true);
+				assigned.set(partitions);
 				logger.debug(() -> "partitions assigned: " + partitions);
 			}
 
 		});
 		ConsumerRecords<?, ?> records = null;
 		int n = 0;
-		while (!assigned.get() && n++ < 600) { // NOSONAR magic #
+		while (assigned.get() == null && n++ < 600) { // NOSONAR magic #
 			records = consumer.poll(Duration.ofMillis(100)); // force assignment NOSONAR magic #
 		}
-		if (records != null && records.count() > 0) {
+		if (assigned.get() != null) {
 			final ConsumerRecords<?, ?> theRecords = records;
-			logger.debug(() -> "Records received on initial poll for assignment; re-seeking to beginning; "
-					+ theRecords.partitions().stream()
-					.flatMap(p -> theRecords.records(p).stream())
-					// map to same format as send metadata toString()
-					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-					.collect(Collectors.toList()));
-			consumer.seekToBeginning(records.partitions());
+			logger.debug(() -> "Partitions assigned "
+					+ assigned.get()
+					+ "; re-seeking to "
+					+ (seekToEnd ? "end; " : "beginning"));
+			if (seekToEnd) {
+				consumer.seekToEnd(assigned.get());
+			}
+			else {
+				consumer.seekToBeginning(assigned.get());
+			}
 		}
-		if (!assigned.get()) {
+		else {
 			throw new IllegalStateException("Failed to be assigned partitions from the embedded topics");
 		}
 		logger.debug("Subscription Initiated");
