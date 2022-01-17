@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
@@ -497,6 +498,30 @@ public class DefaultKafkaProducerFactoryTests {
 		value = pf.getValueSerializerSupplier().get();
 		assertThat(valueSerializer).isSameAs(value);
 		verify(value).configure(any(), eq(false));
+	}
+
+	@Test
+	void testConfigOverridesOfTransactionalProducer() {
+		final Map<String, Object> producerFactoryConfigs = Map.of("linger.ms", 100);
+		final Map<String, Object> producerConfigs = new HashMap<>();
+		final DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(producerFactoryConfigs) {
+			@Override
+			protected Map<String, Object> getTxProducerConfigs(String transactionId) {
+				final Map<String, Object> newProducerConfigs = super.getTxProducerConfigs(transactionId);
+				newProducerConfigs.put("linger.ms", 200);
+				return newProducerConfigs;
+			}
+
+			@Override
+			protected Producer<String, String> createRawProducer(Map<String, Object> rawConfigs) {
+				producerConfigs.putAll(rawConfigs);
+				return new MockProducer<>();
+			}
+		};
+		pf.setTransactionIdPrefix("tx-prefix");
+		pf.createProducer();
+		assertThat(producerFactoryConfigs).containsEntry("linger.ms", 100);
+		assertThat(producerConfigs).containsEntry("linger.ms", 200);
 	}
 
 }

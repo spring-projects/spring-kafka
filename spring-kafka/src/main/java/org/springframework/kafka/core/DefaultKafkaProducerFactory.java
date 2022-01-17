@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -691,17 +691,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @return the producer.
 	 */
 	protected Producer<K, V> createKafkaProducer() {
-		Map<String, Object> newConfigs;
-		if (this.clientIdPrefix == null) {
-			newConfigs = new HashMap<>(this.configs);
-		}
-		else {
-			newConfigs = new HashMap<>(this.configs);
-			newConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
-					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
-		}
-		checkBootstrap(newConfigs);
-		return createRawProducer(newConfigs);
+		return createRawProducer(getProducerConfigs());
 	}
 
 	protected Producer<K, V> createTransactionalProducerForPartition() {
@@ -826,17 +816,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private CloseSafeProducer<K, V> doCreateTxProducer(String prefix, String suffix,
 			BiPredicate<CloseSafeProducer<K, V>, Duration> remover) {
-
-		Producer<K, V> newProducer;
-		Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
-		String txId = prefix + suffix;
-		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, txId);
-		if (this.clientIdPrefix != null) {
-			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
-					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
-		}
-		checkBootstrap(newProducerConfigs);
-		newProducer = createRawProducer(newProducerConfigs);
+		Producer<K, V> newProducer = createRawProducer(getTxProducerConfigs(prefix + suffix));
 		try {
 			newProducer.initTransactions();
 		}
@@ -906,6 +886,22 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			this.threadBoundProducers.remove();
 			tlProducer.closeDelegate(this.physicalCloseTimeout, this.listeners);
 		}
+	}
+
+	protected Map<String, Object> getProducerConfigs() {
+		final Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
+		checkBootstrap(newProducerConfigs);
+		if (this.clientIdPrefix != null) {
+			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
+					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
+		}
+		return newProducerConfigs;
+	}
+
+	protected Map<String, Object> getTxProducerConfigs(String transactionId) {
+		final Map<String, Object> newProducerConfigs = getProducerConfigs();
+		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionId);
+		return newProducerConfigs;
 	}
 
 	/**
