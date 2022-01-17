@@ -708,7 +708,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				CloseSafeProducer<K, V> consumerProducer = this.consumerProducers.get(suffix);
 				if (consumerProducer == null || expire(consumerProducer)) {
 					CloseSafeProducer<K, V> newProducer = doCreateTxProducer(txIdPrefix, suffix,
-							this::removeConsumerProducer, this.configs);
+							this::removeConsumerProducer);
 					this.consumerProducers.put(suffix, newProducer);
 					return newProducer;
 				}
@@ -781,7 +781,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 		if (cachedProducer == null) {
 			return doCreateTxProducer(txIdPrefix, "" + this.transactionIdSuffix.getAndIncrement(),
-					this::cacheReturner, this.configs);
+					this::cacheReturner);
 		}
 		else {
 			return cachedProducer;
@@ -815,8 +815,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 	}
 
-	protected CloseSafeProducer<K, V> doCreateTxProducer(String prefix, String suffix,
-			BiPredicate<CloseSafeProducer<K, V>, Duration> remover, Map<String, Object> rawConfigs) {
+	private CloseSafeProducer<K, V> doCreateTxProducer(String prefix, String suffix,
+			BiPredicate<CloseSafeProducer<K, V>, Duration> remover) {
 		Producer<K, V> newProducer = createRawProducer(getTxProducerConfigs(prefix + suffix));
 		try {
 			newProducer.initTransactions();
