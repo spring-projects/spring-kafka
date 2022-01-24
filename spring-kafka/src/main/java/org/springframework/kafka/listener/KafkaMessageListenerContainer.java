@@ -2427,16 +2427,28 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Nullable
-		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> nextArg) {
-			ConsumerRecord<K, V> next = nextArg;
+		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> recordArg) {
+			deliveryAttemptHeader(recordArg);
+			ConsumerRecord<K, V> record = recordArg;
 			if (this.earlyRecordInterceptor != null) {
-				next = this.earlyRecordInterceptor.intercept(next, this.consumer);
-				if (next == null) {
+				record = this.earlyRecordInterceptor.intercept(record, this.consumer);
+				if (record == null) {
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
-						+ ListenerUtils.recordToString(nextArg));
+						+ ListenerUtils.recordToString(recordArg));
 				}
 			}
-			return next;
+			return record;
+		}
+
+		private void deliveryAttemptHeader(final ConsumerRecord<K, V> record) {
+			if (this.deliveryAttemptAware != null) {
+				byte[] buff = new byte[4]; // NOSONAR (magic #)
+				ByteBuffer bb = ByteBuffer.wrap(buff);
+				bb.putInt(this.deliveryAttemptAware
+						.deliveryAttempt(
+								new TopicPartitionOffset(record.topic(), record.partition(), record.offset())));
+				record.headers().add(new RecordHeader(KafkaHeaders.DELIVERY_ATTEMPT, buff));
+			}
 		}
 
 		private void handleNack(final ConsumerRecords<K, V> records, final ConsumerRecord<K, V> record) {
@@ -2552,14 +2564,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			if (record.key() == null && this.checkNullKeyForExceptions) {
 				checkDeser(record, SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
-			}
-			if (this.deliveryAttemptAware != null) {
-				byte[] buff = new byte[4]; // NOSONAR (magic #)
-				ByteBuffer bb = ByteBuffer.wrap(buff);
-				bb.putInt(this.deliveryAttemptAware
-						.deliveryAttempt(
-								new TopicPartitionOffset(record.topic(), record.partition(), record.offset())));
-				record.headers().add(new RecordHeader(KafkaHeaders.DELIVERY_ATTEMPT, buff));
 			}
 			doInvokeOnMessage(record);
 			if (this.nackSleep < 0 && !this.isManualImmediateAck) {
