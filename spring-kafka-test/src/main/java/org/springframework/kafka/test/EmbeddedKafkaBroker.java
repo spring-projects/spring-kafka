@@ -72,6 +72,7 @@ import org.springframework.util.Assert;
 
 import kafka.cluster.EndPoint;
 import kafka.common.KafkaException;
+import kafka.server.KafkaBroker;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
 import kafka.utils.CoreUtils;
@@ -121,6 +122,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private static final Method GET_BROKER_STATE_METHOD;
 
+	private static final Method BOUND_PORT_METHOD;
+
 	static {
 		try {
 			Method method = KafkaServer.class.getDeclaredMethod("brokerState");
@@ -135,6 +138,20 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			throw new IllegalStateException("Failed to determine KafkaServer.brokerState() method; client version: "
 					+ AppInfoParser.getVersion(), e);
 		}
+		Method method = null;
+		try {
+			method = TestUtils.class.getDeclaredMethod("boundPort", KafkaServer.class, SecurityProtocol.class);
+		}
+		catch (NoSuchMethodException | SecurityException e) {
+			try {
+				method = TestUtils.class.getDeclaredMethod("boundPort", KafkaBroker.class, SecurityProtocol.class);
+			}
+			catch (NoSuchMethodException | SecurityException e1) {
+				throw new IllegalStateException("Failed to determine TestUtils.boundPort() method; client version: "
+						+ AppInfoParser.getVersion(), e);
+			}
+		}
+		BOUND_PORT_METHOD = method;
 	}
 
 	private final int count;
@@ -337,7 +354,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
 			this.kafkaServers.add(server);
 			if (this.kafkaPorts[i] == 0) {
-				this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
+				try {
+					this.kafkaPorts[i] = (int) BOUND_PORT_METHOD.invoke(null, server, SecurityProtocol.PLAINTEXT);
+				}
+				catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					throw new IllegalStateException("Failed to determine broker port", e);
+				}
 			}
 		}
 		createKafkaTopics(this.topics);
