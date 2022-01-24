@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -209,7 +209,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 			Map<String, TopicDescription> results = new HashMap<>();
 			DescribeTopicsResult topics = admin.describeTopics(Arrays.asList(topicNames));
 			try {
-				results.putAll(topics.all().get(this.operationTimeout, TimeUnit.SECONDS));
+				results.putAll(topics.allTopicNames().get(this.operationTimeout, TimeUnit.SECONDS));
 				return results;
 			}
 			catch (InterruptedException ie) {
@@ -251,7 +251,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 			DescribeTopicsResult topicInfo, List<NewTopic> topicsToAdd) {
 
 		Map<String, NewPartitions> topicsToModify = new HashMap<>();
-		topicInfo.values().forEach((n, f) -> {
+		topicInfo.topicNameValues().forEach((n, f) -> {
 			NewTopic topic = topicNameToTopic.get(n);
 			try {
 				TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
