@@ -888,6 +888,12 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 	}
 
+	/**
+	 * Return the configuration of a producer.
+	 * @return the configuration of a producer.
+	 * @since 2.8.3
+	 * @see #createKafkaProducer()
+	 */
 	protected Map<String, Object> getProducerConfigs() {
 		final Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
 		checkBootstrap(newProducerConfigs);
@@ -898,6 +904,13 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		return newProducerConfigs;
 	}
 
+	/**
+	 * Return the configuration of a transactional producer.
+	 * @param transactionId the transactionId.
+	 * @return the configuration of a transactional producer.
+	 * @since 2.8.3
+	 * @see #doCreateTxProducer(String, String, BiPredicate)
+	 */
 	protected Map<String, Object> getTxProducerConfigs(String transactionId) {
 		final Map<String, Object> newProducerConfigs = getProducerConfigs();
 		newProducerConfigs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionId);
