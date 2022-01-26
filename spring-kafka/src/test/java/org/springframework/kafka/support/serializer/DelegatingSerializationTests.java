@@ -221,4 +221,18 @@ public class DelegatingSerializationTests {
 						+ "; supported types: \\[(java.lang.String, \\[B|\\[B, java.lang.String)\\]");
 	}
 
+	@Test
+	void assignable() {
+		DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(Map.of(Number.class,
+				new IntegerSerializer(), byte[].class, new ByteArraySerializer()), true);
+		Integer i = 42;
+		assertThat(serializer.serialize("foo", i)).isEqualTo(new byte[] {0, 0, 0, 42});
+		byte[] foo = "foo".getBytes();
+		assertThat(serializer.serialize("foo", foo)).isSameAs(foo);
+		assertThatExceptionOfType(SerializationException.class).isThrownBy(
+				() -> serializer.serialize("foo", new Bytes(foo)))
+		.withMessageMatching("No matching delegate for type: " + Bytes.class.getName()
+				+ "; supported types: \\[(java.lang.Number, \\[B|\\[B, java.lang.Number)\\]");
+	}
+
 }

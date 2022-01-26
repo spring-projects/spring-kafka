@@ -4146,7 +4146,7 @@ Alternatively, as long as you don't use the fluent API to configure properties, 
 [[delegating-serialization]]
 ===== Delegating Serializer and Deserializer
 
-===== Using Headers
+====== Using Headers
 
 Version 2.3 introduced the `DelegatingSerializer` and `DelegatingDeserializer`, which allow producing and consuming records with different key and/or value types.
 Producers must set a header `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR` to a selector value that is used to select which serializer to use for the value and `DelegatingSerializer.KEY_SERIALIZATION_SELECTOR` for the key; if a match is not found, an `IllegalStateException` is thrown.
@@ -4183,7 +4183,9 @@ It is not necessary to configure serializers or deserializers for these types, t
 
 For another technique to send different types to different topics, see <<routing-template>>.
 
-2.8 introduced the `DelegatingByTypeSerializer`.
+====== By Type
+
+Version 2.8 introduced the `DelegatingByTypeSerializer`.
 
 ====
 [source, java]
@@ -4199,7 +4201,10 @@ public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> conf
 ----
 ====
 
-===== By Topic
+Starting with version 2.8.3, you can configure the serializer to check if the map key is assignable from the target object, useful when a delegate serializer can serialize sub classes.
+In this case, if there are amiguous matches, an ordered `Map`, such as a `LinkedHashMap` should be provided.
+
+====== By Topic
 
 Starting with version 2.8, the `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` allow selection of a serializer/deserializer based on the topic name.
 Regex `Pattern` s are used to lookup the instance to use.

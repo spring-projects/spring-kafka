@@ -16,8 +16,10 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -38,17 +40,44 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	private static final String RAWTYPES = "rawtypes";
 
 	@SuppressWarnings(RAWTYPES)
-	private final Map<Class<?>, Serializer> delegates = new HashMap<>();
+	private final Map<Class<?>, Serializer> delegates = new LinkedHashMap<>();
+
+	private final boolean assignable;
 
 	/**
-	 * Construct an instance with the map of delegates.
+	 * Construct an instance with the map of delegates; keys matched exactly.
 	 * @param delegates the delegates.
 	 */
 	@SuppressWarnings(RAWTYPES)
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer> delegates) {
+		this(delegates, false);
+	}
+
+	/**
+	 * Construct an instance with the map of delegates; keys matched exactly or if the
+	 * target object is assignable to the key, depending on the assignable argument.
+	 * If assignable, entries are checked in the natural entry order so an ordered map
+	 * such as a {@link LinkedHashMap} is recommended.
+	 * @param delegates the delegates.
+	 * @param assignable whether the target is assignable to the key.
+	 * @since 2.8.3
+	 */
+	@SuppressWarnings(RAWTYPES)
+	public DelegatingByTypeSerializer(Map<Class<?>, Serializer> delegates, boolean assignable) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.noNullElements(delegates.values(), "Serializers in delegates map cannot be null");
 		this.delegates.putAll(delegates);
+		this.assignable = assignable;
+	}
+
+	/**
+	 * Returns true if {@link #findDelegate(Object, Map)} should consider assignability to
+	 * the key rather than an exact match.
+	 * @return true if assigable.
+	 * @since 2.8.3
+	 */
+	protected boolean isAssignable() {
+		return this.assignable;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -60,27 +89,50 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	@SuppressWarnings({ RAWTYPES, "unchecked" })
 	@Override
 	public byte[] serialize(String topic, Object data) {
-		Serializer delegate = findDelegate(data);
+		Serializer delegate = findDelegate(data, this.delegates);
 		return delegate.serialize(topic, data);
 	}
 
 	@SuppressWarnings({ "unchecked", RAWTYPES })
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
-		Serializer delegate = findDelegate(data);
+		Serializer delegate = findDelegate(data, this.delegates);
 		return delegate.serialize(topic, headers, data);
 	}
 
+	/**
+	 * Determine the serializer for the data type.
+	 * @param data the data.
+	 * @param delegates the available delegates.
+	 * @return the delgate.
+	 * @throws SerializationException when there is no match.
+	 * @since 2.8.3
+	 */
 	@SuppressWarnings(RAWTYPES)
-	private Serializer findDelegate(Object data) {
-		Serializer delegate = this.delegates.get(data.getClass());
-		if (delegate == null) {
+	protected Serializer findDelegate(Object data, Map<Class<?>, Serializer> delegates) {
+		if (!this.assignable) {
+			Serializer delegate = delegates.get(data.getClass());
+			if (delegate == null) {
+				throw new SerializationException("No matching delegate for type: " + data.getClass().getName()
+						+ "; supported types: " + this.delegates.keySet().stream()
+								.map(clazz -> clazz.getName())
+								.collect(Collectors.toList()));
+			}
+			return delegate;
+		}
+		else {
+			Iterator<Entry<Class<?>, Serializer>> iterator = this.delegates.entrySet().iterator();
+			while (iterator.hasNext()) {
+				Entry<Class<?>, Serializer> entry = iterator.next();
+				if (entry.getKey().isAssignableFrom(data.getClass())) {
+					return entry.getValue();
+				}
+			}
 			throw new SerializationException("No matching delegate for type: " + data.getClass().getName()
 					+ "; supported types: " + this.delegates.keySet().stream()
 							.map(clazz -> clazz.getName())
 							.collect(Collectors.toList()));
 		}
-		return delegate;
 	}
 
 
