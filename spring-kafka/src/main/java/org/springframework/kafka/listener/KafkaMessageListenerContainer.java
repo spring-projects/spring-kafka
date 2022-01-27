@@ -1937,12 +1937,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void commitAsync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
 			this.consumer.commitAsync(commits, (offsetsAttempted, exception) -> {
-				if (exception instanceof RetriableCommitFailedException
-						&& retries < this.containerProperties.getCommitRetries()) {
-					commitAsync(commits, retries + 1);
-				}
-				else {
-					this.commitCallback.onComplete(offsetsAttempted, exception);
+				this.commitCallback.onComplete(offsetsAttempted, exception);
+				if (exception == null) {
 					if (this.fixTxOffsets) {
 						this.lastCommits.putAll(commits);
 					}
