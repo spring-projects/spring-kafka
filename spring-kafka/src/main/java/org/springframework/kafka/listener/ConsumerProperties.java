@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -293,6 +293,7 @@ public class ConsumerProperties {
 	 * @see #setSyncCommitTimeout(Duration)
 	 * @see #setCommitCallback(OffsetCommitCallback)
 	 * @see #setCommitLogLevel(org.springframework.kafka.support.LogIfLevelEnabled.Level)
+	 * @see #setCommitRetries(int)
 	 */
 	public void setSyncCommits(boolean syncCommits) {
 		this.syncCommits = syncCommits;
@@ -408,9 +409,10 @@ public class ConsumerProperties {
 	/**
 	 * The number of retries allowed when a
 	 * {@link org.apache.kafka.clients.consumer.RetriableCommitFailedException} is thrown
-	 * by the consumer.
+	 * by the consumer when using {@link #setSyncCommits(boolean)} set to true.
 	 * @return the number of retries.
 	 * @since 2.3.9
+	 * @see #setSyncCommits(boolean)
 	 */
 	public int getCommitRetries() {
 		return this.commitRetries;
@@ -419,9 +421,11 @@ public class ConsumerProperties {
 	/**
 	 * Set number of retries allowed when a
 	 * {@link org.apache.kafka.clients.consumer.RetriableCommitFailedException} is thrown
-	 * by the consumer. Default 3 (4 attempts total).
+	 * by the consumer when using {@link #setSyncCommits(boolean)} set to true. Default 3
+	 * (4 attempts total).
 	 * @param commitRetries the commitRetries.
 	 * @since 2.3.9
+	 * @see #setSyncCommits(boolean)
 	 */
 	public void setCommitRetries(int commitRetries) {
 		this.commitRetries = commitRetries;
