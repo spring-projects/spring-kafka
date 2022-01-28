@@ -5202,7 +5202,7 @@ By default, the exception type is not considered.
 Also see <<delivery-header>>.
 
 [[batch-listener-conv-errors]]
-==== Conversion Errors with Batch Error Handlers
+===== Conversion Errors with Batch Error Handlers
 
 Starting with version 2.8, batch listeners can now properly handle conversion errors, when using a `MessageConverter` with a `ByteArrayDeserializer`, a `BytesDeserializer` or a `StringDeserializer`, as well as a `DefaultErrorHandler`.
 When a conversion error occurs, the payload is set to null and a deserialization exception is added to the record headers, similar to the `ErrorHandlingDeserializer`.
