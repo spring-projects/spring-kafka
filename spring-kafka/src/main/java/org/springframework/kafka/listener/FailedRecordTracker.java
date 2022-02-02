@@ -98,7 +98,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	 * @param backOffFunction the function.
 	 * @since 2.6
 	 */
-	public void setBackOffFunction(BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction) {
+	public void setBackOffFunction(@Nullable BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction) {
 		this.backOffFunction = backOffFunction;
 	}
 
