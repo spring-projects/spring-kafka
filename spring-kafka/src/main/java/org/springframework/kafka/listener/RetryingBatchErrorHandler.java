@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,12 +37,14 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  * @author Gary Russell
  * @since 2.3.7
+ * @deprecated in favor of {@link DefaultErrorHandler}.
  *
  */
+@Deprecated
 public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 		implements ListenerInvokingBatchErrorHandler {
 
-	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(RetryingBatchErrorHandler.class));
+	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
 	private final BackOff backOff;
 
@@ -72,7 +74,7 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 		this.backOff = backOff;
 		this.recoverer = (crs, ex) -> {
 			if (recoverer == null) {
-				LOGGER.error(ex, () -> "Records discarded: " + ErrorHandlingUtils.recordsToString(crs));
+				this.logger.error(ex, () -> "Records discarded: " + ErrorHandlingUtils.recordsToString(crs));
 			}
 			else {
 				crs.spliterator().forEachRemaining(rec -> recoverer.accept(rec, ex));
@@ -95,11 +97,11 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		if (records == null || records.count() == 0) {
-			LOGGER.error(thrownException, "Called with no records; consumer exception");
+			this.logger.error(thrownException, "Called with no records; consumer exception");
 			return;
 		}
 		ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-				this.seeker, this.recoverer, LOGGER, getLogLevel());
+				this.seeker, this.recoverer, this.logger, getLogLevel());
 	}
 
 }

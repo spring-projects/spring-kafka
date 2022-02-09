@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,11 +36,11 @@ import org.springframework.util.backoff.BackOff;
  * the partitions for the remaining records will be repositioned and/or the failed record
  * can be recovered and skipped. If some other exception is thrown, or a valid record is
  * not provided in the exception, error handling is delegated to a
- * {@link RetryingBatchErrorHandler} with this handler's {@link BackOff}. If the record is
+ * {@link FallbackBatchErrorHandler} with this handler's {@link BackOff}. If the record is
  * recovered, its offset is committed. This is a replacement for the legacy
  * {@link SeekToCurrentErrorHandler} and {@link SeekToCurrentBatchErrorHandler} (but the
  * fallback now can send the messages to a recoverer after retries are completed instead
- * of retring indefinitely).
+ * of retrying indefinitely).
  *
  * @author Gary Russell
  *
@@ -90,7 +90,7 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	}
 
 	private static CommonErrorHandler createFallback(BackOff backOff, @Nullable ConsumerRecordRecoverer recoverer) {
-		return new ErrorHandlerAdapter(new RetryingBatchErrorHandler(backOff, recoverer));
+		return new ErrorHandlerAdapter(new FallbackBatchErrorHandler(backOff, recoverer));
 	}
 
 	/**

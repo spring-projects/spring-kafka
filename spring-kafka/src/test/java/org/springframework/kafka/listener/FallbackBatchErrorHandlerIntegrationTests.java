@@ -56,11 +56,11 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  */
 @EmbeddedKafka(topics = {
-		RetryingBatchErrorHandlerIntegrationTests.topic1,
-		RetryingBatchErrorHandlerIntegrationTests.topic1DLT,
-		RetryingBatchErrorHandlerIntegrationTests.topic2,
-		RetryingBatchErrorHandlerIntegrationTests.topic2DLT})
-public class RetryingBatchErrorHandlerIntegrationTests {
+		FallbackBatchErrorHandlerIntegrationTests.topic1,
+		FallbackBatchErrorHandlerIntegrationTests.topic1DLT,
+		FallbackBatchErrorHandlerIntegrationTests.topic2,
+		FallbackBatchErrorHandlerIntegrationTests.topic2DLT})
+public class FallbackBatchErrorHandlerIntegrationTests {
 
 	public static final String topic1 = "retryTopic1";
 
@@ -115,7 +115,7 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 			}
 
 		};
-		RetryingBatchErrorHandler errorHandler = new RetryingBatchErrorHandler(new FixedBackOff(0L, 3), recoverer);
+		FallbackBatchErrorHandler errorHandler = new FallbackBatchErrorHandler(new FixedBackOff(0L, 3), recoverer);
 		container.setBatchErrorHandler(errorHandler);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
@@ -186,7 +186,7 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 			}
 
 		};
-		RetryingBatchErrorHandler errorHandler = new RetryingBatchErrorHandler(new FixedBackOff(0L, 3), recoverer);
+		FallbackBatchErrorHandler errorHandler = new FallbackBatchErrorHandler(new FixedBackOff(0L, 3), recoverer);
 		container.setBatchErrorHandler(errorHandler);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
@@ -226,7 +226,7 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProps);
 		CountDownLatch called = new CountDownLatch(1);
-		container.setBatchErrorHandler(new RetryingBatchErrorHandler() {
+		container.setBatchErrorHandler(new FallbackBatchErrorHandler() {
 
 			@Override
 			public void handle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,

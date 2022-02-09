@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.3.7
  *
  */
-public class RetryingBatchErrorHandlerTests {
+public class FallbackBatchErrorHandlerTests {
 
 	private int invoked;
 
@@ -51,7 +51,7 @@ public class RetryingBatchErrorHandlerTests {
 	void recover() {
 		this.invoked = 0;
 		List<ConsumerRecord<?, ?>> recovered = new ArrayList<>();
-		RetryingBatchErrorHandler eh = new RetryingBatchErrorHandler(new FixedBackOff(0L, 3L), (cr, ex) ->  {
+		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0L, 3L), (cr, ex) ->  {
 			recovered.add(cr);
 		});
 		Map<TopicPartition, List<ConsumerRecord<Object, Object>>> map = new HashMap<>();
@@ -79,7 +79,7 @@ public class RetryingBatchErrorHandlerTests {
 	void successOnRetry() {
 		this.invoked = 0;
 		List<ConsumerRecord<?, ?>> recovered = new ArrayList<>();
-		RetryingBatchErrorHandler eh = new RetryingBatchErrorHandler(new FixedBackOff(0L, 3L), (cr, ex) ->  {
+		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0L, 3L), (cr, ex) ->  {
 			recovered.add(cr);
 		});
 		Map<TopicPartition, List<ConsumerRecord<Object, Object>>> map = new HashMap<>();
@@ -104,7 +104,7 @@ public class RetryingBatchErrorHandlerTests {
 	void recoveryFails() {
 		this.invoked = 0;
 		List<ConsumerRecord<?, ?>> recovered = new ArrayList<>();
-		RetryingBatchErrorHandler eh = new RetryingBatchErrorHandler(new FixedBackOff(0L, 3L), (cr, ex) ->  {
+		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0L, 3L), (cr, ex) ->  {
 			recovered.add(cr);
 			throw new RuntimeException("can't recover");
 		});

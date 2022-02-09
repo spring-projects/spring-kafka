@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 
 	private static final LoggingCommitCallback LOGGING_COMMIT_CALLBACK = new LoggingCommitCallback();
 
-	private final CommonErrorHandler fallbackHandler;
+	private final CommonErrorHandler fallbackBatchHandler;
 
 	/**
 	 * Construct an instance with the provided properties.
@@ -66,7 +66,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 			CommonErrorHandler fallbackHandler) {
 
 		super(recoverer, backOff);
-		this.fallbackHandler = fallbackHandler;
+		this.fallbackBatchHandler = fallbackHandler;
 	}
 
 	protected void doHandle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
@@ -75,7 +75,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		BatchListenerFailedException batchListenerFailedException = getBatchListenerFailedException(thrownException);
 		if (batchListenerFailedException == null) {
 			this.logger.debug(thrownException, "Expected a BatchListenerFailedException; re-seeking batch");
-			this.fallbackHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
+			this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
 		}
 		else {
 			ConsumerRecord<?, ?> record = batchListenerFailedException.getRecord();
@@ -84,7 +84,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 				this.logger.warn(batchListenerFailedException, () ->
 						String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
 								record.topic(), record.partition(), record.offset()));
-				this.fallbackHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
+				this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
 			}
 			else {
 				seekOrRecover(thrownException, data, consumer, container, index);
