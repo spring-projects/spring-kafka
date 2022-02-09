@@ -768,7 +768,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.commitCurrentOnAssignment = determineCommitCurrent(consumerProperties,
 					KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties());
 			subscribeOrAssignTopics(this.consumer);
-			GenericErrorHandler<?> errHandler = getGenericErrorHandler();
 			if (listener instanceof BatchMessageListener) {
 				this.listener = null;
 				this.batchListener = (BatchMessageListener<K, V>) listener;
@@ -792,7 +791,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.listenerType = listenerType;
 			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
 					|| listenerType.equals(ListenerType.CONSUMER_AWARE);
-			this.commonErrorHandler = determineCommonErrorHandler(errHandler);
+			this.commonErrorHandler = determineCommonErrorHandler();
 			Assert.state(!this.isBatchListener || !this.isRecordAck,
 					"Cannot use AckMode.RECORD with a batch listener");
 			if (this.containerProperties.getScheduler() != null) {
@@ -848,8 +847,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Nullable
-		private CommonErrorHandler determineCommonErrorHandler(@Nullable GenericErrorHandler<?> errHandler) {
+		private CommonErrorHandler determineCommonErrorHandler() {
 			CommonErrorHandler common = getCommonErrorHandler();
+			@SuppressWarnings("deprecation")
+			GenericErrorHandler<?> errHandler = getGenericErrorHandler();
 			if (common != null) {
 				if (errHandler != null) {
 					this.logger.debug("GenericErrorHandler is ignored when a CommonErrorHandler is provided");
@@ -860,7 +861,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return new DefaultErrorHandler();
 			}
 			if (this.isBatchListener) {
-				validateErrorHandler(true);
+				validateErrorHandler(true, errHandler);
 				BatchErrorHandler batchErrorHandler = (BatchErrorHandler) errHandler;
 				if (batchErrorHandler != null) {
 					return new ErrorHandlerAdapter(batchErrorHandler);
@@ -870,7 +871,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				validateErrorHandler(false);
+				validateErrorHandler(false, errHandler);
 				ErrorHandler eh = (ErrorHandler) errHandler;
 				if (eh != null) {
 					return new ErrorHandlerAdapter(eh);
@@ -1201,8 +1202,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void validateErrorHandler(boolean batch) {
-			GenericErrorHandler<?> errHandler = KafkaMessageListenerContainer.this.getGenericErrorHandler();
+		private void validateErrorHandler(boolean batch, @Nullable GenericErrorHandler<?> errHandler) {
 			if (errHandler == null) {
 				return;
 			}

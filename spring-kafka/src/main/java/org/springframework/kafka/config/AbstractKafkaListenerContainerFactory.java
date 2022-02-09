@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2021 the original author or authors.
+ * Copyright 2014-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -253,7 +253,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * Set the error handler to call when the listener throws an exception.
 	 * @param errorHandler the error handler.
 	 * @since 2.2
+	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
+	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
+	@Deprecated
 	public void setErrorHandler(ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -262,7 +265,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * Set the batch error handler to call when the listener throws an exception.
 	 * @param errorHandler the error handler.
 	 * @since 2.2
+	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
+	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
+	@Deprecated
 	public void setBatchErrorHandler(BatchErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -419,6 +425,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @param instance the container instance to configure.
 	 * @param endpoint the endpoint.
 	 */
+	@SuppressWarnings("deprecation")
 	protected void initializeContainer(C instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,7 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 		embeddedKafka = EmbeddedKafkaCondition.getBroker();
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testRetriesAndDlt() throws InterruptedException {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("retryBatch", "false", embeddedKafka);
@@ -143,6 +144,7 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testRetriesCantRecover() throws InterruptedException {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("retryBatch2", "false", embeddedKafka);
@@ -213,7 +215,7 @@ public class RetryingBatchErrorHandlerIntegrationTests {
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Test
 	void consumerEx() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);

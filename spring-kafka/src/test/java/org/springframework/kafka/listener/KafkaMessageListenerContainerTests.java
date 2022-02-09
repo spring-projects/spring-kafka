@@ -1363,6 +1363,7 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop batch listener manual");
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testBatchListenerErrors() throws Exception {
 		logger.info("Start batch listener errors");
@@ -1430,7 +1431,7 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop batch listener errors");
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Test
 	public void testBatchListenerAckAfterRecoveryMock() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
@@ -2413,6 +2414,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	public void testBadErrorHandler() {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -2430,6 +2432,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	public void testBadBatchErrorHandler() {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -2977,7 +2980,7 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked", "rawtypes", "deprecation" })
 	@Test
 	public void testCommitErrorHandlerCalled() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);

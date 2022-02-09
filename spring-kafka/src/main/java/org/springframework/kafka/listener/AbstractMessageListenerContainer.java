@@ -207,7 +207,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Set the error handler to call when the listener throws an exception.
 	 * @param errorHandler the error handler.
 	 * @since 2.2
+	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
+	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
+	@Deprecated
 	public void setErrorHandler(ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -216,8 +219,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Set the error handler to call when the listener throws an exception.
 	 * @param errorHandler the error handler.
 	 * @since 2.2
+	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
+	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	public void setGenericErrorHandler(GenericErrorHandler<?> errorHandler) {
+	@Deprecated
+	public void setGenericErrorHandler(@Nullable GenericErrorHandler<?> errorHandler) {
 		this.errorHandler = errorHandler;
 	}
 
@@ -225,7 +231,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Set the batch error handler to call when the listener throws an exception.
 	 * @param errorHandler the error handler.
 	 * @since 2.2
+	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
+	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
+	@Deprecated
 	public void setBatchErrorHandler(BatchErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -234,7 +243,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Get the configured error handler.
 	 * @return the error handler.
 	 * @since 2.2
+	 * @deprecated in favor of {@link #getCommonErrorHandler()}
+	 * @see #getCommonErrorHandler()
 	 */
+	@Deprecated
 	@Nullable
 	public GenericErrorHandler<?> getGenericErrorHandler() {
 		return this.errorHandler;
