@@ -846,10 +846,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return null;
 		}
 
+		@SuppressWarnings("deprecation")
 		@Nullable
 		private CommonErrorHandler determineCommonErrorHandler() {
 			CommonErrorHandler common = getCommonErrorHandler();
-			@SuppressWarnings("deprecation")
 			GenericErrorHandler<?> errHandler = getGenericErrorHandler();
 			if (common != null) {
 				if (errHandler != null) {
@@ -1199,6 +1199,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		private void validateErrorHandler(boolean batch, @Nullable GenericErrorHandler<?> errHandler) {
 			if (errHandler == null) {
 				return;

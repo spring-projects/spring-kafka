@@ -33,6 +33,7 @@ import org.springframework.util.Assert;
  * @since 2.7.4
  *
  */
+@SuppressWarnings("deprecation")
 class ErrorHandlerAdapter implements CommonErrorHandler {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })

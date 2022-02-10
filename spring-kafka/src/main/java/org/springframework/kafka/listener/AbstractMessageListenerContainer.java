@@ -86,6 +86,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
+	@SuppressWarnings("deprecation")
 	private GenericErrorHandler<?> errorHandler;
 
 	private CommonErrorHandler commonErrorHandler;

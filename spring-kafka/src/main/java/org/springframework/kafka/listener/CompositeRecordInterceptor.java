@@ -38,7 +38,7 @@ import org.springframework.util.Assert;
  * @since 2.3
  *
  */
-public class CompositeRecordInterceptor<K, V> implements ConsumerAwareRecordInterceptor<K, V> {
+public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V> {
 
 	private final Collection<RecordInterceptor<K, V>> delegates = new ArrayList<>();
 

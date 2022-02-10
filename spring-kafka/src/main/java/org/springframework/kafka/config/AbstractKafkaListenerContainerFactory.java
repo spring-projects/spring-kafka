@@ -35,12 +35,9 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AfterRollbackProcessor;
-import org.springframework.kafka.listener.BatchErrorHandler;
 import org.springframework.kafka.listener.BatchInterceptor;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.ErrorHandler;
-import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.RecordInterceptor;
 import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
@@ -73,7 +70,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null); // NOSONAR
 
-	private GenericErrorHandler<?> errorHandler;
+	private org.springframework.kafka.listener.GenericErrorHandler<?> errorHandler;
 
 	private CommonErrorHandler commonErrorHandler;
 
@@ -233,7 +230,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
 	@Deprecated
-	public void setErrorHandler(ErrorHandler errorHandler) {
+	public void setErrorHandler(org.springframework.kafka.listener.ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
 
@@ -245,13 +242,14 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
 	@Deprecated
-	public void setBatchErrorHandler(BatchErrorHandler errorHandler) {
+	public void setBatchErrorHandler(org.springframework.kafka.listener.BatchErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
 
 	/**
-	 * Set the {@link CommonErrorHandler} which can handle errors for both record
-	 * and batch listeners. Replaces the use of {@link GenericErrorHandler}s.
+	 * Set the {@link CommonErrorHandler} which can handle errors for both record and
+	 * batch listeners. Replaces the use of
+	 * {@link org.springframework.kafka.listener.GenericErrorHandler}s.
 	 * @param commonErrorHandler the handler.
 	 * @since 2.8
 	 */
@@ -341,12 +339,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	public void afterPropertiesSet() {
 		if (this.commonErrorHandler == null && this.errorHandler != null) {
 			if (Boolean.TRUE.equals(this.batchListener)) {
-				Assert.state(this.errorHandler instanceof BatchErrorHandler,
+				Assert.state(this.errorHandler instanceof org.springframework.kafka.listener.BatchErrorHandler,
 						() -> "The error handler must be a BatchErrorHandler, not " +
 								this.errorHandler.getClass().getName());
 			}
 			else {
-				Assert.state(this.errorHandler instanceof ErrorHandler,
+				Assert.state(this.errorHandler instanceof org.springframework.kafka.listener.ErrorHandler,
 						() -> "The error handler must be an ErrorHandler, not " +
 								this.errorHandler.getClass().getName());
 			}
