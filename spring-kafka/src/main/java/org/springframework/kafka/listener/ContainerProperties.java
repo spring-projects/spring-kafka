@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,7 +148,9 @@ public class ContainerProperties extends ConsumerProperties {
 
 		/**
 		 * 'transactional.id' fencing (0.11 - 2.4 brokers).
+		 * @deprecated 3.0 and later will require 2.5+ brokers
 		 */
+		@Deprecated
 		V1,
 
 		/**
@@ -188,7 +190,9 @@ public class ContainerProperties extends ConsumerProperties {
 		/**
 		 * Return the mode or the aliased mode.
 		 * @return the mode.
+		 * @deprecated aliases will be removed in 3.0
 		 */
+		@Deprecated
 		public EOSMode getMode() {
 			return this.mode;
 		}

@@ -926,6 +926,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		private boolean setupSubBatchPerPartition() {
 			Boolean subBatching = this.containerProperties.getSubBatchPerPartition();
 			if (subBatching != null) {

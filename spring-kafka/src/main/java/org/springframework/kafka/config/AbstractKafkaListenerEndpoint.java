@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2021 the original author or authors.
+ * Copyright 2014-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -326,6 +326,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.ackDiscarded = ackDiscarded;
 	}
 
+	@Deprecated
 	@Nullable
 	protected RetryTemplate getRetryTemplate() {
 		return this.retryTemplate;
@@ -341,6 +342,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.retryTemplate = retryTemplate;
 	}
 
+	@Deprecated
 	@Nullable
 	protected RecoveryCallback<?> getRecoveryCallback() {
 		return this.recoveryCallback;
@@ -349,7 +351,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	/**
 	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)}.
 	 * @param recoveryCallback the callback.
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
+	@Deprecated
 	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
 	}

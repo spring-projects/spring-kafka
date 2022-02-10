@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -143,21 +143,25 @@ public class TransactionalContainerTests {
 		embeddedKafka = EmbeddedKafkaCondition.getBroker();
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
 		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V1);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testConsumeAndProduceTransactionHandleError() throws Exception {
 		testConsumeAndProduceTransactionGuts(true, AckMode.RECORD, EOSMode.V1);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testConsumeAndProduceTransactionKTMManual() throws Exception {
 		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL_IMMEDIATE, EOSMode.V1);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testConsumeAndProduceTransactionKTM_BETA() throws Exception {
 		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V1);
