@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,28 +39,12 @@ public interface RecordInterceptor<K, V> extends ThreadStateProcessor {
 	 * Perform some action on the record or return a different one. If null is returned
 	 * the record will be skipped. Invoked before the listener.
 	 * @param record the record.
-	 * @return the record or null.
-	 * @deprecated in favor of {@link #intercept(ConsumerRecord, Consumer)} which will
-	 * become the required method in a future release.
-	 */
-	@Deprecated
-	@Nullable
-	ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record);
-
-	/**
-	 * Perform some action on the record or return a different one. If null is returned
-	 * the record will be skipped. Invoked before the listener.
-	 * @param record the record.
 	 * @param consumer the consumer.
 	 * @return the record or null.
 	 * @since 2.7
 	 */
 	@Nullable
-	default ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record,
-			@SuppressWarnings("unused") Consumer<K, V> consumer) {
-
-		return intercept(record);
-	}
+	ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record, Consumer<K, V> consumer);
 
 	/**
 	 * Called after the listener exits normally.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,18 +99,6 @@ public class RoutingKafkaTemplate extends KafkaTemplate<Object, Object> {
 
 	@Override
 	public <T> T executeInTransaction(OperationsCallback<Object, Object, T> callback) {
-		throw new UnsupportedOperationException(THIS_METHOD_IS_NOT_SUPPORTED);
-	}
-
-	@Override
-	@Deprecated
-	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) {
-		throw new UnsupportedOperationException(THIS_METHOD_IS_NOT_SUPPORTED);
-	}
-
-	@Override
-	@Deprecated
-	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets) {
 		throw new UnsupportedOperationException(THIS_METHOD_IS_NOT_SUPPORTED);
 	}
 

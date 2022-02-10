@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -197,35 +197,6 @@ public interface KafkaOperations<K, V> {
 	 * Flush the producer.
 	 */
 	void flush();
-
-	/**
-	 * When running in a transaction, send the consumer offset(s) to the transaction. The
-	 * group id is obtained from
-	 * {@link org.springframework.kafka.support.KafkaUtils#getConsumerGroupId()}. It is
-	 * not necessary to call this method if the operations are invoked on a listener
-	 * container thread (and the listener container is configured with a
-	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}) since
-	 * the container will take care of sending the offsets to the transaction.
-	 * @param offsets The offsets.
-	 * @since 1.3
-	 * @deprecated in the 3.0.0 KafkaProducer.
-	 */
-	@Deprecated
-	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets);
-
-	/**
-	 * When running in a transaction, send the consumer offset(s) to the transaction. It
-	 * is not necessary to call this method if the operations are invoked on a listener
-	 * container thread (and the listener container is configured with a
-	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}) since
-	 * the container will take care of sending the offsets to the transaction.
-	 * @param offsets The offsets.
-	 * @param consumerGroupId the consumer's group.id.
-	 * @since 1.3
-	 * @deprecated in the 3.0.0 KafkaProducer.
-	 */
-	@Deprecated
-	void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId);
 
 	/**
 	 * When running in a transaction, send the consumer offset(s) to the transaction. It

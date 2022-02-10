@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectStreamClass;
-import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -188,53 +185,6 @@ public final class ListenerUtils {
 		}
 		else {
 			return record.toString();
-		}
-	}
-
-	/**
-	 * Sleep according to the {@link BackOff}; when the {@link BackOffExecution} returns
-	 * {@link BackOffExecution#STOP} sleep for the previous backOff.
-	 * @param backOff the {@link BackOff} to create a new {@link BackOffExecution}.
-	 * @param executions a thread local containing the {@link BackOffExecution} for this
-	 * thread.
-	 * @param lastIntervals a thread local containing the previous {@link BackOff}
-	 * interval for this thread.
-	 * @since 2.3.12
-	 * @deprecated since 2.7 in favor of
-	 * {@link #unrecoverableBackOff(BackOff, ThreadLocal, ThreadLocal, MessageListenerContainer)}.
-	 */
-	@Deprecated
-	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
-			ThreadLocal<Long> lastIntervals) {
-
-		try {
-			unrecoverableBackOff(backOff, executions, lastIntervals, new MessageListenerContainer() { // NOSONAR
-
-				@Override
-				public void stop() {
-				}
-
-				@Override
-				public void start() {
-				}
-
-				@Override
-				public boolean isRunning() {
-					return true;
-				}
-
-				@Override
-				public void setupMessageListener(Object messageListener) {
-				}
-
-				@Override
-				public Map<String, Map<MetricName, ? extends Metric>> metrics() {
-					return null; // NOSONAR
-				}
-			});
-		}
-		catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
 		}
 	}
 

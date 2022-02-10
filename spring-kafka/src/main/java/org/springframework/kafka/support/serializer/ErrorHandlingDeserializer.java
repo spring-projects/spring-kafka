@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,28 +39,6 @@ import org.springframework.util.ClassUtils;
  *
  */
 public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
-
-	/**
-	 * Header name for deserialization exceptions.
-	 * @deprecated in favor of {@link SerializationUtils#DESERIALIZER_EXCEPTION_HEADER_PREFIX}.
-	 */
-	@Deprecated
-	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER_PREFIX =
-			SerializationUtils.DESERIALIZER_EXCEPTION_HEADER_PREFIX;
-
-	/**
-	 * Header name for deserialization exceptions.
-	 * @deprecated in favor of {@link SerializationUtils#KEY_DESERIALIZER_EXCEPTION_HEADER}.
-	 */
-	@Deprecated
-	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER;
-
-	/**
-	 * Header name for deserialization exceptions.
-	 * @deprecated in favor of {@link SerializationUtils#VALUE_DESERIALIZER_EXCEPTION_HEADER}.
-	 */
-	@Deprecated
-	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER;
 
 	/**
 	 * Supplier for a T when deserialization fails.

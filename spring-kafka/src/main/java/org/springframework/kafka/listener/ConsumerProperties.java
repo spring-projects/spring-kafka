@@ -355,35 +355,6 @@ public class ConsumerProperties {
 	/**
 	 * Get the authentication/authorization retry interval.
 	 * @return the interval.
-	 * @deprecated in favor of {@link #getAuthExceptionRetryInterval()}.
-	 */
-	@Deprecated
-	@Nullable
-	public Duration getAuthorizationExceptionRetryInterval() {
-		return this.authExceptionRetryInterval;
-	}
-
-	/**
-	 * Set the interval between retries after and
-	 * {@link org.apache.kafka.common.errors.AuthenticationException} or
-	 * {@code org.apache.kafka.common.errors.AuthorizationException} is thrown by
-	 * {@code KafkaConsumer}. By default the field is null and retries are disabled. In
-	 * such case the container will be stopped.
-	 *
-	 * The interval must be less than {@code max.poll.interval.ms} consumer property.
-	 *
-	 * @param authorizationExceptionRetryInterval the duration between retries
-	 * @since 2.3.5
-	 * @deprecated in favor of {@link #setAuthExceptionRetryInterval(Duration)}.
-	 */
-	@Deprecated
-	public void setAuthorizationExceptionRetryInterval(Duration authorizationExceptionRetryInterval) {
-		this.authExceptionRetryInterval = authorizationExceptionRetryInterval;
-	}
-
-	/**
-	 * Get the authentication/authorization retry interval.
-	 * @return the interval.
 	 */
 	@Nullable
 	public Duration getAuthExceptionRetryInterval() {

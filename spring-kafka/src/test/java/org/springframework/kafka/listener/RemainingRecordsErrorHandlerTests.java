@@ -199,11 +199,17 @@ public class RemainingRecordsErrorHandlerTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setErrorHandler(new RemainingRecordsErrorHandler() {
+			factory.setCommonErrorHandler(new CommonErrorHandler() {
 
 				@Override
-				public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
-						Consumer<?, ?> consumer) {
+				public boolean remainingRecords() {
+					return true;
+				}
+
+				@Override
+				public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
+						Consumer<?, ?> consumer, MessageListenerContainer container) {
+
 					remaining.addAll(records.stream()
 							.map(r -> (String) r.value())
 							.collect(Collectors.toList()));

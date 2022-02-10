@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -237,7 +237,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 			factory.setConsumerFactory(consumerFactory());
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			factory.getContainerProperties().setDeliveryAttemptHeader(true);
-			factory.setRecordInterceptor(record -> {
+			factory.setRecordInterceptor((record, consumer) -> {
 				Config.this.deliveryAttempt = record.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT);
 				return record;
 			});

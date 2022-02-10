@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -34,6 +33,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Printed;
@@ -41,7 +41,6 @@ import org.apache.kafka.streams.kstream.Repartitioned;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.kstream.ValueMapper;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
-import org.apache.kafka.streams.processor.internals.StreamThread;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -132,8 +131,8 @@ public class KafkaStreamsTests {
 		CountDownLatch stateLatch = new CountDownLatch(1);
 
 		this.streamsBuilderFactoryBean.setStateListener((newState, oldState) -> stateLatch.countDown());
-		Thread.UncaughtExceptionHandler exceptionHandler = mock(Thread.UncaughtExceptionHandler.class);
-		this.streamsBuilderFactoryBean.setUncaughtExceptionHandler(exceptionHandler);
+		StreamsUncaughtExceptionHandler exceptionHandler = mock(StreamsUncaughtExceptionHandler.class);
+		this.streamsBuilderFactoryBean.setStreamsUncaughtExceptionHandler(exceptionHandler);
 
 		this.streamsBuilderFactoryBean.start();
 
@@ -158,10 +157,8 @@ public class KafkaStreamsTests {
 
 		KafkaStreams kafkaStreams = this.streamsBuilderFactoryBean.getKafkaStreams();
 
-		@SuppressWarnings("unchecked")
-		List<StreamThread> threads = KafkaTestUtils.getPropertyValue(kafkaStreams, "threads", List.class);
-		assertThat(threads).isNotEmpty();
-		assertThat(threads.get(0).getUncaughtExceptionHandler()).isSameAs(exceptionHandler);
+		assertThat(KafkaTestUtils.getPropertyValue(kafkaStreams, "streamsUncaughtExceptionHandler.arg$2"))
+				.isSameAs(exceptionHandler);
 		assertThat(this.stateChangeCalled.get()).isTrue();
 	}
 

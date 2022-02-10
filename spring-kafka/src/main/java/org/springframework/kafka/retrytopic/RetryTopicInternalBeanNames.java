@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,14 +54,6 @@ public abstract class RetryTopicInternalBeanNames {
 	 */
 	public static final String DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME =
 			"internalDeadLetterPublishingRecovererProvider";
-
-	/**
-	 * {@link DeadLetterPublishingRecovererFactory} bean name.
-	 * @deprecated in favor of {@link #DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME}
-	 */
-	@Deprecated
-	public static final String DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME =
-			DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME;
 
 	/**
 	 * {@link DestinationTopicContainer} bean name.

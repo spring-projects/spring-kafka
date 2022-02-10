@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,6 @@
 package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-
-import org.springframework.lang.Nullable;
 
 /**
  * A {@link RecordInterceptor} that has access to the {@link Consumer}.
@@ -29,20 +26,11 @@ import org.springframework.lang.Nullable;
  *
  * @author Gary Russell
  * @since 2.7
+ * @deprecated - use {@link RecordInterceptor}.
  *
  */
+@Deprecated
 @FunctionalInterface
 public interface ConsumerAwareRecordInterceptor<K, V> extends RecordInterceptor<K, V> {
-
-	@SuppressWarnings("deprecation")
-	@Override
-	@Nullable
-	default ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record) {
-		throw new UnsupportedOperationException("Container should never call this");
-	}
-
-	@Override
-	@Nullable
-	ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record, Consumer<K, V> consumer);
 
 }

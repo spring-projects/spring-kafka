@@ -43,6 +43,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeAll;
@@ -158,7 +159,7 @@ public class ConcurrentMessageListenerContainerTests {
 			}
 		});
 		CountDownLatch intercepted = new CountDownLatch(4);
-		container.setRecordInterceptor(record -> {
+		container.setRecordInterceptor((record, consumer) -> {
 			intercepted.countDown();
 			return record.value().equals("baz") ? null : record;
 		});
@@ -620,8 +621,15 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setConcurrency(2);
 		container.setBeanName("testException");
-		container.setErrorHandler((thrownException, record) -> catchError.set(true));
+		container.setCommonErrorHandler(new CommonErrorHandler() {
 
+			@Override
+			public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+					MessageListenerContainer container) {
+
+				catchError.set(true);
+			}
+		});
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);

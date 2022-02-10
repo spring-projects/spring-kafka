@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -125,7 +125,7 @@ public class KafkaTemplateTransactionTests {
 			t.sendDefault("baz", "qux");
 			t.sendOffsetsToTransaction(Collections.singletonMap(
 					new TopicPartition(LOCAL_TX_IN_TOPIC, singleRecord.partition()),
-					new OffsetAndMetadata(singleRecord.offset() + 1L)), "testLocalTx");
+					new OffsetAndMetadata(singleRecord.offset() + 1L)), consumer.groupMetadata());
 			assertThat(KafkaTestUtils.getPropertyValue(
 					KafkaTestUtils.getPropertyValue(template, "producers", ThreadLocal.class).get(),
 						"delegate.transactionManager.transactionalId")).isEqualTo("my.transaction.0");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,19 +58,6 @@ public final class JacksonUtils {
 				.build();
 		registerWellKnownModulesIfAvailable(objectMapper);
 		return objectMapper;
-	}
-
-	/**
-	 * Factory for {@link ObjectMapper} instances with registered well-known modules
-	 * and disabled {@link MapperFeature#DEFAULT_VIEW_INCLUSION} and
-	 * {@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES} features.
-	 * @param classLoader the {@link ClassLoader} for modules to register.
-	 * @return the {@link ObjectMapper} instance.
-	 * @deprecated since 2.7.5 in favor of {@link #enhancedObjectMapper()}
-	 */
-	@Deprecated
-	public static ObjectMapper enhancedObjectMapper(ClassLoader classLoader) {
-		return enhancedObjectMapper();
 	}
 
 	private static void registerWellKnownModulesIfAvailable(ObjectMapper objectMapper) {

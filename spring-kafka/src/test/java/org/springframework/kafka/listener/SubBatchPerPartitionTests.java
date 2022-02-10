@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,6 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -155,27 +154,6 @@ public class SubBatchPerPartitionTests {
 				.isEqualTo(Boolean.TRUE);
 		container.stop();
 
-		containerProps = new ContainerProperties("sbpp");
-		containerProps.setMessageListener(mock(MessageListener.class));
-		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
-		containerProps.setEosMode(EOSMode.V1);
-		container = new KafkaMessageListenerContainer<>(cf, containerProps);
-		container.start();
-		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
-				.isEqualTo(Boolean.TRUE);
-		container.stop();
-
-		containerProps = new ContainerProperties("sbpp");
-		containerProps.setMessageListener(mock(MessageListener.class));
-		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
-		containerProps.setEosMode(EOSMode.V2);
-		container = new KafkaMessageListenerContainer<>(cf, containerProps);
-		container.start();
-		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))
-				.isEqualTo(Boolean.FALSE);
-		container.stop();
-
-		// default is BETA
 		containerProps = new ContainerProperties("sbpp");
 		containerProps.setMessageListener(mock(MessageListener.class));
 		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));

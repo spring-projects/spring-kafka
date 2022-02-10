@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,50 +148,15 @@ public class ContainerProperties extends ConsumerProperties {
 
 		/**
 		 * 'transactional.id' fencing (0.11 - 2.4 brokers).
+		 * @deprecated V1 is no longer supported
 		 */
+		@Deprecated
 		V1,
 
 		/**
 		 *  fetch-offset-request fencing (2.5+ brokers).
 		 */
-		V2,
-
-		/**
-		 * 'transactional.id' fencing (0.11 - 2.4 brokers).
-		 * @deprecated in favor of {@link #V1}.
-		 */
-		@Deprecated
-		ALPHA(V1),
-
-		/**
-		 *  fetch-offset-request fencing (2.5+ brokers).
-		 *  @deprecated in favor of {@link #V2}.
-		 */
-		@Deprecated
-		BETA(V2);
-
-
-		private final EOSMode mode;
-
-		EOSMode() {
-			this.mode = this;
-		}
-
-		/**
-		 * Create an alias.
-		 * @param v12 the mode for which this is an alias.
-		 */
-		EOSMode(EOSMode v12) {
-			this.mode = v12;
-		}
-
-		/**
-		 * Return the mode or the aliased mode.
-		 * @return the mode.
-		 */
-		public EOSMode getMode() {
-			return this.mode;
-		}
+		V2;
 
 	}
 
@@ -696,11 +661,6 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.consumerStartTimeout;
 	}
 
-	@Deprecated
-	public Duration getConsumerStartTimout() {
-		return this.consumerStartTimeout;
-	}
-
 	/**
 	 * Set the timeout to wait for a consumer thread to start before logging
 	 * an error. Default 30 seconds.
@@ -709,11 +669,6 @@ public class ContainerProperties extends ConsumerProperties {
 	public void setConsumerStartTimeout(Duration consumerStartTimeout) {
 		Assert.notNull(consumerStartTimeout, "'consumerStartTimout' cannot be null");
 		this.consumerStartTimeout = consumerStartTimeout;
-	}
-
-	@Deprecated
-	public void setConsumerStartTimout(Duration consumerStartTimeout) {
-		setConsumerStartTimeout(consumerStartTimeout);
 	}
 
 	/**
@@ -793,18 +748,15 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set the exactly once semantics mode. When {@link EOSMode#V1} a producer per
-	 * group/topic/partition is used (enabling 'transactional.id fencing`).
-	 * {@link EOSMode#V2} enables fetch-offset-request fencing, and requires brokers 2.5
-	 * or later. With the 2.6 client, the default is now V2 because the 2.6 client can
-	 * automatically fall back to ALPHA.
-	 * IMPORTANT the 3.0 clients cannot be used with {@link EOSMode#V2} unless the broker
-	 * is 2.5 or higher.
+	 * Set the exactly once semantics mode. Only {@link EOSMode#V2} is supported
+	 * since version 3.0.
 	 * @param eosMode the mode; default V2.
 	 * @since 2.5
 	 */
+	@SuppressWarnings("deprecation")
 	public void setEosMode(EOSMode eosMode) {
 		Assert.notNull(eosMode, "'eosMode' cannot be null");
+		Assert.isTrue(!eosMode.equals(EOSMode.V1), "V1 is no longer supported");
 		this.eosMode = eosMode;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,41 +84,6 @@ public class DelegatingInvocableHandler {
 	private final ConfigurableListableBeanFactory beanFactory;
 
 	private final PayloadValidator validator;
-
-	/**
-	 * Construct an instance with the supplied handlers for the bean.
-	 * @param handlers the handlers.
-	 * @param bean the bean.
-	 * @param beanExpressionResolver the expression resolver.
-	 * @param beanExpressionContext the expression context.
-	 * @deprecated in favor of
-	 * {@link #DelegatingInvocableHandler(List, InvocableHandlerMethod, Object, BeanExpressionResolver, BeanExpressionContext, BeanFactory, Validator)}
-	 */
-	@Deprecated
-	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers, Object bean,
-			BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext) {
-
-		this(handlers, null, bean, beanExpressionResolver, beanExpressionContext, null, null);
-	}
-
-	/**
-	 * Construct an instance with the supplied handlers for the bean.
-	 * @param handlers the handlers.
-	 * @param defaultHandler the default handler.
-	 * @param bean the bean.
-	 * @param beanExpressionResolver the resolver.
-	 * @param beanExpressionContext the context.
-	 * @since 2.1.3
-	 * @deprecated in favor of
-	 * {@link #DelegatingInvocableHandler(List, InvocableHandlerMethod, Object, BeanExpressionResolver, BeanExpressionContext, BeanFactory, Validator)}
-	 */
-	@Deprecated
-	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers,
-			@Nullable InvocableHandlerMethod defaultHandler,
-			Object bean, BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext) {
-
-		this(handlers, defaultHandler, bean, beanExpressionResolver, beanExpressionContext, null, null);
-	}
 
 	/**
 	 * Construct an instance with the supplied handlers for the bean.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -220,15 +220,14 @@ public class RetryTopicConfigurer {
 
 	private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
 
-	@Deprecated
-	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
-								ListenerContainerFactoryResolver containerFactoryResolver,
-								ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
-								BeanFactory beanFactory) {
-
-		this(destinationTopicProcessor, containerFactoryResolver, listenerContainerFactoryConfigurer, beanFactory, new SuffixingRetryTopicNamesProviderFactory());
-	}
-
+	/**
+	 * Create an instance with the provided properties.
+	 * @param destinationTopicProcessor the destination topic processor.
+	 * @param containerFactoryResolver the container factory resolver.
+	 * @param listenerContainerFactoryConfigurer the container factory configurer.
+	 * @param beanFactory the bean factory.
+	 * @param retryTopicNamesProviderFactory the retry topic names factory.
+	 */
 	@Autowired
 	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
 								ListenerContainerFactoryResolver containerFactoryResolver,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -314,7 +314,6 @@ public class RetryTopicIntegrationTests {
 
 		private static final String DLT_METHOD_NAME = "processDltMessage";
 
-		@SuppressWarnings("deprecation")
 		@Bean
 		public RetryTopicConfiguration firstRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
@@ -324,11 +323,10 @@ public class RetryTopicIntegrationTests {
 					.useSingleTopicForFixedDelays()
 					.includeTopic(FIRST_TOPIC)
 					.doNotRetryOnDltFailure()
-					.dltHandlerMethod(MyCustomDltProcessor.class, DLT_METHOD_NAME)
+					.dltHandlerMethod("myCustomDltProcessor", DLT_METHOD_NAME)
 					.create(template);
 		}
 
-		@SuppressWarnings("deprecation")
 		@Bean
 		public RetryTopicConfiguration secondRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
@@ -338,7 +336,7 @@ public class RetryTopicIntegrationTests {
 					.traversingCauses()
 					.includeTopic(SECOND_TOPIC)
 					.doNotRetryOnDltFailure()
-					.dltHandlerMethod(MyCustomDltProcessor.class, DLT_METHOD_NAME)
+					.dltHandlerMethod("myCustomDltProcessor", DLT_METHOD_NAME)
 					.create(template);
 		}
 

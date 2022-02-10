@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,8 +88,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private KafkaStreams.StateListener stateListener;
 
 	private StateRestoreListener stateRestoreListener;
-
-	private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
 	private StreamsUncaughtExceptionHandler streamsUncaughtExceptionHandler;
 
@@ -189,17 +187,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	public void setStateListener(KafkaStreams.StateListener stateListener) {
 		this.stateListener = stateListener; // NOSONAR (sync)
-	}
-
-	/**
-	 * Obsolete.
-	 * @param exceptionHandler the handler.
-	 * @deprecated in favor of
-	 * {@link #setStreamsUncaughtExceptionHandler(StreamsUncaughtExceptionHandler)}.
-	 */
-	@Deprecated
-	public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
-		this.uncaughtExceptionHandler = exceptionHandler; // NOSONAR (sync)
 	}
 
 	/**
@@ -339,9 +326,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
 				if (this.streamsUncaughtExceptionHandler != null) {
 					this.kafkaStreams.setUncaughtExceptionHandler(this.streamsUncaughtExceptionHandler);
-				}
-				else {
-					this.kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 				}
 				if (this.kafkaStreamsCustomizer != null) {
 					this.kafkaStreamsCustomizer.customize(this.kafkaStreams);

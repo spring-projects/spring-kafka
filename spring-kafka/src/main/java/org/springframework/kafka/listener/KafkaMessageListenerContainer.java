@@ -931,10 +931,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (subBatching != null) {
 				return subBatching;
 			}
-			if (this.transactionManager == null) {
-				return false;
-			}
-			return this.eosMode.getMode().equals(EOSMode.V1);
+			return false;
 		}
 
 		@Nullable
@@ -2722,12 +2719,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@SuppressWarnings("deprecation")
 		private void doSendOffsets(Producer<?, ?> prod, Map<TopicPartition, OffsetAndMetadata> commits) {
-			if (this.eosMode.getMode().equals(EOSMode.V1)) {
-				prod.sendOffsetsToTransaction(commits, this.consumerGroupId);
-			}
-			else {
-				prod.sendOffsetsToTransaction(commits, this.consumer.groupMetadata());
-			}
+			prod.sendOffsetsToTransaction(commits, this.consumer.groupMetadata());
 			if (this.fixTxOffsets) {
 				this.lastCommits.putAll(commits);
 			}

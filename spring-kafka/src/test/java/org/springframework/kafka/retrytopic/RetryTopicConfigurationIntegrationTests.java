@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,13 +119,12 @@ class RetryTopicConfigurationIntegrationTests {
 			return new KafkaAdmin(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString()));
 		}
 
-		@SuppressWarnings("deprecation")
 		@Bean
 		RetryTopicConfiguration retryTopicConfiguration1(KafkaTemplate<Integer, String> template) {
 			return RetryTopicConfigurationBuilder.newInstance()
 					.includeTopic(TOPIC1)
 					.exponentialBackoff(100, 1.1, 110)
-					.dltHandlerMethod(getClass(), "dlt")
+					.dltHandlerMethod("retryTopicConfigurationIntegrationTests.Config", "dlt")
 					.create(template);
 		}
 

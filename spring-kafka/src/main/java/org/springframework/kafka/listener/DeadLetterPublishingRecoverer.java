@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -245,19 +245,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	public void setPartitionInfoTimeout(Duration partitionInfoTimeout) {
 		Assert.notNull(partitionInfoTimeout, "'partitionInfoTimeout' cannot be null");
 		this.partitionInfoTimeout = partitionInfoTimeout;
-	}
-
-	/**
-	 * Set to false if you don't want to append the current "original" headers (topic,
-	 * partition etc.) if they are already present. When false, only the first "original"
-	 * headers are retained.
-	 * @param replaceOriginalHeaders set to false not to replace.
-	 * @since 2.7
-	 * @deprecated in favor of {@link #setAppendOriginalHeaders(boolean)}.
-	 */
-	@Deprecated
-	public void setReplaceOriginalHeaders(boolean replaceOriginalHeaders) {
-		this.appendOriginalHeaders = replaceOriginalHeaders;
 	}
 
 	/**

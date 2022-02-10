@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2021 the original author or authors.
+ * Copyright 2014-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,8 +93,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
 	private boolean ackDiscarded;
-
-	private RetryTemplate retryTemplate;
 
 	private RecoveryCallback<? extends Object> recoveryCallback;
 
@@ -326,34 +324,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.ackDiscarded = ackDiscarded;
 	}
 
-	@Nullable
-	protected RetryTemplate getRetryTemplate() {
-		return this.retryTemplate;
-	}
-
-	/**
-	 * Set a retryTemplate.
-	 * @param retryTemplate the template.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	public void setRetryTemplate(RetryTemplate retryTemplate) {
-		this.retryTemplate = retryTemplate;
-	}
-
-	@Nullable
-	protected RecoveryCallback<?> getRecoveryCallback() {
-		return this.recoveryCallback;
-	}
-
-	/**
-	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)}.
-	 * @param recoveryCallback the callback.
-	 */
-	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
-		this.recoveryCallback = recoveryCallback;
-	}
-
 	protected boolean isStatefulRetry() {
 		return this.statefulRetry;
 	}
@@ -510,7 +480,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter);
 
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings("unchecked")
 	private void setupMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter) {
 
@@ -523,14 +493,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		boolean isBatchListener = isBatchListener();
 		Assert.state(messageListener != null,
 				() -> "Endpoint [" + this + "] must provide a non null message listener");
-		Assert.state(this.retryTemplate == null || !isBatchListener,
-				"A 'RetryTemplate' is not supported with a batch listener; consider configuring the container "
-				+ "with a suitably configured 'SeekToCurrentBatchErrorHandler' instead");
-		if (this.retryTemplate != null) {
-			messageListener = new org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter<>(
-							(MessageListener<K, V>) messageListener,
-					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
-		}
 		if (this.recordFilterStrategy != null) {
 			if (isBatchListener) {
 				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {

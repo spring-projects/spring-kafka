@@ -49,7 +49,6 @@ import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
-import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
@@ -89,10 +88,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private RecordFilterStrategy<? super K, ? super V> recordFilterStrategy;
 
 	private Boolean ackDiscarded;
-
-	private RetryTemplate retryTemplate;
-
-	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private Boolean statefulRetry;
 
@@ -175,25 +170,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 */
 	public void setAckDiscarded(Boolean ackDiscarded) {
 		this.ackDiscarded = ackDiscarded;
-	}
-
-	/**
-	 * Set a retryTemplate.
-	 * @param retryTemplate the template.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	public void setRetryTemplate(RetryTemplate retryTemplate) {
-		this.retryTemplate = retryTemplate;
-	}
-
-	/**
-	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)
-	 * retryTemplate}.
-	 * @param recoveryCallback the callback.
-	 */
-	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
-		this.recoveryCallback = recoveryCallback;
 	}
 
 	/**
@@ -398,8 +374,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::setRecordFilterStrategy)
 				.acceptIfNotNull(this.ackDiscarded, aklEndpoint::setAckDiscarded)
-				.acceptIfNotNull(this.retryTemplate, aklEndpoint::setRetryTemplate)
-				.acceptIfNotNull(this.recoveryCallback, aklEndpoint::setRecoveryCallback)
 				.acceptIfNotNull(this.statefulRetry, aklEndpoint::setStatefulRetry)
 				.acceptIfNotNull(this.replyTemplate, aklEndpoint::setReplyTemplate)
 				.acceptIfNotNull(this.replyHeadersConfigurer, aklEndpoint::setReplyHeadersConfigurer)

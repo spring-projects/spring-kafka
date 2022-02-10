@@ -115,6 +115,7 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -1384,10 +1385,15 @@ public class KafkaMessageListenerContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container = spyOnContainer(
 				new KafkaMessageListenerContainer<>(cf, containerProps), stubbingComplete);
 		container.setBeanName("testBatchListenerErrors");
-		container.setBatchErrorHandler((t, messages) -> {
-			for (int i = 0; i < messages.count(); i++) {
-				latch.countDown();
+		container.setCommonErrorHandler(new CommonErrorHandler() {
+
+			@Override
+			public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+					MessageListenerContainer container, Runnable invokeListener) {
+
+				data.forEach(rec -> latch.countDown());
 			}
+
 		});
 		container.start();
 		Consumer<?, ?> containerConsumer = spyOnConsumer(container);
@@ -3015,8 +3021,14 @@ public class KafkaMessageListenerContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch ehl = new CountDownLatch(1);
-		container.setErrorHandler((r, t) -> {
-			ehl.countDown();
+		container.setCommonErrorHandler(new CommonErrorHandler() {
+
+			@Override
+			public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
+					MessageListenerContainer container, boolean batchListener) {
+
+				ehl.countDown();
+			}
 		});
 		container.start();
 		assertThat(ehl.await(10, TimeUnit.SECONDS)).isTrue();
@@ -3025,8 +3037,15 @@ public class KafkaMessageListenerContainerTests {
 		});
 		container = new KafkaMessageListenerContainer<>(cf, containerProps);
 		final CountDownLatch behl = new CountDownLatch(1);
-		container.setBatchErrorHandler((r, t) -> {
-			behl.countDown();
+		container.setCommonErrorHandler(new CommonErrorHandler() {
+
+			@Override
+			public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
+					MessageListenerContainer container, boolean batchListener) {
+
+				behl.countDown();
+			}
+
 		});
 		first.set(true);
 		container.start();
@@ -3559,7 +3578,10 @@ public class KafkaMessageListenerContainerTests {
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
 
 			@Override
-			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record) {
+			@Nullable
+			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+					Consumer<Integer, String> consumer) {
+
 				return record;
 			}
 
@@ -3633,7 +3655,10 @@ public class KafkaMessageListenerContainerTests {
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
 
 			@Override
-			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record) {
+			@Nullable
+			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+					Consumer<Integer, String> consumer) {
+
 				return record;
 			}
 

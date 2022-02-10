@@ -147,9 +147,21 @@ public class ConcurrentMessageListenerContainerMockTests {
 				containerProperties);
 		CountDownLatch latch = new CountDownLatch(1);
 		AtomicReference<MessageListenerContainer> errorContainer = new AtomicReference<>();
-		container.setErrorHandler((ContainerAwareErrorHandler) (thrownException, records, consumer1, ec) -> {
-			errorContainer.set(ec);
-			latch.countDown();
+		container.setCommonErrorHandler(new CommonErrorHandler() {
+
+			@Override
+			public boolean remainingRecords() {
+				return true;
+			}
+
+			@Override
+			public void handleOtherException(Exception thrownException, Consumer<?, ?> consumer,
+					MessageListenerContainer container, boolean batchListener) {
+
+				errorContainer.set(container);
+				latch.countDown();
+			}
+
 		});
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -562,10 +574,9 @@ public class ConcurrentMessageListenerContainerMockTests {
 		}).given(tm).rollback(any());
 		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
 				containerProperties);
-		CountDownLatch interceptedLatch = new CountDownLatch(2);
 		CountDownLatch successCalled = new CountDownLatch(1);
 		CountDownLatch failureCalled = new CountDownLatch(1);
-		container.setRecordInterceptor(new ConsumerAwareRecordInterceptor() {
+		container.setRecordInterceptor(new RecordInterceptor() {
 
 			@Override
 			@Nullable

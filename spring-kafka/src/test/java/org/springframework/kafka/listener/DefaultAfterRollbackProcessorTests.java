@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -76,19 +75,18 @@ public class DefaultAfterRollbackProcessorTests {
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
-		processor.process(records, consumer, container, illegalState, true, EOSMode.V1);
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
 		processor.process(records, consumer, container,
-				new DeserializationException("intended", null, false, illegalState), true, EOSMode.V1);
-		verify(template).sendOffsetsToTransaction(anyMap());
-		verify(template, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
+				new DeserializationException("intended", null, false, illegalState), true, EOSMode.V2);
+		verify(template).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		processor.addNotRetryableExceptions(IllegalStateException.class);
 		recovered.set(null);
 		recovererShouldFail.set(true);
-		processor.process(records, consumer, container, illegalState, true, EOSMode.V1);
-		verify(template, times(1)).sendOffsetsToTransaction(anyMap()); // recovery failed
 		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
-		verify(template, times(1)).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
+		verify(template, times(1)).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class)); // recovery failed
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
+		verify(template, times(2)).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		assertThat(recovered.get()).isSameAs(record1);
 		InOrder inOrder = inOrder(consumer);
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // not recovered so seek

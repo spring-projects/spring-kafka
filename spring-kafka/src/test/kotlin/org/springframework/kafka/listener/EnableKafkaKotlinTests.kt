@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
@@ -33,11 +35,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
-import org.springframework.kafka.listener.BatchErrorHandler
-import org.springframework.kafka.listener.BatchMessageListener
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
-import org.springframework.kafka.listener.ErrorHandler
-import org.springframework.kafka.listener.MessageListener
+import org.springframework.kafka.listener.*
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
@@ -143,38 +141,47 @@ class EnableKafkaKotlinTests {
 			return KafkaTemplate(kpf())
 		}
 
-		val eh = ErrorHandler { _, recs : ConsumerRecord<*, *>? ->
-			if (recs != null) {
-				this.error = true;
-				this.latch2.countDown()
+		val eh = object: CommonErrorHandler {
+			override fun handleRecord(
+				thrownException: Exception,
+				record: ConsumerRecord<*, *>,
+				consumer: Consumer<*, *>,
+				container: MessageListenerContainer
+			) {
+				error = true
+				latch2.countDown()
+			}
+
+			override fun handleBatch(
+				thrownException: Exception,
+				recs: ConsumerRecords<*, *>,
+				consumer: Consumer<*, *>,
+				container: MessageListenerContainer,
+				invokeListener: Runnable
+			) {
+				if (!recs.isEmpty) {
+					batchError = true;
+					batchLatch2.countDown()
+				}
 			}
 		}
 
 		@Bean
-		@Suppress("deprecation")
 		fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
 			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
 				= ConcurrentKafkaListenerContainerFactory()
 			factory.consumerFactory = kcf()
-			factory.setErrorHandler(eh)
+			factory.setCommonErrorHandler(eh)
 			return factory
 		}
 
-		val beh = BatchErrorHandler { _, recs ->
-			if (!recs.isEmpty) {
-				this.batchError = true;
-				this.batchLatch2.countDown()
-			}
-		}
-
 		@Bean
-		@Suppress("deprecation")
 		fun kafkaBatchListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
 			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
 					= ConcurrentKafkaListenerContainerFactory()
 			factory.isBatchListener = true
 			factory.consumerFactory = kcf()
-			factory.setBatchErrorHandler(beh)
+			factory.setCommonErrorHandler(eh)
 			return factory
 		}
 

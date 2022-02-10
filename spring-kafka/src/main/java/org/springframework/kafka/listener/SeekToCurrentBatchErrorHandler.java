@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,11 +33,9 @@ import org.springframework.util.backoff.BackOffExecution;
  *
  * @author Gary Russell
  * @since 2.1
- * @deprecated with no replacement - use {@link DefaultErrorHandler} with an infinite
- * {@link BackOff}.
  */
-@Deprecated
-public class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
+@SuppressWarnings("deprecation")
+class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
 		implements ContainerAwareBatchErrorHandler {
 
 	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static

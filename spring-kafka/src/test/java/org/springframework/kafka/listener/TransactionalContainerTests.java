@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -145,22 +145,22 @@ public class TransactionalContainerTests {
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V1);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V2);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionHandleError() throws Exception {
-		testConsumeAndProduceTransactionGuts(true, AckMode.RECORD, EOSMode.V1);
+		testConsumeAndProduceTransactionGuts(true, AckMode.RECORD, EOSMode.V2);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTMManual() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL_IMMEDIATE, EOSMode.V1);
+		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL_IMMEDIATE, EOSMode.V2);
 	}
 
 	@Test
 	public void testConsumeAndProduceTransactionKTM_BETA() throws Exception {
-		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V1);
+		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V2);
 	}
 
 	@Test
@@ -257,7 +257,8 @@ public class TransactionalContainerTests {
 		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
 		container.setBeanName("commit");
 		if (handleError) {
-			container.setErrorHandler((e, data) -> { });
+			container.setCommonErrorHandler(new CommonErrorHandler() {
+			});
 		}
 		CountDownLatch stopEventLatch = new CountDownLatch(1);
 		AtomicReference<ConsumerStoppedEvent> stopEvent = new AtomicReference<>();
@@ -271,14 +272,8 @@ public class TransactionalContainerTests {
 		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(producer);
 		inOrder.verify(producer).beginTransaction();
-		if (eosMode.equals(EOSMode.V1)) {
-			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-					new OffsetAndMetadata(0)), "group");
-		}
-		else {
-			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-					new OffsetAndMetadata(0)), consumerGroupMetadata);
-		}
+		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+				new OffsetAndMetadata(0)), consumerGroupMetadata);
 		if (stopWhenFenced) {
 			assertThat(stopEventLatch.await(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(stopEvent.get().getReason()).isEqualTo(Reason.FENCED);
@@ -290,14 +285,8 @@ public class TransactionalContainerTests {
 			ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 			inOrder.verify(producer).send(captor.capture(), any(Callback.class));
 			assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
-			if (eosMode.equals(EOSMode.V1)) {
-				inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-						new OffsetAndMetadata(1)), "group");
-			}
-			else {
-				inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-						new OffsetAndMetadata(1)), consumerGroupMetadata);
-			}
+			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+					new OffsetAndMetadata(1)), consumerGroupMetadata);
 			inOrder.verify(producer).commitTransaction();
 			inOrder.verify(producer).close(any());
 			container.stop();
@@ -491,10 +480,11 @@ public class TransactionalContainerTests {
 		props.setGroupId("group");
 		props.setTransactionManager(new SomeOtherTransactionManager());
 		final KafkaTemplate template = new KafkaTemplate(pf);
+		ConsumerGroupMetadata meta = mock(ConsumerGroupMetadata.class);
 		props.setMessageListener((MessageListener<String, String>) m -> {
 			template.send("bar", "baz");
 			template.sendOffsetsToTransaction(Collections.singletonMap(new TopicPartition(m.topic(), m.partition()),
-					new OffsetAndMetadata(m.offset() + 1)));
+					new OffsetAndMetadata(m.offset() + 1)), meta);
 		});
 		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer<>(cf, props);
 		container.setBeanName("commit");
@@ -508,7 +498,7 @@ public class TransactionalContainerTests {
 		inOrder.verify(producer).send(captor.capture(), any(Callback.class));
 		assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
 		inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-				new OffsetAndMetadata(1)), "group");
+				new OffsetAndMetadata(1)), meta);
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).close(any());
 		container.stop();

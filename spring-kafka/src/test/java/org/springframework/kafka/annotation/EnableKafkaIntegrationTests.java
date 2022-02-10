@@ -98,9 +98,9 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
+import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.CommonLoggingErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.ConsumerAwareErrorHandler;
 import org.springframework.kafka.listener.ConsumerAwareListenerErrorHandler;
 import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ConsumerSeekAware;
@@ -144,7 +144,6 @@ import org.springframework.messaging.handler.annotation.support.MethodArgumentNo
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -310,13 +309,8 @@ public class EnableKafkaIntegrationTests {
 				.isInstanceOf(FilteringMessageListenerAdapter.class);
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.ackDiscarded",
 				Boolean.class)).isTrue();
-		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate"))
-				.isInstanceOf(org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter.class);
-		assertThat(KafkaTestUtils
-				.getPropertyValue(manualContainer, "containerProperties.messageListener.delegate.recoveryCallback")
-				.getClass().getName()).contains("EnableKafkaIntegrationTests$Config$");
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer,
-				"containerProperties.messageListener.delegate.delegate"))
+				"containerProperties.messageListener.delegate"))
 				.isInstanceOf(MessagingMessageListenerAdapter.class);
 		assertThat(this.listener.listen4Consumer).isNotNull();
 		assertThat(this.listener.listen4Consumer).isSameAs(KafkaTestUtils.getPropertyValue(KafkaTestUtils
@@ -1043,9 +1037,16 @@ public class EnableKafkaIntegrationTests {
 			factory.setConsumerFactory(consumerFactory());
 			factory.setRecordFilterStrategy(recordFilter());
 			factory.setReplyTemplate(partitionZeroReplyTemplate());
-			factory.setErrorHandler((ConsumerAwareErrorHandler) (t, d, c) -> {
-				this.globalErrorThrowable = t;
-				c.seek(new org.apache.kafka.common.TopicPartition(d.topic(), d.partition()), d.offset());
+			factory.setCommonErrorHandler(new CommonErrorHandler() {
+
+				@Override
+				public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record,
+						Consumer<?, ?> consumer, MessageListenerContainer container) {
+
+					globalErrorThrowable = thrownException;
+					consumer.seek(new org.apache.kafka.common.TopicPartition(record.topic(), record.partition()),
+							record.offset());
+				}
 			});
 			factory.getContainerProperties().setMicrometerTags(Collections.singletonMap("extraTag", "foo"));
 			factory.setMessageConverter(new RecordMessageConverter() {
@@ -1133,7 +1134,7 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<byte[], String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(bytesStringConsumerFactory());
-			factory.setRecordInterceptor(record -> {
+			factory.setRecordInterceptor((record, consumer) -> {
 				this.intercepted = true;
 				return record;
 			});
@@ -1236,8 +1237,6 @@ public class EnableKafkaIntegrationTests {
 			props.setPollTimeout(50L);
 			factory.setRecordFilterStrategy(manualFilter());
 			factory.setAckDiscarded(true);
-			factory.setRetryTemplate(new RetryTemplate());
-			factory.setRecoveryCallback(c -> null);
 			return factory;
 		}
 
@@ -1279,7 +1278,7 @@ public class EnableKafkaIntegrationTests {
 			factory.setConsumerFactory(configuredConsumerFactory("clientIdViaProps4"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.RECORD);
-			factory.setErrorHandler(listen16ErrorHandler());
+			factory.setCommonErrorHandler(listen16ErrorHandler());
 			return factory;
 		}
 
@@ -1586,11 +1585,18 @@ public class EnableKafkaIntegrationTests {
 		private final CountDownLatch listen16ErrorLatch = new CountDownLatch(1);
 
 		@Bean
-		public ConsumerAwareErrorHandler listen16ErrorHandler() {
-			return (e, r, c) -> {
-				listen16Exception = e;
-				listen16Message = r.value();
-				listen16ErrorLatch.countDown();
+		public CommonErrorHandler listen16ErrorHandler() {
+			return new CommonErrorHandler() {
+
+				@Override
+				public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record,
+						Consumer<?, ?> consumer, MessageListenerContainer container) {
+
+					listen16Exception = thrownException;
+					listen16Message = record.value();
+					listen16ErrorLatch.countDown();
+				}
+
 			};
 		}
 
