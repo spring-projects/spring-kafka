@@ -70,6 +70,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null); // NOSONAR
 
+	@SuppressWarnings("deprecation")
 	private org.springframework.kafka.listener.GenericErrorHandler<?> errorHandler;
 
 	private CommonErrorHandler commonErrorHandler;
@@ -335,6 +336,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.containerCustomizer = containerCustomizer;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void afterPropertiesSet() {
 		if (this.commonErrorHandler == null && this.errorHandler != null) {
