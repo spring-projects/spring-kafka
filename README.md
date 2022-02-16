@@ -2,6 +2,14 @@ Spring for Apache Kafka [<img src="https://build.spring.io/plugins/servlet/witti
 [![Join the chat at https://gitter.im/spring-projects/spring-kafka](https://badges.gitter.im/spring-projects/spring-kafka.svg)](https://gitter.im/spring-projects/spring-kafka?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 ==================
 
+# Code of Conduct
+
+Please see our [Code of conduct](https://github.com/spring-projects/.github/blob/master/CODE_OF_CONDUCT.md).
+
+# Reporting Security Vulnerabilities
+
+Please see our [Security policy](https://github.com/spring-projects/spring-kafka/security/policy).
+
 # Checking out and Building
 
 To check out the project and build from source, do the following:
@@ -83,10 +91,4 @@ None of these is essential for a pull request, but they will all help.
 
 # License
 
-Spring Kafka is released under the terms of the Apache Software License Version 2.0 (see license.txt).
-
-# Code of Conduct
-
-This project adheres to the Contributor Covenant [code of conduct](./CODE_OF_CONDUCT.adoc).
-By participating, you are expected to uphold this code. Please report unacceptable behavior to
-spring-code-of-conduct@pivotal.io.
+Spring Kafka is released under the terms of the Apache Software License Version 2.0 (see LICENSE.txt).

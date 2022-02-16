@@ -289,10 +289,13 @@ subprojects { subproject ->
 		}
 
 		from("${rootProject.projectDir}/src/dist") {
-			include 'license.txt'
 			include 'notice.txt'
 			into 'META-INF'
 			expand(copyright: new Date().format('yyyy'), version: project.version)
+		}
+		from("${rootProject.projectDir}") {
+			include 'LICENSE.txt'
+			into 'META-INF'
 		}
 	}
 
@@ -552,8 +555,12 @@ task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 
 	from('src/dist') {
 		include 'readme.txt'
-		include 'license.txt'
 		include 'notice.txt'
+		into "${baseDir}"
+	}
+
+    from("$project.rootDir") {
+		include 'LICENSE.txt'
 		into "${baseDir}"
 	}
 
