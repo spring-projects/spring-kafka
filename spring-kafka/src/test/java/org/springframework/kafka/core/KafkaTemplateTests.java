@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.kafka.test.assertj.KafkaConditions.key;
 import static org.springframework.kafka.test.assertj.KafkaConditions.keyValue;
 import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
@@ -50,6 +53,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
@@ -65,6 +69,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.kafka.KafkaException;
@@ -94,6 +99,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Biju Kunjummen
  * @author Endika Gutierrez
  * @author Thomas Strauß
+ * @author Soby Chacko
  */
 @EmbeddedKafka(topics = { KafkaTemplateTests.INT_KEY_TOPIC, KafkaTemplateTests.STRING_KEY_TOPIC })
 public class KafkaTemplateTests {
@@ -552,6 +558,38 @@ public class KafkaTemplateTests {
 						template.send("missing.topic", "foo"))
 				.withCauseExactlyInstanceOf(TimeoutException.class);
 		pf.destroy();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testProducerInterceptorManagedOnKafkaTemplate() {
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+		ProducerInterceptor<Integer, String> producerInterceptor = Mockito.mock(ProducerInterceptor.class);
+		template.setProducerInterceptor(producerInterceptor);
+
+		template.setDefaultTopic("prod-interceptor-test-1");
+		template.sendDefault("foo");
+
+		verify(producerInterceptor, times(1)).onSend(any(ProducerRecord.class));
+		verify(producerInterceptor, times(1)).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testProducerInterceptorNotSetOnKafkaTemplateNotInvoked() {
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+		ProducerInterceptor<Integer, String> producerInterceptor = Mockito.mock(ProducerInterceptor.class);
+
+		template.setDefaultTopic("prod-interceptor-test-2");
+		template.sendDefault("foo");
+
+		verifyNoInteractions(producerInterceptor);
 	}
 
 }

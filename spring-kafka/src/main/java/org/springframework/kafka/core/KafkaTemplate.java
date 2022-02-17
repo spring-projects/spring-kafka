@@ -37,6 +37,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
@@ -87,6 +88,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Biju Kunjummen
  * @author Endika Gutierrez
  * @author Thomas Strauß
+ * @author Soby Chacko
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
@@ -128,6 +130,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private volatile boolean micrometerEnabled = true;
 
 	private volatile MicrometerHolder micrometerHolder;
+
+	private ProducerInterceptor<K, V> producerInterceptor;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -368,6 +372,24 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 */
 	public void setConsumerFactory(ConsumerFactory<K, V> consumerFactory) {
 		this.consumerFactory = consumerFactory;
+	}
+
+	/**
+	 * Returns the producer interceptor associated with this template.
+	 * @return {@link ProducerInterceptor}
+	 * @since 3.0.x
+	 */
+	public ProducerInterceptor<K, V> getProducerInterceptor() {
+		return this.producerInterceptor;
+	}
+
+	/**
+	 * Set a producer interceptor or this template.
+	 * @param producerInterceptor the producer interceptor
+	 * @since 3.0.x
+	 */
+	public void setProducerInterceptor(ProducerInterceptor<K, V> producerInterceptor) {
+		this.producerInterceptor = producerInterceptor;
 	}
 
 	@Override
@@ -631,6 +653,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.micrometerHolder != null) {
 			sample = this.micrometerHolder.start();
 		}
+		if (this.producerInterceptor != null) {
+			this.producerInterceptor.onSend(producerRecord);
+		}
 		Future<RecordMetadata> sendFuture =
 				producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample));
 		// May be an immediate failure
@@ -657,6 +682,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			final SettableListenableFuture<SendResult<K, V>> future, @Nullable Object sample) {
 
 		return (metadata, exception) -> {
+			if (this.producerInterceptor != null) {
+				this.producerInterceptor.onAcknowledgement(metadata, exception);
+			}
 			try {
 				if (exception == null) {
 					if (sample != null) {
