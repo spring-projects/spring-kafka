@@ -375,18 +375,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	/**
-	 * Returns the producer interceptor associated with this template.
-	 * @return {@link ProducerInterceptor}
-	 * @since 3.0.x
-	 */
-	public ProducerInterceptor<K, V> getProducerInterceptor() {
-		return this.producerInterceptor;
-	}
-
-	/**
-	 * Set a producer interceptor or this template.
+	 * Set a producer interceptor on this template.
 	 * @param producerInterceptor the producer interceptor
-	 * @since 3.0.x
+	 * @since 3.0
 	 */
 	public void setProducerInterceptor(ProducerInterceptor<K, V> producerInterceptor) {
 		this.producerInterceptor = producerInterceptor;
