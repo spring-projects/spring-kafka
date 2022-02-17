@@ -115,9 +115,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private static final Duration DEFAULT_ADMIN_TIMEOUT = Duration.ofSeconds(10);
 
-	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = 6000;
+	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 18000;
 
-	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
+	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = DEFAULT_ZK_SESSION_TIMEOUT;
 
 	private static final Method GET_BROKER_STATE_METHOD;
 
