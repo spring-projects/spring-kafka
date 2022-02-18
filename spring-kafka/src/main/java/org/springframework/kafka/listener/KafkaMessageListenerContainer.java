@@ -2063,10 +2063,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private List<ConsumerRecord<K, V>> createRecordList(final ConsumerRecords<K, V> records) {
-			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-			List<ConsumerRecord<K, V>> list = new LinkedList<>();
-			while (iterator.hasNext()) {
-				list.add(iterator.next());
+			//use ArrayList because we know it's size
+			List<ConsumerRecord<K, V>> list = new ArrayList<>(records.count());
+			Set<TopicPartition> partitions = records.partitions();
+			for (TopicPartition partition : partitions) {
+				list.addAll(records.records(partition));
 			}
 			return list;
 		}
