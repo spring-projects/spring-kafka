@@ -3795,6 +3795,10 @@ Right before the records are sent, the `onSend` method of the producer intercept
 Once the server sends an acknowledgement on publishing the data, then the `onAcknowledgement` method is invoked.
 The `onAcknowledgement` is called right before the producer invokes any user callbacks.
 
+If you have multiple such producer interceptors managed through Spring that need to be applied on the `KafkaTemplate`, you need to use `CompositeProducerInterceptor` instead.
+`CompositeProducerInterceptor` allows individual producer interceptors to be added in order.
+The methods from the underlying `ProducerInterceptor` implementations are invoked in the order as they were added to the `CompositeProducerInterceptor`.
+
 [[pause-resume]]
 ==== Pausing and Resuming Listener Containers
 

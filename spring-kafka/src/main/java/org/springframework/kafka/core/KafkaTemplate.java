@@ -673,8 +673,13 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			final SettableListenableFuture<SendResult<K, V>> future, @Nullable Object sample) {
 
 		return (metadata, exception) -> {
-			if (this.producerInterceptor != null) {
-				this.producerInterceptor.onAcknowledgement(metadata, exception);
+			try {
+				if (this.producerInterceptor != null) {
+					this.producerInterceptor.onAcknowledgement(metadata, exception);
+				}
+			}
+			catch (Exception e) {
+				KafkaTemplate.this.logger.warn(e, () ->  "Error executing interceptor onAcknowledgement callback");
 			}
 			try {
 				if (exception == null) {
@@ -781,6 +786,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		}
 		if (this.customProducerFactory) {
 			((DefaultKafkaProducerFactory<K, V>) this.producerFactory).destroy();
+		}
+		if (this.producerInterceptor != null) {
+			this.producerInterceptor.close();
 		}
 	}
 

@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -69,11 +71,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.Mockito;
 
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.CompositeProducerInterceptor;
 import org.springframework.kafka.support.CompositeProducerListener;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -590,6 +594,33 @@ public class KafkaTemplateTests {
 		template.sendDefault("foo");
 
 		verifyNoInteractions(producerInterceptor);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void testCompositeProducerInterceptor() {
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+		ProducerInterceptor<Integer, String> producerInterceptor1 = Mockito.mock(ProducerInterceptor.class);
+		ProducerInterceptor<Integer, String> producerInterceptor2 = Mockito.mock(ProducerInterceptor.class);
+		CompositeProducerInterceptor<Integer, String> compositeProducerInterceptor =
+				new CompositeProducerInterceptor<>(producerInterceptor1, producerInterceptor2);
+		template.setProducerInterceptor(compositeProducerInterceptor);
+
+		ProducerRecord<Integer, String> mockProducerRecord = Mockito.mock(ProducerRecord.class);
+		doReturn(mockProducerRecord).when(producerInterceptor1).onSend(any(ProducerRecord.class));
+
+		template.setDefaultTopic("prod-interceptor-test-3");
+		template.sendDefault("foo");
+
+		InOrder inOrder = inOrder(producerInterceptor1, producerInterceptor2);
+
+		inOrder.verify(producerInterceptor1).onSend(any(ProducerRecord.class));
+		inOrder.verify(producerInterceptor2).onSend(any(ProducerRecord.class));
+		inOrder.verify(producerInterceptor1).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
+		inOrder.verify(producerInterceptor2).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
 	}
 
 }
