@@ -56,6 +56,16 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	}
 
 	/**
+	 * By default, unmatched types classify as true. Call this method to make the default
+	 * false, and remove types explicitly classified as false. This should be called before
+	 * calling any of the classification modification methods.
+	 * @since 2.8.4
+	 */
+	public void defaultFalse() {
+		this.classifier = new ExtendedBinaryExceptionClassifier(new HashMap<>(), false);
+	}
+
+	/**
 	 * Return the exception classifier.
 	 * @return the classifier.
 	 */
@@ -99,18 +109,37 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	 * </ul>
 	 * All others will be retried.
 	 * @param exceptionTypes the exception types.
-	 * @see #removeNotRetryableException(Class)
+	 * @see #removeClassification(Class)
 	 * @see #setClassifications(Map, boolean)
 	 */
 	@SafeVarargs
 	@SuppressWarnings("varargs")
 	public final void addNotRetryableExceptions(Class<? extends Exception>... exceptionTypes) {
+		add(false, exceptionTypes);
+	}
+
+	/**
+	 * Add exception types that can be retried. Call this after {@link #defaultFalse()} to
+	 * specify those exception types that should be classified as true.
+	 * All others will not be retried.
+	 * @param exceptionTypes the exception types.
+	 * @see #removeClassification(Class)
+	 * @see #setClassifications(Map, boolean)
+	 * @since 2.8.4
+	 */
+	@SafeVarargs
+	@SuppressWarnings("varargs")
+	public final void addRetryableExceptions(Class<? extends Exception>... exceptionTypes) {
+		add(true, exceptionTypes);
+	}
+
+	private void add(boolean classified, Class<? extends Exception>... exceptionTypes) {
 		Assert.notNull(exceptionTypes, "'exceptionTypes' cannot be null");
 		Assert.noNullElements(exceptionTypes, "'exceptionTypes' cannot contain nulls");
 		for (Class<? extends Exception> exceptionType : exceptionTypes) {
 			Assert.isTrue(Exception.class.isAssignableFrom(exceptionType),
 					() -> "exceptionType " + exceptionType + " must be an Exception");
-			this.classifier.getClassified().put(exceptionType, false);
+			this.classifier.getClassified().put(exceptionType, classified);
 		}
 	}
 
@@ -125,13 +154,38 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	 * <li>{@link NoSuchMethodException}</li>
 	 * <li>{@link ClassCastException}</li>
 	 * </ul>
-	 * All others will be retried.
+	 * All others will be retried, unless {@link #defaultFalse()} has been called.
 	 * @param exceptionType the exception type.
 	 * @return true if the removal was successful.
 	 * @see #addNotRetryableExceptions(Class...)
 	 * @see #setClassifications(Map, boolean)
+	 * @see #defaultFalse()
+	 * @deprecated in favor of {@link #removeClassification(Class)}
 	 */
+	@Deprecated
 	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
+		return this.removeClassification(exceptionType);
+	}
+
+	/**
+	 * Remove an exception type from the configured list. By default, the following
+	 * exceptions will not be retried:
+	 * <ul>
+	 * <li>{@link DeserializationException}</li>
+	 * <li>{@link MessageConversionException}</li>
+	 * <li>{@link ConversionException}</li>
+	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link NoSuchMethodException}</li>
+	 * <li>{@link ClassCastException}</li>
+	 * </ul>
+	 * All others will be retried, unless {@link #defaultFalse()} has been called.
+	 * @param exceptionType the exception type.
+	 * @return true if the removal was successful.
+	 * @see #addNotRetryableExceptions(Class...)
+	 * @see #setClassifications(Map, boolean)
+	 * @since 2.8.4
+	 */
+	public boolean removeClassification(Class<? extends Exception> exceptionType) {
 		return this.classifier.getClassified().remove(exceptionType);
 	}
 

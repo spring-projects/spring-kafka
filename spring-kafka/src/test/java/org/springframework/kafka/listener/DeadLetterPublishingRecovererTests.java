@@ -559,7 +559,7 @@ public class DeadLetterPublishingRecovererTests {
 		recoverer.addNotRetryableExceptions(IllegalStateException.class);
 		recoverer.accept(record, new IllegalStateException());
 		verify(template, never()).send(any(ProducerRecord.class));
-		recoverer.removeNotRetryableException(IllegalStateException.class);
+		recoverer.removeClassification(IllegalStateException.class);
 		recoverer.setFailIfSendResultIsError(false);
 		recoverer.accept(record, new IllegalStateException());
 		verify(template).send(any(ProducerRecord.class));
@@ -580,7 +580,7 @@ public class DeadLetterPublishingRecovererTests {
 		recoverer.addNotRetryableExceptions(IllegalStateException.class);
 		recoverer.accept(record, new IllegalStateException());
 		verify(template, times(2)).send(any(ProducerRecord.class));
-		recoverer.removeNotRetryableException(IllegalStateException.class);
+		recoverer.removeClassification(IllegalStateException.class);
 		recoverer.setFailIfSendResultIsError(false);
 		recoverer.accept(record, new IllegalStateException());
 		verify(template, times(3)).send(any(ProducerRecord.class));

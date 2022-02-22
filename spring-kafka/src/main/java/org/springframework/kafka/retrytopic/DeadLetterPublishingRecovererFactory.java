@@ -143,7 +143,7 @@ public class DeadLetterPublishingRecovererFactory {
 		recoverer.setSkipSameTopicFatalExceptions(false);
 		this.recovererCustomizer.accept(recoverer);
 		this.fatalExceptions.forEach(recoverer::addNotRetryableExceptions);
-		this.nonFatalExceptions.forEach(recoverer::removeNotRetryableException);
+		this.nonFatalExceptions.forEach(recoverer::removeClassification);
 		return recoverer;
 	}
 
