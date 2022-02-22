@@ -74,7 +74,8 @@ public class CompositeProducerInterceptor<K, V> implements ProducerInterceptor<K
 									record.topic(), record.partition()));
 				}
 				else {
-					CompositeProducerInterceptor.this.logger.warn(e, () -> "Error executing interceptor onSend callback");
+					CompositeProducerInterceptor.this.logger.warn(e, () -> "Error executing interceptor onSend callback: "
+							+ interceptor.toString());
 				}
 			}
 		}
@@ -89,7 +90,8 @@ public class CompositeProducerInterceptor<K, V> implements ProducerInterceptor<K
 			}
 			catch (Exception e) {
 				// do not propagate interceptor exceptions, just log
-				CompositeProducerInterceptor.this.logger.warn(e, () ->  "Error executing interceptor onAcknowledgement callback");
+				CompositeProducerInterceptor.this.logger.warn(e, () ->  "Error executing interceptor onAcknowledgement callback: "
+						+ interceptor.toString());
 			}
 		}
 	}
@@ -101,7 +103,8 @@ public class CompositeProducerInterceptor<K, V> implements ProducerInterceptor<K
 				interceptor.close();
 			}
 			catch (Exception e) {
-				CompositeProducerInterceptor.this.logger.warn(e, () -> "Failed to close producer interceptor");
+				CompositeProducerInterceptor.this.logger.warn(e, () -> "Failed to close producer interceptor: "
+						+ interceptor.toString());
 			}
 		}
 	}
