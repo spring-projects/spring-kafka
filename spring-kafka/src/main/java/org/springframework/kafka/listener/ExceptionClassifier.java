@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	 * <li>{@link NoSuchMethodException}</li>
 	 * <li>{@link ClassCastException}</li>
 	 * </ul>
-	 * All others will be retried.
+	 * All others will be retried, unless {@link #defaultFalse()} has been called.
 	 * @param exceptionTypes the exception types.
 	 * @see #removeClassification(Class)
 	 * @see #setClassifications(Map, boolean)
@@ -121,11 +121,11 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	/**
 	 * Add exception types that can be retried. Call this after {@link #defaultFalse()} to
 	 * specify those exception types that should be classified as true.
-	 * All others will not be retried.
+	 * All others will be retried, unless {@link #defaultFalse()} has been called.
 	 * @param exceptionTypes the exception types.
+	 * @since 2.8.4
 	 * @see #removeClassification(Class)
 	 * @see #setClassifications(Map, boolean)
-	 * @since 2.8.4
 	 */
 	@SafeVarargs
 	@SuppressWarnings("varargs")
@@ -157,10 +157,10 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	 * All others will be retried, unless {@link #defaultFalse()} has been called.
 	 * @param exceptionType the exception type.
 	 * @return true if the removal was successful.
+	 * @deprecated in favor of {@link #removeClassification(Class)}
 	 * @see #addNotRetryableExceptions(Class...)
 	 * @see #setClassifications(Map, boolean)
 	 * @see #defaultFalse()
-	 * @deprecated in favor of {@link #removeClassification(Class)}
 	 */
 	@Deprecated
 	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
@@ -181,9 +181,9 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	 * All others will be retried, unless {@link #defaultFalse()} has been called.
 	 * @param exceptionType the exception type.
 	 * @return true if the removal was successful.
+	 * @since 2.8.4
 	 * @see #addNotRetryableExceptions(Class...)
 	 * @see #setClassifications(Map, boolean)
-	 * @since 2.8.4
 	 */
 	public boolean removeClassification(Class<? extends Exception> exceptionType) {
 		return this.classifier.getClassified().remove(exceptionType);
