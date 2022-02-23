@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -197,7 +197,12 @@ public class ManualNackBatchTests {
 					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "qux",
 							new RecordHeaders(), Optional.empty())));
 			final AtomicInteger which = new AtomicInteger();
+			final AtomicBoolean paused = new AtomicBoolean();
 			willAnswer(i -> {
+				if (paused.get()) {
+					Thread.sleep(10);
+					return ConsumerRecords.empty();
+				}
 				this.pollLatch.countDown();
 				switch (which.getAndIncrement()) {
 					case 0:
@@ -211,9 +216,20 @@ public class ManualNackBatchTests {
 						catch (@SuppressWarnings("unused") InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return ConsumerRecords.empty();
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+			willAnswer(i -> {
+				return Collections.emptySet();
+			}).given(consumer).paused();
+			willAnswer(i -> {
+				paused.set(true);
+				return null;
+			}).given(consumer).pause(any());
+			willAnswer(i -> {
+				paused.set(false);
+				return null;
+			}).given(consumer).resume(any());
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;

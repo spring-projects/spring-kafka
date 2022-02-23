@@ -712,6 +712,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Header infoHeader = new RecordHeader(KafkaHeaders.LISTENER_INFO, this.listenerinfo);
 
+		private final Set<TopicPartition> pausedForNack = new HashSet<>();
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -727,6 +729,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private long lastAlertAt = this.lastReceive;
 
 		private long nackSleep = -1;
+
+		private long nackWake;
 
 		private int nackIndex;
 
@@ -1594,6 +1598,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void doPauseConsumerIfNecessary() {
+			if (this.pausedForNack.size() > 0) {
+				this.logger.debug("Still paused for nack sleep");
+				return;
+			}
 			if (this.offsetsInThisBatch != null && this.offsetsInThisBatch.size() > 0 && !this.pausedForAsyncAcks) {
 				this.pausedForAsyncAcks = true;
 				this.logger.debug(() -> "Pausing for incomplete async acks: " + this.offsetsInThisBatch);
@@ -1607,7 +1615,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void resumeConsumerIfNeccessary() {
-			if (this.offsetsInThisBatch != null) {
+			if (this.nackWake > 0) {
+				if (System.currentTimeMillis() > this.nackWake) {
+					this.nackWake = 0;
+					this.consumer.resume(this.pausedForNack);
+					this.logger.debug(() -> "Resumed after nack sleep: " + this.pausedForNack);
+					this.pausedForNack.clear();
+				}
+			}
+			else if (this.offsetsInThisBatch != null) {
 				synchronized (this) {
 					doResumeConsumerIfNeccessary();
 				}
@@ -1651,12 +1667,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void resumePartitionsIfNecessary() {
-			Set<TopicPartition> pausedConsumerPartitions = this.consumer.paused();
-			List<TopicPartition> partitionsToResume = this
-					.assignedPartitions
+			List<TopicPartition> partitionsToResume = getAssignedPartitions()
 					.stream()
 					.filter(tp -> !isPartitionPauseRequested(tp)
-							&& pausedConsumerPartitions.contains(tp))
+							&& this.pausedPartitions.contains(tp))
 					.collect(Collectors.toList());
 			if (partitionsToResume.size() > 0) {
 				this.consumer.resume(partitionsToResume);
@@ -2203,7 +2217,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					processCommits();
 				}
 				SeekUtils.doSeeks(toSeek, this.consumer, null, true, (rec, ex) -> false, this.logger); // NOSONAR
-				nackSleepAndReset();
+				pauseForNackSleep();
 			}
 		}
 
@@ -2464,17 +2478,29 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			SeekUtils.doSeeks(list, this.consumer, null, true, (rec, ex) -> false, this.logger); // NOSONAR
-			nackSleepAndReset();
+			pauseForNackSleep();
 		}
 
-		private void nackSleepAndReset() {
-			try {
-				ListenerUtils.stoppableSleep(KafkaMessageListenerContainer.this.thisOrParentContainer, this.nackSleep);
+		private void pauseForNackSleep() {
+			if (this.nackSleep > 0) {
+				this.nackWake = System.currentTimeMillis() + this.nackSleep;
+				this.nackSleep = -1;
+				Set<TopicPartition> alreadyPaused = this.consumer.paused();
+				this.pausedForNack.addAll(getAssignedPartitions());
+				this.pausedForNack.removeAll(alreadyPaused);
+				this.logger.debug(() -> "Pausing for nack sleep: " + ListenerConsumer.this.pausedForNack);
+				try {
+					this.consumer.pause(this.pausedForNack);
+				}
+				catch (IllegalStateException ex) {
+					// this should never happen; defensive, just in case...
+					this.logger.warn(() -> "Could not pause for nack, possible rebalance in process: "
+							+ ex.getMessage());
+					Set<TopicPartition> nowPaused = new HashSet<>(this.consumer.paused());
+					nowPaused.removeAll(alreadyPaused);
+					this.consumer.resume(nowPaused);
+				}
 			}
-			catch (@SuppressWarnings(UNUSED) InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			this.nackSleep = -1;
 		}
 
 		/**
@@ -3243,6 +3269,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (ListenerConsumer.this.assignedPartitions != null) {
 						ListenerConsumer.this.assignedPartitions.removeAll(partitions);
 					}
+					ListenerConsumer.this.pausedForNack.removeAll(partitions);
 					partitions.forEach(tp -> ListenerConsumer.this.lastCommits.remove(tp));
 					synchronized (ListenerConsumer.this) {
 						if (ListenerConsumer.this.offsetsInThisBatch != null) {
@@ -3266,6 +3293,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.consumer.pause(partitions);
 					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
 							+ "consumer paused again, so the initial poll() will never return any records");
+				}
+				if (ListenerConsumer.this.pausedForNack.size() > 0) {
+					ListenerConsumer.this.consumer.pause(ListenerConsumer.this.pausedForNack);
 				}
 				ListenerConsumer.this.assignedPartitions.addAll(partitions);
 				if (ListenerConsumer.this.commitCurrentOnAssignment

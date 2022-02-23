@@ -52,6 +52,7 @@ import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -358,6 +359,7 @@ class RetryTopicConfigurerTests {
 
 	@Test
 	void shouldLogConsumerRecordMessage() {
+		ListenerUtils.setLogOnlyMetadata(false);
 		RetryTopicConfigurer.LoggingDltListenerHandlerMethod method =
 				new RetryTopicConfigurer.LoggingDltListenerHandlerMethod();
 		method.logMessage(consumerRecordMessage);

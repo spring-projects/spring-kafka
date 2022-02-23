@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -40,10 +42,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
@@ -58,9 +62,11 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -71,11 +77,17 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class ManualNackRecordTests {
+@SuppressWarnings("deprecation")
+public class ManualNackBatchTxTests {
 
 	@SuppressWarnings("rawtypes")
 	@Autowired
 	private Consumer consumer;
+
+	@SuppressWarnings("rawtypes")
+	@Autowired
+	private Producer producer;
+
 	@Autowired
 	private Config config;
 
@@ -96,7 +108,7 @@ public class ManualNackRecordTests {
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		InOrder inOrder = inOrder(this.consumer);
+		InOrder inOrder = inOrder(this.consumer, this.producer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		HashMap<TopicPartition, OffsetAndMetadata> commit1 = new HashMap<>();
@@ -105,25 +117,24 @@ public class ManualNackRecordTests {
 		HashMap<TopicPartition, OffsetAndMetadata> commit2 = new HashMap<>();
 		commit2.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
 		commit2.put(new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
-		inOrder.verify(this.consumer).commitSync(commit1, Duration.ofSeconds(60));
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(commit1), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verify(this.consumer).seek(new TopicPartition("foo", 2), 0L);
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		inOrder.verify(this.consumer).commitSync(commit2, Duration.ofSeconds(60));
-		assertThat(this.config.count).isEqualTo(7);
-		assertThat(this.config.contents.toArray()).isEqualTo(new String[]
-				{ "foo", "bar", "baz", "qux", "qux", "fiz", "buz" });
+		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(commit2), any(ConsumerGroupMetadata.class));
+		assertThat(this.config.count).isEqualTo(2);
+		assertThat(this.config.contents.toString()).isEqualTo("[[foo, bar, baz, qux, fiz, buz], [qux, fiz, buz]]");
 	}
 
 	@Configuration
 	@EnableKafka
 	public static class Config {
 
-		final List<String> contents = new ArrayList<>();
+		final List<List<String>> contents = new ArrayList<>();
 
 		final CountDownLatch pollLatch = new CountDownLatch(3);
 
-		final CountDownLatch deliveryLatch = new CountDownLatch(7);
+		final CountDownLatch deliveryLatch = new CountDownLatch(2);
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 
@@ -134,14 +145,12 @@ public class ManualNackRecordTests {
 		volatile long replayTime;
 
 		@KafkaListener(topics = "foo", groupId = "grp")
-		public void foo(String in, Acknowledgment ack) {
+		public void foo(List<String> in, Acknowledgment ack) {
 			this.contents.add(in);
-			if (in.equals("qux")) {
-				this.replayTime = System.currentTimeMillis() - this.replayTime;
-			}
+			this.replayTime = System.currentTimeMillis() - this.replayTime;
 			this.deliveryLatch.countDown();
-			if (++this.count == 4) { // part 1, offset 1, first time
-				ack.nack(50);
+			if (++this.count == 1) { // part 1, offset 1, first time
+				ack.nack(3, 50);
 			}
 			else {
 				ack.acknowledge();
@@ -211,7 +220,7 @@ public class ManualNackRecordTests {
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return ConsumerRecords.empty();
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {
@@ -233,7 +242,34 @@ public class ManualNackRecordTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
+			given(consumer.groupMetadata()).willReturn(mock(ConsumerGroupMetadata.class));
 			return consumer;
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@Bean
+		Producer producer() {
+			Producer producer = mock(Producer.class);
+			willAnswer(inv -> {
+				this.commitLatch.countDown();
+				return null;
+			}).given(producer).sendOffsetsToTransaction(any(), any(ConsumerGroupMetadata.class));
+			return producer;
+		}
+
+		@SuppressWarnings("rawtypes")
+		@Bean
+		ProducerFactory pf() {
+			ProducerFactory pf = mock(ProducerFactory.class);
+			given(pf.createProducer(isNull())).willReturn(producer());
+			given(pf.transactionCapable()).willReturn(true);
+			return pf;
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@Bean
+		KafkaTransactionManager tm() {
+			return new KafkaTransactionManager(pf());
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -241,8 +277,11 @@ public class ManualNackRecordTests {
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
+			factory.setBatchErrorHandler(new SeekToCurrentBatchErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.MANUAL);
 			factory.getContainerProperties().setMissingTopicsFatal(false);
+			factory.getContainerProperties().setTransactionManager(tm());
+			factory.setBatchListener(true);
 			return factory;
 		}
 
