@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationUtils;
@@ -378,7 +379,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			}
 		}
 		headers.add(new RecordHeader(this.correlationHeaderName, correlationId.getCorrelationId()));
-		this.logger.debug(() -> "Sending: " + record + WITH_CORRELATION_ID + correlationId);
+		this.logger.debug(() -> "Sending: " + KafkaUtils.format(record) + WITH_CORRELATION_ID + correlationId);
 		RequestReplyFuture<K, V, R> future = new RequestReplyFuture<>();
 		this.futures.put(correlationId, future);
 		try {
@@ -396,7 +397,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.scheduler.schedule(() -> {
 			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
 			if (removed != null) {
-				this.logger.warn(() -> "Reply timed out for: " + record + WITH_CORRELATION_ID + correlationId);
+				this.logger.warn(() -> "Reply timed out for: " + KafkaUtils.format(record)
+						+ WITH_CORRELATION_ID + correlationId);
 				if (!handleTimeout(correlationId, removed)) {
 					removed.setException(new KafkaReplyTimeoutException("Reply timed out"));
 				}
@@ -455,7 +457,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				correlationId = new CorrelationKey(correlationHeader.value());
 			}
 			if (correlationId == null) {
-				this.logger.error(() -> "No correlationId found in reply: " + record
+				this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.recordToString(record)
 						+ " - to use request/reply semantics, the responding server must return the correlation id "
 						+ " in the '" + this.correlationHeaderName + "' header");
 			}
@@ -473,7 +475,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 						future.setException(exception);
 					}
 					if (ok) {
-						this.logger.debug(() -> "Received: " + record + WITH_CORRELATION_ID + correlationKey);
+						this.logger.debug(() -> "Received: " + KafkaUtils.recordToString(record)
+								+ WITH_CORRELATION_ID + correlationKey);
 						future.set(record);
 					}
 				}
@@ -540,7 +543,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
-		return "No pending reply: " + record + WITH_CORRELATION_ID
+		return "No pending reply: " + KafkaUtils.recordToString(record) + WITH_CORRELATION_ID
 				+ correlationId + ", perhaps timed out, or using a shared reply topic";
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import org.springframework.kafka.listener.BatchConsumerAwareMessageListener;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.util.Assert;
 
 /**
@@ -126,7 +127,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 		data.forEach(record -> {
 			Header correlation = record.headers().lastHeader(KafkaHeaders.CORRELATION_ID);
 			if (correlation == null) {
-				this.logger.error(() -> "No correlationId found in reply: " + record
+				this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.recordToString(record)
 						+ " - to use request/reply semantics, the responding server must return the correlation id "
 						+ " in the '" + KafkaHeaders.CORRELATION_ID + "' header");
 			}
