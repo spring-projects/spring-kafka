@@ -244,6 +244,9 @@ public class EnableKafkaIntegrationTests {
 	@Autowired
 	private SmartMessageConverter fooContentConverter;
 
+	@Autowired
+	private RecordFilterStrategy<Integer, String> lambdaAll;
+
 	@Test
 	public void testAnonymous() {
 		MessageListenerContainer container = this.registry
@@ -260,7 +263,7 @@ public class EnableKafkaIntegrationTests {
 
 	@SuppressWarnings("deprecation")
 	@Test
-	public void testSimple() throws Exception {
+	public void manyTests() throws Exception {
 		this.recordFilter.called = false;
 		template.send("annotated1", 0, "foo");
 		template.send("annotated1", 0, "bar");
@@ -383,6 +386,12 @@ public class EnableKafkaIntegrationTests {
 				String.class);
 		assertThat(clientId).startsWith("rebal-");
 		assertThat(clientId.indexOf('-')).isEqualTo(clientId.lastIndexOf('-'));
+		FilteringMessageListenerAdapter<?, ?> adapter = (FilteringMessageListenerAdapter<?, ?>) registry
+				.getListenerContainer("foo").getContainerProperties().getMessageListener();
+		assertThat(adapter).extracting("recordFilterStrategy").isSameAs(this.lambdaAll);
+		adapter = (FilteringMessageListenerAdapter<?, ?>) registry
+				.getListenerContainer("bar").getContainerProperties().getMessageListener();
+		assertThat(adapter).extracting("recordFilterStrategy").isSameAs(this.lambdaAll);
 	}
 
 	@Test
@@ -1687,6 +1696,11 @@ public class EnableKafkaIntegrationTests {
 			return List.of("max.poll.records: 5", "fetch.min.bytes: 123456");
 		}
 
+		@Bean
+		RecordFilterStrategy<Integer, String> lambdaAll() {
+			return rec -> false;
+		}
+
 	}
 
 	@Component
@@ -1819,7 +1833,8 @@ public class EnableKafkaIntegrationTests {
 
 		private final AtomicBoolean reposition1 = new AtomicBoolean();
 
-		@KafkaListener(id = "foo", topics = "#{'${topicOne:annotated1,foo}'.split(',')}")
+		@KafkaListener(id = "foo", topics = "#{'${topicOne:annotated1,foo}'.split(',')}",
+				filter = "lambdaAll")
 		public void listen1(String foo, @Header(value = KafkaHeaders.GROUP_ID, required = false) String groupId) {
 			this.receivedGroupId = groupId;
 			if (this.reposition1.compareAndSet(false, true)) {
@@ -1837,7 +1852,7 @@ public class EnableKafkaIntegrationTests {
 			foo.forEach(s ->  this.latch1Batch.countDown());
 		}
 
-		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}")
+		@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}", filter = "#{@lambdaAll}")
 		public void listen2(@Payload String foo,
 				@Header(KafkaHeaders.GROUP_ID) String groupId,
 				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,

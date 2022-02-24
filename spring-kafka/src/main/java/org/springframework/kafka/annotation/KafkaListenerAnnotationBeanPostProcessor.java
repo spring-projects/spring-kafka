@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2021 the original author or authors.
+ * Copyright 2014-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,6 +85,7 @@ import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.ContainerGroupSequencer;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
@@ -563,18 +564,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
 
 		String containerFactory = resolve(kafkaListener.containerFactory());
-		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener, containerFactory, beanName);
+		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener,
+				containerFactory, beanName);
 
 		this.registrar.registerEndpoint(endpoint, listenerContainerFactory);
-
-		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
 	}
 
 	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint,
 			KafkaListener kafkaListener, Object bean, String[] topics, TopicPartitionOffset[] tps) {
 
 		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
-		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
 	}
 
 	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
@@ -608,20 +607,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (StringUtils.hasText(kafkaListener.batch())) {
 			endpoint.setBatchListener(Boolean.parseBoolean(kafkaListener.batch()));
 		}
-	}
-
-	private void processKafkaListenerEndpointAfterRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
-			KafkaListener kafkaListener) {
-
 		endpoint.setBeanFactory(this.beanFactory);
-		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
-		if (StringUtils.hasText(errorHandlerBeanName)) {
-			resolveErrorHandler(endpoint, kafkaListener);
-		}
-		String converterBeanName = resolveExpressionAsString(kafkaListener.contentTypeConverter(), "contentTypeConverter");
-		if (StringUtils.hasText(converterBeanName)) {
-			resolveContentTypeConverter(endpoint, kafkaListener);
-		}
+		resolveErrorHandler(endpoint, kafkaListener);
+		resolveContentTypeConverter(endpoint, kafkaListener);
+		resolveFilter(endpoint, kafkaListener);
 	}
 
 	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
@@ -653,9 +642,24 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
+	private void resolveFilter(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+		Object filter = resolveExpression(kafkaListener.filter());
+		if (filter instanceof RecordFilterStrategy) {
+			endpoint.setRecordFilterStrategy((RecordFilterStrategy) filter);
+		}
+		else {
+			String filterBeanName = resolveExpressionAsString(kafkaListener.filter(), "filter");
+			if (StringUtils.hasText(filterBeanName)) {
+				endpoint.setRecordFilterStrategy(
+						this.beanFactory.getBean(filterBeanName, RecordFilterStrategy.class));
+			}
+		}
+	}
+
 	@Nullable
 	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener kafkaListener,
 			Object factoryTarget, String beanName) {
+
 		String containerFactory = kafkaListener.containerFactory();
 		if (!StringUtils.hasText(containerFactory)) {
 			return null;

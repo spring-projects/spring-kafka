@@ -371,8 +371,11 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	@SuppressWarnings("deprecation")
 	private void configureEndpoint(AbstractKafkaListenerEndpoint<K, V> aklEndpoint) {
+		if (aklEndpoint.getRecordFilterStrategy() == null) {
+			JavaUtils.INSTANCE
+					.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::setRecordFilterStrategy);
+		}
 		JavaUtils.INSTANCE
-				.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::setRecordFilterStrategy)
 				.acceptIfNotNull(this.ackDiscarded, aklEndpoint::setAckDiscarded)
 				.acceptIfNotNull(this.statefulRetry, aklEndpoint::setStatefulRetry)
 				.acceptIfNotNull(this.replyTemplate, aklEndpoint::setReplyTemplate)
@@ -381,7 +384,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (aklEndpoint.getBatchListener() == null) {
 			JavaUtils.INSTANCE
 					.acceptIfNotNull(this.batchListener, aklEndpoint::setBatchListener);
-
 		}
 	}
 

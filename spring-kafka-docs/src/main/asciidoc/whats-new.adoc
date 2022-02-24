@@ -44,6 +44,8 @@ See <<batch-listener-conv-errors>> for more information.
 `RecordFilterStrategy`, when used with batch listeners, can now filter the entire batch in one call.
 See the note at the end of <<batch-listeners>> for more information.
 
+The `@KafkaListener` annotation now has the `filter` attribute, to override the container factory's `RecordFilterStrategy` for just this listener.
+
 [[x28-template]]
 ==== `KafkaTemplate` Changes
 
