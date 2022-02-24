@@ -309,6 +309,19 @@ public class JsonSerializationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
 			.contains(Foo.class.getPackageName() + ".*");
 	}
+	
+	@SuppressWarnings("unchecked")
+	@Test
+	void testTrustMappingPackagesForArray() {
+		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		Map<String, Object> props = Collections.singletonMap(JsonDeserializer.TYPE_MAPPINGS,
+				"foo:" + Foo[].class.getName());
+		deser.configure(props, false);
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
+				.contains(Foo.class.getPackageName());
+		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
+			.contains(Foo.class.getPackageName() + ".*");
+	}
 
 	@SuppressWarnings("unchecked")
 	@Test
