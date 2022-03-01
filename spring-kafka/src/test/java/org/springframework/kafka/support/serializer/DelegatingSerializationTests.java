@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
@@ -45,6 +46,8 @@ import org.springframework.messaging.MessageHeaders;
 
 /**
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.3
  *
  */
@@ -121,16 +124,16 @@ public class DelegatingSerializationTests {
 	private void doTest(DelegatingSerializer serializer, DelegatingDeserializer deserializer) {
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "bytes".getBytes()));
-		byte[] bytes = new byte[] { 1, 2, 3, 4 };
+		byte[] bytes = new byte[]{ 1, 2, 3, 4 };
 		byte[] serialized = serializer.serialize("foo", headers, new Bytes(bytes));
 		assertThat(serialized).isSameAs(bytes);
 		headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "int".getBytes()));
 		serialized = serializer.serialize("foo", headers, 42);
-		assertThat(serialized).isEqualTo(new byte[] { 0, 0, 0, 42 });
+		assertThat(serialized).isEqualTo(new byte[]{ 0, 0, 0, 42 });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo(42);
 		headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "string".getBytes()));
 		serialized = serializer.serialize("foo", headers, "bar");
-		assertThat(serialized).isEqualTo(new byte[] { 'b', 'a', 'r' });
+		assertThat(serialized).isEqualTo(new byte[]{ 'b', 'a', 'r' });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo("bar");
 
 		// implicit Serdes
@@ -151,25 +154,25 @@ public class DelegatingSerializationTests {
 				Collections.singletonMap(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "string"));
 		new DefaultKafkaHeaderMapper().fromHeaders(messageHeaders, headers);
 		assertThat(headers.lastHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR).value())
-				.isEqualTo(new byte[] { 's', 't', 'r', 'i', 'n', 'g' });
+				.isEqualTo(new byte[]{ 's', 't', 'r', 'i', 'n', 'g' });
 		serialized = serializer.serialize("foo", headers, "bar");
-		assertThat(serialized).isEqualTo(new byte[] { 'b', 'a', 'r' });
+		assertThat(serialized).isEqualTo(new byte[]{ 'b', 'a', 'r' });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo("bar");
 	}
 
 	private void doTestKeys(DelegatingSerializer serializer, DelegatingDeserializer deserializer) {
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR, "bytes".getBytes()));
-		byte[] bytes = new byte[] { 1, 2, 3, 4 };
+		byte[] bytes = new byte[]{ 1, 2, 3, 4 };
 		byte[] serialized = serializer.serialize("foo", headers, new Bytes(bytes));
 		assertThat(serialized).isSameAs(bytes);
 		headers.add(new RecordHeader(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR, "int".getBytes()));
 		serialized = serializer.serialize("foo", headers, 42);
-		assertThat(serialized).isEqualTo(new byte[] { 0, 0, 0, 42 });
+		assertThat(serialized).isEqualTo(new byte[]{ 0, 0, 0, 42 });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo(42);
 		headers.add(new RecordHeader(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR, "string".getBytes()));
 		serialized = serializer.serialize("foo", headers, "bar");
-		assertThat(serialized).isEqualTo(new byte[] { 'b', 'a', 'r' });
+		assertThat(serialized).isEqualTo(new byte[]{ 'b', 'a', 'r' });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo("bar");
 
 		// implicit Serdes
@@ -190,9 +193,9 @@ public class DelegatingSerializationTests {
 				Collections.singletonMap(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR, "string"));
 		new DefaultKafkaHeaderMapper().fromHeaders(messageHeaders, headers);
 		assertThat(headers.lastHeader(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR).value())
-				.isEqualTo(new byte[] { 's', 't', 'r', 'i', 'n', 'g' });
+				.isEqualTo(new byte[]{ 's', 't', 'r', 'i', 'n', 'g' });
 		serialized = serializer.serialize("foo", headers, "bar");
-		assertThat(serialized).isEqualTo(new byte[] { 'b', 'a', 'r' });
+		assertThat(serialized).isEqualTo(new byte[]{ 'b', 'a', 'r' });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo("bar");
 	}
 
@@ -218,21 +221,24 @@ public class DelegatingSerializationTests {
 		assertThatExceptionOfType(SerializationException.class).isThrownBy(
 						() -> serializer.serialize("foo", new Bytes(foo)))
 				.withMessageMatching("No matching delegate for type: " + Bytes.class.getName()
-						+ "; supported types: \\[(java.lang.String, \\[B|\\[B, java.lang.String)\\]");
+						+ "; supported types: \\[(java.lang.String, \\[B|\\[B, java.lang.String)]");
 	}
 
 	@Test
 	void assignable() {
-		DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(Map.of(Number.class,
-				new IntegerSerializer(), byte[].class, new ByteArraySerializer()), true);
+		var delegates = new HashMap<Class<?>, Serializer<?>>();
+		delegates.put(Number.class, new IntegerSerializer());
+		delegates.put(byte[].class, new ByteArraySerializer());
+		DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(delegates, true);
+
 		Integer i = 42;
-		assertThat(serializer.serialize("foo", i)).isEqualTo(new byte[] {0, 0, 0, 42});
+		assertThat(serializer.serialize("foo", i)).isEqualTo(new byte[]{ 0, 0, 0, 42 });
 		byte[] foo = "foo".getBytes();
 		assertThat(serializer.serialize("foo", foo)).isSameAs(foo);
 		assertThatExceptionOfType(SerializationException.class).isThrownBy(
-				() -> serializer.serialize("foo", new Bytes(foo)))
-		.withMessageMatching("No matching delegate for type: " + Bytes.class.getName()
-				+ "; supported types: \\[(java.lang.Number, \\[B|\\[B, java.lang.Number)\\]");
+						() -> serializer.serialize("foo", new Bytes(foo)))
+				.withMessageMatching("No matching delegate for type: " + Bytes.class.getName()
+						+ "; supported types: \\[(java.lang.Number, \\[B|\\[B, java.lang.Number)]");
 	}
 
 }
