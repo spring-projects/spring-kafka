@@ -2315,7 +2315,7 @@ In addition, a `FilteringBatchMessageListenerAdapter` is provided, for when you 
 
 IMPORTANT: The `FilteringBatchMessageListenerAdapter` is ignored if your `@KafkaListener` receives a `ConsumerRecords<?, ?>` instead of `List<ConsumerRecord<?, ?>>`, because `ConsumerRecords` is immutable.
 
-Starting with version 2.8.4, you can override the listener container factory's default `RecordFilterStrategy` by using the `filter` property on the listner.
+Starting with version 2.8.4, you can override the listener container factory's default `RecordFilterStrategy` by using the `filter` property on the listener annotations.
 
 ====
 [source, java]

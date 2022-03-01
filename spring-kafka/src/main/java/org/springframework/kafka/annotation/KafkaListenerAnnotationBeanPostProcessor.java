@@ -490,7 +490,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		RetryTopicConfigurer.EndpointProcessor endpointProcessor = endpointToProcess ->
-				this.processKafkaListenerAnnotationForRetryTopic(endpointToProcess, kafkaListener, bean, topics, tps);
+				this.processKafkaListenerAnnotation(endpointToProcess, kafkaListener, bean, topics, tps);
 
 		KafkaListenerContainerFactory<?> factory =
 				resolveContainerFactory(kafkaListener, resolve(kafkaListener.containerFactory()), beanName);
@@ -561,7 +561,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	protected void processListener(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener,
 								Object bean, String beanName, String[] topics, TopicPartitionOffset[] tps) {
 
-		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
+		processKafkaListenerAnnotation(endpoint, kafkaListener, bean, topics, tps);
 
 		String containerFactory = resolve(kafkaListener.containerFactory());
 		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener,
@@ -570,13 +570,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		this.registrar.registerEndpoint(endpoint, listenerContainerFactory);
 	}
 
-	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint,
-			KafkaListener kafkaListener, Object bean, String[] topics, TopicPartitionOffset[] tps) {
-
-		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
-	}
-
-	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
+	private void processKafkaListenerAnnotation(MethodKafkaListenerEndpoint<?, ?> endpoint,
 			KafkaListener kafkaListener, Object bean, String[] topics, TopicPartitionOffset[] tps) {
 
 		endpoint.setBean(bean);
