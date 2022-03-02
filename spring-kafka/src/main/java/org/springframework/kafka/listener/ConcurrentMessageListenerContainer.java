@@ -232,6 +232,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		container.setRecordInterceptor(getRecordInterceptor());
 		container.setBatchInterceptor(getBatchInterceptor());
 		container.setInterceptBeforeTx(isInterceptBeforeTx());
+		container.setListenerInfo(getListenerInfo());
 		container.setEmergencyStop(() -> {
 			stopAbnormally(() -> {
 			});

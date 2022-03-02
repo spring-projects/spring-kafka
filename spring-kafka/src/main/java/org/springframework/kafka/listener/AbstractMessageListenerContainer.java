@@ -46,6 +46,7 @@ import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -82,6 +83,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected final Object lifecycleMonitor = new Object(); // NOSONAR
 
+	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
+
 	private String beanName;
 
 	private ApplicationEventPublisher applicationEventPublisher;
@@ -106,13 +109,13 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private boolean interceptBeforeTx = true;
 
-	private volatile boolean running = false;
-
-	private volatile boolean paused;
+	private byte[] listenerInfo;
 
 	private ApplicationContext applicationContext;
 
-	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
+	private volatile boolean running = false;
+
+	private volatile boolean paused;
 
 	private volatile boolean stoppedNormally = true;
 
@@ -371,6 +374,27 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Nullable
 	public String getListenerId() {
 		return this.beanName; // the container factory sets the bean name to the id attribute
+	}
+
+	/**
+	 * Get arbitrary static information that will be added to the
+	 * {@link KafkaHeaders#LISTENER_INFO} header of all records.
+	 * @return the info.
+	 * @since 2.8.4
+	 */
+	@Nullable
+	public byte[] getListenerInfo() {
+		return this.listenerInfo != null ? Arrays.copyOf(this.listenerInfo, this.listenerInfo.length) : null;
+	}
+
+	/**
+	 * Set arbitrary information that will be added to the
+	 * {@link KafkaHeaders#LISTENER_INFO} header of all records.
+	 * @param listenerInfo the info.
+	 * @since 2.8.4
+	 */
+	public void setListenerInfo(@Nullable byte[] listenerInfo) {
+		this.listenerInfo = listenerInfo != null ? Arrays.copyOf(listenerInfo, listenerInfo.length) : null;
 	}
 
 	/**

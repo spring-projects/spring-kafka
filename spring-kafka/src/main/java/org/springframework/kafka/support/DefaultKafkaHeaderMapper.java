@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -245,7 +245,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		final Map<String, String> jsonHeaders = new HashMap<>();
 		final ObjectMapper headerObjectMapper = getObjectMapper();
 		headers.forEach((key, rawValue) -> {
-			if (!key.equals(KafkaHeaders.DELIVERY_ATTEMPT) && matches(key, rawValue)) {
+			if (matches(key, rawValue)) {
 				Object valueToAdd = headerValueToAddOut(key, rawValue);
 				if (valueToAdd instanceof byte[]) {
 					target.add(new RecordHeader(key, (byte[]) valueToAdd));
@@ -290,6 +290,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		source.forEach(header -> {
 			if (header.key().equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
 				headers.put(header.key(), ByteBuffer.wrap(header.value()).getInt());
+			}
+			else if (header.key().equals(KafkaHeaders.LISTENER_INFO)) {
+				headers.put(header.key(), new String(header.value(), getCharset()));
 			}
 			else if (!(header.key().equals(JSON_TYPES))) {
 				if (jsonTypes != null && jsonTypes.containsKey(header.key())) {

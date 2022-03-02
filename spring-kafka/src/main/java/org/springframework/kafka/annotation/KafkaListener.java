@@ -308,4 +308,20 @@ public @interface KafkaListener {
 	 */
 	String filter() default "";
 
+	/**
+	 * Static information that will be added as a header with key
+	 * {@link org.springframework.kafka.support.KafkaHeaders#LISTENER_INFO}. This can be used, for example, in a
+	 * {@link org.springframework.kafka.listener.RecordInterceptor}, {@link RecordFiorg.springframework.kafka.listener.adapter.RecordFilterStrategylterStrategy} or the listener itself, for
+	 * any purposes.
+	 * <p>
+	 * SpEL {@code #{...}} and property place holders {@code ${...}} are supported, but it
+	 * must resolve to a String or `byte[]`.
+	 * <p>
+	 * This header will be stripped out if an outbound record is created with the headers
+	 * from an input record.
+	 * @return the info.
+	 * @since 2.8.4
+	 */
+	String info() default "";
+
 }

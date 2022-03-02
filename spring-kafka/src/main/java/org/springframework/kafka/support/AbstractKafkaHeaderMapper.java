@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,10 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private final Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 
+	{
+		this.rawMappedHeaders.put(KafkaHeaders.LISTENER_INFO, true);
+	}
+
 	private boolean mapAllStringsOut;
 
 	private Charset charset = StandardCharsets.UTF_8;
@@ -77,6 +81,8 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 				KafkaHeaders.BATCH_CONVERTED_HEADERS,
 				KafkaHeaders.NATIVE_HEADERS,
 				KafkaHeaders.TOPIC,
+				KafkaHeaders.DELIVERY_ATTEMPT,
+				KafkaHeaders.LISTENER_INFO,
 				KafkaHeaders.GROUP_ID));
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));

@@ -144,6 +144,12 @@ import org.springframework.validation.Validator;
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		implements BeanPostProcessor, Ordered, ApplicationContextAware, InitializingBean, SmartInitializingSingleton {
 
+	private static final String THE_LEFT = "The [";
+
+	private static final String RESOLVED_TO_LEFT = "Resolved to [";
+
+	private static final String RIGHT_FOR_LEFT = "] for [";
+
 	private static final String GENERATED_ID_PREFIX = "org.springframework.kafka.KafkaListenerEndpointContainer#";
 
 	/**
@@ -252,8 +258,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	/**
-	 * Set a charset to use when converting byte[] to String in method arguments.
-	 * Default UTF-8.
+	 * Set a charset to use when converting byte[] to String in method arguments and other
+	 * String/byte[] conversions. Default UTF-8.
 	 * @param charset the charset.
 	 * @since 2.2
 	 */
@@ -581,6 +587,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		endpoint.setTopics(topics);
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
 		endpoint.setClientIdPrefix(resolveExpressionAsString(kafkaListener.clientIdPrefix(), "clientIdPrefix"));
+		endpoint.setListenerInfo(resolveExpressionAsBytes(kafkaListener.info(), "info"));
 		String group = kafkaListener.containerGroup();
 		if (StringUtils.hasText(group)) {
 			Object resolvedGroup = resolveExpression(group);
@@ -932,8 +939,26 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return (String) resolved;
 		}
 		else if (resolved != null) {
-			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
-					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String. "
+					+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
+		}
+		return null;
+	}
+
+	@Nullable
+	private byte[] resolveExpressionAsBytes(String value, String attribute) {
+		Object resolved = resolveExpression(value);
+		if (resolved instanceof String) {
+			if (StringUtils.hasText((CharSequence) resolved)) {
+				return ((String) resolved).getBytes(this.charset);
+			}
+		}
+		else if (resolved instanceof byte[]) {
+			return (byte[]) resolved;
+		}
+		else if (resolved != null) {
+			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String or byte[]. "
+					+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return null;
 	}
@@ -949,8 +974,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
-							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+					THE_LEFT + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
+							+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return result;
 	}
@@ -966,8 +991,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
-							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+					THE_LEFT + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
+							+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return result;
 	}

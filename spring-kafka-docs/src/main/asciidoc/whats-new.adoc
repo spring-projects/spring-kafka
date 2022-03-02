@@ -46,6 +46,10 @@ See the note at the end of <<batch-listeners>> for more information.
 
 The `@KafkaListener` annotation now has the `filter` attribute, to override the container factory's `RecordFilterStrategy` for just this listener.
 
+The `@KafkaListener` annotation now the "info" attribute; this is used to populate the new listener container property `listenerInfo`.
+This is then used to populate a `KafkaHeaders.LISTENER_INFO` header in each record which can be used in `RecordInterceptor`, `RecordFilterStrategy`, or the listener itself.
+See <<li-header>> and <<alc-props,Abstract Listener Container Properties>> for more information.
+
 [[x28-template]]
 ==== `KafkaTemplate` Changes
 

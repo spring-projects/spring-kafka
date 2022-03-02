@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -286,6 +286,19 @@ public class DefaultKafkaHeaderMapperTests {
 		headers = new RecordHeaders();
 		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
 		assertThat(headers.lastHeader(KafkaHeaders.DELIVERY_ATTEMPT)).isNull();
+	}
+
+	@Test
+	void listenerInfo() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		Headers headers = new RecordHeaders(
+				new Header[] { new RecordHeader(KafkaHeaders.LISTENER_INFO, "info".getBytes()) });
+		Map<String, Object> springHeaders = new HashMap<>();
+		mapper.toHeaders(headers, springHeaders);
+		assertThat(springHeaders.get(KafkaHeaders.LISTENER_INFO)).isEqualTo("info");
+		headers = new RecordHeaders();
+		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
+		assertThat(headers.lastHeader(KafkaHeaders.LISTENER_INFO)).isNull();
 	}
 
 	public static final class Foo {

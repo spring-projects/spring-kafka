@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -37,6 +39,14 @@ import org.springframework.messaging.MessageHeaders;
  *
  */
 public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
+
+	private static final Set<String> NEVER;
+
+	static {
+		NEVER = new HashSet<>();
+		NEVER.add(KafkaHeaders.DELIVERY_ATTEMPT);
+		NEVER.add(KafkaHeaders.LISTENER_INFO);
+	}
 
 	/**
 	 * Construct an instance with the default object mapper and default header patterns
@@ -69,7 +79,7 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@Override
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		headers.forEach((key, value) -> {
-			if (!key.equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
+			if (!NEVER.contains(key)) {
 				Object valueToAdd = headerValueToAddOut(key, value);
 				if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
 					target.add(new RecordHeader(key, (byte[]) valueToAdd));

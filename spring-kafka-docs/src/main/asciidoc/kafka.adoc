@@ -2606,6 +2606,7 @@ Mutually exclusive; at least one must be provided; enforced by `ContainerPropert
 |See <<transactions>>.
 |===
 
+[[alc-props]]
 .`AbstractListenerContainer` Properties
 [cols="9,10,16", options="header"]
 |===
@@ -2662,6 +2663,12 @@ See <<error-handlers>>.
 |[[listenerId]]<<listenerId,`listenerId`>>
 |See desc.
 |The bean name for user-configured containers or the `id` attribute of `@KafkaListener` s.
+
+|[[listenerInfo]]<<listenerInfo,`listenerInfo`>>
+|null
+|A value to populate in the `KafkaHeaders.LISTENER_INFO` header.
+With `@KafkaListener`, this value is obtained from the `info` attribute.
+This header can be used in various places, such as a `RecordInterceptor`, `RecordFilterStrategy` and in the listener code itself.
 
 |[[pauseRequested]]<<pauseRequested,`pauseRequested`>>
 |(read only)
@@ -5555,6 +5562,30 @@ To enable population of this header, set the container property `deliveryAttempt
 It is disabled by default to avoid the (small) overhead of looking up the state for each record and adding the header.
 
 The `DefaultErrorHandler` and `DefaultAfterRollbackProcessor` support this feature.
+
+[[li-header]]
+===== Listener Info Header
+
+In some cases, it is useful to be able to know which container a listener is running in.
+
+Starting with version 2.8.4, you can now set the `listenerInfo` property on the listener container, or set the `info` attribute on the `@KafkaListener` annotation.
+Then, the container will add this in the `KafkaListener.LISTENER_INFO` header to all incoming messages; it can then be used in record interceptors, filters, etc., or in the listener itself.
+
+====
+[source, java]
+----
+@KafkaListener(id = "something", topic = "topic", filter = "someFilter",
+        info = "this is the something listener")
+public void listen2(@Payload Thing thing,
+        @Header(KafkaHeaders.LISTENER_INFO) String listenerInfo) {
+...
+}
+----
+====
+
+When used in a `RecordInterceptor` or `RecordFilterStrategy` implementation, the header is in the consumer record as a byte array, converted using the `KafkaListenerAnnotationBeanPostProcessor` 's `charSet` property.
+
+The header mappers also convert to `String` when creating `MessageHeaders` from the consumer record and never map this header on an outbound record.
 
 [[dead-letters]]
 ===== Publishing Dead-letter Records

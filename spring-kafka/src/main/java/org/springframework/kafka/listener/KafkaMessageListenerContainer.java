@@ -64,6 +64,7 @@ import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.beans.BeanUtils;
@@ -706,6 +707,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final Map<TopicPartition, Long> lastAlertPartition;
 
 		private final Map<TopicPartition, Boolean> wasIdlePartition;
+
+		private final byte[] listenerinfo = getListenerInfo();
+
+		private final Header infoHeader = new RecordHeader(KafkaHeaders.LISTENER_INFO, this.listenerinfo);
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
@@ -1936,10 +1941,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void commitAsync(Map<TopicPartition, OffsetAndMetadata> commits) {
 			this.consumer.commitAsync(commits, (offsetsAttempted, exception) -> {
 				this.commitCallback.onComplete(offsetsAttempted, exception);
-				if (exception == null) {
-					if (this.fixTxOffsets) {
-						this.lastCommits.putAll(commits);
-					}
+				if (exception == null && this.fixTxOffsets) {
+					this.lastCommits.putAll(commits);
 				}
 			});
 		}
@@ -2422,7 +2425,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Nullable
 		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> recordArg) {
-			deliveryAttemptHeader(recordArg);
+			internalHeaders(recordArg);
 			ConsumerRecord<K, V> record = recordArg;
 			if (this.earlyRecordInterceptor != null) {
 				record = this.earlyRecordInterceptor.intercept(record, this.consumer);
@@ -2434,7 +2437,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return record;
 		}
 
-		private void deliveryAttemptHeader(final ConsumerRecord<K, V> record) {
+		private void internalHeaders(final ConsumerRecord<K, V> record) {
 			if (this.deliveryAttemptAware != null) {
 				byte[] buff = new byte[4]; // NOSONAR (magic #)
 				ByteBuffer bb = ByteBuffer.wrap(buff);
@@ -2442,6 +2445,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						.deliveryAttempt(
 								new TopicPartitionOffset(record.topic(), record.partition(), record.offset())));
 				record.headers().add(new RecordHeader(KafkaHeaders.DELIVERY_ATTEMPT, buff));
+			}
+			if (this.listenerinfo != null) {
+				record.headers().add(this.infoHeader);
 			}
 		}
 

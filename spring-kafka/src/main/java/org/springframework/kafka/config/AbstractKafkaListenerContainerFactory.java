@@ -369,7 +369,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		return instance;
 	}
 
-	@SuppressWarnings("deprecation")
 	private void configureEndpoint(AbstractKafkaListenerEndpoint<K, V> aklEndpoint) {
 		if (aklEndpoint.getRecordFilterStrategy() == null) {
 			JavaUtils.INSTANCE
@@ -433,7 +432,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfHasText(endpoint.getGroupId(), instance.getContainerProperties()::setGroupId)
 				.acceptIfHasText(endpoint.getClientIdPrefix(), instance.getContainerProperties()::setClientId)
 				.acceptIfNotNull(endpoint.getConsumerProperties(),
-						instance.getContainerProperties()::setKafkaConsumerProperties);
+						instance.getContainerProperties()::setKafkaConsumerProperties)
+				.acceptIfNotNull(endpoint.getListenerInfo(), instance::setListenerInfo);
 	}
 
 	private void customizeContainer(C instance) {
