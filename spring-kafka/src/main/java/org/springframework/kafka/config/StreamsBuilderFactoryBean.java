@@ -202,6 +202,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	/**
 	 * Retrieves the current {@link StreamsUncaughtExceptionHandler} set on this factory bean.
 	 * @return {@link StreamsUncaughtExceptionHandler}
+	 * @since 2.8.4
 	 */
 	public StreamsUncaughtExceptionHandler getStreamsUncaughtExceptionHandler() {
 		return this.streamsUncaughtExceptionHandler;
