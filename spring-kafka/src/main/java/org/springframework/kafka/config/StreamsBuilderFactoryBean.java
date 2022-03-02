@@ -199,6 +199,14 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		this.streamsUncaughtExceptionHandler = streamsUncaughtExceptionHandler; // NOSONAR (sync)
 	}
 
+	/**
+	 * Retrieves the current {@link StreamsUncaughtExceptionHandler} set on this factory bean.
+	 * @return {@link StreamsUncaughtExceptionHandler}
+	 */
+	public StreamsUncaughtExceptionHandler getStreamsUncaughtExceptionHandler() {
+		return this.streamsUncaughtExceptionHandler;
+	}
+
 	public void setStateRestoreListener(StateRestoreListener stateRestoreListener) {
 		this.stateRestoreListener = stateRestoreListener; // NOSONAR (sync)
 	}
