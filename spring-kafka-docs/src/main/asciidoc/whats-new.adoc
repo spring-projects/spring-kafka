@@ -54,7 +54,7 @@ See <<kafka-template-receive>> for more information.
 ==== `CommonErrorHandler` Added
 
 The legacy `GenericErrorHandler` and its sub-interface hierarchies for record an batch listeners have been replaced by a new single interface `CommonErrorHandler` with implementations corresponding to most legacy implementations of `GenericErrorHandler`.
-See <<error-handlers>> for more information.
+See <<error-handlers>> and <<migrating-legacy-eh>> for more information.
 
 [[x28-lcc]]
 ==== Listener Container Changes
