@@ -16,10 +16,16 @@
 
 package org.springframework.kafka.support.micrometer;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.lang.Nullable;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -69,12 +75,56 @@ public final class MicrometerHolder {
 		this.timerDesc = timerDesc;
 		this.name = name;
 		this.tags = tags;
+		registries = filterRegistries(registries, context);
 		if (registries.size() == 1) {
 			this.registry = registries.values().iterator().next();
 			buildTimer(NONE_EXCEPTION_METERS_KEY);
 		}
 		else {
-			throw new IllegalStateException("No micrometer registry present (or more than one)");
+			throw new IllegalStateException("No micrometer registry present (or more than one and "
+					+ "none marked @Primary)");
+		}
+	}
+
+	private Map<String, MeterRegistry> filterRegistries(Map<String, MeterRegistry> registries,
+			ApplicationContext context) {
+
+		if (registries.size() == 1) {
+			return registries;
+		}
+		Map<String, MeterRegistry> filtered = registries.entrySet()
+				.stream()
+				.filter(entry -> entry.getValue()
+						.getClass()
+						.getName()
+						.equals("org.springframework.boot.actuate.autoconfigure.metrics."
+								+ "AutoConfiguredCompositeMeterRegistry"))
+						.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
+		if (filtered.size() == 1) {
+			return filtered;
+		}
+		MeterRegistry primary = null;
+		if (context instanceof ConfigurableApplicationContext) {
+			BeanDefinitionRegistry bdr = (BeanDefinitionRegistry) ((ConfigurableApplicationContext) context)
+					.getBeanFactory();
+			for (Entry<String, MeterRegistry> entry : registries.entrySet()) {
+				BeanDefinition beanDefinition = bdr.getBeanDefinition(entry.getKey());
+				if (beanDefinition.isPrimary()) {
+					if (primary != null) {
+						primary = null;
+						break;
+					}
+					else {
+						primary = entry.getValue();
+					}
+				}
+			}
+		}
+		if (primary != null) {
+			return Collections.singletonMap("primary", primary);
+		}
+		else {
+			return registries;
 		}
 	}
 

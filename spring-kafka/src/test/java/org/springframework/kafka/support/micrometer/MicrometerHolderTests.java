@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.micrometer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
@@ -31,6 +32,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -44,11 +48,12 @@ public class MicrometerHolderTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void testMicrometerHolderRecordSuccessWorksGracefullyAfterDestroy() {
+	void testMicrometerHolderRecordSuccessWorksGracefullyAfterDestroy() {
 		MeterRegistry meterRegistry = new SimpleMeterRegistry();
 		ApplicationContext ctx = mock(ApplicationContext.class);
 		Timer.Sample sample = mock(Timer.Sample.class);
-		given(ctx.getBeansOfType(any(), anyBoolean(), anyBoolean())).willReturn(Collections.singletonMap("registry", meterRegistry));
+		given(ctx.getBeansOfType(any(), anyBoolean(), anyBoolean()))
+				.willReturn(Collections.singletonMap("registry", meterRegistry));
 
 		MicrometerHolder micrometerHolder = new MicrometerHolder(ctx, "holderName",
 				"timerName", "timerDesc", Collections.emptyMap());
@@ -66,6 +71,72 @@ public class MicrometerHolderTests {
 		verify(ctx, times(1)).getBeansOfType(any(), anyBoolean(), anyBoolean());
 		verify(sample, times(1)).stop(any(Timer.class));
 		verifyNoMoreInteractions(ctx, sample);
+	}
+
+	@Test
+	void multiReg() {
+		assertThatIllegalStateException().isThrownBy(() -> new MicrometerHolder(
+				new AnnotationConfigApplicationContext(Config1.class), "", "", "", Collections.emptyMap()));
+	}
+
+	@Test
+	void twoPrimaries() {
+		assertThatIllegalStateException().isThrownBy(() -> new MicrometerHolder(
+				new AnnotationConfigApplicationContext(Config2.class), "", "", "", Collections.emptyMap()));
+	}
+
+	@Test
+	void primary() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Config3.class);
+		MicrometerHolder micrometerHolder = new MicrometerHolder(ctx, "holderName",
+				"timerName", "timerDesc", Collections.emptyMap());
+		Map<String, Timer> meters = (Map<String, Timer>) ReflectionTestUtils.getField(micrometerHolder, "meters");
+		assertThat(meters).hasSize(1);
+	}
+
+	static class Config1 {
+
+		@Bean
+		MeterRegistry reg1() {
+			return new SimpleMeterRegistry();
+		}
+
+		@Bean
+		MeterRegistry reg2() {
+			return new SimpleMeterRegistry();
+		}
+
+	}
+
+	static class Config2 {
+
+		@Bean
+		@Primary
+		MeterRegistry reg1() {
+			return new SimpleMeterRegistry();
+		}
+
+		@Bean
+		@Primary
+		MeterRegistry reg2() {
+			return new SimpleMeterRegistry();
+		}
+
+	}
+
+	static class Config3 {
+
+		@Bean
+		@Primary
+		MeterRegistry reg1() {
+			return new SimpleMeterRegistry();
+		}
+
+		@Bean
+		MeterRegistry reg2() {
+			return new SimpleMeterRegistry();
+		}
+
 	}
 
 }
