@@ -438,6 +438,7 @@ public class RetryTopicConfigurer {
 
 		public static final String DEFAULT_DLT_METHOD_NAME = "logMessage";
 
+		@SuppressWarnings("deprecation")
 		public void logMessage(Object message) {
 			if (message instanceof ConsumerRecord) {
 				LOGGER.info(() -> "Received message in dlt listener: "

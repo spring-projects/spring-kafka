@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,8 @@ public final class ListenerUtils {
 
 	private ListenerUtils() {
 	}
+
+	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
 
 	private static final int DEFAULT_SLEEP_INTERVAL = 100;
 
@@ -150,10 +152,12 @@ public final class ListenerUtils {
 	 * Set to true to only log record metadata.
 	 * @param onlyMeta true to only log record metadata.
 	 * @since 2.2.14
+	 * @deprecated in favor of {@link KafkaUtils#format(ConsumerRecord)}.
 	 * @see #recordToString(ConsumerRecord)
 	 */
+	@Deprecated
 	public static void setLogOnlyMetadata(boolean onlyMeta) {
-		KafkaUtils.setLogOnlyMetadata(onlyMeta);
+		LOG_METADATA_ONLY.set(onlyMeta);
 	}
 
 	/**
@@ -162,10 +166,12 @@ public final class ListenerUtils {
 	 * @param record the record.
 	 * @return the rendered record.
 	 * @since 2.2.14
+	 * @deprecated in favor of {@link KafkaUtils#format(ConsumerRecord)}.
 	 * @see #setLogOnlyMetadata(boolean)
 	 */
+	@Deprecated
 	public static String recordToString(ConsumerRecord<?, ?> record) {
-		return KafkaUtils.recordToString(record);
+		return recordToString(record, Boolean.TRUE.equals(LOG_METADATA_ONLY.get()));
 	}
 
 	/**
@@ -175,9 +181,11 @@ public final class ListenerUtils {
 	 * @param meta true to log just the metadata.
 	 * @return the rendered record.
 	 * @since 2.5.4
+	 * @deprecated in favor of {@link KafkaUtils#format(ConsumerRecord)}.
 	 */
+	@Deprecated
 	public static String recordToString(ConsumerRecord<?, ?> record, boolean meta) {
-		return KafkaUtils.recordToString(record, meta);
+		return KafkaUtils.format(record, !meta);
 	}
 
 	/**

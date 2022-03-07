@@ -2560,6 +2560,8 @@ See `monitorInterval`.
 |[[onlyLogRecordMetadata]]<<onlyLogRecordMetadata,`onlyLogRecordMetadata`>>
 |`false`
 |Set to false to log the complete consumer record (in error, debug logs etc) instead of just `topic-partition@offset`.
+Deprecated.
+Replaced by `KafkaUtils.setConsumerRecordFormatter`.
 
 |[[pollTimeout]]<<pollTimeout,`pollTimeout`>>
 |5000
@@ -5720,3 +5722,10 @@ public KafkaJaasLoginModuleInitializer jaasConfig() throws IOException {
 }
 ----
 ====
+
+[[record-logging]]
+==== Producer and Consumer Record Logging
+
+Starting with versions 2.7.12, 2.8.4, you can determine how these records will be rendered in debug logs, etc.
+
+See `KafkaUtils.setProducerRecordFormatter()` and `KafkaUtils.setProducerRecordFormatter()` for more information.

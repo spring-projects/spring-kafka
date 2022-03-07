@@ -47,6 +47,7 @@ public class FallbackBatchErrorHandlerTests {
 
 	private int invoked;
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void recover() {
 		this.invoked = 0;
@@ -75,6 +76,7 @@ public class FallbackBatchErrorHandlerTests {
 		verifyNoMoreInteractions(consumer);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void successOnRetry() {
 		this.invoked = 0;
@@ -100,6 +102,7 @@ public class FallbackBatchErrorHandlerTests {
 		verifyNoMoreInteractions(consumer);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void recoveryFails() {
 		this.invoked = 0;

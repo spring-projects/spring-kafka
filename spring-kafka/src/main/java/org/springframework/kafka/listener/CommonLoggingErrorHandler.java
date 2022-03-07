@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 		this.ackAfterHandle = ackAfterHandle;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
@@ -53,6 +54,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 		LOGGER.error(thrownException, () -> "Error occured while processing: " + ListenerUtils.recordToString(record));
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {

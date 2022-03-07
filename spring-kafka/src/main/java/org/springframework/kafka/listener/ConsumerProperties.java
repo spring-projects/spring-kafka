@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
@@ -431,16 +432,20 @@ public class ConsumerProperties {
 		this.commitRetries = commitRetries;
 	}
 
+	@Deprecated
 	public boolean isOnlyLogRecordMetadata() {
 		return this.onlyLogRecordMetadata;
 	}
 
 	/**
-	 * Set to false to log {@code record.toString()} in log messages instead
-	 * of {@code topic-partition@offset}.
+	 * Set to false to log {@code record.toString()} in log messages instead of
+	 * {@code topic-partition@offset}.
 	 * @param onlyLogRecordMetadata false to log the entire record.
 	 * @since 2.2.14
+	 * @deprecated in favor of
+	 * {@link KafkaUtils#setConsumerRecordFormatter(java.util.function.Function)}.
 	 */
+	@Deprecated
 	public void setOnlyLogRecordMetadata(boolean onlyLogRecordMetadata) {
 		this.onlyLogRecordMetadata = onlyLogRecordMetadata;
 	}

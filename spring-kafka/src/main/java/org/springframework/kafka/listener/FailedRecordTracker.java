@@ -61,6 +61,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private boolean resetStateOnExceptionChange;
 
+	@SuppressWarnings("deprecation")
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			LogAccessor logger) {
 

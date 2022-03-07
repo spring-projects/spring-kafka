@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -339,7 +339,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		this.skipSameTopicFatalExceptions = skipSameTopicFatalExceptions;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Override
 	public void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception) {
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
@@ -406,6 +406,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	private void maybeThrow(ConsumerRecord<?, ?> record, Exception exception) {
+		@SuppressWarnings("deprecation")
 		String message = String.format("No destination returned for record %s and exception %s. " +
 				"failIfNoDestinationReturned: %s", ListenerUtils.recordToString(record), exception,
 				this.throwIfNoDestinationReturned);
@@ -518,6 +519,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @param inRecord the consumer record.
 	 * @since 2.2.5
 	 */
+	@SuppressWarnings("deprecation")
 	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate,
 			ConsumerRecord<?, ?> inRecord) {
 
@@ -559,6 +561,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 	}
 
+	@SuppressWarnings("deprecation")
 	private String pubFailMessage(ProducerRecord<Object, Object> outRecord, ConsumerRecord<?, ?> inRecord) {
 		return "Dead-letter publication to "
 				+ outRecord.topic() + "failed for: " + ListenerUtils.recordToString(inRecord, true);

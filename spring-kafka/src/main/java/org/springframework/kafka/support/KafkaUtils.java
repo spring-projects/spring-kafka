@@ -42,8 +42,6 @@ import org.springframework.util.ClassUtils;
  */
 public final class KafkaUtils {
 
-	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
-
 	private static Function<ProducerRecord<?, ?>, String> prFormatter = rec -> rec.toString();
 
 	private static Function<ConsumerRecord<?, ?>, String> crFormatter =
@@ -146,48 +144,10 @@ public final class KafkaUtils {
 	}
 
 	/**
-	 * Set to true to only log record metadata.
-	 * @param onlyMeta true to only log record metadata.
-	 * @since 2.7.12
-	 * @see #recordToString(ConsumerRecord)
-	 */
-	public static void setLogOnlyMetadata(boolean onlyMeta) {
-		LOG_METADATA_ONLY.set(onlyMeta);
-	}
-
-	/**
-	 * Return the {@link ConsumerRecord} as a String; either {@code toString()} or
+	 * Set a formatter for logging {@link ConsumerRecord}s; default is
 	 * {@code topic-partition@offset}.
-	 * @param record the record.
-	 * @return the rendered record.
-	 * @since 2.7.12
-	 * @see #setLogOnlyMetadata(boolean)
-	 */
-	public static String recordToString(ConsumerRecord<?, ?> record) {
-		return recordToString(record, Boolean.TRUE.equals(LOG_METADATA_ONLY.get()));
-	}
-
-	/**
-	 * Return the {@link ConsumerRecord} as a String; either {@code toString()} or
-	 * {@code topic-partition@offset}.
-	 * @param record the record.
-	 * @param meta true to log just the metadata.
-	 * @return the rendered record.
-	 * @since 2.7.12
-	 */
-	public static String recordToString(ConsumerRecord<?, ?> record, boolean meta) {
-		if (meta) {
-			return crFormatter.apply(record);
-		}
-		else {
-			return record.toString();
-		}
-	}
-
-	/**
-	 * Set a formatter for logging {@link ConsumerRecord}s.
 	 * @param formatter a function to format the record as a String
-	 * @since 2.7.11
+	 * @since 2.7.12
 	 */
 	public static void setConsumerRecordFormatter(Function<ConsumerRecord<?, ?>, String> formatter) {
 		Assert.notNull(formatter, "'formatter' cannot be null");
@@ -195,9 +155,10 @@ public final class KafkaUtils {
 	}
 
 	/**
-	 * Set a formatter for logging {@link ProducerRecord}s.
+	 * Set a formatter for logging {@link ProducerRecord}s; default is
+	 * {@link ProducerRecord#toString()}.
 	 * @param formatter a function to format the record as a String
-	 * @since 2.7.11
+	 * @since 2.7.12
 	 */
 	public static void setProducerRecordFormatter(Function<ProducerRecord<?, ?>, String> formatter) {
 		Assert.notNull(formatter, "'formatter' cannot be null");
@@ -209,8 +170,26 @@ public final class KafkaUtils {
 	 * {@code topic-partition@offset}.
 	 * @param record the record to format.
 	 * @return the formatted String.
+	 * @since 2.7.12
 	 */
 	public static String format(ConsumerRecord<?, ?> record) {
+		return crFormatter.apply(record);
+	}
+
+	/**
+	 * Format the {@link ConsumerRecord} for logging; default
+	 * {@code topic-partition@offset}. Provided for backwards compatibility only.
+	 * @param record the record to format.
+	 * @param full use {@link ConsumerRecord#toString()}.
+	 * @return the formatted String.
+	 * @since 2.7.12
+	 * @deprecated in favor of {@link #format(ConsumerRecord)}.
+	 */
+	@Deprecated
+	public static String format(ConsumerRecord<?, ?> record, boolean full) {
+		if (full) {
+			return record.toString();
+		}
 		return crFormatter.apply(record);
 	}
 
@@ -219,6 +198,7 @@ public final class KafkaUtils {
 	 * {@link ProducerRecord}{@link #toString()}.
 	 * @param record the record to format.
 	 * @return the formatted String.
+	 * @since 2.7.12
 	 */
 	public static String format(ProducerRecord<?, ?> record) {
 		return prFormatter.apply(record);

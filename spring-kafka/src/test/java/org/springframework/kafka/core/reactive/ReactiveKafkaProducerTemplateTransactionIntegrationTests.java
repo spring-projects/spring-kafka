@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -281,6 +281,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
+	@SuppressWarnings("deprecation")
 	@LogLevels(categories = "reactor.kafka.receiver.internals.ConsumerEventLoop", level = "TRACE",
 			classes = { JUnitUtils.class, LogLevelsCondition.class,
 					DefaultKafkaSender.class,
@@ -343,6 +344,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 		throw new KafkaException();
 	}
 
+	@SuppressWarnings("deprecation")
 	private SenderRecord<Integer, String, Integer> toSenderRecord(ConsumerRecord<Integer, String> record) {
 		logger.info(ListenerUtils.recordToString(record, true));
 		return SenderRecord.create(REACTIVE_INT_KEY_TOPIC, record.partition(), null, record.key(),

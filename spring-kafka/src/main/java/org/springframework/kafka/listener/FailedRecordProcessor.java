@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -126,6 +126,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @return the {@link BiPredicate}.
 	 * @deprecated in favor of {@link #getRecoveryStrategy(List, Exception)}.
 	 */
+	@SuppressWarnings("deprecation")
 	@Deprecated
 	protected BiPredicate<ConsumerRecord<?, ?>, Exception> getSkipPredicate(List<ConsumerRecord<?, ?>> records,
 			Exception thrownException) {
@@ -169,6 +170,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @return the {@link RecoveryStrategy}.
 	 * @since 2.8.4
 	 */
+	@SuppressWarnings("deprecation")
 	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records,
 												@Nullable Consumer<?, ?> recoveryConsumer, Exception thrownException) {
 		if (getClassifier().classify(thrownException)) {
