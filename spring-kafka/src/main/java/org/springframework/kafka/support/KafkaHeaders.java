@@ -324,6 +324,7 @@ public abstract class KafkaHeaders {
 
 	/**
 	 * Arbitrary static information about the listener receiving this record.
+	 * @since 2.8.4
 	 */
 	public static final String LISTENER_INFO = PREFIX + "listenerInfo";
 
