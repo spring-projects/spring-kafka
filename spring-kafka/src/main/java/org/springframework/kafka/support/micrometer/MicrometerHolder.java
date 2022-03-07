@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -91,17 +90,6 @@ public final class MicrometerHolder {
 
 		if (registries.size() == 1) {
 			return registries;
-		}
-		Map<String, MeterRegistry> filtered = registries.entrySet()
-				.stream()
-				.filter(entry -> entry.getValue()
-						.getClass()
-						.getName()
-						.equals("org.springframework.boot.actuate.autoconfigure.metrics."
-								+ "AutoConfiguredCompositeMeterRegistry"))
-						.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
-		if (filtered.size() == 1) {
-			return filtered;
 		}
 		MeterRegistry primary = null;
 		if (context instanceof ConfigurableApplicationContext) {
