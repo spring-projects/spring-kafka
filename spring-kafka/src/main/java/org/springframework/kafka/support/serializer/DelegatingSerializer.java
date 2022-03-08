@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -190,6 +190,9 @@ public class DelegatingSerializer implements Serializer<Object> {
 
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
+		if (data == null) {
+			return null;
+		}
 		byte[] value = null;
 		String selectorKey = selectorKey();
 		Header header = headers.lastHeader(selectorKey);

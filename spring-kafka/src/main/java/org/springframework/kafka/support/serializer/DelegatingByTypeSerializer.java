@@ -83,12 +83,18 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 
 	@Override
 	public byte[] serialize(String topic, Object data) {
+		if (data == null) {
+			return null;
+		}
 		Serializer<Object> delegate = findDelegate(data, this.delegates);
 		return delegate.serialize(topic, data);
 	}
 
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
+		if (data == null) {
+			return null;
+		}
 		Serializer<Object> delegate = findDelegate(data, this.delegates);
 		return delegate.serialize(topic, headers, data);
 	}
