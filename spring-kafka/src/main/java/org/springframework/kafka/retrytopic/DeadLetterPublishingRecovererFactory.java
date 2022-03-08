@@ -74,7 +74,7 @@ public class DeadLetterPublishingRecovererFactory {
 	 * Set a function that creates additional headers for the output record, in addition to the standard
 	 * retry headers added by this factory.
 	 * @param headersFunction the function.
-	 * @since
+	 * @since 2.8.4
 	 */
 	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
 		this.headersFunction = headersFunction;

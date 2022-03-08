@@ -555,6 +555,8 @@ public class DeadLetterPublishingRecovererTests {
 	@Test
 	void noCircularRoutingIfFatal() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ListenableFuture<Object> future = mock(ListenableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
 				(cr, e) -> new TopicPartition("foo", 0));
@@ -615,7 +617,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.TOPIC.getBit());
+		recoverer.excludeHeader(HeaderNames.HeadersToAdd.TOPIC);
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -632,7 +634,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.PARTITION.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.PARTITION));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -649,7 +651,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.OFFSET.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.OFFSET));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -666,7 +668,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.TS.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.TS));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -683,7 +685,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.TS_TYPE.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.TS_TYPE));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -700,7 +702,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.GROUP.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.GROUP));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -717,7 +719,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EXCEPTION.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.EXCEPTION));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -734,7 +736,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EX_CAUSE.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.EX_CAUSE));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -751,7 +753,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EX_MSG.getBit());
+		recoverer.excludeHeader((HeaderNames.HeadersToAdd.EX_MSG));
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
@@ -768,7 +770,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 
-		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EX_STACKTRACE.getBit());
+		recoverer.excludeHeader(HeaderNames.HeadersToAdd.EX_STACKTRACE);
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
 		outRecord = producerRecordCaptor.getValue();
