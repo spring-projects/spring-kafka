@@ -1228,7 +1228,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override // NOSONAR complexity
 		public void run() {
-			ListenerUtils.setLogOnlyMetadata(this.containerProperties.isOnlyLogRecordMetadata());
 			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
 			setupSeeks();
@@ -1809,7 +1808,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void traceAck(ConsumerRecord<K, V> record) {
-			this.logger.trace(() -> "Ack: " + ListenerUtils.recordToString(record, true));
+			this.logger.trace(() -> "Ack: " + KafkaUtils.format(record));
 		}
 
 		private void doAck(ConsumerRecord<K, V> record) {
@@ -1905,14 +1904,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				else if (record.offset() < offs.get(0)) {
 					throw new IllegalStateException("First remaining offset for this batch is " + offs.get(0)
-							+ "; you are acknowledging a stale record: " + ListenerUtils.recordToString(record));
+							+ "; you are acknowledging a stale record: " + KafkaUtils.format(record));
 				}
 				else {
 					deferred.add(record);
 				}
 			}
 			else {
-				throw new IllegalStateException("Unexpected ack for " + ListenerUtils.recordToString(record)
+				throw new IllegalStateException("Unexpected ack for " + KafkaUtils.format(record)
 						+ "; offsets list is empty");
 			}
 		}
@@ -2311,7 +2310,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (record == null) {
 					continue;
 				}
-				this.logger.trace(() -> "Processing " + ListenerUtils.recordToString(record));
+				this.logger.trace(() -> "Processing " + KafkaUtils.format(record));
 				try {
 					invokeInTransaction(iterator, record);
 				}
@@ -2412,7 +2411,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (record == null) {
 					continue;
 				}
-				this.logger.trace(() -> "Processing " + ListenerUtils.recordToString(record));
+				this.logger.trace(() -> "Processing " + KafkaUtils.format(record));
 				doInvokeRecordListener(record, iterator);
 				if (this.commonRecordInterceptor !=  null) {
 					this.commonRecordInterceptor.afterRecord(record, this.consumer);
@@ -2445,7 +2444,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				record = this.earlyRecordInterceptor.intercept(record, this.consumer);
 				if (record == null) {
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
-						+ ListenerUtils.recordToString(recordArg));
+						+ KafkaUtils.format(recordArg));
 				}
 			}
 			return record;
@@ -2604,7 +2603,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			if (record == null) {
 				this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
-						+ ListenerUtils.recordToString(recordArg));
+						+ KafkaUtils.format(recordArg));
 			}
 			else {
 				try {
@@ -3158,7 +3157,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public String toString() {
-				return "Acknowledgment for " + ListenerUtils.recordToString(this.record, true);
+				return "Acknowledgment for " + KafkaUtils.format(this.record);
 			}
 
 		}

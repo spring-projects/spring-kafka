@@ -27,7 +27,6 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -141,40 +140,6 @@ public final class ListenerUtils {
 			logger.error(e, "Failed to deserialize a deserialization exception");
 			return null;
 		}
-	}
-
-	/**
-	 * Set to true to only log record metadata.
-	 * @param onlyMeta true to only log record metadata.
-	 * @since 2.2.14
-	 * @see #recordToString(ConsumerRecord)
-	 */
-	public static void setLogOnlyMetadata(boolean onlyMeta) {
-		KafkaUtils.setLogOnlyMetadata(onlyMeta);
-	}
-
-	/**
-	 * Return the {@link ConsumerRecord} as a String; either {@code toString()} or
-	 * {@code topic-partition@offset}.
-	 * @param record the record.
-	 * @return the rendered record.
-	 * @since 2.2.14
-	 * @see #setLogOnlyMetadata(boolean)
-	 */
-	public static String recordToString(ConsumerRecord<?, ?> record) {
-		return KafkaUtils.recordToString(record);
-	}
-
-	/**
-	 * Return the {@link ConsumerRecord} as a String; either {@code toString()} or
-	 * {@code topic-partition@offset}.
-	 * @param record the record.
-	 * @param meta true to log just the metadata.
-	 * @return the rendered record.
-	 * @since 2.5.4
-	 */
-	public static String recordToString(ConsumerRecord<?, ?> record, boolean meta) {
-		return KafkaUtils.recordToString(record, meta);
 	}
 
 	/**

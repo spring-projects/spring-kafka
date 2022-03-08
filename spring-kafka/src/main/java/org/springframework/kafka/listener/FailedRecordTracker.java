@@ -30,6 +30,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -76,7 +77,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 					+ (failedRecord == null
 						? "none"
 						: failedRecord.getBackOffExecution())
-					+ " exhausted for " + ListenerUtils.recordToString(rec));
+					+ " exhausted for " + KafkaUtils.format(rec));
 			};
 		}
 		else {

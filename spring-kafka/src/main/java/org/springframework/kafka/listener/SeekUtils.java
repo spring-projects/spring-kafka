@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.backoff.FixedBackOff;
@@ -107,18 +108,18 @@ public final class SeekUtils {
 				}
 				catch (Exception ex) {
 					if (isBackoffException(ex)) {
-						logger.debug(ex, () -> ListenerUtils.recordToString(record)
+						logger.debug(ex, () -> KafkaUtils.format(record)
 								+ " included in seeks due to retry back off");
 					}
 					else {
 						logger.error(ex, () -> "Failed to determine if this record ("
-								+ ListenerUtils.recordToString(record)
+								+ KafkaUtils.format(record)
 								+ ") should be recovererd, including in seeks");
 					}
 					skipped.set(false);
 				}
 				if (skipped.get()) {
-					logger.debug(() -> "Skipping seek of: " + ListenerUtils.recordToString(record));
+					logger.debug(() -> "Skipping seek of: " + KafkaUtils.format(record));
 				}
 			}
 			if (!recoverable || !first.get() || !skipped.get()) {

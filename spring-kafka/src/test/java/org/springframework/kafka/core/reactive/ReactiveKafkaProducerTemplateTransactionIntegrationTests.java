@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.listener.ListenerUtils;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.condition.LogLevels;
@@ -311,7 +311,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				reactiveKafkaConsumerTemplate
 						.receive().doOnNext(receiverRecord -> receiverRecord.receiverOffset().acknowledge()))
 				.assertNext(receiverRecord -> {
-					logger.info(ListenerUtils.recordToString(receiverRecord, true));
+					logger.info(KafkaUtils.format(receiverRecord));
 					assertThat(receiverRecord.value()).startsWith(DEFAULT_VALUE + "xyz");
 					assertThat(receiverRecord.offset()).isGreaterThan(0);
 				})
@@ -344,7 +344,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	}
 
 	private SenderRecord<Integer, String, Integer> toSenderRecord(ConsumerRecord<Integer, String> record) {
-		logger.info(ListenerUtils.recordToString(record, true));
+		logger.info(KafkaUtils.format(record));
 		return SenderRecord.create(REACTIVE_INT_KEY_TOPIC, record.partition(), null, record.key(),
 				record.value() + "xyz", record.key());
 	}

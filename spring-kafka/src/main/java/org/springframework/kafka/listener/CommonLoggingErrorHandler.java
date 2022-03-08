@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.KafkaUtils;
 
 /**
  * The {@link CommonErrorHandler} implementation for logging exceptions.
@@ -50,7 +51,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		LOGGER.error(thrownException, () -> "Error occured while processing: " + ListenerUtils.recordToString(record));
+		LOGGER.error(thrownException, () -> "Error occured while processing: " + KafkaUtils.format(record));
 	}
 
 	@Override
@@ -59,7 +60,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 
 		StringBuilder message = new StringBuilder("Error occurred while processing:\n");
 		for (ConsumerRecord<?, ?> record : data) {
-			message.append(ListenerUtils.recordToString(record)).append('\n');
+			message.append(KafkaUtils.format(record)).append('\n');
 		}
 		LOGGER.error(thrownException, () -> message.substring(0, message.length() - 1));
 	}

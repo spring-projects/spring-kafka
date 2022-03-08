@@ -332,14 +332,14 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
 		if (tp == null) {
 			maybeThrow(record, exception);
-			this.logger.debug(() -> "Recovery of " + ListenerUtils.recordToString(record, true)
+			this.logger.debug(() -> "Recovery of " + KafkaUtils.format(record)
 					+ " skipped because destination resolver returned null");
 			return;
 		}
 		if (this.skipSameTopicFatalExceptions
 				&& tp.topic().equals(record.topic())
 				&& !getClassifier().classify(exception)) {
-			this.logger.error("Recovery of " + ListenerUtils.recordToString(record, true)
+			this.logger.error("Recovery of " + KafkaUtils.format(record)
 					+ " skipped because not retryable exception " + exception.toString()
 					+ " and the destination resolver routed back to the same topic");
 			return;
@@ -394,7 +394,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private void maybeThrow(ConsumerRecord<?, ?> record, Exception exception) {
 		String message = String.format("No destination returned for record %s and exception %s. " +
-				"failIfNoDestinationReturned: %s", ListenerUtils.recordToString(record), exception,
+				"failIfNoDestinationReturned: %s", KafkaUtils.format(record), exception,
 				this.throwIfNoDestinationReturned);
 		this.logger.warn(message);
 		if (this.throwIfNoDestinationReturned) {
@@ -513,7 +513,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			sendResult = kafkaTemplate.send(outRecord);
 			sendResult.addCallback(result -> {
 				this.logger.debug(() -> "Successful dead-letter publication: "
-						+ ListenerUtils.recordToString(inRecord, true) + " to " + result.getRecordMetadata());
+						+ KafkaUtils.format(inRecord) + " to " + result.getRecordMetadata());
 			}, ex -> {
 				this.logger.error(ex, () -> pubFailMessage(outRecord, inRecord));
 			});
@@ -548,7 +548,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private String pubFailMessage(ProducerRecord<Object, Object> outRecord, ConsumerRecord<?, ?> inRecord) {
 		return "Dead-letter publication to "
-				+ outRecord.topic() + "failed for: " + ListenerUtils.recordToString(inRecord, true);
+				+ outRecord.topic() + "failed for: " + KafkaUtils.format(inRecord);
 	}
 
 	private Duration determineSendTimeout(KafkaOperations<?, ?> template) {

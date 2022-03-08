@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
@@ -152,7 +153,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 			catch (Exception ex) {
 				if (records.size() > 0) {
 					this.logger.error(ex, () -> "Recovery of record ("
-							+ ListenerUtils.recordToString(records.get(0)) + ") failed");
+							+ KafkaUtils.format(records.get(0)) + ") failed");
 					this.failureTracker.getRetryListeners().forEach(rl ->
 							rl.recoveryFailed(records.get(0), thrownException, ex));
 				}

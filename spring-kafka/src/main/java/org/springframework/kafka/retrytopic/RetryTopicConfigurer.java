@@ -33,8 +33,8 @@ import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
-import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.lang.Nullable;
 
 
@@ -432,7 +432,7 @@ public class RetryTopicConfigurer {
 		public void logMessage(Object message) {
 			if (message instanceof ConsumerRecord) {
 				LOGGER.info(() -> "Received message in dlt listener: "
-						+ ListenerUtils.recordToString((ConsumerRecord<?, ?>) message));
+						+ KafkaUtils.format((ConsumerRecord<?, ?>) message));
 			}
 			else {
 				LOGGER.info(() -> "Received message in dlt listener.");
