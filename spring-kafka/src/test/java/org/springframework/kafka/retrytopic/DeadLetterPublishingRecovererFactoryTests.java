@@ -37,6 +37,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
@@ -200,21 +201,25 @@ class DeadLetterPublishingRecovererFactoryTests {
 	}
 
 	@Test
-	void shouldAddOriginalTimestampHeader() {
+	void shouldAddOriginalTimestampHeaderAndCustom() {
 
 		// setup
 		RuntimeException e = new RuntimeException();
 		ConsumerRecord consumerRecord = new ConsumerRecord(testTopic, 0, 0, originalTimestamp,
 				TimestampType.CREATE_TIME, -1, -1, key, value, new RecordHeaders(), Optional.empty());
 
-		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, originalTimestamp)).willReturn(destinationTopic);
+		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, originalTimestamp))
+				.willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(this.kafkaOperations).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
 
-		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(
+				this.destinationTopicResolver);
+		factory.setHeadersFunction(
+				(rec, ex) -> new RecordHeaders(new RecordHeader[] { new RecordHeader("foo", "bar".getBytes()) }));
 
 		// when
 		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
@@ -223,9 +228,11 @@ class DeadLetterPublishingRecovererFactoryTests {
 		// then
 		then(kafkaOperations).should(times(1)).send(producerRecordCaptor.capture());
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
-		Header originalTimestampHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+		Header originalTimestampHeader = producerRecord.headers()
+				.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
 		assertThat(originalTimestampHeader).isNotNull();
 		assertThat(new BigInteger(originalTimestampHeader.value()).longValue()).isEqualTo(this.nowTimestamp);
+		assertThat(producerRecord.headers().lastHeader("foo")).extracting("value").isEqualTo("bar".getBytes());
 	}
 
 	@Test

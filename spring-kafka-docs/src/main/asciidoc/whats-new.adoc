@@ -83,6 +83,8 @@ See <<delegating-serialization>> for more information.
 
 The property `stripPreviousExceptionHeaders` is now `true` by default.
 
+There are now several techniques to customize which headers are added to the output record.
+
 See <<dlpr-headers>> for more information.
 
 [[x28-retryable-topics-changes]]

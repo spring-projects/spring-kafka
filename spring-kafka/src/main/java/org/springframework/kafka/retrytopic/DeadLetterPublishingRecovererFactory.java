@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import org.apache.commons.logging.LogFactory;
@@ -63,8 +64,20 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private Consumer<DeadLetterPublishingRecoverer> recovererCustomizer = recoverer -> { };
 
+	private BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction;
+
 	public DeadLetterPublishingRecovererFactory(DestinationTopicResolver destinationTopicResolver) {
 		this.destinationTopicResolver = destinationTopicResolver;
+	}
+
+	/**
+	 * Set a function that creates additional headers for the output record, in addition to the standard
+	 * retry headers added by this factory.
+	 * @param headersFunction the function.
+	 * @since
+	 */
+	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
+		this.headersFunction = headersFunction;
 	}
 
 	/**
@@ -137,6 +150,9 @@ public class DeadLetterPublishingRecovererFactory {
 		};
 
 		recoverer.setHeadersFunction((consumerRecord, e) -> addHeaders(consumerRecord, e, getAttempts(consumerRecord)));
+		if (this.headersFunction != null) {
+			recoverer.addHeadersFunction(this.headersFunction);
+		}
 		recoverer.setFailIfSendResultIsError(true);
 		recoverer.setAppendOriginalHeaders(false);
 		recoverer.setThrowIfNoDestinationReturned(false);

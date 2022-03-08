@@ -433,6 +433,8 @@ DeadLetterPublishingRecovererFactory factory(DestinationTopicResolver resolver) 
 ----
 ====
 
+Starting with version 2.8.4, if you wish to add custom headers (in addition to the retry information headers added by the factory, you can add a `headersFunction` to the factory - `factory.setHeadersFunction((rec, ex) -> { ... })`
+
 [[retry-topic-combine-blocking]]
 ==== Combining blocking and non-blocking retries
 

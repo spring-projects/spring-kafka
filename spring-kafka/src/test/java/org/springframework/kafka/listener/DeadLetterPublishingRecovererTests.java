@@ -25,6 +25,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -40,6 +41,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -63,10 +65,12 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaOperations.OperationsCallback;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationUtils;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -584,6 +588,266 @@ public class DeadLetterPublishingRecovererTests {
 		recoverer.setFailIfSendResultIsError(false);
 		recoverer.accept(record, new IllegalStateException());
 		verify(template, times(3)).send(any(ProducerRecord.class));
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void headerBitsTurnedOffOneByOne() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ListenableFuture future = mock(ListenableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(producerRecordCaptor.capture());
+		ProducerRecord outRecord = producerRecordCaptor.getValue();
+		Headers headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(10);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.TOPIC.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(9);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.PARTITION.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(8);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.OFFSET.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(7);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.TS.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(6);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.TS_TYPE.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(5);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.GROUP.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(4);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EXCEPTION.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(3);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EX_CAUSE.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(2);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EX_MSG.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(1);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+
+		recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EX_STACKTRACE.getBit());
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		outRecord = producerRecordCaptor.getValue();
+		headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(0);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNull();
+
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void headerCreator() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ListenableFuture future = mock(ListenableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setExceptionHeadersCreator((kafkaHeaders, exception, isKey, headerNames) -> {
+			kafkaHeaders.add(new RecordHeader("foo", "bar".getBytes()));
+		});
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template, atLeastOnce()).send(producerRecordCaptor.capture());
+		ProducerRecord outRecord = producerRecordCaptor.getValue();
+		Headers headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(7);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader("foo")).isNotNull();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void addHeaderFunctionsProcessedInOrder() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ListenableFuture future = mock(ListenableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setHeadersFunction((rec, ex) -> {
+			return new RecordHeaders(new RecordHeader[] { new RecordHeader("foo", "one".getBytes()) });
+		});
+		recoverer.addHeadersFunction((rec, ex) -> {
+			return new RecordHeaders(new RecordHeader[] { new RecordHeader("bar", "two".getBytes()) });
+		});
+		recoverer.addHeadersFunction((rec, ex) -> {
+			return new RecordHeaders(new RecordHeader[] { new RecordHeader("foo", "three".getBytes()) });
+		});
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(producerRecordCaptor.capture());
+		ProducerRecord outRecord = producerRecordCaptor.getValue();
+		Headers headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(13);
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotNull();
+		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+		assertThat(headers.headers("foo")).extracting("value").containsExactly("one".getBytes(), "three".getBytes());
+		assertThat(headers.lastHeader("bar")).extracting("value").isEqualTo("two".getBytes());
 	}
 
 }

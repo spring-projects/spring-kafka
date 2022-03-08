@@ -5641,7 +5641,7 @@ Key exceptions are only caused by `DeserializationException` s so there is no `D
 There are two mechanisms to add more headers.
 
 1. Subclass the recoverer and override `createProducerRecord()` - call `super.createProducerRecord()` and add more headers.
-2. Provide a `BiFunction` to receive the consumer record and exception, returning a `Headers` object; headers from there will be copied to the final producer record.
+2. Provide a `BiFunction` to receive the consumer record and exception, returning a `Headers` object; headers from there will be copied to the final producer record; also see <<dlpr-headers>>.
 Use `setHeadersFunction()` to set the `BiFunction`.
 
 The second is simpler to implement but the first has more information available, including the already assembled standard headers.
@@ -5735,6 +5735,35 @@ When repeatedly republishing a failed record, these headers can grow (and eventu
 The reason for the two properties is because, while you might want to retain only the last exception information, you might want to retain the history of which topic(s) the record passed through for each failure.
 
 `appendOriginalHeaders` is applied to all headers named `*ORIGINAL*` while `stripPreviousExceptionHeaders` is applied to all headers named `*EXCEPTION*`.
+
+Starting with version 2.8.4, you now can control which of the standard headers will be added to the output record.
+
+The there is a new property `whichHeaders`, which is a `BitSet`; for example, to suppress the addition of adding the stack trace header, use the following:
+
+====
+[source, java]
+----
+DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+recoverer.getWhichHeaders().clear(HeaderNames.HeadersToAdd.EX_STACKTRACE.getBit());
+----
+====
+
+See the `enum HeadersToAdd` for the bit names of the (currently) 10 standard headers that are added by default.
+
+In addition, you can completely customize the addition of exception headers by adding an `ExceptionHeadersCreator`; this also disables all standard exception headers.
+
+====
+[source, java]
+----
+DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+recoverer.setExceptionHeadersCreator((kafkaHeaders, exception, isKey, headerNames) -> {
+    kafkaHeaders.add(new RecordHeader(..., ...));
+});
+----
+====
+
+Also starting with version 2.8.4, you can now provide multiple headers functions, via the `addHeadersFunction` method.
+This allows additional functions to apply, even if another function  has already been registered, for example, when using <<retry-topic>>.
 
 Also see <<retry-headers>> with <<retry-topic>>.
 
