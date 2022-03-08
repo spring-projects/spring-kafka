@@ -29,7 +29,6 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -47,6 +46,8 @@ public final class ListenerUtils {
 
 	private ListenerUtils() {
 	}
+
+	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
 
 	private static final int DEFAULT_SLEEP_INTERVAL = 100;
 
@@ -120,7 +121,7 @@ public final class ListenerUtils {
 	 * @see #recordToString(ConsumerRecord)
 	 */
 	public static void setLogOnlyMetadata(boolean onlyMeta) {
-		KafkaUtils.setLogOnlyMetadata(onlyMeta);
+		LOG_METADATA_ONLY.set(onlyMeta);
 	}
 
 	/**
@@ -132,7 +133,12 @@ public final class ListenerUtils {
 	 * @see #setLogOnlyMetadata(boolean)
 	 */
 	public static String recordToString(ConsumerRecord<?, ?> record) {
-		return KafkaUtils.recordToString(record);
+		if (Boolean.TRUE.equals(LOG_METADATA_ONLY.get())) {
+			return record.topic() + "-" + record.partition() + "@" + record.offset();
+		}
+		else {
+			return record.toString();
+		}
 	}
 
 	/**
@@ -144,7 +150,12 @@ public final class ListenerUtils {
 	 * @since 2.5.4
 	 */
 	public static String recordToString(ConsumerRecord<?, ?> record, boolean meta) {
-		return KafkaUtils.recordToString(record, meta);
+		if (meta) {
+			return record.topic() + "-" + record.partition() + "@" + record.offset();
+		}
+		else {
+			return record.toString();
+		}
 	}
 
 	/**

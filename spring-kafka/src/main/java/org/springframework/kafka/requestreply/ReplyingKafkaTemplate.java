@@ -457,7 +457,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				correlationId = new CorrelationKey(correlationHeader.value());
 			}
 			if (correlationId == null) {
-				this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.recordToString(record)
+				this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.format(record)
 						+ " - to use request/reply semantics, the responding server must return the correlation id "
 						+ " in the '" + this.correlationHeaderName + "' header");
 			}
@@ -475,7 +475,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 						future.setException(exception);
 					}
 					if (ok) {
-						this.logger.debug(() -> "Received: " + KafkaUtils.recordToString(record)
+						this.logger.debug(() -> "Received: " + KafkaUtils.format(record)
 								+ WITH_CORRELATION_ID + correlationKey);
 						future.set(record);
 					}
@@ -543,7 +543,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
-		return "No pending reply: " + KafkaUtils.recordToString(record) + WITH_CORRELATION_ID
+		return "No pending reply: " + KafkaUtils.format(record) + WITH_CORRELATION_ID
 				+ correlationId + ", perhaps timed out, or using a shared reply topic";
 	}
 
