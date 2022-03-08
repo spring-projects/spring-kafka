@@ -363,7 +363,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * Clear the header inclusion bit for the header name.
 	 * @param headers the headers to clear.
 	 * @since 2.8.4
-	 * @see #getWhichHeaders()
 	 */
 	public void excludeHeader(HeaderNames.HeadersToAdd... headers) {
 		Assert.notNull(headers, "'headers' cannot be null");
@@ -377,7 +376,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * Set the header inclusion bit for the header name.
 	 * @param headers the headers to set.
 	 * @since 2.8.4
-	 * @see #getWhichHeaders()
 	 */
 	public void includeHeader(HeaderNames.HeadersToAdd... headers) {
 		Assert.notNull(headers, "'headers' cannot be null");
