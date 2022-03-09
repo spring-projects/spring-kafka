@@ -21,8 +21,8 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.BitSet;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -88,7 +88,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private final Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver;
 
-	private final BitSet whichHeaders = new BitSet(10);
+	private final EnumSet<HeaderNames.HeadersToAdd> whichHeaders = EnumSet.allOf(HeaderNames.HeadersToAdd.class);
 
 	private boolean retainExceptionHeader;
 
@@ -185,7 +185,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			.map(t -> t.isTransactional())
 			.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
 		this.destinationResolver = destinationResolver;
-		setHeaderBits(this.whichHeaders);
 	}
 
 	/**
@@ -210,12 +209,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		this.transactional = transactional;
 		this.destinationResolver = destinationResolver;
 		this.templateResolver = templateResolver;
-		setHeaderBits(this.whichHeaders);
-	}
-
-	private static void setHeaderBits(BitSet bits) {
-		bits.set(HeaderNames.HeadersToAdd.OFFSET.ordinal(),
-				(HeaderNames.HeadersToAdd.EX_STACKTRACE.ordinal()) + 1);
 	}
 
 	/**
@@ -368,7 +361,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		Assert.notNull(headers, "'headers' cannot be null");
 		Assert.noNullElements(headers, "'headers' cannot include null elements");
 		for (HeaderNames.HeadersToAdd header : headers) {
-			this.whichHeaders.clear(header.ordinal());
+			this.whichHeaders.remove(header);
 		}
 	}
 
@@ -381,7 +374,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		Assert.notNull(headers, "'headers' cannot be null");
 		Assert.noNullElements(headers, "'headers' cannot include null elements");
 		for (HeaderNames.HeadersToAdd header : headers) {
-			this.whichHeaders.set(header.ordinal());
+			this.whichHeaders.add(header);
 		}
 	}
 
@@ -681,7 +674,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value, HeadersToAdd hta) {
-		if (this.whichHeaders.get(hta.ordinal())
+		if (this.whichHeaders.contains(hta)
 				&& (this.appendOriginalHeaders || kafkaHeaders.lastHeader(header) == null)) {
 			kafkaHeaders.add(header, value);
 		}
@@ -713,7 +706,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	private void appendOrReplace(Headers headers, RecordHeader header, HeadersToAdd hta) {
-		if (this.whichHeaders.get(hta.ordinal())) {
+		if (this.whichHeaders.contains(hta)) {
 			if (this.stripPreviousExceptionHeaders) {
 				headers.remove(header.key());
 			}
