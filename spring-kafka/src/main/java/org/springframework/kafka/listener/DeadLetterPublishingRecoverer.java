@@ -46,7 +46,6 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames.HeadersToAdd;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.SendResult;
@@ -673,7 +672,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 	}
 
-	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value, HeadersToAdd hta) {
+	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value, HeaderNames.HeadersToAdd hta) {
 		if (this.whichHeaders.contains(hta)
 				&& (this.appendOriginalHeaders || kafkaHeaders.lastHeader(header) == null)) {
 			kafkaHeaders.add(header, value);
@@ -705,7 +704,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				HeaderNames.HeadersToAdd.EX_STACKTRACE);
 	}
 
-	private void appendOrReplace(Headers headers, RecordHeader header, HeadersToAdd hta) {
+	private void appendOrReplace(Headers headers, RecordHeader header, HeaderNames.HeadersToAdd hta) {
 		if (this.whichHeaders.contains(hta)) {
 			if (this.stripPreviousExceptionHeaders) {
 				headers.remove(header.key());
