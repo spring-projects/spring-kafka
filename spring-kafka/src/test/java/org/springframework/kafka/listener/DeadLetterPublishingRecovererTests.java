@@ -852,4 +852,28 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader("bar")).extracting("value").isEqualTo("two".getBytes());
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void immutableHeaders() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ListenableFuture future = mock(ListenableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setHeadersFunction((rec, ex) -> {
+			RecordHeaders headers = new RecordHeaders(new RecordHeader[] { new RecordHeader("foo", "one".getBytes()) });
+			headers.setReadOnly();
+			return headers;
+		});
+		recoverer.addHeadersFunction((rec, ex) -> {
+			return new RecordHeaders(new RecordHeader[] { new RecordHeader("bar", "two".getBytes()) });
+		});
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(producerRecordCaptor.capture());
+		ProducerRecord outRecord = producerRecordCaptor.getValue();
+		Headers headers = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(12);
+	}
+
 }
