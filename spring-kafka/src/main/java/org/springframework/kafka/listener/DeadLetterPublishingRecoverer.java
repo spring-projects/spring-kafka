@@ -405,7 +405,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				}
 				catch (IllegalStateException isex) {
 					headers1 = new RecordHeaders(headers1);
-					headers2.forEach(headers1::add); // NO SONAR, never null here
+					headers2.forEach(headers1::add); // NOSONAR, never null here
 				}
 				return headers1;
 			};
