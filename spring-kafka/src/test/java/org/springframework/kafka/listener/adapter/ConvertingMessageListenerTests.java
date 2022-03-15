@@ -34,7 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @since 3.0.0
  *
  */
-class ConvertingAndDelegatingMessageListenerAdapterTest {
+class ConvertingMessageListenerTests {
 
 	private final ObjectMapper mapper = new ObjectMapper();
 
@@ -42,13 +42,13 @@ class ConvertingAndDelegatingMessageListenerAdapterTest {
 	public void testMessageListenerIsInvokedWithConvertedSimpleRecord() {
 		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", 0);
 
-		var messageListener = (MessageListener<String, Integer>) (data) -> assertThat(data.value()).isNotNull();
-		var adapter = new ConvertingAndDelegatingMessageListenerAdapter<String, Integer, Integer>(
-				messageListener,
+		var delegateListener = (MessageListener<String, Integer>) (data) -> assertThat(data.value()).isNotNull();
+		var convertingMessageListener = new ConvertingMessageListener<String, Integer, Integer>(
+				delegateListener,
 				Integer.class
 		);
 
-		adapter.onMessage(consumerRecord, null, null);
+		convertingMessageListener.onMessage(consumerRecord, null, null);
 	}
 
 	@Test
@@ -57,17 +57,17 @@ class ConvertingAndDelegatingMessageListenerAdapterTest {
 		var toBeConvertedJson = mapper.writeValueAsString(toBeConverted);
 		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", toBeConvertedJson);
 
-		var messageListener = (MessageListener<String, ToBeConverted>) (data) -> {
+		var delegateListener = (MessageListener<String, ToBeConverted>) (data) -> {
 			assertThat(data.value()).isNotNull();
 			assertThat(data.value().getA()).isEqualTo("foo");
 		};
-		var adapter = new ConvertingAndDelegatingMessageListenerAdapter<String, String, ToBeConverted>(
-				messageListener,
+		var convertingMessageListener = new ConvertingMessageListener<String, String, ToBeConverted>(
+				delegateListener,
 				new MappingJackson2MessageConverter(),
 				ToBeConverted.class
 		);
 
-		adapter.onMessage(consumerRecord, null, null);
+		convertingMessageListener.onMessage(consumerRecord, null, null);
 	}
 
 	@Test
@@ -76,16 +76,18 @@ class ConvertingAndDelegatingMessageListenerAdapterTest {
 		var toBeConvertedJson = mapper.writeValueAsString(toBeConverted);
 		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", toBeConvertedJson);
 
-		var messageListener = (MessageListener<String, ToBeConverted>) (data) -> {
+		var delegateListener = (MessageListener<String, ToBeConverted>) (data) -> {
 			assertThat(data.value()).isNotNull();
 			assertThat(data.value().getA()).isEqualTo("foo");
 		};
-		var adapter = new ConvertingAndDelegatingMessageListenerAdapter<String, String, ToBeConverted>(
-				messageListener,
+		var convertingMessageListener = new ConvertingMessageListener<String, String, ToBeConverted>(
+				delegateListener,
 				ToBeConverted.class
 		);
 
-		assertThatThrownBy(() -> adapter.onMessage(consumerRecord, null, null)).isInstanceOf(MessageConversionException.class);
+		assertThatThrownBy(
+			() -> convertingMessageListener.onMessage(consumerRecord, null, null)
+		).isInstanceOf(MessageConversionException.class);
 	}
 
 	private static class ToBeConverted {

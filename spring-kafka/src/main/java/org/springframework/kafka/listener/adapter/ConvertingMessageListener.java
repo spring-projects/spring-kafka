@@ -18,7 +18,6 @@ package org.springframework.kafka.listener.adapter;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -35,6 +34,7 @@ import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.converter.SimpleMessageConverter;
 import org.springframework.messaging.support.GenericMessage;
+import org.springframework.util.Assert;
 
 /**
  * A {@link AcknowledgingConsumerAwareMessageListener} adapter that implements
@@ -49,9 +49,9 @@ import org.springframework.messaging.support.GenericMessage;
  * @since 3.0
  * @see AcknowledgingConsumerAwareMessageListener
  */
-public class ConvertingAndDelegatingMessageListenerAdapter<T, U, V> implements AcknowledgingConsumerAwareMessageListener<T, U> {
+public class ConvertingMessageListener<T, U, V> implements AcknowledgingConsumerAwareMessageListener<T, U> {
 
-	private final Object delegate;
+	private final MessageListener<T, V> delegate;
 	private final MessageConverter messageConverter;
 	private final Class<V> desiredValueType;
 
@@ -63,9 +63,9 @@ public class ConvertingAndDelegatingMessageListenerAdapter<T, U, V> implements A
 	 * @param delegate the {@link MessageListener} to use when passing converted {@link ConsumerRecord} further.
 	 * @param desiredValueType the {@link Class} setting desired type of {@link ConsumerRecord}'s value.
 	 */
-	public ConvertingAndDelegatingMessageListenerAdapter(Object delegate, Class<V> desiredValueType) {
-		validateMessageListener(delegate);
-		Objects.requireNonNull(desiredValueType);
+	public ConvertingMessageListener(MessageListener<T, V> delegate, Class<V> desiredValueType) {
+		Assert.notNull(delegate, "Delegate message listener cannot be null");
+		Assert.notNull(desiredValueType, "Desired value type cannot be null");
 
 		this.delegate = delegate;
 		this.desiredValueType = desiredValueType;
@@ -81,38 +81,30 @@ public class ConvertingAndDelegatingMessageListenerAdapter<T, U, V> implements A
 	 * @param messageConverter the {@link MessageConverter} to use for conversion.
 	 * @param desiredValueType the {@link Class} setting desired type of {@link ConsumerRecord}'s value.
 	 */
-	public ConvertingAndDelegatingMessageListenerAdapter(Object delegate, MessageConverter messageConverter, Class<V> desiredValueType) {
-		validateMessageListener(delegate);
-		Objects.requireNonNull(messageConverter);
-		Objects.requireNonNull(desiredValueType);
+	public ConvertingMessageListener(MessageListener<T, V> delegate, MessageConverter messageConverter, Class<V> desiredValueType) {
+		Assert.notNull(delegate, "Delegate message listener cannot be null");
+		Assert.notNull(messageConverter, "Message converter cannot be null");
+		Assert.notNull(desiredValueType, "Desired value type cannot be null");
 
 		this.delegate = delegate;
 		this.messageConverter = messageConverter;
 		this.desiredValueType = desiredValueType;
 	}
 
-	private void validateMessageListener(Object messageListener) {
-		Objects.requireNonNull(messageListener);
-		if (!(messageListener instanceof MessageListener)) {
-			throw new IllegalArgumentException("Passed message listener must be of MessageListener type");
-		}
-	}
-
 	@Override
 	public void onMessage(ConsumerRecord<T, U> data, Acknowledgment acknowledgment, Consumer<?, ?> consumer) { // NOSONAR
 		ConsumerRecord<T, V> convertedConsumerRecord = convertConsumerRecord(data);
 		if (this.delegate instanceof AcknowledgingConsumerAwareMessageListener) {
-			((AcknowledgingConsumerAwareMessageListener<T, V>) this.delegate).onMessage(convertedConsumerRecord, acknowledgment, consumer);
+			this.delegate.onMessage(convertedConsumerRecord, acknowledgment, consumer);
 		}
 		else if (this.delegate instanceof ConsumerAwareMessageListener) {
-			((ConsumerAwareMessageListener<T, V>) this.delegate).onMessage(convertedConsumerRecord, consumer);
+			this.delegate.onMessage(convertedConsumerRecord, consumer);
 		}
 		else if (this.delegate instanceof AcknowledgingMessageListener) {
-			((AcknowledgingMessageListener<T, V>) this.delegate).onMessage(convertedConsumerRecord, acknowledgment);
+			this.delegate.onMessage(convertedConsumerRecord, acknowledgment);
 		}
-		else if (this.delegate instanceof MessageListener) {
-			((MessageListener<T, V>) this.delegate).onMessage(convertedConsumerRecord);
-		}
+
+		this.delegate.onMessage(convertedConsumerRecord);
 	}
 
 	private ConsumerRecord<T, V> convertConsumerRecord(ConsumerRecord<T, U> data) { // NOSONAR
