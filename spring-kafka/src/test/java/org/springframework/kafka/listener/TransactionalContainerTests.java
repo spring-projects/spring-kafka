@@ -505,7 +505,7 @@ public class TransactionalContainerTests {
 		verify(pf).createProducer(isNull());
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Test
 	public void testRollbackRecord() throws Exception {
 		logger.info("Start testRollbackRecord");
@@ -523,6 +523,7 @@ public class TransactionalContainerTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 //		senderProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setProducerPerConsumerPartition(true);
 		pf.setTransactionIdPrefix("rr.");
 
 		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);

@@ -3,101 +3,16 @@
 This section covers the changes made from version 2.7 to version 2.8.
 For changes in earlier version, see <<history>>.
 
-[[x28-kafka-client]]
+[[x30-kafka-client]]
 ==== Kafka Client Version
 
 This version requires the 3.1.0 `kafka-clients`
 
+[[x30-eos]]
+==== Exactly Once Semantics
+
+`EOSMode.V1` (aka `ALPHA`) is no longer supported.
+
 IMPORTANT: When using transactions, the minimum broker version is 2.5.
 
 See <<exactly-once>> and https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics[KIP-447] for more information.
-
-[[x28-packages]]
-==== Package Changes
-
-Classes and interfaces related to type mapping have been moved from `...support.converter` to `...support.mapping`.
-
-* `AbstractJavaTypeMapper`
-* `ClassMapper`
-* `DefaultJackson2JavaTypeMapper`
-* `Jackson2JavaTypeMapper`
-
-[[x28-ooo-commits]]
-==== Out of Order Manual Commits
-
-The listener container can now be configured to accept manual offset commits out of order (usually asynchronously).
-The container will defer the commit until the missing offset is acknowledged.
-See <<ooo-commits>> for more information.
-
-[[x28-batch-overrude]]
-==== `@KafkaListener` Changes
-
-It is now possible to specify whether the listener method is a batch listener on the method itself.
-This allows the same container factory to be used for both record and batch listeners.
-
-See <<batch-listeners>> for more information.
-
-Batch listeners can now handle conversion exceptions.
-
-See <<batch-listener-conv-errors>> for more information.
-
-`RecordFilterStrategy`, when used with batch listeners, can now filter the entire batch in one call.
-See the note at the end of <<batch-listeners>> for more information.
-
-The `@KafkaListener` annotation now has the `filter` attribute, to override the container factory's `RecordFilterStrategy` for just this listener.
-
-The `@KafkaListener` annotation now has the `info` attribute; this is used to populate the new listener container property `listenerInfo`.
-This is then used to populate a `KafkaHeaders.LISTENER_INFO` header in each record which can be used in `RecordInterceptor`, `RecordFilterStrategy`, or the listener itself.
-See <<li-header>> and <<alc-props,Abstract Listener Container Properties>> for more information.
-
-[[x28-template]]
-==== `KafkaTemplate` Changes
-
-You can now receive a single record, given the topic, partition and offset.
-See <<kafka-template-receive>> for more information.
-
-[[x28-eh]]
-==== `CommonErrorHandler` Added
-
-The legacy `GenericErrorHandler` and its sub-interface hierarchies for record an batch listeners have been replaced by a new single interface `CommonErrorHandler` with implementations corresponding to most legacy implementations of `GenericErrorHandler`.
-See <<error-handlers>> and <<migrating-legacy-eh>> for more information.
-
-[[x28-lcc]]
-==== Listener Container Changes
-
-The `interceptBeforeTx` container property is now `true` by default.
-
-The `authorizationExceptionRetryInterval` property has been renamed to `authExceptionRetryInterval` and now applies to `AuthenticationException` s in addition to `AuthorizationException` s previously.
-Both exceptions are considered fatal and the container will stop by default, unless this property is set.
-
-See <<kafka-container>> and <<container-props>> for more information.
-
-[[x28-serializers]]
-==== Serializer/Deserializer Changes
-
-The `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` are now provided.
-See <<delegating-serialization>> for more information.
-
-[[x28-dlpr]]
-==== `DeadLetterPublishingRecover` Changes
-
-The property `stripPreviousExceptionHeaders` is now `true` by default.
-
-There are now several techniques to customize which headers are added to the output record.
-
-See <<dlpr-headers>> for more information.
-
-[[x28-retryable-topics-changes]]
-==== Retryable Topics Changes
-
-Now you can use the same factory for retryable and non-retryable topics.
-See <<retry-topic-lcf>> for more information.
-
-There's now a manageable global list of fatal exceptions that will make the failed record go straight to the DLT.
-Refer to <<retry-topic-ex-classifier>> to see how to manage it.
-
-You can now use blocking and non-blocking retries in conjunction.
-See <<retry-topic-combine-blocking>> for more information.
-
-The KafkaBackOffException thrown when using the retryable topics feature is now logged at DEBUG level.
-See <<change-kboe-logging-level>> if you need to change the logging level back to WARN or set it to any other level.

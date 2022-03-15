@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,7 +148,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private String beanName = "not.managed.by.Spring";
 
-	private boolean producerPerConsumerPartition = true;
+	private boolean producerPerConsumerPartition = false;
 
 	private boolean producerPerThread;
 
@@ -344,12 +344,14 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Set to false to revert to the previous behavior of a simple incrementing
-	 * transactional.id suffix for each producer instead of maintaining a producer
-	 * for each group/topic/partition.
+	 * Set to true to create a producer for each group/topic/partition.
 	 * @param producerPerConsumerPartition false to revert.
 	 * @since 1.3.7
+	 * @deprecated no longer necessary because
+	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
+	 * longer supported.
 	 */
+	@Deprecated
 	public void setProducerPerConsumerPartition(boolean producerPerConsumerPartition) {
 		this.producerPerConsumerPartition = producerPerConsumerPartition;
 	}
@@ -358,7 +360,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * Return the producerPerConsumerPartition.
 	 * @return the producerPerConsumerPartition.
 	 * @since 1.3.8
+	 * @deprecated no longer necessary because
+	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
+	 * longer supported.
 	 */
+	@Deprecated
 	@Override
 	public boolean isProducerPerConsumerPartition() {
 		return this.producerPerConsumerPartition;
@@ -437,6 +443,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 *  properties applied
 	 */
 	@Override
+	@SuppressWarnings("deprecation")
 	public ProducerFactory<K, V> copyWithConfigurationOverride(Map<String, Object> overrideProperties) {
 		Map<String, Object> producerProperties = new HashMap<>(getConfigurationProperties());
 		producerProperties.putAll(overrideProperties);

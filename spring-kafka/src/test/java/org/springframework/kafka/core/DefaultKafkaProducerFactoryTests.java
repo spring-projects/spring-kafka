@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -288,7 +288,7 @@ public class DefaultKafkaProducerFactoryTests {
 	}
 
 	@Test
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
 	void testCleanUpAfterTxFence() {
 		final Producer producer = mock(Producer.class);
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
@@ -300,6 +300,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 		};
 		pf.setTransactionIdPrefix("tx.");
+		pf.setProducerPerConsumerPartition(true);
 		TransactionSupport.setTransactionIdSuffix("suffix");
 		Producer aProducer = pf.createProducer();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).hasSize(1);
@@ -403,7 +404,6 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(adds).hasSize(3);
 		assertThat(removals).hasSize(3);
 
-		pf.setProducerPerConsumerPartition(false);
 		pf.createProducer("tx").close();
 		assertThat(adds).hasSize(4);
 		assertThat(removals).hasSize(3);

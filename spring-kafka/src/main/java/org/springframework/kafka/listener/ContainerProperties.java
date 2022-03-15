@@ -147,13 +147,6 @@ public class ContainerProperties extends ConsumerProperties {
 	public enum EOSMode {
 
 		/**
-		 * 'transactional.id' fencing (0.11 - 2.4 brokers).
-		 * @deprecated V1 is no longer supported
-		 */
-		@Deprecated
-		V1,
-
-		/**
 		 *  fetch-offset-request fencing (2.5+ brokers).
 		 */
 		V2;
@@ -756,7 +749,6 @@ public class ContainerProperties extends ConsumerProperties {
 	@SuppressWarnings("deprecation")
 	public void setEosMode(EOSMode eosMode) {
 		Assert.notNull(eosMode, "'eosMode' cannot be null");
-		Assert.isTrue(!eosMode.equals(EOSMode.V1), "V1 is no longer supported");
 		this.eosMode = eosMode;
 	}
 

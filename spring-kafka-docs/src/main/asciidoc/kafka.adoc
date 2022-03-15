@@ -2585,7 +2585,7 @@ See <<after-rollback>> for more information.
 |[[subBatchPerPartition]]<<subBatchPerPartition,`subBatchPerPartition`>>
 |See desc.
 |When using a batch listener, if this is `true`, the listener is called with the results of the poll split into sub batches, one per partition.
-Default `false` except when using transactions with `EOSMode.ALPHA` - see <<exactly-once>>.
+Default `false`.
 
 |[[syncCommitTimeout]]<<syncCommitTimeout,`syncCommitTimeout`>>
 |`null`
@@ -3381,10 +3381,6 @@ This is to properly support fencing zombies, https://www.confluent.io/blog/trans
 This new behavior was added in versions 1.3.7, 2.0.6, 2.1.10, and 2.2.0.
 If you wish to revert to the previous behavior, you can set the `producerPerConsumerPartition` property on the `DefaultKafkaProducerFactory` to `false`.
 
-NOTE: While transactions are supported with batch listeners, by default, zombie fencing is not supported because a batch may contain records from multiple topics or partitions.
-However, starting with version 2.3.2, zombie fencing is supported if you set the container property `subBatchPerPartition` to true.
-In that case, the batch listener is invoked once per partition received from the last poll, as if each poll only returned records for a single partition.
-This is `true` by default since version 2.5 when transactions are enabled with `EOSMode.ALPHA`; set it to `false` if you are using transactions but are not concerned about zombie fencing.
 Also see <<exactly-once>>.
 
 Also see <<transaction-id-prefix>>.
@@ -3469,21 +3465,8 @@ Instead, a new "nested" transaction is used.
 [[transaction-id-prefix]]
 ===== `transactionIdPrefix`
 
-As mentioned in <<transactions, the overview>>, the producer factory is configured with this property to build the producer `transactional.id` property.
-There is a dichotomy when specifying this property in that, when running multiple instances of the application with `EOSMode.ALPHA`, it must be the same on all instances to satisfy fencing zombies (also mentioned in the overview) when producing records on a listener container thread.
-However, when producing records using transactions that are **not** started by a listener container, the prefix has to be different on each instance.
-Version 2.3, makes this simpler to configure, especially in a Spring Boot application.
-In previous versions, you had to create two producer factories and `KafkaTemplate` s - one for producing records on a listener container thread and one for stand-alone transactions started by `kafkaTemplate.executeInTransaction()` or by a transaction interceptor on a `@Transactional` method.
-
-Now, you can override the factory's `transactionalIdPrefix` on the `KafkaTemplate` and the `KafkaTransactionManager`.
-
-When using a transaction manager and template for a listener container, you would normally leave this to default to the producer factory's property.
-This value should be the same for all application instances when using `EOSMode.ALPHA`.
-With `EOSMode.BETA` it is no longer necessary to use the same `transactional.id`, even for consumer-initiated transactions; in fact, it must be unique on each instance the same as producer-initiated transactions.
-For transactions started by the template (or the transaction manager for `@Transaction`) you should set the property on the template and transaction manager respectively.
+With `EOSMode.V2` (aka `BETA`), the only supported mode, it is no longer necessary to use the same `transactional.id`, even for consumer-initiated transactions; in fact, it must be unique on each instance the same as for producer-initiated transactions.
 This property must have a different value on each application instance.
-
-This problem (different rules for `transactional.id`) has been eliminated when `EOSMode.BETA` is being used (with broker versions >= 2.5); see <<exactly-once>>.
 
 [[tx-template-mixed]]
 ===== `KafkaTemplate` Transactional and non-Transactional Publishing
@@ -3572,37 +3555,17 @@ Using transactions enables Exactly Once Semantics (EOS).
 This means that, for a `read->process-write` sequence, it is guaranteed that the **sequence** is completed exactly once.
 (The read and process are have at least once semantics).
 
-Spring for Apache Kafka version 2.5 and later supports two EOS modes:
+Spring for Apache Kafka version 3.0 and later only supports `EOSMode.V2`:
 
-* `ALPHA` - alias for `V1` (deprecated)
-* `BETA` - alias for `V2` (deprecated)
-* `V1` - aka `transactional.id` fencing (since version 0.11.0.0)
 * `V2` - aka fetch-offset-request fencing (since version 2.5)
 
-With mode `V1`, the producer is "fenced" if another instance with the same `transactional.id` is started.
-Spring manages this by using a `Producer` for each `group.id/topic/partition`; when a rebalance occurs a new instance will use the same `transactional.id` and the old producer is fenced.
+IMPORTANT: This requires the brokers to be version 2.5 or later.
 
 With mode `V2`, it is not necessary to have a producer for each `group.id/topic/partition` because consumer metadata is sent along with the offsets to the transaction and the broker can determine if the producer is fenced using that information instead.
 
-Starting with version 2.6, the default `EOSMode` is `V2`.
-
-To configure the container to use mode `ALPHA`, set the container property `EOSMode` to `ALPHA`, to revert to the previous behavior.
-
-IMPORTANT: With `V2` (default), your brokers must be version 2.5 or later; `kafka-clients` version 3.0, the producer will no longer fall back to `V1`; if the broker does not support `V2`, an exception is thrown.
-If your brokers are earlier than 2.5, you must set the `EOSMode` to `V1`, leave the `DefaultKafkaProducerFactory` `producerPerConsumerPartition` set to `true` and, if you are using a batch listener, you should set `subBatchPerPartition` to `true`.
-
-When your brokers are upgraded to 2.5 or later, you should switch the mode to `V2`, but the number of producers will remain as before.
-You can then do a rolling upgrade of your application with `producerPerConsumerPartition` set to `false` to reduce the number of producers; you should also no longer set the `subBatchPerPartition` container property.
-
-If your brokers are already 2.5 or newer, you should set the `DefaultKafkaProducerFactory` `producerPerConsumerPartition` property to `false`, to reduce the number of producers needed.
-
-IMPORTANT: When using `EOSMode.V2` with `producerPerConsumerPartition=false` the `transactional.id` must be unique across all application instances.
-
-When using `V2` mode, it is no longer necessary to set the `subBatchPerPartition` to `true`; it will default to `false` when the `EOSMode` is `V2`.
-
 Refer to https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics[KIP-447] for more information.
 
-`V1` and `V2` were previously `ALPHA` and `BETA`; they have been changed to align the framework with https://cwiki.apache.org/confluence/display/KAFKA/KIP-732%3A+Deprecate+eos-alpha+and+replace+eos-beta+with+eos-v2[KIP-732].
+`V2` was previously `BETA`; the `EOSMode` has been changed to align the framework with https://cwiki.apache.org/confluence/display/KAFKA/KIP-732%3A+Deprecate+eos-alpha+and+replace+eos-beta+with+eos-v2[KIP-732].
 
 [[interceptors]]
 ==== Wiring Spring Beans into Producer/Consumer Interceptors

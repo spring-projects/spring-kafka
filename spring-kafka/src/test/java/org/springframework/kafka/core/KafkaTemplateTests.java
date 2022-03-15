@@ -499,7 +499,6 @@ public class KafkaTemplateTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setPhysicalCloseTimeout(6);
-		pf.setProducerPerConsumerPartition(false);
 		pf.setProducerPerThread(true);
 		pf.addPostProcessor(noopProducerPostProcessor);
 		pf.addListener(noopListener);
