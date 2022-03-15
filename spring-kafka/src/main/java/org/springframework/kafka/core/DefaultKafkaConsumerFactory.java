@@ -174,7 +174,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	/**
 	 * Set the value deserializer.
-	 * @param valueDeserializer the valuee deserializer.
+	 * @param valueDeserializer the value deserializer.
 	 */
 	public void setValueDeserializer(@Nullable Deserializer<V> valueDeserializer) {
 		this.valueDeserializerSupplier = valueDeserializerSupplier(() -> valueDeserializer);
