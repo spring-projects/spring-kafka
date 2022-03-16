@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -59,7 +58,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
-import org.springframework.kafka.support.TransactionSupport;
+import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -122,8 +121,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private final Map<String, BlockingQueue<CloseSafeProducer<K, V>>> cache = new ConcurrentHashMap<>();
 
-	private final Map<String, CloseSafeProducer<K, V>> consumerProducers = new HashMap<>();
-
 	private final ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers = new ThreadLocal<>();
 
 	private final AtomicInteger epoch = new AtomicInteger();
@@ -147,8 +144,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	private ApplicationContext applicationContext;
 
 	private String beanName = "not.managed.by.Spring";
-
-	private boolean producerPerConsumerPartition = false;
 
 	private boolean producerPerThread;
 
@@ -344,7 +339,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Set to true to create a producer for each group/topic/partition.
+	 * This is no longer needed now that only {@link EOSMode#V2} is supported. Ignored.
 	 * @param producerPerConsumerPartition false to revert.
 	 * @since 1.3.7
 	 * @deprecated no longer necessary because
@@ -353,11 +348,10 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 */
 	@Deprecated
 	public void setProducerPerConsumerPartition(boolean producerPerConsumerPartition) {
-		this.producerPerConsumerPartition = producerPerConsumerPartition;
 	}
 
 	/**
-	 * Return the producerPerConsumerPartition.
+	 * This is no longer needed now that only {@link EOSMode#V2} is supported. Ignored.
 	 * @return the producerPerConsumerPartition.
 	 * @since 1.3.8
 	 * @deprecated no longer necessary because
@@ -367,7 +361,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	@Deprecated
 	@Override
 	public boolean isProducerPerConsumerPartition() {
-		return this.producerPerConsumerPartition;
+		return false;
 	}
 
 
@@ -605,11 +599,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				next = queue.poll();
 			}
 		});
-		synchronized (this.consumerProducers) {
-			this.consumerProducers.forEach(
-					(k, v) -> v.closeDelegate(this.physicalCloseTimeout, this.listeners));
-			this.consumerProducers.clear();
-		}
 		this.epoch.incrementAndGet();
 	}
 
@@ -653,12 +642,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private Producer<K, V> doCreateProducer(@Nullable String txIdPrefix) {
 		if (txIdPrefix != null) {
-			if (this.producerPerConsumerPartition) {
-				return createTransactionalProducerForPartition(txIdPrefix);
-			}
-			else {
-				return createTransactionalProducer(txIdPrefix);
-			}
+			return createTransactionalProducer(txIdPrefix);
 		}
 		if (this.producerPerThread) {
 			return getOrCreateThreadBoundProducer();
@@ -699,48 +683,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 */
 	protected Producer<K, V> createKafkaProducer() {
 		return createRawProducer(getProducerConfigs());
-	}
-
-	protected Producer<K, V> createTransactionalProducerForPartition() {
-		return createTransactionalProducerForPartition(this.transactionIdPrefix);
-	}
-
-	protected Producer<K, V> createTransactionalProducerForPartition(String txIdPrefix) {
-		String suffix = TransactionSupport.getTransactionIdSuffix();
-		if (suffix == null) {
-			return createTransactionalProducer(txIdPrefix);
-		}
-		else {
-			synchronized (this.consumerProducers) {
-				CloseSafeProducer<K, V> consumerProducer = this.consumerProducers.get(suffix);
-				if (consumerProducer == null || expire(consumerProducer)) {
-					CloseSafeProducer<K, V> newProducer = doCreateTxProducer(txIdPrefix, suffix,
-							this::removeConsumerProducer);
-					this.consumerProducers.put(suffix, newProducer);
-					return newProducer;
-				}
-				else {
-					return consumerProducer;
-				}
-			}
-		}
-	}
-
-	private boolean removeConsumerProducer(CloseSafeProducer<K, V> producerToRemove, Duration timeout) {
-		if (producerToRemove.closed) {
-			synchronized (this.consumerProducers) {
-				Iterator<Entry<String, CloseSafeProducer<K, V>>> iterator = this.consumerProducers.entrySet().iterator();
-				while (iterator.hasNext()) {
-					if (iterator.next().getValue().equals(producerToRemove)) {
-						iterator.remove();
-						producerToRemove.closeDelegate(timeout, this.listeners);
-						return true;
-					}
-				}
-			}
-			return true;
-		}
-		return false;
 	}
 
 	/**
@@ -865,18 +807,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			return null;
 		}
 		return this.cache.computeIfAbsent(txIdPrefix, txId -> new LinkedBlockingQueue<>());
-	}
-
-	@Override
-	public void closeProducerFor(String suffix) {
-		if (this.producerPerConsumerPartition) {
-			synchronized (this.consumerProducers) {
-				CloseSafeProducer<K, V> removed = this.consumerProducers.remove(suffix);
-				if (removed != null) {
-					removed.closeDelegate(this.physicalCloseTimeout, this.listeners);
-				}
-			}
-		}
 	}
 
 	/**

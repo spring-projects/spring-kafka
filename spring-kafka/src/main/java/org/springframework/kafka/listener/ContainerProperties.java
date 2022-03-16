@@ -746,7 +746,6 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @param eosMode the mode; default V2.
 	 * @since 2.5
 	 */
-	@SuppressWarnings("deprecation")
 	public void setEosMode(EOSMode eosMode) {
 		Assert.notNull(eosMode, "'eosMode' cannot be null");
 		this.eosMode = eosMode;

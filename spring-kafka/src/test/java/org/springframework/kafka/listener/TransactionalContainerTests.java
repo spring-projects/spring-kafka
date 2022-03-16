@@ -523,7 +523,6 @@ public class TransactionalContainerTests {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 //		senderProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		pf.setProducerPerConsumerPartition(true);
 		pf.setTransactionIdPrefix("rr.");
 
 		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -600,8 +599,7 @@ public class TransactionalContainerTests {
 		assertThat(subsLatch.await(1, TimeUnit.MILLISECONDS)).isTrue();
 		assertThat(records.count()).isEqualTo(0);
 		assertThat(consumer.position(partition0)).isEqualTo(2L);
-		assertThat(transactionalId.get()).startsWith("rr.group.txTopic");
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
+		assertThat(transactionalId.get()).startsWith("rr.");
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
 		consumer.close();

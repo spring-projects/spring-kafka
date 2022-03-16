@@ -520,11 +520,6 @@ public class KafkaTemplateTransactionTests {
 						return first.getAndSet(false) ? producer1 : producer2;
 					}
 
-					@Override
-					protected Producer<Object, Object> createTransactionalProducerForPartition(String txIdPrefix) {
-						return createTransactionalProducer();
-					}
-
 				};
 		pf.setTransactionIdPrefix("tx.");
 

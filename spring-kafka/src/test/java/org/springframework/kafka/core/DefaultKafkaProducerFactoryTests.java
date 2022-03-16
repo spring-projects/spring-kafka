@@ -24,7 +24,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -47,7 +46,6 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
-import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.UnknownProducerIdException;
 import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Test;
@@ -285,30 +283,6 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(bProducer).isNotSameAs(aProducer);
 		bProducer.close();
 		verify(producer1).close(any(Duration.class));
-	}
-
-	@Test
-	@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
-	void testCleanUpAfterTxFence() {
-		final Producer producer = mock(Producer.class);
-		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
-
-			@Override
-			protected Producer createRawProducer(Map configs) {
-				return producer;
-			}
-
-		};
-		pf.setTransactionIdPrefix("tx.");
-		pf.setProducerPerConsumerPartition(true);
-		TransactionSupport.setTransactionIdSuffix("suffix");
-		Producer aProducer = pf.createProducer();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).hasSize(1);
-		assertThat(aProducer).isNotNull();
-		willThrow(new ProducerFencedException("test")).given(producer).beginTransaction();
-		assertThatExceptionOfType(ProducerFencedException.class).isThrownBy(() -> aProducer.beginTransaction());
-		aProducer.close();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).hasSize(0);
 	}
 
 	@Test

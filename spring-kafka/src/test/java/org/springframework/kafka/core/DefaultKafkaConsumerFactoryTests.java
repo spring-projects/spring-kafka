@@ -378,43 +378,6 @@ public class DefaultKafkaConsumerFactoryTests {
 		}
 	}
 
-	@SuppressWarnings({ "unchecked", "deprecation" })
-	@Test
-	public void testContainerTxProducerIsNotCached() throws Exception {
-		Map<String, Object> producerProps = KafkaTestUtils.producerProps(this.embeddedKafka);
-		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(producerProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		DefaultKafkaProducerFactory<Integer, String> pfTx = new DefaultKafkaProducerFactory<>(producerProps);
-		pfTx.setTransactionIdPrefix("fooTx.");
-		pfTx.setProducerPerConsumerPartition(true);
-		KafkaTemplate<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache2Group", "false", this.embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
-		ContainerProperties containerProps = new ContainerProperties("txCache2");
-		CountDownLatch latch = new CountDownLatch(1);
-		containerProps.setMessageListener((MessageListener<Integer, String>) r -> {
-			templateTx.send("txCacheSendFromListener", "bar");
-			templateTx.send("txCacheSendFromListener", "baz");
-			latch.countDown();
-		});
-		KafkaTransactionManager<Integer, String> tm = new KafkaTransactionManager<>(pfTx);
-		containerProps.setTransactionManager(tm);
-		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
-				containerProps);
-		container.start();
-		try {
-			ListenableFuture<SendResult<Integer, String>> future = template.send("txCache2", "foo");
-			future.get(10, TimeUnit.SECONDS);
-			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
-			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(0);
-		}
-		finally {
-			container.stop();
-			pf.destroy();
-			pfTx.destroy();
-		}
-	}
-
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void listener() {
