@@ -76,7 +76,6 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
-import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerPartitionPausedEvent;
 import org.springframework.kafka.event.ConsumerPartitionResumedEvent;
@@ -102,7 +101,6 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
-import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
@@ -738,8 +736,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private Producer<?, ?> producer;
 
-		private boolean producerPerConsumerPartition;
-
 		private boolean commitRecovered;
 
 		private boolean wasIdle;
@@ -1022,10 +1018,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Nullable
 		private TransactionTemplate determineTransactionTemplate() {
-			if (this.kafkaTxManager != null) {
-				this.producerPerConsumerPartition =
-						this.kafkaTxManager.getProducerFactory().isProducerPerConsumerPartition();
-			}
 			if (this.transactionManager != null) {
 				TransactionTemplate template = new TransactionTemplate(this.transactionManager);
 				TransactionDefinition definition = this.containerProperties.getTransactionDefinition();
@@ -1740,9 +1732,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						// No-op. Continue process
 					}
 				}
-				else {
-					closeProducers(partitions);
-				}
 			}
 			else {
 				this.logger.error("Fatal consumer exception; stopping container");
@@ -1995,11 +1984,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				@Nullable final List<ConsumerRecord<K, V>> recordList) {
 
 			try {
-				if (this.subBatchPerPartition && this.producerPerConsumerPartition) {
-					ConsumerRecord<K, V> record = recordList == null ? records.iterator().next() : recordList.get(0);
-					TransactionSupport
-							.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition())); // NOSONAR
-				}
 				this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 
 					@Override
@@ -2027,11 +2011,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			catch (RuntimeException e) {
 				this.logger.error(e, "Transaction rolled back");
 				batchRollback(records, recordList, e);
-			}
-			finally {
-				if (this.subBatchPerPartition && this.producerPerConsumerPartition) {
-					TransactionSupport.clearTransactionIdSuffix();
-				}
 			}
 		}
 
@@ -2327,11 +2306,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.logger.error(ex, "Transaction rolled back");
 					recordAfterRollback(iterator, record, ex);
 				}
-				finally {
-					if (this.producerPerConsumerPartition) {
-						TransactionSupport.clearTransactionIdSuffix();
-					}
-				}
 				if (this.commonRecordInterceptor != null) {
 					this.commonRecordInterceptor.afterRecord(record, this.consumer);
 				}
@@ -2344,10 +2318,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void invokeInTransaction(Iterator<ConsumerRecord<K, V>> iterator, final ConsumerRecord<K, V> record) {
-			if (this.producerPerConsumerPartition) {
-				TransactionSupport
-						.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
-			}
 			this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 
 				@Override
@@ -3109,25 +3079,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					+ "\n]";
 		}
 
-		private void closeProducers(@Nullable Collection<TopicPartition> partitions) {
-			if (partitions != null) {
-				ProducerFactory<?, ?> producerFactory = this.kafkaTxManager.getProducerFactory();
-				partitions.forEach(tp -> {
-					try {
-						producerFactory.closeProducerFor(zombieFenceTxIdSuffix(tp.topic(), tp.partition()));
-					}
-					catch (Exception e) {
-						this.logger.error(e, () -> "Failed to close producer with transaction id suffix: "
-								+ zombieFenceTxIdSuffix(tp.topic(), tp.partition()));
-					}
-				});
-			}
-		}
-
-		private String zombieFenceTxIdSuffix(String topic, int partition) {
-			return this.consumerGroupId + "." + topic + "." + partition;
-		}
-
 		private final class ConsumerAcknowledgment implements Acknowledgment {
 
 			private final ConsumerRecord<K, V> record;
@@ -3246,47 +3197,40 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				try {
-					if (this.consumerAwareListener != null) {
-						this.consumerAwareListener.onPartitionsRevokedBeforeCommit(ListenerConsumer.this.consumer,
-								partitions);
-					}
-					else {
-						this.userListener.onPartitionsRevoked(partitions);
-					}
-					try {
-						// Wait until now to commit, in case the user listener added acks
-						commitPendingAcks();
-						fixTxOffsetsIfNeeded();
-					}
-					catch (Exception e) {
-						ListenerConsumer.this.logger.error(e, () -> "Fatal commit error after revocation "
-								+ partitions);
-					}
-					if (this.consumerAwareListener != null) {
-						this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
-								partitions);
-					}
-					if (ListenerConsumer.this.consumerSeekAwareListener != null) {
-						ListenerConsumer.this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
-					}
-					if (ListenerConsumer.this.assignedPartitions != null) {
-						ListenerConsumer.this.assignedPartitions.removeAll(partitions);
-					}
-					ListenerConsumer.this.pausedForNack.removeAll(partitions);
-					partitions.forEach(tp -> ListenerConsumer.this.lastCommits.remove(tp));
-					synchronized (ListenerConsumer.this) {
-						if (ListenerConsumer.this.offsetsInThisBatch != null) {
-							partitions.forEach(tp -> {
-								ListenerConsumer.this.offsetsInThisBatch.remove(tp);
-								ListenerConsumer.this.deferredOffsets.remove(tp);
-							});
-						}
-					}
+				if (this.consumerAwareListener != null) {
+					this.consumerAwareListener.onPartitionsRevokedBeforeCommit(ListenerConsumer.this.consumer,
+							partitions);
 				}
-				finally {
-					if (ListenerConsumer.this.kafkaTxManager != null) {
-						closeProducers(partitions);
+				else {
+					this.userListener.onPartitionsRevoked(partitions);
+				}
+				try {
+					// Wait until now to commit, in case the user listener added acks
+					commitPendingAcks();
+					fixTxOffsetsIfNeeded();
+				}
+				catch (Exception e) {
+					ListenerConsumer.this.logger.error(e, () -> "Fatal commit error after revocation "
+							+ partitions);
+				}
+				if (this.consumerAwareListener != null) {
+					this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
+							partitions);
+				}
+				if (ListenerConsumer.this.consumerSeekAwareListener != null) {
+					ListenerConsumer.this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
+				}
+				if (ListenerConsumer.this.assignedPartitions != null) {
+					ListenerConsumer.this.assignedPartitions.removeAll(partitions);
+				}
+				ListenerConsumer.this.pausedForNack.removeAll(partitions);
+				partitions.forEach(tp -> ListenerConsumer.this.lastCommits.remove(tp));
+				synchronized (ListenerConsumer.this) {
+					if (ListenerConsumer.this.offsetsInThisBatch != null) {
+						partitions.forEach(tp -> {
+							ListenerConsumer.this.offsetsInThisBatch.remove(tp);
+							ListenerConsumer.this.deferredOffsets.remove(tp);
+						});
 					}
 				}
 			}
@@ -3349,33 +3293,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (ListenerConsumer.this.transactionTemplate != null
 						&& ListenerConsumer.this.kafkaTxManager != null
 						&& !AssignmentCommitOption.LATEST_ONLY_NO_TX.equals(ListenerConsumer.this.autoCommitOption)) {
-					try {
-						offsetsToCommit.forEach((partition, offsetAndMetadata) -> {
-							if (ListenerConsumer.this.producerPerConsumerPartition) {
-								TransactionSupport.setTransactionIdSuffix(
-									zombieFenceTxIdSuffix(partition.topic(), partition.partition()));
-							}
-							ListenerConsumer.this.transactionTemplate
-									.execute(new TransactionCallbackWithoutResult() {
 
-										@Override
-										protected void doInTransactionWithoutResult(TransactionStatus status) {
-											KafkaResourceHolder<?, ?> holder =
-													(KafkaResourceHolder<?, ?>) TransactionSynchronizationManager
-															.getResource(ListenerConsumer.this.kafkaTxManager
-																	.getProducerFactory());
-											if (holder != null) {
-												doSendOffsets(holder.getProducer(),
-															Collections.singletonMap(partition, offsetAndMetadata));
-											}
+					offsetsToCommit.forEach((partition, offsetAndMetadata) -> {
+						ListenerConsumer.this.transactionTemplate
+								.execute(new TransactionCallbackWithoutResult() {
+
+									@Override
+									protected void doInTransactionWithoutResult(TransactionStatus status) {
+										KafkaResourceHolder<?, ?> holder =
+												(KafkaResourceHolder<?, ?>) TransactionSynchronizationManager
+														.getResource(ListenerConsumer.this.kafkaTxManager
+																.getProducerFactory());
+										if (holder != null) {
+											doSendOffsets(holder.getProducer(),
+														Collections.singletonMap(partition, offsetAndMetadata));
 										}
+									}
 
-									});
-						});
-					}
-					finally {
-						TransactionSupport.clearTransactionIdSuffix();
-					}
+								});
+					});
 				}
 				else {
 					ContainerProperties containerProps = KafkaMessageListenerContainer.this.getContainerProperties();

@@ -516,7 +516,6 @@ public class KafkaTemplateTests {
 		assertThat(template.getProducerFactory().getConfigurationProperties()
 				.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)).isEqualTo(StringSerializer.class);
 		assertThat(template.getProducerFactory().getPhysicalCloseTimeout()).isEqualTo(Duration.ofSeconds(6));
-		assertThat(template.getProducerFactory().isProducerPerConsumerPartition()).isFalse();
 		assertThat(template.getProducerFactory().isProducerPerThread()).isTrue();
 		assertThat(template.isTransactional()).isTrue();
 		assertThat(template.getProducerFactory().getListeners()).isEqualTo(pf.getListeners());

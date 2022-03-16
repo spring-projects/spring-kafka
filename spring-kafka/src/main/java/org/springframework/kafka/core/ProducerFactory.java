@@ -92,7 +92,11 @@ public interface ProducerFactory<K, V> {
 	 * Return the producerPerConsumerPartition.
 	 * @return the producerPerConsumerPartition.
 	 * @since 1.3.8
+	 * @deprecated no longer necessary because
+	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
+	 * longer supported.
 	 */
+	@Deprecated
 	default boolean isProducerPerConsumerPartition() {
 		return false;
 	}

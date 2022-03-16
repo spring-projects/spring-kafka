@@ -37,7 +37,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -90,7 +89,6 @@ import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
-import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -219,13 +217,8 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(producer).close(any());
 		ProducerFactory pf = mock(ProducerFactory.class);
-		given(pf.isProducerPerConsumerPartition()).willReturn(true);
 		given(pf.transactionCapable()).willReturn(true);
-		final List<String> transactionalIds = new ArrayList<>();
-		willAnswer(i -> {
-			transactionalIds.add(TransactionSupport.getTransactionIdSuffix());
-			return producer;
-		}).given(pf).createProducer(isNull());
+		willReturn(producer).given(pf).createProducer(isNull());
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
 		ContainerProperties props = new ContainerProperties("foo");
 		props.setAckMode(ackMode);
@@ -292,8 +285,6 @@ public class TransactionalContainerTests {
 			container.stop();
 			verify(pf, times(2)).createProducer(isNull());
 			verifyNoMoreInteractions(producer);
-			assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
-			assertThat(transactionalIds.get(0)).isEqualTo("group.foo.0");
 			assertThat(stopEventLatch.await(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(stopEvent.get().getReason()).isEqualTo(Reason.NORMAL);
 		}

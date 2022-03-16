@@ -54,7 +54,6 @@ import org.mockito.InOrder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.kafka.core.ProducerFactory.Listener;
-import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.transaction.CannotCreateTransactionException;
@@ -367,7 +366,6 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(adds).hasSize(2);
 		assertThat(removals).hasSize(2);
 
-		TransactionSupport.setTransactionIdSuffix("xx");
 		pf.createProducer("tx").close();
 		assertThat(adds).hasSize(3);
 		assertThat(removals).hasSize(2);
@@ -387,7 +385,6 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.reset();
 		assertThat(adds).hasSize(4);
 		assertThat(removals).hasSize(4);
-		TransactionSupport.clearTransactionIdSuffix();
 
 		pf.setProducerPerThread(true);
 		pf.createProducer().close();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +62,6 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.test.annotation.DirtiesContext;
@@ -119,7 +118,6 @@ public class SubBatchPerPartitionTxTests {
 		inOrder.verify(this.producer).sendOffsetsToTransaction(eq(offsets), any(ConsumerGroupMetadata.class));
 		inOrder.verify(this.producer).commitTransaction();
 		assertThat(this.config.contents).containsExactly("foo", "bar", "baz", "qux", "fiz", "buz");
-		assertThat(this.config.transactionSuffix).isNotNull();
 	}
 
 	@Configuration
@@ -134,13 +132,10 @@ public class SubBatchPerPartitionTxTests {
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		volatile String transactionSuffix;
-
 		@KafkaListener(id = CONTAINER_ID, topics = "foo")
 		public void foo(List<String> in) {
 			this.contents.addAll(in);
 			this.deliveryLatch.countDown();
-			this.transactionSuffix = TransactionSupport.getTransactionIdSuffix();
 		}
 
 		@SuppressWarnings({ "rawtypes" })
@@ -229,7 +224,6 @@ public class SubBatchPerPartitionTxTests {
 			ProducerFactory pf = mock(ProducerFactory.class);
 			given(pf.createProducer(isNull())).willReturn(producer());
 			given(pf.transactionCapable()).willReturn(true);
-			given(pf.isProducerPerConsumerPartition()).willReturn(true);
 			return pf;
 		}
 

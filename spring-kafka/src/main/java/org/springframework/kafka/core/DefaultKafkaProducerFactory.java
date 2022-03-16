@@ -437,7 +437,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 *  properties applied
 	 */
 	@Override
-	@SuppressWarnings("deprecation")
 	public ProducerFactory<K, V> copyWithConfigurationOverride(Map<String, Object> overrideProperties) {
 		Map<String, Object> producerProperties = new HashMap<>(getConfigurationProperties());
 		producerProperties.putAll(overrideProperties);
@@ -447,7 +446,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 						getKeySerializerSupplier(),
 						getValueSerializerSupplier());
 		newFactory.setPhysicalCloseTimeout((int) getPhysicalCloseTimeout().getSeconds());
-		newFactory.setProducerPerConsumerPartition(isProducerPerConsumerPartition());
 		newFactory.setProducerPerThread(isProducerPerThread());
 		for (ProducerPostProcessor<K, V> templatePostProcessor : getPostProcessors()) {
 			newFactory.addPostProcessor(templatePostProcessor);

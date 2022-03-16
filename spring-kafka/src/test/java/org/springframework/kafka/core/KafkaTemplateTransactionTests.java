@@ -65,7 +65,6 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.kafka.support.transaction.ResourcelessTransactionManager;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
@@ -528,26 +527,20 @@ public class KafkaTemplateTransactionTests {
 
 		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
 
-		try {
-			TransactionSupport.setTransactionIdSuffix("testExecuteInTransactionNewInnerTx");
-			new TransactionTemplate(tm)
-					.execute(s ->
-							template.executeInTransaction(t -> {
-								template.sendDefault("foo", "bar");
-								return null;
-							}));
+		new TransactionTemplate(tm)
+				.execute(s ->
+						template.executeInTransaction(t -> {
+							template.sendDefault("foo", "bar");
+							return null;
+						}));
 
-			InOrder inOrder = inOrder(producer1, producer2);
-			inOrder.verify(producer1).beginTransaction();
-			inOrder.verify(producer2).beginTransaction();
-			inOrder.verify(producer2).commitTransaction();
-			inOrder.verify(producer2).close(any());
-			inOrder.verify(producer1).commitTransaction();
-			inOrder.verify(producer1).close(any());
-		}
-		finally {
-			TransactionSupport.clearTransactionIdSuffix();
-		}
+		InOrder inOrder = inOrder(producer1, producer2);
+		inOrder.verify(producer1).beginTransaction();
+		inOrder.verify(producer2).beginTransaction();
+		inOrder.verify(producer2).commitTransaction();
+		inOrder.verify(producer2).close(any());
+		inOrder.verify(producer1).commitTransaction();
+		inOrder.verify(producer1).close(any());
 	}
 
 	@Test
