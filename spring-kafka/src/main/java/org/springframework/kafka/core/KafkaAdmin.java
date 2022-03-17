@@ -331,7 +331,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 
 	/**
 	 * Wrapper for a collection of {@link NewTopic} to facilitated declaring multiple
-	 * topics as as single bean.
+	 * topics as single bean.
 	 *
 	 * @since 2.7
 	 *
