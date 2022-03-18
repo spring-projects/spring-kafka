@@ -30,9 +30,9 @@ import org.springframework.kafka.listener.ConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.converter.MessageConverter;
-import org.springframework.messaging.converter.SimpleMessageConverter;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.util.Assert;
 
@@ -41,59 +41,51 @@ import org.springframework.util.Assert;
  * converting received {@link ConsumerRecord} using specified {@link MessageConverter}
  * and then passes result to specified {@link MessageListener}.
  *
- * @param <T> the key type.
- * @param <U> the value type.
  * @param <V> the desired value type after conversion.
  *
  * @author Adrian Chlebosz
  * @since 3.0
  * @see AcknowledgingConsumerAwareMessageListener
  */
-public class ConvertingMessageListener<T, U, V> implements AcknowledgingConsumerAwareMessageListener<T, U> {
+@SuppressWarnings("rawtypes")
+public class ConvertingMessageListener<V> implements AcknowledgingConsumerAwareMessageListener<Object, Object> {
 
-	private final MessageListener<T, V> delegate;
-	private final MessageConverter messageConverter;
+	private final MessageListener delegate;
 	private final Class<V> desiredValueType;
+
+	private MessageConverter messageConverter;
 
 	/**
 	 * Construct an instance with the provided {@link MessageListener} and {@link Class}
 	 * as a desired type of {@link ConsumerRecord}'s value after conversion. Default value of
-	 * {@link MessageConverter} is used, which is {@link SimpleMessageConverter}.
+	 * {@link MessageConverter} is used, which is {@link GenericMessageConverter}.
 	 *
-	 * @param delegate the {@link MessageListener} to use when passing converted {@link ConsumerRecord} further.
+	 * @param delegateMessageListener the {@link MessageListener} to use when passing converted {@link ConsumerRecord} further.
 	 * @param desiredValueType the {@link Class} setting desired type of {@link ConsumerRecord}'s value.
 	 */
-	public ConvertingMessageListener(MessageListener<T, V> delegate, Class<V> desiredValueType) {
-		Assert.notNull(delegate, "Delegate message listener cannot be null");
-		Assert.notNull(desiredValueType, "Desired value type cannot be null");
-
-		this.delegate = delegate;
+	public ConvertingMessageListener(MessageListener<?, V> delegateMessageListener, Class<V> desiredValueType) {
+		Assert.notNull(delegateMessageListener, "'delegateMessageListener' cannot be null");
+		Assert.notNull(desiredValueType, "'desiredValueType' cannot be null");
+		this.delegate = delegateMessageListener;
 		this.desiredValueType = desiredValueType;
 
-		this.messageConverter = new SimpleMessageConverter();
+		this.messageConverter = new GenericMessageConverter();
 	}
 
 	/**
-	 * Construct an instance with the provided {@link MessageListener}, {@link MessageConverter} and {@link Class}
-	 * as a desired type of {@link ConsumerRecord}'s value after conversion.
-	 *
-	 * @param delegate the {@link MessageListener} to use when passing converted {@link ConsumerRecord} further.
-	 * @param messageConverter the {@link MessageConverter} to use for conversion.
-	 * @param desiredValueType the {@link Class} setting desired type of {@link ConsumerRecord}'s value.
+	 * Set a {@link MessageConverter}.
+	 * @param messageConverter the message converter to use for conversion of incoming {@link ConsumerRecord}.
+	 * @since 3.0
 	 */
-	public ConvertingMessageListener(MessageListener<T, V> delegate, MessageConverter messageConverter, Class<V> desiredValueType) {
-		Assert.notNull(delegate, "Delegate message listener cannot be null");
-		Assert.notNull(messageConverter, "Message converter cannot be null");
-		Assert.notNull(desiredValueType, "Desired value type cannot be null");
-
-		this.delegate = delegate;
+	public void setMessageConverter(MessageConverter messageConverter) {
+		Assert.notNull(messageConverter, "'messageConverter' cannot be null");
 		this.messageConverter = messageConverter;
-		this.desiredValueType = desiredValueType;
 	}
 
 	@Override
-	public void onMessage(ConsumerRecord<T, U> data, Acknowledgment acknowledgment, Consumer<?, ?> consumer) { // NOSONAR
-		ConsumerRecord<T, V> convertedConsumerRecord = convertConsumerRecord(data);
+	@SuppressWarnings("unchecked")
+	public void onMessage(ConsumerRecord data, Acknowledgment acknowledgment, Consumer consumer) {
+		ConsumerRecord convertedConsumerRecord = convertConsumerRecord(data);
 		if (this.delegate instanceof AcknowledgingConsumerAwareMessageListener) {
 			this.delegate.onMessage(convertedConsumerRecord, acknowledgment, consumer);
 		}
@@ -107,13 +99,13 @@ public class ConvertingMessageListener<T, U, V> implements AcknowledgingConsumer
 		this.delegate.onMessage(convertedConsumerRecord);
 	}
 
-	private ConsumerRecord<T, V> convertConsumerRecord(ConsumerRecord<T, U> data) { // NOSONAR
+	private ConsumerRecord convertConsumerRecord(ConsumerRecord data) {
 		Header[] headerArray = data.headers().toArray();
 		Map<String, Object> headerMap = Arrays.stream(headerArray)
 				.collect(Collectors.toMap(Header::key, Header::value));
 
-		Message<U> message = new GenericMessage<>(data.value(), headerMap);
-		V converted = (V) this.messageConverter.fromMessage(message, this.desiredValueType);
+		Message message = new GenericMessage<>(data.value(), headerMap);
+		Object converted = this.messageConverter.fromMessage(message, this.desiredValueType);
 
 		if (converted == null) {
 			throw new MessageConversionException(message, "Message cannot be converted by used MessageConverter");
@@ -122,7 +114,7 @@ public class ConvertingMessageListener<T, U, V> implements AcknowledgingConsumer
 		return rebuildConsumerRecord(data, converted);
 	}
 
-	private ConsumerRecord<T, V> rebuildConsumerRecord(ConsumerRecord<T, U> data, V converted) {
+	private static ConsumerRecord rebuildConsumerRecord(ConsumerRecord data, Object converted) {
 		return new ConsumerRecord<>(
 				data.topic(),
 				data.partition(),

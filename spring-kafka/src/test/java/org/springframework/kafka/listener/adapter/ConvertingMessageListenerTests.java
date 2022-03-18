@@ -42,10 +42,10 @@ class ConvertingMessageListenerTests {
 	public void testMessageListenerIsInvokedWithConvertedSimpleRecord() {
 		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", 0);
 
-		var delegateListener = (MessageListener<String, Integer>) (data) -> assertThat(data.value()).isNotNull();
-		var convertingMessageListener = new ConvertingMessageListener<String, Integer, Integer>(
+		var delegateListener = (MessageListener<String, Long>) (data) -> assertThat(data.value()).isNotNull();
+		var convertingMessageListener = new ConvertingMessageListener<>(
 				delegateListener,
-				Integer.class
+				Long.class
 		);
 
 		convertingMessageListener.onMessage(consumerRecord, null, null);
@@ -61,11 +61,11 @@ class ConvertingMessageListenerTests {
 			assertThat(data.value()).isNotNull();
 			assertThat(data.value().getA()).isEqualTo("foo");
 		};
-		var convertingMessageListener = new ConvertingMessageListener<String, String, ToBeConverted>(
+		var convertingMessageListener = new ConvertingMessageListener<>(
 				delegateListener,
-				new MappingJackson2MessageConverter(),
 				ToBeConverted.class
 		);
+		convertingMessageListener.setMessageConverter(new MappingJackson2MessageConverter());
 
 		convertingMessageListener.onMessage(consumerRecord, null, null);
 	}
@@ -80,7 +80,7 @@ class ConvertingMessageListenerTests {
 			assertThat(data.value()).isNotNull();
 			assertThat(data.value().getA()).isEqualTo("foo");
 		};
-		var convertingMessageListener = new ConvertingMessageListener<String, String, ToBeConverted>(
+		var convertingMessageListener = new ConvertingMessageListener<>(
 				delegateListener,
 				ToBeConverted.class
 		);
