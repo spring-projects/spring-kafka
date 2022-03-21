@@ -75,6 +75,9 @@ public final class ErrorHandlingUtils {
 					seeker.handleBatch(thrownException, records, consumer, container, () -> { });
 					throw new KafkaException("Interrupted during retry", logLevel, e1);
 				}
+				if (!container.isRunning()) {
+					throw new KafkaException("Container stopped during retries");
+				}
 				try {
 					invokeListener.run();
 					return;

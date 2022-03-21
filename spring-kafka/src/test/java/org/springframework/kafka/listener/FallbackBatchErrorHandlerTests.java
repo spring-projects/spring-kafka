@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -36,6 +39,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.KafkaException;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -62,6 +66,7 @@ public class FallbackBatchErrorHandlerTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
 		eh.handle(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;
 			throw new RuntimeException();
@@ -90,6 +95,7 @@ public class FallbackBatchErrorHandlerTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
 		eh.handle(new RuntimeException(), records, consumer, container, () -> this.invoked++);
 		assertThat(this.invoked).isEqualTo(1);
 		assertThat(recovered).hasSize(0);
@@ -116,6 +122,7 @@ public class FallbackBatchErrorHandlerTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
 		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
 		eh.handle(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;
@@ -129,6 +136,33 @@ public class FallbackBatchErrorHandlerTests {
 		verify(consumer, times(2)).assignment();
 		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
 		verify(consumer).seek(new TopicPartition("foo", 1), 0L);
+	}
+
+	@Test
+	void exitOnContainerStop() {
+		this.invoked = 0;
+		List<ConsumerRecord<?, ?>> recovered = new ArrayList<>();
+		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0, 99999), (cr, ex) ->  {
+			recovered.add(cr);
+		});
+		Map<TopicPartition, List<ConsumerRecord<Object, Object>>> map = new HashMap<>();
+		map.put(new TopicPartition("foo", 0),
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
+		map.put(new TopicPartition("foo", 1),
+				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		AtomicBoolean stopped = new AtomicBoolean(true);
+		willAnswer(inv -> stopped.get()).given(container).isRunning();
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			eh.handle(new RuntimeException(), records, consumer, container, () -> {
+				this.invoked++;
+				stopped.set(false);
+				throw new RuntimeException();
+			})
+		).withMessage("Container stopped during retries");
+		assertThat(this.invoked).isEqualTo(1);
 	}
 
 }
