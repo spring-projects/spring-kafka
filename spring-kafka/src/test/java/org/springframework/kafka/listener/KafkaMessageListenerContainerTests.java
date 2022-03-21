@@ -2790,7 +2790,21 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setClientId("clientId");
-		containerProps.setMessageListener((MessageListener) r -> { });
+
+		Map<TopicPartition, Long> assigned = new HashMap<>();
+		class Listener extends AbstractConsumerSeekAware implements MessageListener {
+
+			@Override
+			public void onMessage(Object data) {
+			}
+
+			@Override
+			public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+				assigned.putAll(assignments);
+			}
+
+		}
+		containerProps.setMessageListener(new Listener());
 		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
@@ -2808,6 +2822,7 @@ public class KafkaMessageListenerContainerTests {
 		verify(consumer).seek(new TopicPartition("foo", 3), Long.MAX_VALUE);
 		verify(consumer).seek(new TopicPartition("foo", 6), 42L);
 		container.stop();
+		assertThat(assigned).hasSize(8);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
