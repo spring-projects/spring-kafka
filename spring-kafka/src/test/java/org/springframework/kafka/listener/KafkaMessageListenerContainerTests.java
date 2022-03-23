@@ -27,15 +27,12 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doCallRealMethod;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -3861,8 +3858,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void testOffsetAndMetadata(OffsetAndMetadataProvider provider,
-									   OffsetAndMetadata expectedOffsetAndMetadata) throws InterruptedException {
+	private void testOffsetAndMetadata(OffsetAndMetadataProvider provider, OffsetAndMetadata expectedOffsetAndMetadata) throws InterruptedException {
 		final ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		final Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
