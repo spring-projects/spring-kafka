@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.doAnswer;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
@@ -3841,6 +3842,53 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
 		inOrder.verify(batchInterceptor).failure(eq(consumerRecords), any(), eq(consumer));
 		inOrder.verify(batchInterceptor).clearThreadState(eq(consumer));
+		container.stop();
+	}
+
+	@Test
+	public void testOffsetAndMetadataWithoutProvider() throws InterruptedException {
+		testOffsetAndMetadata(null, new OffsetAndMetadata(1));
+	}
+
+	@Test
+	public void testOffsetAndMetadataWithProvider() throws InterruptedException {
+		testOffsetAndMetadata((listenerMetadata, offset) ->
+				new OffsetAndMetadata(offset, listenerMetadata.getGroupId()),
+				new OffsetAndMetadata(1, "grp"));
+	}
+
+	@SuppressWarnings("unchecked")
+	private void testOffsetAndMetadata(OffsetAndMetadataProvider provider, OffsetAndMetadata expectedOffsetAndMetadata) throws InterruptedException {
+		final ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		final Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> new ConsumerRecords<>(
+				Map.of(
+						new TopicPartition("foo", 0),
+						Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, 1, "foo"))
+				)
+		));
+		final ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> offsetsCaptor = ArgumentCaptor.forClass(Map.class);
+		final CountDownLatch latch = new CountDownLatch(1);
+		doAnswer(invocation -> {
+			latch.countDown();
+			return null;
+		}).when(consumer).commitAsync(offsetsCaptor.capture(), any());
+		final ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0));
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setSyncCommits(false);
+		containerProps.setMessageListener((MessageListener<Integer, String>) data -> {
+		});
+		containerProps.setCommitCallback((offsets, exception) -> {
+		}, provider);
+		final KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(offsetsCaptor.getValue())
+				.hasSize(1)
+				.containsValue(expectedOffsetAndMetadata);
 		container.stop();
 	}
 

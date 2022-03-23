@@ -1438,7 +1438,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							return;
 						}
 						if (position > oamd.offset()) {
-							toFix.put(tp, new OffsetAndMetadata(position));
+							toFix.put(tp, createOffsetAndMetadata(position));
 						}
 					});
 					if (toFix.size() > 0) {
@@ -1910,7 +1910,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void ackImmediate(ConsumerRecord<K, V> record) {
 			Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
 					new TopicPartition(record.topic(), record.partition()),
-					new OffsetAndMetadata(record.offset() + 1));
+					createOffsetAndMetadata(record.offset() + 1));
 			this.commitLogger.log(() -> COMMITTING + commits);
 			if (this.producer != null) {
 				doSendOffsets(this.producer, commits);
@@ -1926,9 +1926,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void ackImmediate(ConsumerRecords<K, V> records) {
 			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
 			for (TopicPartition part : records.partitions()) {
-				commits.put(part,
-						new OffsetAndMetadata(records.records(part)
-								.get(records.records(part).size() - 1).offset() + 1));
+				commits.put(part, createOffsetAndMetadata(records.records(part)
+						.get(records.records(part).size() - 1).offset() + 1));
 			}
 			this.commitLogger.log(() -> COMMITTING + commits);
 			if (this.producer != null) {
@@ -2694,7 +2693,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.isRecordAck) {
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 						Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
-								new OffsetAndMetadata(record.offset() + 1));
+								createOffsetAndMetadata(record.offset() + 1));
 				if (this.producer == null) {
 					this.commitLogger.log(() -> COMMITTING + offsetsToCommit);
 					if (this.syncCommits) {
@@ -2996,7 +2995,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
 				for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
 					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),
-							new OffsetAndMetadata(offset.getValue() + 1));
+							createOffsetAndMetadata(offset.getValue() + 1));
 				}
 			}
 			this.offsets.clear();
@@ -3077,6 +3076,26 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					+ "\n consumerGroupId=" + this.consumerGroupId
 					+ "\n clientIdSuffix=" + KafkaMessageListenerContainer.this.clientIdSuffix
 					+ "\n]";
+		}
+
+		private OffsetAndMetadata createOffsetAndMetadata(long offset) {
+			final OffsetAndMetadataProvider metadataProvider = this.containerProperties.getOffsetAndMetadataProvider();
+			return metadataProvider == null
+					? new OffsetAndMetadata(offset)
+					: metadataProvider.provide(new ConsumerAwareListenerMetadata(), offset);
+		}
+
+		private final class ConsumerAwareListenerMetadata implements ListenerMetadata {
+
+			@Override
+			public String getListenerId() {
+				return getBeanName();
+			}
+
+			@Override
+			public String getGroupId() {
+				return ListenerConsumer.this.consumerGroupId;
+			}
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {
@@ -3272,8 +3291,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				for (TopicPartition partition : partitions) {
 					try {
 						if (committed.get(partition) == null) { // no existing commit for this group
-							offsetsToCommit.put(partition,
-									new OffsetAndMetadata(ListenerConsumer.this.consumer.position(partition)));
+							offsetsToCommit.put(partition, createOffsetAndMetadata(ListenerConsumer.this.consumer.position(partition)));
 						}
 					}
 					catch (NoOffsetForPartitionException e) {

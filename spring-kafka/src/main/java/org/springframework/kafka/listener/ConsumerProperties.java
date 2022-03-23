@@ -22,6 +22,7 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 
 import org.springframework.kafka.support.LogIfLevelEnabled;
@@ -88,6 +89,11 @@ public class ConsumerProperties {
 	 * success at DEBUG level and failures at ERROR level.
 	 */
 	private OffsetCommitCallback commitCallback;
+
+	/**
+	 * A provider for {@link OffsetAndMetadata}. The provider allows customization of metadata.
+	 */
+	private OffsetAndMetadataProvider offsetAndMetadataProvider = (listenerMetadata, offset) -> new OffsetAndMetadata(offset);
 
 	/**
 	 * Whether or not to call consumer.commitSync() or commitAsync() when the
@@ -276,12 +282,35 @@ public class ConsumerProperties {
 	}
 
 	/**
+	 * Set the commit callback and a metadata provider; by default a simple logging callback is used to log
+	 * success at DEBUG level and failures at ERROR level.
+	 * Used when {@link #setSyncCommits(boolean) syncCommits} is false.
+	 * @param commitCallback the callback.
+	 * @param offsetAndMetadataProvider an offset and metadata provider.
+	 * @since 2.8.5
+	 * @see #setSyncCommits(boolean)
+	 */
+	public void setCommitCallback(OffsetCommitCallback commitCallback, OffsetAndMetadataProvider offsetAndMetadataProvider) {
+		this.commitCallback = commitCallback;
+		this.offsetAndMetadataProvider = offsetAndMetadataProvider;
+	}
+
+	/**
 	 * Return the commit callback.
 	 * @return the callback.
 	 */
 	@Nullable
 	public OffsetCommitCallback getCommitCallback() {
 		return this.commitCallback;
+	}
+
+	/**
+	 * Return the offset and metadata provider.
+	 * @return the offset and metadata provider.
+	 */
+	@Nullable
+	public OffsetAndMetadataProvider getOffsetAndMetadataProvider() {
+		return this.offsetAndMetadataProvider;
 	}
 
 	/**
