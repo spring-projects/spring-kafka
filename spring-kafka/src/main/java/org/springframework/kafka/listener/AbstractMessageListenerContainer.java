@@ -34,6 +34,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.BeanUtils;
@@ -166,6 +167,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		}
 		if (this.containerProperties.getConsumerRebalanceListener() == null) {
 			this.containerProperties.setConsumerRebalanceListener(createSimpleLoggingConsumerRebalanceListener());
+		}
+		final OffsetCommitCallback commitCallback = containerProperties.getCommitCallback();
+		if (commitCallback != null) {
+			this.containerProperties.setCommitCallback(commitCallback);
+		}
+		final OffsetAndMetadataProvider offsetAndMetadataProvider = containerProperties.getOffsetAndMetadataProvider();
+		if (offsetAndMetadataProvider != null) {
+			this.containerProperties.setOffsetAndMetadataProvider(containerProperties.getOffsetAndMetadataProvider());
 		}
 	}
 

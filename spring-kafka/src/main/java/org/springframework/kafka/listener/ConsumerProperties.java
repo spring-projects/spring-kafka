@@ -22,6 +22,7 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 
 import org.springframework.kafka.support.LogIfLevelEnabled;
@@ -88,6 +89,12 @@ public class ConsumerProperties {
 	 * success at DEBUG level and failures at ERROR level.
 	 */
 	private OffsetCommitCallback commitCallback;
+
+	/**
+	 * A provider for {@link OffsetAndMetadata}; by default, the provider creates an offset and metadata with
+	 * empty metadata. The provider gives a way to customize the metadata.
+	 */
+	private OffsetAndMetadataProvider offsetAndMetadataProvider;
 
 	/**
 	 * Whether or not to call consumer.commitSync() or commitAsync() when the
@@ -276,12 +283,31 @@ public class ConsumerProperties {
 	}
 
 	/**
+	 * Set the offset and metadata provider associated to a commit callback.
+	 * @param offsetAndMetadataProvider an offset and metadata provider.
+	 * @since 2.8.5
+	 * @see #setCommitCallback(OffsetCommitCallback)
+	 */
+	public void setOffsetAndMetadataProvider(OffsetAndMetadataProvider offsetAndMetadataProvider) {
+		this.offsetAndMetadataProvider = offsetAndMetadataProvider;
+	}
+
+	/**
 	 * Return the commit callback.
 	 * @return the callback.
 	 */
 	@Nullable
 	public OffsetCommitCallback getCommitCallback() {
 		return this.commitCallback;
+	}
+
+	/**
+	 * Return the offset and metadata provider.
+	 * @return the offset and metadata provider.
+	 */
+	@Nullable
+	public OffsetAndMetadataProvider getOffsetAndMetadataProvider() {
+		return this.offsetAndMetadataProvider;
 	}
 
 	/**
@@ -491,6 +517,7 @@ public class ConsumerProperties {
 						? "\n consumerRebalanceListener=" + this.consumerRebalanceListener
 						: "")
 				+ (this.commitCallback != null ? "\n commitCallback=" + this.commitCallback : "")
+				+ (this.offsetAndMetadataProvider != null ? "\n offsetAndMetadataProvider=" + this.offsetAndMetadataProvider : "")
 				+ "\n syncCommits=" + this.syncCommits
 				+ (this.syncCommitTimeout != null ? "\n syncCommitTimeout=" + this.syncCommitTimeout : "")
 				+ (this.kafkaConsumerProperties.size() > 0 ? "\n properties=" + this.kafkaConsumerProperties : "")
