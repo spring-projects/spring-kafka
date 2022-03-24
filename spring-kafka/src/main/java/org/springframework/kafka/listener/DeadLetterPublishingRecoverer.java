@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -659,59 +660,69 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private void maybeAddOriginalHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception ex) {
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.topicHeader,
-				record.topic().getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.TOPIC);
+				() -> record.topic().getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.TOPIC);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.partitionHeader,
-				ByteBuffer.allocate(Integer.BYTES).putInt(record.partition()).array(),
+				() -> ByteBuffer.allocate(Integer.BYTES).putInt(record.partition()).array(),
 				HeaderNames.HeadersToAdd.PARTITION);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.offsetHeader,
-				ByteBuffer.allocate(Long.BYTES).putLong(record.offset()).array(), HeaderNames.HeadersToAdd.OFFSET);
+				() -> ByteBuffer.allocate(Long.BYTES).putLong(record.offset()).array(),
+				HeaderNames.HeadersToAdd.OFFSET);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.timestampHeader,
-				ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array(), HeaderNames.HeadersToAdd.TS);
+				() -> ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array(), HeaderNames.HeadersToAdd.TS);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.timestampTypeHeader,
-				record.timestampType().toString().getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.TS_TYPE);
+				() -> record.timestampType().toString().getBytes(StandardCharsets.UTF_8),
+				HeaderNames.HeadersToAdd.TS_TYPE);
 		if (ex instanceof ListenerExecutionFailedException) {
 			String consumerGroup = ((ListenerExecutionFailedException) ex).getGroupId();
 			if (consumerGroup != null) {
 				maybeAddHeader(kafkaHeaders, this.headerNames.original.consumerGroup,
-						consumerGroup.getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.GROUP);
+						() -> consumerGroup.getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.GROUP);
 			}
 		}
 	}
 
-	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value, HeaderNames.HeadersToAdd hta) {
+	private void maybeAddHeader(Headers kafkaHeaders, String header, Supplier<byte[]> valueSupplier,
+			HeaderNames.HeadersToAdd hta) {
+
 		if (this.whichHeaders.contains(hta)
 				&& (this.appendOriginalHeaders || kafkaHeaders.lastHeader(header) == null)) {
-			kafkaHeaders.add(header, value);
+			kafkaHeaders.add(header, valueSupplier.get());
 		}
 	}
 
 	private void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception, boolean isKey,
 			HeaderNames names) {
 
-		appendOrReplace(kafkaHeaders, new RecordHeader(isKey ? names.exceptionInfo.keyExceptionFqcn
-				: names.exceptionInfo.exceptionFqcn,
-				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)), HeaderNames.HeadersToAdd.EXCEPTION);
+		appendOrReplace(kafkaHeaders,
+				() -> new RecordHeader(
+						isKey ? names.exceptionInfo.keyExceptionFqcn : names.exceptionInfo.exceptionFqcn,
+						exception.getClass().getName().getBytes(StandardCharsets.UTF_8)),
+				HeaderNames.HeadersToAdd.EXCEPTION);
 		if (exception.getCause() != null) {
-			appendOrReplace(kafkaHeaders, new RecordHeader(names.exceptionInfo.exceptionCauseFqcn,
-					exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8)),
+			appendOrReplace(kafkaHeaders,
+					() -> new RecordHeader(
+							names.exceptionInfo.exceptionCauseFqcn,
+							exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8)),
 					HeaderNames.HeadersToAdd.EX_CAUSE);
 		}
 		String message = exception.getMessage();
 		if (message != null) {
-			appendOrReplace(kafkaHeaders, new RecordHeader(isKey
-					? names.exceptionInfo.keyExceptionMessage
-					: names.exceptionInfo.exceptionMessage,
-					exception.getMessage().getBytes(StandardCharsets.UTF_8)), HeaderNames.HeadersToAdd.EX_MSG);
+			appendOrReplace(kafkaHeaders,
+					() -> new RecordHeader(
+							isKey ? names.exceptionInfo.keyExceptionMessage : names.exceptionInfo.exceptionMessage,
+							exception.getMessage().getBytes(StandardCharsets.UTF_8)),
+					HeaderNames.HeadersToAdd.EX_MSG);
 		}
-		appendOrReplace(kafkaHeaders, new RecordHeader(isKey
-				? names.exceptionInfo.keyExceptionStacktrace
-				: names.exceptionInfo.exceptionStacktrace,
-				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)),
+		appendOrReplace(kafkaHeaders,
+				() -> new RecordHeader(
+						isKey ? names.exceptionInfo.keyExceptionStacktrace : names.exceptionInfo.exceptionStacktrace,
+						getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)),
 				HeaderNames.HeadersToAdd.EX_STACKTRACE);
 	}
 
-	private void appendOrReplace(Headers headers, RecordHeader header, HeaderNames.HeadersToAdd hta) {
+	private void appendOrReplace(Headers headers, Supplier<RecordHeader> headerSupplier, HeaderNames.HeadersToAdd hta) {
 		if (this.whichHeaders.contains(hta)) {
+			RecordHeader header = headerSupplier.get();
 			if (this.stripPreviousExceptionHeaders) {
 				headers.remove(header.key());
 			}
