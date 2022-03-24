@@ -694,39 +694,36 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			HeaderNames names) {
 
 		appendOrReplace(kafkaHeaders,
-				() -> new RecordHeader(
-						isKey ? names.exceptionInfo.keyExceptionFqcn : names.exceptionInfo.exceptionFqcn,
-						exception.getClass().getName().getBytes(StandardCharsets.UTF_8)),
+				isKey ? names.exceptionInfo.keyExceptionFqcn : names.exceptionInfo.exceptionFqcn,
+				() -> exception.getClass().getName().getBytes(StandardCharsets.UTF_8),
 				HeaderNames.HeadersToAdd.EXCEPTION);
 		if (exception.getCause() != null) {
 			appendOrReplace(kafkaHeaders,
-					() -> new RecordHeader(
-							names.exceptionInfo.exceptionCauseFqcn,
-							exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8)),
+					names.exceptionInfo.exceptionCauseFqcn,
+					() -> exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8),
 					HeaderNames.HeadersToAdd.EX_CAUSE);
 		}
 		String message = exception.getMessage();
 		if (message != null) {
 			appendOrReplace(kafkaHeaders,
-					() -> new RecordHeader(
-							isKey ? names.exceptionInfo.keyExceptionMessage : names.exceptionInfo.exceptionMessage,
-							exception.getMessage().getBytes(StandardCharsets.UTF_8)),
+					isKey ? names.exceptionInfo.keyExceptionMessage : names.exceptionInfo.exceptionMessage,
+					() -> exception.getMessage().getBytes(StandardCharsets.UTF_8),
 					HeaderNames.HeadersToAdd.EX_MSG);
 		}
 		appendOrReplace(kafkaHeaders,
-				() -> new RecordHeader(
-						isKey ? names.exceptionInfo.keyExceptionStacktrace : names.exceptionInfo.exceptionStacktrace,
-						getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)),
+				isKey ? names.exceptionInfo.keyExceptionStacktrace : names.exceptionInfo.exceptionStacktrace,
+				() -> getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8),
 				HeaderNames.HeadersToAdd.EX_STACKTRACE);
 	}
 
-	private void appendOrReplace(Headers headers, Supplier<RecordHeader> headerSupplier, HeaderNames.HeadersToAdd hta) {
+	private void appendOrReplace(Headers headers, String header, Supplier<byte[]> valueSupplier,
+			HeaderNames.HeadersToAdd hta) {
+
 		if (this.whichHeaders.contains(hta)) {
-			RecordHeader header = headerSupplier.get();
 			if (this.stripPreviousExceptionHeaders) {
-				headers.remove(header.key());
+				headers.remove(header);
 			}
-			headers.add(header);
+			headers.add(header, valueSupplier.get());
 		}
 	}
 
