@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.annotation;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -72,11 +69,7 @@ public class KafkaStreamsDefaultConfiguration {
 		KafkaStreamsConfiguration streamsConfig = streamsConfigProvider.getIfAvailable();
 		if (streamsConfig != null) {
 			StreamsBuilderFactoryBean fb = new StreamsBuilderFactoryBean(streamsConfig);
-			Set<StreamsBuilderFactoryBeanConfigurer> configuredBy = new HashSet<>();
-			configurerProvider.orderedStream().forEach(configurer -> {
-				configurer.configure(fb);
-				configuredBy.add(configurer);
-			});
+			configurerProvider.orderedStream().forEach(configurer -> configurer.configure(fb));
 			return fb;
 		}
 		else {
