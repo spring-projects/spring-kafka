@@ -634,7 +634,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private String pubFailMessage(ProducerRecord<Object, Object> outRecord, ConsumerRecord<?, ?> inRecord) {
 		return "Dead-letter publication to "
-				+ outRecord.topic() + "failed for: " + KafkaUtils.format(inRecord);
+				+ outRecord.topic() + " failed for: " + KafkaUtils.format(inRecord);
 	}
 
 	private Duration determineSendTimeout(KafkaOperations<?, ?> template) {
