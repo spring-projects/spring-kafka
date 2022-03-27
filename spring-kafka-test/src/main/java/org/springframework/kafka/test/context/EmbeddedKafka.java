@@ -22,6 +22,7 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.time.Duration;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -60,6 +61,7 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
  * @author Gary Russell
  * @author Sergio Lourenco
  * @author Pawel Lozinski
+ * @author Adrian Chlebosz
  *
  * @since 1.3
  *
@@ -171,6 +173,13 @@ public @interface EmbeddedKafka {
 	 * @since 2.4
 	 */
 	int zkSessionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_SESSION_TIMEOUT;
+
+	/**
+	 * Timeout in seconds for admin operations (e.g. topic creation, close).
+	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ADMIN_TIMEOUT}
+	 * @since 3.0
+	 */
+	int adminTimeout() default EmbeddedKafkaBroker.DEFAULT_ADMIN_TIMEOUT;
 
 }
 
