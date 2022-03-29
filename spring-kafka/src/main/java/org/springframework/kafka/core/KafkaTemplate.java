@@ -61,14 +61,20 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.kafka.support.micrometer.MicrometerHolder;
+import org.springframework.kafka.support.micrometer.KafkaMetrics;
+import org.springframework.kafka.support.micrometer.KafkaTemplateObservation;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
+
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.Observation.TagsProvider;
+import io.micrometer.observation.ObservationRegistry;
 
 
 /**
@@ -106,9 +112,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
-	private String beanName = "kafkaTemplate";
+	private final Observation.Context observationContext = new Observation.Context();
 
-	private ApplicationContext applicationContext;
+	private String beanName = "kafkaTemplate";
 
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
 
@@ -126,11 +132,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private ConsumerFactory<K, V> consumerFactory;
 
-	private volatile boolean micrometerEnabled = true;
-
-	private volatile MicrometerHolder micrometerHolder;
-
 	private ProducerInterceptor<K, V> producerInterceptor;
+
+	private TagsProvider<?> tagsProvider = KafkaMetrics.templateTagsProvider(this.micrometerTags);
+
+	private ObservationRegistry observationRegistry;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -197,7 +203,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 		Assert.notNull(producerFactory, "'producerFactory' cannot be null");
 		this.autoFlush = autoFlush;
-		this.micrometerEnabled = KafkaUtils.MICROMETER_PRESENT;
 		this.customProducerFactory = configOverrides != null && configOverrides.size() > 0;
 		if (this.customProducerFactory) {
 			this.producerFactory = producerFactory.copyWithConfigurationOverride(configOverrides);
@@ -211,11 +216,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	@Override
 	public void setBeanName(String name) {
 		this.beanName = name;
+		this.observationContext.put(KafkaTemplateObservation.TemplateLowCardinalityTags.BEAN_NAME.getKey(), name);
 	}
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) {
-		this.applicationContext = applicationContext;
+		this.observationRegistry = KafkaMetrics.getRegistry(applicationContext);
 		if (this.customProducerFactory) {
 			((DefaultKafkaProducerFactory<K, V>) this.producerFactory).setApplicationContext(applicationContext);
 		}
@@ -327,9 +333,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * Set to false to disable micrometer timers, if micrometer is on the class path.
 	 * @param micrometerEnabled false to disable.
 	 * @since 2.5
+	 * @deprecated this is no longer used.
 	 */
+	@Deprecated
 	public void setMicrometerEnabled(boolean micrometerEnabled) {
-		this.micrometerEnabled = micrometerEnabled;
 	}
 
 	/**
@@ -338,8 +345,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * @since 2.5
 	 */
 	public void setMicrometerTags(Map<String, String> tags) {
-		if (tags != null) {
+		if (!ObjectUtils.isEmpty(tags)) {
 			this.micrometerTags.putAll(tags);
+			this.tagsProvider = KafkaMetrics.templateTagsProvider(this.micrometerTags);
 		}
 	}
 
@@ -625,18 +633,16 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
 		this.logger.trace(() -> "Sending: " + KafkaUtils.format(producerRecord));
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
-		Object sample = null;
-		if (this.micrometerEnabled && this.micrometerHolder == null) {
-			this.micrometerHolder = obtainMicrometerHolder();
-		}
-		if (this.micrometerHolder != null) {
-			sample = this.micrometerHolder.start();
-		}
+		Observation observation = Observation
+				.createNotStarted(KafkaTemplateObservation.TEMPLATE_OBSERVATION.getName(),
+						this.observationContext, this.observationRegistry)
+				.tagsProvider(this.tagsProvider)
+				.start();
 		if (this.producerInterceptor != null) {
 			this.producerInterceptor.onSend(producerRecord);
 		}
 		Future<RecordMetadata> sendFuture =
-				producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample));
+				producer.send(producerRecord, buildCallback(producerRecord, producer, future, observation));
 		// May be an immediate failure
 		if (sendFuture.isDone()) {
 			try {
@@ -658,7 +664,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private Callback buildCallback(final ProducerRecord<K, V> producerRecord, final Producer<K, V> producer,
-			final SettableListenableFuture<SendResult<K, V>> future, @Nullable Object sample) {
+			final SettableListenableFuture<SendResult<K, V>> future, Observation observation) {
 
 		return (metadata, exception) -> {
 			try {
@@ -671,9 +677,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			}
 			try {
 				if (exception == null) {
-					if (sample != null) {
-						this.micrometerHolder.success(sample);
-					}
 					future.set(new SendResult<>(producerRecord, metadata));
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
@@ -682,9 +685,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 							+ ", metadata: " + metadata);
 				}
 				else {
-					if (sample != null) {
-						this.micrometerHolder.failure(sample, exception.getClass().getSimpleName());
-					}
+					observation.error(exception);
 					future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onError(producerRecord, metadata, exception);
@@ -694,6 +695,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				}
 			}
 			finally {
+				observation.stop();
 				if (!KafkaTemplate.this.transactional) {
 					closeProducer(producer, false);
 				}
@@ -753,27 +755,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		}
 	}
 
-	@Nullable
-	private MicrometerHolder obtainMicrometerHolder() {
-		MicrometerHolder holder = null;
-		try {
-			if (KafkaUtils.MICROMETER_PRESENT) {
-				holder = new MicrometerHolder(this.applicationContext, this.beanName,
-						"spring.kafka.template", "KafkaTemplate Timer",
-						this.micrometerTags);
-			}
-		}
-		catch (@SuppressWarnings("unused") IllegalStateException ex) {
-			this.micrometerEnabled = false;
-		}
-		return holder;
-	}
-
 	@Override
 	public void destroy() {
-		if (this.micrometerHolder != null) {
-			this.micrometerHolder.destroy();
-		}
 		if (this.customProducerFactory) {
 			((DefaultKafkaProducerFactory<K, V>) this.producerFactory).destroy();
 		}

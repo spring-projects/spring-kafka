@@ -30,7 +30,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
 
 /**
  * Utility methods.
@@ -48,12 +47,6 @@ public final class KafkaUtils {
 
 	private static Function<ConsumerRecord<?, ?>, String> crFormatter =
 			rec -> rec.topic() + "-" + rec.partition() + "@" + rec.offset();
-
-	/**
-	 * True if micrometer is on the class path.
-	 */
-	public static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
-			"io.micrometer.core.instrument.MeterRegistry", KafkaUtils.class.getClassLoader());
 
 	private static final ThreadLocal<String> GROUP_IDS = new ThreadLocal<>();
 

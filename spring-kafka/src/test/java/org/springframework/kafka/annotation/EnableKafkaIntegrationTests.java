@@ -282,17 +282,17 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.receivedGroupId).isEqualTo("bar");
 		assertThat(this.listener.listenerInfo).isEqualTo("info for the bar listener");
 		assertThat(this.meterRegistry.get("spring.kafka.template")
-				.tag("name", "template")
+				.tag("bean.name", "template")
 				.tag("extraTag", "bar")
-				.tag("result", "success")
+				.tag("error", "none")
 				.timer()
 				.count())
 						.isGreaterThan(0L);
 
 		assertThat(this.meterRegistry.get("spring.kafka.listener")
-				.tag("name", "bar-0")
+				.tag("listener.id", "bar-0")
 				.tag("extraTag", "foo")
-				.tag("result", "success")
+				.tag("error", "none")
 				.timer()
 				.count())
 						.isGreaterThan(0L);

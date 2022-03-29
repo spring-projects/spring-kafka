@@ -260,8 +260,6 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private long idleBetweenPolls;
 
-	private boolean micrometerEnabled = true;
-
 	private Duration consumerStartTimeout = DEFAULT_CONSUMER_START_TIMEOUT;
 
 	private Boolean subBatchPerPartition;
@@ -622,17 +620,19 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.idleBetweenPolls;
 	}
 
+	@Deprecated
 	public boolean isMicrometerEnabled() {
-		return this.micrometerEnabled;
+		return true;
 	}
 
 	/**
 	 * Set to false to disable the Micrometer listener timers. Default true.
 	 * @param micrometerEnabled false to disable.
 	 * @since 2.3
+	 * @deprecated this is no longer used.
 	 */
+	@Deprecated
 	public void setMicrometerEnabled(boolean micrometerEnabled) {
-		this.micrometerEnabled = micrometerEnabled;
 	}
 
 	/**
