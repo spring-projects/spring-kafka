@@ -176,7 +176,7 @@ public @interface EmbeddedKafka {
 	/**
 	 * Timeout in seconds for admin operations (e.g. topic creation, close).
 	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ADMIN_TIMEOUT}
-	 * @since 3.0
+	 * @since 2.8.5
 	 */
 	int adminTimeout() default EmbeddedKafkaBroker.DEFAULT_ADMIN_TIMEOUT;
 

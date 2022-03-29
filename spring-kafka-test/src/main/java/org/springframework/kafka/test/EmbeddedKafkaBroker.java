@@ -282,7 +282,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * Set the timeout in seconds for admin operations (e.g. topic creation, close).
 	 * @param adminTimeout the timeout.
 	 * @return the {@link EmbeddedKafkaBroker}
-	 * @since 3.0
+	 * @since 2.8.5
 	 */
 	public EmbeddedKafkaBroker adminTimeout(int adminTimeout) {
 		this.adminTimeout = Duration.ofSeconds(adminTimeout);
