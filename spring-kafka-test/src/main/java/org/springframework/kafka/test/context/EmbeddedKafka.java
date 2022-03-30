@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
  * @author Gary Russell
  * @author Sergio Lourenco
  * @author Pawel Lozinski
+ * @author Adrian Chlebosz
  *
  * @since 1.3
  *
@@ -171,6 +172,13 @@ public @interface EmbeddedKafka {
 	 * @since 2.4
 	 */
 	int zkSessionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_SESSION_TIMEOUT;
+
+	/**
+	 * Timeout in seconds for admin operations (e.g. topic creation, close).
+	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ADMIN_TIMEOUT}
+	 * @since 2.8.5
+	 */
+	int adminTimeout() default EmbeddedKafkaBroker.DEFAULT_ADMIN_TIMEOUT;
 
 }
 

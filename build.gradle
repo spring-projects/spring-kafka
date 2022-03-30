@@ -66,7 +66,8 @@ ext {
 	junitJupiterVersion = '5.8.2'
 	kafkaVersion = '3.1.0'
 	log4jVersion = '2.17.2'
-	micrometerVersion = '2.0.0-M3'
+	micrometerVersion = '2.0.0-SNAPSHOT'
+	micrometerTracingVersion = '1.0.0-SNAPSHOT'
 	mockitoVersion = '4.0.0'
 	reactorVersion = '2020.0.17'
 	scalaVersion = '2.13'
@@ -104,6 +105,8 @@ allprojects {
 			mavenBom "org.springframework:spring-framework-bom:$springVersion"
 			mavenBom "io.projectreactor:reactor-bom:$reactorVersion"
 			mavenBom "org.springframework.data:spring-data-bom:$springDataVersion"
+			mavenBom "io.micrometer:micrometer-bom:$micrometerVersion"
+			mavenBom "io.micrometer:micrometer-tracing-bom:$micrometerTracingVersion"
 		}
 	}
 
@@ -319,7 +322,6 @@ project ('spring-kafka') {
 		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion"
 		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
-
 		optionalApi 'com.fasterxml.jackson.core:jackson-core'
 		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
@@ -338,13 +340,16 @@ project ('spring-kafka') {
 
 		optionalApi 'io.projectreactor:reactor-core'
 		optionalApi 'io.projectreactor.kafka:reactor-kafka'
-		optionalApi "io.micrometer:micrometer-core:$micrometerVersion"
-        optionalApi "io.micrometer:micrometer-binders:$micrometerVersion"
+		optionalApi 'io.micrometer:micrometer-binders'
+		optionalApi 'io.micrometer:micrometer-tracing-api'
 
 		testImplementation project (':spring-kafka-test')
 		testImplementation 'io.projectreactor:reactor-test'
 		testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 		testImplementation "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
+		testImplementation 'io.micrometer:micrometer-tracing-bridge-brave'
+		testImplementation 'io.micrometer:micrometer-tracing-test'
+		testImplementation 'io.micrometer:micrometer-tracing-integration-test'
 	}
 }
 
