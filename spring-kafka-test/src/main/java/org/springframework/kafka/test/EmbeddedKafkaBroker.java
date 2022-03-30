@@ -90,6 +90,7 @@ import kafka.zookeeper.ZooKeeperClient;
  * @author Elliot Kennedy
  * @author Nakul Mishra
  * @author Pawel Lozinski
+ * @author Adrian Chlebosz
  *
  * @since 2.2
  */
@@ -113,7 +114,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 */
 	public static final String BROKER_LIST_PROPERTY = "spring.embedded.kafka.brokers.property";
 
-	private static final Duration DEFAULT_ADMIN_TIMEOUT = Duration.ofSeconds(10);
+	public static final int DEFAULT_ADMIN_TIMEOUT = 10;
 
 	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 18000;
 
@@ -157,7 +158,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private int[] kafkaPorts;
 
-	private Duration adminTimeout = DEFAULT_ADMIN_TIMEOUT;
+	private Duration adminTimeout = Duration.ofSeconds(DEFAULT_ADMIN_TIMEOUT);
 
 	private int zkConnectionTimeout = DEFAULT_ZK_CONNECTION_TIMEOUT;
 
@@ -238,26 +239,6 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	/**
-	 * Set an explicit port for the embedded Zookeeper.
-	 * @param port the port.
-	 * @return the {@link EmbeddedKafkaBroker}.
-	 * @since 2.3
-	 */
-	public EmbeddedKafkaBroker zkPort(int port) {
-		this.zkPort = port;
-		return this;
-	}
-	/**
-	 * Set the timeout in seconds for admin operations (e.g. topic creation, close).
-	 * Default 30 seconds.
-	 * @param adminTimeout the timeout.
-	 * @since 2.2
-	 */
-	public void setAdminTimeout(int adminTimeout) {
-		this.adminTimeout = Duration.ofSeconds(adminTimeout);
-	}
-
-	/**
 	 * Set the system property with this name to the list of broker addresses.
 	 * @param brokerListProperty the brokerListProperty to set
 	 * @return this broker.
@@ -265,6 +246,17 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 */
 	public EmbeddedKafkaBroker brokerListProperty(String brokerListProperty) {
 		this.brokerListProperty = brokerListProperty;
+		return this;
+	}
+
+	/**
+	 * Set an explicit port for the embedded Zookeeper.
+	 * @param port the port.
+	 * @return the {@link EmbeddedKafkaBroker}.
+	 * @since 2.3
+	 */
+	public EmbeddedKafkaBroker zkPort(int port) {
+		this.zkPort = port;
 		return this;
 	}
 
@@ -284,6 +276,27 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 */
 	public void setZkPort(int zkPort) {
 		this.zkPort = zkPort;
+	}
+
+	/**
+	 * Set the timeout in seconds for admin operations (e.g. topic creation, close).
+	 * @param adminTimeout the timeout.
+	 * @return the {@link EmbeddedKafkaBroker}
+	 * @since 2.8.5
+	 */
+	public EmbeddedKafkaBroker adminTimeout(int adminTimeout) {
+		this.adminTimeout = Duration.ofSeconds(adminTimeout);
+		return this;
+	}
+
+	/**
+	 * Set the timeout in seconds for admin operations (e.g. topic creation, close).
+	 * Default 10 seconds.
+	 * @param adminTimeout the timeout.
+	 * @since 2.2
+	 */
+	public void setAdminTimeout(int adminTimeout) {
+		this.adminTimeout = Duration.ofSeconds(adminTimeout);
 	}
 
 	/**
