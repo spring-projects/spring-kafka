@@ -165,7 +165,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private String clientIdSuffix;
 
 	private Runnable emergencyStop = () -> stopAbnormally(() -> {
-		// NOSONAR
 	});
 
 	private volatile ListenerConsumer listenerConsumer;
@@ -222,7 +221,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	/**
-	 * Set a {@link Runnable} to call whenever an {@link Error} occurs on a listener
+	 * Set a {@link Runnable} to call whenever a fatal error occurs on the listener
 	 * thread.
 	 * @param emergencyStop the Runnable.
 	 * @since 2.2.1
@@ -1275,11 +1274,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					exitThrowable = e;
 				}
 				catch (Error e) { // NOSONAR - rethrown
-					Runnable runnable = KafkaMessageListenerContainer.this.emergencyStop;
-					if (runnable != null) {
-						runnable.run();
-					}
 					this.logger.error(e, "Stopping container due to an Error");
+					this.fatalError = true;
 					wrapUp(e);
 					throw e;
 				}
@@ -1740,8 +1736,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				this.logger.error("Fatal consumer exception; stopping container");
-				KafkaMessageListenerContainer.this.stop(false);
+				if (!(throwable instanceof Error)) {
+					this.logger.error("Fatal consumer exception; stopping container");
+				}
+				KafkaMessageListenerContainer.this.emergencyStop.run();
 			}
 			this.monitorTask.cancel(true);
 			if (!this.taskSchedulerExplicitlySet) {

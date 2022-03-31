@@ -99,6 +99,7 @@ import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
+import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
@@ -3068,38 +3069,63 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
-	void testFatalErrorOnAuthenticationException() throws Exception {
+	void testFatalErrorOnAuthenticationException() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
-		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
-		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
-
-		willThrow(AuthenticationException.class)
-				.given(consumer).poll(any());
-
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setGroupId("grp");
 		containerProps.setClientId("clientId");
 		containerProps.setMessageListener((MessageListener) r -> { });
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
+		testFatalErrorOnAuthenticationException(container, cf);
+	}
+
+	@Test
+	void testFatalErrorOnAuthenticationExceptionConcurrent() throws InterruptedException {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> { });
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		testFatalErrorOnAuthenticationException(container, cf);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private void testFatalErrorOnAuthenticationException(AbstractMessageListenerContainer container,
+			ConsumerFactory<Integer, String> cf) throws InterruptedException {
+
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"),
+				container instanceof ConcurrentMessageListenerContainer ? eq("-0") : isNull(), any()))
+						.willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
+
+		willThrow(AuthenticationException.class)
+				.given(consumer).poll(any());
 
 		AtomicReference<ConsumerStoppedEvent.Reason> reason = new AtomicReference<>();
-		CountDownLatch stopped = new CountDownLatch(1);
+		CountDownLatch consumerStopped = new CountDownLatch(1);
+		CountDownLatch containerStopped = new CountDownLatch(1);
 
 		container.setApplicationEventPublisher(e -> {
 			if (e instanceof ConsumerStoppedEvent) {
 				reason.set(((ConsumerStoppedEvent) e).getReason());
-				stopped.countDown();
+				consumerStopped.countDown();
+			}
+			else if (e instanceof ContainerStoppedEvent) {
+				containerStopped.countDown();
 			}
 		});
 
 		container.start();
 		try {
-			assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(consumerStopped.await(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(reason.get()).isEqualTo(Reason.AUTH);
+			assertThat(containerStopped.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(container.isInExpectedState()).isFalse();
 		}
 		finally {
 			container.stop();
@@ -3125,18 +3151,23 @@ public class KafkaMessageListenerContainerTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 
 		AtomicReference<ConsumerStoppedEvent.Reason> reason = new AtomicReference<>();
-		CountDownLatch stopped = new CountDownLatch(1);
+		CountDownLatch consumerStopped = new CountDownLatch(1);
+		CountDownLatch containerStopped = new CountDownLatch(1);
 
 		container.setApplicationEventPublisher(e -> {
 			if (e instanceof ConsumerStoppedEvent) {
 				reason.set(((ConsumerStoppedEvent) e).getReason());
-				stopped.countDown();
+				consumerStopped.countDown();
+			}
+			else if (e instanceof ContainerStoppedEvent) {
+				containerStopped.countDown();
 			}
 		});
 
 		container.start();
-		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(consumerStopped.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(reason.get()).isEqualTo(Reason.AUTH);
+		assertThat(container.isInExpectedState()).isFalse();
 		container.stop();
 	}
 
@@ -3163,6 +3194,7 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+		assertThat(container.isInExpectedState()).isTrue();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -3186,13 +3218,14 @@ public class KafkaMessageListenerContainerTests {
 		CountDownLatch stopped = new CountDownLatch(1);
 
 		container.setApplicationEventPublisher(e -> {
-			if (e instanceof ConsumerStoppedEvent) {
+			if (e instanceof ContainerStoppedEvent) {
 				stopped.countDown();
 			}
 		});
 
 		container.start();
 		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isFalse();
 		container.stop();
 	}
 
