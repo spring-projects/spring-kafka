@@ -112,8 +112,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
-	private final Observation.Context observationContext = new Observation.Context();
-
 	private String beanName = "kafkaTemplate";
 
 	private RecordMessageConverter messageConverter = new MessagingMessageConverter();
@@ -216,7 +214,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	@Override
 	public void setBeanName(String name) {
 		this.beanName = name;
-		this.observationContext.put(KafkaTemplateObservation.TemplateLowCardinalityTags.BEAN_NAME.getKey(), name);
 	}
 
 	@Override
@@ -633,9 +630,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
 		this.logger.trace(() -> "Sending: " + KafkaUtils.format(producerRecord));
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
+		Observation.Context observationContext = new Observation.Context();
+		observationContext.put(KafkaTemplateObservation.TemplateLowCardinalityTags.BEAN_NAME.getKey(), this.beanName);
 		Observation observation = Observation
 				.createNotStarted(KafkaTemplateObservation.TEMPLATE_OBSERVATION.getName(),
-						this.observationContext, this.observationRegistry)
+						observationContext, this.observationRegistry)
 				.tagsProvider(this.tagsProvider)
 				.start();
 		if (this.producerInterceptor != null) {

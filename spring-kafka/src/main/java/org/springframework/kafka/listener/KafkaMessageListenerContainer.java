@@ -2073,6 +2073,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * @throws Error an error.
 		 */
 		@Nullable
+		@SuppressWarnings("try")
 		private RuntimeException doInvokeBatchListener(final ConsumerRecords<K, V> records, // NOSONAR
 				List<ConsumerRecord<K, V>> recordList) {
 
@@ -2473,12 +2474,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * @throws Error an error.
 		 */
 		@Nullable
+		@SuppressWarnings("try")
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> record, // NOSONAR
 				Iterator<ConsumerRecord<K, V>> iterator) {
 
 			Observation observation = startObserving();
 
-			try {
+			try (Scope scope = observation.openScope()) {
 				invokeOnMessage(record);
 				recordInterceptAfter(record, null);
 			}

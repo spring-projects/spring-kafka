@@ -54,7 +54,7 @@ public final class KafkaMetrics {
 	static {
 		OBSERVATION_REGISTRY = ObservationRegistry.create();
 		OBSERVATION_REGISTRY.observationConfig()
-				.observationHandler(new TimerObservationHandler(Metrics.globalRegistry));
+				.observationHandler(new CachingTimerObservationHandler(Metrics.globalRegistry));
 	}
 
 	private KafkaMetrics() {
