@@ -244,7 +244,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * a send operation. By default a {@link LoggingProducerListener} is configured
 	 * which logs errors only.
 	 * @param producerListener the listener; may be {@code null}.
+	 * @deprecated in favor of {@link #setProducerInterceptor(ProducerInterceptor)}
+	 * @see #setProducerInterceptor(ProducerInterceptor)
 	 */
+	@Deprecated(since = "3.0", forRemoval = true)
 	public void setProducerListener(@Nullable ProducerListener<K, V> producerListener) {
 		this.producerListener = producerListener;
 	}
