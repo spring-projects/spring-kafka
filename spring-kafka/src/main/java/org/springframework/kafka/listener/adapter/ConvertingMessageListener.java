@@ -16,17 +16,13 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.header.Header;
 
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.ConsumerAwareMessageListener;
+import org.springframework.kafka.listener.DelegatingMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
@@ -45,10 +41,11 @@ import org.springframework.util.Assert;
  *
  * @author Adrian Chlebosz
  * @since 3.0
+ * @see DelegatingMessageListener
  * @see AcknowledgingConsumerAwareMessageListener
  */
 @SuppressWarnings("rawtypes")
-public class ConvertingMessageListener<V> implements AcknowledgingConsumerAwareMessageListener<Object, Object> {
+public class ConvertingMessageListener<V> implements DelegatingMessageListener<MessageListener>, AcknowledgingConsumerAwareMessageListener<Object, Object> {
 
 	private final MessageListener delegate;
 	private final Class<V> desiredValueType;
@@ -83,9 +80,14 @@ public class ConvertingMessageListener<V> implements AcknowledgingConsumerAwareM
 	}
 
 	@Override
+	public MessageListener getDelegate() {
+		return this.delegate;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
-	public void onMessage(ConsumerRecord data, Acknowledgment acknowledgment, Consumer consumer) {
-		ConsumerRecord convertedConsumerRecord = convertConsumerRecord(data);
+	public void onMessage(ConsumerRecord receivedRecord, Acknowledgment acknowledgment, Consumer consumer) {
+		ConsumerRecord convertedConsumerRecord = convertConsumerRecord(receivedRecord);
 		if (this.delegate instanceof AcknowledgingConsumerAwareMessageListener) {
 			this.delegate.onMessage(convertedConsumerRecord, acknowledgment, consumer);
 		}
@@ -95,32 +97,36 @@ public class ConvertingMessageListener<V> implements AcknowledgingConsumerAwareM
 		else if (this.delegate instanceof AcknowledgingMessageListener) {
 			this.delegate.onMessage(convertedConsumerRecord, acknowledgment);
 		}
-
-		this.delegate.onMessage(convertedConsumerRecord);
+		else {
+			this.delegate.onMessage(convertedConsumerRecord);
+		}
 	}
 
-	private ConsumerRecord convertConsumerRecord(ConsumerRecord data) {
-		Header[] headerArray = data.headers().toArray();
-		Map<String, Object> headerMap = Arrays.stream(headerArray)
-				.collect(Collectors.toMap(Header::key, Header::value));
+	private ConsumerRecord convertConsumerRecord(ConsumerRecord receivedRecord) {
+		Message message = new GenericMessage<>(receivedRecord.value());
+		Object convertedPayload = this.messageConverter.fromMessage(message, this.desiredValueType);
 
-		Message message = new GenericMessage<>(data.value(), headerMap);
-		Object converted = this.messageConverter.fromMessage(message, this.desiredValueType);
-
-		if (converted == null) {
+		if (convertedPayload == null) {
 			throw new MessageConversionException(message, "Message cannot be converted by used MessageConverter");
 		}
 
-		return rebuildConsumerRecord(data, converted);
+		return rebuildConsumerRecord(receivedRecord, convertedPayload);
 	}
 
-	private static ConsumerRecord rebuildConsumerRecord(ConsumerRecord data, Object converted) {
-		return new ConsumerRecord<>(
-				data.topic(),
-				data.partition(),
-				data.offset(),
-				data.key(),
-				converted
+	@SuppressWarnings("unchecked")
+	private static ConsumerRecord rebuildConsumerRecord(ConsumerRecord receivedRecord, Object convertedPayload) {
+		return new ConsumerRecord(
+			receivedRecord.topic(),
+			receivedRecord.partition(),
+			receivedRecord.offset(),
+			receivedRecord.timestamp(),
+			receivedRecord.timestampType(),
+			receivedRecord.serializedKeySize(),
+			receivedRecord.serializedValueSize(),
+			receivedRecord.key(),
+			convertedPayload,
+			receivedRecord.headers(),
+			receivedRecord.leaderEpoch()
 		);
 	}
 

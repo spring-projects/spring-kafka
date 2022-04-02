@@ -18,11 +18,18 @@ package org.springframework.kafka.listener.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.MessageConversionException;
 
@@ -68,6 +75,26 @@ class ConvertingMessageListenerTests {
 		convertingMessageListener.setMessageConverter(new MappingJackson2MessageConverter());
 
 		convertingMessageListener.onMessage(consumerRecord, null, null);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testMessageListenerIsInvokedOnlyOnce() {
+		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", 0);
+
+		var delegateListener = mock(AcknowledgingConsumerAwareMessageListener.class);
+		var convertingMessageListener = new ConvertingMessageListener<>(
+			delegateListener,
+			Long.class
+		);
+		convertingMessageListener.setMessageConverter(new MappingJackson2MessageConverter());
+
+		convertingMessageListener.onMessage(consumerRecord, null, null);
+
+		verify(delegateListener, times(0)).onMessage(any());
+		verify(delegateListener, times(0)).onMessage(any(), any(Acknowledgment.class));
+		verify(delegateListener, times(0)).onMessage(any(), any(Consumer.class));
+		verify(delegateListener, times(1)).onMessage(any(), any(), any());
 	}
 
 	@Test
