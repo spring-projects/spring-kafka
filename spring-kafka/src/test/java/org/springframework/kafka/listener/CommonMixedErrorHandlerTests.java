@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,8 +36,8 @@ public class CommonMixedErrorHandlerTests {
 		CommonMixedErrorHandler mixed = new CommonMixedErrorHandler(record, batch);
 		mixed.handleBatch(null, null, null, null, null);
 		verify(batch).handleBatch(null, null, null, null, null);
-		mixed.handleRecord(null, null, null, null);
-		verify(record).handleRecord(null, null, null, null);
+		mixed.handleOne(null, null, null, null);
+		verify(record).handleOne(null, null, null, null);
 		mixed.handleRemaining(null, null, null, null);
 		verify(record).handleRemaining(null, null, null, null);
 		mixed.handleOtherException(null, null, null, false);

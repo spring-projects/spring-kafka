@@ -19,17 +19,17 @@ package org.springframework.kafka.listener;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * Common super class for classes that deal with failing to consume a consumer record.
@@ -40,9 +40,15 @@ import org.springframework.util.backoff.BackOff;
  */
 public abstract class FailedRecordProcessor extends ExceptionClassifier implements DeliveryAttemptAware {
 
-	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> ALWAYS_SKIP_PREDICATE = (r, e) -> true;
+	private static final BackOff NO_RETRIES_OR_DELAY_BACKOFF = new FixedBackOff(0L, 0L);
 
-	private static final BiPredicate<ConsumerRecord<?, ?>, Exception> NEVER_SKIP_PREDICATE = (r, e) -> false;
+	private final BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> noRetriesForClassified =
+			(rec, ex) -> {
+				if (!getClassifier().classify(ex)) {
+					return NO_RETRIES_OR_DELAY_BACKOFF;
+				}
+				return this.userBackOffFunction.apply(rec, ex);
+			};
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
@@ -50,8 +56,13 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 
 	private boolean commitRecovered;
 
+	private BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> userBackOffFunction = (rec, ex) -> null;
+
+	private boolean seekAfterError = true;
+
 	protected FailedRecordProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff) {
 		this.failureTracker = new FailedRecordTracker(recoverer, backOff, this.logger);
+		this.failureTracker.setBackOffFunction(this.noRetriesForClassified);
 	}
 
 	/**
@@ -78,7 +89,8 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @since 2.6
 	 */
 	public void setBackOffFunction(BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction) {
-		this.failureTracker.setBackOffFunction(backOffFunction);
+		Assert.notNull(backOffFunction, "'backOffFunction' cannot be null");
+		this.userBackOffFunction = backOffFunction;
 	}
 
 	/**
@@ -96,7 +108,8 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * to the previous failure for the same record. The
 	 * {@link #setBackOffFunction(BiFunction) backOffFunction}, if provided, will be
 	 * called to get the {@link BackOff} to use for the new exception; otherwise, the
-	 * configured {@link BackOff} will be used.
+	 * configured {@link BackOff} will be used. Default true since 2.8.5; set to false
+	 * to use the existing retry state, even when exceptions change.
 	 * @param resetStateOnExceptionChange true to reset.
 	 * @since 2.6.3
 	 */
@@ -114,6 +127,29 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 		this.failureTracker.setRetryListeners(listeners);
 	}
 
+	/**
+	 * Return whether to seek after an exception is handled.
+	 * @return true to seek.
+	 * @since 2.8.5
+	 */
+	public boolean isSeekAfterError() {
+		return this.seekAfterError;
+	}
+
+	/**
+	 * When true (default), the error handler will perform seeks on the failed and/or
+	 * remaining records to they will be redelivered on the next poll. When false, the
+	 * container will present the failed and/or remaining records to the listener by
+	 * pausing the consumer for the next poll and using the existing records from the
+	 * previous poll. When false; has the side-effect of setting
+	 * {@link #setResetStateOnExceptionChange(boolean)} to true.
+	 * @param seekAfterError false to not perform seeks.
+	 * @since 2.8.5
+	 */
+	public void setSeekAfterError(boolean seekAfterError) {
+		this.seekAfterError = seekAfterError;
+	}
+
 	@Override
 	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
 		return this.failureTracker.deliveryAttempt(topicPartitionOffset);
@@ -126,7 +162,9 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @param thrownException the exception.
 	 * @return the {@link RecoveryStrategy}.
 	 * @since 2.7
+	 * @deprecated - no longer used.
 	 */
+	@Deprecated
 	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records, Exception thrownException) {
 		return getRecoveryStrategy(records, null, thrownException);
 	}
@@ -139,34 +177,22 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @param thrownException the exception.
 	 * @return the {@link RecoveryStrategy}.
 	 * @since 2.8.4
+	 * @deprecated - no longer used.
 	 */
+	@Deprecated
 	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records,
 												@Nullable Consumer<?, ?> recoveryConsumer, Exception thrownException) {
-		if (getClassifier().classify(thrownException)) {
-			return this.failureTracker::recovered;
-		}
-		else {
-			try {
-				this.failureTracker.getRecoverer().accept(records.get(0), recoveryConsumer, thrownException);
-				this.failureTracker.getRetryListeners().forEach(rl -> rl.recovered(records.get(0), thrownException));
-			}
-			catch (Exception ex) {
-				if (records.size() > 0) {
-					if (SeekUtils.isBackoffException(ex)) {
-						this.logger.debug("Recovery of record ("
-								+ KafkaUtils.format(records.get(0)) + ") backed off: " + ex.getMessage());
-					}
-					else {
-						this.logger.error(ex, () -> "Recovery of record ("
-								+ KafkaUtils.format(records.get(0)) + ") failed");
-					}
-					this.failureTracker.getRetryListeners().forEach(rl ->
-							rl.recoveryFailed(records.get(0), thrownException, ex));
-				}
-				return (rec, excep, cont, consumer) -> NEVER_SKIP_PREDICATE.test(rec, excep);
-			}
-			return (rec, excep, cont, consumer) -> ALWAYS_SKIP_PREDICATE.test(rec, excep);
-		}
+
+		return this.failureTracker::recovered;
+	}
+
+	/**
+	 * Return the failed record tracker.
+	 * @return the tracker.
+	 * @since 2.8.5
+	 */
+	protected FailedRecordTracker getFailureTracker() {
+		return this.failureTracker;
 	}
 
 	public void clearThreadState() {

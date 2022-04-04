@@ -118,7 +118,12 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 
 	@Override
 	public boolean remainingRecords() {
-		return true;
+		return isSeekAfterError();
+	}
+
+	@Override
+	public boolean seeksAfterHandling() {
+		return remainingRecords();
 	}
 
 	@Override
@@ -127,11 +132,23 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	}
 
 	@Override
+	public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+			MessageListenerContainer container) {
+
+		try {
+			return getFailureTracker().recovered(record, thrownException, container, consumer);
+		}
+		catch (Exception ex) {
+			return false;
+		}
+	}
+
+	@Override
 	public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(), // NOSONAR
-				getRecoveryStrategy(records, consumer, thrownException), this.logger, getLogLevel());
+				getFailureTracker()::recovered, this.logger, getLogLevel());
 	}
 
 	@Override
@@ -139,6 +156,14 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 			MessageListenerContainer container, Runnable invokeListener) {
 
 		doHandle(thrownException, data, consumer, container, invokeListener);
+	}
+
+	@Override
+	public <K, V> ConsumerRecords<K, V> handleBatchAndReturnRemaining(Exception thrownException,
+			ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container,
+			Runnable invokeListener) {
+
+		return handle(thrownException, data, consumer, container, invokeListener);
 	}
 
 	@Override

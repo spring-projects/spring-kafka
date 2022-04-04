@@ -72,6 +72,12 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 	protected void doHandle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 
+		handle(thrownException, data, consumer, container, invokeListener);
+	}
+
+	protected <K, V> ConsumerRecords handle(Exception thrownException, ConsumerRecords<?, ?> data,
+			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
+
 		BatchListenerFailedException batchListenerFailedException = getBatchListenerFailedException(thrownException);
 		if (batchListenerFailedException == null) {
 			this.logger.debug(thrownException, "Expected a BatchListenerFailedException; re-seeking batch");
@@ -87,9 +93,10 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 				this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
 			}
 			else {
-				seekOrRecover(thrownException, data, consumer, container, index);
+				return seekOrRecover(thrownException, data, consumer, container, index);
 			}
 		}
+		return ConsumerRecords.empty();
 	}
 
 	private int findIndex(ConsumerRecords<?, ?> data, ConsumerRecord<?, ?> record) {
@@ -109,10 +116,12 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		return i;
 	}
 
-	private void seekOrRecover(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container, int indexArg) {
+	@SuppressWarnings("unchecked")
+	private <K, V> ConsumerRecords<K, V> seekOrRecover(Exception thrownException, @Nullable ConsumerRecords<?, ?> data,
+			Consumer<?, ?> consumer, MessageListenerContainer container, int indexArg) {
 
 		if (data == null) {
-			return;
+			return ConsumerRecords.empty();
 		}
 		Iterator<?> iterator = data.iterator();
 		List<ConsumerRecord<?, ?>> toCommit = new ArrayList<>();
@@ -133,15 +142,37 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		if (offsets.size() > 0) {
 			commit(consumer, container, offsets);
 		}
-		if (remaining.size() > 0) {
-			SeekUtils.seekOrRecover(thrownException, remaining, consumer, container, false,
-				getRecoveryStrategy(remaining, thrownException), this.logger, getLogLevel());
-			ConsumerRecord<?, ?> recovered = remaining.get(0);
-			commit(consumer, container,
-					Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
-							new OffsetAndMetadata(recovered.offset() + 1)));
-			if (remaining.size() > 1) {
-				throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
+		if (isSeekAfterError()) {
+			if (remaining.size() > 0) {
+				SeekUtils.seekOrRecover(thrownException, remaining, consumer, container, false,
+					getFailureTracker()::recovered, this.logger, getLogLevel());
+				ConsumerRecord<?, ?> recovered = remaining.get(0);
+				commit(consumer, container,
+						Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
+								new OffsetAndMetadata(recovered.offset() + 1)));
+				if (remaining.size() > 1) {
+					throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
+				}
+			}
+			return ConsumerRecords.empty();
+		}
+		else {
+			if (indexArg == 0) {
+				return (ConsumerRecords<K, V>) data; // first record just rerun the whole thing
+			}
+			else {
+				try {
+					if (getFailureTracker().recovered(remaining.get(0), thrownException, container,
+							consumer)) {
+						remaining.remove(0);
+					}
+				}
+				catch (Exception e) {
+				}
+				Map<TopicPartition, List<ConsumerRecord<K, V>>> remains = new HashMap<>();
+				remaining.forEach(rec -> remains.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()),
+						tp -> new ArrayList<ConsumerRecord<K, V>>()).add((ConsumerRecord<K, V>) rec));
+				return new ConsumerRecords<>(remains);
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,29 +43,29 @@ public class FailedRecordProcessorTests {
 		List<ConsumerRecord<?, ?>> records = Collections
 				.singletonList(new ConsumerRecord<Object, Object>("foo", 0, 0L, null, null));
 		RuntimeException exception = new RuntimeException();
-		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null, null);
+		frp.getFailureTracker().recovered(records.get(0), exception, null, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(2);
-		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null, null);
+		frp.getFailureTracker().recovered(records.get(0), exception, null, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(3);
-		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null, null);
+		frp.getFailureTracker().recovered(records.get(0), exception, null, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(1);
-		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null, null);
+		frp.getFailureTracker().recovered(records.get(0), exception, null, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(2);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(2);
 		// new partition
 		TopicPartitionOffset tpo2 = new TopicPartitionOffset("foo", 1, 0L);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(1);
-		frp.getRecoveryStrategy(records, exception).recovered(new ConsumerRecord<Object, Object>("foo", 1, 0L, null, null),
+		frp.getFailureTracker().recovered(new ConsumerRecord<Object, Object>("foo", 1, 0L, null, null),
 				exception, null, null);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(2);
 		// new offset
 		tpo2 = new TopicPartitionOffset("foo", 1, 1L);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(1);
-		frp.getRecoveryStrategy(records, exception).recovered(new ConsumerRecord<Object, Object>("foo", 1, 1L, null, null),
+		frp.getFailureTracker().recovered(new ConsumerRecord<Object, Object>("foo", 1, 1L, null, null),
 				exception, null, null);
 		assertThat(frp.deliveryAttempt(tpo2)).isEqualTo(2);
 		// back to original
-		frp.getRecoveryStrategy(records, exception).recovered(records.get(0), exception, null, null);
+		frp.getFailureTracker().recovered(records.get(0), exception, null, null);
 		assertThat(frp.deliveryAttempt(tpo1)).isEqualTo(3);
 	}
 

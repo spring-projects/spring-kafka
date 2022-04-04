@@ -678,7 +678,7 @@ public class ConcurrentMessageListenerContainerTests {
 			}
 
 			@Override
-			public boolean remainingRecords() {
+			public boolean seeksAfterHandling() {
 				return false;
 			}
 

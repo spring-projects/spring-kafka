@@ -133,8 +133,9 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer,
 			@Nullable MessageListenerContainer container, Exception exception, boolean recoverable, EOSMode eosMode) {
 
-		if (SeekUtils.doSeeks(((List) records), consumer, exception, recoverable,
-				getRecoveryStrategy((List) records, exception), container, this.logger)
+		List records2 = records;
+		if (SeekUtils.doSeeks(records2, consumer, exception, recoverable,
+				getFailureTracker()::recovered, container, this.logger)
 					&& isCommitRecovered() && this.kafkaTemplate.isTransactional()) {
 			ConsumerRecord<K, V> skipped = records.get(0);
 			this.kafkaTemplate.sendOffsetsToTransaction(

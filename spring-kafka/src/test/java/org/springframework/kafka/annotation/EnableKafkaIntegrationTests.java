@@ -1599,12 +1599,13 @@ public class EnableKafkaIntegrationTests {
 			return new CommonErrorHandler() {
 
 				@Override
-				public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record,
+				public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record,
 						Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 					listen16Exception = thrownException;
 					listen16Message = record.value();
 					listen16ErrorLatch.countDown();
+					return true;
 				}
 
 			};

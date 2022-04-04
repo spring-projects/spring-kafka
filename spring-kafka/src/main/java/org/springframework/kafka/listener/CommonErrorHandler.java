@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,11 +41,23 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * When true (default), all remaining records including the failed record are passed
 	 * to the error handler.
 	 * @return false to receive only the failed record.
+	 * @deprecated in favor of {@link #seeksAfterHandling()}.
 	 * @see #handleRecord(Exception, ConsumerRecord, Consumer, MessageListenerContainer)
 	 * @see #handleRemaining(Exception, List, Consumer, MessageListenerContainer)
 	 */
+	@Deprecated
 	default boolean remainingRecords() {
 		return false;
+	}
+
+	/**
+	 * Return true if this error handle performs seeks on the failed record and remaining
+	 * records (or just the remaining records after a failed record is recovered).
+	 * @return true if the next poll should fetch records.
+	 */
+	@SuppressWarnings("deprecation")
+	default boolean seeksAfterHandling() {
+		return remainingRecords();
 	}
 
 	/**
@@ -79,12 +91,39 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * @param record the record.
 	 * @param consumer the consumer.
 	 * @param container the container.
+	 * @deprecated in favor of
+	 * {@link #handleOne(Exception, ConsumerRecord, Consumer, MessageListenerContainer)}.
 	 * @see #remainingRecords()
 	 */
+	@Deprecated
 	default void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		LogFactory.getLog(getClass()).error("'handleRecord' is not implemented by this handler", thrownException);
+	}
+
+	/**
+	 * Handle the exception for a record listener when {@link #remainingRecords()} returns
+	 * false. Use this to handle just the single failed record.
+	 * @param thrownException the exception.
+	 * @param record the record.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 * @return true if the error was "handled" or false if not and the container will
+	 * re-submit the record to the listener.
+	 * @see #remainingRecords()
+	 */
+	@SuppressWarnings("deprecation")
+	default boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+			MessageListenerContainer container) {
+
+		try {
+			handleRecord(thrownException, record, consumer, container);
+			return true;
+		}
+		catch (Exception ex) {
+			return false;
+		}
 	}
 
 	/**
@@ -118,6 +157,28 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		LogFactory.getLog(getClass()).error("'handleBatch' is not implemented by this handler", thrownException);
+	}
+
+	/**
+	 * Handle the exception for a batch listener. The complete {@link ConsumerRecords}
+	 * from the poll is supplied. Return the members of the batch that should be re-sent to
+	 * the listener. The returned records MUST be in the same order as the original records.
+	 * @param thrownException the exception.
+	 * @param data the consumer records.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 * @param invokeListener a callback to re-invoke the listener.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the consumer records, or a subset.
+	 * @since 2.8.5
+	 */
+	default <K, V> ConsumerRecords<K, V> handleBatchAndReturnRemaining(Exception thrownException,
+			ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container,
+			Runnable invokeListener) {
+
+		handleBatch(thrownException, data, consumer, container, invokeListener);
+		return ConsumerRecords.empty();
 	}
 
 	@Override

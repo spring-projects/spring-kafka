@@ -60,7 +60,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private boolean resetStateOnRecoveryFailure = true;
 
-	private boolean resetStateOnExceptionChange;
+	private boolean resetStateOnExceptionChange = true;
 
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			LogAccessor logger) {
@@ -118,7 +118,8 @@ class FailedRecordTracker implements RecoveryStrategy {
 	 * to the previous failure for the same record. The
 	 * {@link #setBackOffFunction(BiFunction) backOffFunction}, if provided, will be
 	 * called to get the {@link BackOff} to use for the new exception; otherwise, the
-	 * configured {@link BackOff} will be used.
+	 * configured {@link BackOff} will be used. Default true since 2.8.5; set to false
+	 * to use the existing retry state, even when exceptions change.
 	 * @param resetStateOnExceptionChange true to reset.
 	 * @since 2.6.3
 	 */

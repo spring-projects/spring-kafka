@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -158,9 +158,7 @@ public class FailedRecordTrackerTests {
 				return bo2;
 			}
 		});
-		if (reset) {
-			tracker.setResetStateOnExceptionChange(reset);
-		}
+		tracker.setResetStateOnExceptionChange(reset);
 		@SuppressWarnings("unchecked")
 		ThreadLocal<Map<TopicPartition, Object>> failures = (ThreadLocal<Map<TopicPartition, Object>>) KafkaTestUtils
 				.getPropertyValue(tracker, "failures");

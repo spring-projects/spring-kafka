@@ -3135,6 +3135,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	void testFatalErrorOnAuthenticationException() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
@@ -3147,6 +3148,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	void testFatalErrorOnAuthenticationExceptionConcurrent() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
