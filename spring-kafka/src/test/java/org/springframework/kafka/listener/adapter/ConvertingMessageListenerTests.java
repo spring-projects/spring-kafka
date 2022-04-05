@@ -25,13 +25,18 @@ import static org.mockito.Mockito.verify;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.messaging.converter.MessageConverter;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -115,6 +120,66 @@ class ConvertingMessageListenerTests {
 		assertThatThrownBy(
 			() -> convertingMessageListener.onMessage(consumerRecord, null, null)
 		).isInstanceOf(MessageConversionException.class);
+	}
+
+	@Test
+	public void testHeadersAreAccessibleDuringConversionWhenHeaderMapperIsSpecified() {
+		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", 0);
+		var header = new RecordHeader("headerKey", "headerValue".getBytes());
+		consumerRecord.headers().add(header);
+
+		var delegateListener = (MessageListener<String, Long>) (data) -> { };
+		var messageConverter = new MessageConverter() {
+			@Override
+			public Object fromMessage(Message<?> message, Class<?> targetClass) {
+				var headers = message.getHeaders();
+				assertThat(headers.containsKey("headerKey")).isTrue();
+				assertThat(headers.get("headerKey", byte[].class)).isEqualTo(header.value());
+				return 0L;
+			}
+
+			@Override
+			public Message<?> toMessage(Object payload, MessageHeaders headers) {
+				return null;
+			}
+		};
+		var convertingMessageListener = new ConvertingMessageListener<>(
+			delegateListener,
+			Long.class
+		);
+		convertingMessageListener.setMessageConverter(messageConverter);
+		convertingMessageListener.setKafkaHeaderMapper(new SimpleKafkaHeaderMapper());
+
+		convertingMessageListener.onMessage(consumerRecord, null, null);
+	}
+
+	@Test
+	public void testHeadersAreInaccessibleDuringConversionWhenHeaderMapperIsNotSpecified() {
+		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", 0);
+		var header = new RecordHeader("headerKey", "headerValue".getBytes());
+		consumerRecord.headers().add(header);
+
+		var delegateListener = (MessageListener<String, Long>) (data) -> { };
+		var messageConverter = new MessageConverter() {
+			@Override
+			public Object fromMessage(Message<?> message, Class<?> targetClass) {
+				var headers = message.getHeaders();
+				assertThat(headers.containsKey("headerKey")).isFalse();
+				return 0L;
+			}
+
+			@Override
+			public Message<?> toMessage(Object payload, MessageHeaders headers) {
+				return null;
+			}
+		};
+		var convertingMessageListener = new ConvertingMessageListener<>(
+			delegateListener,
+			Long.class
+		);
+		convertingMessageListener.setMessageConverter(messageConverter);
+
+		convertingMessageListener.onMessage(consumerRecord, null, null);
 	}
 
 	private static class ToBeConverted {
