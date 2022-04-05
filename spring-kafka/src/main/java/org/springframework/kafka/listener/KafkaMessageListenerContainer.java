@@ -1500,8 +1500,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				records = pollConsumer();
-				if (this.pendingRecordsAfterError != null) {
-					resume();
+				if (this.pendingRecordsAfterError != null && !isPaused()) {
 					records = this.pendingRecordsAfterError;
 					this.pendingRecordsAfterError = null;
 				}
