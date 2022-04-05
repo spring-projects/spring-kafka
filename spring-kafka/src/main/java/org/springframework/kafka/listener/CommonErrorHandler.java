@@ -111,6 +111,7 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * @param container the container.
 	 * @return true if the error was "handled" or false if not and the container will
 	 * re-submit the record to the listener.
+	 * @since 2.9
 	 * @see #remainingRecords()
 	 */
 	@SuppressWarnings("deprecation")
@@ -171,7 +172,7 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the consumer records, or a subset.
-	 * @since 2.8.5
+	 * @since 2.9
 	 */
 	default <K, V> ConsumerRecords<K, V> handleBatchAndReturnRemaining(Exception thrownException,
 			ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container,

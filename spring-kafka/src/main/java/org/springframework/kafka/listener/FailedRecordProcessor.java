@@ -108,7 +108,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * to the previous failure for the same record. The
 	 * {@link #setBackOffFunction(BiFunction) backOffFunction}, if provided, will be
 	 * called to get the {@link BackOff} to use for the new exception; otherwise, the
-	 * configured {@link BackOff} will be used. Default true since 2.8.5; set to false
+	 * configured {@link BackOff} will be used. Default true since 2.9; set to false
 	 * to use the existing retry state, even when exceptions change.
 	 * @param resetStateOnExceptionChange true to reset.
 	 * @since 2.6.3
@@ -130,7 +130,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	/**
 	 * Return whether to seek after an exception is handled.
 	 * @return true to seek.
-	 * @since 2.8.5
+	 * @since 2.9
 	 */
 	public boolean isSeekAfterError() {
 		return this.seekAfterError;
@@ -144,7 +144,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * previous poll. When false; has the side-effect of setting
 	 * {@link #setResetStateOnExceptionChange(boolean)} to true.
 	 * @param seekAfterError false to not perform seeks.
-	 * @since 2.8.5
+	 * @since 2.9
 	 */
 	public void setSeekAfterError(boolean seekAfterError) {
 		this.seekAfterError = seekAfterError;
@@ -189,7 +189,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	/**
 	 * Return the failed record tracker.
 	 * @return the tracker.
-	 * @since 2.8.5
+	 * @since 2.9
 	 */
 	protected FailedRecordTracker getFailureTracker() {
 		return this.failureTracker;
