@@ -37,7 +37,9 @@ public interface RecordInterceptor<K, V> extends ThreadStateProcessor {
 
 	/**
 	 * Perform some action on the record or return a different one. If null is returned
-	 * the record will be skipped. Invoked before the listener.
+	 * the record will be skipped. Invoked before the listener. IMPORTANT; if this method
+	 * returns a different record, the topic, partition and offset must not be changed
+	 * to avoid undesirable side-effects.
 	 * @param record the record.
 	 * @param consumer the consumer.
 	 * @return the record or null.

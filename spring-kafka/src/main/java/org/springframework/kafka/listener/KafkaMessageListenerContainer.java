@@ -2447,12 +2447,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Iterator<ConsumerRecord<K, V>> iterator2 = records.iterator();
 			while (iterator2.hasNext()) {
 				ConsumerRecord<K, V> next = iterator2.next();
-				if (next.equals(record) || list.size() > 0) {
+				if (list.size() > 0 || recordsEqual(record, next)) {
 					list.add(next);
 				}
 			}
 			SeekUtils.doSeeks(list, this.consumer, null, true, (rec, ex) -> false, this.logger); // NOSONAR
 			pauseForNackSleep();
+		}
+
+		private boolean recordsEqual(ConsumerRecord<K, V> rec1, ConsumerRecord<K, V> rec2) {
+			return rec1.topic().equals(rec2.topic())
+					&& rec1.partition() == rec2.partition()
+					&& rec1.offset() == rec2.offset();
 		}
 
 		private void pauseForNackSleep() {
