@@ -51,7 +51,7 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	}
 
 	/**
-	 * Return true if this error handle performs seeks on the failed record and remaining
+	 * Return true if this error handler performs seeks on the failed record and remaining
 	 * records (or just the remaining records after a failed record is recovered).
 	 * @return true if the next poll should fetch records.
 	 */
