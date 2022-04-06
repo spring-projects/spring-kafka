@@ -5098,6 +5098,11 @@ If you are using Spring Boot, you simply need to add the error handler as a `@Be
 This new error handler replaces the `SeekToCurrentErrorHandler` and `RecoveringBatchErrorHandler`, which have been the default error handlers for several releases now.
 One difference is that the fallback behavior for batch listeners (when an exception other than a `BatchListenerFailedException` is thrown) is the equivalent of the <<retrying-batch-eh>>.
 
+IMPORTANT: Starting with version 2.9, the `DefaultErrorHandler` can be configured to provide the same semantics as seeking the unprocessed record offsets as discussed below, but without actually seeking.
+Instead, the records are retained by the listener container and resubmitted to the listener after the error handler exits (and after performing a single paused `poll()`, to keep the consumer alive).
+The error handler returns a result to the container that indicates whether the current failing record can be resubmitted, or if it was recovered and then it will not be sent to the listener again.
+To enable this mode, set the property `seekAfterError` to `false`.
+
 The error handler can recover (skip) a record that keeps failing.
 By default, after ten failures, the failed record is logged (at the `ERROR` level).
 You can configure the handler with a custom recoverer (`BiConsumer`) and a `BackOff` that controls the delivery attempts and delays between each.
@@ -5151,6 +5156,11 @@ The sequence of events is:
 * If retries are exhausted, attempt recovery of the failed record (default log only) and perform seeks so that the remaining records (excluding the failed record) will be redelivered.
 The recovered record's offset is committed
 * If retries are exhausted and recovery fails, seeks are performed as if retries are not exhausted.
+
+IMPORTANT: Starting with version 2.9, the `DefaultErrorHandler` can be configured to provide the same semantics as seeking the unprocessed record offsets as discussed above, but without actually seeking.
+Instead, error handler creates a new `ConsumerRecords<?, ?>` containing just the unprocessed records which will then be submitted to the listener (after performing a single paused `poll()`, to keep the consumer alive).
+To enable this mode, set the property `seekAfterError` to `false`.
+
 
 The default recoverer logs the failed record after retries are exhausted.
 You can use a custom recoverer, or one provided by the framework such as the <<dead-letters,`DeadLetterPublishingRecoverer`>>.
@@ -5249,6 +5259,8 @@ If the function returns `null`, the handler's default `BackOff` will be used.
 
 Set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
 By default, the exception type is not considered.
+
+Starting with version 2.9, this is now `true` by default.
 
 Also see <<delivery-header>>.
 
