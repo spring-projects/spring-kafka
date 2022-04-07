@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -242,6 +242,23 @@ public final class KafkaTestUtils {
 			return client.listConsumerGroupOffsets(group).partitionsToOffsetAndMetadata().get() // NOSONAR false positive
 					.get(new TopicPartition(topic, partition));
 		}
+	}
+
+	/**
+	 * Get the current offset and metadata for the provided group/topic/partition.
+	 * @param adminClient the AdminClient instance.
+	 * @param group the group.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @return the offset and metadata.
+	 * @throws Exception if an exception occurs.
+	 * @since 3.0
+	 */
+	public static OffsetAndMetadata getCurrentOffset(AdminClient adminClient, String group, String topic, int partition)
+			throws Exception { // NOSONAR
+
+		return adminClient.listConsumerGroupOffsets(group).partitionsToOffsetAndMetadata().get() // NOSONAR false positive
+				.get(new TopicPartition(topic, partition));
 	}
 
 	/**

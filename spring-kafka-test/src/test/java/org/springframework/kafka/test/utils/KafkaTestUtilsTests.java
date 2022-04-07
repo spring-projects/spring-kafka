@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.Map;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -126,6 +128,23 @@ public class KafkaTestUtilsTests {
 		assertThat(records.count()).isEqualTo(2);
 		producer.close();
 		consumer.close();
+	}
+
+	@Test
+	public void testGetCurrentOffsetWithAdminClient(EmbeddedKafkaBroker broker) throws Exception {
+		Map<String, Object> adminClientProps = Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
+		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
+		try (AdminClient adminClient = AdminClient.create(adminClientProps); KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps)) {
+			producer.send(new ProducerRecord<>("singleTopic3", 0, 1, "foo"));
+
+			KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "testGetCurrentOffsetWithAdminClient",
+					"singleTopic3", 0, false, true, 10_000L);
+			assertThat(KafkaTestUtils.getCurrentOffset(adminClient, "testGetCurrentOffsetWithAdminClient", "singleTopic3", 0))
+					.isNotNull()
+					.extracting(omd -> omd.offset())
+					.isEqualTo(1L);
+		}
+
 	}
 
 }
