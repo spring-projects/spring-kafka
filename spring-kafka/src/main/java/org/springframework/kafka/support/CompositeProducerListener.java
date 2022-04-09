@@ -35,7 +35,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  *
  * @since 2.1.6
- * @deprecated since 3.0 in favor of {@link org.apache.kafka.clients.producer.ProducerInterceptor}
+ * @deprecated since 3.0 in favor of {@link org.springframework.kafka.support.CompositeProducerInterceptor}
  */
 
 @Deprecated(since = "3.0", forRemoval = true)
