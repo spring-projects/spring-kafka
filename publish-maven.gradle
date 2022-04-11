@@ -58,5 +58,6 @@ publishing {
 }
 
 artifactoryPublish {
+	dependsOn build
 	publications(publishing.publications.mavenJava)
 }
