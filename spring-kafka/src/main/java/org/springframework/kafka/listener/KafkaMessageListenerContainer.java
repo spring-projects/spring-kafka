@@ -1339,12 +1339,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			debugRecords(records);
-			resumeConsumerIfNeccessary();
-			if (!this.consumerPaused) {
-				resumePartitionsIfNecessary();
-			}
 
 			invokeIfHaveRecords(records);
+			if (this.pendingRecordsAfterError == null) {
+				resumeConsumerIfNeccessary();
+				if (!this.consumerPaused) {
+					resumePartitionsIfNecessary();
+				}
+			}
 		}
 
 		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
@@ -1500,7 +1502,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				records = pollConsumer();
-				if (this.pendingRecordsAfterError != null && !isPaused()) {
+				if (this.pendingRecordsAfterError != null) {
 					records = this.pendingRecordsAfterError;
 					this.pendingRecordsAfterError = null;
 				}

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,8 +112,6 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 				Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).pause(any());
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		inOrder.verify(this.consumer).resume(any());
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(2L)),
 				Duration.ofSeconds(60));
@@ -122,6 +121,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 2), new OffsetAndMetadata(2L)),
 				Duration.ofSeconds(60));
+		inOrder.verify(this.consumer).resume(any());
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		assertThat(this.config.count).isEqualTo(8);
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "qux", "qux", "fiz", "buz");
@@ -211,6 +211,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 						return new ConsumerRecords(Collections.emptyMap());
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+			List<TopicPartition> paused = new ArrayList<>();
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;
@@ -219,6 +220,17 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
+			willAnswer(i -> {
+				paused.addAll(i.getArgument(0));
+				return null;
+			}).given(consumer).pause(any());
+			willAnswer(i -> {
+				return new HashSet<>(paused);
+			}).given(consumer).paused();
+			willAnswer(i -> {
+				paused.removeAll(i.getArgument(0));
+				return null;
+			}).given(consumer).resume(any());
 			return consumer;
 		}
 
