@@ -80,6 +80,7 @@ import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -2758,6 +2759,70 @@ public class KafkaMessageListenerContainerTests {
 		container.resume();
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(pausedParts).hasSize(1);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "unchecked" })
+	@Test
+	public void rePausePartitionAfterRebalance() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		AtomicBoolean first = new AtomicBoolean(true);
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		given(consumer.assignment()).willReturn(Set.of(tp0, tp1));
+		final CountDownLatch pauseLatch1 = new CountDownLatch(1);
+		final CountDownLatch pauseLatch2 = new CountDownLatch(2);
+		Set<TopicPartition> pausedParts = ConcurrentHashMap.newKeySet();
+		willAnswer(i -> {
+			pausedParts.clear();
+			pausedParts.addAll(i.getArgument(0));
+			pauseLatch1.countDown();
+			pauseLatch2.countDown();
+			return null;
+		}).given(consumer).pause(any());
+		given(consumer.paused()).willReturn(pausedParts);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		Collection<String> foos = new ArrayList<>();
+		foos.add("foo");
+		willAnswer(inv -> {
+			rebal.set(inv.getArgument(1));
+			rebal.get().onPartitionsAssigned(Set.of(tp0, tp1));
+			return null;
+		}).given(consumer).subscribe(eq(foos), any(ConsumerRebalanceListener.class));
+		final CountDownLatch resumeLatch = new CountDownLatch(1);
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setIdleEventInterval(100L);
+		containerProps.setMessageListener((MessageListener) rec -> { });
+		containerProps.setMissingTopicsFatal(false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		InOrder inOrder = inOrder(consumer);
+		container.pausePartition(tp0);
+		container.pausePartition(tp1);
+		assertThat(pauseLatch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pausedParts).hasSize(2)
+				.contains(tp0, tp1);
+		rebal.get().onPartitionsRevoked(Set.of(tp0, tp1));
+		rebal.get().onPartitionsAssigned(Collections.singleton(tp0));
+		assertThat(pauseLatch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pausedParts).hasSize(1)
+				.contains(tp0);
+		assertThat(container).extracting("listenerConsumer")
+				.extracting("pausedPartitions")
+				.asInstanceOf(InstanceOfAssertFactories.collection(TopicPartition.class))
+				.hasSize(1)
+				.containsExactlyInAnyOrder(tp0);
+
 		container.stop();
 	}
 

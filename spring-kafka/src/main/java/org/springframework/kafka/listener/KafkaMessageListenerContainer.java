@@ -691,7 +691,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean stopImmediate = this.containerProperties.isStopImmediate();
 
-		private final Set<TopicPartition> pausedPartitions;
+		private final Set<TopicPartition> pausedPartitions = new HashSet<>();
 
 		private final Map<TopicPartition, List<Long>> offsetsInThisBatch =
 				this.isAnyManualAck && this.containerProperties.isAsyncAcks()
@@ -838,7 +838,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastReceivePartition = new HashMap<>();
 			this.lastAlertPartition = new HashMap<>();
 			this.wasIdlePartition = new HashMap<>();
-			this.pausedPartitions = new HashSet<>();
 		}
 
 		@Nullable
@@ -3224,11 +3223,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.userListener instanceof ConsumerAwareRebalanceListener
 							? (ConsumerAwareRebalanceListener) this.userListener : null;
 
+			private final Collection<TopicPartition> revoked = new LinkedList<>();
+
 			ListenerConsumerRebalanceListener() {
 			}
 
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				this.revoked.addAll(partitions);
 				if (this.consumerAwareListener != null) {
 					this.consumerAwareListener.onPartitionsRevokedBeforeCommit(ListenerConsumer.this.consumer,
 							partitions);
@@ -3269,14 +3271,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				if (ListenerConsumer.this.consumerPaused) {
-					ListenerConsumer.this.consumer.pause(partitions);
-					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
-							+ "consumer paused again, so the initial poll() will never return any records");
-				}
-				if (ListenerConsumer.this.pausedForNack.size() > 0) {
-					ListenerConsumer.this.consumer.pause(ListenerConsumer.this.pausedForNack);
-				}
+				repauseIfNeeded(partitions);
 				ListenerConsumer.this.assignedPartitions.addAll(partitions);
 				if (ListenerConsumer.this.commitCurrentOnAssignment
 						&& !collectAndCommitIfNecessary(partitions)) {
@@ -3290,6 +3285,30 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				else {
 					this.userListener.onPartitionsAssigned(partitions);
+				}
+			}
+
+			private void repauseIfNeeded(Collection<TopicPartition> partitions) {
+				if (ListenerConsumer.this.consumerPaused) {
+					ListenerConsumer.this.consumer.pause(partitions);
+					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
+							+ "consumer paused again, so the initial poll() will never return any records");
+				}
+				Collection<TopicPartition> toRepause = new LinkedList<>();
+				partitions.forEach(tp -> {
+					if (isPartitionPauseRequested(tp)) {
+						toRepause.add(tp);
+					}
+				});
+				if (!ListenerConsumer.this.consumerPaused && toRepause.size() > 0) {
+					ListenerConsumer.this.consumer.pause(toRepause);
+				}
+				this.revoked.removeAll(toRepause);
+				this.revoked.forEach(tp -> resumePartition(tp));
+				ListenerConsumer.this.pausedPartitions.removeAll(this.revoked);
+				this.revoked.clear();
+				if (ListenerConsumer.this.pausedForNack.size() > 0) {
+					ListenerConsumer.this.consumer.pause(ListenerConsumer.this.pausedForNack);
 				}
 			}
 
