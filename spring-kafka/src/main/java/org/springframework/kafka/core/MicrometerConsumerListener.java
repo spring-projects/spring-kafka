@@ -24,10 +24,10 @@ import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
-import io.micrometer.binder.kafka.KafkaClientMetrics;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 
 /**
  * A consumer factory listener that manages {@link KafkaClientMetrics}.

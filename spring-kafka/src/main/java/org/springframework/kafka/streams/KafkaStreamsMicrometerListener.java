@@ -26,10 +26,10 @@ import org.apache.kafka.streams.KafkaStreams;
 
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 
-import io.micrometer.binder.kafka.KafkaStreamsMetrics;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics;
 
 /**
  * Creates a {@link KafkaStreamsMetrics} for the {@link KafkaStreams}.
