@@ -2781,7 +2781,6 @@ public class KafkaMessageListenerContainerTests {
 				// hold up the consumer thread while we revoke/assign partitions
 				suspendConsumerThread.await();
 			}
-			System.out.println(Thread.currentThread().getName());
 			pausedParts.clear();
 			pausedParts.addAll(i.getArgument(0));
 			pauseLatch1.countDown();
