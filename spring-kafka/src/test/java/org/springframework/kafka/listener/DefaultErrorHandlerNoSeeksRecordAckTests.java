@@ -145,6 +145,11 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 			Thread.sleep(20);
 			return records;
 		}).given(consumer).poll(any());
+		CountDownLatch latch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			latch.countDown();
+			return null;
+		}).given(consumer).close();
 		ContainerProperties props = new ContainerProperties("foo");
 		props.setGroupId("grp");
 		props.setMessageListener((MessageListener) rec -> {
@@ -154,12 +159,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 		DefaultErrorHandler deh = new DefaultErrorHandler(new FixedBackOff(10, 5));
 		deh.setSeekAfterError(false);
 		container.setCommonErrorHandler(deh);
-		CountDownLatch latch = new CountDownLatch(1);
 		container.start();
-		willAnswer(inv -> {
-			latch.countDown();
-			return null;
-		}).given(consumer).close();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isRunning()).isFalse();
 		assertThat(container.isInExpectedState()).isFalse();

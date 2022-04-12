@@ -2790,7 +2790,7 @@ public class KafkaMessageListenerContainerTests {
 			if (paused.get()) {
 				pauseLatch1.countDown();
 				// hold up the consumer thread while we revoke/assign partitions on the test thread
-				suspendConsumerThread.await();
+				suspendConsumerThread.await(10, TimeUnit.SECONDS);
 			}
 			Thread.sleep(50);
 			return ConsumerRecords.empty();
