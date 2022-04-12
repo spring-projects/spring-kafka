@@ -65,6 +65,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
@@ -128,6 +129,40 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 		assertThat(this.config.deliveries).contains(1, 1, 1, 1, 2, 3, 1, 1);
 		assertThat(this.config.deliveryAttempt).isNotNull();
 		verify(this.consumer, never()).seek(any(), anyLong());
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void emergencyStopIfPollReturnsRecordsUnexpectedly() throws InterruptedException {
+		final Consumer consumer = mock(Consumer.class);
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		given(consumerFactory.createConsumer("grp", "", null, KafkaTestUtils.defaultPropertyOverrides()))
+			.willReturn(consumer);
+		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("foo", 0),
+				List.of(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+							new RecordHeaders(), Optional.empty()))));
+		willAnswer(inv -> {
+			Thread.sleep(20);
+			return records;
+		}).given(consumer).poll(any());
+		ContainerProperties props = new ContainerProperties("foo");
+		props.setGroupId("grp");
+		props.setMessageListener((MessageListener) rec -> {
+			throw new RuntimeException("emergencyStopIfPollReturnsRecordsUnexpectedly");
+		});
+		KafkaMessageListenerContainer container = new KafkaMessageListenerContainer(consumerFactory, props);
+		DefaultErrorHandler deh = new DefaultErrorHandler(new FixedBackOff(10, 5));
+		deh.setSeekAfterError(false);
+		container.setCommonErrorHandler(deh);
+		CountDownLatch latch = new CountDownLatch(1);
+		container.start();
+		willAnswer(inv -> {
+			latch.countDown();
+			return null;
+		}).given(consumer).close();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isRunning()).isFalse();
+		assertThat(container.isInExpectedState()).isFalse();
 	}
 
 	@Configuration

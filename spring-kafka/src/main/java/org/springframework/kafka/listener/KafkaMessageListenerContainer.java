@@ -1501,6 +1501,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				records = pollConsumer();
 				if (this.pendingRecordsAfterError != null) {
+					int howManyRecords = records.count();
+					if (howManyRecords > 0) {
+						this.logger.error(() -> String.format("Poll returned %d record(s) while consumer was paused "
+								+ "after an error; emergency stop invoked to avoid message loss", howManyRecords));
+						KafkaMessageListenerContainer.this.emergencyStop.run();
+					}
 					records = this.pendingRecordsAfterError;
 					this.pendingRecordsAfterError = null;
 				}
