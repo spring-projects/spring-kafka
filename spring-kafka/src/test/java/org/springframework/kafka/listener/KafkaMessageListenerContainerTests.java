@@ -2773,13 +2773,18 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartition tp1 = new TopicPartition("foo", 1);
 		given(consumer.assignment()).willReturn(Set.of(tp0, tp1));
 		final CountDownLatch pauseLatch1 = new CountDownLatch(1);
-		final CountDownLatch pauseLatch2 = new CountDownLatch(2);
+		final CountDownLatch suspendConsumerThread = new CountDownLatch(1);
 		Set<TopicPartition> pausedParts = ConcurrentHashMap.newKeySet();
+		Thread testThread = Thread.currentThread();
 		willAnswer(i -> {
+			if (pauseLatch1.getCount() == 0 && !Thread.currentThread().equals(testThread)) {
+				// hold up the consumer thread while we revoke/assign partitions
+				suspendConsumerThread.await();
+			}
+			System.out.println(Thread.currentThread().getName());
 			pausedParts.clear();
 			pausedParts.addAll(i.getArgument(0));
 			pauseLatch1.countDown();
-			pauseLatch2.countDown();
 			return null;
 		}).given(consumer).pause(any());
 		given(consumer.paused()).willReturn(pausedParts);
@@ -2814,15 +2819,14 @@ public class KafkaMessageListenerContainerTests {
 				.contains(tp0, tp1);
 		rebal.get().onPartitionsRevoked(Set.of(tp0, tp1));
 		rebal.get().onPartitionsAssigned(Collections.singleton(tp0));
-		assertThat(pauseLatch2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(pausedParts).hasSize(1)
 				.contains(tp0);
 		assertThat(container).extracting("listenerConsumer")
 				.extracting("pausedPartitions")
 				.asInstanceOf(InstanceOfAssertFactories.collection(TopicPartition.class))
 				.hasSize(1)
-				.containsExactlyInAnyOrder(tp0);
-
+				.contains(tp0);
+		suspendConsumerThread.countDown();
 		container.stop();
 	}
 
