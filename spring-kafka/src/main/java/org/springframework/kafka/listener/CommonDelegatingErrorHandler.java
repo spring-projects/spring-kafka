@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,9 +65,15 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	}
 
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public boolean remainingRecords() {
 		return this.defaultErrorHandler.remainingRecords();
+	}
+
+	@Override
+	public boolean seeksAfterHandling() {
+		return this.defaultErrorHandler.seeksAfterHandling();
 	}
 
 	@Override
@@ -96,14 +102,18 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 		checkDelegates();
 	}
 
+	@SuppressWarnings("deprecation")
 	private void checkDelegates() {
 		boolean remainingRecords = this.defaultErrorHandler.remainingRecords();
 		boolean ackAfterHandle = this.defaultErrorHandler.isAckAfterHandle();
+		boolean seeksAfterHandling = this.defaultErrorHandler.seeksAfterHandling();
 		this.delegates.values().forEach(handler -> {
 			Assert.isTrue(remainingRecords == handler.remainingRecords(),
 					"All delegates must return the same value when calling 'remainingRecords()'");
 			Assert.isTrue(ackAfterHandle == handler.isAckAfterHandle(),
 					"All delegates must return the same value when calling 'isAckAfterHandle()'");
+			Assert.isTrue(seeksAfterHandling == handler.seeksAfterHandling(),
+					"All delegates must return the same value when calling 'seeksAfterHandling()'");
 		});
 	}
 

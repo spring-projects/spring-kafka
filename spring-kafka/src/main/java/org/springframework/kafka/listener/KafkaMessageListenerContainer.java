@@ -753,8 +753,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private ConsumerRecords<K, V> pendingRecordsAfterError;
 
-		private boolean pauseAfterError;
-
 		private boolean reprocessCurrent;
 
 		private volatile boolean consumerPaused;
@@ -1608,12 +1606,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pausedForAsyncAcks = true;
 				this.logger.debug(() -> "Pausing for incomplete async acks: " + this.offsetsInThisBatch);
 			}
-			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks) || this.pauseAfterError) {
+			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks)
+					|| this.pendingRecordsAfterError != null) {
+
 				this.consumer.pause(this.consumer.assignment());
 				this.consumerPaused = true;
 				this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
 				publishConsumerPausedEvent(this.consumer.assignment());
-				this.pauseAfterError = false;
 			}
 		}
 
@@ -2302,7 +2301,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
 						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 				if (!afterHandling.isEmpty()) {
-					this.pauseAfterError = true;
 					this.pendingRecordsAfterError = afterHandling;
 				}
 			}
@@ -2687,7 +2685,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					records.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(iterator.next());
 				}
-				this.pauseAfterError = true;
 				this.pendingRecordsAfterError = new ConsumerRecords<>(records);
 			}
 		}

@@ -75,7 +75,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		handle(thrownException, data, consumer, container, invokeListener);
 	}
 
-	protected <K, V> ConsumerRecords handle(Exception thrownException, ConsumerRecords<?, ?> data,
+	protected <K, V> ConsumerRecords<K, V> handle(Exception thrownException, ConsumerRecords<?, ?> data,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		BatchListenerFailedException batchListenerFailedException = getBatchListenerFailedException(thrownException);

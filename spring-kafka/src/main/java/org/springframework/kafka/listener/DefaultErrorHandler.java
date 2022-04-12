@@ -117,13 +117,14 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	}
 
 	@Override
+	@Deprecated
 	public boolean remainingRecords() {
 		return isSeekAfterError();
 	}
 
 	@Override
 	public boolean seeksAfterHandling() {
-		return remainingRecords();
+		return isSeekAfterError();
 	}
 
 	@Override

@@ -48,6 +48,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 	}
 
 	@Override
+	@Deprecated
 	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 

@@ -51,9 +51,15 @@ public class CommonMixedErrorHandler implements CommonErrorHandler {
 		this.batchErrorHandler = batchErrorHandler;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public boolean remainingRecords() {
 		return this.recordErrorHandler.remainingRecords();
+	}
+
+	@Override
+	public boolean seeksAfterHandling() {
+		return this.recordErrorHandler.seeksAfterHandling();
 	}
 
 	@Override
