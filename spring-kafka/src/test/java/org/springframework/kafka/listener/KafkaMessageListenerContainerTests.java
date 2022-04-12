@@ -60,6 +60,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.aopalliance.intercept.MethodInterceptor;
+import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -2773,21 +2774,23 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartition tp1 = new TopicPartition("foo", 1);
 		given(consumer.assignment()).willReturn(Set.of(tp0, tp1));
 		final CountDownLatch pauseLatch1 = new CountDownLatch(1);
+		final CountDownLatch pauseLatch2 = new CountDownLatch(2);
 		final CountDownLatch suspendConsumerThread = new CountDownLatch(1);
 		Set<TopicPartition> pausedParts = ConcurrentHashMap.newKeySet();
 		Thread testThread = Thread.currentThread();
 		willAnswer(i -> {
-			if (pauseLatch1.getCount() == 0 && !Thread.currentThread().equals(testThread)) {
-				// hold up the consumer thread while we revoke/assign partitions
-				suspendConsumerThread.await();
-			}
 			pausedParts.clear();
 			pausedParts.addAll(i.getArgument(0));
 			pauseLatch1.countDown();
+			pauseLatch2.countDown();
 			return null;
 		}).given(consumer).pause(any());
 		given(consumer.paused()).willReturn(pausedParts);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			if (pauseLatch2.getCount() == 0) {
+				// hold up the consumer thread while we revoke/assign partitions
+				suspendConsumerThread.await();
+			}
 			Thread.sleep(50);
 			return ConsumerRecords.empty();
 		});
@@ -2816,8 +2819,12 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(pauseLatch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(pausedParts).hasSize(2)
 				.contains(tp0, tp1);
+		Log logger = LogFactory.getLog("foo");
+		logger.error(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.pausedPartitions"));
 		rebal.get().onPartitionsRevoked(Set.of(tp0, tp1));
 		rebal.get().onPartitionsAssigned(Collections.singleton(tp0));
+		logger.error(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.pausedPartitions"));
+		assertThat(pauseLatch2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(pausedParts).hasSize(1)
 				.contains(tp0);
 		assertThat(container).extracting("listenerConsumer")

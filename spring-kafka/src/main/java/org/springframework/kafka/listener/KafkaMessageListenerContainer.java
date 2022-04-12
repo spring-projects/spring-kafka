@@ -3362,6 +3362,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				this.revoked.removeAll(toRepause);
 				this.revoked.forEach(tp -> resumePartition(tp));
+				ListenerConsumer.this.logger.error("toRepause: " + toRepause);
+				ListenerConsumer.this.logger.error("revoked and not reassigned: " + this.revoked);
 				ListenerConsumer.this.pausedPartitions.removeAll(this.revoked);
 				this.revoked.clear();
 				if (ListenerConsumer.this.pausedForNack.size() > 0) {
