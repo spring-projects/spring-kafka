@@ -753,8 +753,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private ConsumerRecords<K, V> pendingRecordsAfterError;
 
-		private boolean reprocessCurrent;
-
 		private volatile boolean consumerPaused;
 
 		private volatile Thread consumerThread;
@@ -2579,10 +2577,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (this.isManualAck) {
 					this.commitRecovered = true;
 				}
-				if (!this.reprocessCurrent) {
+				if (this.pendingRecordsAfterError == null
+						|| !record.equals(this.pendingRecordsAfterError.iterator().next())) {
 					ackCurrent(record);
 				}
-				this.reprocessCurrent = false;
 				if (this.isManualAck) {
 					this.commitRecovered = false;
 				}
@@ -2681,7 +2679,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				boolean handled = this.commonErrorHandler.handleOne(rte, record, this.consumer,
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
-				this.reprocessCurrent = !handled;
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
 				if (!handled) {
 					records.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
@@ -2691,7 +2688,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					records.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(iterator.next());
 				}
-				this.pendingRecordsAfterError = new ConsumerRecords<>(records);
+				if (records.size() > 0) {
+					this.pendingRecordsAfterError = new ConsumerRecords<>(records);
+				}
 			}
 		}
 
