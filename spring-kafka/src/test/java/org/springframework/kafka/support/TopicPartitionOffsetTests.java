@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ package org.springframework.kafka.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Objects;
+
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
@@ -33,6 +36,12 @@ public class TopicPartitionOffsetTests {
 	void hashCodeTest() {
 		assertThat(new TopicPartitionOffset("foo", 1, SeekPosition.BEGINNING).hashCode())
 				.isNotEqualTo(new TopicPartitionOffset("foo",  1, SeekPosition.END).hashCode());
+	}
+
+	@Test
+	void hashCodeNPE() {
+		assertThat(new TopicPartitionOffset("foo", 0).hashCode())
+				.isEqualTo(Objects.hash(new TopicPartition("foo", 0), null));
 	}
 
 }
