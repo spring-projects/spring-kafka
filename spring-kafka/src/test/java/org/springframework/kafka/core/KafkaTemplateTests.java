@@ -71,6 +71,9 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
@@ -104,6 +107,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Endika Gutierrez
  * @author Thomas Strauß
  * @author Soby Chacko
+ * @author Gurps Bassi
  */
 @EmbeddedKafka(topics = { KafkaTemplateTests.INT_KEY_TOPIC, KafkaTemplateTests.STRING_KEY_TOPIC })
 public class KafkaTemplateTests {
@@ -163,6 +167,12 @@ public class KafkaTemplateTests {
 
 		template.setDefaultTopic(INT_KEY_TOPIC);
 
+		template.setConsumerFactory(
+				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("xx", "false", embeddedKafka)));
+		ConsumerRecords<Integer, String> initialRecords =
+				template.receive(Collections.singleton(new TopicPartitionOffset(INT_KEY_TOPIC, 1, 1L)));
+		assertThat(initialRecords).isEmpty();
+
 		template.sendDefault("foo");
 		assertThat(KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC)).has(value("foo"));
 
@@ -201,8 +211,7 @@ public class KafkaTemplateTests {
 		assertThat(partitions).isNotNull();
 		assertThat(partitions).hasSize(2);
 		assertThat(KafkaTestUtils.getPropertyValue(pf.createProducer(), "delegate")).isSameAs(wrapped.get());
-		template.setConsumerFactory(
-				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("xx", "false", embeddedKafka)));
+
 		ConsumerRecord<Integer, String> receive = template.receive(INT_KEY_TOPIC, 1, received.offset());
 		assertThat(receive).has(allOf(keyValue(2, "buz"), partition(1)))
 				.extracting(ConsumerRecord::offset)
@@ -620,5 +629,23 @@ public class KafkaTemplateTests {
 		inOrder.verify(producerInterceptor1).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
 		inOrder.verify(producerInterceptor2).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
 	}
+
+	@ParameterizedTest(name = "{0} is invalid")
+	@NullSource
+	@ValueSource(longs =  -1)
+	void testReceiveWhenOffsetIsInvalid(Long offset) {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+
+		template.setConsumerFactory(
+				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("xx", "false", embeddedKafka)));
+		TopicPartitionOffset tpoWithNullOffset = new TopicPartitionOffset(INT_KEY_TOPIC, 1, offset);
+
+		assertThatExceptionOfType(KafkaException.class)
+				.isThrownBy(() -> template.receive(Collections.singleton(tpoWithNullOffset)))
+				.withMessage("Offset supplied in TopicPartitionOffset is invalid: " + tpoWithNullOffset);
+	}
+
 
 }

@@ -70,7 +70,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
-
 /**
  * A template for executing high-level operations. When used with a
  * {@link DefaultKafkaProducerFactory}, the template is thread-safe. The producer factory
@@ -88,6 +87,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Endika Gutierrez
  * @author Thomas Strauß
  * @author Soby Chacko
+ * @author Gurps Bassi
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
@@ -570,8 +570,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
 		try (Consumer<K, V> consumer = this.consumerFactory.createConsumer(null, null, null, props)) {
 			requested.forEach(tpo -> {
+				if (tpo.getOffset() == null || tpo.getOffset() < 0) {
+					throw new KafkaException("Offset supplied in TopicPartitionOffset is invalid: " + tpo);
+				}
 				ConsumerRecord<K, V> one = receiveOne(tpo.getTopicPartition(), tpo.getOffset(), pollTimeout, consumer);
-				records.computeIfAbsent(tpo.getTopicPartition(), tp -> new ArrayList<>()).add(one);
+				List<ConsumerRecord<K, V>> consumerRecords = records.computeIfAbsent(tpo.getTopicPartition(), tp -> new ArrayList<>());
+				if (one != null) {
+					consumerRecords.add(one);
+				}
 			});
 			return new ConsumerRecords<>(records);
 		}
