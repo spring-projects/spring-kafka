@@ -818,7 +818,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (String partition : partitions) {
 			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result, null, false, false);
 		}
-		if (partitionOffsets.length == 1 && partitionOffsets[0].partition().equals("*")) {
+		if (partitionOffsets.length == 1 && resolveExpression(partitionOffsets[0].partition()).equals("*")) {
 			result.forEach(tpo -> {
 				tpo.setOffset(resolveInitialOffset(tpo.getTopic(), partitionOffsets[0]));
 				tpo.setRelativeToCurrent(isRelative(tpo.getTopic(), partitionOffsets[0]));
