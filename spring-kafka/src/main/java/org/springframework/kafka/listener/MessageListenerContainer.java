@@ -25,6 +25,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.lang.Nullable;
 
 /**
@@ -192,6 +193,17 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	@Nullable
 	default String getListenerId() {
 		throw new UnsupportedOperationException("This container does not support retrieving the listener id");
+	}
+
+	/**
+	 * Get arbitrary static information that will be added to the
+	 * {@link KafkaHeaders#LISTENER_INFO} header of all records.
+	 * @return the info.
+	 * @since 2.8.4
+	 */
+	@Nullable
+	default byte[] getListenerInfo() {
+		throw new UnsupportedOperationException("This container does not support retrieving the listener info");
 	}
 
 	/**

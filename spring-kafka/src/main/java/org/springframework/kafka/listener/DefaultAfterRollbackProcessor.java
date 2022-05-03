@@ -139,7 +139,8 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 			ConsumerRecord<K, V> skipped = records.get(0);
 			this.kafkaTemplate.sendOffsetsToTransaction(
 					Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
-							new OffsetAndMetadata(skipped.offset() + 1)), consumer.groupMetadata());
+							createOffsetAndMetadata(container, skipped.offset() + 1)
+					), consumer.groupMetadata());
 		}
 
 		if (!recoverable && this.backOff != null) {
@@ -165,4 +166,10 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		this.lastIntervals.remove();
 	}
 
+	private OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset) {
+		if (container == null) {
+			return new OffsetAndMetadata(offset);
+		}
+		return ListenerUtils.createOffsetAndMetadata(container, offset);
+	}
 }

@@ -376,13 +376,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.beanName; // the container factory sets the bean name to the id attribute
 	}
 
-	/**
-	 * Get arbitrary static information that will be added to the
-	 * {@link KafkaHeaders#LISTENER_INFO} header of all records.
-	 * @return the info.
-	 * @since 2.8.4
-	 */
 	@Nullable
+	@Override
 	public byte[] getListenerInfo() {
 		return this.listenerInfo != null ? Arrays.copyOf(this.listenerInfo, this.listenerInfo.length) : null;
 	}

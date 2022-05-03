@@ -560,7 +560,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				?  (listenerMetadata, offset) -> new OffsetAndMetadata(offset)
 				: this.containerProperties.getOffsetAndMetadataProvider();
 
-		private final ConsumerAwareListenerMetadata consumerAwareListenerMetadata = new ConsumerAwareListenerMetadata();
+		private final ListenerMetadata listenerMetadata = new DefaultListenerMetadata(KafkaMessageListenerContainer.this);
 
 		private final Consumer<K, V> consumer;
 
@@ -3144,32 +3144,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private OffsetAndMetadata createOffsetAndMetadata(long offset) {
-			return this.offsetAndMetadataProvider.provide(this.consumerAwareListenerMetadata, offset);
-		}
-
-		private final class ConsumerAwareListenerMetadata implements ListenerMetadata {
-
-			ConsumerAwareListenerMetadata() {
-			}
-
-			@Override
-			@Nullable
-			public String getListenerId() {
-				return getBeanName();
-			}
-
-			@Override
-			@Nullable
-			public String getGroupId() {
-				return ListenerConsumer.this.consumerGroupId;
-			}
-
-			@Override
-			@Nullable
-			public byte[] getListenerInfo() {
-				return ListenerConsumer.this.listenerinfo;
-			}
-
+			return this.offsetAndMetadataProvider.provide(this.listenerMetadata, offset);
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {

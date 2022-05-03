@@ -75,6 +75,7 @@ public class DefaultAfterRollbackProcessorTests {
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("foo"));
 		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
 		processor.process(records, consumer, container,
 				new DeserializationException("intended", null, false, illegalState), true, EOSMode.V2);

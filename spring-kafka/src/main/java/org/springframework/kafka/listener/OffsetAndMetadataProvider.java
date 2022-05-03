@@ -19,9 +19,8 @@ package org.springframework.kafka.listener;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 
 /**
- * Provider for {@link OffsetAndMetadata}. In case of async commits of the offsets,
- * the provider can be used in combination with an {@link  org.apache.kafka.clients.consumer.OffsetCommitCallback} to
- * have more granularity in the way to create an {@link OffsetAndMetadata}.
+ * Provider for {@link OffsetAndMetadata}. The provider can be used to have more granularity when creating an
+ * {@link OffsetAndMetadata}. The provider is used for both sync and async commits of the offsets.
  *
  * @author Francois Rosiere
  * @since 2.8.5

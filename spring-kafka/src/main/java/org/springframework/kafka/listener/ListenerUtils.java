@@ -22,6 +22,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectStreamClass;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -194,5 +195,21 @@ public final class ListenerUtils {
 		while (System.currentTimeMillis() < timeout);
 	}
 
+	/**
+	 * Create a new {@link  OffsetAndMetadata} using the given container and offset.
+	 * @param container a container.
+	 * @param offset an offset.
+	 * @return an offset and metadata.
+	 * @since 2.8.6
+	 */
+	public static OffsetAndMetadata createOffsetAndMetadata(MessageListenerContainer container,
+															long offset) {
+		final OffsetAndMetadataProvider metadataProvider = container.getContainerProperties()
+				.getOffsetAndMetadataProvider();
+		if (metadataProvider != null) {
+			return metadataProvider.provide(new DefaultListenerMetadata(container), offset);
+		}
+		return new OffsetAndMetadata(offset);
+	}
 }
 

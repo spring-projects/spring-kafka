@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -38,4 +39,24 @@ public class ListenerUtilsTests {
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(500);
 	}
 
+	@Test
+	void testCreationOfOffsetAndMetadataWithoutProvider() {
+		final MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("foo"));
+		final OffsetAndMetadata offsetAndMetadata = ListenerUtils.createOffsetAndMetadata(container, 1L);
+		assertThat(offsetAndMetadata.offset()).isEqualTo(1);
+		assertThat(offsetAndMetadata.metadata()).isEmpty();
+	}
+
+	@Test
+	void testCreationOfOffsetAndMetadataWithProvider() {
+		final MessageListenerContainer container = mock(MessageListenerContainer.class);
+		final ContainerProperties properties = new ContainerProperties("foo");
+		properties.setOffsetAndMetadataProvider((listenerMetadata, offset) -> new OffsetAndMetadata(offset, "my-metadata"));
+		given(container.getContainerProperties()).willReturn(properties);
+		final OffsetAndMetadata offsetAndMetadata = ListenerUtils.createOffsetAndMetadata(container, 1L);
+		assertThat(offsetAndMetadata.offset()).isEqualTo(1);
+		assertThat(offsetAndMetadata.metadata()).isEqualTo("my-metadata");
+	}
 }
+

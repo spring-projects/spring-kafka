@@ -138,7 +138,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		}
 		Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
 		toCommit.forEach(rec -> offsets.compute(new TopicPartition(rec.topic(), rec.partition()),
-				(key, val) -> new OffsetAndMetadata(rec.offset() + 1)));
+				(key, val) -> ListenerUtils.createOffsetAndMetadata(container, rec.offset() + 1)));
 		if (offsets.size() > 0) {
 			commit(consumer, container, offsets);
 		}
@@ -149,7 +149,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 				ConsumerRecord<?, ?> recovered = remaining.get(0);
 				commit(consumer, container,
 						Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
-								new OffsetAndMetadata(recovered.offset() + 1)));
+								ListenerUtils.createOffsetAndMetadata(container, recovered.offset() + 1)));
 				if (remaining.size() > 1) {
 					throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
 				}
