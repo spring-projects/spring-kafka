@@ -44,6 +44,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Francois Rosiere
  *
  * @since 1.3.5
  *

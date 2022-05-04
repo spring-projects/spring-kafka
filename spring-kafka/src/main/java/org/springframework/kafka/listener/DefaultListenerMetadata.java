@@ -17,17 +17,19 @@
 package org.springframework.kafka.listener;
 
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 
 /**
  * Default implementation for {@link ListenerMetadata}.
  * @author Francois Rosiere
  * @since 2.8.6
  */
-public class DefaultListenerMetadata implements ListenerMetadata {
+class DefaultListenerMetadata implements ListenerMetadata {
 
 	private final MessageListenerContainer container;
 
-	public DefaultListenerMetadata(MessageListenerContainer container) {
+	DefaultListenerMetadata(MessageListenerContainer container) {
+		Assert.notNull(container, "'container' must not be null");
 		this.container = container;
 	}
 

@@ -47,6 +47,7 @@ import org.springframework.util.backoff.BackOff;
  * fallback handler.
  *
  * @author Gary Russell
+ * @author Francois Rosiere
  * @since 2.8
  *
  */

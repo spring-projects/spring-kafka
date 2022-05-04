@@ -48,6 +48,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
+ * @author Francois Rosiere
  * @since 2.3.1
  *
  */

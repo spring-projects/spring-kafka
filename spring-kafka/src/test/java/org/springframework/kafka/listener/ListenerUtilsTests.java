@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * @author Gary Russell
+ * @author Francois Rosiere
  * @since 2.7.1
  *
  */

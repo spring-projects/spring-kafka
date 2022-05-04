@@ -2471,6 +2471,10 @@ Useful when the consumer code cannot determine that an `ErrorHandlingDeserialize
 |`null`
 |When present and `syncCommits` is `false` a callback invoked after the commit completes.
 
+|[[offsetAndMetadataProvider]]<<offsetAndMetadataProvider,`offsetAndMetadataProvider`>>
+|`null`
+|A provider for `OffsetAndMetadata`; by default, the provider creates an offset and metadata with empty metadata. The provider gives a way to customize the metadata.
+
 |[[commitLogLevel]]<<commitLogLevel,`commitLogLevel`>>
 |DEBUG
 |The logging level for logs pertaining to committing offsets.

@@ -144,6 +144,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Tom van den Berge
  * @author Lukasz Kaminski
  * @author Tomaz Fernandes
+ * @author Francois Rosiere
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> {

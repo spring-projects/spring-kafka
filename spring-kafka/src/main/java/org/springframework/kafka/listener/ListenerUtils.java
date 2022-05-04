@@ -38,6 +38,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * Listener utilities.
  *
  * @author Gary Russell
+ * @author Francois Rosiere
  * @since 2.0
  *
  */

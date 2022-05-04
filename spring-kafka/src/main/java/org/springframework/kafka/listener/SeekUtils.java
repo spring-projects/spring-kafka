@@ -44,6 +44,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * Seek utilities.
  *
  * @author Gary Russell
+ * @author Francois Rosiere
  * @since 2.2
  *
  */

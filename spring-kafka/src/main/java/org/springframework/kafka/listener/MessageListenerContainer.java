@@ -36,6 +36,7 @@ import org.springframework.lang.Nullable;
  * @author Gary Russell
  * @author Vladimir Tsanev
  * @author Tomaz Fernandes
+ * @author Francois Rosiere
  */
 public interface MessageListenerContainer extends SmartLifecycle, DisposableBean {
 
@@ -199,7 +200,7 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	 * Get arbitrary static information that will be added to the
 	 * {@link KafkaHeaders#LISTENER_INFO} header of all records.
 	 * @return the info.
-	 * @since 2.8.4
+	 * @since 2.8.6
 	 */
 	@Nullable
 	default byte[] getListenerInfo() {
