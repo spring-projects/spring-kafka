@@ -43,7 +43,8 @@ public interface Acknowledgment {
 	 * {@code sleep + time spent processing the previous messages from the poll} must be
 	 * less than the consumer {@code max.poll.interval.ms} property, to avoid a
 	 * rebalance.</b>
-	 * @param sleep the time to sleep.
+	 * @param sleep the time to sleep; the actual sleep time will be larger of this value
+	 * and the container's {@code maxPollInterval}, which defaults to 5 seconds.
 	 * @since 2.3
 	 */
 	default void nack(long sleep) {
@@ -60,7 +61,8 @@ public interface Acknowledgment {
 	 * {@code sleep + time spent processing the records before the index} must be less
 	 * than the consumer {@code max.poll.interval.ms} property, to avoid a rebalance.</b>
 	 * @param index the index of the failed record in the batch.
-	 * @param sleep the time to sleep.
+	 * @param sleep the time to sleep; the actual sleep time will be larger of this value
+	 * and the container's {@code maxPollInterval}, which defaults to 5 seconds.
 	 * @since 2.3
 	 */
 	default void nack(int index, long sleep) {
