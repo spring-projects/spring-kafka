@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.config;
+package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -32,6 +32,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.kafka.annotation.EnableKafkaRetryTopic;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
+import org.springframework.kafka.config.KafkaListenerConfigUtils;
+import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
@@ -44,18 +46,6 @@ import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.WakingKafkaConsumerTimingAdjuster;
-import org.springframework.kafka.retrytopic.DeadLetterPublishingRecovererFactory;
-import org.springframework.kafka.retrytopic.DefaultDestinationTopicResolver;
-import org.springframework.kafka.retrytopic.DestinationTopic;
-import org.springframework.kafka.retrytopic.DestinationTopicProcessor;
-import org.springframework.kafka.retrytopic.DestinationTopicResolver;
-import org.springframework.kafka.retrytopic.ListenerContainerFactoryConfigurer;
-import org.springframework.kafka.retrytopic.ListenerContainerFactoryResolver;
-import org.springframework.kafka.retrytopic.RetryTopicBeanNames;
-import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
-import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
-import org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames;
-import org.springframework.kafka.retrytopic.RetryTopicNamesProviderFactory;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;

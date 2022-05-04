@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.config;
+package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
@@ -26,19 +28,6 @@ import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
-import org.springframework.kafka.retrytopic.DeadLetterPublishingRecovererFactory;
-import org.springframework.kafka.retrytopic.DefaultDestinationTopicProcessor;
-import org.springframework.kafka.retrytopic.DefaultDestinationTopicResolver;
-import org.springframework.kafka.retrytopic.DestinationTopic;
-import org.springframework.kafka.retrytopic.DestinationTopicContainer;
-import org.springframework.kafka.retrytopic.DestinationTopicProcessor;
-import org.springframework.kafka.retrytopic.DestinationTopicResolver;
-import org.springframework.kafka.retrytopic.ListenerContainerFactoryConfigurer;
-import org.springframework.kafka.retrytopic.ListenerContainerFactoryResolver;
-import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
-import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
-import org.springframework.kafka.retrytopic.RetryTopicNamesProviderFactory;
-import org.springframework.kafka.retrytopic.SuffixingRetryTopicNamesProviderFactory;
 
 /**
  * Provide the component instances that will be used with

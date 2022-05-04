@@ -45,7 +45,7 @@ import org.springframework.retry.backoff.ThreadWaitSleeper;
  *
  * @author Tomaz Fernandes
  * @since 2.7
- * @deprecated in favor of {@link org.springframework.kafka.config.RetryTopicConfigurationSupport}
+ * @deprecated in favor of {@link org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport}
  *
  */
 @Deprecated

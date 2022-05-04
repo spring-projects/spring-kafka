@@ -48,6 +48,8 @@ import org.springframework.kafka.retrytopic.DestinationTopicProcessor;
 import org.springframework.kafka.retrytopic.DestinationTopicResolver;
 import org.springframework.kafka.retrytopic.ListenerContainerFactoryConfigurer;
 import org.springframework.kafka.retrytopic.ListenerContainerFactoryResolver;
+import org.springframework.kafka.retrytopic.RetryTopicComponentFactory;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.retrytopic.RetryTopicNamesProviderFactory;
 import org.springframework.kafka.support.converter.ConversionException;

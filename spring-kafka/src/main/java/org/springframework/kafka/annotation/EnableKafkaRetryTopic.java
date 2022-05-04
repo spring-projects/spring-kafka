@@ -24,7 +24,7 @@ import java.lang.annotation.Target;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.kafka.config.RetryTopicConfigurationSupport;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 
 /**
  * Enables the non-blocking topic-based delayed retries feature. To be used in
