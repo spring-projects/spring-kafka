@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.config;
+package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,16 +42,6 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
-import org.springframework.kafka.retrytopic.DeadLetterPublishingRecovererFactory;
-import org.springframework.kafka.retrytopic.DefaultDestinationTopicResolver;
-import org.springframework.kafka.retrytopic.DestinationTopicProcessor;
-import org.springframework.kafka.retrytopic.DestinationTopicResolver;
-import org.springframework.kafka.retrytopic.ListenerContainerFactoryConfigurer;
-import org.springframework.kafka.retrytopic.ListenerContainerFactoryResolver;
-import org.springframework.kafka.retrytopic.RetryTopicComponentFactory;
-import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
-import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
-import org.springframework.kafka.retrytopic.RetryTopicNamesProviderFactory;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.BackOff;
