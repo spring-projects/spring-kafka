@@ -2239,6 +2239,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			ConsumerRecords<K, V> records = recordsArg;
 			List<ConsumerRecord<K, V>> recordList = recordListArg;
+			if (this.listenerinfo != null) {
+				records.iterator().forEachRemaining(rec -> listenerInfo(rec));
+			}
 			if (this.batchInterceptor != null) {
 				records = this.batchInterceptor.intercept(recordsArg, this.consumer);
 				if (records == null) {
@@ -2475,8 +2478,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				record.headers().add(new RecordHeader(KafkaHeaders.DELIVERY_ATTEMPT, buff));
 			}
 			if (this.listenerinfo != null) {
-				record.headers().add(this.infoHeader);
+				listenerInfo(record);
 			}
+		}
+
+		private void listenerInfo(final ConsumerRecord<K, V> record) {
+			record.headers().add(this.infoHeader);
 		}
 
 		private void handleNack(final ConsumerRecords<K, V> records, final ConsumerRecord<K, V> record) {

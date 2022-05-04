@@ -584,6 +584,7 @@ public class EnableKafkaIntegrationTests {
 		list = this.listener.offsets;
 		assertThat(list.size()).isGreaterThan(0);
 		assertThat(list.get(0)).isInstanceOf(Long.class);
+		assertThat(this.listener.listenerInfo).isEqualTo("info for batch");
 	}
 
 	@Test
@@ -1980,17 +1981,20 @@ public class EnableKafkaIntegrationTests {
 			this.latch10.countDown();
 		}
 
-		@KafkaListener(id = "list2", topics = "annotated15", containerFactory = "batchFactory")
+		@KafkaListener(id = "list2", topics = "annotated15", containerFactory = "batchFactory",
+				info = "info for batch")
 		public void listen11(List<String> list,
 				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) List<Integer> keys,
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
-				@Header(KafkaHeaders.OFFSET) List<Long> offsets) {
+				@Header(KafkaHeaders.OFFSET) List<Long> offsets,
+				@Header(KafkaHeaders.LISTENER_INFO) List<String> infos) {
 			this.payload = list;
 			this.keys = keys;
 			this.partitions = partitions;
 			this.topics = topics;
 			this.offsets = offsets;
+			this.listenerInfo = infos.iterator().next();
 			this.latch11.countDown();
 		}
 

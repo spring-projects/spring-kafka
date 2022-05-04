@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -157,6 +157,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		List<Headers> natives = new ArrayList<>();
 		List<ConsumerRecord<?, ?>> raws = new ArrayList<>();
 		List<ConversionException> conversionFailures = new ArrayList<>();
+		List<String> infos = new ArrayList<>();
 		if (this.headerMapper != null) {
 			rawHeaders.put(KafkaHeaders.BATCH_CONVERTED_HEADERS, convertedHeaders);
 		}
@@ -169,7 +170,6 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		commonHeaders(acknowledgment, consumer, rawHeaders, keys, topics, partitions, offsets, timestampTypes,
 				timestamps);
 		rawHeaders.put(KafkaHeaders.CONVERSION_FAILURES, conversionFailures);
-
 		boolean logged = false;
 		for (ConsumerRecord<?, ?> record : records) {
 			payloads.add(obtainPayload(type, record, conversionFailures));
@@ -185,6 +185,11 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				Map<String, Object> converted = new HashMap<>();
 				this.headerMapper.toHeaders(record.headers(), converted);
 				convertedHeaders.add(converted);
+				Object object = converted.get(KafkaHeaders.LISTENER_INFO);
+				String info = (String) object;
+				if (info != null) {
+					infos.add(info);
+				}
 			}
 			else {
 				if (!logged) {
@@ -199,6 +204,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 			if (this.rawRecordHeader) {
 				raws.add(record);
 			}
+		}
+		if (infos.size() > 0) {
+			rawHeaders.put(KafkaHeaders.LISTENER_INFO, infos);
 		}
 		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);
 	}

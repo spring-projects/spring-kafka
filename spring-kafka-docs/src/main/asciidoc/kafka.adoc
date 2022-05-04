@@ -5567,6 +5567,26 @@ When used in a `RecordInterceptor` or `RecordFilterStrategy` implementation, the
 
 The header mappers also convert to `String` when creating `MessageHeaders` from the consumer record and never map this header on an outbound record.
 
+For POJO batch listeners, starting with version 2.8.6, the header is copied into each member of the batch and is also provided as a `List<String>` after conversion.
+
+====
+[source, java]
+----
+@KafkaListener(id = "list2", topics = "someTopic", containerFactory = "batchFactory",
+        info = "info for batch")
+public void listen(List<String> list,
+        @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) List<Integer> keys,
+        @Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
+        @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
+        @Header(KafkaHeaders.OFFSET) List<Long> offsets,
+        @Header(KafkaHeaders.LISTENER_INFO) List<String> infos) {
+            ...
+}
+----
+====
+
+See <<batch-listeners>> for more information about consuming batches.
+
 [[dead-letters]]
 ===== Publishing Dead-letter Records
 
