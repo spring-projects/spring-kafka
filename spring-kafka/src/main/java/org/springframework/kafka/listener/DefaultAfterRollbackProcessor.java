@@ -167,7 +167,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		this.lastIntervals.remove();
 	}
 
-	private OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset) {
+	private static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset) {
 		if (container == null) {
 			return new OffsetAndMetadata(offset);
 		}
