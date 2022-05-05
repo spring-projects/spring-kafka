@@ -5585,6 +5585,8 @@ public void listen(List<Thing> list,
 ----
 ====
 
+NOTE: If the batch listener has a filter and the filter results in an empty batch, you will need to add `required = false` to the `@Header` parameter because the info is not available for an empty batch.
+
 If you receive `List<Message<Thing>>` the info is in the `KafkaHeaders.LISTENER_INFO` header of each `Message<?>`.
 
 See <<batch-listeners>> for more information about consuming batches.
