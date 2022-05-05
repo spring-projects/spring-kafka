@@ -157,7 +157,6 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		List<Headers> natives = new ArrayList<>();
 		List<ConsumerRecord<?, ?>> raws = new ArrayList<>();
 		List<ConversionException> conversionFailures = new ArrayList<>();
-		List<String> infos = new ArrayList<>();
 		if (this.headerMapper != null) {
 			rawHeaders.put(KafkaHeaders.BATCH_CONVERTED_HEADERS, convertedHeaders);
 		}
@@ -171,6 +170,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				timestamps);
 		rawHeaders.put(KafkaHeaders.CONVERSION_FAILURES, conversionFailures);
 		boolean logged = false;
+		String info = null;
 		for (ConsumerRecord<?, ?> record : records) {
 			payloads.add(obtainPayload(type, record, conversionFailures));
 			keys.add(record.key());
@@ -186,9 +186,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				this.headerMapper.toHeaders(record.headers(), converted);
 				convertedHeaders.add(converted);
 				Object object = converted.get(KafkaHeaders.LISTENER_INFO);
-				String info = (String) object;
-				if (info != null) {
-					infos.add(info);
+				if (object instanceof String) {
+					info = (String) object;
 				}
 			}
 			else {
@@ -205,8 +204,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				raws.add(record);
 			}
 		}
-		if (infos.size() > 0) {
-			rawHeaders.put(KafkaHeaders.LISTENER_INFO, infos);
+		if (info != null) {
+			rawHeaders.put(KafkaHeaders.LISTENER_INFO, info);
 		}
 		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);
 	}

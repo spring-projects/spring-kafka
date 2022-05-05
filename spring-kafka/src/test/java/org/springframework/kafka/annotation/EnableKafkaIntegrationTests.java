@@ -1988,13 +1988,13 @@ public class EnableKafkaIntegrationTests {
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
 				@Header(KafkaHeaders.OFFSET) List<Long> offsets,
-				@Header(KafkaHeaders.LISTENER_INFO) List<String> infos) {
+				@Header(KafkaHeaders.LISTENER_INFO) String info) {
 			this.payload = list;
 			this.keys = keys;
 			this.partitions = partitions;
 			this.topics = topics;
 			this.offsets = offsets;
-			this.listenerInfo = infos.iterator().next();
+			this.listenerInfo = info;
 			this.latch11.countDown();
 		}
 
