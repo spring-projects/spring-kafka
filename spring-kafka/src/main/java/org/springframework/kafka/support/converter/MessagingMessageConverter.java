@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -227,8 +227,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 			throw new IllegalStateException(KafkaHeaders.TOPIC + " must be a String or byte[], not "
 					+ topicHeader.getClass());
 		}
-		Integer partition = headers.get(KafkaHeaders.PARTITION_ID, Integer.class);
-		Object key = headers.get(KafkaHeaders.MESSAGE_KEY);
+		Integer partition = headers.get(KafkaHeaders.PARTITION, Integer.class);
+		Object key = headers.get(KafkaHeaders.KEY);
 		Object payload = convertPayload(message);
 		Long timestamp = headers.get(KafkaHeaders.TIMESTAMP, Long.class);
 		Headers recordHeaders = initialRecordHeaders(message);

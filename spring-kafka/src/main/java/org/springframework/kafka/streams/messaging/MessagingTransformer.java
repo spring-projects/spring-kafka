@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ public class MessagingTransformer<K, V, R> implements Transformer<K, V, KeyValue
 				headers.add(header);
 			}
 		});
-		Object key2 = message.getHeaders().get(KafkaHeaders.MESSAGE_KEY);
+		Object key2 = message.getHeaders().get(KafkaHeaders.KEY);
 		return new KeyValue(key2 == null ? key : key2, message.getPayload());
 	}
 

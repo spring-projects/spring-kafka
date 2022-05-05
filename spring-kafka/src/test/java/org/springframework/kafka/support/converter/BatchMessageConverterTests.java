@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -115,9 +115,9 @@ public class BatchMessageConverterTests {
 		MessageHeaders headers = message.getHeaders();
 		assertThat(headers.get(KafkaHeaders.RECEIVED_TOPIC))
 				.isEqualTo(Arrays.asList("topic1", "topic1", "topic1"));
-		assertThat(headers.get(KafkaHeaders.RECEIVED_MESSAGE_KEY))
+		assertThat(headers.get(KafkaHeaders.RECEIVED_KEY))
 				.isEqualTo(Arrays.asList("key1", "key2", "key3"));
-		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION_ID))
+		assertThat(headers.get(KafkaHeaders.RECEIVED_PARTITION))
 				.isEqualTo(Arrays.asList(0, 0, 0));
 		assertThat(headers.get(KafkaHeaders.OFFSET)).isEqualTo(Arrays.asList(1L, 2L, 3L));
 		assertThat(headers.get(KafkaHeaders.TIMESTAMP_TYPE))
@@ -154,7 +154,7 @@ public class BatchMessageConverterTests {
 		Message<?> message = converter.toMessage(records, null, null, null);
 		assertThat(((List<String>) message.getPayload())).contains("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC, List.class)).contains("foo");
-		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY, List.class)).contains("bar");
+		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_KEY, List.class)).contains("bar");
 	}
 
 }

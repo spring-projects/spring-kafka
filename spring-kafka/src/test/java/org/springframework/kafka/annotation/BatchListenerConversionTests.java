@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -266,7 +266,7 @@ public class BatchListenerConversionTests {
 				containerFactory = "#{__listener.containerFactory}")
 		// @SendTo("foo") test WARN log for void return
 		public void listen1(List<Foo> foos, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
-				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions) {
+				@Header(KafkaHeaders.RECEIVED_PARTITION) List<Integer> partitions) {
 			if (this.received == null) {
 				this.received = foos;
 			}
@@ -318,7 +318,7 @@ public class BatchListenerConversionTests {
 			}
 			return foos.stream().map(f -> MessageBuilder.withPayload(new Foo(f.getBar().toUpperCase()))
 					.setHeader(KafkaHeaders.TOPIC, "blc5")
-					.setHeader(KafkaHeaders.MESSAGE_KEY, 42)
+					.setHeader(KafkaHeaders.KEY, 42)
 					.build())
 					.collect(Collectors.toList());
 		}

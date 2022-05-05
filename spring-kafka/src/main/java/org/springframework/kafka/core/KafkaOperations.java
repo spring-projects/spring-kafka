@@ -151,8 +151,8 @@ public interface KafkaOperations<K, V> {
 	 * @param message the message to send.
 	 * @return a Future for the {@link SendResult}.
 	 * @see org.springframework.kafka.support.KafkaHeaders#TOPIC
-	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION_ID
-	 * @see org.springframework.kafka.support.KafkaHeaders#MESSAGE_KEY
+	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION
+	 * @see org.springframework.kafka.support.KafkaHeaders#KEY
 	 */
 	ListenableFuture<SendResult<K, V>> send(Message<?> message);
 

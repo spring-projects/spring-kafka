@@ -499,8 +499,8 @@ public class EnableKafkaIntegrationTests {
 		Foo foo = new Foo("bar");
 		kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
 				.setHeader(KafkaHeaders.TOPIC, "annotated10")
-				.setHeader(KafkaHeaders.PARTITION_ID, 0)
-				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.setHeader(KafkaHeaders.PARTITION, 0)
+				.setHeader(KafkaHeaders.KEY, 2)
 				.build());
 		assertThat(this.listener.latch6.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.foo.getBar()).isEqualTo("bar");
@@ -530,8 +530,8 @@ public class EnableKafkaIntegrationTests {
 			Foo foo = new Foo("bar");
 			this.kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
 					.setHeader(KafkaHeaders.TOPIC, "annotated31")
-					.setHeader(KafkaHeaders.PARTITION_ID, 0)
-					.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+					.setHeader(KafkaHeaders.PARTITION, 0)
+					.setHeader(KafkaHeaders.KEY, 2)
 					.build());
 			assertThat(this.listener.latch19.await(60, TimeUnit.SECONDS)).isTrue();
 			assertThat(this.listener.foo.getBar()).isEqualTo("bar");
@@ -1521,7 +1521,7 @@ public class EnableKafkaIntegrationTests {
 				MessageHeaders headers = m.getHeaders();
 				c.seek(new org.apache.kafka.common.TopicPartition(
 								headers.get(KafkaHeaders.RECEIVED_TOPIC, String.class),
-								headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, Integer.class)),
+								headers.get(KafkaHeaders.RECEIVED_PARTITION, Integer.class)),
 						headers.get(KafkaHeaders.OFFSET, Long.class));
 				return null;
 			};
@@ -1559,7 +1559,7 @@ public class EnableKafkaIntegrationTests {
 				return;
 			}
 			@SuppressWarnings("unchecked")
-			List<Integer> partitions = headers.get(KafkaHeaders.RECEIVED_PARTITION_ID, List.class);
+			List<Integer> partitions = headers.get(KafkaHeaders.RECEIVED_PARTITION, List.class);
 			@SuppressWarnings("unchecked")
 			List<Long> offsets = headers.get(KafkaHeaders.OFFSET, List.class);
 			Map<org.apache.kafka.common.TopicPartition, Long> offsetsToReset = new HashMap<>();
@@ -1870,8 +1870,8 @@ public class EnableKafkaIntegrationTests {
 				info = "#{@barInfo}")
 		public void listen2(@Payload String foo,
 				@Header(KafkaHeaders.GROUP_ID) String groupId,
-				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) Integer key,
-				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+				@Header(KafkaHeaders.RECEIVED_KEY) Integer key,
+				@Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
 				@Header(KafkaHeaders.LISTENER_INFO) String listenerInfo) {
 			this.key = key;
@@ -1986,8 +1986,8 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "list2", topics = "annotated15", containerFactory = "batchFactory",
 				info = "info for batch")
 		public void listen11(List<String> list,
-				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) List<Integer> keys,
-				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
+				@Header(KafkaHeaders.RECEIVED_KEY) List<Integer> keys,
+				@Header(KafkaHeaders.RECEIVED_PARTITION) List<Integer> partitions,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
 				@Header(KafkaHeaders.OFFSET) List<Long> offsets,
 				@Header(KafkaHeaders.LISTENER_INFO) String info) {
@@ -2091,7 +2091,7 @@ public class EnableKafkaIntegrationTests {
 		@KafkaListener(id = "batchAckListener", topics = { "annotated26", "annotated27" },
 				containerFactory = "batchFactory")
 		public void batchAckListener(@SuppressWarnings("unused") List<String> in,
-				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitionsHeader,
+				@Header(KafkaHeaders.RECEIVED_PARTITION) List<Integer> partitionsHeader,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topicsHeader,
 				Consumer<?, ?> consumer) {
 
@@ -2128,7 +2128,7 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(id = "bytesKey", topics = "annotated36", clientIdPrefix = "tag",
 				containerFactory = "bytesStringListenerContainerFactory")
-		public void bytesKey(String in, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key) {
+		public void bytesKey(String in, @Header(KafkaHeaders.RECEIVED_KEY) String key) {
 			this.convertedKey = key;
 			this.keyLatch.countDown();
 		}
@@ -2323,7 +2323,7 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaHandler
 		@SendTo("#{'${foo:annotated8reply}'}")
-		public String bar(@Payload(required = false) KafkaNull nul, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
+		public String bar(@Payload(required = false) KafkaNull nul, @Header(KafkaHeaders.RECEIVED_KEY) int key) {
 			this.latch2.countDown();
 			return "OK";
 		}
@@ -2405,7 +2405,7 @@ public class EnableKafkaIntegrationTests {
 		@KafkaHandler
 		@SendTo("!{'annotated25reply2'}")
 		public String bar(@Payload(required = false) KafkaNull nul,
-				@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) int key) {
+				@Header(KafkaHeaders.RECEIVED_KEY) int key) {
 			return "BAR";
 		}
 

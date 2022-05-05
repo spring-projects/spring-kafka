@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -239,7 +239,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 	@Test
 	public void shouldSendSingleRecordAsProducerRecordAndReceiveIt() {
 		List<Header> producerRecordHeaders = convertToKafkaHeaders(
-				new SimpleImmutableEntry<>(KafkaHeaders.PARTITION_ID, 0),
+				new SimpleImmutableEntry<>(KafkaHeaders.PARTITION, 0),
 				new SimpleImmutableEntry<>("foo", "bar"),
 				new SimpleImmutableEntry<>(KafkaHeaders.RECEIVED_TOPIC, "dummy"));
 
@@ -273,7 +273,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 	@Test
 	public void shouldSendSingleRecordAsSenderRecordAndReceiveIt() {
 		List<Header> producerRecordHeaders = convertToKafkaHeaders(
-				new SimpleImmutableEntry<>(KafkaHeaders.PARTITION_ID, 0),
+				new SimpleImmutableEntry<>(KafkaHeaders.PARTITION, 0),
 				new SimpleImmutableEntry<>("foo", "bar"),
 				new SimpleImmutableEntry<>(KafkaHeaders.RECEIVED_TOPIC, "dummy"));
 
@@ -310,7 +310,7 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 	@Test
 	public void shouldSendSingleRecordAsMessageAndReceiveIt() {
 		Message<String> message = MessageBuilder.withPayload(DEFAULT_VALUE)
-				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.PARTITION, 0)
 				.setHeader("foo", "bar")
 				.setHeader(KafkaHeaders.RECEIVED_TOPIC, "dummy")
 				.build();

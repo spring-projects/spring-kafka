@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -479,7 +479,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		boolean needsTopic = headers.get(KafkaHeaders.TOPIC) == null;
 		boolean sourceIsMessage = source instanceof Message;
 		boolean needsCorrelation = headers.get(KafkaHeaders.CORRELATION_ID) == null && sourceIsMessage;
-		boolean needsPartition = headers.get(KafkaHeaders.PARTITION_ID) == null && sourceIsMessage
+		boolean needsPartition = headers.get(KafkaHeaders.PARTITION) == null && sourceIsMessage
 				&& getReplyPartition((Message<?>) source) != null;
 		if (needsTopic || needsCorrelation || needsPartition) {
 			MessageBuilder<?> builder = MessageBuilder.fromMessage(reply);
@@ -546,7 +546,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private void setPartition(MessageBuilder<?> builder, Message<?> source) {
 		byte[] partitionBytes = getReplyPartition(source);
 		if (partitionBytes != null) {
-			builder.setHeader(KafkaHeaders.PARTITION_ID, ByteBuffer.wrap(partitionBytes).getInt());
+			builder.setHeader(KafkaHeaders.PARTITION, ByteBuffer.wrap(partitionBytes).getInt());
 		}
 	}
 

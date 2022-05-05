@@ -42,13 +42,29 @@ public abstract class KafkaHeaders {
 	public static final String TOPIC = PREFIX + "topic";
 
 	/**
-	 * The header containing the message key when sending data to Kafka.
+	 * The header containing the record key when sending data to Kafka.
+	 * @since 2.9
 	 */
+	public static final String KEY = PREFIX + "messageKey";
+
+	/**
+	 * The header containing the message key when sending data to Kafka.
+	 * @deprecated in favor of {@link #KEY}.
+	 */
+	@Deprecated
 	public static final String MESSAGE_KEY = PREFIX + "messageKey";
 
 	/**
 	 * The header containing the topic partition when sending data to Kafka.
+	 * @since 2.0
 	 */
+	public static final String PARTITION = PREFIX + "partitionId";
+
+	/**
+	 * The header containing the topic partition when sending data to Kafka.
+	 * @deprecated in favor of {@link #PARTITION}.
+	 */
+	@Deprecated
 	public static final String PARTITION_ID = PREFIX + "partitionId";
 
 	/**
@@ -83,17 +99,34 @@ public abstract class KafkaHeaders {
 	public static final String RECEIVED_TOPIC = RECEIVED + "Topic";
 
 	/**
-	 * The header containing the message key for the received message.
+	 * The header containing the record key from the received message.
+	 * @since 2.9
 	 */
+	public static final String RECEIVED_KEY = RECEIVED + "MessageKey";
+
+	/**
+	 * The header containing the record key from the received message.
+	 * @deprecated in favor of {@link #RECEIVED_KEY}.
+	 */
+	@Deprecated
 	public static final String RECEIVED_MESSAGE_KEY = RECEIVED + "MessageKey";
 
 	/**
-	 * The header containing the topic partition for the received message.
+	 * The header containing the topic partition from the received message.
+	 * @since 2.9
 	 */
+	public static final String RECEIVED_PARTITION = RECEIVED + "PartitionId";
+
+	/**
+	 * The header containing the topic partition from the received message.
+	 * @deprecated in favor of {@link #RECEIVED_PARTITION}.
+	 */
+	@Deprecated
 	public static final String RECEIVED_PARTITION_ID = RECEIVED + "PartitionId";
 
 	/**
-	 * The header for holding the {@link org.apache.kafka.common.record.TimestampType type} of timestamp.
+	 * The header for holding the {@link org.apache.kafka.common.record.TimestampType
+	 * type} of timestamp.
 	 */
 	public static final String TIMESTAMP_TYPE = PREFIX + "timestampType";
 

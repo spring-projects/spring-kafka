@@ -180,15 +180,15 @@ public class KafkaTemplateTests {
 
 		template.send(MessageBuilder.withPayload("fiz")
 				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
-				.setHeader(KafkaHeaders.PARTITION_ID, 0)
-				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.setHeader(KafkaHeaders.PARTITION, 0)
+				.setHeader(KafkaHeaders.KEY, 2)
 				.build());
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(allOf(keyValue(2, "fiz"), partition(0)));
 
 		template.send(MessageBuilder.withPayload("buz")
-				.setHeader(KafkaHeaders.PARTITION_ID, 1)
-				.setHeader(KafkaHeaders.MESSAGE_KEY, 2)
+				.setHeader(KafkaHeaders.PARTITION, 1)
+				.setHeader(KafkaHeaders.KEY, 2)
 				.build());
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(allOf(keyValue(2, "buz"), partition(1)));
@@ -261,7 +261,7 @@ public class KafkaTemplateTests {
 
 		Message<String> message1 = MessageBuilder.withPayload("foo-message")
 				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
-				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.PARTITION, 0)
 				.setHeader("foo", "bar")
 				.setHeader(KafkaHeaders.RECEIVED_TOPIC, "dummy")
 				.build();
@@ -282,7 +282,7 @@ public class KafkaTemplateTests {
 
 		Message<String> message2 = MessageBuilder.withPayload("foo-message-2")
 				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
-				.setHeader(KafkaHeaders.PARTITION_ID, 0)
+				.setHeader(KafkaHeaders.PARTITION, 0)
 				.setHeader(KafkaHeaders.TIMESTAMP, 1487694048615L)
 				.setHeader("foo", "bar")
 				.build();

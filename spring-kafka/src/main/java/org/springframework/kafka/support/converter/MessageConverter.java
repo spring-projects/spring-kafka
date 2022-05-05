@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,12 +61,12 @@ public interface MessageConverter {
 			@Nullable Object timestampType, Object timestamp) {
 
 		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topic);
-		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION_ID, partition);
+		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION, partition);
 		rawHeaders.put(KafkaHeaders.OFFSET, offset);
 		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampType);
 		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamp);
 		JavaUtils.INSTANCE
-			.acceptIfNotNull(KafkaHeaders.RECEIVED_MESSAGE_KEY, theKey, (key, val) -> rawHeaders.put(key, val))
+			.acceptIfNotNull(KafkaHeaders.RECEIVED_KEY, theKey, (key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.GROUP_ID, MessageConverter.getGroupId(),
 					(key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment, (key, val) -> rawHeaders.put(key, val))

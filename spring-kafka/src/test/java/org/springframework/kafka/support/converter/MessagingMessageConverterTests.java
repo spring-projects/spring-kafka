@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ public class MessagingMessageConverterTests {
 		Message<?> message = converter.toMessage(record, null, null, null);
 		assertThat(message.getPayload()).isEqualTo("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
-		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo("bar");
+		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_KEY)).isEqualTo("bar");
 		assertThat(message.getHeaders().get(KafkaHeaders.RAW_DATA)).isNull();
 	}
 
@@ -67,7 +67,7 @@ public class MessagingMessageConverterTests {
 		Message<?> message = converter.toMessage(record, null, null, null);
 		assertThat(message.getPayload()).isEqualTo("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
-		assertThat(message.getHeaders().containsKey(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isFalse();
+		assertThat(message.getHeaders().containsKey(KafkaHeaders.RECEIVED_KEY)).isFalse();
 	}
 
 	@Test
@@ -79,7 +79,7 @@ public class MessagingMessageConverterTests {
 		Message<?> message = converter.toMessage(record, null, null, null);
 		assertThat(message.getPayload()).isEqualTo("baz");
 		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_TOPIC)).isEqualTo("foo");
-		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_MESSAGE_KEY)).isEqualTo("bar");
+		assertThat(message.getHeaders().get(KafkaHeaders.RECEIVED_KEY)).isEqualTo("bar");
 		assertThat(message.getHeaders().get(KafkaHeaders.RAW_DATA)).isSameAs(record);
 	}
 

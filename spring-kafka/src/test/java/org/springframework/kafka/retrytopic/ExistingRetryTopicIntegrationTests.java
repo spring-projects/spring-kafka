@@ -162,7 +162,7 @@ public class ExistingRetryTopicIntegrationTests {
 		@KafkaListener(id = "firstTopicId", topics = MAIN_TOPIC_WITH_NO_PARTITION_INFO, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenFirst(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 								@Header(KafkaHeaders.ORIGINAL_PARTITION) String originalPartition,
-								@Header(KafkaHeaders.RECEIVED_PARTITION_ID) String receivedPartition) {
+								@Header(KafkaHeaders.RECEIVED_PARTITION) String receivedPartition) {
 			logger.debug("Message {} received in topic {}. originalPartition: {}, receivedPartition: {}",
 					message, receivedTopic, originalPartition, receivedPartition);
 
@@ -182,7 +182,7 @@ public class ExistingRetryTopicIntegrationTests {
 		@KafkaListener(id = "secondTopicId", topics = MAIN_TOPIC_WITH_PARTITION_INFO, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenSecond(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 								@Header(KafkaHeaders.ORIGINAL_PARTITION) String originalPartition,
-								@Header(KafkaHeaders.RECEIVED_PARTITION_ID) String receivedPartition) {
+								@Header(KafkaHeaders.RECEIVED_PARTITION) String receivedPartition) {
 			logger.debug("Message {} received in topic {}. originalPartition: {}, receivedPartition: {}",
 					message, receivedTopic, originalPartition, receivedPartition);
 
