@@ -42,8 +42,11 @@ import org.springframework.util.backoff.BackOffExecution;
  *
  * @param <K> the key type.
  * @param <V> the value type.
+ *
  * @author Gary Russell
+ *
  * @since 1.3.5
+ *
  */
 public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		implements AfterRollbackProcessor<K, V> {
@@ -60,7 +63,6 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	 * Construct an instance with the default recoverer which simply logs the record after
 	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
 	 * topic/partition/offset.
-	 *
 	 * @since 2.2
 	 */
 	public DefaultAfterRollbackProcessor() {
@@ -70,7 +72,6 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	/**
 	 * Construct an instance with the default recoverer which simply logs the record after
 	 * the backOff returns STOP for a topic/partition/offset.
-	 *
 	 * @param backOff the {@link BackOff}.
 	 * @since 2.3
 	 */
@@ -82,7 +83,6 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	 * Construct an instance with the provided recoverer which will be called after
 	 * {@value SeekUtils#DEFAULT_MAX_FAILURES} (maxFailures) have occurred for a
 	 * topic/partition/offset.
-	 *
 	 * @param recoverer the recoverer.
 	 * @since 2.2
 	 */
@@ -93,13 +93,12 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	/**
 	 * Construct an instance with the provided recoverer which will be called after
 	 * the backOff returns STOP for a topic/partition/offset.
-	 *
 	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
-	 * @param backOff   the {@link BackOff}.
+	 * @param backOff the {@link BackOff}.
 	 * @since 2.3
 	 */
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
-										 BackOff backOff) {
+			BackOff backOff) {
 
 		this(recoverer, backOff, null, false);
 	}
@@ -107,13 +106,12 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	/**
 	 * Construct an instance with the provided recoverer which will be called after the
 	 * backOff returns STOP for a topic/partition/offset.
-	 *
 	 * @param recoverer       the recoverer; if null, the default (logging) recoverer is used.
 	 * @param backOff         the {@link BackOff}.
 	 * @param kafkaOperations for sending the recovered offset to the transaction.
 	 * @param commitRecovered true to commit the recovered record's offset; requires a
 	 *                        {@link KafkaOperations}.
-	 * @since 2.5.3
+	 * @since 2.9
 	 */
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 										 BackOff backOff, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
@@ -124,14 +122,13 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	/**
 	 * Construct an instance with the provided recoverer which will be called after the
 	 * backOff returns STOP for a topic/partition/offset.
-	 *
 	 * @param recoverer       the recoverer; if null, the default (logging) recoverer is used.
 	 * @param backOff         the {@link BackOff}.
 	 * @param backOffHandler  the {@link BackOffHandler}.
 	 * @param kafkaOperations for sending the recovered offset to the transaction.
 	 * @param commitRecovered true to commit the recovered record's offset; requires a
 	 *                        {@link KafkaOperations}.
-	 * @since 2.5.8
+	 * @since 2.5.9
 	 */
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 										 BackOff backOff, @Nullable BackOffHandler backOffHandler, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
@@ -148,14 +145,14 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 				"A KafkaOperations is required when 'commitRecovered' is true");
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
+	@SuppressWarnings({ "unchecked", "rawtypes", "deprecation" })
 	@Override
 	public void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer,
-						@Nullable MessageListenerContainer container, Exception exception, boolean recoverable, EOSMode eosMode) {
+			@Nullable MessageListenerContainer container, Exception exception, boolean recoverable, EOSMode eosMode) {
 
 		if (SeekUtils.doSeeks((List) records, consumer, exception, recoverable,
 				getFailureTracker()::recovered, container, this.logger)
-				&& isCommitRecovered() && this.kafkaTemplate.isTransactional()) {
+					&& isCommitRecovered() && this.kafkaTemplate.isTransactional()) {
 			ConsumerRecord<K, V> skipped = records.get(0);
 			this.kafkaTemplate.sendOffsetsToTransaction(
 					Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
@@ -165,7 +162,8 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		if (!recoverable && this.backOff != null) {
 			try {
 				ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals, container);
-			} catch (InterruptedException e) {
+			}
+			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
 		}
