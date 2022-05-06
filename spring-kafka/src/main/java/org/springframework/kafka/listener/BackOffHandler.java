@@ -9,18 +9,9 @@ import org.springframework.lang.Nullable;
  *
  *  @since 1.3.5
  */
+@FunctionalInterface
 public interface BackOffHandler {
 
-	default void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
-		try {
-			if (container == null) {
-				Thread.sleep(nextBackOff);
-			} else {
-				ListenerUtils.stoppableSleep(container, nextBackOff);
-			}
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
-		}
-	}
+	void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff);
 
 }

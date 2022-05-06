@@ -65,7 +65,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	}
 
 	protected FailedRecordProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff, @Nullable BackOffHandler backOffHandler) {
-		this.failureTracker = new FailedRecordTracker(recoverer, backOff, this.logger, backOffHandler);
+		this.failureTracker = new FailedRecordTracker(recoverer, backOff, backOffHandler, this.logger);
 		this.failureTracker.setBackOffFunction(this.noRetriesForClassified);
 	}
 

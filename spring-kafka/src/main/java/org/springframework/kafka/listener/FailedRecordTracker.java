@@ -58,14 +58,14 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction;
 
-	private BackOffHandler backOffHandler;
+	private final BackOffHandler backOffHandler;
 
 	private boolean resetStateOnRecoveryFailure = true;
 
 	private boolean resetStateOnExceptionChange = true;
 
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-						LogAccessor logger) {
+						@Nullable BackOffHandler backOffHandler, LogAccessor logger) {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
@@ -93,14 +93,13 @@ class FailedRecordTracker implements RecoveryStrategy {
 		this.noRetries = backOff.start().nextBackOff() == BackOffExecution.STOP;
 		this.backOff = backOff;
 
-		this.backOffHandler = new BackOffHandler(){};
+		this.backOffHandler = backOffHandler == null ? new DefaultBackOffHandler() : backOffHandler;
+
 	}
 
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-						LogAccessor logger, @Nullable BackOffHandler backOffHandler) {
-		this(recoverer, backOff, logger);
-
-		this.backOffHandler = backOffHandler == null ? new BackOffHandler() {} : backOffHandler;
+						LogAccessor logger) {
+		this(recoverer, backOff, null, logger);
 	}
 
 	/**
@@ -305,6 +304,20 @@ class FailedRecordTracker implements RecoveryStrategy {
 			this.lastException = lastException;
 		}
 
+	}
+
+	static class DefaultBackOffHandler implements BackOffHandler {
+		public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
+			try {
+				if (container == null) {
+					Thread.sleep(nextBackOff);
+				} else {
+					ListenerUtils.stoppableSleep(container, nextBackOff);
+				}
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 }
