@@ -58,12 +58,14 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction;
 
+	private BackOffHandler backOffHandler;
+
 	private boolean resetStateOnRecoveryFailure = true;
 
 	private boolean resetStateOnExceptionChange = true;
 
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-			LogAccessor logger) {
+						LogAccessor logger) {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
@@ -74,10 +76,10 @@ class FailedRecordTracker implements RecoveryStrategy {
 					failedRecord = map.get(new TopicPartition(rec.topic(), rec.partition()));
 				}
 				logger.error(thr, "Backoff "
-					+ (failedRecord == null
+						+ (failedRecord == null
 						? "none"
 						: failedRecord.getBackOffExecution())
-					+ " exhausted for " + KafkaUtils.format(rec));
+						+ " exhausted for " + KafkaUtils.format(rec));
 			};
 		}
 		else {
@@ -90,6 +92,15 @@ class FailedRecordTracker implements RecoveryStrategy {
 		}
 		this.noRetries = backOff.start().nextBackOff() == BackOffExecution.STOP;
 		this.backOff = backOff;
+
+		this.backOffHandler = new BackOffHandler(){};
+	}
+
+	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
+						LogAccessor logger, @Nullable BackOffHandler backOffHandler) {
+		this(recoverer, backOff, logger);
+
+		this.backOffHandler = backOffHandler == null ? new BackOffHandler() {} : backOffHandler;
 	}
 
 	/**
@@ -172,12 +183,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 				rl.failedDelivery(record, exception, failedRecord.getDeliveryAttempts().get()));
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
 		if (nextBackOff != BackOffExecution.STOP) {
-			if (container == null) {
-				Thread.sleep(nextBackOff);
-			}
-			else {
-				ListenerUtils.stoppableSleep(container, nextBackOff);
-			}
+			backOffHandler.onNextBackOff(container, exception, nextBackOff);
 			return false;
 		}
 		else {

@@ -63,9 +63,21 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 	 * @param fallbackHandler the fall back handler.
 	 */
 	public FailedBatchProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-			CommonErrorHandler fallbackHandler) {
+								CommonErrorHandler fallbackHandler) {
 
-		super(recoverer, backOff);
+		this(recoverer, backOff, null, fallbackHandler);
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param recoverer the recoverer.
+	 * @param backOff the back off.
+	 * @param fallbackHandler the fall back handler.
+	 */
+	public FailedBatchProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
+								@Nullable BackOffHandler backOffHandler, CommonErrorHandler fallbackHandler) {
+
+		super(recoverer, backOff, backOffHandler);
 		this.fallbackBatchHandler = fallbackHandler;
 	}
 
