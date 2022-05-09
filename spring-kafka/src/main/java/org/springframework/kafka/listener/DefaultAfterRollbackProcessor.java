@@ -113,9 +113,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	 *                        {@link KafkaOperations}.
 	 * @since 2.9
 	 */
-	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
-										 BackOff backOff, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
-
+	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
 		this(recoverer, backOff, null, kafkaOperations, commitRecovered);
 	}
 
@@ -130,9 +128,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	 *                        {@link KafkaOperations}.
 	 * @since 2.5.9
 	 */
-	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
-										 BackOff backOff, @Nullable BackOffHandler backOffHandler, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
-
+	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff, @Nullable BackOffHandler backOffHandler, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
 		super(recoverer, backOff, backOffHandler);
 		this.kafkaTemplate = kafkaOperations;
 		super.setCommitRecovered(commitRecovered);
