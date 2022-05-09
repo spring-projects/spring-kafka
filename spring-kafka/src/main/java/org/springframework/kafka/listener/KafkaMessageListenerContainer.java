@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -1309,9 +1310,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void pollAndInvoke() {
-			if (!this.autoCommit && !this.isRecordAck) {
-				processCommits();
-			}
+			doProcessCommits();
 			fixTxOffsetsIfNeeded();
 			idleBetweenPollIfNecessary();
 			if (this.seeks.size() > 0) {
@@ -1342,6 +1341,27 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				resumeConsumerIfNeccessary();
 				if (!this.consumerPaused) {
 					resumePartitionsIfNecessary();
+				}
+			}
+		}
+
+		private void doProcessCommits() {
+			if (!this.autoCommit && !this.isRecordAck) {
+				try {
+					processCommits();
+				}
+				catch (CommitFailedException cfe) {
+					if (this.pendingRecordsAfterError != null && !this.isBatchListener) {
+						ConsumerRecords<K, V> pending = this.pendingRecordsAfterError;
+						this.pendingRecordsAfterError = null;
+						List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+						Iterator<ConsumerRecord<K, V>> iterator = pending.iterator();
+						while (iterator.hasNext()) {
+							records.add(iterator.next());
+						}
+						this.commonErrorHandler.handleRemaining(cfe, records, this.consumer,
+								KafkaMessageListenerContainer.this.thisOrParentContainer);
+					}
 				}
 			}
 		}
@@ -2118,6 +2138,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 					getAfterRollbackProcessor().clearThreadState();
 				}
+				if (!this.autoCommit && !this.isRecordAck) {
+					processCommits();
+				}
 			}
 			catch (RuntimeException e) {
 				failureTimer(sample);
@@ -2307,7 +2330,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
 				@Nullable List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
-			if (this.commonErrorHandler.seeksAfterHandling() || this.transactionManager != null) {
+			if (this.commonErrorHandler.seeksAfterHandling() || this.transactionManager != null
+					|| rte instanceof CommitFailedException) {
+
 				this.commonErrorHandler.handleBatch(rte, records, this.consumer,
 						KafkaMessageListenerContainer.this.thisOrParentContainer,
 						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
@@ -2680,9 +2705,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeErrorHandler(final ConsumerRecord<K, V> record,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException rte) {
 
-			if (this.commonErrorHandler.seeksAfterHandling()) {
-				if (this.producer == null) {
-					processCommits();
+			if (this.commonErrorHandler.seeksAfterHandling() || rte instanceof CommitFailedException) {
+				try {
+					if (this.producer == null) {
+						processCommits();
+					}
+				}
+				catch (Exception ex) { // NO SONAR
+					this.logger.error(ex, "Failed to commit before handling error");
 				}
 				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 				records.add(record);
