@@ -75,7 +75,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class DefaultErrorHandlerSeekAfterCommitExceptionBatchAck {
+public class DefaultErrorHandlerSeekAfterCommitExceptionBatchAckTests {
 
 	@SuppressWarnings("rawtypes")
 	@Autowired
