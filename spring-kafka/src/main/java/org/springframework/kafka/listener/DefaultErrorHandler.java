@@ -94,6 +94,7 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	 * the backOff returns STOP for a topic/partition/offset.
 	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
 	 * @param backOff the {@link BackOff}.
+	 * @param backOffHandler the {@link BackOffHandler}.
 	 */
 	public DefaultErrorHandler(@Nullable ConsumerRecordRecoverer recoverer, BackOff backOff, @Nullable BackOffHandler backOffHandler) {
 		super(recoverer, backOff, backOffHandler, createFallback(backOff, recoverer));

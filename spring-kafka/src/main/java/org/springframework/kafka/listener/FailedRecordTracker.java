@@ -182,7 +182,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 				rl.failedDelivery(record, exception, failedRecord.getDeliveryAttempts().get()));
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
 		if (nextBackOff != BackOffExecution.STOP) {
-			backOffHandler.onNextBackOff(container, exception, nextBackOff);
+			this.backOffHandler.onNextBackOff(container, exception, nextBackOff);
 			return false;
 		}
 		else {
@@ -311,10 +311,12 @@ class FailedRecordTracker implements RecoveryStrategy {
 			try {
 				if (container == null) {
 					Thread.sleep(nextBackOff);
-				} else {
+				}
+				else {
 					ListenerUtils.stoppableSleep(container, nextBackOff);
 				}
-			} catch (InterruptedException e) {
+			}
+			catch (InterruptedException e) {
 				throw new RuntimeException(e);
 			}
 		}
