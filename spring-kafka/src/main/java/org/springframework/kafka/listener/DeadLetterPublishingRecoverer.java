@@ -75,6 +75,8 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	private static final long THIRTY = 30L;
 
+	private static final ThreadLocal<ConsumerRecord<?, ?>> IN_RECORD = new ThreadLocal<>();
+
 	private final HeaderNames headerNames = getHeaderNames();
 
 	private final boolean transactional;
@@ -378,7 +380,13 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				kDeserEx == null ? null : kDeserEx.getData(), vDeserEx == null ? null : vDeserEx.getData());
 		KafkaOperations<Object, Object> kafkaTemplate =
 				(KafkaOperations<Object, Object>) this.templateResolver.apply(outRecord);
-		sendOrThrow(outRecord, kafkaTemplate);
+		try {
+			IN_RECORD.set(record);
+			sendOrThrow(outRecord, kafkaTemplate);
+		}
+		finally {
+			IN_RECORD.remove();
+		}
 	}
 
 	private void addAndEnhanceHeaders(ConsumerRecord<?, ?> record, Exception exception,
@@ -528,11 +536,11 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 			sendResult.addCallback(result -> {
 				this.logger.debug(() -> "Successful dead-letter publication: " + result);
 			}, ex -> {
-				this.logger.error(ex, () -> "Dead-letter publication failed for: " + outRecord);
+				this.logger.error(ex, () -> pubFailMessage(outRecord));
 			});
 		}
 		catch (Exception e) {
-			this.logger.error(e, () -> "Dead-letter publication failed for: " + outRecord);
+			this.logger.error(e, () -> pubFailMessage(outRecord));
 		}
 		if (this.failIfSendResultIsError) {
 			verifySendResult(kafkaTemplate, outRecord, sendResult);
@@ -551,18 +559,23 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 		Duration sendTimeout = determineSendTimeout(kafkaTemplate);
 		if (sendResult == null) {
-			throw new KafkaException("Dead-letter publication failed for: " + outRecord);
+			throw new KafkaException(pubFailMessage(outRecord));
 		}
 		try {
 			sendResult.get(sendTimeout.toMillis(), TimeUnit.MILLISECONDS);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new KafkaException("Publication failed for: " + outRecord, e);
+			throw new KafkaException(pubFailMessage(outRecord));
 		}
 		catch (ExecutionException | TimeoutException e) {
-			throw new KafkaException("Publication failed for: " + outRecord, e);
+			throw new KafkaException(pubFailMessage(outRecord));
 		}
+	}
+
+	private String pubFailMessage(ProducerRecord<Object, Object> outRecord) {
+		return "Dead-letter publication to "
+				+ outRecord.topic() + " failed for: " + KafkaUtils.format(IN_RECORD.get());
 	}
 
 	/**
