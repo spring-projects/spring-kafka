@@ -295,7 +295,18 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Set the minumum time to wait for message sending. Default is the producer
+	 * If true, wait for the send result and throw an exception if it fails.
+	 * It will wait for the milliseconds specified in waitForSendResultTimeout for the result.
+	 * @return true to wait.
+	 * @since 2.7.14
+	 * @see #setWaitForSendResultTimeout(Duration)
+	 */
+	protected boolean isFailIfSendResultIsError() {
+		return this.failIfSendResultIsError;
+	}
+
+	/**
+	 * Set the minimum time to wait for message sending. Default is the producer
 	 * configuration {@code delivery.timeout.ms} plus the {@link #setTimeoutBuffer(long)}.
 	 * @param waitForSendResultTimeout the timeout.
 	 * @since 2.7
@@ -307,14 +318,25 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Set the number of milliseconds to add to the producer configuration {@code delivery.timeout.ms}
-	 * property to avoid timing out before the Kafka producer. Default 5000.
+	 * Set the number of milliseconds to add to the producer configuration
+	 * {@code delivery.timeout.ms} property to avoid timing out before the Kafka producer.
+	 * Default 5000.
 	 * @param buffer the buffer.
 	 * @since 2.7
 	 * @see #setWaitForSendResultTimeout(Duration)
 	 */
 	public void setTimeoutBuffer(long buffer) {
 		this.timeoutBuffer = buffer;
+	}
+
+	/**
+	 * The number of milliseconds to add to the producer configuration
+	 * {@code delivery.timeout.ms} property to avoid timing out before the Kafka producer.
+	 * @return the buffer.
+	 * @since 2.7.14
+	 */
+	protected long getTimeoutBuffer() {
+		return this.timeoutBuffer;
 	}
 
 	/**
@@ -349,6 +371,15 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	public void setExceptionHeadersCreator(ExceptionHeadersCreator headersCreator) {
 		Assert.notNull(headersCreator, "'headersCreator' cannot be null");
 		this.exceptionHeadersCreator = headersCreator;
+	}
+
+	/**
+	 * True if publishing should run in a transaction.
+	 * @return true for transactional.
+	 * @since 2.7.14
+	 */
+	protected boolean isTransactional() {
+		return this.transactional;
 	}
 
 	/**
@@ -612,7 +643,14 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 	}
 
-	private void verifySendResult(KafkaOperations<Object, Object> kafkaTemplate,
+	/**
+	 * Wait for the send future to complete.
+	 * @param kafkaTemplate the template used to send the record.
+	 * @param outRecord the record.
+	 * @param sendResult the future.
+	 * @param inRecord the original consumer record.
+	 */
+	protected void verifySendResult(KafkaOperations<Object, Object> kafkaTemplate,
 			ProducerRecord<Object, Object> outRecord,
 			@Nullable ListenableFuture<SendResult<Object, Object>> sendResult, ConsumerRecord<?, ?> inRecord) {
 
@@ -637,7 +675,14 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				+ outRecord.topic() + " failed for: " + KafkaUtils.format(inRecord);
 	}
 
-	private Duration determineSendTimeout(KafkaOperations<?, ?> template) {
+	/**
+	 * Determine the send timeout based on the template's producer factory and
+	 * {@link #setWaitForSendResultTimeout(Duration)}.
+	 * @param template the template.
+	 * @return the timeout.
+	 * @since 2.7.14
+	 */
+	protected Duration determineSendTimeout(KafkaOperations<?, ?> template) {
 		ProducerFactory<? extends Object, ? extends Object> producerFactory = template.getProducerFactory();
 		if (producerFactory != null) { // NOSONAR - will only occur in mock tests
 			Map<String, Object> props = producerFactory.getConfigurationProperties();
