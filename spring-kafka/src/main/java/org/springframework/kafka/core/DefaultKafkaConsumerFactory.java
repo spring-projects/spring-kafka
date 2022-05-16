@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,6 +89,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	private String beanName = "not.managed.by.Spring";
 
+	private boolean configureDeserializers = true;
 
 	/**
 	 * Construct a factory with the provided configuration.
@@ -114,6 +115,23 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
+	 * Construct a factory with the provided configuration and deserializers.
+	 * The deserializers' {@code configure()} methods will be called with the
+	 * configuration map unless {@code configureDeserializers} is false.
+	 * @param configs the configuration.
+	 * @param keyDeserializer the key {@link Deserializer}.
+	 * @param valueDeserializer the value {@link Deserializer}.
+	 * @param configureDeserializers false to not configure the deserializers.
+	 * @since 2.8.7
+	 */
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
+			@Nullable Deserializer<K> keyDeserializer,
+			@Nullable Deserializer<V> valueDeserializer, boolean configureDeserializers) {
+
+		this(configs, () -> keyDeserializer, () -> valueDeserializer, configureDeserializers);
+	}
+
+	/**
 	 * Construct a factory with the provided configuration and deserializer suppliers.
 	 * When the suppliers are invoked to get an instance, the deserializers'
 	 * {@code configure()} methods will be called with the configuration map.
@@ -126,7 +144,26 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 			@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier,
 			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier) {
 
+		this(configs, keyDeserializerSupplier, valueDeserializerSupplier, true);
+	}
+
+	/**
+	 * Construct a factory with the provided configuration and deserializer suppliers.
+	 * When the suppliers are invoked to get an instance, the deserializers'
+	 * {@code configure()} methods will be called with the configuration map unless
+	 * {@code configureDeserializers} is false.
+	 * @param configs the configuration.
+	 * @param keyDeserializerSupplier the key {@link Deserializer} supplier function.
+	 * @param valueDeserializerSupplier the value {@link Deserializer} supplier function.
+	 * @param configureDeserializers false to not configure the deserializers.
+	 * @since 2.8.7
+	 */
+	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
+			@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier,
+			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier, boolean configureDeserializers) {
+
 		this.configs = new ConcurrentHashMap<>(configs);
+		this.configureDeserializers = configureDeserializers;
 		this.keyDeserializerSupplier = keyDeserializerSupplier(keyDeserializerSupplier);
 		this.valueDeserializerSupplier = valueDeserializerSupplier(valueDeserializerSupplier);
 	}
@@ -134,6 +171,9 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	private Supplier<Deserializer<K>> keyDeserializerSupplier(
 			@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier) {
 
+		if (!this.configureDeserializers) {
+			return keyDeserializerSupplier;
+		}
 		return keyDeserializerSupplier == null
 				? () -> null
 				: () -> {
@@ -148,6 +188,9 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	private Supplier<Deserializer<V>> valueDeserializerSupplier(
 			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier) {
 
+		if (!this.configureDeserializers) {
+			return valueDeserializerSupplier;
+		}
 		return valueDeserializerSupplier == null
 				? () -> null
 				: () -> {
@@ -165,7 +208,9 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Set the key deserializer.
+	 * Set the key deserializer. The deserializer will be configured using the consumer
+	 * configuration, unless {@link #setConfigureDeserializers(boolean)
+	 * configureDeserializers} is false.
 	 * @param keyDeserializer the deserializer.
 	 */
 	public void setKeyDeserializer(@Nullable Deserializer<K> keyDeserializer) {
@@ -173,15 +218,19 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Set the value deserializer.
-	 * @param valueDeserializer the valuee deserializer.
+	 * Set the value deserializer. The deserializer will be configured using the consumer
+	 * configuration, unless {@link #setConfigureDeserializers(boolean)
+	 * configureDeserializers} is false.
+	 * @param valueDeserializer the value deserializer.
 	 */
 	public void setValueDeserializer(@Nullable Deserializer<V> valueDeserializer) {
 		this.valueDeserializerSupplier = valueDeserializerSupplier(() -> valueDeserializer);
 	}
 
 	/**
-	 * Set a supplier to supply instances of the key deserializer.
+	 * Set a supplier to supply instances of the key deserializer. The deserializer will
+	 * be configured using the consumer configuration, unless
+	 * {@link #setConfigureDeserializers(boolean) configureDeserializers} is false.
 	 * @param keyDeserializerSupplier the supplier.
 	 * @since 2.8
 	 */
@@ -190,12 +239,30 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Set a supplier to supply instances of the value deserializer.
+	 * Set a supplier to supply instances of the value deserializer. The deserializer will
+	 * be configured using the consumer configuration, unless
+	 * {@link #setConfigureDeserializers(boolean) configureDeserializers} is false.
 	 * @param valueDeserializerSupplier the supplier.
 	 * @since 2.8
 	 */
 	public void setValueDeserializerSupplier(Supplier<Deserializer<V>> valueDeserializerSupplier) {
 		this.valueDeserializerSupplier = valueDeserializerSupplier(valueDeserializerSupplier);
+	}
+
+
+	/**
+	 * Set to false (default true) to prevent programmatically provided deserializers (via
+	 * constructor or setters) from being configured using the producer configuration,
+	 * e.g. if the deserializers are already fully configured.
+	 * @param configureDeserializers false to not configure.
+	 * @since 2.8.7
+	 * @see #setKeyDeserializer(Deserializer)
+	 * @see #setKeyDeserializerSupplier(Supplier)
+	 * @see #setValueDeserializer(Deserializer)
+	 * @see #setValueDeserializerSupplier(Supplier)
+	 **/
+	public void setConfigureDeserializers(boolean configureDeserializers) {
+		this.configureDeserializers = configureDeserializers;
 	}
 
 	@Override

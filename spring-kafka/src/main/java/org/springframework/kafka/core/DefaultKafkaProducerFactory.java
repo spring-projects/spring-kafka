@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,6 +154,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private long maxAge;
 
+	private boolean configureSerializers = true;
+
 	private volatile String transactionIdPrefix;
 
 	private volatile String clientIdPrefix;
@@ -183,16 +185,37 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			@Nullable Serializer<K> keySerializer,
 			@Nullable Serializer<V> valueSerializer) {
 
-		this(configs, () -> keySerializer, () -> valueSerializer);
+		this(configs, () -> keySerializer, () -> valueSerializer, true);
 	}
 
 	/**
-	 * Construct a factory with the provided configuration and {@link Serializer} Suppliers.
-	 * Also configures a {@link #transactionIdPrefix} as a value from the
-	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided.
-	 * This config is going to be overridden with a suffix for target {@link Producer} instance.
-	 * When the suppliers are invoked to get an instance, the serializers'
-	 * {@code configure()} methods will be called with the configuration map.
+	 * Construct a factory with the provided configuration and {@link Serializer}s. Also
+	 * configures a {@link #transactionIdPrefix} as a value from the
+	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided. This config is going to
+	 * be overridden with a suffix for target {@link Producer} instance. The serializers'
+	 * {@code configure()} methods will be called with the configuration map unless
+	 * {@code configureSerializers} is false..
+	 * @param configs the configuration.
+	 * @param keySerializer the key {@link Serializer}.
+	 * @param valueSerializer the value {@link Serializer}.
+	 * @param configureSerializers set to false if serializers are already fully
+	 * configured.
+	 * @since 2.8.7
+	 */
+	public DefaultKafkaProducerFactory(Map<String, Object> configs,
+			@Nullable Serializer<K> keySerializer,
+			@Nullable Serializer<V> valueSerializer, boolean configureSerializers) {
+
+		this(configs, () -> keySerializer, () -> valueSerializer, configureSerializers);
+	}
+
+	/**
+	 * Construct a factory with the provided configuration and {@link Serializer}
+	 * Suppliers. Also configures a {@link #transactionIdPrefix} as a value from the
+	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided. This config is going to
+	 * be overridden with a suffix for target {@link Producer} instance. When the
+	 * suppliers are invoked to get an instance, the serializers' {@code configure()}
+	 * methods will be called with the configuration map.
 	 * @param configs the configuration.
 	 * @param keySerializerSupplier the key {@link Serializer} supplier function.
 	 * @param valueSerializerSupplier the value {@link Serializer} supplier function.
@@ -202,7 +225,30 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			@Nullable Supplier<Serializer<K>> keySerializerSupplier,
 			@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
 
+		this(configs, keySerializerSupplier, valueSerializerSupplier, true);
+	}
+
+	/**
+	 * Construct a factory with the provided configuration and {@link Serializer}
+	 * Suppliers. Also configures a {@link #transactionIdPrefix} as a value from the
+	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided. This config is going to
+	 * be overridden with a suffix for target {@link Producer} instance. When the
+	 * suppliers are invoked to get an instance, the serializers' {@code configure()}
+	 * methods will be called with the configuration map unless
+	 * {@code configureSerializers} is false.
+	 * @param configs the configuration.
+	 * @param keySerializerSupplier the key {@link Serializer} supplier function.
+	 * @param valueSerializerSupplier the value {@link Serializer} supplier function.
+	 * @param configureSerializers set to false if serializers are already fully
+	 * configured.
+	 * @since 2.8.7
+	 */
+	public DefaultKafkaProducerFactory(Map<String, Object> configs,
+			@Nullable Supplier<Serializer<K>> keySerializerSupplier,
+			@Nullable Supplier<Serializer<V>> valueSerializerSupplier, boolean configureSerializers) {
+
 		this.configs = new ConcurrentHashMap<>(configs);
+		this.configureSerializers = configureSerializers;
 		this.keySerializerSupplier = keySerializerSupplier(keySerializerSupplier);
 		this.valueSerializerSupplier = valueSerializerSupplier(valueSerializerSupplier);
 		if (this.clientIdPrefix == null && configs.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String) {
@@ -217,6 +263,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private Supplier<Serializer<K>> keySerializerSupplier(@Nullable Supplier<Serializer<K>> keySerializerSupplier) {
 		this.rawKeySerializerSupplier = keySerializerSupplier;
+		if (!this.configureSerializers) {
+			return keySerializerSupplier;
+		}
 		return keySerializerSupplier == null
 				? () -> null
 				: () -> {
@@ -230,6 +279,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private Supplier<Serializer<V>> valueSerializerSupplier(@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
 		this.rawValueSerializerSupplier = valueSerializerSupplier;
+		if (!this.configureSerializers) {
+			return valueSerializerSupplier;
+		}
 		return valueSerializerSupplier == null
 				? () -> null
 				: () -> {
@@ -252,37 +304,79 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Set a key serializer.
+	 * Set a key serializer. The serializer will be configured using the producer
+	 * configuration, unless {@link #setConfigureSerializers(boolean)
+	 * configureSerializers} is false.
 	 * @param keySerializer the key serializer.
+	 * @see #setConfigureSerializers(boolean)
 	 */
 	public void setKeySerializer(@Nullable Serializer<K> keySerializer) {
 		this.keySerializerSupplier = keySerializerSupplier(() -> keySerializer);
 	}
 
 	/**
-	 * Set a value serializer.
+	 * Set a value serializer. The serializer will be configured using the producer
+	 * configuration, unless {@link #setConfigureSerializers(boolean)
+	 * configureSerializers} is false.
 	 * @param valueSerializer the value serializer.
+	 * @see #setConfigureSerializers(boolean)
 	 */
 	public void setValueSerializer(@Nullable Serializer<V> valueSerializer) {
 		this.valueSerializerSupplier = valueSerializerSupplier(() -> valueSerializer);
 	}
 
 	/**
-	 * Set a supplier to supply instances of the key serializer.
+	 * Set a supplier to supply instances of the key serializer. The serializer will be
+	 * configured using the producer configuration, unless
+	 * {@link #setConfigureSerializers(boolean) configureSerializers} is false.
 	 * @param keySerializerSupplier the supplier.
 	 * @since 2.8
+	 * @see #setConfigureSerializers(boolean)
 	 */
 	public void setKeySerializerSupplier(Supplier<Serializer<K>> keySerializerSupplier) {
-		this.keySerializerSupplier = keySerializerSupplier;
+		this.keySerializerSupplier = keySerializerSupplier(keySerializerSupplier);
 	}
 
 	/**
 	 * Set a supplier to supply instances of the value serializer.
-	 * @param valueSerializerSupplier the supplier.
+	 * @param valueSerializerSupplier the supplier. The serializer will be configured
+	 * using the producer configuration, unless {@link #setConfigureSerializers(boolean)
+	 * configureSerializers} is false.
 	 * @since 2.8
+	 * @see #setConfigureSerializers(boolean)
 	 */
 	public void setValueSerializerSupplier(Supplier<Serializer<V>> valueSerializerSupplier) {
-		this.valueSerializerSupplier = valueSerializerSupplier;
+		this.valueSerializerSupplier = valueSerializerSupplier(valueSerializerSupplier);
+	}
+
+	/**
+	 * If true (default), programmatically provided serializers (via constructor or
+	 * setters) will be configured using the producer configuration. Set to false if the
+	 * serializers are already fully configured.
+	 * @return true to configure.
+	 * @since 2.8.7
+	 * @see #setKeySerializer(Serializer)
+	 * @see #setKeySerializerSupplier(Supplier)
+	 * @see #setValueSerializer(Serializer)
+	 * @see #setValueSerializerSupplier(Supplier)
+	 */
+	public boolean isConfigureSerializers() {
+		return this.configureSerializers;
+	}
+
+	/**
+	 * Set to false (default true) to prevent programmatically provided serializers (via
+	 * constructor or setters) from being configured using the producer configuration,
+	 * e.g. if the serializers are already fully configured.
+	 * @param configureSerializers false to not configure.
+	 * @since 2.8.7
+	 * @see #setKeySerializer(Serializer)
+	 * @see #setKeySerializerSupplier(Supplier)
+	 * @see #setValueSerializer(Serializer)
+	 * @see #setValueSerializerSupplier(Supplier)
+	 */
+	public void setConfigureSerializers(boolean configureSerializers) {
+		this.configureSerializers = configureSerializers;
 	}
 
 	/**
@@ -441,10 +535,10 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		Map<String, Object> producerProperties = new HashMap<>(getConfigurationProperties());
 		producerProperties.putAll(overrideProperties);
 		producerProperties = ensureExistingTransactionIdPrefixInProperties(producerProperties);
-		DefaultKafkaProducerFactory<K, V> newFactory =
-				new DefaultKafkaProducerFactory<>(producerProperties,
+		DefaultKafkaProducerFactory<K, V> newFactory = new DefaultKafkaProducerFactory<>(producerProperties,
 						getKeySerializerSupplier(),
-						getValueSerializerSupplier());
+						getValueSerializerSupplier(),
+						isConfigureSerializers());
 		newFactory.setPhysicalCloseTimeout((int) getPhysicalCloseTimeout().getSeconds());
 		newFactory.setProducerPerConsumerPartition(isProducerPerConsumerPartition());
 		newFactory.setProducerPerThread(isProducerPerThread());
