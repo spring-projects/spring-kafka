@@ -16,15 +16,11 @@
 
 package org.springframework.kafka.support.micrometer;
 
-import java.util.Collections;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.lang.Nullable;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -69,50 +65,22 @@ public final class MicrometerHolder {
 		if (context == null) {
 			throw new IllegalStateException("No micrometer registry present");
 		}
-		Map<String, MeterRegistry> registries = context.getBeansOfType(MeterRegistry.class, false, false);
-		this.timerName = timerName;
-		this.timerDesc = timerDesc;
-		this.name = name;
-		this.tags = tags;
-		registries = filterRegistries(registries, context);
-		if (registries.size() == 1) {
-			this.registry = registries.values().iterator().next();
+		try {
+			this.registry = context.getBeanProvider(MeterRegistry.class).getIfUnique();
+		}
+		catch (NoUniqueBeanDefinitionException ex) {
+			throw new IllegalStateException(ex);
+		}
+		if (this.registry != null) {
+			this.timerName = timerName;
+			this.timerDesc = timerDesc;
+			this.name = name;
+			this.tags = tags;
 			buildTimer(NONE_EXCEPTION_METERS_KEY);
 		}
 		else {
 			throw new IllegalStateException("No micrometer registry present (or more than one and "
-					+ "none marked @Primary)");
-		}
-	}
-
-	private Map<String, MeterRegistry> filterRegistries(Map<String, MeterRegistry> registries,
-			ApplicationContext context) {
-
-		if (registries.size() == 1) {
-			return registries;
-		}
-		MeterRegistry primary = null;
-		if (context instanceof ConfigurableApplicationContext) {
-			BeanDefinitionRegistry bdr = (BeanDefinitionRegistry) ((ConfigurableApplicationContext) context)
-					.getBeanFactory();
-			for (Entry<String, MeterRegistry> entry : registries.entrySet()) {
-				BeanDefinition beanDefinition = bdr.getBeanDefinition(entry.getKey());
-				if (beanDefinition.isPrimary()) {
-					if (primary != null) {
-						primary = null;
-						break;
-					}
-					else {
-						primary = entry.getValue();
-					}
-				}
-			}
-		}
-		if (primary != null) {
-			return Collections.singletonMap("primary", primary);
-		}
-		else {
-			return registries;
+					+ "there is not exactly one marked with @Primary)");
 		}
 	}
 
