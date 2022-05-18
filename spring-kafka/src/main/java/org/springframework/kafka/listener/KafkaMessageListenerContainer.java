@@ -730,9 +730,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private long lastAlertAt = this.lastReceive;
 
-		private long nackSleep = -1;
+		private long nackSleepDurationMillis = -1;
 
-		private long nackWake;
+		private long nackWakeTimeMillis;
 
 		private int nackIndex;
 
@@ -1622,9 +1622,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void resumeConsumerIfNeccessary() {
-			if (this.nackWake > 0) {
-				if (System.currentTimeMillis() > this.nackWake) {
-					this.nackWake = 0;
+			if (this.nackWakeTimeMillis > 0) {
+				if (System.currentTimeMillis() > this.nackWakeTimeMillis) {
+					this.nackWakeTimeMillis = 0;
 					this.consumer.resume(this.pausedForNack);
 					this.logger.debug(() -> "Resumed after nack sleep: " + this.pausedForNack);
 					this.pausedForNack.clear();
@@ -2207,7 +2207,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			invokeBatchOnMessageWithRecordsOrList(records, recordList);
 			List<ConsumerRecord<?, ?>> toSeek = null;
-			if (this.nackSleep >= 0) {
+			if (this.nackSleepDurationMillis >= 0) {
 				int index = 0;
 				toSeek = new ArrayList<>();
 				for (ConsumerRecord<K, V> record : records) {
@@ -2217,7 +2217,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			if (this.producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
-				if (this.nackSleep < 0) {
+				if (this.nackSleepDurationMillis < 0) {
 					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
 						this.acks.put(record);
 					}
@@ -2356,7 +2356,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (this.commonRecordInterceptor != null) {
 					this.commonRecordInterceptor.afterRecord(record, this.consumer);
 				}
-				if (this.nackSleep >= 0) {
+				if (this.nackSleepDurationMillis >= 0) {
 					handleNack(records, record);
 					break;
 				}
@@ -2435,7 +2435,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (this.commonRecordInterceptor !=  null) {
 					this.commonRecordInterceptor.afterRecord(record, this.consumer);
 				}
-				if (this.nackSleep >= 0) {
+				if (this.nackSleepDurationMillis >= 0) {
 					handleNack(records, record);
 					break;
 				}
@@ -2510,8 +2510,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void pauseForNackSleep() {
-			if (this.nackSleep > 0) {
-				this.nackWake = System.currentTimeMillis() + this.nackSleep;
+			if (this.nackSleepDurationMillis > 0) {
+				this.nackWakeTimeMillis = System.currentTimeMillis() + this.nackSleepDurationMillis;
 				Set<TopicPartition> alreadyPaused = this.consumer.paused();
 				Collection<TopicPartition> assigned = getAssignedPartitions();
 				if (assigned != null) {
@@ -2531,7 +2531,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.consumer.resume(nowPaused);
 				}
 			}
-			this.nackSleep = -1;
+			this.nackSleepDurationMillis = -1;
 		}
 
 		/**
@@ -2626,7 +2626,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				checkDeser(record, SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			doInvokeOnMessage(record);
-			if (this.nackSleep < 0 && !this.isManualImmediateAck) {
+			if (this.nackSleepDurationMillis < 0 && !this.isManualImmediateAck) {
 				ackCurrent(record);
 			}
 		}
@@ -3174,11 +3174,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
-			public void nack(long sleep) {
+			public void nack(long sleepMillis) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
-				Assert.isTrue(sleep >= 0, "sleep cannot be negative");
-				ListenerConsumer.this.nackSleep = sleep;
+				Assert.isTrue(sleepMillis >= 0, "sleepMillis cannot be negative");
+				ListenerConsumer.this.nackSleepDurationMillis = sleepMillis;
 				synchronized (ListenerConsumer.this) {
 					if (ListenerConsumer.this.offsetsInThisBatch != null) {
 						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
@@ -3221,13 +3221,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
-			public void nack(int index, long sleep) {
+			public void nack(int index, long sleepMillis) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
-				Assert.isTrue(sleep >= 0, "sleep cannot be negative");
+				Assert.isTrue(sleepMillis >= 0, "sleepMillis cannot be negative");
 				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
 				ListenerConsumer.this.nackIndex = index;
-				ListenerConsumer.this.nackSleep = sleep;
+				ListenerConsumer.this.nackSleepDurationMillis = sleepMillis;
 				synchronized (ListenerConsumer.this) {
 					if (ListenerConsumer.this.offsetsInThisBatch != null) {
 						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
