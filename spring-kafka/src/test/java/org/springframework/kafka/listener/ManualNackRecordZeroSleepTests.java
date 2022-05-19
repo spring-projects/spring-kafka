@@ -136,7 +136,7 @@ public class ManualNackRecordZeroSleepTests {
 			++this.count;
 			if (this.contents.size() == 1 || this.count == 5 || this.count == 8) {
 				// first, last record or part 1, offset 1, first time
-				ack.nack(0);
+				ack.nack(Duration.ofMillis(0));
 			}
 			else {
 				ack.acknowledge();

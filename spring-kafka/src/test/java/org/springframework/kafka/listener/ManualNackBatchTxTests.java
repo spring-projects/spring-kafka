@@ -150,7 +150,7 @@ public class ManualNackBatchTxTests {
 			this.replayTime = System.currentTimeMillis() - this.replayTime;
 			this.deliveryLatch.countDown();
 			if (++this.count == 1) { // part 1, offset 1, first time
-				ack.nack(3, 50);
+				ack.nack(3, Duration.ofMillis(50));
 			}
 			else {
 				ack.acknowledge();
