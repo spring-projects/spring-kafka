@@ -146,7 +146,7 @@ public class ManualNackBatchTests {
 			this.replayTime = System.currentTimeMillis() - this.replayTime;
 			this.deliveryLatch.countDown();
 			if (this.fail.getAndSet(false)) {
-				ack.nack(3, 50);
+				ack.nack(3, Duration.ofMillis(50));
 			}
 			else {
 				ack.acknowledge();

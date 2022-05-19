@@ -142,7 +142,7 @@ public class ManualNackRecordTests {
 			}
 			this.deliveryLatch.countDown();
 			if (++this.count == 4) { // part 1, offset 1, first time
-				ack.nack(50);
+				ack.nack(Duration.ofMillis(50));
 			}
 			else {
 				ack.acknowledge();

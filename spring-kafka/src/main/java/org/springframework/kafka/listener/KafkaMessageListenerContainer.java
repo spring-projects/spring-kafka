@@ -3192,11 +3192,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
-			public void nack(long sleepMillis) {
+			public void nack(Duration sleep) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
-				Assert.isTrue(sleepMillis >= 0, "sleepMillis cannot be negative");
-				ListenerConsumer.this.nackSleepDurationMillis = sleepMillis;
+				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
+				ListenerConsumer.this.nackSleepDurationMillis = sleep.toMillis();
 				synchronized (ListenerConsumer.this) {
 					if (ListenerConsumer.this.offsetsInThisBatch != null) {
 						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
@@ -3240,13 +3240,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
-			public void nack(int index, long sleepMillis) {
+			public void nack(int index, Duration sleep) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
-				Assert.isTrue(sleepMillis >= 0, "sleepMillis cannot be negative");
+				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
 				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
 				ListenerConsumer.this.nackIndex = index;
-				ListenerConsumer.this.nackSleepDurationMillis = sleepMillis;
+				ListenerConsumer.this.nackSleepDurationMillis = sleep.toMillis();
 				synchronized (ListenerConsumer.this) {
 					if (ListenerConsumer.this.offsetsInThisBatch != null) {
 						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
