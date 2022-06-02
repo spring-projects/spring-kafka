@@ -1552,12 +1552,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						.filter(entry -> this.assignedPartitions.contains(entry.getKey()))
 						.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 
-			   Map<TopicPartition, OffsetAndMetadata> uncommitted = this.commitsDuringRebalance.entrySet()
-					   .stream()
-					   .filter(entry -> !this.assignedPartitions.contains(entry.getKey()))
-					   .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-			   this.logger.warn(() -> "These offsets could not be committed; partition(s) lost during rebalance: "
-							   + uncommitted);
+				Map<TopicPartition, OffsetAndMetadata> uncommitted = this.commitsDuringRebalance.entrySet()
+						.stream()
+						.filter(entry -> !this.assignedPartitions.contains(entry.getKey()))
+						.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+				this.logger.warn(() -> "These offsets could not be committed; partition(s) lost during rebalance: "
+								+ uncommitted);
 
 				this.commitsDuringRebalance.clear();
 				this.logger.debug(() -> "Commit list: " + commits);
