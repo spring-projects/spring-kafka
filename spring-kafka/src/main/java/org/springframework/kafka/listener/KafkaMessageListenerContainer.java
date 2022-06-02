@@ -3066,7 +3066,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				doCommitSync(commits, retries + 1);
 			}
 			catch (RebalanceInProgressException e) {
-				this.logger.warn(e, "Non-fatal commit failure");
+				this.logger.debug(e, "Non-fatal commit failure");
 				this.commitsDuringRebalance.putAll(commits);
 			}
 		}
