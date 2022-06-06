@@ -108,6 +108,7 @@ import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.adapter.ConsumerRecordMetadata;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
@@ -447,6 +448,7 @@ public class EnableKafkaIntegrationTests {
 
 		template.send("annotated8", 0, 1, "junk");
 		assertThat(this.multiListener.errorLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiListener.meta).isNotNull();
 	}
 
 	@Test
@@ -2302,18 +2304,21 @@ public class EnableKafkaIntegrationTests {
 	@KafkaListener(id = "multi", topics = "annotated8", errorHandler = "consumeMultiMethodException")
 	static class MultiListenerBean {
 
-		private final CountDownLatch latch1 = new CountDownLatch(1);
+		final CountDownLatch latch1 = new CountDownLatch(1);
 
-		private final CountDownLatch latch2 = new CountDownLatch(1);
+		final CountDownLatch latch2 = new CountDownLatch(1);
 
-		private final CountDownLatch errorLatch = new CountDownLatch(1);
+		final CountDownLatch errorLatch = new CountDownLatch(1);
+
+		volatile ConsumerRecordMetadata meta;
 
 		@KafkaHandler
-		public void bar(@NonNull String bar) {
+		public void bar(@NonNull String bar, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetadata meta) {
 			if ("junk".equals(bar)) {
 				throw new RuntimeException("intentional");
 			}
 			else {
+				this.meta = meta;
 				this.latch1.countDown();
 			}
 		}
