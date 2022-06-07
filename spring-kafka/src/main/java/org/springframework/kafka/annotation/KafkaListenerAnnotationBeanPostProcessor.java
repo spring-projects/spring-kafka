@@ -768,6 +768,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (Converter<?, ?> converter : getBeansOfType(Converter.class)) {
 			registry.addConverter(converter);
 		}
+		for (ConverterFactory<?, ?> converter : getBeansOfType(ConverterFactory.class)) {
+			registry.addConverterFactory(converter);
+		}
 		for (GenericConverter converter : getBeansOfType(GenericConverter.class)) {
 			registry.addConverter(converter);
 		}
