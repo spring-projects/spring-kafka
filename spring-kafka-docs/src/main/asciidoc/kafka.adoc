@@ -1953,6 +1953,10 @@ A collection of managed containers can be obtained by calling the registry's `ge
 Version 2.2.5 added a convenience method `getAllListenerContainers()`, which returns a collection of all containers, including those managed by the registry and those declared as beans.
 The collection returned will include any prototype beans that have been initialized, but it will not initialize any lazy bean declarations.
 
+IMPORTANT: Endpoints registered after the application context has been refreshed will start immediately, regardless of their `autoStartup` property, to comply with the `SmartLifecycle` contract, where `autoStartup` is only considered during application context initialization.
+An example of late registration is a bean with a `@KafkaListener` in prototype scope where an instance is created after the context is initialized.
+Starting with version 2.8.7, you can set the registry's `alwaysStartAfterRefresh` property to `false` and then the container's `autoStartup` property will define whether or not the container is started.
+
 [[kafka-validation]]
 ===== `@KafkaListener` `@Payload` Validation
 

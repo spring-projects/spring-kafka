@@ -83,6 +83,8 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 	private boolean contextRefreshed;
 
+	private boolean alwaysStartAfterRefresh = true;
+
 	private volatile boolean running;
 
 	@Override
@@ -105,6 +107,20 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	public MessageListenerContainer getListenerContainer(String id) {
 		Assert.hasText(id, "Container identifier must not be empty");
 		return this.listenerContainers.get(id);
+	}
+
+	/**
+	 * By default, containers registered for endpoints after the context is refreshed
+	 * are immediately started, regardless of their autoStartup property, to comply with
+	 * the {@link SmartLifecycle} contract, where autoStartup is only considered during
+	 * context initialization. Set to false to apply the autoStartup property, even for
+	 * late endpoint binding. If this is called after the context is refreshed, it will
+	 * apply to any endpoints registered after that call.
+	 * @param alwaysStartAfterRefresh false to apply the property.
+	 * @since 2.8.7
+	 */
+	public void setAlwaysStartAfterRefresh(boolean alwaysStartAfterRefresh) {
+		this.alwaysStartAfterRefresh = alwaysStartAfterRefresh;
 	}
 
 	/**
@@ -327,7 +343,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	 * @see MessageListenerContainer#isAutoStartup()
 	 */
 	private void startIfNecessary(MessageListenerContainer listenerContainer) {
-		if (this.contextRefreshed || listenerContainer.isAutoStartup()) {
+		if ((this.contextRefreshed && this.alwaysStartAfterRefresh) || listenerContainer.isAutoStartup()) {
 			listenerContainer.start();
 		}
 	}

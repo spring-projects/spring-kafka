@@ -71,9 +71,12 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
+import org.springframework.context.annotation.Scope;
 import org.springframework.context.event.EventListener;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.MethodParameter;
@@ -179,7 +182,7 @@ import jakarta.validation.constraints.Max;
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
-		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41" })
+		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42" })
 @TestPropertySource(properties = "spel.props=fetch.min.bytes=420000,max.poll.records=10")
 public class EnableKafkaIntegrationTests {
 
@@ -981,6 +984,14 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.contentFoo).isEqualTo(new Foo("bar"));
 	}
 
+	@Test
+	void proto(@Autowired ApplicationContext context) {
+		this.registry.setAlwaysStartAfterRefresh(false);
+		context.getBean(ProtoListener.class);
+		assertThat(this.registry.getListenerContainer("proto").isRunning()).isFalse();
+		this.registry.setAlwaysStartAfterRefresh(true);
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -1708,6 +1719,20 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		String barInfo() {
 			return "info for the bar listener";
+		}
+
+		@Bean
+		@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+		ProtoListener proto() {
+			return new ProtoListener();
+		}
+
+	}
+
+	static class ProtoListener {
+
+		@KafkaListener(id = "proto", topics = "annotated-42", autoStartup = "false")
+		public void listen(String in) {
 		}
 
 	}
