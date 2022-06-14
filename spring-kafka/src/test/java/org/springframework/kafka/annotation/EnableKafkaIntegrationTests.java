@@ -182,7 +182,8 @@ import jakarta.validation.constraints.Max;
 		"annotated25", "annotated25reply1", "annotated25reply2", "annotated26", "annotated27", "annotated28",
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
-		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42" })
+		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42",
+		"annotated43", "annotated43reply"})
 @TestPropertySource(properties = "spel.props=fetch.min.bytes=420000,max.poll.records=10")
 public class EnableKafkaIntegrationTests {
 
@@ -431,6 +432,15 @@ public class EnableKafkaIntegrationTests {
 		template.send("annotated7", 0, "foo");
 		template.flush();
 		assertThat(this.ifaceListener.getLatch1().await(60, TimeUnit.SECONDS)).isTrue();
+		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
+		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testInterface");
+		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated43reply");
+		template.send("annotated43", 0, "foo");
+		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated43reply");
+		assertThat(reply).extracting(rec -> rec.value()).isEqualTo("FOO");
+		consumer.close();
 	}
 
 	@Test
@@ -1373,8 +1383,8 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
-		public MultiListenerSendTo multiListenerSendTo() {
-			return new MultiListenerSendTo();
+		public MultiListenerSendToImpl multiListenerSendTo() {
+			return new MultiListenerSendToImpl();
 		}
 
 		@Bean
@@ -2296,6 +2306,10 @@ public class EnableKafkaIntegrationTests {
 
 		void listen(T foo);
 
+		@SendTo("annotated43reply")
+		@KafkaListener(id = "ifcR", topics = "annotated43")
+		String reply(String in);
+
 	}
 
 	static class IfaceListenerImpl implements IfaceListener<String> {
@@ -2314,6 +2328,11 @@ public class EnableKafkaIntegrationTests {
 		@Transactional
 		public void listenTx(String foo) {
 			latch2.countDown();
+		}
+
+		@Override
+		public String reply(String in) {
+			return in.toUpperCase();
 		}
 
 		public CountDownLatch getLatch1() {
@@ -2422,15 +2441,25 @@ public class EnableKafkaIntegrationTests {
 
 	@KafkaListener(id = "multiSendTo", topics = "annotated25")
 	@SendTo("annotated25reply1")
-	static class MultiListenerSendTo {
+	interface MultiListenerSendTo {
 
 		@KafkaHandler
+		String foo(String in);
+
+		@KafkaHandler
+		@SendTo("!{'annotated25reply2'}")
+		String bar(KafkaNull nul, int key);
+
+	}
+
+	static class MultiListenerSendToImpl implements MultiListenerSendTo {
+
+		@Override
 		public String foo(String in) {
 			return in.toUpperCase();
 		}
 
-		@KafkaHandler
-		@SendTo("!{'annotated25reply2'}")
+		@Override
 		public String bar(@Payload(required = false) KafkaNull nul,
 				@Header(KafkaHeaders.RECEIVED_KEY) int key) {
 			return "BAR";

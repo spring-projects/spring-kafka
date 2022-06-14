@@ -31,7 +31,7 @@ import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.kafka.KafkaException;
@@ -193,12 +193,12 @@ public class DelegatingInvocableHandler {
 		Method method = handler.getMethod();
 		SendTo ann = null;
 		if (method != null) {
-			ann = AnnotationUtils.getAnnotation(method, SendTo.class);
+			ann = AnnotatedElementUtils.findMergedAnnotation(method, SendTo.class);
 			replyTo = extractSendTo(method.toString(), ann);
 		}
 		if (ann == null) {
 			Class<?> beanType = handler.getBeanType();
-			ann = AnnotationUtils.getAnnotation(beanType, SendTo.class);
+			ann = AnnotatedElementUtils.findMergedAnnotation(beanType, SendTo.class);
 			replyTo = extractSendTo(beanType.getSimpleName(), ann);
 		}
 		if (ann != null && replyTo == null) {

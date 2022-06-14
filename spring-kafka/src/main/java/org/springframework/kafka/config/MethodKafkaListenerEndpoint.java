@@ -25,7 +25,7 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
@@ -132,7 +132,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	private String getReplyTopic() {
 		Method replyingMethod = getMethod();
 		if (replyingMethod != null) {
-			SendTo ann = AnnotationUtils.getAnnotation(replyingMethod, SendTo.class);
+			SendTo ann = AnnotatedElementUtils.findMergedAnnotation(replyingMethod, SendTo.class);
 			if (ann != null) {
 				if (replyingMethod.getReturnType().equals(void.class)) {
 					this.logger.warn(() -> "Method "
