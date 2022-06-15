@@ -111,6 +111,31 @@ public class ErrorHandlingDeserializerTests {
 		ehd.close();
 	}
 
+	@Test
+	void notSerializable() {
+		class MyDes implements Deserializer<String> {
+
+			@Override
+			public String deserialize(String topic, byte[] data) {
+				return null;
+			}
+
+			@Override
+			public String deserialize(String topic, Headers headers, byte[] data) {
+				throw new CannotSerializeException("original exception message");
+			}
+
+		}
+		ErrorHandlingDeserializer<String> ehd = new ErrorHandlingDeserializer<>(new MyDes());
+		Headers headers = new RecordHeaders();
+		ehd.deserialize("foo", headers, new byte[1]);
+		DeserializationException dex = ListenerUtils.byteArrayToDeserializationException(null,
+				headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER).value());
+		assertThat(dex.getMessage())
+				.contains("Could not serialize")
+				.contains("original exception message");
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
@@ -242,6 +267,21 @@ public class ErrorHandlingDeserializerTests {
 	}
 
 	public static class ExtendedEHD<T> extends ErrorHandlingDeserializer<T> {
+
+	}
+
+	@SuppressWarnings("serial")
+	public static class CannotSerializeException extends RuntimeException {
+
+		private final Foo foo = new Foo();
+
+		public CannotSerializeException(String message) {
+			super(message);
+		}
+
+	}
+
+	public static class Foo {
 
 	}
 

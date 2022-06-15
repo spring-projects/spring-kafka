@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -156,9 +156,9 @@ public final class SerializationUtils {
 			stream = new ByteArrayOutputStream();
 			try (ObjectOutputStream oos = new ObjectOutputStream(stream)) {
 				exception = new DeserializationException("failed to deserialize",
-						data, isForKeyArg, new RuntimeException("Could not deserialize type "
-						+ ioex.getClass().getName() + " with message " + ioex.getMessage()
-						+ " failure: " + ioex.getMessage()));
+						data, isForKeyArg, new RuntimeException("Could not serialize type "
+						+ ex.getClass().getName() + " with message " + ioex.getMessage()
+						+ ". Original exception message: " + ex.getMessage()));
 				oos.writeObject(exception);
 			}
 			catch (IOException ex2) {
