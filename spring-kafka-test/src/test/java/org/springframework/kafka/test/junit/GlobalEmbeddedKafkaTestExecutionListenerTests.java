@@ -67,7 +67,7 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 		}
 
 		System.setProperty(GlobalEmbeddedKafkaTestExecutionListener.BROKER_PROPERTIES_LOCATION_PROPERTY_NAME,
-				"file:/" + propertiesFile.getAbsolutePath());
+				"file:" + propertiesFile.getAbsolutePath());
 
 		var discoveryRequest =
 				LauncherDiscoveryRequestBuilder.request()
