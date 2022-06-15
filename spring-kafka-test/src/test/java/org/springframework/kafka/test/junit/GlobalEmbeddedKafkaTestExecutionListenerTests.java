@@ -22,6 +22,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -78,9 +79,15 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 		LauncherFactory.create().execute(discoveryRequest, summaryGeneratingListener);
 
 		var summary = summaryGeneratingListener.getSummary();
-		assertThat(summary.getTestsStartedCount()).isEqualTo(2);
-		assertThat(summary.getTestsSucceededCount()).isEqualTo(1);
-		assertThat(summary.getTestsFailedCount()).isEqualTo(1);
+
+		try {
+			assertThat(summary.getTestsStartedCount()).isEqualTo(2);
+			assertThat(summary.getTestsSucceededCount()).isEqualTo(1);
+			assertThat(summary.getTestsFailedCount()).isEqualTo(1);
+		}
+		catch (Exception e) {
+			summary.printFailuresTo(new PrintWriter(System.out));
+		}
 
 		System.clearProperty(GlobalEmbeddedKafkaTestExecutionListener.LISTENER_ENABLED_PROPERTY_NAME);
 		System.clearProperty(GlobalEmbeddedKafkaTestExecutionListener.BROKER_PROPERTIES_LOCATION_PROPERTY_NAME);
