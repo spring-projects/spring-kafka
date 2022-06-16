@@ -85,8 +85,9 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 			assertThat(summary.getTestsSucceededCount()).isEqualTo(1);
 			assertThat(summary.getTestsFailedCount()).isEqualTo(1);
 		}
-		catch (Exception e) {
+		catch (Exception ex) {
 			summary.printFailuresTo(new PrintWriter(System.out));
+			throw ex;
 		}
 
 		System.clearProperty(GlobalEmbeddedKafkaTestExecutionListener.LISTENER_ENABLED_PROPERTY_NAME);
