@@ -158,9 +158,10 @@ public class MyTests {
 By default, `addTopics` will throw an exception when problems arise (such as adding a topic that already exists).
 Version 2.6 added a new version of that method that returns a `Map<String, Exception>`; the key is the topic name and the value is `null` for success, or an `Exception` for a failure.
 
+[[same-broker-multiple-tests]]
 ==== Using the Same Broker(s) for Multiple Test Classes
 
-There is no built-in support for doing so, but you can use the same broker for multiple test classes with something similar to the following:
+You can use the same broker for multiple test classes with something similar to the following:
 
 ====
 [source, java]
@@ -213,6 +214,24 @@ If you are not using Spring Boot, you can obtain the bootstrap servers using `br
 IMPORTANT: The preceding example provides no mechanism for shutting down the broker(s) when all tests are complete.
 This could be a problem if, say, you run your tests in a Gradle daemon.
 You should not use this technique in such a situation, or you should use something to call `destroy()` on the `EmbeddedKafkaBroker` when your tests are complete.
+
+Starting with version 3.0, the framework exposes a `GlobalEmbeddedKafkaTestExecutionListener` for JUnit Jupiter Platform, which is disabled by default.
+The purpose of this listener is to start one global `EmbeddedKafkaBroker` for the whole test plan and stop it in the end of plan.
+To enable this listener, and therefore have a single global embedded Kafka cluster for all the tests in the project, a `spring.kafka.global.embedded.enabled` property must be set to `true` via system properties or JUnit platform configuration.
+In addition, these properties can be provided:
+
+- `spring.kafka.embedded.count` - the number of Kafka brokers to manage;
+- `spring.kafka.embedded.ports` - ports (comma-separated value) for every Kafka broker to start, `0` if random port is a preference; number of values must be equal to the `count` mentioned above;
+- `spring.kafka.embedded.topics` - topics (comma-separated value) to create in the started Kafka cluster;
+- `spring.kafka.embedded.partitions` - number of partitions to provision to the topics to create;
+- `spring.kafka.embedded.broker.properties.location` - the location to the file for addition Kafka broker configuration properties; must follow Spring resource abstraction pattern.
+
+Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
+
+See more information about configuration properties and how to provide them in the https://junit.org/junit5/docs/current/user-guide/#running-tests-config-params[JUnit 5 User Guide].
+
+NOTE: It is recommended to not combine a global embedded Kafka and per-test class in a single test suite.
+Both of them share the same system properties, so it is very likely going to lead to unexpected behavior.
 
 [[embedded-kafka-annotation]]
 ==== @EmbeddedKafka Annotation

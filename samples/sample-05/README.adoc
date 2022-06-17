@@ -1,0 +1,22 @@
+== Sample 5
+
+This sample demonstrates a global embedded Kafka broker in action.
+
+This kind of broker is enabled via `spring.kafka.global.embedded.enabled = true` JUnit Platform property configured in the Maven Surefire plugin.
+Additional properties for the underlying `GlobalEmbeddedKafkaTestExecutionListener`, and therefore embedded Kafka broker(s), are provided via standard `junit-platform.properties` file or extra configuration parameters for the Maven Surefire plugin.
+
+Run only `./mvnw test` command for this sample.
+The Maven will report to the output similar two log messages:
+```
+11:03:44.383 [main] INFO  o.s.k.t.j.GlobalEmbeddedKafkaTestExecutionListener - Started global Embedded Kafka on: 127.0.0.1:53671
+...
+11:03:48.439 [main] INFO  o.s.k.t.j.GlobalEmbeddedKafkaTestExecutionListener - Stopped global Embedded Kafka.
+```
+One in the beginning of the test plan - and another in the end before reporting failures.
+
+The application by itself is going to fail because it has a configuration like `spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}`.
+This property makes it available only when an `EmbeddedKafkaBroker` is started, which is done by the `GlobalEmbeddedKafkaTestExecutionListener` and only when `spring.kafka.global.embedded.enabled = true`.
+Running unit tests from IDE will lead to similar failure -  the `GlobalEmbeddedKafkaTestExecutionListener` is not enabled by default and there is no an `@EmbeddedKafka` present in these tests.
+
+One of the tests is deliberately failing to demonstrate that global embedded Kafka broker config for `auto.create.topics.enable=false` is in an effect.
+See `/test/resources/kafka-broker.properties` and Maven Surefire plugin configuration in the pom.xml.

@@ -6,7 +6,7 @@ For changes in earlier version, see <<history>>.
 [[x30-kafka-client]]
 ==== Kafka Client Version
 
-This version requires the 3.1.0 `kafka-clients`
+This version requires the 3.2.0 `kafka-clients`.
 
 [[x30-eos]]
 ==== Exactly Once Semantics
@@ -16,3 +16,9 @@ This version requires the 3.1.0 `kafka-clients`
 IMPORTANT: When using transactions, the minimum broker version is 2.5.
 
 See <<exactly-once>> and https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics[KIP-447] for more information.
+
+[[global-embedded-kafka]]
+==== Global Single Embedded Kafka
+
+The embedded Kafka (`EmbeddedKafkaBroker`) can now be start as a single global instance for the whole test plan.
+See <<same-broker-multiple-tests>> for more information.

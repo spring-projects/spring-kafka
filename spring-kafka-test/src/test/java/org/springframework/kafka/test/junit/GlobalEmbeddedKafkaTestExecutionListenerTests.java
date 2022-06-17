@@ -37,6 +37,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
@@ -53,10 +55,19 @@ import org.springframework.util.DefaultPropertiesPersister;
  */
 public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 
+	@BeforeAll
+	static void setup() {
+		System.setProperty(GlobalEmbeddedKafkaTestExecutionListener.LISTENER_ENABLED_PROPERTY_NAME, "true");
+	}
+
+	@AfterAll
+	static void tearDown() {
+		System.clearProperty(GlobalEmbeddedKafkaTestExecutionListener.LISTENER_ENABLED_PROPERTY_NAME);
+		System.clearProperty(GlobalEmbeddedKafkaTestExecutionListener.BROKER_PROPERTIES_LOCATION_PROPERTY_NAME);
+	}
+
 	@Test
 	void testGlobalEmbeddedKafkaTestExecutionListener() throws IOException {
-		System.setProperty(GlobalEmbeddedKafkaTestExecutionListener.LISTENER_ENABLED_PROPERTY_NAME, "true");
-
 		var brokerProperties = new Properties();
 		brokerProperties.setProperty("auto.create.topics.enable", "false");
 
@@ -89,9 +100,6 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 			summary.printFailuresTo(new PrintWriter(System.out));
 			throw ex;
 		}
-
-		System.clearProperty(GlobalEmbeddedKafkaTestExecutionListener.LISTENER_ENABLED_PROPERTY_NAME);
-		System.clearProperty(GlobalEmbeddedKafkaTestExecutionListener.BROKER_PROPERTIES_LOCATION_PROPERTY_NAME);
 	}
 
 	@EnabledIfSystemProperty(named = GlobalEmbeddedKafkaTestExecutionListener.LISTENER_ENABLED_PROPERTY_NAME,

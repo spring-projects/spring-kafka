@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
@@ -46,6 +48,7 @@ import org.springframework.util.StringUtils;
  */
 public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionListener {
 
+	private static final Log LOGGER = LogFactory.getLog(GlobalEmbeddedKafkaTestExecutionListener.class);
 
 	/**
 	 * Property name used to enable the {@code GlobalEmbeddedKafkaTestExecutionListener}.
@@ -61,14 +64,14 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public static final String COUNT_PROPERTY_NAME = "spring.kafka.embedded.count";
 
 	/**
-	 * The topics to create on the embedded broker(s).
+	 * The port(s) to expose embedded broker(s).
 	 */
-	public static final String TOPICS_PROPERTY_NAME = "spring.kafka.embedded.topics";
+	public static final String PORTS_PROPERTY_NAME = "spring.kafka.embedded.ports";
 
 	/**
 	 * The topics to create on the embedded broker(s).
 	 */
-	public static final String PORTS_PROPERTY_NAME = "spring.kafka.embedded.ports";
+	public static final String TOPICS_PROPERTY_NAME = "spring.kafka.embedded.topics";
 
 	/**
 	 * The number of partitions on topics to create on the embedded broker(s).
@@ -76,7 +79,7 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public static final String PARTITIONS_PROPERTY_NAME = "spring.kafka.embedded.partitions";
 
 	/**
-	 * The number of partitions on topics to create on the embedded broker(s).
+	 * The location for a properties file with Kafka broker configuration.
 	 */
 	public static final String BROKER_PROPERTIES_LOCATION_PROPERTY_NAME =
 			"spring.kafka.embedded.broker.properties.location";
@@ -107,8 +110,9 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 							.brokerProperties(brokerProperties)
 							.brokerListProperty(brokerListProperty)
 							.kafkaPorts(ports);
-
 			this.embeddedKafkaBroker.afterPropertiesSet();
+
+			LOGGER.info("Started global Embedded Kafka on: " + this.embeddedKafkaBroker.getBrokersAsString());
 		}
 	}
 
@@ -134,6 +138,7 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public void testPlanExecutionFinished(TestPlan testPlan) {
 		if (this.embeddedKafkaBroker != null) {
 			this.embeddedKafkaBroker.destroy();
+			LOGGER.info("Stopped global Embedded Kafka.");
 		}
 	}
 

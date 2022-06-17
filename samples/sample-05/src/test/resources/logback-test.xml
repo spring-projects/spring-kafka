@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<!-- encoders are assigned the type
+			 ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+		<encoder>
+			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<logger name="org.springframework.kafka.test.junit" level="debug"/>
+	<logger name="org.springframework.kafka.test" level="warn"/>
+	<logger name="org.apache.kafka.clients" level="warn"/>
+	<logger name="org.apache.kafka.clients.NetworkClient" level="error"/>
+	<logger name="org.apache.kafka.common.network.Selector" level="error"/>
+	<logger name="kafka.server.ReplicaFetcherThread" level="error"/>
+	<logger name="kafka.server.LogDirFailureChannel" level="error"/>
+	<logger name="kafka.server.BrokerMetadataCheckpoint" level="error"/>
+	<logger name="kafka.utils.CoreUtils$" level="error"/>
+	<logger name="org.apache.zookeeper.server.ZooKeeperServer" level="error"/>
+
+	<root level="error">
+		<appender-ref ref="STDOUT" />
+	</root>
+</configuration>
