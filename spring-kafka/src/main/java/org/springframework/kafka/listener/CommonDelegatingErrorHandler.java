@@ -16,15 +16,18 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
+import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -44,7 +47,8 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	private final Map<Class<? extends Throwable>, CommonErrorHandler> delegates = new LinkedHashMap<>();
 
-	private boolean deepCauseChainTraversing = false;
+	private boolean causeChainTraversing = false;
+	private NoTraversingBinaryExceptionClassifier classifier = new NoTraversingBinaryExceptionClassifier(new HashMap<>());
 
 	/**
 	 * Construct an instance with a default error handler that will be invoked if the
@@ -62,19 +66,28 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	 * @param delegates the delegates.
 	 */
 	public void setErrorHandlers(Map<Class<? extends Throwable>, CommonErrorHandler> delegates) {
+		Assert.notNull(delegates, "'delegates' cannot be null");
 		this.delegates.clear();
 		this.delegates.putAll(delegates);
 		checkDelegates();
+		updateClassifier(delegates);
+	}
+
+	private void updateClassifier(Map<Class<? extends Throwable>, CommonErrorHandler> delegates) {
+		Map<Class<? extends Throwable>, Boolean> classifications = delegates.keySet().stream()
+			.map(commonErrorHandler -> Map.entry(commonErrorHandler, true))
+			.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+		this.classifier = new NoTraversingBinaryExceptionClassifier(classifications);
 	}
 
 	/**
 	 * Set the flag enabling deep exception's cause chain traversing. If true, delegate
 	 * for initial {@link Throwable} will be retrieved. Initial exception is an exception
 	 * without cause or with unknown cause.
-	 * @param deepCauseChainTraversing the deepCauseChainTraversing flag.
+	 * @param causeChainTraversing the deepCauseChainTraversing flag.
 	 */
-	public void setDeepCauseChainTraversing(boolean deepCauseChainTraversing) {
-		this.deepCauseChainTraversing = deepCauseChainTraversing;
+	public void setCauseChainTraversing(boolean causeChainTraversing) {
+		this.causeChainTraversing = causeChainTraversing;
 	}
 
 	@SuppressWarnings("deprecation")
@@ -184,8 +197,8 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	@Nullable
 	private Throwable findCause(Throwable thrownException) {
-		if (this.deepCauseChainTraversing) {
-			return deepTraverseCauseChain(thrownException);
+		if (this.causeChainTraversing) {
+			return traverseCauseChain(thrownException);
 		}
 		return shallowTraverseCauseChain(thrownException);
 	}
@@ -200,11 +213,23 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	}
 
 	@Nullable
-	private Throwable deepTraverseCauseChain(Throwable thrownException) {
+	private Throwable traverseCauseChain(Throwable thrownException) {
 		while (thrownException != null && thrownException.getCause() != null) {
+			if (this.classifier.classify(thrownException)) { // NOSONAR using Boolean here is not dangerous
+				return thrownException;
+			}
 			thrownException = thrownException.getCause();
 		}
 		return thrownException;
+	}
+
+	@SuppressWarnings("serial")
+	private static final class NoTraversingBinaryExceptionClassifier extends BinaryExceptionClassifier {
+
+		NoTraversingBinaryExceptionClassifier(Map<Class<? extends Throwable>, Boolean> typeMap) {
+			super(typeMap, false, false);
+		}
+
 	}
 
 }
