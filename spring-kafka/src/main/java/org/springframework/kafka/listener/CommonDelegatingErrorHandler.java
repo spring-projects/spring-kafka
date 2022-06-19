@@ -34,6 +34,7 @@ import org.springframework.util.Assert;
  * {@link #deliveryAttemptHeader()} is not supported - always returns false.
  *
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.8
  *
  */
@@ -42,6 +43,8 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	private final CommonErrorHandler defaultErrorHandler;
 
 	private final Map<Class<? extends Throwable>, CommonErrorHandler> delegates = new LinkedHashMap<>();
+
+	private boolean deepCauseChainTraversing = false;
 
 	/**
 	 * Construct an instance with a default error handler that will be invoked if the
@@ -64,6 +67,15 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 		checkDelegates();
 	}
 
+	/**
+	 * Set the flag enabling deep exception's cause chain traversing. If true, delegate
+	 * for initial {@link Throwable} will be retrieved. Initial exception is an exception
+	 * without cause or with unknown cause.
+	 * @param deepCauseChainTraversing the deepCauseChainTraversing flag.
+	 */
+	public void setDeepCauseChainTraversing(boolean deepCauseChainTraversing) {
+		this.deepCauseChainTraversing = deepCauseChainTraversing;
+	}
 
 	@SuppressWarnings("deprecation")
 	@Override
@@ -79,7 +91,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	@Override
 	public void clearThreadState() {
 		this.defaultErrorHandler.clearThreadState();
-		this.delegates.values().forEach(handler -> handler.clearThreadState());
+		this.delegates.values().forEach(CommonErrorHandler::clearThreadState);
 	}
 
 	@Override
@@ -158,10 +170,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	@Nullable
 	private CommonErrorHandler findDelegate(Throwable thrownException) {
-		Throwable cause = thrownException;
-		if (cause instanceof ListenerExecutionFailedException) {
-			cause = thrownException.getCause();
-		}
+		Throwable cause = findCause(thrownException);
 		if (cause != null) {
 			Class<? extends Throwable> causeClass = cause.getClass();
 			for (Entry<Class<? extends Throwable>, CommonErrorHandler> entry : this.delegates.entrySet()) {
@@ -171,6 +180,31 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 			}
 		}
 		return null;
+	}
+
+	@Nullable
+	private Throwable findCause(Throwable thrownException) {
+		if (this.deepCauseChainTraversing) {
+			return deepTraverseCauseChain(thrownException);
+		}
+		return shallowTraverseCauseChain(thrownException);
+	}
+
+	@Nullable
+	private Throwable shallowTraverseCauseChain(Throwable thrownException) {
+		Throwable cause = thrownException;
+		if (cause instanceof ListenerExecutionFailedException) {
+			cause = thrownException.getCause();
+		}
+		return cause;
+	}
+
+	@Nullable
+	private Throwable deepTraverseCauseChain(Throwable thrownException) {
+		while (thrownException != null && thrownException.getCause() != null) {
+			thrownException = thrownException.getCause();
+		}
+		return thrownException;
 	}
 
 }
