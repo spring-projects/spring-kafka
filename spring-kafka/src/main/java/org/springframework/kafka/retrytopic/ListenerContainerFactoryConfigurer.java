@@ -33,13 +33,13 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
-import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
+import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
@@ -252,8 +252,8 @@ public class ListenerContainerFactoryConfigurer {
 
 	protected void setupBackoffAwareMessageListenerAdapter(ConcurrentMessageListenerContainer<?, ?> container,
 														Configuration configuration, boolean isSetContainerProperties) {
-		AcknowledgingConsumerAwareMessageListener<?, ?> listener = checkAndCast(container.getContainerProperties()
-				.getMessageListener(), AcknowledgingConsumerAwareMessageListener.class);
+		MessageListener<?, ?> listener = checkAndCast(container.getContainerProperties()
+				.getMessageListener(), MessageListener.class);
 
 		if (isSetContainerProperties && !configuration.backOffValues.isEmpty()) {
 			configurePollTimeoutAndIdlePartitionInterval(container, configuration);
