@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
+import org.springframework.kafka.config.KafkaListenerEndpoint;
 
 /**
  * Handles the naming related to the retry and dead letter topics.
@@ -36,7 +36,7 @@ public interface RetryTopicNamesProviderFactory {
 		 * @param endpoint the endpoint to override
 		 * @return The endpoint id
 		 */
-		String getEndpointId(MethodKafkaListenerEndpoint<?, ?> endpoint);
+		String getEndpointId(KafkaListenerEndpoint endpoint);
 
 		/**
 		 * Return the groupId that will override the endpoint's groupId.
@@ -44,7 +44,7 @@ public interface RetryTopicNamesProviderFactory {
 		 * @param endpoint the endpoint to override
 		 * @return The groupId
 		 */
-		String getGroupId(MethodKafkaListenerEndpoint<?, ?> endpoint);
+		String getGroupId(KafkaListenerEndpoint endpoint);
 
 		/**
 		 * Return the clientId prefix that will override the endpoint's clientId prefix.
@@ -52,7 +52,7 @@ public interface RetryTopicNamesProviderFactory {
 		 * @param endpoint the endpoint to override
 		 * @return The clientId prefix
 		 */
-		String getClientIdPrefix(MethodKafkaListenerEndpoint<?, ?> endpoint);
+		String getClientIdPrefix(KafkaListenerEndpoint endpoint);
 
 		/**
 		 * Return the group that will override the endpoint's group.
@@ -60,7 +60,7 @@ public interface RetryTopicNamesProviderFactory {
 		 * @param endpoint the endpoint to override
 		 * @return The clientId prefix
 		 */
-		String getGroup(MethodKafkaListenerEndpoint<?, ?> endpoint);
+		String getGroup(KafkaListenerEndpoint endpoint);
 
 		/**
 		 * Return the tropic name that will override the base topic name.

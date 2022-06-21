@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
-import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
+import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.support.Suffixer;
 
 /**
@@ -41,22 +41,22 @@ public class SuffixingRetryTopicNamesProviderFactory implements RetryTopicNamesP
 		}
 
 		@Override
-		public String getEndpointId(MethodKafkaListenerEndpoint<?, ?> endpoint) {
+		public String getEndpointId(KafkaListenerEndpoint endpoint) {
 			return this.suffixer.maybeAddTo(endpoint.getId());
 		}
 
 		@Override
-		public String getGroupId(MethodKafkaListenerEndpoint<?, ?> endpoint) {
+		public String getGroupId(KafkaListenerEndpoint endpoint) {
 			return this.suffixer.maybeAddTo(endpoint.getGroupId());
 		}
 
 		@Override
-		public String getClientIdPrefix(MethodKafkaListenerEndpoint<?, ?> endpoint) {
+		public String getClientIdPrefix(KafkaListenerEndpoint endpoint) {
 			return this.suffixer.maybeAddTo(endpoint.getClientIdPrefix());
 		}
 
 		@Override
-		public String getGroup(MethodKafkaListenerEndpoint<?, ?> endpoint) {
+		public String getGroup(KafkaListenerEndpoint endpoint) {
 			return this.suffixer.maybeAddTo(endpoint.getGroup());
 		}
 
