@@ -44,7 +44,7 @@ This is because, in most cases, you want the consumer to consume any messages se
 The `ConsumerConfig` default is `latest` which means that messages already sent by a test, before the consumer starts, will not receive those records.
 To revert to the previous behavior, set the property to `latest` after calling the method.
 
-When using the embedded broker, it is generally best practice to use a different topic for each test, to prevent cross-talk.
+When using the embedded broker, it is generally best practice using a different topic for each test, to prevent cross-talk.
 If this is not possible for some reason, note that the `consumeFromEmbeddedTopics` method's default behavior is to seek the assigned partitions to the beginning after assignment.
 Since it does not have access to the consumer properties, you must use the overloaded method that takes a `seekToEnd` boolean parameter to seek to the end instead of the beginning.
 ====
@@ -128,6 +128,11 @@ ConsumerRecord<Integer, String> received = KafkaTestUtils.getSingleRecord(consum
 
 When the embedded Kafka and embedded Zookeeper server are started by the `EmbeddedKafkaBroker`, a system property named `spring.embedded.kafka.brokers` is set to the address of the Kafka brokers and a system property named `spring.embedded.zookeeper.connect` is set to the address of Zookeeper.
 Convenient constants (`EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS` and `EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT`) are provided for this property.
+
+Instead of default `spring.embedded.kafka.brokers` system property, the address of the Kafka brokers can be exposed to any arbitrary and convenient property.
+For this purpose a `spring.embedded.kafka.brokers.property` (`EmbeddedKafkaBroker.BROKER_LIST_PROPERTY`) system property can be set before starting an embedded Kafka.
+For example, with Spring Boot a `spring.kafka.bootstrap-servers` configuration property is expected to be set for auto-configuring Kafka client, respectively.
+So, before running tests with an embedded Kafka on the random ports, we can set `spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers` as system property - and `EmbeddedKafkaBroker`  will use it to expose its broker addresses.
 
 With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)`, you can provide additional properties for the Kafka servers.
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
@@ -215,20 +220,21 @@ IMPORTANT: The preceding example provides no mechanism for shutting down the bro
 This could be a problem if, say, you run your tests in a Gradle daemon.
 You should not use this technique in such a situation, or you should use something to call `destroy()` on the `EmbeddedKafkaBroker` when your tests are complete.
 
-Starting with version 3.0, the framework exposes a `GlobalEmbeddedKafkaTestExecutionListener` for JUnit Jupiter Platform, which is disabled by default.
-The purpose of this listener is to start one global `EmbeddedKafkaBroker` for the whole test plan and stop it in the end of plan.
-To enable this listener, and therefore have a single global embedded Kafka cluster for all the tests in the project, a `spring.kafka.global.embedded.enabled` property must be set to `true` via system properties or JUnit platform configuration.
+Starting with version 3.0, the framework exposes a `GlobalEmbeddedKafkaTestExecutionListener` for the JUnit Platform; it is disabled by default.
+The purpose of this listener is to start one global `EmbeddedKafkaBroker` for the whole test plan and stop it at the end of the plan.
+To enable this listener, and therefore have a single global embedded Kafka cluster for all the tests in the project, the `spring.kafka.global.embedded.enabled` property must be set to `true` via system properties or JUnit Platform configuration.
 In addition, these properties can be provided:
 
 - `spring.kafka.embedded.count` - the number of Kafka brokers to manage;
-- `spring.kafka.embedded.ports` - ports (comma-separated value) for every Kafka broker to start, `0` if random port is a preference; number of values must be equal to the `count` mentioned above;
+- `spring.kafka.embedded.ports` - ports (comma-separated value) for every Kafka broker to start, `0` if random port is a preferred; the number of values must be equal to the `count` mentioned above;
 - `spring.kafka.embedded.topics` - topics (comma-separated value) to create in the started Kafka cluster;
-- `spring.kafka.embedded.partitions` - number of partitions to provision to the topics to create;
-- `spring.kafka.embedded.broker.properties.location` - the location to the file for addition Kafka broker configuration properties; must follow Spring resource abstraction pattern.
+- `spring.kafka.embedded.partitions` - number of partitions to provision for the created topics;
+- `spring.kafka.embedded.broker.properties.location` - the location of the file for additional Kafka broker configuration properties; the value of this property must follow the Spring resource abstraction pattern.
 
 Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
 
 See more information about configuration properties and how to provide them in the https://junit.org/junit5/docs/current/user-guide/#running-tests-config-params[JUnit 5 User Guide].
+For example, a `spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers` entry (for testing in Spring Boot application) can be added into a `junit-platform.properties` file in the testing classpath.
 
 NOTE: It is recommended to not combine a global embedded Kafka and per-test class in a single test suite.
 Both of them share the same system properties, so it is very likely going to lead to unexpected behavior.
