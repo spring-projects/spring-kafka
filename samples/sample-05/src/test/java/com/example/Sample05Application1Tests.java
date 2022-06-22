@@ -19,7 +19,6 @@ package com.example;
 import static org.awaitility.Awaitility.await;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +26,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.test.junit.GlobalEmbeddedKafkaTestExecutionListener;
 import org.springframework.test.annotation.DirtiesContext;
 
 /**

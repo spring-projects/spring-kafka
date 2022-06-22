@@ -16,28 +16,23 @@
 
 package com.example;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.common.errors.TimeoutException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.test.annotation.DirtiesContext;
 
 /**
  * This test is going to fail from IDE since there is no exposed {@code spring.embedded.kafka.brokers} system property.
- * This test is deliberately failing to demonstrate that global embedded Kafka broker config for
- * {@code auto.create.topics.enable=false} is in an effect.
+ * This test demonstrates that global embedded Kafka broker config for {@code auto.create.topics.enable=false}
+ * is in an effect - the topic {@code nonExistingTopic} does not exist on the broker.
  * See {@code /resources/kafka-broker.properties} and Maven Surefire plugin configuration.
  */
 @SpringBootTest
@@ -48,11 +43,13 @@ class Sample05Application2Tests {
 	KafkaTemplate<String, String> kafkaTemplate;
 
 	@Test
-	void testKafkaTemplateSend() throws ExecutionException, InterruptedException, TimeoutException {
-		SendResult<String, String> sendResult =
-				this.kafkaTemplate.send("nonExistingTopic", "fake data").get(10, TimeUnit.SECONDS);
-
-		assertThat(sendResult).isNotNull();
+	void testKafkaTemplateSend() {
+		assertThatExceptionOfType(KafkaException.class)
+				.isThrownBy(() ->
+						this.kafkaTemplate.send("nonExistingTopic", "fake data").get(10, TimeUnit.SECONDS))
+				.withRootCauseExactlyInstanceOf(TimeoutException.class)
+				.withMessageContaining("Send failed")
+				.withStackTraceContaining("Topic nonExistingTopic not present in metadata");
 	}
 
 }

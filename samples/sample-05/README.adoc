@@ -18,5 +18,6 @@ The application by itself is going to fail because it has a configuration like `
 This property makes it available only when an `EmbeddedKafkaBroker` is started, which is done by the `GlobalEmbeddedKafkaTestExecutionListener` and only when `spring.kafka.global.embedded.enabled = true`.
 Running unit tests from IDE will lead to similar failure -  the `GlobalEmbeddedKafkaTestExecutionListener` is not enabled by default and there is no an `@EmbeddedKafka` present in these tests.
 
-One of the tests is deliberately failing to demonstrate that global embedded Kafka broker config for `auto.create.topics.enable=false` is in an effect.
+The `Sample05Application2Tests` demonstrates that global embedded Kafka broker config for {@code auto.create.topics.enable=false} is in an effect.
+See `kafka-broker.properties` added via Maven Surefire plugin.
 See `/test/resources/kafka-broker.properties` and Maven Surefire plugin configuration in the pom.xml.
