@@ -132,7 +132,7 @@ Convenient constants (`EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS` and `E
 Instead of default `spring.embedded.kafka.brokers` system property, the address of the Kafka brokers can be exposed to any arbitrary and convenient property.
 For this purpose a `spring.embedded.kafka.brokers.property` (`EmbeddedKafkaBroker.BROKER_LIST_PROPERTY`) system property can be set before starting an embedded Kafka.
 For example, with Spring Boot a `spring.kafka.bootstrap-servers` configuration property is expected to be set for auto-configuring Kafka client, respectively.
-So, before running tests with an embedded Kafka on the random ports, we can set `spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers` as system property - and `EmbeddedKafkaBroker`  will use it to expose its broker addresses.
+So, before running tests with an embedded Kafka on random ports, we can set `spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers` as a system property - and the `EmbeddedKafkaBroker`  will use it to expose its broker addresses.
 
 With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)`, you can provide additional properties for the Kafka servers.
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
