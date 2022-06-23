@@ -555,6 +555,11 @@ You can use this future to determine the result of the send operation.
 
 If the first method is used, or the `replyTimeout` argument is `null`, the template's `defaultReplyTimeout` property is used (5 seconds by default).
 
+Starting with version 2.8.8, the template has a new method `waitForAssignment`.
+This is useful if the reply container is configured with `auto.offset.reset=latest` to avoid sending a request and a reply sent before the container is initialized.
+
+IMPORTANT: When using manual partition assignment (no group management), the duration for the wait must be greater than the container's `pollTimeout` property because the notification will not be sent until after the first poll is completed.
+
 The following Spring Boot application shows an example of how to use the feature:
 
 ====
@@ -570,6 +575,9 @@ public class KRequestingApplication {
     @Bean
     public ApplicationRunner runner(ReplyingKafkaTemplate<String, String, String> template) {
         return args -> {
+            if (!template.waitForAssignment(Duration.ofSeconds(10))) {
+                throw new IllegalStateException("Reply container did not initialize");
+            }
             ProducerRecord<String, String> record = new ProducerRecord<>("kRequests", "foo");
             RequestReplyFuture<String, String, String> replyFuture = template.sendAndReceive(record);
             SendResult<String, String> sendResult = replyFuture.getSendFuture().get(10, TimeUnit.SECONDS);

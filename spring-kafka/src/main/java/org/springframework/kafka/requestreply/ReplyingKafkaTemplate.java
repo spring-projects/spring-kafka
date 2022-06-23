@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -43,6 +45,7 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchMessageListener;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.listener.ListenerUtils;
@@ -71,7 +74,7 @@ import org.springframework.util.Assert;
  *
  */
 public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implements BatchMessageListener<K, R>,
-		InitializingBean, SmartLifecycle, DisposableBean, ReplyingKafkaOperations<K, V, R> {
+		InitializingBean, SmartLifecycle, DisposableBean, ReplyingKafkaOperations<K, V, R>, ConsumerSeekAware {
 
 	private static final String WITH_CORRELATION_ID = " with correlationId: ";
 
@@ -108,6 +111,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	private String replyPartitionHeaderName = KafkaHeaders.REPLY_PARTITION;
 
 	private Function<ConsumerRecord<?, ?>, Exception> replyErrorChecker = rec -> null;
+
+	private CountDownLatch assignLatch = new CountDownLatch(1);
 
 	private volatile boolean running;
 
@@ -295,6 +300,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			catch (Exception e) {
 				throw new KafkaException("Failed to initialize", e);
 			}
+			this.assignLatch = new CountDownLatch(1);
 			this.replyContainer.start();
 			this.running = true;
 		}
@@ -313,6 +319,16 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	public void stop(Runnable callback) {
 		stop();
 		callback.run();
+	}
+
+	@Override
+	public void onFirstPoll() {
+		this.assignLatch.countDown();
+	}
+
+	@Override
+	public boolean waitForAssignment(Duration duration) throws InterruptedException {
+		return this.assignLatch.await(duration.toMillis(), TimeUnit.MILLISECONDS);
 	}
 
 	@Override
