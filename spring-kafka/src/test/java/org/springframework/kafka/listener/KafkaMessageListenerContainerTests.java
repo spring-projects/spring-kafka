@@ -102,6 +102,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
+import org.springframework.kafka.event.ConsumerRetryAuthEvent;
+import org.springframework.kafka.event.ConsumerRetryAuthSuccessfulEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
@@ -3224,9 +3226,17 @@ public class KafkaMessageListenerContainerTests {
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
 		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
 		CountDownLatch latch = new CountDownLatch(2);
+		CountDownLatch retryEvent = new CountDownLatch(2);
+		CountDownLatch retrySuccessfulEventFired = new CountDownLatch(1);
+		AtomicReference<ConsumerRetryAuthEvent.Reason> reason = new AtomicReference<>();
 		willAnswer(invoc -> {
-			latch.countDown();
-			throw new TopicAuthorizationException("test");
+			if (latch.getCount() > 0) {
+				latch.countDown();
+				throw new TopicAuthorizationException("test");
+			}
+			else {
+				return new ConsumerRecords<>(Collections.emptyMap());
+			}
 		}).given(consumer).poll(any());
 
 		ContainerProperties containerProps = new ContainerProperties(topic1);
@@ -3236,8 +3246,20 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAuthExceptionRetryInterval(Duration.ofMillis(100));
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerRetryAuthEvent) {
+				reason.set(((ConsumerRetryAuthEvent) e).getReason());
+				retryEvent.countDown();
+			}
+			else if (e instanceof ConsumerRetryAuthSuccessfulEvent) {
+				retrySuccessfulEventFired.countDown();
+			}
+		});
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(retryEvent.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(reason.get()).isEqualTo(ConsumerRetryAuthEvent.Reason.AUTHORIZATION);
+		assertThat(retrySuccessfulEventFired.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		assertThat(container.isInExpectedState()).isTrue();
 	}
