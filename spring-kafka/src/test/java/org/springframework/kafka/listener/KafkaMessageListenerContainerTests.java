@@ -137,6 +137,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Loic Talhouarne
  * @author Lukasz Kaminski
  * @author Ray Chuan Tay
+ * @author Daniel Gentes
  */
 @EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
 		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,

@@ -18,7 +18,7 @@ package org.springframework.kafka.event;
 
 /**
  * An event published when authentication or authorization of a consumer fails and
- * is being retried. Contains the triggering throwable.
+ * is being retried. Contains the reason for this event.
  *
  * @author Daniel Gentes
  * @since 3.0
@@ -30,19 +30,15 @@ public class ConsumerRetryAuthEvent extends KafkaEvent {
 
 	/**
 	 * Reasons for retrying auth a consumer.
-	 * @since 3.0
-	 *
 	 */
 	public enum Reason {
 		/**
 		 * An authentication exception occurred.
-		 * @since 3.0
 		 */
 		AUTHENTICATION,
 
 		/**
 		 * An authorization exception occurred.
-		 * @since 3.0
 		 */
 		AUTHORIZATION
 	}
@@ -55,7 +51,6 @@ public class ConsumerRetryAuthEvent extends KafkaEvent {
 	 * @param container the container or the parent container
 	 *                     if the container is a child.
 	 * @param reason the reason.
-	 * @since 3.0
 	 */
 	public ConsumerRetryAuthEvent(Object source, Object container, Reason reason) {
 		super(source, container);
@@ -65,7 +60,6 @@ public class ConsumerRetryAuthEvent extends KafkaEvent {
 	/**
 	 * Return the reason for the auth failure.
 	 * @return the reason.
-	 * @since 2.8.8
 	 */
 	public Reason getReason() {
 		return this.reason;

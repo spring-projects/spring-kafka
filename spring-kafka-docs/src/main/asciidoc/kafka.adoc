@@ -2770,6 +2770,8 @@ An error message is also logged when this condition occurs.
 * `ConsumerStoppingEvent`: published by each consumer just before stopping.
 * `ConsumerStoppedEvent`: published after the consumer is closed.
 See <<thread-safety>>.
+* `ConsumerRetryAuthEvent`: published when authentication or authorization of a consumer fails and is being retried.
+* `ConsumerRetryAuthSuccessfulEvent`: published when authentication or authorization has been retried successfully. Can only occur when there has been a `ConsumerRetryAuthEvent` before.
 * `ContainerStoppedEvent`: published when all consumers have stopped.
 
 IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
@@ -2829,7 +2831,15 @@ The `ConsumerPartitionPausedEvent`, `ConsumerPartitionResumedEvent` events have 
 * `container`: The listener container or the parent listener container, if the source container is a child.
 * `partition`: The `TopicPartition` instance involved.
 
-The `ConsumerStartingEvent`, `ConsumerStartingEvent`, `ConsumerFailedToStartEvent`, `ConsumerStoppedEvent` and `ContainerStoppedEvent` events have the following properties:
+The `ConsumerRetryAuthEvent` event has the following properties:
+
+* `source`: The listener container instance that published the event.
+* `container`: The listener container or the parent listener container, if the source container is a child.
+* `reason`
+** `AUTHENTICATION` - the event was published because of an authentication exception.
+** `AUTHORIZATION` - the event was published because of an authorization exception.
+
+The `ConsumerStartingEvent`, `ConsumerStartingEvent`, `ConsumerFailedToStartEvent`, `ConsumerStoppedEvent`, `ConsumerRetryAuthSuccessfulEvent` and `ContainerStoppedEvent` events have the following properties:
 
 * `source`: The listener container instance that published the event.
 * `container`: The listener container or the parent listener container, if the source container is a child.
