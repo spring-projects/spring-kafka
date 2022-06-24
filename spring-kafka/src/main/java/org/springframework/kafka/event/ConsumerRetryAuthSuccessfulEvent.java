@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@ public class ConsumerRetryAuthSuccessfulEvent extends KafkaEvent {
 	/**
 	 * Construct an instance with the provided source and container.
 	 * @param source the container instance that generated the event.
-	 * @param container the container or the parent container if the container is a child.
+	 * @param container the container or the parent container
+	 *                     if the container is a child.
 	 */
 	public ConsumerRetryAuthSuccessfulEvent(Object source, Object container) {
 		super(source, container);
