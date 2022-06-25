@@ -48,7 +48,8 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	private final Map<Class<? extends Throwable>, CommonErrorHandler> delegates = new LinkedHashMap<>();
 
 	private boolean causeChainTraversing = false;
-	private NoTraversingBinaryExceptionClassifier classifier = new NoTraversingBinaryExceptionClassifier(new HashMap<>());
+
+	private BinaryExceptionClassifier classifier = new BinaryExceptionClassifier(new HashMap<>());
 
 	/**
 	 * Construct an instance with a default error handler that will be invoked if the
@@ -77,14 +78,13 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 		Map<Class<? extends Throwable>, Boolean> classifications = delegates.keySet().stream()
 			.map(commonErrorHandler -> Map.entry(commonErrorHandler, true))
 			.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-		this.classifier = new NoTraversingBinaryExceptionClassifier(classifications);
+		this.classifier = new BinaryExceptionClassifier(classifications);
 	}
 
 	/**
 	 * Set the flag enabling deep exception's cause chain traversing. If true, delegate
-	 * for initial {@link Throwable} will be retrieved. Initial exception is an exception
-	 * without cause or with unknown cause.
-	 * @param causeChainTraversing the deepCauseChainTraversing flag.
+	 * for first exception classified by {@link BinaryExceptionClassifier} will be retrieved.
+	 * @param causeChainTraversing the causeChainTraversing flag.
 	 */
 	public void setCauseChainTraversing(boolean causeChainTraversing) {
 		this.causeChainTraversing = causeChainTraversing;
@@ -221,15 +221,6 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 			thrownException = thrownException.getCause();
 		}
 		return thrownException;
-	}
-
-	@SuppressWarnings("serial")
-	private static final class NoTraversingBinaryExceptionClassifier extends BinaryExceptionClassifier {
-
-		NoTraversingBinaryExceptionClassifier(Map<Class<? extends Throwable>, Boolean> typeMap) {
-			super(typeMap, false, false);
-		}
-
 	}
 
 }
