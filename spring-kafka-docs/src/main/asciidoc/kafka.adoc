@@ -4762,6 +4762,8 @@ public interface KafkaHeaderMapper {
 ----
 ====
 
+The `SimpleKafkaHeaderMapper` maps raw headers as `byte[]`, with configuration options for conversion to `String` values.
+
 The `DefaultKafkaHeaderMapper` maps the key to the `MessageHeaders` header name and, in order to support rich header types for outbound messages, JSON conversion is performed.
 A "`special`" header (with a key of `spring_json_header_types`) contains a JSON map of `<key>:<type>`.
 This header is used on the inbound side to provide appropriate conversion of each header value to the original type.
@@ -4849,6 +4851,35 @@ public void testSpecificStringConvert() {
 }
 ----
 ====
+
+Both header mappers map all inbound headers, by default.
+Starting with version 2.8.8, the patterns, can also applied to inbound mapping.
+To create a mapper for inbound mapping, use one of the static methods on the respective mapper:
+
+====
+[source, java]
+----
+public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
+}
+
+public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(ObjectMapper objectMapper, String... patterns) {
+}
+
+public static SimpleKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
+}
+----
+====
+
+For example:
+
+====
+[source, java]
+----
+DefaultKafkaHeaderMapper inboundMapper = DefaultKafkaHeaderMapper.forInboundOnlyWithMatchers("!abc*", "*");
+----
+====
+
+This will exclude all headers beginning with `abc` and include all others.
 
 By default, the `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the class path.
 

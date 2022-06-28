@@ -301,6 +301,26 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(headers.lastHeader(KafkaHeaders.LISTENER_INFO)).isNull();
 	}
 
+	@Test
+	void inboundJson() {
+		DefaultKafkaHeaderMapper outboundMapper = new DefaultKafkaHeaderMapper();
+		DefaultKafkaHeaderMapper inboundMapper = DefaultKafkaHeaderMapper.forInboundOnlyWithMatchers("!fo*", "*");
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("foo", "bar");
+		map.put("foa", "bar");
+		map.put("baz", "qux");
+		MessageHeaders msgHeaders = new MessageHeaders(map);
+		Headers headers = new RecordHeaders();
+		outboundMapper.fromHeaders(msgHeaders, headers);
+		headers.add(KafkaHeaders.DELIVERY_ATTEMPT, new byte[] { 0, 0, 0, 1 });
+		map.clear();
+		inboundMapper.toHeaders(headers, map);
+		assertThat(map).doesNotContainKey("foo")
+				.doesNotContainKey("foa")
+				.containsKey(KafkaHeaders.DELIVERY_ATTEMPT)
+				.containsKey("baz");
+	}
+
 	public static final class Foo {
 
 		private String bar = "bar";

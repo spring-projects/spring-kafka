@@ -158,12 +158,37 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
-		super(patterns);
+		this(true, objectMapper, patterns);
+	}
+
+	private DefaultKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, String... patterns) {
+		super(outbound, patterns);
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
 		this.objectMapper
 				.registerModule(new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer()));
+	}
+
+	/**
+	 * Create an instance for inbound mapping only with pattern matching.
+	 * @param patterns the patterns to match.
+	 * @return the header mapper.
+	 * @since 2.8.8
+	 */
+	public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
+		return new DefaultKafkaHeaderMapper(false, JacksonUtils.enhancedObjectMapper(), patterns);
+	}
+
+	/**
+	 * Create an instance for inbound mapping only with pattern matching.
+	 * @param objectMapper the object mapper.
+	 * @param patterns the patterns to match.
+	 * @return the header mapper.
+	 * @since 2.8.8
+	 */
+	public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(ObjectMapper objectMapper, String... patterns) {
+		return new DefaultKafkaHeaderMapper(false, objectMapper, patterns);
 	}
 
 	/**
@@ -288,19 +313,20 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	public void toHeaders(Headers source, final Map<String, Object> headers) {
 		final Map<String, String> jsonTypes = decodeJsonTypes(source);
 		source.forEach(header -> {
-			if (header.key().equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
-				headers.put(header.key(), ByteBuffer.wrap(header.value()).getInt());
+			String headerName = header.key();
+			if (headerName.equals(KafkaHeaders.DELIVERY_ATTEMPT) && matchesForInbound(headerName)) {
+				headers.put(headerName, ByteBuffer.wrap(header.value()).getInt());
 			}
-			else if (header.key().equals(KafkaHeaders.LISTENER_INFO)) {
-				headers.put(header.key(), new String(header.value(), getCharset()));
+			else if (headerName.equals(KafkaHeaders.LISTENER_INFO) && matchesForInbound(headerName)) {
+				headers.put(headerName, new String(header.value(), getCharset()));
 			}
-			else if (!(header.key().equals(JSON_TYPES))) {
-				if (jsonTypes != null && jsonTypes.containsKey(header.key())) {
-					String requestedType = jsonTypes.get(header.key());
+			else if (!(headerName.equals(JSON_TYPES)) && matchesForInbound(headerName)) {
+				if (jsonTypes != null && jsonTypes.containsKey(headerName)) {
+					String requestedType = jsonTypes.get(headerName);
 					populateJsonValueHeader(header, requestedType, headers);
 				}
 				else {
-					headers.put(header.key(), headerValueToAddIn(header));
+					headers.put(headerName, headerValueToAddIn(header));
 				}
 			}
 		});

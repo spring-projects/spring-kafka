@@ -17,6 +17,7 @@
 package org.springframework.kafka.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.ByteBuffer;
@@ -157,6 +158,32 @@ public class SimpleKafkaHeaderMapperTests {
 		headers = new RecordHeaders();
 		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
 		assertThat(headers.lastHeader(KafkaHeaders.LISTENER_INFO)).isNull();
+	}
+
+	@Test
+	void inboundMappingNoPatterns() {
+		SimpleKafkaHeaderMapper inboundMapper = SimpleKafkaHeaderMapper.forInboundOnlyWithMatchers();
+		Headers headers = new RecordHeaders();
+		headers.add("foo", "bar".getBytes());
+		headers.add(KafkaHeaders.DELIVERY_ATTEMPT, new byte[] { 0, 0, 0, 1 });
+		Map<String, Object> mapped = new HashMap<>();
+		inboundMapper.toHeaders(headers, mapped);
+		assertThat(mapped).containsKey("foo")
+				.containsKey(KafkaHeaders.DELIVERY_ATTEMPT);
+		assertThatIllegalStateException()
+				.isThrownBy(() -> inboundMapper.fromHeaders(new MessageHeaders(mapped), headers));
+	}
+
+	@Test
+	void inboundMappingWithPatterns() {
+		SimpleKafkaHeaderMapper inboundMapper = SimpleKafkaHeaderMapper.forInboundOnlyWithMatchers("!foo", "*");
+		Headers headers = new RecordHeaders();
+		headers.add("foo", "bar".getBytes());
+		headers.add(KafkaHeaders.DELIVERY_ATTEMPT, new byte[] { 0, 0, 0, 1 });
+		Map<String, Object> mapped = new HashMap<>();
+		inboundMapper.toHeaders(headers, mapped);
+		assertThat(mapped).doesNotContainKey("foo")
+				.containsKey(KafkaHeaders.DELIVERY_ATTEMPT);
 	}
 
 }

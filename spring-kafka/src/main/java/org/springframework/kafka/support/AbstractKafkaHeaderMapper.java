@@ -59,31 +59,53 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		this.rawMappedHeaders.put(KafkaHeaders.LISTENER_INFO, true);
 	}
 
+	private final boolean outbound;
+
 	private boolean mapAllStringsOut;
 
 	private Charset charset = StandardCharsets.UTF_8;
 
+	/**
+	 * Construct a mapper that will match the supplied patterns (outbound) and all headers
+	 * (inbound). For outbound mapping, certain internal framework headers are never
+	 * mapped.
+	 * @param patterns the patterns.
+	 */
 	public AbstractKafkaHeaderMapper(String... patterns) {
+		this(true, patterns);
+	}
+
+	/**
+	 * Construct a mapper that will match the supplied patterns (outbound) and all headers
+	 * (inbound). For outbound mapping, certain internal framework headers are never
+	 * mapped.
+	 * @param outbound true for an outbound mapper.
+	 * @param patterns the patterns.
+	 */
+	protected AbstractKafkaHeaderMapper(boolean outbound, String... patterns) {
 		Assert.notNull(patterns, "'patterns' must not be null");
-		this.matchers.add(new NeverMatchHeaderMatcher(
-				KafkaHeaders.ACKNOWLEDGMENT,
-				KafkaHeaders.CONSUMER,
-				KafkaHeaders.KEY,
-				KafkaHeaders.OFFSET,
-				KafkaHeaders.PARTITION,
-				KafkaHeaders.RAW_DATA,
-				KafkaHeaders.RECEIVED_KEY,
-				KafkaHeaders.RECEIVED_PARTITION,
-				KafkaHeaders.RECEIVED_TIMESTAMP,
-				KafkaHeaders.RECEIVED_TOPIC,
-				KafkaHeaders.TIMESTAMP,
-				KafkaHeaders.TIMESTAMP_TYPE,
-				KafkaHeaders.BATCH_CONVERTED_HEADERS,
-				KafkaHeaders.NATIVE_HEADERS,
-				KafkaHeaders.TOPIC,
-				KafkaHeaders.DELIVERY_ATTEMPT,
-				KafkaHeaders.LISTENER_INFO,
-				KafkaHeaders.GROUP_ID));
+		this.outbound = outbound;
+		if (outbound) {
+			this.matchers.add(new NeverMatchHeaderMatcher(
+					KafkaHeaders.ACKNOWLEDGMENT,
+					KafkaHeaders.CONSUMER,
+					KafkaHeaders.KEY,
+					KafkaHeaders.OFFSET,
+					KafkaHeaders.PARTITION,
+					KafkaHeaders.RAW_DATA,
+					KafkaHeaders.RECEIVED_KEY,
+					KafkaHeaders.RECEIVED_PARTITION,
+					KafkaHeaders.RECEIVED_TIMESTAMP,
+					KafkaHeaders.RECEIVED_TOPIC,
+					KafkaHeaders.TIMESTAMP,
+					KafkaHeaders.TIMESTAMP_TYPE,
+					KafkaHeaders.BATCH_CONVERTED_HEADERS,
+					KafkaHeaders.NATIVE_HEADERS,
+					KafkaHeaders.TOPIC,
+					KafkaHeaders.DELIVERY_ATTEMPT,
+					KafkaHeaders.LISTENER_INFO,
+					KafkaHeaders.GROUP_ID));
+		}
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
 		}
@@ -168,6 +190,27 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	}
 
 	protected boolean matches(String header) {
+		Assert.state(this.outbound, "This mapper cannot be used for outbound mapping");
+		return doesMatch(header);
+	}
+
+	/**
+	 * Matches header names for inbound mapping when configured as an inbound mapper.
+	 * @param header the header name.
+	 * @return true if it can be mapped.
+	 * @since 2.8.8
+	 */
+	protected boolean matchesForInbound(String header) {
+		if (this.outbound) {
+			return true;
+		}
+		if (this.matchers.size() == 0) {
+			return true;
+		}
+		return doesMatch(header);
+	}
+
+	private boolean doesMatch(String header) {
 		for (HeaderMatcher matcher : this.matchers) {
 			if (matcher.matchHeader(header)) {
 				return !matcher.isNegated();

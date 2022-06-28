@@ -73,7 +73,21 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public SimpleKafkaHeaderMapper(String... patterns) {
-		super(patterns);
+		this(true, patterns);
+	}
+
+	private SimpleKafkaHeaderMapper(boolean outbound, String... patterns) {
+		super(outbound, patterns);
+	}
+
+	/**
+	 * Create an instance for inbound mapping only with pattern matching.
+	 * @param patterns the patterns to match.
+	 * @return the header mapper.
+	 * @since 2.8.8
+	 */
+	public static SimpleKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
+		return new SimpleKafkaHeaderMapper(false, patterns);
 	}
 
 	@Override
@@ -91,11 +105,14 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	@Override
 	public void toHeaders(Headers source, Map<String, Object> target) {
 		source.forEach(header -> {
-			if (header.key().equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
-				target.put(header.key(), ByteBuffer.wrap(header.value()).getInt());
-			}
-			else {
-				target.put(header.key(), headerValueToAddIn(header));
+			String headerName = header.key();
+			if (matchesForInbound(headerName)) {
+				if (headerName.equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
+					target.put(headerName, ByteBuffer.wrap(header.value()).getInt());
+				}
+				else {
+					target.put(headerName, headerValueToAddIn(header));
+				}
 			}
 		});
 	}
