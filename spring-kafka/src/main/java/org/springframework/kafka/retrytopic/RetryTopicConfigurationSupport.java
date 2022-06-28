@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -37,18 +39,22 @@ import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ContainerPartitionPausingBackOffManagerFactory;
+import org.springframework.kafka.listener.ContainerPausingBackOffHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.ExceptionClassifier;
 import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.KafkaConsumerTimingAdjuster;
+import org.springframework.kafka.listener.ListenerContainerPauseService;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.WakingKafkaConsumerTimingAdjuster;
 import org.springframework.kafka.support.JavaUtils;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.lang.Nullable;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
@@ -272,13 +278,14 @@ public class RetryTopicConfigurationSupport {
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
 	public KafkaConsumerBackoffManager kafkaConsumerBackoffManager(
 			@Qualifier(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
-					ListenerContainerRegistry registry,
-			@Qualifier(BACK_OFF_MANAGER_THREAD_EXECUTOR_BEAN_NAME) TaskExecutor taskExecutor) {
+					ListenerContainerRegistry registry, @Nullable RetryTopicSchedulerWrapper wrapper,
+					@Nullable TaskScheduler taskScheduler) {
 
 		KafkaBackOffManagerFactory backOffManagerFactory =
 				this.componentFactory.kafkaBackOffManagerFactory(registry);
-		JavaUtils.INSTANCE.acceptIfInstanceOf(PartitionPausingBackOffManagerFactory.class, backOffManagerFactory,
-				factory -> configurePartitionPausingFactory(taskExecutor, factory));
+		JavaUtils.INSTANCE.acceptIfInstanceOf(ContainerPartitionPausingBackOffManagerFactory.class, backOffManagerFactory,
+				factory -> configurePartitionPausingFactory(factory, registry,
+						wrapper != null ? wrapper.getScheduler() : taskScheduler));
 		return backOffManagerFactory.create();
 	}
 
@@ -289,38 +296,12 @@ public class RetryTopicConfigurationSupport {
 	 * {@link #configureKafkaBackOffManager} method for furher customization.
 	 * @param factory the factory instance.
 	 */
-	private void configurePartitionPausingFactory(TaskExecutor taskExecutor,
-												PartitionPausingBackOffManagerFactory factory) {
-		KafkaBackOffManagerConfigurer configurer = new KafkaBackOffManagerConfigurer();
-		configureKafkaBackOffManager(configurer);
-		Assert.isTrue(!configurer.timingAdjustmentEnabled
-						|| configurer.maxThreadPoolSize == null
-						|| ThreadPoolTaskExecutor.class.isAssignableFrom(taskExecutor.getClass()),
-				"TaskExecutor must be an instance of ThreadPoolTaskExecutor to set maxThreadPoolSize");
-		factory.setTimingAdjustmentEnabled(configurer.timingAdjustmentEnabled);
-		if (ThreadPoolTaskExecutor.class.isAssignableFrom(taskExecutor.getClass())) {
-			JavaUtils.INSTANCE
-					.acceptIfNotNull(configurer.maxThreadPoolSize, poolSize -> ((ThreadPoolTaskExecutor) taskExecutor)
-							.setMaxPoolSize(poolSize));
-		}
-		JavaUtils.INSTANCE
-				.acceptIfCondition(configurer.timingAdjustmentEnabled, taskExecutor, factory::setTaskExecutor)
-				.acceptIfNotNull(configurer.clock, factory::setClock);
-	}
+	private void configurePartitionPausingFactory(ContainerPartitionPausingBackOffManagerFactory factory,
+			ListenerContainerRegistry registry, @Nullable TaskScheduler scheduler) {
 
-	/**
-	 * Create the {@link TaskExecutor} instance that will be used with the
-	 * {@link WakingKafkaConsumerTimingAdjuster}, if timing adjustment is enabled.
-	 * @return the instance.
-	 */
-	@Bean(name = BACK_OFF_MANAGER_THREAD_EXECUTOR_BEAN_NAME)
-	public TaskExecutor backoffManagerTaskExecutor() {
-		KafkaBackOffManagerConfigurer configurer = new KafkaBackOffManagerConfigurer();
-		configureKafkaBackOffManager(configurer);
-		return configurer.timingAdjustmentEnabled
-				? new ThreadPoolTaskExecutor()
-				: task -> {
-				};
+		Assert.notNull(scheduler, "Either a RetryTopicSchedulerWrapper or TaskScheduler bean is required");
+		factory.setBackOffHandler(new ContainerPausingBackOffHandler(
+				new ListenerContainerPauseService(registry, scheduler)));
 	}
 
 	/**
@@ -477,6 +458,35 @@ public class RetryTopicConfigurationSupport {
 			this.deadLetterPublishingRecovererCustomizer = dlprCustomizer;
 			return this;
 		}
+	}
+
+	public static class RetryTopicSchedulerWrapper implements InitializingBean, DisposableBean {
+
+		private final TaskScheduler scheduler;
+
+		public RetryTopicSchedulerWrapper(TaskScheduler scheduler) {
+			this.scheduler = scheduler;
+		}
+
+		TaskScheduler getScheduler() {
+			return this.scheduler;
+		}
+
+		@Override
+		public void afterPropertiesSet() throws Exception {
+			if (this.scheduler instanceof InitializingBean) {
+				((InitializingBean) this.scheduler).afterPropertiesSet();
+			}
+		}
+
+		@Override
+		public void destroy() throws Exception {
+			if (this.scheduler instanceof DisposableBean) {
+				((DisposableBean) this.scheduler).destroy();
+			}
+
+		}
+
 	}
 
 }

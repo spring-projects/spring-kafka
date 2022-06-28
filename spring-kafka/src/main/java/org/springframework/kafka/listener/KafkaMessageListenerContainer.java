@@ -319,6 +319,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	@Override
+	public void resumePartition(TopicPartition topicPartition) {
+		super.resumePartition(topicPartition);
+		KafkaMessageListenerContainer<K, V>.ListenerConsumer consumer = this.listenerConsumer;
+		if (consumer != null) {
+			this.listenerConsumer.wakeIfNecessary();
+		}
+	}
+
+	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		ListenerConsumer listenerConsumerForMetrics = this.listenerConsumer;
 		if (listenerConsumerForMetrics != null) {

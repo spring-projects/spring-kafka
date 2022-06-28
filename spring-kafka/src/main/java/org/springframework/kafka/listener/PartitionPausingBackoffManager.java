@@ -39,12 +39,14 @@ import org.springframework.lang.Nullable;
  *
  * Note that when a record backs off the partition consumption gets paused for
  * approximately that amount of time, so you must have a fixed backoff value per partition.
+ * @deprecated in favor of {@link ContainerPartitionPausingBackOffManager}.
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @since 2.7
  * @see DefaultErrorHandler
  */
+@Deprecated
 public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManager,
 		ApplicationListener<ListenerContainerPartitionIdleEvent> {
 

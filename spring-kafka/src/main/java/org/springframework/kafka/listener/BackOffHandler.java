@@ -16,15 +16,18 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.common.TopicPartition;
+
 import org.springframework.lang.Nullable;
 
 /**
  * Handler for the provided back off time, listener container and exception.
+ * Also supports back off for individual partitions.
  *
- *  @author Jan Marincek
- *  @since 2.9
+ * @author Jan Marincek
+ * @author Gary Russell
+ * @since 2.9
  */
-@FunctionalInterface
 public interface BackOffHandler {
 
 	/**
@@ -34,5 +37,17 @@ public interface BackOffHandler {
 	 * @param nextBackOff the next back off.
 	 */
 	void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff);
+
+	/**
+	 * Perform the next back off for a partition.
+	 * @param container the container.
+	 * @param partition the partition.
+	 * @param nextBackOff the next back off.
+	 */
+	default void onNextBackOff(@Nullable MessageListenerContainer container, TopicPartition partition,
+			long nextBackOff) {
+
+		throw new UnsupportedOperationException();
+	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,17 @@ public interface ListenerContainerRegistry {
 	 */
 	@Nullable
 	MessageListenerContainer getListenerContainer(String id);
+
+	/**
+	 * Return the {@link MessageListenerContainer} with the specified id or {@code null}
+	 * if no such container exists. Returns containers that are not registered with the
+	 * registry, but exist in the application context.
+	 * @param id the id of the container
+	 * @return the container or {@code null} if no container with that id exists
+	 * @see #getListenerContainerIds()
+	 */
+	@Nullable
+	MessageListenerContainer getUnregisteredListenerContainer(String id);
 
 	/**
 	 * Return the ids of the managed {@link MessageListenerContainer} instance(s).

@@ -21,12 +21,12 @@ import java.time.Clock;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
+import org.springframework.kafka.listener.ContainerPartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 
 /**
@@ -153,7 +153,7 @@ public class RetryTopicComponentFactory {
 	 * @return the instance.
 	 */
 	public KafkaBackOffManagerFactory kafkaBackOffManagerFactory(ListenerContainerRegistry registry) {
-		return new PartitionPausingBackOffManagerFactory(registry);
+		return new ContainerPartitionPausingBackOffManagerFactory(registry);
 	}
 
 	/**

@@ -29,10 +29,12 @@ import org.springframework.util.Assert;
  * IMPORTANT: Since 2.9 this class doesn't create a {@link ThreadPoolTaskExecutor}
  * by default. In order for the factory to create a {@link KafkaConsumerTimingAdjuster},
  * such thread executor must be provided.
+ * @deprecated in favor of {@link ContainerPartitionPausingBackOffManager}.
  *
  * @author Tomaz Fernandes
  * @since 2.7
  */
+@Deprecated
 public class PartitionPausingBackOffManagerFactory extends AbstractKafkaBackOffManagerFactory {
 
 	private boolean timingAdjustmentEnabled = true;

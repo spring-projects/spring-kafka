@@ -75,6 +75,8 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); //NOSONAR
 
+	private final Map<String, MessageListenerContainer> unregisteredContainers = new ConcurrentHashMap<>();
+
 	private final Map<String, MessageListenerContainer> listenerContainers = new ConcurrentHashMap<>();
 
 	private int phase = AbstractMessageListenerContainer.DEFAULT_PHASE;
@@ -107,6 +109,17 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	public MessageListenerContainer getListenerContainer(String id) {
 		Assert.hasText(id, "Container identifier must not be empty");
 		return this.listenerContainers.get(id);
+	}
+
+	@Override
+	@Nullable
+	public MessageListenerContainer getUnregisteredListenerContainer(String id) {
+		MessageListenerContainer container = this.unregisteredContainers.get(id);
+		if (container == null) {
+			refreshContextContainers();
+			return this.unregisteredContainers.get(id);
+		}
+		return null;
 	}
 
 	/**
@@ -156,8 +169,15 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	public Collection<MessageListenerContainer> getAllListenerContainers() {
 		List<MessageListenerContainer> containers = new ArrayList<>();
 		containers.addAll(getListenerContainers());
-		containers.addAll(this.applicationContext.getBeansOfType(MessageListenerContainer.class, true, false).values());
+		refreshContextContainers();
+		containers.addAll(this.unregisteredContainers.values());
 		return containers;
+	}
+
+	private void refreshContextContainers() {
+		this.unregisteredContainers.clear();
+		this.applicationContext.getBeansOfType(MessageListenerContainer.class, true, false).values()
+				.forEach(container -> this.unregisteredContainers.put(container.getListenerId(), container));
 	}
 
 	/**

@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 
+import org.apache.kafka.common.TopicPartition;
+
 import org.springframework.lang.Nullable;
 
 /**
@@ -49,6 +51,11 @@ public class ContainerPausingBackOffHandler implements BackOffHandler {
 		else {
 			this.pauser.pause(container, Duration.ofMillis(nextBackOff));
 		}
+	}
+
+	@Override
+	public void onNextBackOff(MessageListenerContainer container, TopicPartition partition, long nextBackOff) {
+		this.pauser.pausePartition(container, partition, Duration.ofMillis(nextBackOff));
 	}
 
 }
