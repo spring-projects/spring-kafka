@@ -56,6 +56,8 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.backoff.FixedBackOff;
@@ -68,7 +70,7 @@ import org.springframework.util.backoff.FixedBackOff;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka
-public class RetryTopicExceptionRoutingIntegrationTests {
+public class RetryTopicExceptionRoutingIntegrationTests extends AbstractRetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicExceptionRoutingIntegrationTests.class);
 
@@ -377,6 +379,11 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 		@Bean
 		DltProcessorWithError dltProcessorWithError() {
 			return new DltProcessorWithError();
+		}
+
+		@Bean
+		TaskScheduler sched() {
+			return new ThreadPoolTaskScheduler();
 		}
 
 	}

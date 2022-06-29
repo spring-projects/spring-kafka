@@ -41,7 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.DltHandler;
-import org.springframework.kafka.annotation.EnableKafkaRetryTopic;
+import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.RetryableTopic;
@@ -64,6 +64,8 @@ import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -83,7 +85,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryTopicIntegrationTests.FOURTH_TOPIC,
 		RetryTopicIntegrationTests.FIFTH_TOPIC })
 @TestPropertySource(properties = "five.attempts=5")
-public class RetryTopicIntegrationTests {
+public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicIntegrationTests.class);
 
@@ -388,7 +390,7 @@ public class RetryTopicIntegrationTests {
 	}
 
 	@Configuration
-	static class RetryTopicConfigurations {
+	static class RetryTopicConfigurations extends RetryTopicConfigurationSupport {
 
 		private static final String DLT_METHOD_NAME = "processDltMessage";
 
@@ -511,7 +513,7 @@ public class RetryTopicIntegrationTests {
 		}
 	}
 
-	@EnableKafkaRetryTopic
+	@EnableKafka
 	@Configuration
 	public static class KafkaConsumerConfig {
 
@@ -572,6 +574,12 @@ public class RetryTopicIntegrationTests {
 			factory.setConcurrency(1);
 			return factory;
 		}
+
+		@Bean
+		TaskScheduler sched() {
+			return new ThreadPoolTaskScheduler();
+		}
+
 	}
 
 }

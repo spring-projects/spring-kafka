@@ -45,8 +45,8 @@ public class ContainerPartitionPausingBackOffManager implements KafkaConsumerBac
 
 	/**
 	 * Construct an instance with the provided registry and back off handler.
-	 * @param listenerContainerRegistry
-	 * @param backOffHandler
+	 * @param listenerContainerRegistry the registry.
+	 * @param backOffHandler the handler.
 	 */
 	public ContainerPartitionPausingBackOffManager(ListenerContainerRegistry listenerContainerRegistry,
 			BackOffHandler backOffHandler) {

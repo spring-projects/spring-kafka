@@ -52,6 +52,8 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -65,7 +67,7 @@ import org.springframework.util.backoff.FixedBackOff;
 @DirtiesContext
 @EmbeddedKafka(topics = { RetryTopicSameContainerFactoryIntegrationTests.FIRST_TOPIC,
 		RetryTopicSameContainerFactoryIntegrationTests.SECOND_TOPIC}, partitions = 1)
-public class RetryTopicSameContainerFactoryIntegrationTests {
+public class RetryTopicSameContainerFactoryIntegrationTests extends AbstractRetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicSameContainerFactoryIntegrationTests.class);
 
@@ -150,7 +152,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 
 	@EnableKafka
 	@Configuration
-	static class Config {
+	static class Config extends RetryTopicConfigurationSupport {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
@@ -232,5 +234,12 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
+
+		@Bean
+		TaskScheduler sched() {
+			return new ThreadPoolTaskScheduler();
+		}
+
 	}
+
 }

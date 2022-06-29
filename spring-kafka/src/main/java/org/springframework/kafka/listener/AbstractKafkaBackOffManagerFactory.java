@@ -25,6 +25,7 @@ import org.springframework.util.Assert;
  * Base class for {@link KafkaBackOffManagerFactory} implementations.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  * @see KafkaConsumerBackoffManager
  */
@@ -36,21 +37,20 @@ public abstract class AbstractKafkaBackOffManagerFactory
 	private ListenerContainerRegistry listenerContainerRegistry;
 
 	/**
-	 * Creates an instance with the provided {@link ListenerContainerRegistry},
-	 * which will be used to fetch the {@link MessageListenerContainer} to back off.
-
-	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
-	 */
-	public AbstractKafkaBackOffManagerFactory(ListenerContainerRegistry listenerContainerRegistry) {
-		this.listenerContainerRegistry = listenerContainerRegistry;
-	}
-
-	/**
 	 * Creates an instance that will retrieve the {@link ListenerContainerRegistry} from
 	 * the {@link ApplicationContext}.
 	 */
 	public AbstractKafkaBackOffManagerFactory() {
 		this.listenerContainerRegistry = null;
+	}
+
+	/**
+	 * Creates an instance with the provided {@link ListenerContainerRegistry},
+	 * which will be used to fetch the {@link MessageListenerContainer} to back off.
+	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
+	 */
+	public AbstractKafkaBackOffManagerFactory(ListenerContainerRegistry listenerContainerRegistry) {
+		this.listenerContainerRegistry = listenerContainerRegistry;
 	}
 
 	/**

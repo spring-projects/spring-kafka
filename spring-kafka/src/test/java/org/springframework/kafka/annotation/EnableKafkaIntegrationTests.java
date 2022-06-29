@@ -42,8 +42,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -2240,6 +2242,10 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch latch4 = new CountDownLatch(2);
 
+		final AtomicInteger idleRewinds = new AtomicInteger();
+
+		final Semaphore semaphore = new Semaphore(0);
+
 		final Set<Thread> consumerThreads = ConcurrentHashMap.newKeySet();
 
 		@KafkaListener(id = "seekOnIdle", topics = "seekOnIdle", autoStartup = "false", concurrency = "2",
@@ -2249,13 +2255,20 @@ public class EnableKafkaIntegrationTests {
 			this.latch2.countDown();
 			this.latch1.countDown();
 			ack.acknowledge();
+			this.semaphore.release();
 		}
 
 		@Override
 		public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
 				ConsumerSeekCallback callback) {
 
-			if (this.latch1.getCount() > 0) {
+			if (this.semaphore.availablePermits() > 0 && this.idleRewinds.getAndIncrement() < 10) {
+				try {
+					this.semaphore.acquire();
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
 				assignments.keySet().forEach(tp -> callback.seekRelative(tp.topic(), tp.partition(), -1, true));
 			}
 		}

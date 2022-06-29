@@ -56,7 +56,9 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -74,7 +76,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		ExistingRetryTopicIntegrationTests.MAIN_TOPIC_WITH_PARTITION_INFO,
 		ExistingRetryTopicIntegrationTests.RETRY_TOPIC_WITH_PARTITION_INFO}, partitions = 4)
 @TestPropertySource(properties = "two.attempts=2")
-public class ExistingRetryTopicIntegrationTests {
+public class ExistingRetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(ExistingRetryTopicIntegrationTests.class);
 
@@ -291,7 +293,7 @@ public class ExistingRetryTopicIntegrationTests {
 
 	@EnableKafka
 	@Configuration
-	public static class KafkaConsumerConfig {
+	public static class KafkaConsumerConfig extends RetryTopicConfigurationSupport {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
@@ -350,6 +352,12 @@ public class ExistingRetryTopicIntegrationTests {
 			factory.setConcurrency(1);
 			return factory;
 		}
+
+		@Bean
+		TaskScheduler sched() {
+			return new ThreadPoolTaskScheduler();
+		}
+
 	}
 
 }

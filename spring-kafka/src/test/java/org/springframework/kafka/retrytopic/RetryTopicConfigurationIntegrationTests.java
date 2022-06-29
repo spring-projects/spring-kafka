@@ -44,6 +44,8 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -55,7 +57,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(topics = RetryTopicConfigurationIntegrationTests.TOPIC1, partitions = 1)
-class RetryTopicConfigurationIntegrationTests {
+class RetryTopicConfigurationIntegrationTests extends AbstractRetryTopicIntegrationTests {
 
 	public static final String TOPIC1 = "RetryTopicConfigurationIntegrationTests.1";
 
@@ -74,7 +76,7 @@ class RetryTopicConfigurationIntegrationTests {
 
 	@Configuration(proxyBeanMethods = false)
 	@EnableKafka
-	static class Config {
+	static class Config extends RetryTopicConfigurationSupport {
 
 		private final CountDownLatch latch = new CountDownLatch(1);
 
@@ -126,6 +128,11 @@ class RetryTopicConfigurationIntegrationTests {
 					.exponentialBackoff(100, 1.1, 110)
 					.dltHandlerMethod("retryTopicConfigurationIntegrationTests.Config", "dlt")
 					.create(template);
+		}
+
+		@Bean
+		TaskScheduler sched() {
+			return new ThreadPoolTaskScheduler();
 		}
 
 	}

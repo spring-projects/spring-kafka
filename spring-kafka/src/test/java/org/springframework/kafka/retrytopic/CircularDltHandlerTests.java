@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,13 +28,15 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
  * @author Gary Russell
  * @since 2.8
  *
  */
-public class CircularDltHandlerTests {
+public class CircularDltHandlerTests extends AbstractRetryTopicIntegrationTests {
 
 	@Test
 	void contextLoads() {
@@ -46,7 +48,7 @@ public class CircularDltHandlerTests {
 
 	@Configuration
 	@EnableKafka
-	public static class Config {
+	public static class Config extends RetryTopicConfigurationSupport {
 
 		@SuppressWarnings("unchecked")
 		@Bean
@@ -69,6 +71,11 @@ public class CircularDltHandlerTests {
 		@Bean
 		Listener listener() {
 			return new Listener();
+		}
+
+		@Bean
+		TaskScheduler sched() {
+			return new ThreadPoolTaskScheduler();
 		}
 
 	}

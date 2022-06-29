@@ -58,8 +58,6 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.Scope;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -510,27 +508,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private RetryTopicConfigurer getRetryTopicConfigurer() {
-		bootstrapRetryTopicIfNecessary();
 		return this.beanFactory.containsBean("internalRetryTopicConfigurer")
 				? this.beanFactory.getBean("internalRetryTopicConfigurer", RetryTopicConfigurer.class)
 				: this.beanFactory.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME, RetryTopicConfigurer.class);
-	}
-
-	@SuppressWarnings("deprecation")
-	private void bootstrapRetryTopicIfNecessary() {
-		if (!(this.beanFactory instanceof BeanDefinitionRegistry)) {
-			throw new IllegalStateException("BeanFactory must be an instance of "
-					+ BeanDefinitionRegistry.class.getSimpleName()
-					+ " to bootstrap the RetryTopic functionality. Provided beanFactory: "
-					+ this.beanFactory.getClass().getSimpleName());
-		}
-		BeanDefinitionRegistry registry = (BeanDefinitionRegistry) this.beanFactory;
-		if (!registry.containsBeanDefinition("internalRetryTopicBootstrapper")) {
-			registry.registerBeanDefinition("internalRetryTopicBootstrapper",
-					new RootBeanDefinition(org.springframework.kafka.retrytopic.RetryTopicBootstrapper.class));
-			this.beanFactory.getBean("internalRetryTopicBootstrapper",
-					org.springframework.kafka.retrytopic.RetryTopicBootstrapper.class).bootstrapRetryTopic();
-		}
 	}
 
 	private Method checkProxy(Method methodArg, Object bean) {

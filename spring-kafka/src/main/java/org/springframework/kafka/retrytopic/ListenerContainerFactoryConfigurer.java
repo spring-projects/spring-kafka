@@ -18,7 +18,6 @@ package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -73,14 +72,6 @@ public class ListenerContainerFactoryConfigurer {
 	static {
 		CONFIGURED_FACTORIES_CACHE = new HashSet<>();
 	}
-
-	private static final int MIN_POLL_TIMEOUT_VALUE = 100;
-
-	private static final int MAX_POLL_TIMEOUT_VALUE = 5000;
-
-	private static final int POLL_TIMEOUT_DIVISOR = 4;
-
-	private static final long LOWEST_BACKOFF_THRESHOLD = 1500L;
 
 	private BackOff providedBlockingBackOff = null;
 
@@ -255,58 +246,10 @@ public class ListenerContainerFactoryConfigurer {
 		MessageListener<?, ?> listener = checkAndCast(container.getContainerProperties()
 				.getMessageListener(), MessageListener.class);
 
-		if (isSetContainerProperties && !configuration.backOffValues.isEmpty()) {
-			configurePollTimeoutAndIdlePartitionInterval(container, configuration);
-		}
-
 		container.setupMessageListener(new KafkaBackoffAwareMessageListenerAdapter<>(listener,
 				this.kafkaConsumerBackoffManager, container.getListenerId(), this.clock)); // NOSONAR
 
 		this.containerCustomizer.accept(container);
-	}
-
-	protected void configurePollTimeoutAndIdlePartitionInterval(ConcurrentMessageListenerContainer<?, ?> container,
-															Configuration configuration) {
-
-		ContainerProperties containerProperties = container.getContainerProperties();
-
-		long pollTimeoutValue = getPollTimeoutValue(containerProperties, configuration);
-		long idlePartitionEventInterval = getIdlePartitionInterval(containerProperties, pollTimeoutValue);
-
-		LOGGER.debug(() -> "pollTimeout and idlePartitionEventInterval for back off values "
-				+ configuration.backOffValues + " will be set to " + pollTimeoutValue
-				+ " and " + idlePartitionEventInterval);
-
-		containerProperties
-				.setIdlePartitionEventInterval(idlePartitionEventInterval);
-		containerProperties.setPollTimeout(pollTimeoutValue);
-	}
-
-	protected long getIdlePartitionInterval(ContainerProperties containerProperties, long pollTimeoutValue) {
-		Long idlePartitionEventInterval = containerProperties.getIdlePartitionEventInterval();
-		return idlePartitionEventInterval != null && idlePartitionEventInterval > 0
-				? idlePartitionEventInterval
-				: pollTimeoutValue;
-	}
-
-	protected long getPollTimeoutValue(ContainerProperties containerProperties, Configuration configuration) {
-		if (containerProperties.getPollTimeout() != ContainerProperties.DEFAULT_POLL_TIMEOUT
-				|| configuration.backOffValues.isEmpty()) {
-			return containerProperties.getPollTimeout();
-		}
-
-		Long lowestBackOff = configuration.backOffValues
-				.stream()
-				.min(Comparator.naturalOrder())
-				.orElseThrow(() -> new IllegalArgumentException("No back off values found!"));
-
-		return lowestBackOff > LOWEST_BACKOFF_THRESHOLD
-				? applyLimits(lowestBackOff / POLL_TIMEOUT_DIVISOR)
-				: MIN_POLL_TIMEOUT_VALUE;
-	}
-
-	private long applyLimits(long pollTimeoutValue) {
-		return Math.min(Math.max(pollTimeoutValue, MIN_POLL_TIMEOUT_VALUE), MAX_POLL_TIMEOUT_VALUE);
 	}
 
 	@SuppressWarnings("unchecked")
