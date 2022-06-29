@@ -70,7 +70,7 @@ public class RetryTopicConfigurationSupport {
 
 	private static final String BACK_OFF_MANAGER_THREAD_EXECUTOR_BEAN_NAME = "backOffManagerThreadExecutor";
 
-	private static AtomicBoolean ONLY_ONE_ALLOWED = new AtomicBoolean(true);
+	private static final AtomicBoolean ONLY_ONE_ALLOWED = new AtomicBoolean(true);
 
 	private final RetryTopicComponentFactory componentFactory = createComponentFactory();
 
