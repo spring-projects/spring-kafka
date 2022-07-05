@@ -1566,8 +1566,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								+ "after an error; emergency stop invoked to avoid message loss", howManyRecords));
 						KafkaMessageListenerContainer.this.emergencyStop.run();
 					}
-					records = this.pendingRecordsAfterError;
-					this.pendingRecordsAfterError = null;
+					if (!isPartitionPaused(this.pendingRecordsAfterError.partitions().iterator().next())) {
+						records = this.pendingRecordsAfterError;
+						this.pendingRecordsAfterError = null;
+					}
 				}
 				captureOffsets(records);
 				checkRebalanceCommits();
