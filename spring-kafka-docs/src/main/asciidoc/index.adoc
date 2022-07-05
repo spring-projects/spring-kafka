@@ -47,11 +47,11 @@ The <<kafka,main chapter>> covers the core classes to develop a Kafka applicatio
 
 include::kafka.adoc[]
 
+include::retrytopic.adoc[]
+
 include::streams.adoc[]
 
 include::testing.adoc[]
-
-include::retrytopic.adoc[]
 
 [[tips-n-tricks]]
 == Tips, Tricks and Examples
