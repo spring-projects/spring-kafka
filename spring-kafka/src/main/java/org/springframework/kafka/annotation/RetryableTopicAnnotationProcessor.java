@@ -76,8 +76,6 @@ public class RetryableTopicAnnotationProcessor {
 
 	private final BeanExpressionContext expressionContext;
 
-	private static final String DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME = "kafkaTemplate";
-
 	/**
 	 * Construct an instance using the provided parameters and default resolver,
 	 * expression context.
@@ -218,14 +216,11 @@ public class RetryableTopicAnnotationProcessor {
 					KafkaOperations.class);
 		}
 		catch (NoSuchBeanDefinitionException ex2) {
-			try {
-				return this.beanFactory.getBean(DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME, KafkaOperations.class);
-			}
-			catch (NoSuchBeanDefinitionException exc) {
-				exc.addSuppressed(ex2);
-				throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.", // NOSONAR (lost stack trace)
-						exc);
-			}
+			KafkaOperations<?, ?> kafkaOps = this.beanFactory.getBeanProvider(KafkaOperations.class).getIfUnique();
+			Assert.state(kafkaOps != null, () -> "A single KafkaTemplate bean could not be found in the context; "
+					+ " a single instance must exist, or one specifically named "
+					+ RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME);
+			return kafkaOps;
 		}
 	}
 

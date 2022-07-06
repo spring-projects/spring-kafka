@@ -349,7 +349,7 @@ public class RetryTopicConfigurationSupport {
 	 */
 	public static class CustomizersConfigurer {
 
-		private Consumer<CommonErrorHandler> errorHandlerCustomizer;
+		private Consumer<DefaultErrorHandler> errorHandlerCustomizer;
 
 		private Consumer<ConcurrentMessageListenerContainer<?, ?>> listenerContainerCustomizer;
 
@@ -362,7 +362,7 @@ public class RetryTopicConfigurationSupport {
 		 * @return the configurer.
 		 * @see DefaultErrorHandler
 		 */
-		public CustomizersConfigurer customizeErrorHandler(Consumer<CommonErrorHandler> errorHandlerCustomizer) {
+		public CustomizersConfigurer customizeErrorHandler(Consumer<DefaultErrorHandler> errorHandlerCustomizer) {
 			this.errorHandlerCustomizer = errorHandlerCustomizer;
 			return this;
 		}

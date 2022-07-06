@@ -90,4 +90,5 @@ public abstract class AbstractKafkaBackOffManagerFactory
 	public void setApplicationContext(ApplicationContext applicationContext) {
 		this.applicationContext = applicationContext;
 	}
+
 }

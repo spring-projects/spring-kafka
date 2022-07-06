@@ -28,6 +28,8 @@ import org.springframework.scheduling.TaskScheduler;
  * framework requires a scheduler bean and looks for one in this order: 1. A single
  * instance of this class, 2. a single {@link TaskScheduler} bean, 3. when multiple
  * {@link TaskScheduler}s are present, a bean with the name {@code taskScheduler}.
+ * If you use this class, you should provide a {@link TaskScheduler} that is not defined
+ * as a bean; this class will maintain the scheduler's lifecycle.
  *
  * @author Gary Russell
  * @since 2.9

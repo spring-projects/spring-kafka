@@ -186,6 +186,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private AnnotationEnhancer enhancer;
 
+	private RetryTopicConfigurer retryTopicConfigurer;
+
 	@Override
 	public int getOrder() {
 		return LOWEST_PRECEDENCE;
@@ -508,8 +510,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private RetryTopicConfigurer getRetryTopicConfigurer() {
-		return this.beanFactory.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME,
-				RetryTopicConfigurer.class);
+		try {
+			this.retryTopicConfigurer = this.beanFactory.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME,
+					RetryTopicConfigurer.class);
+		}
+		catch (NoSuchBeanDefinitionException ex) {
+			this.logger.error("A 'RetryTopicConfigurer' with name "
+					+ RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME + "is required.");
+			throw ex;
+		}
+		return this.retryTopicConfigurer;
 	}
 
 	private Method checkProxy(Method methodArg, Object bean) {

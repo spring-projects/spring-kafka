@@ -71,7 +71,7 @@ public class ListenerContainerFactoryConfigurer {
 	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> {
 	};
 
-	private Consumer<CommonErrorHandler> errorHandlerCustomizer = errorHandler -> {
+	private Consumer<DefaultErrorHandler> errorHandlerCustomizer = errorHandler -> {
 	};
 
 	private final DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory;
@@ -152,7 +152,7 @@ public class ListenerContainerFactoryConfigurer {
 		this.containerCustomizer = containerCustomizer;
 	}
 
-	public void setErrorHandlerCustomizer(Consumer<CommonErrorHandler> errorHandlerCustomizer) {
+	public void setErrorHandlerCustomizer(Consumer<DefaultErrorHandler> errorHandlerCustomizer) {
 		this.errorHandlerCustomizer = errorHandlerCustomizer;
 	}
 

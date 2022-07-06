@@ -87,7 +87,7 @@ class ListenerContainerFactoryConfigurerTests {
 	private ContainerProperties containerProperties;
 
 	@Captor
-	private ArgumentCaptor<CommonErrorHandler> errorHandlerCaptor;
+	private ArgumentCaptor<DefaultErrorHandler> errorHandlerCaptor;
 
 	private final ConsumerRecord<?, ?> record =
 			new ConsumerRecord<>("test-topic", 1, 1234L, new Object(), new Object());
@@ -104,7 +104,7 @@ class ListenerContainerFactoryConfigurerTests {
 	private OffsetCommitCallback offsetCommitCallback;
 
 	@Mock
-	private java.util.function.Consumer<CommonErrorHandler> errorHandlerCustomizer;
+	private java.util.function.Consumer<DefaultErrorHandler> errorHandlerCustomizer;
 
 	@SuppressWarnings("rawtypes")
 	@Captor
@@ -173,12 +173,10 @@ class ListenerContainerFactoryConfigurerTests {
 
 		// then
 		then(container).should(times(1)).setCommonErrorHandler(errorHandlerCaptor.capture());
-		CommonErrorHandler errorHandler = errorHandlerCaptor.getValue();
-		assertThat(DefaultErrorHandler.class.isAssignableFrom(errorHandler.getClass())).isTrue();
-		DefaultErrorHandler seekToCurrent = (DefaultErrorHandler) errorHandler;
+		DefaultErrorHandler errorHandler = errorHandlerCaptor.getValue();
 
 		RuntimeException ex = new RuntimeException();
-		seekToCurrent.handleRemaining(ex, records, consumer, container);
+		errorHandler.handleRemaining(ex, records, consumer, container);
 
 		then(recoverer).should(times(1)).accept(record, consumer, ex);
 		then(consumer).should(times(1)).commitAsync(any(Map.class), eq(offsetCommitCallback));

@@ -41,10 +41,6 @@ That being said, for consumers handling a single partition the message's process
 
 IMPORTANT: It is guaranteed that a message will never be processed before its due time.
 
-===== Tuning the Delay Precision
-
-Starting with version 2.9, it is no longer necessary to tune the precision because a task scheduler is used to resume the partition and wake the consumer, if necessary.
-
 [[retry-config]]
 ==== Configuration
 

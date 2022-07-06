@@ -35,10 +35,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerPartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.support.converter.ConversionException;
@@ -87,7 +87,7 @@ class RetryTopicConfigurationSupportTests {
 		Consumer<DeadLetterPublishingRecovererFactory> dlprfCustomizer = mock(Consumer.class);
 		Consumer<RetryTopicConfigurer> rtconfigurer = mock(Consumer.class);
 		Consumer<ListenerContainerFactoryConfigurer> lcfcConsumer = mock(Consumer.class);
-		Consumer<CommonErrorHandler> errorHandlerCustomizer = mock(Consumer.class);
+		Consumer<DefaultErrorHandler> errorHandlerCustomizer = mock(Consumer.class);
 		BackOff backoff = mock(BackOff.class);
 
 		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport() {
