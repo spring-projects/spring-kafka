@@ -1691,11 +1691,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks)
 					|| this.pauseForPending) {
 
-				this.consumer.pause(this.consumer.assignment());
-				this.consumerPaused = true;
-				this.pauseForPending = false;
-				this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
-				publishConsumerPausedEvent(this.consumer.assignment());
+				Collection<TopicPartition> assigned = getAssignedPartitions();
+				if (assigned != null && assigned.size() > 0) {
+					this.consumer.pause(assigned);
+					this.consumerPaused = true;
+					this.pauseForPending = false;
+					this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
+					publishConsumerPausedEvent(this.consumer.assignment());
+				}
 			}
 		}
 
@@ -3431,10 +3434,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			private void repauseIfNeeded(Collection<TopicPartition> partitions) {
-				if (ListenerConsumer.this.consumerPaused) {
+				if (isPaused()) {
 					ListenerConsumer.this.consumer.pause(partitions);
+					ListenerConsumer.this.consumerPaused = true;
 					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
 							+ "consumer paused again, so the initial poll() will never return any records");
+					ListenerConsumer.this.logger.debug(() -> "Paused consumption from: " + partitions);
+					publishConsumerPausedEvent(partitions);
 				}
 				Collection<TopicPartition> toRepause = new LinkedList<>();
 				partitions.forEach(tp -> {
@@ -3444,6 +3450,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				});
 				if (!ListenerConsumer.this.consumerPaused && toRepause.size() > 0) {
 					ListenerConsumer.this.consumer.pause(toRepause);
+					ListenerConsumer.this.logger.debug(() -> "Paused consumption from: " + toRepause);
+					publishConsumerPausedEvent(toRepause);
 				}
 				this.revoked.removeAll(toRepause);
 				this.revoked.forEach(tp -> resumePartition(tp));
