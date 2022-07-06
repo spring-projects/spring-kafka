@@ -280,6 +280,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean asyncAcks;
 
+	private boolean pauseImmediate;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -871,6 +873,27 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setAsyncAcks(boolean asyncAcks) {
 		this.asyncAcks = asyncAcks;
+	}
+
+	/**
+	 * When pausing the container with a record listener, whether the pause takes effect
+	 * immediately, when the current record has been processed, or after all records from
+	 * the previous poll have been processed. Default false.
+	 * @return whether to pause immediately.
+	 * @since 2.9
+	 */
+	public boolean isPauseImmediate() {
+		return this.pauseImmediate;
+	}
+
+	/**
+	 * Set to true to pause the container after the current record has been processed, rather
+	 * than after all the records from the previous poll have been processed.
+	 * @param pauseImmediate true to pause immediately.
+	 * @since 2.9
+	 */
+	public void setPauseImmediate(boolean pauseImmediate) {
+		this.pauseImmediate = pauseImmediate;
 	}
 
 	private void adviseListenerIfNeeded() {

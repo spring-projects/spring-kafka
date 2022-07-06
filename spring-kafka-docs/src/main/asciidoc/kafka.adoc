@@ -2578,6 +2578,10 @@ See `monitorInterval`.
 |`false`
 |Set to false to log the complete consumer record (in error, debug logs etc) instead of just `topic-partition@offset`.
 
+|[[pauseImmediate]]<<pauseImmediate,`pauseImmediate`>>
+|`false`
+|When the container is paused, stop processing after the current record instead of after processing all the records from the previous poll; the remaining records are retained in memory and will be passed to the listener when the container is resumed.
+
 |[[pollTimeout]]<<pollTimeout,`pollTimeout`>>
 |5000
 |The timeout passed into `Consumer.poll()`.
@@ -3824,6 +3828,10 @@ However, the consumers might not have actually paused yet.
 `isConsumerPaused()` returns true if all `Consumer` instances have actually paused.
 
 In addition (also since 2.1.5), `ConsumerPausedEvent` and `ConsumerResumedEvent` instances are published with the container as the `source` property and the `TopicPartition` instances involved in the `partitions` property.
+
+Starting with version 2.9, a new container property `pauseImmediate`, when set to true, causes the pause to take effect after the current record is processed.
+By default, the pause takes effect when all of the records from the previous poll have been processed.
+See <<pauseImmediate>>.
 
 The following simple Spring Boot application demonstrates by using the container registry to get a reference to a `@KafkaListener` method's container and pausing or resuming its consumers as well as receiving the corresponding events:
 
