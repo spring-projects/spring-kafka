@@ -1571,7 +1571,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						KafkaMessageListenerContainer.this.emergencyStop.run();
 					}
 					TopicPartition firstPart = this.pendingRecordsAfterError.partitions().iterator().next();
-					boolean isPaused = isPartitionPauseRequested(firstPart);
+					boolean isPaused = isPaused() || isPartitionPauseRequested(firstPart);
 					this.logger.debug(() -> "First pending after error: " + firstPart + "; paused: " + isPaused);
 					if (!isPaused) {
 						records = this.pendingRecordsAfterError;

@@ -73,7 +73,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class DefaultErrorHandlerNoSeeksRecordAckNoResumeTests {
+public class DefaultErrorHandlerNoSeeksRecordAckNoResumePartitionTests {
 
 	@SuppressWarnings("rawtypes")
 	@Autowired
