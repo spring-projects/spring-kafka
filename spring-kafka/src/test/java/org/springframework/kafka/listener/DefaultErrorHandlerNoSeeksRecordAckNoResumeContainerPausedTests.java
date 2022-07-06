@@ -111,7 +111,6 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux");
 		assertThat(this.config.deliveries).contains(1, 1, 1, 1);
-		assertThat(this.config.deliveryAttempt).isNotNull();
 		verify(this.consumer, never()).seek(any(), anyLong());
 	}
 
@@ -132,8 +131,6 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 		final CountDownLatch commitLatch = new CountDownLatch(3);
 
 		int count;
-
-		volatile org.apache.kafka.common.header.Header deliveryAttempt;
 
 		@KafkaListener(id = "id", groupId = "grp",
 				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
@@ -226,11 +223,6 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory(registry));
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
-			factory.getContainerProperties().setDeliveryAttemptHeader(true);
-			factory.setRecordInterceptor((record, consumer) -> {
-				Config.this.deliveryAttempt = record.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT);
-				return record;
-			});
 			DefaultErrorHandler eh = new DefaultErrorHandler();
 			eh.setSeekAfterError(false);
 			factory.setCommonErrorHandler(eh);
