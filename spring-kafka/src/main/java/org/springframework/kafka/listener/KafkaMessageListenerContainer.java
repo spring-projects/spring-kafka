@@ -667,23 +667,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Duration syncCommitTimeout;
 
-		private final RecordInterceptor<K, V> recordInterceptor = !isInterceptBeforeTx() && this.kafkaTxManager != null
-				? getRecordInterceptor()
-				: null;
+		private final RecordInterceptor<K, V> recordInterceptor =
+				!isInterceptBeforeTx() && this.transactionManager != null
+						? getRecordInterceptor()
+						: null;
 
 		private final RecordInterceptor<K, V> earlyRecordInterceptor =
-				isInterceptBeforeTx() || this.kafkaTxManager == null
+				isInterceptBeforeTx() || this.transactionManager == null
 						? getRecordInterceptor()
 						: null;
 
 		private final RecordInterceptor<K, V> commonRecordInterceptor = getRecordInterceptor();
 
-		private final BatchInterceptor<K, V> batchInterceptor = !isInterceptBeforeTx() && this.kafkaTxManager != null
-				? getBatchInterceptor()
-				: null;
+		private final BatchInterceptor<K, V> batchInterceptor =
+				!isInterceptBeforeTx() && this.transactionManager != null
+						? getBatchInterceptor()
+						: null;
 
 		private final BatchInterceptor<K, V> earlyBatchInterceptor =
-				isInterceptBeforeTx() || this.kafkaTxManager == null
+				isInterceptBeforeTx() || this.transactionManager == null
 						? getBatchInterceptor()
 						: null;
 
