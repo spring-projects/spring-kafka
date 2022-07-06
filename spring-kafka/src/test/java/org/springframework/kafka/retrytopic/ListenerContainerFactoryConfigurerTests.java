@@ -158,18 +158,21 @@ class ListenerContainerFactoryConfigurerTests {
 		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
 		given(containerProperties.getAckMode()).willReturn(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
 		given(containerProperties.getCommitCallback()).willReturn(offsetCommitCallback);
+		given(containerProperties.getMessageListener()).willReturn(listener);
 		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
+		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 
 		// when
 		ListenerContainerFactoryConfigurer configurer =
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer.setErrorHandlerCustomizer(errorHandlerCustomizer);
-		configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory,
+				configuration.forContainerFactoryConfigurer());
+		factory.createListenerContainer(endpoint);
 
 		// then
-		then(containerFactory).should(times(1)).setCommonErrorHandler(errorHandlerCaptor.capture());
+		then(container).should(times(1)).setCommonErrorHandler(errorHandlerCaptor.capture());
 		CommonErrorHandler errorHandler = errorHandlerCaptor.getValue();
 		assertThat(DefaultErrorHandler.class.isAssignableFrom(errorHandler.getClass())).isTrue();
 		DefaultErrorHandler seekToCurrent = (DefaultErrorHandler) errorHandler;
@@ -196,22 +199,18 @@ class ListenerContainerFactoryConfigurerTests {
 		String testListenerId = "testListenerId";
 		given(container.getListenerId()).willReturn(testListenerId);
 		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
+		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 
 		// when
 		ListenerContainerFactoryConfigurer configurer =
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer.setContainerCustomizer(configurerContainerCustomizer);
-		ConcurrentKafkaListenerContainerFactory<?, ?> factory = configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> factory = configurer
+				.decorateFactory(containerFactory, configuration.forContainerFactoryConfigurer());
+		factory.createListenerContainer(endpoint);
 
 		// then
-		then(containerFactory)
-				.should(times(1))
-				.setContainerCustomizer(containerCustomizerCaptor.capture());
-		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
-		containerCustomizer.configure(container);
-
 		then(container).should(times(1)).setupMessageListener(listenerAdapterCaptor.capture());
 		KafkaBackoffAwareMessageListenerAdapter<?, ?> listenerAdapter =
 				(KafkaBackoffAwareMessageListenerAdapter<?, ?>) listenerAdapterCaptor.getValue();
@@ -315,26 +314,4 @@ class ListenerContainerFactoryConfigurerTests {
 				.isInstanceOf(IllegalStateException.class);
 	}
 
-
-	@Test
-	void shouldCacheFactoryInstances() {
-
-		// given
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
-
-		// when
-		ListenerContainerFactoryConfigurer configurer =
-				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						deadLetterPublishingRecovererFactory, clock);
-		ConcurrentKafkaListenerContainerFactory<?, ?> factory = configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-		ConcurrentKafkaListenerContainerFactory<?, ?> secondFactory = configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-
-		// then
-		assertThat(secondFactory).isEqualTo(factory);
-		then(containerFactory).should(times(1)).setContainerCustomizer(any());
-		then(containerFactory).should(times(1)).setCommonErrorHandler(any());
-	}
 }

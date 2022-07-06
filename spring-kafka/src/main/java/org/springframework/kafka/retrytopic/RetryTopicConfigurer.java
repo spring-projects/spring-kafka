@@ -383,10 +383,10 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 		return dltEndpointHandlerMethod != null ? dltEndpointHandlerMethod : DEFAULT_DLT_HANDLER;
 	}
 
-	@SuppressWarnings("deprecation")
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForMainEndpoint(
 			KafkaListenerContainerFactory<?> providedFactory,
 			String defaultFactoryBeanName, RetryTopicConfiguration configuration) {
+
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = this.containerFactoryResolver
 				.resolveFactoryForMainEndpoint(providedFactory, defaultFactoryBeanName,
 						configuration.forContainerFactoryResolver());
@@ -396,11 +396,11 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 						configuration.forContainerFactoryConfigurer());
 	}
 
-	@SuppressWarnings("deprecation")
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForRetryEndpoint(
 			KafkaListenerContainerFactory<?> providedFactory,
 			String defaultFactoryBeanName,
 			RetryTopicConfiguration configuration) {
+
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
 				this.containerFactoryResolver.resolveFactoryForRetryEndpoint(providedFactory, defaultFactoryBeanName,
 				configuration.forContainerFactoryResolver());

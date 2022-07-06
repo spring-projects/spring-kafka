@@ -36,7 +36,9 @@ public interface BackOffHandler {
 	 * @param exception the exception.
 	 * @param nextBackOff the next back off.
 	 */
-	void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff);
+	default void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
+		throw new UnsupportedOperationException();
+	}
 
 	/**
 	 * Perform the next back off for a partition.

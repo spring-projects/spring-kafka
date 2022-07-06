@@ -214,25 +214,17 @@ public class RetryableTopicAnnotationProcessor {
 			}
 		}
 		try {
-			return this.beanFactory.getBean(
-					org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
+			return this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
 					KafkaOperations.class);
 		}
-		catch (NoSuchBeanDefinitionException ex) {
+		catch (NoSuchBeanDefinitionException ex2) {
 			try {
-				return this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
-						KafkaOperations.class);
+				return this.beanFactory.getBean(DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME, KafkaOperations.class);
 			}
-			catch (NoSuchBeanDefinitionException ex2) {
-				try {
-					return this.beanFactory.getBean(DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME, KafkaOperations.class);
-				}
-				catch (NoSuchBeanDefinitionException exc) {
-					exc.addSuppressed(ex);
-					exc.addSuppressed(ex2);
-					throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.", // NOSONAR (lost stack trace)
-							exc);
-				}
+			catch (NoSuchBeanDefinitionException exc) {
+				exc.addSuppressed(ex2);
+				throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.", // NOSONAR (lost stack trace)
+						exc);
 			}
 		}
 	}

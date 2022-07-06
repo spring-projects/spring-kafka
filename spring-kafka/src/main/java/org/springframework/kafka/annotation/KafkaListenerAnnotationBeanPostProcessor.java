@@ -508,9 +508,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private RetryTopicConfigurer getRetryTopicConfigurer() {
-		return this.beanFactory.containsBean("internalRetryTopicConfigurer")
-				? this.beanFactory.getBean("internalRetryTopicConfigurer", RetryTopicConfigurer.class)
-				: this.beanFactory.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME, RetryTopicConfigurer.class);
+		return this.beanFactory.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME,
+				RetryTopicConfigurer.class);
 	}
 
 	private Method checkProxy(Method methodArg, Object bean) {

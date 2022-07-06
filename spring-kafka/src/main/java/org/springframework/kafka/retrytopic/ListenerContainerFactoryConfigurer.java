@@ -18,15 +18,12 @@ package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.LogFactory;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -64,14 +61,8 @@ import org.springframework.util.backoff.BackOff;
  */
 public class ListenerContainerFactoryConfigurer {
 
-	private static final Set<ConcurrentKafkaListenerContainerFactory<?, ?>> CONFIGURED_FACTORIES_CACHE;
-
 	private static final LogAccessor LOGGER = new LogAccessor(
 			LogFactory.getLog(ListenerContainerFactoryConfigurer.class));
-
-	static {
-		CONFIGURED_FACTORIES_CACHE = new HashSet<>();
-	}
 
 	private BackOff providedBlockingBackOff = null;
 
@@ -91,43 +82,10 @@ public class ListenerContainerFactoryConfigurer {
 
 	public ListenerContainerFactoryConfigurer(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
 									DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory,
-									@Qualifier("internalBackOffClock") Clock clock) {
+									Clock clock) {
 		this.kafkaConsumerBackoffManager = kafkaConsumerBackoffManager;
 		this.deadLetterPublishingRecovererFactory = deadLetterPublishingRecovererFactory;
 		this.clock = clock;
-	}
-
-	/**
-	 * Configures the provided {@link ConcurrentKafkaListenerContainerFactory}.
-	 * @param containerFactory the factory instance to be configured.
-	 * @param configuration the configuration provided by the {@link RetryTopicConfiguration}.
-	 * @return the configured factory instance.
-	 * @deprecated in favor of
-	 * {@link #decorateFactory(ConcurrentKafkaListenerContainerFactory, Configuration)}.
-	 */
-	@Deprecated
-	public ConcurrentKafkaListenerContainerFactory<?, ?> configure(
-			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory, Configuration configuration) {
-		return isCached(containerFactory)
-				? containerFactory
-				: addToCache(doConfigure(containerFactory, configuration, true));
-	}
-
-	/**
-	 * Configures the provided {@link ConcurrentKafkaListenerContainerFactory}.
-	 * Meant to be used for the main endpoint, this method ignores the provided backOff values.
-	 * @param containerFactory the factory instance to be configured.
-	 * @param configuration the configuration provided by the {@link RetryTopicConfiguration}.
-	 * @return the configured factory instance.
-	 * @deprecated in favor of
-	 * {@link #decorateFactoryWithoutSettingContainerProperties(ConcurrentKafkaListenerContainerFactory, Configuration)}.
-	 */
-	@Deprecated
-	public ConcurrentKafkaListenerContainerFactory<?, ?> configureWithoutBackOffValues(
-			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory, Configuration configuration) {
-		return isCached(containerFactory)
-				? containerFactory
-				: doConfigure(containerFactory, configuration, false);
 	}
 
 	/**
@@ -187,30 +145,6 @@ public class ListenerContainerFactoryConfigurer {
 						+  "Current ones: " + Arrays.toString(this.blockingExceptionTypes)
 						+ " You provided: " + Arrays.toString(exceptionTypes));
 		this.blockingExceptionTypes = Arrays.copyOf(exceptionTypes, exceptionTypes.length);
-	}
-
-	private ConcurrentKafkaListenerContainerFactory<?, ?> doConfigure(
-			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory, Configuration configuration,
-			boolean isSetContainerProperties) {
-
-		containerFactory
-				.setContainerCustomizer(container -> setupBackoffAwareMessageListenerAdapter(container, configuration, isSetContainerProperties));
-		containerFactory
-				.setCommonErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create(), configuration));
-		return containerFactory;
-	}
-
-	private boolean isCached(ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory) {
-		synchronized (CONFIGURED_FACTORIES_CACHE) {
-			return CONFIGURED_FACTORIES_CACHE.contains(containerFactory);
-		}
-	}
-
-	private ConcurrentKafkaListenerContainerFactory<?, ?> addToCache(ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory) {
-		synchronized (CONFIGURED_FACTORIES_CACHE) {
-			CONFIGURED_FACTORIES_CACHE.add(containerFactory);
-			return containerFactory;
-		}
 	}
 
 	public void setContainerCustomizer(Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer) {
