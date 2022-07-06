@@ -1692,7 +1692,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					|| this.pauseForPending) {
 
 				Collection<TopicPartition> assigned = getAssignedPartitions();
-				if (assigned != null && assigned.size() > 0) {
+				if (!CollectionUtils.isEmpty(assigned)) {
 					this.consumer.pause(assigned);
 					this.consumerPaused = true;
 					this.pauseForPending = false;
