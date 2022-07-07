@@ -16,3 +16,28 @@ See <<default-eh>> for more information.
 
 The `DefaultErrorHandler` now has a `BackOffHandler` property.
 See <<backoff-handlers>> for more information.
+
+[[x29-lc-changes]]
+==== Listener Container Changes
+
+`interceptBeforeTx` now works with all transaction managers (previously it was only applied when a `KafkaAwareTransactionManager` was used).
+See <<interceptBeforeTX>>.
+
+A new container property `pauseImmediate` is provided which allows the container to pause the consumer after the current record is processed, instead of after all the records from the previous poll have been processed.
+See <<pauseImmediate>>.
+
+Events related to consumer authentication and authorization
+
+[[x29-hm-changes]]
+==== Header Mapper Changes
+
+You can now configure which inbound headers should be mapped.
+Also available in version 2.8.8 or later.
+See <<headers>> for more information.
+
+[[x29-rkt-changes]]
+==== `ReplyingKafkaTemplate` Changes
+
+The template now provides a method to wait for assignment on the reply container, to avoid a race when sending a request before the reply container is initialized.
+Also available in version 2.8.8 or later.
+See <<replying-template>>.
