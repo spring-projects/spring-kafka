@@ -19,7 +19,7 @@ package org.springframework.kafka.listener;
 import org.springframework.util.Assert;
 
 /**
- * A factory for {@link ContainerPartitionPausingBackoffManager}.
+ * A factory for {@link ContainerPartitionPausingBackOffManager}.
  *
  * @author Gary Russell
  * @since 2.9

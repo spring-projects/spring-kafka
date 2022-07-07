@@ -265,7 +265,6 @@ public class RetryTopicConfigurationSupport {
 	/**
 	 * Create the {@link KafkaConsumerBackoffManager} instance that will be used to
 	 * back off partitions.
-	 * To configure it, override the {@link #configureKafkaBackOffManager} method.
 	 * To provide a custom implementation, either override this method, or
 	 * override the {@link RetryTopicComponentFactory#kafkaBackOffManagerFactory} method
 	 * and return a different {@link KafkaBackOffManagerFactory}.
