@@ -510,14 +510,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private RetryTopicConfigurer getRetryTopicConfigurer() {
-		try {
-			this.retryTopicConfigurer = this.beanFactory.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME,
-					RetryTopicConfigurer.class);
-		}
-		catch (NoSuchBeanDefinitionException ex) {
-			this.logger.error("A 'RetryTopicConfigurer' with name "
-					+ RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME + "is required.");
-			throw ex;
+		if (this.retryTopicConfigurer == null) {
+			try {
+				this.retryTopicConfigurer = this.beanFactory
+						.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME, RetryTopicConfigurer.class);
+			}
+			catch (NoSuchBeanDefinitionException ex) {
+				this.logger.error("A 'RetryTopicConfigurer' with name "
+						+ RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME + "is required.");
+				throw ex;
+			}
 		}
 		return this.retryTopicConfigurer;
 	}
