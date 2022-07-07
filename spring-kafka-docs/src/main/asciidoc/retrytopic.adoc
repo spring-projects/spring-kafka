@@ -189,7 +189,7 @@ public class MyRetryTopicConfiguration extends RetryTopicConfigurationSupport {
     protected void configureCustomizers(CustomizersConfigurer customizersConfigurer) {
         // Use the new 2.9 mechanism to avoid re-fetching the same records after a pause
         customizersConfigurer.customizeErrorHandler(eh -> {
-            ((DefaultErrorHandler) eh).setSeekAfterError(false);
+            eh.setSeekAfterError(false);
         });
     }
 
@@ -880,8 +880,8 @@ For example, to change the logging level to WARN you might add:
 ----
 @Override
 protected void configureCustomizers(CustomizersConfigurer customizersConfigurer) {
-    customizersConfigurer.customizeErrorHandler(commonErrorHandler ->
-            ((DefaultErrorHandler) commonErrorHandler).setLogLevel(KafkaException.Level.WARN))
+    customizersConfigurer.customizeErrorHandler(defaultErrorHandler ->
+            defaultErrorHandler.setLogLevel(KafkaException.Level.WARN))
 }
 ----
 ====
