@@ -3464,6 +3464,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.firstPoll = true;
 					ListenerConsumer.this.consumerSeekAwareListener.onFirstPoll();
 				}
+				if (ListenerConsumer.this.commonErrorHandler != null) {
+					ListenerConsumer.this.commonErrorHandler.onPartitionsAssigned(ListenerConsumer.this.consumer,
+							partitions);
+				}
 			}
 
 			private void repauseIfNeeded(Collection<TopicPartition> partitions) {

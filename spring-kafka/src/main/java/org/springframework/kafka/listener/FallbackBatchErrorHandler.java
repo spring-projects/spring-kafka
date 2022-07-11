@@ -16,11 +16,13 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
@@ -53,6 +55,8 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 	private final CommonErrorHandler seeker = new ErrorHandlerAdapter(new SeekToCurrentBatchErrorHandler());
 
 	private boolean ackAfterHandle = true;
+
+	private boolean retrying;
 
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
@@ -99,8 +103,16 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 			this.logger.error(thrownException, "Called with no records; consumer exception");
 			return;
 		}
+		this.retrying = true;
 		ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
 				this.seeker, this.recoverer, this.logger, getLogLevel());
+		this.retrying = false;
+	}
+
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		if (this.retrying) {
+			consumer.pause(consumer.assignment());
+		}
 	}
 
 }

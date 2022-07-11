@@ -70,6 +70,16 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 	}
 
 	/**
+	 * Return the fallback batch error handler.
+	 * @return the handler.
+	 * @since 2.8.8
+	 */
+	protected CommonErrorHandler getFallbackBatchHandler() {
+		return this.fallbackBatchHandler;
+	}
+
+
+	/**
 	 * Construct an instance with the provided properties.
 	 * @param recoverer the recoverer.
 	 * @param backOff the back off.

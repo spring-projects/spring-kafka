@@ -16,12 +16,14 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
@@ -157,6 +159,13 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 		}
 		else {
 			CommonErrorHandler.super.handleBatch(thrownException, data, consumer, container, invokeListener);
+		}
+	}
+
+	@Override
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		if (this.batchErrorHandler instanceof FallbackBatchErrorHandler) {
+			((FallbackBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions);
 		}
 	}
 

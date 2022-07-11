@@ -16,12 +16,14 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.TopicPartitionOffset;
 
@@ -210,6 +212,15 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 */
 	default void setAckAfterHandle(boolean ack) {
 		throw new UnsupportedOperationException("This error handler does not support setting this property");
+	}
+
+	/**
+	 * Called when partitions are assigned.
+	 * @param consumer the consumer.
+	 * @param partitions the newly assigned partitions.
+	 * @since 2.8.8
+	 */
+	default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
 	}
 
 }

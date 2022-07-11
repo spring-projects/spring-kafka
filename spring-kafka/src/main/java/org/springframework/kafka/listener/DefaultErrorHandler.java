@@ -16,11 +16,13 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.SerializationException;
 
 import org.springframework.kafka.support.KafkaUtils;
@@ -197,6 +199,11 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 					+ thrownException.getClass().getName()
 					+ "'s; no record information is available", thrownException);
 		}
+	}
+
+	@Override
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+		getFallbackBatchHandler().onPartitionsAssigned(consumer, partitions);
 	}
 
 }

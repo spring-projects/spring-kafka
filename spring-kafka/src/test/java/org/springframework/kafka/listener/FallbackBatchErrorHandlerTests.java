@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,6 +39,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.util.backoff.FixedBackOff;
@@ -163,6 +165,41 @@ public class FallbackBatchErrorHandlerTests {
 			})
 		).withMessage("Container stopped during retries");
 		assertThat(this.invoked).isEqualTo(1);
+	}
+
+	@Test
+	void rePauseOnRebalance() {
+		this.invoked = 0;
+		List<ConsumerRecord<?, ?>> recovered = new ArrayList<>();
+		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0L, 1L), (cr, ex) ->  {
+			recovered.add(cr);
+		});
+		Map<TopicPartition, List<ConsumerRecord<Object, Object>>> map = new HashMap<>();
+		map.put(new TopicPartition("foo", 0),
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
+		map.put(new TopicPartition("foo", 1),
+				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		willAnswer(inv -> {
+			eh.onPartitionsAssigned(consumer, List.of(new TopicPartition("foo", 0), new TopicPartition("foo", 1)));
+			return records;
+		}).given(consumer).poll(any());
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		eh.handle(new RuntimeException(), records, consumer, container, () -> {
+			this.invoked++;
+			throw new RuntimeException();
+		});
+		assertThat(this.invoked).isEqualTo(1);
+		assertThat(recovered).hasSize(2);
+		InOrder inOrder = inOrder(consumer);
+		inOrder.verify(consumer).pause(any());
+		inOrder.verify(consumer).poll(any());
+		inOrder.verify(consumer).pause(any());
+		inOrder.verify(consumer).resume(any());
+		verify(consumer, times(3)).assignment();
+		verifyNoMoreInteractions(consumer);
 	}
 
 }
