@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.util.Assert;
 
 /**
@@ -32,9 +33,13 @@ public class ContainerPartitionPausingBackOffManagerFactory extends AbstractKafk
 	/**
 	 * Construct an instance with the provided properties.
 	 * @param listenerContainerRegistry the registry.
+	 * @param applicationContext the application context.
 	 */
-	public ContainerPartitionPausingBackOffManagerFactory(ListenerContainerRegistry listenerContainerRegistry) {
+	public ContainerPartitionPausingBackOffManagerFactory(ListenerContainerRegistry listenerContainerRegistry,
+			ApplicationContext applicationContext) {
+
 		super(listenerContainerRegistry);
+		setApplicationContext(applicationContext);
 	}
 
 	@Override

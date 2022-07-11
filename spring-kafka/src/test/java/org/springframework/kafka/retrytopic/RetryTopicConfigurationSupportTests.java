@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerPartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
@@ -167,7 +168,8 @@ class RetryTopicConfigurationSupportTests {
 		KafkaConsumerBackoffManager backoffManagerMock = mock(KafkaConsumerBackoffManager.class);
 		TaskScheduler taskSchedulerMock = mock(TaskScheduler.class);
 		Clock clock = mock(Clock.class);
-		given(componentFactory.kafkaBackOffManagerFactory(registry)).willReturn(factory);
+		ApplicationContext ctx = mock(ApplicationContext.class);
+		given(componentFactory.kafkaBackOffManagerFactory(registry, ctx)).willReturn(factory);
 		given(factory.create()).willReturn(backoffManagerMock);
 		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport() {
 
@@ -177,10 +179,10 @@ class RetryTopicConfigurationSupportTests {
 			}
 
 		};
-		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(registry, null,
+		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(ctx, registry, null,
 				taskSchedulerMock);
 		assertThat(backoffManager).isEqualTo(backoffManagerMock);
-		then(componentFactory).should().kafkaBackOffManagerFactory(registry);
+		then(componentFactory).should().kafkaBackOffManagerFactory(registry, ctx);
 		then(factory).should().create();
 	}
 
@@ -188,8 +190,10 @@ class RetryTopicConfigurationSupportTests {
 	void testCreateBackOffManagerNoConfiguration() {
 		ListenerContainerRegistry registry = mock(ListenerContainerRegistry.class);
 		TaskScheduler scheduler = mock(TaskScheduler.class);
+		ApplicationContext ctx = mock(ApplicationContext.class);
 		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport();
-		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(registry, null, scheduler);
+		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(ctx, registry, null,
+				scheduler);
 		assertThat(backoffManager).isNotNull();
 	}
 

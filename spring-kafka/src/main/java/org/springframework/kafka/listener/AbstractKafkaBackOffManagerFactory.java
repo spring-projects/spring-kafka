@@ -87,7 +87,7 @@ public abstract class AbstractKafkaBackOffManagerFactory
 	}
 
 	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) {
+	public final void setApplicationContext(ApplicationContext applicationContext) {
 		this.applicationContext = applicationContext;
 	}
 

@@ -19,6 +19,7 @@ package org.springframework.kafka.retrytopic;
 import java.time.Clock;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.ContainerPartitionPausingBackOffManagerFactory;
@@ -150,10 +151,13 @@ public class RetryTopicComponentFactory {
 	 * {@link KafkaConsumerBackoffManager} instance used to back off the partitions.
 	 * @param registry the {@link ListenerContainerRegistry} used to fetch the
 	 * {@link MessageListenerContainer}.
+	 * @param applicationContext the application context.
 	 * @return the instance.
 	 */
-	public KafkaBackOffManagerFactory kafkaBackOffManagerFactory(ListenerContainerRegistry registry) {
-		return new ContainerPartitionPausingBackOffManagerFactory(registry);
+	public KafkaBackOffManagerFactory kafkaBackOffManagerFactory(ListenerContainerRegistry registry,
+			ApplicationContext applicationContext) {
+
+		return new ContainerPartitionPausingBackOffManagerFactory(registry, applicationContext);
 	}
 
 	/**

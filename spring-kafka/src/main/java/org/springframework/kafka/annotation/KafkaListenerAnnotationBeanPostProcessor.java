@@ -62,6 +62,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.OrderComparator;
 import org.springframework.core.Ordered;
@@ -83,11 +84,15 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.ContainerGroupSequencer;
+import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.retrytopic.DestinationTopicResolver;
 import org.springframework.kafka.retrytopic.RetryTopicBeanNames;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
+import org.springframework.kafka.retrytopic.RetryTopicSchedulerWrapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.GenericMessageConverter;
@@ -96,6 +101,8 @@ import org.springframework.messaging.handler.annotation.support.DefaultMessageHa
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -516,12 +523,48 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME, RetryTopicConfigurer.class);
 			}
 			catch (NoSuchBeanDefinitionException ex) {
-				this.logger.error("A 'RetryTopicConfigurer' with name "
-						+ RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME + "is required.");
-				throw ex;
+				this.retryTopicConfigurer = createDefaultConfigurer();
 			}
 		}
 		return this.retryTopicConfigurer;
+	}
+
+	private RetryTopicConfigurer createDefaultConfigurer() {
+		if (this.applicationContext instanceof GenericApplicationContext) {
+			GenericApplicationContext gac = (GenericApplicationContext) this.applicationContext;
+			gac.registerBean(
+					RetryTopicBeanNames.DEFAULT_RETRY_TOPIC_CONFIG_SUPPORT_BEAN_NAME,
+					RetryTopicConfigurationSupport.class,
+					() -> new RetryTopicConfigurationSupport());
+			RetryTopicConfigurationSupport rtcs = this.applicationContext.getBean(
+					RetryTopicBeanNames.DEFAULT_RETRY_TOPIC_CONFIG_SUPPORT_BEAN_NAME,
+					RetryTopicConfigurationSupport.class);
+			DestinationTopicResolver destResolver = rtcs.destinationTopicResolver();
+			RetryTopicSchedulerWrapper schedW = gac.getBeanProvider(RetryTopicSchedulerWrapper.class).getIfUnique();
+			TaskScheduler sched = gac.getBeanProvider(TaskScheduler.class).getIfUnique();
+			if (schedW == null && sched == null) {
+				RetryTopicSchedulerWrapper newSchedW = new RetryTopicSchedulerWrapper(new ThreadPoolTaskScheduler());
+				gac.registerBean(RetryTopicBeanNames.DEFAULT_SCHEDULER_WRAPPER_BEAN_NAME,
+						RetryTopicSchedulerWrapper.class, () -> newSchedW);
+				schedW = gac.getBean(RetryTopicSchedulerWrapper.class);
+			}
+			KafkaConsumerBackoffManager bom =
+					rtcs.kafkaConsumerBackoffManager(this.applicationContext, this.registrar.getEndpointRegistry(),
+							schedW, sched);
+			RetryTopicConfigurer rtc = rtcs.retryTopicConfigurer(bom, destResolver, this.beanFactory);
+
+			gac.registerBean(RetryTopicBeanNames.DESTINATION_TOPIC_RESOLVER_BEAN_NAME, DestinationTopicResolver.class,
+					() -> destResolver);
+			gac.registerBean(KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME,
+					KafkaConsumerBackoffManager.class, () -> bom);
+			gac.registerBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME, RetryTopicConfigurer.class,
+					() -> rtc);
+
+			return this.beanFactory
+				.getBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME, RetryTopicConfigurer.class);
+		}
+		throw new IllegalStateException("When there is no RetryTopicConfigurationSupport bean, the application context "
+				+ "must be a GenericApplicationContext");
 	}
 
 	private Method checkProxy(Method methodArg, Object bean) {

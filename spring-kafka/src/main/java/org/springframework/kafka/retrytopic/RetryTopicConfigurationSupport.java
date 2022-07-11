@@ -27,6 +27,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafkaRetryTopic;
@@ -72,7 +73,7 @@ public class RetryTopicConfigurationSupport {
 
 	private final RetryTopicComponentFactory componentFactory = createComponentFactory();
 
-	protected RetryTopicConfigurationSupport() {
+	public RetryTopicConfigurationSupport() {
 		Assert.state(ONLY_ONE_ALLOWED.getAndSet(false), "Only one 'RetryTopicConfigurationSupport' is allowed");
 	}
 
@@ -266,6 +267,7 @@ public class RetryTopicConfigurationSupport {
 	 * To provide a custom implementation, either override this method, or
 	 * override the {@link RetryTopicComponentFactory#kafkaBackOffManagerFactory} method
 	 * and return a different {@link KafkaBackOffManagerFactory}.
+	 * @param applicationContext the application context.
 	 * @param registry the {@link ListenerContainerRegistry} to be used to fetch the
 	 * {@link MessageListenerContainer} at runtime to be backed off.
 	 * @param wrapper a {@link RetryTopicSchedulerWrapper}.
@@ -273,13 +275,13 @@ public class RetryTopicConfigurationSupport {
 	 * @return the instance.
 	 */
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
-	public KafkaConsumerBackoffManager kafkaConsumerBackoffManager(
+	public KafkaConsumerBackoffManager kafkaConsumerBackoffManager(ApplicationContext applicationContext,
 			@Qualifier(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
 					ListenerContainerRegistry registry, @Nullable RetryTopicSchedulerWrapper wrapper,
 					@Nullable TaskScheduler taskScheduler) {
 
 		KafkaBackOffManagerFactory backOffManagerFactory =
-				this.componentFactory.kafkaBackOffManagerFactory(registry);
+				this.componentFactory.kafkaBackOffManagerFactory(registry, applicationContext);
 		JavaUtils.INSTANCE.acceptIfInstanceOf(ContainerPartitionPausingBackOffManagerFactory.class, backOffManagerFactory,
 				factory -> configurePartitionPausingFactory(factory, registry,
 						wrapper != null ? wrapper.getScheduler() : taskScheduler));
