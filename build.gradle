@@ -234,12 +234,6 @@ subprojects { subproject ->
 					def pomDeps = asNode().dependencies.first()
 					subproject.configurations.providedImplementation.allDependencies.each { dep ->
 						pomDeps.remove(pomDeps.'*'.find { it.artifactId.text() == dep.name })
-						pomDeps.appendNode('dependency').with {
-							it.appendNode('groupId', dep.group)
-							it.appendNode('artifactId', dep.name)
-							it.appendNode('version', dep.version)
-							it.appendNode('scope', 'provided')
-						}
 					}
 				}
 			}
