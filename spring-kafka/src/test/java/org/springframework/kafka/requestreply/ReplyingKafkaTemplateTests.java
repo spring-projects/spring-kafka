@@ -448,6 +448,7 @@ public class ReplyingKafkaTemplateTests {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionOffset(D_REPLY, 0), 2, new AtomicInteger());
 		try {
+			template.setCorrelationHeaderName("customCorrelation");
 			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(D_REQUEST, null, null, null, "foo");
 			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> future =
@@ -838,14 +839,18 @@ public class ReplyingKafkaTemplateTests {
 
 		@KafkaListener(id = "def1", topics = { D_REQUEST, E_REQUEST, F_REQUEST })
 		@SendTo  // default REPLY_TOPIC header
-		public String dListener1(String in) {
-			return in.toUpperCase();
+		public Message<String> dListener1(String in, @Header("customCorrelation") byte[] correlation) {
+			return MessageBuilder.withPayload(in.toUpperCase())
+					.setHeader("customCorrelation", correlation)
+					.build();
 		}
 
 		@KafkaListener(id = "def2", topics = { D_REQUEST, E_REQUEST, F_REQUEST })
 		@SendTo  // default REPLY_TOPIC header
-		public String dListener2(String in) {
-			return in.substring(0, 1) + in.substring(1).toUpperCase();
+		public Message<String> dListener2(String in, @Header("customCorrelation") byte[] correlation) {
+			return MessageBuilder.withPayload(in.substring(0, 1) + in.substring(1).toUpperCase())
+					.setHeader("customCorrelation", correlation)
+					.build();
 		}
 
 		@KafkaListener(id = G_REQUEST, topics = G_REQUEST)

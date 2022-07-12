@@ -38,7 +38,6 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchConsumerAwareMessageListener;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
-import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.util.Assert;
 
@@ -124,12 +123,13 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	@Override
 	public void onMessage(List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> data, Consumer<?, ?> consumer) {
 		List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> completed = new ArrayList<>();
+		String correlationHeaderName = getCorrelationHeaderName();
 		data.forEach(record -> {
-			Header correlation = record.headers().lastHeader(KafkaHeaders.CORRELATION_ID);
+			Header correlation = record.headers().lastHeader(correlationHeaderName);
 			if (correlation == null) {
 				this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.format(record)
 						+ " - to use request/reply semantics, the responding server must return the correlation id "
-						+ " in the '" + KafkaHeaders.CORRELATION_ID + "' header");
+						+ " in the '" + correlationHeaderName + "' header");
 			}
 			else {
 				CorrelationKey correlationId = new CorrelationKey(correlation.value());
@@ -142,7 +142,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 							ConsumerRecord<K, Collection<ConsumerRecord<K, R>>> done =
 									new ConsumerRecord<>(AGGREGATED_RESULTS_TOPIC, 0, 0L, null, list);
 							done.headers()
-									.add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlationId
+									.add(new RecordHeader(correlationHeaderName, correlationId
 											.getCorrelationId()));
 							this.pending.remove(correlationId);
 							checkOffsetsAndCommitIfNecessary(list, consumer);

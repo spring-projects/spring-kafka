@@ -252,6 +252,15 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	/**
+	 * Return the correlation header name.
+	 * @return the header name.
+	 * @since 2.8.8
+	 */
+	protected String getCorrelationHeaderName() {
+		return this.correlationHeaderName;
+	}
+
+	/**
 	 * Set a custom header name for the reply topic. Default
 	 * {@link KafkaHeaders#REPLY_TOPIC}.
 	 * @param replyTopicHeaderName the header name.
