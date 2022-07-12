@@ -301,13 +301,12 @@ public class KafkaAdmin extends KafkaResourceFactory
 				if (topicOptional.isPresent() && topicOptional.get().configs() != null) {
 					for (Map.Entry<String, String> desiredConfigParameter : topicOptional.get().configs().entrySet()) {
 						ConfigEntry actualConfigParameter = topicConfig.getValue().get(desiredConfigParameter.getKey());
-						if (!actualConfigParameter.value().equals(desiredConfigParameter.getValue())) {
+						if (!desiredConfigParameter.getValue().equals(actualConfigParameter.value())) {
 							configMismatchesEntries.add(actualConfigParameter);
 						}
-
-						if (configMismatchesEntries.size() > 0) {
-							configMismatches.put(topicConfig.getKey(), configMismatchesEntries);
-						}
+					}
+					if (configMismatchesEntries.size() > 0) {
+						configMismatches.put(topicConfig.getKey(), configMismatchesEntries);
 					}
 				}
 			}

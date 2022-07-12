@@ -152,17 +152,25 @@ public class KafkaAdminTests {
 					&& configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig")).get("retention.ms").value().equals("11");
 		});
 
-		this.admin.createOrModifyTopics(mismatchconfig);
+		this.admin.createOrModifyTopics(mismatchconfig,
+				TopicBuilder.name("noConfigAddLater")
+						.partitions(2)
+						.replicas(1)
+						.config("retention.ms", "1000")
+						.build());
 
 		await().until(() -> {
 			DescribeConfigsResult describeConfigsResult = this.adminClient
-					.describeConfigs(List.of(new ConfigResource(Type.TOPIC, "mismatchconfig")));
+					.describeConfigs(List.of(new ConfigResource(Type.TOPIC, "mismatchconfig"),
+							new ConfigResource(Type.TOPIC, "noConfigAddLater")));
 			Map<ConfigResource, org.apache.kafka.clients.admin.Config> configResourceConfigMap = describeConfigsResult.all()
 					.get();
 			return configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig"))
 					.get("retention.bytes").value().equals("1024")
 					&& configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "mismatchconfig"))
-					.get("retention.ms").value().equals("1111");
+					.get("retention.ms").value().equals("1111")
+					&& configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "noConfigAddLater"))
+					.get("retention.ms").value().equals("1000");
 		});
 	}
 
@@ -306,6 +314,14 @@ public class KafkaAdminTests {
 					.replicas(1)
 					.config("retention.bytes", "1024")
 					.config("retention.ms", "1111")
+					.build();
+		}
+
+		@Bean
+		public NewTopic noConfigAddLater() {
+			return TopicBuilder.name("noConfigAddLater")
+					.partitions(2)
+					.replicas(1)
 					.build();
 		}
 
