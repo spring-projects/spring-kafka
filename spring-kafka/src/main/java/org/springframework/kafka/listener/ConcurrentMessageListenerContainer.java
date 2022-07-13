@@ -347,7 +347,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	public void pausePartition(TopicPartition topicPartition) {
 		synchronized (this.lifecycleMonitor) {
-			super.pausePartition(topicPartition);
 			this.containers
 					.stream()
 					.filter(container -> containsPartition(topicPartition, container))
@@ -358,7 +357,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	public void resumePartition(TopicPartition topicPartition) {
 		synchronized (this.lifecycleMonitor) {
-			super.resumePartition(topicPartition);
 			this.containers
 					.stream()
 					.filter(container -> containsPartition(topicPartition, container))
@@ -368,18 +366,22 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public boolean isPartitionPaused(TopicPartition topicPartition) {
-		return this
-				.containers
-				.stream()
-				.anyMatch(container -> container.isPartitionPaused(topicPartition));
+		synchronized (this.lifecycleMonitor) {
+			return this
+					.containers
+					.stream()
+					.anyMatch(container -> container.isPartitionPaused(topicPartition));
+		}
 	}
 
 	@Override
 	public boolean isInExpectedState() {
-		return (isRunning() || isStoppedNormally()) && this.containers
-				.stream()
-				.map(container -> container.isInExpectedState())
-				.allMatch(bool -> Boolean.TRUE.equals(bool));
+		synchronized (this.lifecycleMonitor) {
+			return (isRunning() || isStoppedNormally()) && this.containers
+					.stream()
+					.map(container -> container.isInExpectedState())
+					.allMatch(bool -> Boolean.TRUE.equals(bool));
+		}
 	}
 
 	private boolean containsPartition(TopicPartition topicPartition, KafkaMessageListenerContainer<K, V> container) {
