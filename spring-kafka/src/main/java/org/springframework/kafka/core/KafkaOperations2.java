@@ -33,11 +33,12 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.core.KafkaOperations.OperationsCallback;
+import org.springframework.kafka.core.KafkaOperations.ProducerCallback;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
-import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * The basic Kafka operations contract returning {@link CompletableFuture}s.
@@ -45,20 +46,12 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @param <K> the key type.
  * @param <V> the value type.
  *
- * If the Kafka topic is set with {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}
- * all send operations will use the user provided time if provided, else
- * {@link org.apache.kafka.clients.producer.KafkaProducer} will generate one
- *
- * If the topic is set with {@link org.apache.kafka.common.record.TimestampType#LOG_APPEND_TIME LogAppendTime}
- * then the user provided timestamp will be ignored and instead will be the
- * Kafka broker local time when the message is appended
- *
- * @author Marius Bogoevici
  * @author Gary Russell
- * @author Biju Kunjummen
+ * @since 2.9
+ * @deprecated no longer needed; use {@code KafkaOperations}.
  */
-@SuppressWarnings("deprecation")
-public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
+@Deprecated
+public interface KafkaOperations2<K, V> {
 
 	/**
 	 * Default timeout for {@link #receive(String, int, long)}.
@@ -70,7 +63,6 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> sendDefault(V data);
 
 	/**
@@ -79,7 +71,6 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> sendDefault(K key, V data);
 
 	/**
@@ -89,7 +80,6 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data);
 
 	/**
@@ -99,9 +89,7 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 1.3
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
 	/**
@@ -110,7 +98,6 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> send(String topic, V data);
 
 	/**
@@ -120,7 +107,6 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> send(String topic, K key, V data);
 
 	/**
@@ -131,7 +117,6 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data);
 
 	/**
@@ -142,18 +127,14 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 1.3
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
 
 	/**
 	 * Send the provided {@link ProducerRecord}.
 	 * @param record the record.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 1.3
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record);
 
 	/**
@@ -165,24 +146,19 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION
 	 * @see org.springframework.kafka.support.KafkaHeaders#KEY
 	 */
-	@Override
 	CompletableFuture<SendResult<K, V>> send(Message<?> message);
 
 	/**
 	 * See {@link Producer#partitionsFor(String)}.
 	 * @param topic the topic.
 	 * @return the partition info.
-	 * @since 1.1
 	 */
-	@Override
 	List<PartitionInfo> partitionsFor(String topic);
 
 	/**
 	 * See {@link Producer#metrics()}.
 	 * @return the metrics.
-	 * @since 1.1
 	 */
-	@Override
 	Map<MetricName, ? extends Metric> metrics();
 
 	/**
@@ -190,9 +166,7 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param callback the callback.
 	 * @param <T> the result type.
 	 * @return the result.
-	 * @since 1.1
 	 */
-	@Override
 	@Nullable
 	<T> T execute(ProducerCallback<K, V, T> callback);
 
@@ -203,16 +177,13 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param callback the callback.
 	 * @param <T> the result type.
 	 * @return the result.
-	 * @since 1.1
 	 */
-	@Override
 	@Nullable
 	<T> T executeInTransaction(OperationsCallback<K, V, T> callback);
 
 	/**
 	 * Flush the producer.
 	 */
-	@Override
 	void flush();
 
 	/**
@@ -224,10 +195,8 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * Use with 2.5 brokers or later.
 	 * @param offsets The offsets.
 	 * @param groupMetadata the consumer group metadata.
-	 * @since 2.5
 	 * @see Producer#sendOffsetsToTransaction(Map, ConsumerGroupMetadata)
 	 */
-	@Override
 	default void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
 			ConsumerGroupMetadata groupMetadata) {
 
@@ -238,17 +207,13 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * Return true if the implementation supports transactions (has a transaction-capable
 	 * producer factory).
 	 * @return true or false.
-	 * @since 2.3
 	 */
-	@Override
 	boolean isTransactional();
 
 	/**
 	 * Return true if this template, when transactional, allows non-transactional operations.
 	 * @return true to allow.
-	 * @since 2.4.3
 	 */
-	@Override
 	default boolean isAllowNonTransactional() {
 		return false;
 	}
@@ -257,9 +222,7 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * Return true if the template is currently running in a transaction on the calling
 	 * thread.
 	 * @return true if a transaction is running.
-	 * @since 2.5
 	 */
-	@Override
 	default boolean inTransaction() {
 		return false;
 	}
@@ -267,9 +230,7 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	/**
 	 * Return the producer factory used by this template.
 	 * @return the factory.
-	 * @since 2.5
 	 */
-	@Override
 	default ProducerFactory<K, V> getProducerFactory() {
 		throw new UnsupportedOperationException("This implementation does not support this operation");
 	}
@@ -280,10 +241,8 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param partition the partition.
 	 * @param offset the offset.
 	 * @return the record or null.
-	 * @since 2.8
 	 * @see #DEFAULT_POLL_TIMEOUT
 	 */
-	@Override
 	@Nullable
 	default ConsumerRecord<K, V> receive(String topic, int partition, long offset) {
 		return receive(topic, partition, offset, DEFAULT_POLL_TIMEOUT);
@@ -296,9 +255,7 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param offset the offset.
 	 * @param pollTimeout the timeout.
 	 * @return the record or null.
-	 * @since 2.8
 	 */
-	@Override
 	@Nullable
 	ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout);
 
@@ -307,10 +264,8 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * absolute, positive offsets are supported.
 	 * @param requested a collection of record requests (topic/partition/offset).
 	 * @return the records
-	 * @since 2.8
 	 * @see #DEFAULT_POLL_TIMEOUT
 	 */
-	@Override
 	default ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested) {
 		return receive(requested, DEFAULT_POLL_TIMEOUT);
 	}
@@ -320,48 +275,7 @@ public interface KafkaOperations<K, V> extends KafkaOperations2<K, V> {
 	 * @param requested a collection of record requests (topic/partition/offset).
 	 * @param pollTimeout the timeout.
 	 * @return the record or null.
-	 * @since 2.8
 	 */
-	@Override
 	ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout);
-
-	/**
-	 * Return an implementation that returns {@link CompletableFuture} instead of
-	 * {@link CompletableFuture}. The methods returning {@link ListenableFuture} will be
-	 * removed in 3.0
-	 * @return the implementation.
-	 * @since 2.9.
-	 * @deprecated no longer needed; {@link KafkaOperations} now returns {@link CompletableFuture}.
-	 */
-	@Deprecated
-	default KafkaOperations2<K, V> usingCompletableFuture() {
-		return this;
-	}
-
-	/**
-	 * A callback for executing arbitrary operations on the {@link Producer}.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @param <T> the return type.
-	 * @since 1.3
-	 */
-	interface ProducerCallback<K, V, T> {
-
-		T doInKafka(Producer<K, V> producer);
-
-	}
-
-	/**
-	 * A callback for executing arbitrary operations on the {@link KafkaOperations}.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @param <T> the return type.
-	 * @since 1.3
-	 */
-	interface OperationsCallback<K, V, T> {
-
-		T doInOperations(KafkaOperations<K, V> operations);
-
-	}
 
 }

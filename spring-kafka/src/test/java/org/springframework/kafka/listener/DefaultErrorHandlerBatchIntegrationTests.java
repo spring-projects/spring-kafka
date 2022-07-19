@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -37,6 +39,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -73,7 +76,7 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 	}
 
 	@Test
-	public void recoveryAndDlt() throws InterruptedException {
+	public void recoveryAndDlt() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("recoverBatch", "false", embeddedKafka);
 		props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1000);
 		props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 500);
@@ -117,7 +120,11 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 		template.send(topic1, 0, 0, "baz");
 		template.send(topic1, 0, 0, "qux");
 		template.send(topic1, 0, 0, "fiz");
-		template.send(topic1, 0, 0, "buz");
+		AtomicReference<SendResult<Object, Object>> sendResult = new AtomicReference<>();
+		CompletableFuture<SendResult<Object, Object>> future = template.send(topic1, 0, 0, "buz")
+				.whenComplete((sr, thrown) -> sendResult.set(sr));
+		future.get(10, TimeUnit.SECONDS);
+		assertThat(sendResult.get()).isNotNull();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(data).hasSize(13);
 		assertThat(data)
@@ -140,7 +147,7 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 	}
 
 	@Test
-	public void recoveryFails() throws InterruptedException {
+	public void recoveryFails() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("recoverBatch2", "false", embeddedKafka);
 		props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1000);
 		props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 500);
@@ -196,7 +203,8 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 		template.send(topic2, 0, 0, "baz");
 		template.send(topic2, 0, 0, "qux");
 		template.send(topic2, 0, 0, "fiz");
-		template.send(topic2, 0, 0, "buz");
+		CompletableFuture<SendResult<Object, Object>> future = template.send(topic2, 0, 0, "buz");
+		future.get(10, TimeUnit.SECONDS);
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(data).hasSize(17);
 		assertThat(data)

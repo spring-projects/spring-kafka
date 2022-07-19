@@ -34,3 +34,15 @@ See <<retry-config>> for more information.
 
 Events related to consumer authentication and authorization failures are now published by the container.
 See <<events>> for more information.
+
+[[x30-template-changes]]
+==== `KafkaTemplate` Changes
+
+The futures returned by this class are now `CompletableFuture` s instead of `ListenableFuture` s.
+See <<kafka-template>>.
+
+[[x30-rkt-changes]]
+==== `ReplyingKafkaTemplate` Changes
+
+The futures returned by this class are now `CompletableFuture` s instead of `ListenableFuture` s.
+See <<replying-template>> and <<exchanging-messages>>.

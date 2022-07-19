@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -62,14 +63,13 @@ import org.springframework.kafka.listener.KafkaBackoffException;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.condition.LogLevels;
-import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * @author Tomaz Fernandes
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 class DeadLetterPublishingRecovererFactoryTests {
 
 	private final Clock clock = TestClockUtils.CLOCK;
@@ -94,7 +94,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 	private KafkaOperations<?, ?> kafkaOperations;
 
 	@Mock
-	private ListenableFuture<?> listenableFuture;
+	private CompletableFuture<?> completableFuture;
 
 	@Captor
 	private ArgumentCaptor<ProducerRecord> producerRecordCaptor;
@@ -119,7 +119,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		given(destinationTopic.getDestinationDelay()).willReturn(1000L);
 		willReturn(this.kafkaOperations).given(destinationTopic).getKafkaOperations();
-		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(completableFuture);
 		this.consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampBytes);
 
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
@@ -160,7 +160,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(kafkaOperations).given(destinationTopic).getKafkaOperations();
-		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(completableFuture);
 
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
@@ -193,7 +193,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(kafkaOperations).given(destinationTopic).getKafkaOperations();
-		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(completableFuture);
 
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
@@ -224,7 +224,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(this.kafkaOperations).given(destinationTopic).getKafkaOperations();
-		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(completableFuture);
 
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(
 				this.destinationTopicResolver);
@@ -259,7 +259,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopicResolver.getDestinationTopicByName(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(this.kafkaOperations).given(destinationTopic).getKafkaOperations();
-		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(listenableFuture);
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(completableFuture);
 
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 

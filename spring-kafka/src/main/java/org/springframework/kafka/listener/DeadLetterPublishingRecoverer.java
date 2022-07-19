@@ -26,6 +26,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -54,7 +55,6 @@ import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
-import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * A {@link ConsumerRecordRecoverer} that publishes a failed record to a dead-letter
@@ -625,14 +625,17 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate,
 			ConsumerRecord<?, ?> inRecord) {
 
-		ListenableFuture<SendResult<Object, Object>> sendResult = null;
+		CompletableFuture<SendResult<Object, Object>> sendResult = null;
 		try {
 			sendResult = kafkaTemplate.send(outRecord);
-			sendResult.addCallback(result -> {
-				this.logger.debug(() -> "Successful dead-letter publication: "
-						+ KafkaUtils.format(inRecord) + " to " + result.getRecordMetadata());
-			}, ex -> {
-				this.logger.error(ex, () -> pubFailMessage(outRecord, inRecord));
+			sendResult.whenComplete((result, ex) -> {
+				if (ex == null) {
+					this.logger.debug(() -> "Successful dead-letter publication: "
+							+ KafkaUtils.format(inRecord) + " to " + result.getRecordMetadata());
+				}
+				else {
+					this.logger.error(ex, () -> pubFailMessage(outRecord, inRecord));
+				}
 			});
 		}
 		catch (Exception e) {
@@ -652,7 +655,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 */
 	protected void verifySendResult(KafkaOperations<Object, Object> kafkaTemplate,
 			ProducerRecord<Object, Object> outRecord,
-			@Nullable ListenableFuture<SendResult<Object, Object>> sendResult, ConsumerRecord<?, ?> inRecord) {
+			@Nullable CompletableFuture<SendResult<Object, Object>> sendResult, ConsumerRecord<?, ?> inRecord) {
 
 		Duration sendTimeout = determineSendTimeout(kafkaTemplate);
 		if (sendResult == null) {

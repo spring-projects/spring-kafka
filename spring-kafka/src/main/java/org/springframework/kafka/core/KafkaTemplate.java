@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -67,8 +68,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * A template for executing high-level operations. When used with a
@@ -89,6 +88,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Soby Chacko
  * @author Gurps Bassi
  */
+@SuppressWarnings("deprecation")
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
@@ -390,45 +390,45 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(@Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> sendDefault(@Nullable V data) {
 		return send(this.defaultTopic, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> sendDefault(K key, @Nullable V data) {
 		return send(this.defaultTopic, key, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, @Nullable V data) {
 		return send(this.defaultTopic, partition, key, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, @Nullable V data) {
 		return send(this.defaultTopic, partition, timestamp, key, data);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> send(String topic, @Nullable V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> send(String topic, K key, @Nullable V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, @Nullable V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
 		return doSend(producerRecord);
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key,
+	public CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key,
 			@Nullable V data) {
 
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, timestamp, key, data);
@@ -436,14 +436,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record) {
+	public CompletableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record) {
 		Assert.notNull(record, "'record' cannot be null");
 		return doSend(record);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public ListenableFuture<SendResult<K, V>> send(Message<?> message) {
+	public CompletableFuture<SendResult<K, V>> send(Message<?> message) {
 		ProducerRecord<?, ?> producerRecord = this.messageConverter.fromMessage(message, this.defaultTopic);
 		if (!producerRecord.headers().iterator().hasNext()) { // possibly no Jackson
 			byte[] correlationId = message.getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
@@ -627,10 +627,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * @return a Future for the {@link org.apache.kafka.clients.producer.RecordMetadata
 	 * RecordMetadata}.
 	 */
-	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
+	protected CompletableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
 		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
 		this.logger.trace(() -> "Sending: " + KafkaUtils.format(producerRecord));
-		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
+		final CompletableFuture<SendResult<K, V>> future = new CompletableFuture<>();
 		Object sample = null;
 		if (this.micrometerEnabled && this.micrometerHolder == null) {
 			this.micrometerHolder = obtainMicrometerHolder();
@@ -664,7 +664,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private Callback buildCallback(final ProducerRecord<K, V> producerRecord, final Producer<K, V> producer,
-			final SettableListenableFuture<SendResult<K, V>> future, @Nullable Object sample) {
+			final CompletableFuture<SendResult<K, V>> future, @Nullable Object sample) {
 
 		return (metadata, exception) -> {
 			try {
@@ -680,7 +680,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					if (sample != null) {
 						this.micrometerHolder.success(sample);
 					}
-					future.set(new SendResult<>(producerRecord, metadata));
+					future.complete(new SendResult<>(producerRecord, metadata));
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
 					}
@@ -691,7 +691,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					if (sample != null) {
 						this.micrometerHolder.failure(sample, exception.getClass().getSimpleName());
 					}
-					future.setException(new KafkaProducerException(producerRecord, "Failed to send", exception));
+					future.completeExceptionally(
+							new KafkaProducerException(producerRecord, "Failed to send", exception));
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onError(producerRecord, metadata, exception);
 					}

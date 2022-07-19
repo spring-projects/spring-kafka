@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -58,7 +59,6 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * @author Gary Russell
@@ -337,7 +337,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		DefaultKafkaProducerFactory<Integer, String> pfTx = new DefaultKafkaProducerFactory<>(producerProps);
 		pfTx.setTransactionIdPrefix("fooTx.");
-		KafkaTemplate<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
+		KafkaOperations<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache1Group", "false", this.embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		AtomicReference<Consumer<Integer, String>> wrapped = new AtomicReference<>();
@@ -362,7 +362,7 @@ public class DefaultKafkaConsumerFactoryTests {
 				containerProps);
 		container.start();
 		try {
-			ListenableFuture<SendResult<Integer, String>> future = template.send("txCache1", "foo");
+			CompletableFuture<SendResult<Integer, String>> future = template.send("txCache1", "foo");
 			future.get(10, TimeUnit.SECONDS);
 			pf.getCache();
 			assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", Map.class)).hasSize(0);

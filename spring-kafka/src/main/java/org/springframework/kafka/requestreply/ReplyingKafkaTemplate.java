@@ -367,17 +367,21 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				.fromMessage(message, getDefaultTopic()), replyTimeout);
 		RequestReplyTypedMessageFuture<K, V, P> replyFuture =
 				new RequestReplyTypedMessageFuture<>(future.getSendFuture());
-		future.addCallback(
-				result -> {
+		future.whenComplete((result, ex) -> {
+				if (ex == null) {
 					try {
-						replyFuture.set(getMessageConverter()
+						replyFuture.complete(getMessageConverter()
 							.toMessage(result, null, null, returnType == null ? null : returnType.getType()));
 					}
-					catch (Exception ex) { // NOSONAR
-						replyFuture.setException(ex);
+					catch (Exception ex2) { // NOSONAR
+						replyFuture.completeExceptionally(ex2);
 					}
-				},
-				ex -> replyFuture.setException(ex));
+				}
+				else {
+					replyFuture.completeExceptionally(ex);
+				}
+		});
+
 		return replyFuture;
 	}
 
@@ -425,7 +429,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				this.logger.warn(() -> "Reply timed out for: " + KafkaUtils.format(record)
 						+ WITH_CORRELATION_ID + correlationId);
 				if (!handleTimeout(correlationId, removed)) {
-					removed.setException(new KafkaReplyTimeoutException("Reply timed out"));
+					removed.completeExceptionally(new KafkaReplyTimeoutException("Reply timed out"));
 				}
 			}
 		}, Instant.now().plus(replyTimeout));
@@ -497,12 +501,12 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 					Exception exception = checkForErrors(record);
 					if (exception != null) {
 						ok = false;
-						future.setException(exception);
+						future.completeExceptionally(exception);
 					}
 					if (ok) {
 						this.logger.debug(() -> "Received: " + KafkaUtils.format(record)
 								+ WITH_CORRELATION_ID + correlationKey);
-						future.set(record);
+						future.complete(record);
 					}
 				}
 			}

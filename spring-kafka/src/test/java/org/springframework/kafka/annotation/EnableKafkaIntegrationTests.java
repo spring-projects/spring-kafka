@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -155,7 +156,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.MimeType;
-import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
@@ -1442,7 +1442,7 @@ public class EnableKafkaIntegrationTests {
 			return new KafkaTemplate<Integer, String>(producerFactory(), true) {
 
 				@Override
-				public ListenableFuture<SendResult<Integer, String>> send(String topic, String data) {
+				public CompletableFuture<SendResult<Integer, String>> send(String topic, String data) {
 					return super.send(topic, 0, null, data);
 				}
 
@@ -1455,7 +1455,7 @@ public class EnableKafkaIntegrationTests {
 			return new KafkaTemplate<Integer, Object>(jsonProducerFactory(), true) {
 
 				@Override
-				public ListenableFuture<SendResult<Integer, Object>> send(String topic, Object data) {
+				public CompletableFuture<SendResult<Integer, Object>> send(String topic, Object data) {
 					return super.send(topic, 0, null, data);
 				}
 

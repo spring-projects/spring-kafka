@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -219,9 +220,10 @@ public class ReplyingKafkaTemplateTests {
 		try {
 			template.setMessageConverter(new StringJsonMessageConverter());
 			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
-			RequestReplyMessageFuture<Integer, String> fut = template.sendAndReceive(MessageBuilder.withPayload("foo")
-					.setHeader(KafkaHeaders.TOPIC, A_REQUEST)
-					.build());
+			RequestReplyMessageFuture<Integer, String> fut = template
+					.sendAndReceive(MessageBuilder.withPayload("foo")
+							.setHeader(KafkaHeaders.TOPIC, A_REQUEST)
+							.build());
 			fut.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			Message<?> reply = fut.get(30, TimeUnit.SECONDS);
 			assertThat(reply.getPayload()).isEqualTo("FOO");
@@ -711,7 +713,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	void requestTimeoutWithMessage() {
+	void requestTimeoutWithMessage() throws Exception {
 		ProducerFactory pf = mock(ProducerFactory.class);
 		Producer producer = mock(Producer.class);
 		willAnswer(invocation -> {
@@ -727,7 +729,7 @@ public class ReplyingKafkaTemplateTests {
 				.setHeader(KafkaHeaders.TOPIC, "foo")
 				.build();
 		long t1 = System.currentTimeMillis();
-		RequestReplyTypedMessageFuture<String, String, Foo> future = template.sendAndReceive(msg, Duration.ofMillis(10),
+		CompletableFuture future = template.sendAndReceive(msg, Duration.ofMillis(10),
 				new ParameterizedTypeReference<Foo>() {
 				});
 		try {

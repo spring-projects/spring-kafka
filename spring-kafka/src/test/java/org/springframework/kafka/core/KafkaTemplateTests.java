@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -95,8 +96,6 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
@@ -401,22 +400,15 @@ public class KafkaTemplateTests {
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic(INT_KEY_TOPIC);
-		ListenableFuture<SendResult<Integer, String>> future = template.sendDefault("foo");
+		CompletableFuture<SendResult<Integer, String>> future = template.sendDefault("foo");
 		template.flush();
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
-		future.addCallback(new ListenableFutureCallback<>() {
-
-			@Override
-			public void onSuccess(SendResult<Integer, String> result) {
+		future.whenComplete((result, ex) -> {
+			if (ex == null) {
 				theResult.set(result);
 				latch.countDown();
 			}
-
-			@Override
-			public void onFailure(Throwable ex) {
-			}
-
 		});
 		assertThat(KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC)).has(value("foo"));
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -435,23 +427,16 @@ public class KafkaTemplateTests {
 		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
 		given(pf.createProducer()).willReturn(producer);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		ListenableFuture<SendResult<Integer, String>> future = template.send("foo", 1, "bar");
+		CompletableFuture<SendResult<Integer, String>> future = template.send("foo", 1, "bar");
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
 		AtomicReference<String> value = new AtomicReference<>();
-		future.addCallback(new KafkaSendCallback<>() {
-
-			@Override
-			public void onSuccess(SendResult<Integer, String> result) {
-			}
-
-			@Override
-			public void onFailure(KafkaProducerException ex) {
-				ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
+		future.whenComplete((result, ex) -> {
+			if (ex != null) {
+				ProducerRecord<Integer, String> failed = ((KafkaProducerException) ex).getFailedProducerRecord();
 				value.set(failed.value());
 				latch.countDown();
 			}
-
 		});
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(value.get()).isEqualTo("bar");
@@ -469,14 +454,16 @@ public class KafkaTemplateTests {
 		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
 		given(pf.createProducer()).willReturn(producer);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-		ListenableFuture<SendResult<Integer, String>> future = template.send("foo", 1, "bar");
+		CompletableFuture<SendResult<Integer, String>> future = template.send("foo", 1, "bar");
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
 		AtomicReference<String> value = new AtomicReference<>();
-		future.addCallback(result -> { }, (KafkaFailureCallback<Integer, String>) ex -> {
-			ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
-			value.set(failed.value());
-			latch.countDown();
+		future.whenComplete((record, ex) -> {
+			if (ex != null) {
+				ProducerRecord<Integer, String> failed = ((KafkaProducerException) ex).getFailedProducerRecord();
+				value.set(failed.value());
+				latch.countDown();
+			}
 		});
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(value.get()).isEqualTo("bar");

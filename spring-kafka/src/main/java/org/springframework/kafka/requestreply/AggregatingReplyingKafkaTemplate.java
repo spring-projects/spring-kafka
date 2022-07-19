@@ -170,7 +170,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 					.map(RecordHolder::getRecord)
 					.collect(Collectors.toList());
 			if (this.releaseStrategy.test(list, true)) {
-				future.set(new ConsumerRecord<>(PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC, 0, 0L, null, list));
+				future.complete(new ConsumerRecord<>(PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC, 0, 0L, null, list));
 				return true;
 			}
 		}

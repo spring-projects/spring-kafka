@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package org.springframework.kafka.requestreply;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
-import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * A listenable future for {@link Message} replies with a specific payload type.
@@ -37,7 +37,7 @@ import org.springframework.util.concurrent.ListenableFuture;
  */
 public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessageFuture<K, V> {
 
-	RequestReplyTypedMessageFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
+	RequestReplyTypedMessageFuture(CompletableFuture<SendResult<K, V>> sendFuture) {
 		super(sendFuture);
 	}
 
@@ -54,6 +54,5 @@ public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessage
 
 		return (Message<P>) super.get(timeout, unit);
 	}
-
 
 }

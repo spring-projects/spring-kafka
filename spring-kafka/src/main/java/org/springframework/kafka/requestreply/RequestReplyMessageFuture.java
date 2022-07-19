@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package org.springframework.kafka.requestreply;
 
+import java.util.concurrent.CompletableFuture;
+
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * A listenable future for {@link Message} replies.
@@ -31,11 +31,11 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @since 2.7
  *
  */
-public class RequestReplyMessageFuture<K, V> extends SettableListenableFuture<Message<?>> {
+public class RequestReplyMessageFuture<K, V> extends CompletableFuture<Message<?>> {
 
-	private final ListenableFuture<SendResult<K, V>> sendFuture;
+	private final CompletableFuture<SendResult<K, V>> sendFuture; // NOSONAR
 
-	RequestReplyMessageFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
+	RequestReplyMessageFuture(CompletableFuture<SendResult<K, V>> sendFuture) {
 		this.sendFuture = sendFuture;
 	}
 
@@ -43,7 +43,7 @@ public class RequestReplyMessageFuture<K, V> extends SettableListenableFuture<Me
 	 * Return the send future.
 	 * @return the send future.
 	 */
-	public ListenableFuture<SendResult<K, V>> getSendFuture() {
+	public CompletableFuture<SendResult<K, V>> getSendFuture() {
 		return this.sendFuture;
 	}
 
