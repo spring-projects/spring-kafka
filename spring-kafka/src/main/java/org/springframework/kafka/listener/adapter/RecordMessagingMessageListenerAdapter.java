@@ -100,7 +100,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 					if (message.equals(NULL_MESSAGE)) {
 						message = new GenericMessage<>(record);
 					}
-					Object result = this.errorHandler.handleError(message, e, consumer);
+					Object result = this.errorHandler.handleError(message, e, consumer, acknowledgment);
 					if (result != null) {
 						handleResult(result, record, message);
 					}

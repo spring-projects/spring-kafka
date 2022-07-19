@@ -188,7 +188,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 					if (message.equals(NULL_MESSAGE)) {
 						message = new GenericMessage<>(records);
 					}
-					Object result = this.errorHandler.handleError(message, e, consumer);
+					Object result = this.errorHandler.handleError(message, e, consumer, acknowledgment);
 					if (result != null) {
 						handleResult(result, records, message);
 					}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,19 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 
 /**
- * An error handler that has access to the consumer. IMPORTANT: do not perform seek
- * operations on the consumer, the container won't be aware. Use a container-level error
- * handler such as the {@link DefaultErrorHandler} for such situations.
+ * A {@link KafkaListenerErrorHandler} that supports manual acks.
  *
  * @author Gary Russell
- * @since 2.0
+ * @since 2.9
  *
  */
 @FunctionalInterface
-public interface ConsumerAwareListenerErrorHandler extends KafkaListenerErrorHandler {
+public interface ManualAckListenerErrorHandler extends KafkaListenerErrorHandler {
 
 	@Override
 	default Object handleError(Message<?> message, ListenerExecutionFailedException exception) {
@@ -38,6 +38,7 @@ public interface ConsumerAwareListenerErrorHandler extends KafkaListenerErrorHan
 	}
 
 	@Override
-	Object handleError(Message<?> message, ListenerExecutionFailedException exception, Consumer<?, ?> consumer);
+	Object handleError(Message<?> message, ListenerExecutionFailedException exception, Consumer<?, ?> consumer,
+			@Nullable Acknowledgment ack);
 
 }

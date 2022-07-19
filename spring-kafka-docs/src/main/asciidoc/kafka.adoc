@@ -5049,56 +5049,17 @@ Object handleError(Message<?> message, ListenerExecutionFailedException exceptio
 ----
 ====
 
-If your error handler implements this interface, you can, for example, adjust the offsets accordingly.
-For example, to reset the offset to replay the failed message, you could do something like the following:
+Another sub-interface ()`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual `AckMode` s.
 
 ====
 [source, java]
 ----
-@Bean
-public ConsumerAwareListenerErrorHandler listen3ErrorHandler() {
-    return (m, e, c) -> {
-        this.listen3Exception = e;
-        MessageHeaders headers = m.getHeaders();
-        c.seek(new org.apache.kafka.common.TopicPartition(
-                headers.get(KafkaHeaders.RECEIVED_TOPIC, String.class),
-                headers.get(KafkaHeaders.RECEIVED_PARTITION, Integer.class)),
-                headers.get(KafkaHeaders.OFFSET, Long.class));
-        return null;
-    };
-}
+Object handleError(Message<?> message, ListenerExecutionFailedException exception,
+			Consumer<?, ?> consumer, @Nullable Acknowledgment ack);
 ----
 ====
 
-Similarly, you could do something like the following for a batch listener:
-
-====
-[source, java]
-----
-@Bean
-public ConsumerAwareListenerErrorHandler listen10ErrorHandler() {
-    return (m, e, c) -> {
-        this.listen10Exception = e;
-        MessageHeaders headers = m.getHeaders();
-        List<String> topics = headers.get(KafkaHeaders.RECEIVED_TOPIC, List.class);
-        List<Integer> partitions = headers.get(KafkaHeaders.RECEIVED_PARTITION, List.class);
-        List<Long> offsets = headers.get(KafkaHeaders.OFFSET, List.class);
-        Map<TopicPartition, Long> offsetsToReset = new HashMap<>();
-        for (int i = 0; i < topics.size(); i++) {
-            int index = i;
-            offsetsToReset.compute(new TopicPartition(topics.get(i), partitions.get(i)),
-                    (k, v) -> v == null ? offsets.get(index) : Math.min(v, offsets.get(index)));
-        }
-        offsetsToReset.forEach((k, v) -> c.seek(k, v));
-        return null;
-    };
-}
-----
-====
-
-This resets each topic/partition in the batch to the lowest offset in the batch.
-
-NOTE: The preceding two examples are simplistic implementations, and you would probably want more checking in the error handler.
+In either case, you should NOT perform any seeks on the consumer because the container would be unaware of them.
 
 [[error-handlers]]
 ===== Container Error Handlers

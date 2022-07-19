@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 
 /**
@@ -58,6 +60,22 @@ public interface KafkaListenerErrorHandler {
 			Consumer<?, ?> consumer) {
 
 		return handleError(message, exception);
+	}
+
+	/**
+	 * Handle the error.
+	 * @param message the spring-messaging message.
+	 * @param exception the exception the listener threw, wrapped in a
+	 * {@link ListenerExecutionFailedException}.
+	 * @param consumer the consumer.
+	 * @param ack the {@link Acknowledgment}.
+	 * @return the return value is ignored unless the annotated method has a
+	 * {@code @SendTo} annotation.
+	 */
+	default Object handleError(Message<?> message, ListenerExecutionFailedException exception,
+			Consumer<?, ?> consumer, @Nullable Acknowledgment ack) {
+
+		return handleError(message, exception, consumer);
 	}
 
 }
