@@ -5049,7 +5049,7 @@ Object handleError(Message<?> message, ListenerExecutionFailedException exceptio
 ----
 ====
 
-Another sub-interface ()`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual `AckMode` s.
+Another sub-interface (`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual `AckMode` s.
 
 ====
 [source, java]
