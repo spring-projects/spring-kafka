@@ -210,6 +210,21 @@ interface ProducerCallback<K, V, T> {
 
 See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/core/KafkaTemplate.html[Javadoc] for more detail.
 
+IMPORTANT: In version 3.0, the methods that return `ListenableFuture` will be changed to return `CompletableFuture`.
+To facilitate the migration, the 2.9 version has a method `.usingCompletableFuture()` which will provide the same methods with `CompletableFuture` return types.
+
+====
+[source, java]
+----
+KafkaOperations2<String, String> template = new KafkaTemplate<>().usingCompletableFuture();
+CompletableFuture<SendResult<String, String>> future = template.send(topic1, 0, 0, "buz")
+        .whenComplete((sr, thrown) -> {
+            ...
+         });
+)
+----
+====
+
 The `sendDefault` API requires that a default topic has been provided to the template.
 
 The API takes in a `timestamp` as a parameter and stores this timestamp in the record.
@@ -553,6 +568,9 @@ The result is a `ListenableFuture` that is asynchronously populated with the res
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
 You can use this future to determine the result of the send operation.
 
+IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) will be `CompletableFuture` s instead of `ListenableFuture` s.
+To assit in the transition, using this release, you can convert these types to a `CompleteableFuture` by calling `asCompletable()` on the returned `Future`.
+
 If the first method is used, or the `replyTimeout` argument is `null`, the template's `defaultReplyTimeout` property is used (5 seconds by default).
 
 Starting with version 2.8.8, the template has a new method `waitForAssignment`.
@@ -790,6 +808,9 @@ RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message);
 ====
 
 These will use the template's default `replyTimeout`, there are also overloaded versions that can take a timeout in the method call.
+
+IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) will be `CompletableFuture` s instead of `ListenableFuture` s.
+To assit in the transition, using this release, you can convert these types to a `CompleteableFuture` by calling `asCompletable()` on the returned `Future`.
 
 Use the first method if the consumer's `Deserializer` or the template's `MessageConverter` can convert the payload without any additional information, either via configuration or type metadata in the reply message.
 

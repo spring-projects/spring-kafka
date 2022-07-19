@@ -79,6 +79,7 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
+import org.springframework.kafka.requestreply.RequestReplyTypedMessageFuture.Completable;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
@@ -219,9 +220,11 @@ public class ReplyingKafkaTemplateTests {
 		try {
 			template.setMessageConverter(new StringJsonMessageConverter());
 			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
-			RequestReplyMessageFuture<Integer, String> fut = template.sendAndReceive(MessageBuilder.withPayload("foo")
-					.setHeader(KafkaHeaders.TOPIC, A_REQUEST)
-					.build());
+			RequestReplyMessageFuture<Integer, String>.Completable fut = template
+					.sendAndReceive(MessageBuilder.withPayload("foo")
+							.setHeader(KafkaHeaders.TOPIC, A_REQUEST)
+							.build())
+					.asCompletable();
 			fut.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			Message<?> reply = fut.get(30, TimeUnit.SECONDS);
 			assertThat(reply.getPayload()).isEqualTo("FOO");
@@ -451,8 +454,8 @@ public class ReplyingKafkaTemplateTests {
 			template.setCorrelationHeaderName("customCorrelation");
 			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(D_REQUEST, null, null, null, "foo");
-			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> future =
-					template.sendAndReceive(record);
+			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>>.Completable future =
+					template.sendAndReceive(record).asCompletable();
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> consumerRecord =
 					future.get(30, TimeUnit.SECONDS);
@@ -711,7 +714,7 @@ public class ReplyingKafkaTemplateTests {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	void requestTimeoutWithMessage() {
+	void requestTimeoutWithMessage() throws Exception {
 		ProducerFactory pf = mock(ProducerFactory.class);
 		Producer producer = mock(Producer.class);
 		willAnswer(invocation -> {
@@ -727,9 +730,9 @@ public class ReplyingKafkaTemplateTests {
 				.setHeader(KafkaHeaders.TOPIC, "foo")
 				.build();
 		long t1 = System.currentTimeMillis();
-		RequestReplyTypedMessageFuture<String, String, Foo> future = template.sendAndReceive(msg, Duration.ofMillis(10),
+		Completable future = template.sendAndReceive(msg, Duration.ofMillis(10),
 				new ParameterizedTypeReference<Foo>() {
-				});
+				}).asCompletable();
 		try {
 			future.get(10, TimeUnit.SECONDS);
 		}

@@ -88,6 +88,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Thomas Strauß
  * @author Gurps Bassi
  */
+@SuppressWarnings("deprecation")
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
 

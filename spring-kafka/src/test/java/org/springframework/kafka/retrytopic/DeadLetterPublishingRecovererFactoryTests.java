@@ -69,7 +69,7 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 class DeadLetterPublishingRecovererFactoryTests {
 
 	private final Clock clock = TestClockUtils.CLOCK;

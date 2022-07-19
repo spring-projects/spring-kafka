@@ -337,7 +337,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		DefaultKafkaProducerFactory<Integer, String> pfTx = new DefaultKafkaProducerFactory<>(producerProps);
 		pfTx.setTransactionIdPrefix("fooTx.");
-		KafkaTemplate<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
+		KafkaOperations2<Integer, String> templateTx = new KafkaTemplate<>(pfTx).usingCompletableFuture();
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache1Group", "false", this.embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		AtomicReference<Consumer<Integer, String>> wrapped = new AtomicReference<>();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 
 package org.springframework.kafka.requestreply;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -37,6 +39,8 @@ import org.springframework.util.concurrent.ListenableFuture;
  */
 public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessageFuture<K, V> {
 
+	private Completable completable;
+
 	RequestReplyTypedMessageFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
 		super(sendFuture);
 	}
@@ -55,5 +59,39 @@ public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessage
 		return (Message<P>) super.get(timeout, unit);
 	}
 
+	@Override
+	public synchronized Completable asCompletable() {
+		if (this.completable == null) {
+			this.completable = new Completable(this, this);
+			addCallback(this.completable::complete, this.completable::completeExceptionally);
+		}
+		return this.completable;
+	}
+
+	/**
+	 * A {@link CompletableFuture} version.
+	 * @since 2.9
+	 */
+	public class Completable extends RequestReplyMessageFuture.Completable {
+
+		Completable(RequestReplyMessageFuture requestReplyMessageFuture, Future delegate) {
+			requestReplyMessageFuture.super(delegate);
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public Message<P> get() throws InterruptedException, ExecutionException {
+			return (Message<P>) super.get();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public Message<P> get(long timeout, TimeUnit unit)
+				throws InterruptedException, ExecutionException, TimeoutException {
+
+			return (Message<P>) super.get(timeout, unit);
+		}
+
+	}
 
 }

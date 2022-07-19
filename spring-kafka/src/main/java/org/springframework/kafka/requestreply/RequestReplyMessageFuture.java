@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,12 @@
 
 package org.springframework.kafka.requestreply;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -33,7 +37,11 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  */
 public class RequestReplyMessageFuture<K, V> extends SettableListenableFuture<Message<?>> {
 
-	private final ListenableFuture<SendResult<K, V>> sendFuture;
+	protected final ListenableFuture<SendResult<K, V>> sendFuture; // NOSONAR
+
+	protected CompletableFuture<SendResult<K, V>> completableSendFuture; // NOSONAR
+
+	private Completable completable;
 
 	RequestReplyMessageFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
 		this.sendFuture = sendFuture;
@@ -45,6 +53,53 @@ public class RequestReplyMessageFuture<K, V> extends SettableListenableFuture<Me
 	 */
 	public ListenableFuture<SendResult<K, V>> getSendFuture() {
 		return this.sendFuture;
+	}
+
+	/**
+	 * Return a {@link CompletableFuture} representation of this instance.
+	 * @return the {@link CompletableFuture}.
+	 * @since 2.9
+	 */
+	public synchronized Completable asCompletable() {
+		if (this.completable == null) {
+			this.completable = new Completable(this);
+			addCallback(this.completable::complete, this.completable::completeExceptionally);
+		}
+		return this.completable;
+	}
+
+	/**
+	 * A {@link CompletableFuture} version.
+	 * @since 2.9
+	 */
+	public class Completable extends CompletableFuture<Message<?>> {
+
+		private final Future<Message<?>> delegate;
+
+		Completable(Future<Message<?>> delegate) {
+			Assert.notNull(delegate, "Delegate must not be null");
+			this.delegate = delegate;
+		}
+
+		/**
+		 * Return the send future as a {@link CompletableFuture}.
+		 * @return the send future.
+		 */
+		public synchronized CompletableFuture<SendResult<K, V>> getSendFuture() {
+			if (RequestReplyMessageFuture.this.completableSendFuture == null) {
+				RequestReplyMessageFuture.this.completableSendFuture =
+						RequestReplyMessageFuture.this.sendFuture.completable();
+			}
+			return RequestReplyMessageFuture.this.completableSendFuture;
+		}
+
+		@Override
+		public boolean cancel(boolean mayInterruptIfRunning) {
+			boolean result = this.delegate.cancel(mayInterruptIfRunning);
+			super.cancel(mayInterruptIfRunning);
+			return result;
+		}
+
 	}
 
 }

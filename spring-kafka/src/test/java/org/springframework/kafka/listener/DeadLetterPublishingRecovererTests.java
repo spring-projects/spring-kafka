@@ -80,6 +80,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @since 2.4.3
  *
  */
+@SuppressWarnings("deprecation")
 public class DeadLetterPublishingRecovererTests {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

@@ -35,9 +35,18 @@ You can now configure which inbound headers should be mapped.
 Also available in version 2.8.8 or later.
 See <<headers>> for more information.
 
+[[x29-template-changes]]
+==== `KafkaTemplate` Changes
+
+In 3.0, the futures returned by this class will be `CompletableFuture` s instead of `ListenableFuture` s.
+See <<kafka-template>> for assistance in transitioning when using this release.
+
 [[x29-rkt-changes]]
 ==== `ReplyingKafkaTemplate` Changes
 
 The template now provides a method to wait for assignment on the reply container, to avoid a race when sending a request before the reply container is initialized.
 Also available in version 2.8.8 or later.
 See <<replying-template>>.
+
+In 3.0, the futures returned by this class will be `CompletableFuture` s instead of `ListenableFuture` s.
+See <<replying-template>> and <<exchanging-messages>> for assistance in transitioning when using this release.

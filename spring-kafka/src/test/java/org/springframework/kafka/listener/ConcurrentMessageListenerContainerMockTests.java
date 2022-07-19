@@ -691,6 +691,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 
 			@Override
 			@Nullable
+			@SuppressWarnings("deprecation")
 			public ConsumerRecord intercept(ConsumerRecord rec) {
 				order.add("interceptor");
 				latch.get().countDown();

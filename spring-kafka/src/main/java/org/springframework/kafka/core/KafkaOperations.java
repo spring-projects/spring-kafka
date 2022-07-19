@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -67,7 +68,10 @@ public interface KafkaOperations<K, V> {
 	 * Send the data to the default topic with no key or partition.
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> sendDefault(V data);
 
 	/**
@@ -75,7 +79,10 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> sendDefault(K key, V data);
 
 	/**
@@ -84,7 +91,10 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data);
 
 	/**
@@ -95,7 +105,10 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 * @since 1.3
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
 	/**
@@ -103,7 +116,10 @@ public interface KafkaOperations<K, V> {
 	 * @param topic the topic.
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> send(String topic, V data);
 
 	/**
@@ -112,7 +128,10 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data The data.
 	 * @return a Future for the {@link SendResult}.
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> send(String topic, K key, V data);
 
 	/**
@@ -122,7 +141,10 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data);
 
 	/**
@@ -134,7 +156,10 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 * @since 1.3
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
 
 	/**
@@ -142,7 +167,10 @@ public interface KafkaOperations<K, V> {
 	 * @param record the record.
 	 * @return a Future for the {@link SendResult}.
 	 * @since 1.3
+	 * @deprecated see {@link #usingCompletableFuture()}
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record);
 
 	/**
@@ -150,10 +178,13 @@ public interface KafkaOperations<K, V> {
 	 * may be converted before sending.
 	 * @param message the message to send.
 	 * @return a Future for the {@link SendResult}.
+	 * @deprecated see {@link #usingCompletableFuture()}
 	 * @see org.springframework.kafka.support.KafkaHeaders#TOPIC
 	 * @see org.springframework.kafka.support.KafkaHeaders#PARTITION
 	 * @see org.springframework.kafka.support.KafkaHeaders#KEY
+	 * @see #usingCompletableFuture()
 	 */
+	@Deprecated
 	ListenableFuture<SendResult<K, V>> send(Message<?> message);
 
 	/**
@@ -327,6 +358,148 @@ public interface KafkaOperations<K, V> {
 	 * @since 2.8
 	 */
 	ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout);
+
+	/**
+	 * Return an implementation that returns {@link CompletableFuture} instead of
+	 * {@link ListenableFuture}. The methods returning {@link ListenableFuture} will be
+	 * removed in 3.0
+	 * @return the implementation.
+	 * @since 2.9.
+	 */
+	default KafkaOperations2<K, V> usingCompletableFuture() {
+		return new KafkaOperations2<K, V>() {
+
+			KafkaOperations<K, V> ops;
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> sendDefault(V data) {
+				return KafkaOperations.this.sendDefault(data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> sendDefault(K key, V data) {
+				return KafkaOperations.this.sendDefault(key, data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data) {
+				return KafkaOperations.this.sendDefault(partition, key, data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data) {
+				return KafkaOperations.this.sendDefault(partition, timestamp, key, data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> send(String topic, V data) {
+				return KafkaOperations.this.send(topic, data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> send(String topic, K key, V data) {
+				return KafkaOperations.this.send(topic, key, data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data) {
+				return KafkaOperations.this.send(topic, partition, key, data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key,
+					V data) {
+				return KafkaOperations.this.send(topic, partition, timestamp, key, data).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record) {
+				return KafkaOperations.this.send(record).completable();
+			}
+
+			@Override
+			public CompletableFuture<SendResult<K, V>> send(Message<?> message) {
+				return KafkaOperations.this.send(message).completable();
+			}
+
+			@Override
+			public List<PartitionInfo> partitionsFor(String topic) {
+				return KafkaOperations.this.partitionsFor(topic);
+			}
+
+			@Override
+			public Map<MetricName, ? extends Metric> metrics() {
+				return KafkaOperations.this.metrics();
+			}
+
+			@Override
+			@Nullable
+			public <T> T execute(ProducerCallback<K, V, T> callback) {
+				return KafkaOperations.this.execute(callback);
+			}
+
+			@Override
+			@Nullable
+			public <T> T executeInTransaction(OperationsCallback<K, V, T> callback) {
+				return KafkaOperations.this.executeInTransaction(callback);
+			}
+
+			@Override
+			public void flush() {
+				KafkaOperations.this.flush();
+			}
+
+			@Override
+			public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+					ConsumerGroupMetadata groupMetadata) {
+				KafkaOperations.this.sendOffsetsToTransaction(offsets, groupMetadata);
+			}
+
+			@Override
+			public boolean isTransactional() {
+				return KafkaOperations.this.isTransactional();
+			}
+
+			@Override
+			public boolean isAllowNonTransactional() {
+				return KafkaOperations.this.isAllowNonTransactional();
+			}
+
+			@Override
+			public boolean inTransaction() {
+				return KafkaOperations.this.inTransaction();
+			}
+
+			@Override
+			public ProducerFactory<K, V> getProducerFactory() {
+				return KafkaOperations.this.getProducerFactory();
+			}
+
+			@Override
+			@Nullable
+			public ConsumerRecord<K, V> receive(String topic, int partition, long offset) {
+				return KafkaOperations.this.receive(topic, partition, offset);
+			}
+
+			@Override
+			@Nullable
+			public ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout) {
+				return KafkaOperations.this.receive(topic, partition, offset, pollTimeout);
+			}
+
+			@Override
+			public ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested) {
+				return KafkaOperations.this.receive(requested);
+			}
+
+			@Override
+			public ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout) {
+				return KafkaOperations.this.receive(requested, pollTimeout);
+			}
+
+		};
+
+	}
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.
