@@ -68,7 +68,6 @@ import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.aot.hint.TypeReference;
 import org.springframework.aot.hint.support.RuntimeHintsUtils;
 import org.springframework.core.DecoratingProxy;
-import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaBootstrapConfiguration;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
@@ -102,7 +101,6 @@ import org.springframework.kafka.support.serializer.ParseStringDeserializer;
 import org.springframework.kafka.support.serializer.StringOrBytesSerializer;
 import org.springframework.kafka.support.serializer.ToStringSerializer;
 import org.springframework.lang.Nullable;
-import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -118,10 +116,8 @@ public class KafkaRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 	public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
 		RuntimeHintsUtils.registerAnnotation(hints, KafkaListener.class);
 		RuntimeHintsUtils.registerAnnotation(hints, KafkaListeners.class);
-		RuntimeHintsUtils.registerAnnotation(hints, EnableKafka.class);
 		RuntimeHintsUtils.registerAnnotation(hints, PartitionOffset.class);
 		RuntimeHintsUtils.registerAnnotation(hints, TopicPartition.class);
-		RuntimeHintsUtils.registerAnnotation(hints, MessageMapping.class);
 		ReflectionHints reflectionHints = hints.reflection();
 		Stream.of(
 					ConsumerProperties.class,
