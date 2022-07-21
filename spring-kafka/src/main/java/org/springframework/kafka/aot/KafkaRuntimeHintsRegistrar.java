@@ -66,6 +66,7 @@ import org.springframework.aot.hint.ReflectionHints;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.aot.hint.TypeReference;
+import org.springframework.aot.hint.support.RuntimeHintsUtils;
 import org.springframework.core.DecoratingProxy;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaBootstrapConfiguration;
@@ -115,24 +116,23 @@ public class KafkaRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 
 	@Override
 	public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
+		RuntimeHintsUtils.registerAnnotation(hints, KafkaListener.class);
+		RuntimeHintsUtils.registerAnnotation(hints, KafkaListeners.class);
+		RuntimeHintsUtils.registerAnnotation(hints, EnableKafka.class);
+		RuntimeHintsUtils.registerAnnotation(hints, PartitionOffset.class);
+		RuntimeHintsUtils.registerAnnotation(hints, TopicPartition.class);
+		RuntimeHintsUtils.registerAnnotation(hints, MessageMapping.class);
 		ReflectionHints reflectionHints = hints.reflection();
 		Stream.of(
-					PartitionOffset.class,
-					TopicPartition.class,
 					ConsumerProperties.class,
 					ContainerProperties.class,
-					ProducerListener.class,
-					KafkaListener.class,
-					EnableKafka.class)
+					ProducerListener.class)
 				.forEach(type -> reflectionHints.registerType(type,
 						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_METHODS)));
 
 		Stream.of(
 					Message.class,
 					ImplicitLinkedHashCollection.Element.class,
-					KafkaListener.class,
-					MessageMapping.class,
-					KafkaListeners.class,
 					NewTopic.class,
 					AbstractKafkaListenerContainerFactory.class,
 					ConcurrentKafkaListenerContainerFactory.class,
@@ -147,18 +147,8 @@ public class KafkaRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 					ProducerFactory.class,
 					KafkaOperations.class,
 					ConsumerFactory.class,
-					LoggingProducerListener.class)
-				.forEach(type -> reflectionHints.registerType(type,
-						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
-								MemberCategory.INVOKE_DECLARED_METHODS,
-								MemberCategory.INTROSPECT_PUBLIC_METHODS)));
-
-		Stream.of(
-					Message.class,
+					LoggingProducerListener.class,
 					ImplicitLinkedHashCollection.Element.class,
-					KafkaListener.class,
-					MessageMapping.class,
-					KafkaListeners.class,
 					KafkaListenerAnnotationBeanPostProcessor.class)
 				.forEach(type -> reflectionHints.registerType(type,
 						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
