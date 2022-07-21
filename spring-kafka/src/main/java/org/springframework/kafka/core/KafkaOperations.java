@@ -37,7 +37,6 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
-import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * The basic Kafka operations contract returning {@link CompletableFuture}s.
