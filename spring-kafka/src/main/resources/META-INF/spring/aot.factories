@@ -1,0 +1,2 @@
+org.springframework.aot.hint.RuntimeHintsRegistrar=org.springframework.kafka.aot.KafkaRuntimeHintsRegistrar
+org.springframework.beans.factory.aot.BeanRegistrationAotProcessor=org.springframework.kafka.aot.KafkaAvroBeanRegistrationAotProcessor
