@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
 /**
- * Result for a ListenableFuture after a send.
+ * Result for a {@link java.util.concurrent.CompletableFuture} after a send.
  *
  * @param <K> the key type.
  * @param <V> the value type.

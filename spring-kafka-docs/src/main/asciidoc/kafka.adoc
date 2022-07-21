@@ -170,25 +170,25 @@ The following listing shows the relevant methods from `KafkaTemplate`:
 ====
 [source, java]
 ----
-ListenableFuture<SendResult<K, V>> sendDefault(V data);
+CompletableFuture<SendResult<K, V>> sendDefault(V data);
 
-ListenableFuture<SendResult<K, V>> sendDefault(K key, V data);
+CompletableFuture<SendResult<K, V>> sendDefault(K key, V data);
 
-ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data);
+CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, V data);
 
-ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
+CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, V data);
+CompletableFuture<SendResult<K, V>> send(String topic, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, K key, V data);
+CompletableFuture<SendResult<K, V>> send(String topic, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data);
+CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
+CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
 
-ListenableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record);
+CompletableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record);
 
-ListenableFuture<SendResult<K, V>> send(Message<?> message);
+CompletableFuture<SendResult<K, V>> send(Message<?> message);
 
 Map<MetricName, ? extends Metric> metrics();
 
@@ -210,22 +210,8 @@ interface ProducerCallback<K, V, T> {
 
 See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/core/KafkaTemplate.html[Javadoc] for more detail.
 
-IMPORTANT: In version 3.0, the methods that returned `ListenableFuture` have been changed to return `CompletableFuture`.
-To facilitate the migration, the 2.9 version added a method `.usingCompletableFuture()` which provided the same methods with `CompletableFuture` return types.
-
-====
-[source, java]
-----
-KafkaOperations2<String, String> template = new KafkaTemplate<>().usingCompletableFuture();
-CompletableFuture<SendResult<String, String>> future = template.send(topic1, 0, 0, "buz")
-        .whenComplete((sr, thrown) -> {
-            ...
-         });
-)
-----
-====
-
-`KafkaOperations2` and `.usingCompletableFuture()` have now been deprecated, and should be removed, since the method simply returns `this`.
+IMPORTANT: In version 3.0, the methods that previously returned `ListenableFuture` have been changed to return `CompletableFuture`.
+To facilitate the migration, the 2.9 version added a method `.usingCompletableFuture()` which provided the same methods with `CompletableFuture` return types; this method is no longer available.
 
 The `sendDefault` API requires that a default topic has been provided to the template.
 
@@ -319,26 +305,16 @@ By default, the template is configured with a `LoggingProducerListener`, which l
 
 For convenience, default method implementations are provided in case you want to implement only one of the methods.
 
-Notice that the send methods return a `ListenableFuture<SendResult>`.
+Notice that the send methods return a `CompletableFuture<SendResult>`.
 You can register a callback with the listener to receive the result of the send asynchronously.
 The following example shows how to do so:
 
 ====
 [source, java]
 ----
-ListenableFuture<SendResult<Integer, String>> future = template.send("myTopic", "something");
-future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
-
-    @Override
-    public void onSuccess(SendResult<Integer, String> result) {
-        ...
-    }
-
-    @Override
-    public void onFailure(Throwable ex) {
-        ...
-    }
-
+CompletableFuture<SendResult<Integer, String>> future = template.send("myTopic", "something");
+future.whenComplete((result, ex) -> {
+    ...
 });
 ----
 ====
@@ -346,48 +322,10 @@ future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
 `SendResult` has two properties, a `ProducerRecord` and `RecordMetadata`.
 See the Kafka API documentation for information about those objects.
 
-The `Throwable` in `onFailure` can be cast to a `KafkaProducerException`; its `failedProducerRecord` property contains the failed record.
-
-Starting with version 2.5, you can use a `KafkaSendCallback` instead of a `ListenableFutureCallback`, making it easier to extract the failed `ProducerRecord`, avoiding the need to cast the `Throwable`:
-
-====
-[source, java]
-----
-ListenableFuture<SendResult<Integer, String>> future = template.send("topic", 1, "thing");
-future.addCallback(new KafkaSendCallback<Integer, String>() {
-
-    @Override
-    public void onSuccess(SendResult<Integer, String> result) {
-        ...
-    }
-
-    @Override
-    public void onFailure(KafkaProducerException ex) {
-        ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
-        ...
-    }
-
-});
-----
-====
-
-You can also use a pair of lambdas:
-
-====
-[source, java]
-----
-ListenableFuture<SendResult<Integer, String>> future = template.send("topic", 1, "thing");
-future.addCallback(result -> {
-        ...
-    }, (KafkaFailureCallback<Integer, String>) ex -> {
-            ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
-            ...
-    });
-----
-====
+The `Throwable` can be cast to a `KafkaProducerException`; its `failedProducerRecord` property contains the failed record.
 
 If you wish to block the sending thread to await the result, you can invoke the future's `get()` method; using the method with a timeout is recommended.
-You may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush` parameter that causes the template to `flush()` on each send.
+If you have set a `linger.ms`, you may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush` parameter that causes the template to `flush()` on each send.
 Flushing is only needed if you have set the `linger.ms` producer property and want to immediately send a partial batch.
 
 ====== Examples
@@ -401,19 +339,14 @@ This section shows examples of sending messages to Kafka:
 public void sendToKafka(final MyOutputData data) {
     final ProducerRecord<String, String> record = createRecord(data);
 
-    ListenableFuture<SendResult<Integer, String>> future = template.send(record);
-    future.addCallback(new KafkaSendCallback<Integer, String>() {
-
-        @Override
-        public void onSuccess(SendResult<Integer, String> result) {
+    CompletableFuture<SendResult<Integer, String>> future = template.send(record);
+    future.whenComplete((result, ex) -> {
+        if (ex == null) {
             handleSuccess(data);
         }
-
-        @Override
-        public void onFailure(KafkaProducerException ex) {
+        else {
             handleFailure(data, record, ex);
         }
-
     });
 }
 ----
@@ -566,13 +499,11 @@ RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record,
 
 (Also see <<exchanging-messages>>).
 
-The result is a `ListenableFuture` that is asynchronously populated with the result (or an exception, for a timeout).
+The result is a `CompletableFuture` that is asynchronously populated with the result (or an exception, for a timeout).
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
 You can use this future to determine the result of the send operation.
 
 IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) have been changed to  `CompletableFuture` s instead of `ListenableFuture` s.
-To assit in the transition, using this version 2.9, you could convert these types to a `CompleteableFuture` by calling `asCompletable()` on the returned `Future`.
-This method is no longer available and the future itself is a `CompletableFuture`.
 
 If the first method is used, or the `replyTimeout` argument is `null`, the template's `defaultReplyTimeout` property is used (5 seconds by default).
 
@@ -813,8 +744,6 @@ RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message);
 These will use the template's default `replyTimeout`, there are also overloaded versions that can take a timeout in the method call.
 
 IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) have been changed to  `CompletableFuture` s instead of `ListenableFuture` s.
-To assit in the transition, using this version 2.9, you could convert these types to a `CompleteableFuture` by calling `asCompletable()` on the returned `Future`.
-This method is no longer available and the future itself is a `CompletableFuture`.
 
 Use the first method if the consumer's `Deserializer` or the template's `MessageConverter` can convert the payload without any additional information, either via configuration or type metadata in the reply message.
 
@@ -2261,6 +2190,7 @@ public ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerCon
 ====
 
 When you use `@SendTo`, you must configure the `ConcurrentKafkaListenerContainerFactory` with a `KafkaTemplate` in its `replyTemplate` property to perform the send.
+Spring Boot will automatically wire in its auto configured template (or any if a single instance is present).
 
 NOTE: Unless you use <<replying-template,request/reply semantics>> only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition or key.
 The following example shows how to do so:
@@ -2273,7 +2203,7 @@ public KafkaTemplate<String, String> myReplyingTemplate() {
     return new KafkaTemplate<Integer, String>(producerFactory()) {
 
         @Override
-        public ListenableFuture<SendResult<String, String>> send(String topic, String data) {
+        public CompletableFuture<SendResult<String, String>> send(String topic, String data) {
             return super.send(topic, partitionForData(data), keyForData(data), data);
         }
 
