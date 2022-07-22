@@ -17,6 +17,7 @@
 package org.springframework.kafka.aot;
 
 import java.util.stream.Stream;
+import java.util.zip.CRC32C;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -59,15 +60,12 @@ import org.apache.kafka.streams.processor.internals.assignment.FallbackPriorTask
 import org.apache.kafka.streams.processor.internals.assignment.HighAvailabilityTaskAssignor;
 import org.apache.kafka.streams.processor.internals.assignment.StickyTaskAssignor;
 
-import org.springframework.aop.SpringProxy;
-import org.springframework.aop.framework.Advised;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.ReflectionHints;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.aot.hint.TypeReference;
 import org.springframework.aot.hint.support.RuntimeHintsUtils;
-import org.springframework.core.DecoratingProxy;
 import org.springframework.kafka.annotation.KafkaBootstrapConfiguration;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
@@ -198,15 +196,13 @@ public class KafkaRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 					JsonSerializer.class,
 					ParseStringDeserializer.class,
 					StringOrBytesSerializer.class,
-					ToStringSerializer.class)
+					ToStringSerializer.class,
+					CRC32C.class)
 				.forEach(type -> reflectionHints.registerType(type, builder ->
 						builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
 
-		reflectionHints.registerType(TypeReference.of("java.util.zip.CRC32C"), builder ->
-				builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS));
-
-		hints.proxies().registerJdkProxy(Consumer.class, SpringProxy.class, Advised.class, DecoratingProxy.class);
-		hints.proxies().registerJdkProxy(Producer.class, SpringProxy.class, Advised.class, DecoratingProxy.class);
+		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Consumer.class));
+		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Producer.class));
 
 		if (ClassUtils.isPresent("org.apache.kafka.streams.StreamsBuilder", null)) {
 			Stream.of(
