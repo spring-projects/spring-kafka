@@ -52,13 +52,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.AppInfoParser.AppInfo;
 import org.apache.kafka.common.utils.ImplicitLinkedHashCollection;
-import org.apache.kafka.streams.errors.DefaultProductionExceptionHandler;
-import org.apache.kafka.streams.errors.LogAndFailExceptionHandler;
-import org.apache.kafka.streams.processor.FailOnInvalidTimestamp;
-import org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor;
-import org.apache.kafka.streams.processor.internals.assignment.FallbackPriorTaskAssignor;
-import org.apache.kafka.streams.processor.internals.assignment.HighAvailabilityTaskAssignor;
-import org.apache.kafka.streams.processor.internals.assignment.StickyTaskAssignor;
 
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aot.hint.MemberCategory;
@@ -99,7 +92,6 @@ import org.springframework.kafka.support.serializer.ParseStringDeserializer;
 import org.springframework.kafka.support.serializer.StringOrBytesSerializer;
 import org.springframework.kafka.support.serializer.ToStringSerializer;
 import org.springframework.lang.Nullable;
-import org.springframework.util.ClassUtils;
 
 /**
  * {@link RuntimeHintsRegistrar} for Spring for Apache Kafka.
@@ -197,23 +189,6 @@ public class KafkaRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 					ParseStringDeserializer.class,
 					StringOrBytesSerializer.class,
 					ToStringSerializer.class,
-					CRC32C.class)
-				.forEach(type -> reflectionHints.registerType(type, builder ->
-						builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
-
-		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Consumer.class));
-		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Producer.class));
-
-		if (ClassUtils.isPresent("org.apache.kafka.streams.StreamsBuilder", null)) {
-			Stream.of(
-					StreamsPartitionAssignor.class,
-					DefaultProductionExceptionHandler.class,
-					FailOnInvalidTimestamp.class,
-					HighAvailabilityTaskAssignor.class,
-					StickyTaskAssignor.class,
-					FallbackPriorTaskAssignor.class,
-					LogAndFailExceptionHandler.class,
-
 					Serdes.class,
 					Serdes.ByteArraySerde.class,
 					Serdes.BytesSerde.class,
@@ -225,11 +200,24 @@ public class KafkaRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 					Serdes.ShortSerde.class,
 					Serdes.StringSerde.class,
 					Serdes.UUIDSerde.class,
-					Serdes.VoidSerde.class)
+					Serdes.VoidSerde.class,
+					CRC32C.class)
 				.forEach(type -> reflectionHints.registerType(type, builder ->
 						builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
-		}
 
+		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Consumer.class));
+		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Producer.class));
+
+		Stream.of(
+				"org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor",
+				"org.apache.kafka.streams.errors.DefaultProductionExceptionHandler",
+				"org.apache.kafka.streams.processor.FailOnInvalidTimestamp",
+				"org.apache.kafka.streams.processor.internals.assignment.HighAvailabilityTaskAssignor",
+				"org.apache.kafka.streams.processor.internals.assignment.StickyTaskAssignor",
+				"org.apache.kafka.streams.processor.internals.assignment.FallbackPriorTaskAssignor",
+				"org.apache.kafka.streams.errors.LogAndFailExceptionHandler")
+			.forEach(type -> reflectionHints.registerTypeIfPresent(classLoader, type, builder ->
+					builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
 	}
 
 }
