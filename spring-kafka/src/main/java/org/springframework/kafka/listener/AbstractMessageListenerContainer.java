@@ -454,7 +454,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public final void start() {
-		LogFactory.getLog(getClass()).info(System.identityHashCode(this) + "\n" + this.containerProperties.toString());
 		checkGroupId();
 		synchronized (this.lifecycleMonitor) {
 			if (!isRunning()) {
