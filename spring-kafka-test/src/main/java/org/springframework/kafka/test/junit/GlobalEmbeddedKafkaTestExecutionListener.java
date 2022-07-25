@@ -98,7 +98,7 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 			Integer partitions = configurationParameters.get(PARTITIONS_PROPERTY_NAME, Integer::parseInt).orElse(2);
 			Map<String, String> brokerProperties =
 					configurationParameters.get(BROKER_PROPERTIES_LOCATION_PROPERTY_NAME, this::brokerProperties)
-							.orElse(null);
+							.orElse(Map.of());
 			String brokerListProperty = configurationParameters.get(EmbeddedKafkaBroker.BROKER_LIST_PROPERTY)
 					.orElse(null);
 			int[] ports =
