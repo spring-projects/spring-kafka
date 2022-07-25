@@ -98,14 +98,14 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 
 	private static boolean isListener(Class<?> beanType) {
 		return GenericMessageListener.class.isAssignableFrom(beanType)
-				|| MergedAnnotations.from(beanType).get(KAFKA_LISTENER_CLASS_NAME).isPresent();
+				|| MergedAnnotations.from(beanType).isPresent(KAFKA_LISTENER_CLASS_NAME);
 	}
 
 	private static boolean hasListenerMethods(Class<?> beanType) {
 		for (Method method : beanType.getDeclaredMethods()) {
 			MergedAnnotations methodAnnotations = MergedAnnotations.from(method);
-			if (methodAnnotations.get(KAFKA_LISTENER_CLASS_NAME).isPresent()
-					|| methodAnnotations.get(KAFKA_HANDLER_CLASS_NAME).isPresent()) {
+			if (methodAnnotations.isPresent(KAFKA_LISTENER_CLASS_NAME)
+					|| methodAnnotations.isPresent(KAFKA_HANDLER_CLASS_NAME)) {
 				return true;
 			}
 		}
