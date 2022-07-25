@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.aot;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashSet;
@@ -32,8 +31,6 @@ import org.springframework.beans.factory.aot.BeanRegistrationAotProcessor;
 import org.springframework.beans.factory.support.RegisteredBean;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.MergedAnnotations;
-import org.springframework.kafka.annotation.KafkaHandler;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.listener.GenericMessageListener;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
@@ -47,10 +44,6 @@ import org.springframework.util.ReflectionUtils;
  *
  */
 public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAotProcessor {
-
-	private static final String KAFKA_LISTENER_CLASS_NAME = KafkaListener.class.getName();
-
-	private static final String KAFKA_HANDLER_CLASS_NAME = KafkaHandler.class.getName();
 
 	private static final String CONSUMER_RECORD_CLASS_NAME = ConsumerRecord.class.getName();
 
@@ -67,7 +60,7 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 			return null;
 		}
 		Class<?> beanType = registeredBean.getBeanClass();
-		if (!isListener(beanType) && !hasListenerMethods(beanType)) {
+		if (!isListener(beanType)) {
 			return null;
 		}
 		Set<Class<?>> avroTypes = new HashSet<>();
@@ -83,50 +76,19 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 				}
 			}, method -> method.getName().equals("onMessage"));
 		}
-		else {
-			processMethods(beanType, avroTypes);
-		}
 		if (avroTypes.size() > 0) {
 			return (generationContext, beanRegistrationCode) -> {
 				ReflectionHints reflectionHints = generationContext.getRuntimeHints().reflection();
 				avroTypes.forEach(type -> reflectionHints.registerType(type,
-						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS)));
+						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
+								MemberCategory.INVOKE_PUBLIC_METHODS)));
 			};
 		}
 		return null;
 	}
 
 	private static boolean isListener(Class<?> beanType) {
-		return GenericMessageListener.class.isAssignableFrom(beanType)
-				|| MergedAnnotations.from(beanType).isPresent(KAFKA_LISTENER_CLASS_NAME);
-	}
-
-	private static boolean hasListenerMethods(Class<?> beanType) {
-		for (Method method : beanType.getDeclaredMethods()) {
-			MergedAnnotations methodAnnotations = MergedAnnotations.from(method);
-			if (methodAnnotations.isPresent(KAFKA_LISTENER_CLASS_NAME)
-					|| methodAnnotations.isPresent(KAFKA_HANDLER_CLASS_NAME)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static void processMethods(Class<?> beanType, Set<Class<?>> avroTypes) {
-		for (Method method : beanType.getDeclaredMethods()) {
-			processMethod(method, avroTypes);
-		}
-	}
-
-	private static void processMethod(Method method, Set<Class<?>> avroTypes) {
-		MergedAnnotations methodAnnotations = MergedAnnotations.from(method);
-		if (methodAnnotations.get(KAFKA_LISTENER_CLASS_NAME).isPresent()
-				|| methodAnnotations.get(KAFKA_HANDLER_CLASS_NAME).isPresent()) {
-			Type[] paramTypes = method.getGenericParameterTypes();
-			for (Type paramType : paramTypes) {
-				checkType(paramType, avroTypes);
-			}
-		}
+		return GenericMessageListener.class.isAssignableFrom(beanType);
 	}
 
 	private static void checkType(@Nullable Type paramType, Set<Class<?>> avroTypes) {
@@ -136,7 +98,7 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 		boolean container = isContainer(paramType);
 		if (!container && paramType instanceof Class) {
 			MergedAnnotations mergedAnnotations = MergedAnnotations.from((Class<?>) paramType);
-			if (mergedAnnotations.get(AVRO_GENERATED_CLASS_NAME).isPresent()) {
+			if (mergedAnnotations.isPresent(AVRO_GENERATED_CLASS_NAME)) {
 				avroTypes.add((Class<?>) paramType);
 			}
 		}
@@ -156,7 +118,7 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 	private static void checkAvro(@Nullable Type generic, Set<Class<?>> avroTypes) {
 		if (generic instanceof Class) {
 			MergedAnnotations methodAnnotations = MergedAnnotations.from((Class<?>) generic);
-			if (methodAnnotations.get(AVRO_GENERATED_CLASS_NAME).isPresent()) {
+			if (methodAnnotations.isPresent(AVRO_GENERATED_CLASS_NAME)) {
 				avroTypes.add((Class<?>) generic);
 			}
 		}
