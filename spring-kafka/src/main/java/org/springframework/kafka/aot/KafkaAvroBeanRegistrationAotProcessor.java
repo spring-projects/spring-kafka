@@ -48,9 +48,6 @@ import org.springframework.util.ReflectionUtils;
  */
 public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAotProcessor {
 
-	private static final boolean AVRO_PRESENT = ClassUtils
-			.isPresent("io.confluent.kafka.serializers.KafkaAvroSerializer", null);
-
 	private static final String KAFKA_LISTENER_CLASS_NAME = KafkaListener.class.getName();
 
 	private static final String KAFKA_HANDLER_CLASS_NAME = KafkaHandler.class.getName();
@@ -60,6 +57,8 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 	private static final String CONSUMER_RECORDS_CLASS_NAME = ConsumerRecord.class.getName();
 
 	private static final String AVRO_GENERATED_CLASS_NAME = "org.apache.avro.specific.AvroGenerated";
+
+	private static final boolean AVRO_PRESENT = ClassUtils.isPresent(AVRO_GENERATED_CLASS_NAME, null);
 
 	@Override
 	@Nullable
