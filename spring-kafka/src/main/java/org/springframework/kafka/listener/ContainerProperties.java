@@ -30,7 +30,7 @@ import org.aopalliance.aop.Advice;
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
-import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
@@ -231,7 +231,7 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * The executor for threads that poll the consumer.
 	 */
-	private AsyncListenableTaskExecutor consumerTaskExecutor;
+	private AsyncTaskExecutor listenerTaskExecutor;
 
 	/**
 	 * The timeout for shutting down the container. This is the maximum amount of
@@ -380,10 +380,11 @@ public class ContainerProperties extends ConsumerProperties {
 
 	/**
 	 * Set the executor for threads that poll the consumer.
-	 * @param consumerTaskExecutor the executor
+	 * @param listenerTaskExecutor the executor
+	 * @since 2.8.9
 	 */
-	public void setConsumerTaskExecutor(@Nullable AsyncListenableTaskExecutor consumerTaskExecutor) {
-		this.consumerTaskExecutor = consumerTaskExecutor;
+	public void setListenerTaskExecutor(@Nullable AsyncTaskExecutor listenerTaskExecutor) {
+		this.listenerTaskExecutor = listenerTaskExecutor;
 	}
 
 	/**
@@ -466,8 +467,8 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @return the executor.
 	 */
 	@Nullable
-	public AsyncListenableTaskExecutor getConsumerTaskExecutor() {
-		return this.consumerTaskExecutor;
+	public AsyncTaskExecutor getListenerTaskExecutor() {
+		return this.listenerTaskExecutor;
 	}
 
 	public long getShutdownTimeout() {
@@ -919,8 +920,8 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n ackCount=" + this.ackCount
 				+ "\n ackTime=" + this.ackTime
 				+ "\n messageListener=" + this.messageListener
-				+ (this.consumerTaskExecutor != null
-						? "\n consumerTaskExecutor=" + this.consumerTaskExecutor
+				+ (this.listenerTaskExecutor != null
+						? "\n listenerTaskExecutor=" + this.listenerTaskExecutor
 						: "")
 				+ "\n shutdownTimeout=" + this.shutdownTimeout
 				+ "\n idleEventInterval="

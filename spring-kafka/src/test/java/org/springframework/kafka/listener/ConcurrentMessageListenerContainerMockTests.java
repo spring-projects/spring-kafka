@@ -101,7 +101,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ThreadPoolTaskExecutor exec = new ThreadPoolTaskExecutor();
 		exec.setCorePoolSize(1);
 		exec.afterPropertiesSet();
-		containerProperties.setConsumerTaskExecutor(exec);
+		containerProperties.setListenerTaskExecutor(exec);
 		containerProperties.setConsumerStartTimeout(Duration.ofMillis(50));
 		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
 				containerProperties);

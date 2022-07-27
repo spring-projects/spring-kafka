@@ -227,7 +227,7 @@ public class KafkaMessageListenerContainerTests {
 		ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
 		scheduler.setPoolSize(10);
 		scheduler.initialize();
-		containerProps.setConsumerTaskExecutor(scheduler);
+		containerProps.setListenerTaskExecutor(scheduler);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("delegate");

@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -72,7 +73,6 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Artem Bilan
@@ -105,7 +105,7 @@ public class KafkaStreamsTests {
 	private KafkaTemplate<Integer, String> kafkaTemplate;
 
 	@Autowired
-	private SettableListenableFuture<ConsumerRecord<?, String>> resultFuture;
+	private CompletableFuture<ConsumerRecord<?, String>> resultFuture;
 
 	@Autowired
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
@@ -264,13 +264,13 @@ public class KafkaStreamsTests {
 		}
 
 		@Bean
-		public SettableListenableFuture<ConsumerRecord<?, String>> resultFuture() {
-			return new SettableListenableFuture<>();
+		public CompletableFuture<ConsumerRecord<?, String>> resultFuture() {
+			return new CompletableFuture<>();
 		}
 
 		@KafkaListener(topics = "${streaming.topic.two}")
 		public void listener(ConsumerRecord<?, String> payload) {
-			resultFuture().set(payload);
+			resultFuture().complete(payload);
 		}
 
 	}

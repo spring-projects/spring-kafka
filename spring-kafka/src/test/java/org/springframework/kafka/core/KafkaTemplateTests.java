@@ -96,7 +96,6 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -422,7 +421,7 @@ public class KafkaTemplateTests {
 		willAnswer(inv -> {
 			Callback callback = inv.getArgument(1);
 			callback.onCompletion(null, new RuntimeException("test"));
-			return new SettableListenableFuture<RecordMetadata>();
+			return new CompletableFuture<RecordMetadata>();
 		}).given(producer).send(any(), any());
 		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
 		given(pf.createProducer()).willReturn(producer);
@@ -449,7 +448,7 @@ public class KafkaTemplateTests {
 		willAnswer(inv -> {
 			Callback callback = inv.getArgument(1);
 			callback.onCompletion(null, new RuntimeException("test"));
-			return new SettableListenableFuture<RecordMetadata>();
+			return new CompletableFuture<RecordMetadata>();
 		}).given(producer).send(any(), any());
 		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
 		given(pf.createProducer()).willReturn(producer);

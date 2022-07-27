@@ -35,12 +35,14 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -72,7 +74,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.log.LogAccessor;
-import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -123,8 +125,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 
 
 /**
@@ -175,7 +175,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private volatile ListenerConsumer listenerConsumer;
 
-	private volatile ListenableFuture<?> listenerConsumerFuture;
+	private volatile CompletableFuture<Void> listenerConsumerFuture;
 
 	private volatile CountDownLatch startLatch = new CountDownLatch(1);
 
@@ -350,21 +350,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		checkAckMode(containerProperties);
 
 		Object messageListener = containerProperties.getMessageListener();
-		AsyncListenableTaskExecutor consumerExecutor = containerProperties.getConsumerTaskExecutor();
+		AsyncTaskExecutor consumerExecutor = containerProperties.getListenerTaskExecutor();
 		if (consumerExecutor == null) {
 			consumerExecutor = new SimpleAsyncTaskExecutor(
 					(getBeanName() == null ? "" : getBeanName()) + "-C-");
-			containerProperties.setConsumerTaskExecutor(consumerExecutor);
+			containerProperties.setListenerTaskExecutor(consumerExecutor);
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		ListenerType listenerType = determineListenerType(listener);
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType);
 		setRunning(true);
 		this.startLatch = new CountDownLatch(1);
-		this.listenerConsumerFuture = consumerExecutor
-				.submitListenable(this.listenerConsumer);
+		this.listenerConsumerFuture = consumerExecutor.submitCompletable(this.listenerConsumer);
 		try {
-			if (!this.startLatch.await(containerProperties.getConsumerStartTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
+			if (!this.startLatch.await(containerProperties.getConsumerStartTimeout().toMillis(),
+					TimeUnit.MILLISECONDS)) {
+
 				this.logger.error("Consumer thread failed to start - does the configured task executor "
 						+ "have enough threads to support all containers and concurrency?");
 				publishConsumerFailedToStart();
@@ -403,7 +404,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	@Override
 	protected void doStop(final Runnable callback, boolean normal) {
 		if (isRunning()) {
-			this.listenerConsumerFuture.addCallback(new StopCallback(callback));
+			this.listenerConsumerFuture.whenComplete(new StopCallback(callback));
 			setRunning(false);
 			this.listenerConsumer.wakeIfNecessaryForStop();
 			setStoppedNormally(normal);
@@ -3712,7 +3713,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	}
 
-	private class StopCallback implements ListenableFutureCallback<Object> {
+	private class StopCallback implements BiConsumer<Object, Throwable> {
 
 		private final Runnable callback;
 
@@ -3721,20 +3722,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Override
-		public void onFailure(Throwable e) {
-			KafkaMessageListenerContainer.this.logger
-					.error(e, "Error while stopping the container: ");
-			if (this.callback != null) {
-				this.callback.run();
+		public void accept(Object result, @Nullable Throwable throwable) {
+			if (throwable != null) {
+				KafkaMessageListenerContainer.this.logger.error(throwable, "Error while stopping the container");
+				if (this.callback != null) {
+					this.callback.run();
+				}
 			}
-		}
-
-		@Override
-		public void onSuccess(Object result) {
-			KafkaMessageListenerContainer.this.logger
-					.debug(() -> KafkaMessageListenerContainer.this + " stopped normally");
-			if (this.callback != null) {
-				this.callback.run();
+			else {
+				KafkaMessageListenerContainer.this.logger
+						.debug(() -> KafkaMessageListenerContainer.this + " stopped normally");
+				if (this.callback != null) {
+					this.callback.run();
+				}
 			}
 		}
 
