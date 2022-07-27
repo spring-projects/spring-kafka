@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -61,7 +62,6 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -74,7 +74,7 @@ public class DefaultKafkaProducerFactoryTests {
 	@Test
 	void testProducerClosedAfterBadTransition() throws Exception {
 		final Producer producer = mock(Producer.class);
-		given(producer.send(any(), any())).willReturn(new SettableListenableFuture<>());
+		given(producer.send(any(), any())).willReturn(new CompletableFuture());
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
 
 			@Override

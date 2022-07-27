@@ -62,6 +62,7 @@ public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessage
 	}
 
 	@Override
+	@SuppressWarnings(UNCHECKED)
 	public synchronized Completable asCompletable() {
 		if (this.completable == null) {
 			this.completable = new Completable(this, this);
@@ -74,9 +75,9 @@ public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessage
 	 * A {@link CompletableFuture} version.
 	 * @since 2.9
 	 */
-	public class Completable extends RequestReplyMessageFuture.Completable {
+	public class Completable extends RequestReplyMessageFuture<K, V>.Completable {
 
-		Completable(RequestReplyMessageFuture requestReplyMessageFuture, Future<Message<?>> delegate) { // NOSONAR
+		Completable(RequestReplyMessageFuture<K, V> requestReplyMessageFuture, Future<Message<?>> delegate) { // NOSONAR
 			requestReplyMessageFuture.super(delegate);
 		}
 

@@ -329,7 +329,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo("2");
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Test
 	public void testNestedTxProducerIsCached() throws Exception {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(this.embeddedKafka);

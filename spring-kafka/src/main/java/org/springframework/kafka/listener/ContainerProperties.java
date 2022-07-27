@@ -31,6 +31,7 @@ import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
@@ -427,9 +428,24 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * Set the executor for threads that poll the consumer.
 	 * @param consumerTaskExecutor the executor
+	 * @deprecated in favor of {@link #setListenerTaskExecutor(AsyncTaskExecutor)}.
 	 */
+	@Deprecated
 	public void setConsumerTaskExecutor(@Nullable AsyncListenableTaskExecutor consumerTaskExecutor) {
 		this.consumerTaskExecutor = consumerTaskExecutor;
+	}
+
+	/**
+	 * Set the executor for threads that poll the consumer.
+	 * @param listenerTaskExecutor the executor - must be
+	 * {@link AsyncListenableTaskExecutor} until 3.0.
+	 * @since 2.8.9
+	 */
+	public void setListenerTaskExecutor(@Nullable AsyncTaskExecutor listenerTaskExecutor) {
+		if (listenerTaskExecutor != null) {
+			Assert.isInstanceOf(AsyncListenableTaskExecutor.class, listenerTaskExecutor);
+		}
+		this.consumerTaskExecutor = (AsyncListenableTaskExecutor) listenerTaskExecutor;
 	}
 
 	/**
@@ -510,9 +526,20 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * Return the consumer task executor.
 	 * @return the executor.
+	 * @deprecated in favor of {@link #getListenerTaskExecutor()}.
 	 */
+	@Deprecated
 	@Nullable
 	public AsyncListenableTaskExecutor getConsumerTaskExecutor() {
+		return this.consumerTaskExecutor;
+	}
+
+	/**
+	 * Return the consumer task executor.
+	 * @return the executor.
+	 */
+	@Nullable
+	public AsyncTaskExecutor getListenerTaskExecutor() {
 		return this.consumerTaskExecutor;
 	}
 

@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -80,7 +81,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -317,10 +317,10 @@ public class KafkaTemplateTransactionTests {
 	public void testDeadLetterPublisherWhileTransactionActive() {
 		@SuppressWarnings("unchecked")
 		Producer<Object, Object> producer1 = mock(Producer.class);
-		given(producer1.send(any(), any())).willReturn(new SettableListenableFuture<>());
+		given(producer1.send(any(), any())).willReturn(new CompletableFuture<>());
 		@SuppressWarnings("unchecked")
 		Producer<Object, Object> producer2 = mock(Producer.class);
-		given(producer2.send(any(), any())).willReturn(new SettableListenableFuture<>());
+		given(producer2.send(any(), any())).willReturn(new CompletableFuture<>());
 		producer1.initTransactions();
 
 		@SuppressWarnings("unchecked")
@@ -504,10 +504,10 @@ public class KafkaTemplateTransactionTests {
 	public void testExecuteInTransactionNewInnerTx() {
 		@SuppressWarnings("unchecked")
 		Producer<Object, Object> producer1 = mock(Producer.class);
-		given(producer1.send(any(), any())).willReturn(new SettableListenableFuture<>());
+		given(producer1.send(any(), any())).willReturn(new CompletableFuture<>());
 		@SuppressWarnings("unchecked")
 		Producer<Object, Object> producer2 = mock(Producer.class);
-		given(producer2.send(any(), any())).willReturn(new SettableListenableFuture<>());
+		given(producer2.send(any(), any())).willReturn(new CompletableFuture<>());
 		producer1.initTransactions();
 		AtomicBoolean first = new AtomicBoolean(true);
 
@@ -608,7 +608,7 @@ public class KafkaTemplateTransactionTests {
 		@Bean
 		public Producer producer1() {
 			Producer mock = mock(Producer.class);
-			given(mock.send(any(), any())).willReturn(new SettableListenableFuture<>());
+			given(mock.send(any(), any())).willReturn(new CompletableFuture<>());
 			return mock;
 		}
 
@@ -616,7 +616,7 @@ public class KafkaTemplateTransactionTests {
 		@Bean
 		public Producer producer2() {
 			Producer mock = mock(Producer.class);
-			given(mock.send(any(), any())).willReturn(new SettableListenableFuture<>());
+			given(mock.send(any(), any())).willReturn(new CompletableFuture<>());
 			return mock;
 		}
 

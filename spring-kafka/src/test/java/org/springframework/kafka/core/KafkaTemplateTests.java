@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -88,7 +89,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -420,7 +420,7 @@ public class KafkaTemplateTests {
 		willAnswer(inv -> {
 			Callback callback = inv.getArgument(1);
 			callback.onCompletion(null, new RuntimeException("test"));
-			return new SettableListenableFuture<RecordMetadata>();
+			return new CompletableFuture<RecordMetadata>();
 		}).given(producer).send(any(), any());
 		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
 		given(pf.createProducer()).willReturn(producer);
@@ -454,7 +454,7 @@ public class KafkaTemplateTests {
 		willAnswer(inv -> {
 			Callback callback = inv.getArgument(1);
 			callback.onCompletion(null, new RuntimeException("test"));
-			return new SettableListenableFuture<RecordMetadata>();
+			return new CompletableFuture<RecordMetadata>();
 		}).given(producer).send(any(), any());
 		ProducerFactory<Integer, String> pf = mock(ProducerFactory.class);
 		given(pf.createProducer()).willReturn(producer);

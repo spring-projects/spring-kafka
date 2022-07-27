@@ -33,7 +33,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -62,7 +62,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
 
-	private final List<AsyncListenableTaskExecutor> executors = new ArrayList<>();
+	private final List<AsyncTaskExecutor> executors = new ArrayList<>();
 
 	private int concurrency = 1;
 
@@ -237,7 +237,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			stopAbnormally(() -> {
 			});
 		});
-		AsyncListenableTaskExecutor exec = container.getContainerProperties().getConsumerTaskExecutor();
+		AsyncTaskExecutor exec = container.getContainerProperties().getListenerTaskExecutor();
 		if (exec == null) {
 			if ((this.executors.size() > index)) {
 				exec = this.executors.get(index);
@@ -246,7 +246,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				exec = new SimpleAsyncTaskExecutor(beanName + "-C-");
 				this.executors.add(exec);
 			}
-			container.getContainerProperties().setConsumerTaskExecutor(exec);
+			container.getContainerProperties().setListenerTaskExecutor(exec);
 		}
 	}
 

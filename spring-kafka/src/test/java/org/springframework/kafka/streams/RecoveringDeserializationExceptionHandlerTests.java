@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -65,7 +66,6 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -81,7 +81,7 @@ public class RecoveringDeserializationExceptionHandlerTests {
 	private KafkaTemplate<byte[], byte[]> kafkaTemplate;
 
 	@Autowired
-	private SettableListenableFuture<ConsumerRecord<byte[], byte[]>> resultFuture;
+	private CompletableFuture<ConsumerRecord<byte[], byte[]>> resultFuture;
 
 	@Test
 	void viaStringProperty() {
@@ -237,13 +237,13 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		}
 
 		@Bean
-		public SettableListenableFuture<ConsumerRecord<byte[], byte[]>> resultFuture() {
-			return new SettableListenableFuture<>();
+		public CompletableFuture<ConsumerRecord<byte[], byte[]>> resultFuture() {
+			return new CompletableFuture<>();
 		}
 
 		@KafkaListener(topics = "recovererDLQ")
 		public void listener(ConsumerRecord<byte[], byte[]> payload) {
-			resultFuture().set(payload);
+			resultFuture().complete(payload);
 		}
 
 	}

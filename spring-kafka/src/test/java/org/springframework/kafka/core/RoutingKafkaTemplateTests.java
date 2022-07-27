@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,13 +25,13 @@ import static org.mockito.Mockito.verify;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.producer.Producer;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -44,9 +44,9 @@ public class RoutingKafkaTemplateTests {
 	@Test
 	public void routing() {
 		Producer<Object, Object> p1 = mock(Producer.class);
-		given(p1.send(any(), any())).willReturn(new SettableListenableFuture<>());
+		given(p1.send(any(), any())).willReturn(new CompletableFuture<>());
 		Producer<Object, Object> p2 = mock(Producer.class);
-		given(p2.send(any(), any())).willReturn(new SettableListenableFuture<>());
+		given(p2.send(any(), any())).willReturn(new CompletableFuture<>());
 		ProducerFactory<Object, Object> pf1 = mock(ProducerFactory.class);
 		ProducerFactory<Object, Object> pf2 = mock(ProducerFactory.class);
 		given(pf1.createProducer()).willReturn(p1);

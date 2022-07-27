@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -97,7 +98,6 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -555,7 +555,7 @@ public class ReplyingKafkaTemplateTests {
 		willAnswer(invocation -> {
 			ProducerRecord rec = invocation.getArgument(0);
 			correlation.set(rec.headers().lastHeader(KafkaHeaders.CORRELATION_ID).value());
-			return new SettableListenableFuture<>();
+			return new CompletableFuture<>();
 		}).given(producer).send(any(), any());
 		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(pf, container,
 				(list, timeout) -> true);
@@ -694,8 +694,8 @@ public class ReplyingKafkaTemplateTests {
 		Producer producer = mock(Producer.class);
 		willAnswer(invocation -> {
 			Callback callback = invocation.getArgument(1);
-			SettableListenableFuture<Object> future = new SettableListenableFuture<>();
-			future.set("done");
+			CompletableFuture<Object> future = new CompletableFuture<>();
+			future.complete("done");
 			callback.onCompletion(new RecordMetadata(new TopicPartition("foo", 0), 0L, 0, 0L, 0, 0), null);
 			return future;
 		}).given(producer).send(any(), any());
@@ -718,7 +718,7 @@ public class ReplyingKafkaTemplateTests {
 		ProducerFactory pf = mock(ProducerFactory.class);
 		Producer producer = mock(Producer.class);
 		willAnswer(invocation -> {
-			return new SettableListenableFuture<>();
+			return new CompletableFuture<>();
 		}).given(producer).send(any(), any());
 		given(pf.createProducer()).willReturn(producer);
 		GenericMessageListenerContainer container = mock(GenericMessageListenerContainer.class);

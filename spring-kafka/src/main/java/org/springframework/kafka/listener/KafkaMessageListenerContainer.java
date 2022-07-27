@@ -351,11 +351,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		checkAckMode(containerProperties);
 
 		Object messageListener = containerProperties.getMessageListener();
-		AsyncListenableTaskExecutor consumerExecutor = containerProperties.getConsumerTaskExecutor();
+		AsyncListenableTaskExecutor consumerExecutor = (AsyncListenableTaskExecutor) containerProperties
+				.getListenerTaskExecutor();
 		if (consumerExecutor == null) {
 			consumerExecutor = new SimpleAsyncTaskExecutor(
 					(getBeanName() == null ? "" : getBeanName()) + "-C-");
-			containerProperties.setConsumerTaskExecutor(consumerExecutor);
+			containerProperties.setListenerTaskExecutor(consumerExecutor);
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		ListenerType listenerType = determineListenerType(listener);
