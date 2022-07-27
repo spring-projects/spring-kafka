@@ -69,6 +69,9 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 				Type[] types = method.getGenericParameterTypes();
 				if (types.length > 0) {
 					ResolvableType resolvableType = ResolvableType.forType(types[0]);
+					if (List.class.equals(resolvableType.getRawClass())) {
+						resolvableType = resolvableType.getGeneric(0);
+					}
 					Class<?> keyType = resolvableType.resolveGeneric(0);
 					Class<?> valueType = resolvableType.resolveGeneric(1);
 					checkType(keyType, avroTypes);
