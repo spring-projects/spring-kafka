@@ -12,7 +12,7 @@
     <appender-ref ref="STDOUT" />
   </root>
 
-  <logger name="org.springframework" level="WARN" />
+  <logger name="org.springframework" level="INFO" />
   <logger name="org.springframework.kafka.jdocs" level="INFO" />
   <logger name="org.springframework.kafka.Kdocs" level="INFO" />
 

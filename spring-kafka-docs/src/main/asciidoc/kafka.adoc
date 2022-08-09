@@ -2717,6 +2717,59 @@ Also see `interceptBeforeTx`.
 |n/a
 |A reference to all child `KafkaMessageListenerContainer` s.
 |===
+
+[[dynamic-containers]]
+==== Dynamically Creating Containers
+
+There are several techniques that can be used to create listener containers at runtime.
+This section explores some of those techniques.
+
+===== MessageListener Implementations
+
+If you implement your own listener directly, you can simply use the container factory to create a raw container for that listener:
+
+.User Listener
+====
+[source, java, role="primary", indent=0]
+.Java
+----
+include::{java-examples}/dynamic/MyListener.java[tag=listener]
+include::{java-examples}/dynamic/Application.java[tag=create]
+----
+[source, kotlin, role="secondary",indent=0]
+.Kotlin
+----
+include::{kotlin-examples}/dynamic/Application.kt[tag=listener]
+include::{kotlin-examples}/dynamic/Application.kt[tag=create]
+----
+====
+
+===== Prototype Beans
+
+Containers for methods annotated with `@KafkaListener` can be created dynamically by declaring the bean as prototype:
+
+.Prototype
+====
+[source, java, role="primary", indent=0]
+.Java
+----
+include::{java-examples}/dynamic/MyPojo.java[tag=pojo]
+include::{java-examples}/dynamic/Application.java[tag=pojoBean]
+include::{java-examples}/dynamic/Application.java[tag=getBeans]
+----
+[source, kotlin, role="secondary",indent=0]
+.Kotlin
+----
+include::{kotlin-examples}/dynamic/Application.kt[tag=pojo]
+include::{kotlin-examples}/dynamic/Application.kt[tag=pojoBean]
+include::{kotlin-examples}/dynamic/Application.kt[tag=getBeans]
+----
+====
+
+IMPORTANT: Listeners must have unique IDs.
+Starting with version 2.8.9, the `KafkaListenerEndpointRegistry` has a new method `unregisterListenerContainer(String id)` to allow you to re-use an id.
+Unregistering a container does not `stop()` the container, you must do that yourself.
+
 [[events]]
 ==== Application Events
 

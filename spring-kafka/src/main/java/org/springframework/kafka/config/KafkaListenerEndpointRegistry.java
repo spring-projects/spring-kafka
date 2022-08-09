@@ -243,6 +243,22 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	}
 
 	/**
+	 * Unregister the listener container with the provided id.
+	 * <p>
+	 * IMPORTANT: this method simply removes the container from the registry. It does NOT
+	 * call any {@link org.springframework.context.Lifecycle} or {@link DisposableBean}
+	 * methods; you need to call them before or after calling this method to shut down the
+	 * container.
+	 * @param id the id.
+	 * @return the container, if it was registered; null otherwise.
+	 * @since 2.8.9
+	 */
+	@Nullable
+	public MessageListenerContainer unregisterListenerContainer(String id) {
+		return this.listenerContainers.remove(id);
+	}
+
+	/**
 	 * Create and start a new {@link MessageListenerContainer} using the specified factory.
 	 * @param endpoint the endpoint to create a {@link MessageListenerContainer}.
 	 * @param factory the {@link KafkaListenerContainerFactory} to use.
