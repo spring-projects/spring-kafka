@@ -88,6 +88,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -126,6 +127,7 @@ import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -3732,6 +3734,148 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(recordInterceptor).success(eq(secondRecord), eq(consumer));
 		inOrder.verify(recordInterceptor).afterRecord(eq(secondRecord), eq(consumer));
 		inOrder.verify(recordInterceptor).clearThreadState(eq(consumer));
+		container.stop();
+	}
+
+	private static Stream<Arguments> paramsForRecordAllSkipped() {
+		return Stream.of(
+				Arguments.of(AckMode.RECORD, false),
+				Arguments.of(AckMode.RECORD, true),
+				Arguments.of(AckMode.BATCH, false),
+				Arguments.of(AckMode.BATCH, true));
+		}
+
+	@ParameterizedTest(name = "{index} AckMode.{0} early intercept {1}")
+	@MethodSource("paramsForRecordAllSkipped")
+	@SuppressWarnings({"unchecked", "deprecation"})
+	public void testInvokeRecordInterceptorAllSkipped(AckMode ackMode, boolean early) throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
+		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : ConsumerRecords.empty();
+		});
+		CountDownLatch latch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			latch.countDown();
+			return null;
+		}).given(consumer).commitSync(any(), any());
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(ackMode);
+
+		containerProps.setMessageListener((MessageListener) msg -> {
+		});
+		containerProps.setClientId("clientId");
+
+		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
+
+			@Override
+			@Nullable
+			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+					Consumer<Integer, String> consumer) {
+
+				return null;
+			}
+
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setRecordInterceptor(recordInterceptor);
+		container.setInterceptBeforeTx(early);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		InOrder inOrder = inOrder(recordInterceptor, consumer);
+		inOrder.verify(recordInterceptor).setupThreadState(eq(consumer));
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(recordInterceptor).intercept(eq(firstRecord), eq(consumer));
+		if (ackMode.equals(AckMode.RECORD)) {
+			inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))),
+					any(Duration.class));
+		}
+		else {
+			verify(consumer, never()).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))),
+					any(Duration.class));
+		}
+		inOrder.verify(recordInterceptor).intercept(eq(secondRecord), eq(consumer));
+		inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
+				any(Duration.class));
+		container.stop();
+	}
+
+	@ParameterizedTest(name = "{index} early intercept {0}")
+	@ValueSource(booleans = { true, false })
+	@SuppressWarnings({"unchecked", "deprecation"})
+	public void testInvokeBatchInterceptorAllSkipped(boolean early) throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
+		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : ConsumerRecords.empty();
+		});
+		CountDownLatch latch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			latch.countDown();
+			return null;
+		}).given(consumer).commitSync(any(), any());
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.BATCH);
+
+		containerProps.setMessageListener((BatchMessageListener) msgs -> {
+		});
+		containerProps.setClientId("clientId");
+		if (!early) {
+			containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+		}
+
+		BatchInterceptor<Integer, String> interceptor = spy(new BatchInterceptor<Integer, String>() {
+
+			@Override
+			@Nullable
+			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
+					Consumer<Integer, String> consumer) {
+
+				return null;
+			}
+
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBatchInterceptor(interceptor);
+		container.setInterceptBeforeTx(early);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		InOrder inOrder = inOrder(interceptor, consumer);
+		inOrder.verify(interceptor).setupThreadState(eq(consumer));
+		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(interceptor).intercept(any(), eq(consumer));
+		inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
+				any(Duration.class));
 		container.stop();
 	}
 

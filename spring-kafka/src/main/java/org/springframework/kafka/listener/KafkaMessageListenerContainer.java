@@ -2315,9 +2315,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			if (this.producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
 				if (this.nackSleepDurationMillis < 0) {
-					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
-						this.acks.put(record);
-					}
+					ackBatch(records);
 				}
 				if (this.producer != null) {
 					sendOffsetsToTransaction();
@@ -2329,6 +2327,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				SeekUtils.doSeeks(toSeek, this.consumer, null, true, (rec, ex) -> false, this.logger); // NOSONAR
 				pauseForNackSleep();
+			}
+		}
+
+		private void ackBatch(final ConsumerRecords<K, V> records) throws InterruptedException {
+			for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
+				this.acks.put(record);
 			}
 		}
 
@@ -2571,6 +2575,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (next == null) {
 					this.logger.debug(() -> "BatchInterceptor returned null, skipping: "
 						+ nextArg + " with " + nextArg.count() + " records");
+					try {
+						ackBatch(nextArg);
+					}
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
 				}
 			}
 			return next;
@@ -2585,6 +2595,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (record == null) {
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
 						+ KafkaUtils.format(recordArg));
+					ackCurrent(recordArg);
 				}
 			}
 			return record;
@@ -2760,6 +2771,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (record == null) {
 				this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
 						+ KafkaUtils.format(recordArg));
+				ackCurrent(recordArg);
 			}
 			else {
 				try {
