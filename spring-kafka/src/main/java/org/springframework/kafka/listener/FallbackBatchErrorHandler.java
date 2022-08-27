@@ -16,17 +16,18 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
+import java.util.function.BiConsumer;
+
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
-
-import java.util.Collection;
-import java.util.function.BiConsumer;
 
 /**
  * A batch error handler that invokes the listener according to the supplied
@@ -106,7 +107,8 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 		try {
 			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
 					this.seeker, this.recoverer, this.logger, getLogLevel());
-		} finally {
+		}
+		finally {
 			this.retrying.set(false);
 		}
 	}
