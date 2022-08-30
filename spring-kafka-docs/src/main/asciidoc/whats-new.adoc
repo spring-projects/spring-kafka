@@ -21,7 +21,7 @@ See <<backoff-handlers>> for more information.
 ==== Listener Container Changes
 
 `interceptBeforeTx` now works with all transaction managers (previously it was only applied when a `KafkaAwareTransactionManager` was used).
-See <<interceptBeforeTX>>.
+See <<interceptBeforeTx>>.
 
 A new container property `pauseImmediate` is provided which allows the container to pause the consumer after the current record is processed, instead of after all the records from the previous poll have been processed.
 See <<pauseImmediate>>.
