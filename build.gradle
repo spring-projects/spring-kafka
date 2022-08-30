@@ -42,7 +42,7 @@ ext {
 	linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
 	linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
-	docResourcesVersion = '0.2.5'
+	springAsciidoctorBackendsVersion = '0.0.3'
 
 	javadocLinks = [
 		'https://docs.oracle.com/en/java/javase/17/docs/api/',
@@ -411,18 +411,15 @@ sonarqube {
 }
 
 configurations {
-	docs
+	asciidoctorExtensions
 }
 
 dependencies {
-	docs "io.spring.docresources:spring-doc-resources:${docResourcesVersion}@zip"
+	asciidoctorExtensions "io.spring.asciidoctor.backends:spring-asciidoctor-backends:${springAsciidoctorBackendsVersion}"
 }
 
 task prepareAsciidocBuild(type: Sync) {
-	dependsOn configurations.docs
-	from {
-		configurations.docs.collect { zipTree(it) }
-	}
+	dependsOn configurations.asciidoctorExtensions
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	from 'spring-kafka-docs/src/main/asciidoc/','spring-kafka-docs/src/main/java','spring-kafka-docs/src/main/kotlin'
 	into "$buildDir/asciidoc"
@@ -477,8 +474,11 @@ asciidoctorj {
 asciidoctor {
 	dependsOn asciidoctorPdf
 	baseDirFollowsSourceFile()
-	configurations 'asciidoctorExt'
+	configurations 'asciidoctorExtensions'
 	sourceDir = file("$buildDir/asciidoc")
+	outputOptions {
+		backends "spring-html"
+	}
 	sources {
 		include '*.adoc'
 	}
