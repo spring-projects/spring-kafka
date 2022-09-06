@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,8 @@ public class ConsumerPausedEvent extends KafkaEvent {
 
 	private final Collection<TopicPartition> partitions;
 
+	private final String reason;
+
 	/**
 	 * Construct an instance with the provided source and partitions.
 	 * @param source the container instance that generated the event.
@@ -43,6 +45,23 @@ public class ConsumerPausedEvent extends KafkaEvent {
 	public ConsumerPausedEvent(Object source, Object container, Collection<TopicPartition> partitions) {
 		super(source, container);
 		this.partitions = partitions;
+		this.reason = null;
+	}
+
+	/**
+	 * Construct an instance with the provided source and partitions.
+	 * @param source the container instance that generated the event.
+	 * @param container the container or the parent container if the container is a child.
+	 * @param partitions the partitions.
+	 * @param reason the reason for the pause.
+	 * @since 2.8.9
+	 */
+	public ConsumerPausedEvent(Object source, Object container, Collection<TopicPartition> partitions,
+			String reason) {
+
+		super(source, container);
+		this.partitions = partitions;
+		this.reason = reason;
 	}
 
 	/**
@@ -55,7 +74,7 @@ public class ConsumerPausedEvent extends KafkaEvent {
 
 	@Override
 	public String toString() {
-		return "ConsumerPausedEvent [partitions=" + this.partitions + "]";
+		return "ConsumerPausedEvent [reason=" + this.reason + ", partitions=" + this.partitions + "]";
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,11 +51,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.EventListener;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.event.ConsumerPausedEvent;
+import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -93,6 +96,8 @@ public class ManualNackPauseResumeTests {
 		assertThat(this.config.resumedForNack).hasSize(1);
 		assertThat(this.config.pausedForNack).contains(new TopicPartition("foo", 1));
 		assertThat(this.config.resumedForNack).contains(new TopicPartition("foo", 1));
+		assertThat(this.config.pauseEvents).hasSize(1);
+		assertThat(this.config.resumeEvents).hasSize(1);
 	}
 
 	@Configuration
@@ -112,6 +117,10 @@ public class ManualNackPauseResumeTests {
 		final Set<TopicPartition> pausedForNack = new HashSet<>();
 
 		final Set<TopicPartition> resumedForNack = new HashSet<>();
+
+		final List<ConsumerPausedEvent> pauseEvents = new ArrayList<>();
+
+		final List<ConsumerResumedEvent> resumeEvents = new ArrayList<>();
 
 		volatile int count;
 
@@ -230,6 +239,16 @@ public class ManualNackPauseResumeTests {
 			factory.getContainerProperties().setAckMode(AckMode.MANUAL);
 			factory.getContainerProperties().setMissingTopicsFatal(false);
 			return factory;
+		}
+
+		@EventListener
+		public void paused(ConsumerPausedEvent event) {
+			this.pauseEvents.add(event);
+		}
+
+		@EventListener
+		public void resumed(ConsumerResumedEvent event) {
+			this.resumeEvents.add(event);
 		}
 
 	}

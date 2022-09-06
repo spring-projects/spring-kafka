@@ -202,8 +202,10 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	}
 
 	@Override
-	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		getFallbackBatchHandler().onPartitionsAssigned(consumer, partitions);
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
+		getFallbackBatchHandler().onPartitionsAssigned(consumer, partitions, publishPause);
 	}
 
 }

@@ -162,9 +162,12 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 	}
 
 	@Override
-	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
 		if (this.batchErrorHandler instanceof FallbackBatchErrorHandler) {
-			((FallbackBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions);
+			((FallbackBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions,
+					publishPause);
 		}
 	}
 

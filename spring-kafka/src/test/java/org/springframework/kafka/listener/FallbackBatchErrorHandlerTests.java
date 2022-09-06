@@ -189,11 +189,14 @@ public class FallbackBatchErrorHandlerTests {
 				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
 		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
 		Consumer<?, ?> consumer = mock(Consumer.class);
+		given(consumer.assignment()).willReturn(map.keySet());
+		AtomicBoolean pubPauseCalled = new AtomicBoolean();
 		willAnswer(inv -> {
-			eh.onPartitionsAssigned(consumer, List.of(new TopicPartition("foo", 0), new TopicPartition("foo", 1)));
+			eh.onPartitionsAssigned(consumer, List.of(new TopicPartition("foo", 0), new TopicPartition("foo", 1)),
+					() -> pubPauseCalled.set(true));
 			return records;
 		}).given(consumer).poll(any());
-		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		KafkaMessageListenerContainer<?, ?> container = mock(KafkaMessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		eh.handle(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;
@@ -201,13 +204,16 @@ public class FallbackBatchErrorHandlerTests {
 		});
 		assertThat(this.invoked).isEqualTo(1);
 		assertThat(recovered).hasSize(2);
-		InOrder inOrder = inOrder(consumer);
+		InOrder inOrder = inOrder(consumer, container);
 		inOrder.verify(consumer).pause(any());
+		inOrder.verify(container).publishConsumerPausedEvent(map.keySet(), "For batch retry");
 		inOrder.verify(consumer).poll(any());
 		inOrder.verify(consumer).pause(any());
 		inOrder.verify(consumer).resume(any());
+		inOrder.verify(container).publishConsumerResumedEvent(map.keySet());
 		verify(consumer, times(3)).assignment();
 		verifyNoMoreInteractions(consumer);
+		assertThat(pubPauseCalled.get()).isTrue();
 	}
 
 	@Test

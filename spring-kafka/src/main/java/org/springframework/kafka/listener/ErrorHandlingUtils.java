@@ -17,10 +17,12 @@
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
@@ -62,7 +64,11 @@ public final class ErrorHandlingUtils {
 		BackOffExecution execution = backOff.start();
 		long nextBackOff = execution.nextBackOff();
 		String failed = null;
-		consumer.pause(consumer.assignment());
+		Set<TopicPartition> assignment = consumer.assignment();
+		consumer.pause(assignment);
+		if (container instanceof KafkaMessageListenerContainer) {
+			((KafkaMessageListenerContainer<?, ?>) container).publishConsumerPausedEvent(assignment, "For batch retry");
+		}
 		try {
 			while (nextBackOff != BackOffExecution.STOP) {
 				consumer.poll(Duration.ZERO);
@@ -99,7 +105,11 @@ public final class ErrorHandlingUtils {
 			}
 		}
 		finally {
-			consumer.resume(consumer.assignment());
+			Set<TopicPartition> assignment2 = consumer.assignment();
+			consumer.resume(assignment2);
+			if (container instanceof KafkaMessageListenerContainer) {
+				((KafkaMessageListenerContainer<?, ?>) container).publishConsumerResumedEvent(assignment2);
+			}
 		}
 	}
 
