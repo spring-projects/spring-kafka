@@ -157,7 +157,12 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 			return getFailureTracker().recovered(record, thrownException, container, consumer);
 		}
 		catch (Exception ex) {
-			logger.error(ex, "Failed to handle " + KafkaUtils.format(record) + " with " + thrownException);
+			if (SeekUtils.isBackoffException(thrownException)) {
+				this.logger.debug(ex, "Failed to handle " + KafkaUtils.format(record) + " with " + thrownException);
+			}
+			else {
+				this.logger.error(ex, "Failed to handle " + KafkaUtils.format(record) + " with " + thrownException);
+			}
 			return false;
 		}
 	}
