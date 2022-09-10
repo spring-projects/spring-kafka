@@ -247,7 +247,7 @@ public class DelegatingSerializer implements Serializer<Object> {
 
 	@Override
 	public void close() {
-		this.delegates.values().forEach(ser -> ser.close());
+		this.delegates.values().forEach(Serializer::close);
 	}
 
 }

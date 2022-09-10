@@ -44,7 +44,7 @@ public final class KafkaUtils {
 
 	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
 
-	private static Function<ProducerRecord<?, ?>, String> prFormatter = rec -> rec.toString();
+	private static Function<ProducerRecord<?, ?>, String> prFormatter = ProducerRecord::toString;
 
 	private static Function<ConsumerRecord<?, ?>, String> crFormatter =
 			rec -> rec.topic() + "-" + rec.partition() + "@" + rec.offset();

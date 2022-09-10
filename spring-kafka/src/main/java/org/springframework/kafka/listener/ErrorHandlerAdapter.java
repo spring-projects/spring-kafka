@@ -118,7 +118,7 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 			MessageListenerContainer container, boolean batchListener) {
 
 		if (this.errorHandler != null) {
-			this.errorHandler.handle(thrownException, Collections.EMPTY_LIST, consumer, container);
+			this.errorHandler.handle(thrownException, Collections.emptyList(), consumer, container);
 		}
 		else {
 			this.batchErrorHandler.handle(thrownException, EMPTY_BATCH, consumer, container, () -> { });

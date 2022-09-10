@@ -3447,7 +3447,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.assignedPartitions.removeAll(partitions);
 				}
 				ListenerConsumer.this.pausedForNack.removeAll(partitions);
-				partitions.forEach(tp -> ListenerConsumer.this.lastCommits.remove(tp));
+				partitions.forEach(ListenerConsumer.this.lastCommits::remove);
 				synchronized (ListenerConsumer.this) {
 					if (ListenerConsumer.this.offsetsInThisBatch != null) {
 						partitions.forEach(tp -> {

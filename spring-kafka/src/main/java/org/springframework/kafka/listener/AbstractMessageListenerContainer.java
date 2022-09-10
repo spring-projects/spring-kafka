@@ -551,9 +551,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					}
 				}
 				else {
-					doStop(() -> {
-						publishContainerStoppedEvent();
-					});
+					doStop(this::publishContainerStoppedEvent);
 				}
 			}
 		}

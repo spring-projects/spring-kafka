@@ -214,7 +214,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 
 	@Override
 	public void close() {
-		this.delegates.values().forEach(deser -> deser.close());
+		this.delegates.values().forEach(Deserializer::close);
 	}
 
 }

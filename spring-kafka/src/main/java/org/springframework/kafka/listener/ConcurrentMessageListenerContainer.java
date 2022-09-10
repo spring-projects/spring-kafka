@@ -233,10 +233,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		container.setBatchInterceptor(getBatchInterceptor());
 		container.setInterceptBeforeTx(isInterceptBeforeTx());
 		container.setListenerInfo(getListenerInfo());
-		container.setEmergencyStop(() -> {
-			stopAbnormally(() -> {
-			});
-		});
+		container.setEmergencyStop(() -> stopAbnormally(() -> {
+		}));
 		AsyncTaskExecutor exec = container.getContainerProperties().getListenerTaskExecutor();
 		if (exec == null) {
 			if ((this.executors.size() > index)) {
