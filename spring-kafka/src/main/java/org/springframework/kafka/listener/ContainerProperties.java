@@ -32,6 +32,7 @@ import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -262,6 +263,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean micrometerEnabled = true;
 
+	private boolean observationEnabled;
+
 	private Duration consumerStartTimeout = DEFAULT_CONSUMER_START_TIMEOUT;
 
 	private Boolean subBatchPerPartition;
@@ -281,6 +284,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean asyncAcks;
 
 	private boolean pauseImmediate;
+
+	private KafkaListenerObservationConvention observationConvention;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -635,11 +640,26 @@ public class ContainerProperties extends ConsumerProperties {
 
 	/**
 	 * Set to false to disable the Micrometer listener timers. Default true.
+	 * Disabled when {@link #setObservationEnabled(boolean)} is true.
 	 * @param micrometerEnabled false to disable.
 	 * @since 2.3
 	 */
 	public void setMicrometerEnabled(boolean micrometerEnabled) {
 		this.micrometerEnabled = micrometerEnabled;
+	}
+
+	public boolean isObservationEnabled() {
+		return this.observationEnabled;
+	}
+
+	/**
+	 * Set to true to enable observation via Micrometer.
+	 * @param observationEnabled true to enable.
+	 * @since 3.0
+	 * @see #setMicrometerEnabled(boolean)
+	 */
+	public void setObservationEnabled(boolean observationEnabled) {
+		this.observationEnabled = observationEnabled;
 	}
 
 	/**
@@ -912,6 +932,19 @@ public class ContainerProperties extends ConsumerProperties {
 		}
 	}
 
+	public KafkaListenerObservationConvention getObservationConvention() {
+		return this.observationConvention;
+	}
+
+	/**
+	 * Set a custom {@link KafkaListenerObservationConvention}.
+	 * @param observationConvention the convention.
+	 * @since 3.0
+	 */
+	public void setObservationConvention(KafkaListenerObservationConvention observationConvention) {
+		this.observationConvention = observationConvention;
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
@@ -942,7 +975,12 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n stopContainerWhenFenced=" + this.stopContainerWhenFenced
 				+ "\n stopImmediate=" + this.stopImmediate
 				+ "\n asyncAcks=" + this.asyncAcks
-				+ "\n idleBeforeDataMultiplier" + this.idleBeforeDataMultiplier
+				+ "\n idleBeforeDataMultiplier=" + this.idleBeforeDataMultiplier
+				+ "\n micrometerEnabled=" + this.micrometerEnabled
+				+ "\n observationEnabled=" + this.observationEnabled
+				+ (this.observationConvention != null
+						? "\n observationConvention=" + this.observationConvention
+						: "")
 				+ "\n]";
 	}
 

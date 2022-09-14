@@ -71,6 +71,7 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.log.LogAccessor;
@@ -106,6 +107,9 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
+import org.springframework.kafka.support.micrometer.DefaultKafkaListenerObservationConvention;
+import org.springframework.kafka.support.micrometer.KafkaListenerObservation;
+import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
@@ -125,6 +129,9 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 
 
 /**
@@ -358,7 +365,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		ListenerType listenerType = determineListenerType(listener);
-		this.listenerConsumer = new ListenerConsumer(listener, listenerType);
+		ObservationRegistry observationRegistry = null;
+		ApplicationContext applicationContext = getApplicationContext();
+		if (applicationContext != null) {
+			ObjectProvider<ObservationRegistry> registry =
+					applicationContext.getBeanProvider(ObservationRegistry.class);
+			observationRegistry = registry.getIfUnique();
+		}
+		this.listenerConsumer = new ListenerConsumer(listener, listenerType, observationRegistry);
 		setRunning(true);
 		this.startLatch = new CountDownLatch(1);
 		this.listenerConsumerFuture = consumerExecutor.submitCompletable(this.listenerConsumer);
@@ -759,6 +773,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean pauseImmediate = this.containerProperties.isPauseImmediate();
 
+		private final ObservationRegistry observationRegistry;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -799,16 +815,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean pauseForPending;
 
+		private boolean firstPoll;
+
 		private volatile boolean consumerPaused;
 
 		private volatile Thread consumerThread;
 
 		private volatile long lastPoll = System.currentTimeMillis();
 
-		private boolean firstPoll;
-
 		@SuppressWarnings(UNCHECKED)
-		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
+		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
+				@Nullable ObservationRegistry observationRegistry) {
+
+			this.observationRegistry = observationRegistry;
 			Properties consumerProperties = propertiesFromProperties();
 			checkGroupInstance(consumerProperties, KafkaMessageListenerContainer.this.consumerFactory);
 			this.autoCommit = determineAutoCommit(consumerProperties);
@@ -1226,7 +1245,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private MicrometerHolder obtainMicrometerHolder() {
 			MicrometerHolder holder = null;
 			try {
-				if (KafkaUtils.MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()) {
+				if (KafkaUtils.MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()
+						&& !this.containerProperties.isObservationEnabled()) {
+
 					holder = new MicrometerHolder(getApplicationContext(), getBeanName(),
 							"spring.kafka.listener", "Kafka Listener Timer",
 							this.containerProperties.getMicrometerTags());
@@ -2683,36 +2704,47 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				Iterator<ConsumerRecord<K, V>> iterator) {
 
 			Object sample = startMicrometerSample();
-
-			try {
-				invokeOnMessage(record);
-				successTimer(sample);
-				recordInterceptAfter(record, null);
+			Observation observation;
+			if (!this.containerProperties.isObservationEnabled() || this.observationRegistry == null) {
+				observation = Observation.NOOP;
 			}
-			catch (RuntimeException e) {
-				failureTimer(sample);
-				recordInterceptAfter(record, e);
-				if (this.commonErrorHandler == null) {
-					throw e;
-				}
+			else {
+				observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
+						this.containerProperties.getObservationConvention(),
+						DefaultKafkaListenerObservationConvention.INSTANCE,
+						new KafkaRecordReceiverContext(record, getListenerId()), this.observationRegistry);
+			}
+			return observation.observe(() -> {
 				try {
-					invokeErrorHandler(record, iterator, e);
-					commitOffsetsIfNeeded(record);
+					invokeOnMessage(record);
+					successTimer(sample);
+					recordInterceptAfter(record, null);
 				}
-				catch (KafkaException ke) {
-					ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
-					return ke;
+				catch (RuntimeException e) {
+					failureTimer(sample);
+					recordInterceptAfter(record, e);
+					if (this.commonErrorHandler == null) {
+						throw e;
+					}
+					try {
+						invokeErrorHandler(record, iterator, e);
+						commitOffsetsIfNeeded(record);
+					}
+					catch (KafkaException ke) {
+						ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
+						return ke;
+					}
+					catch (RuntimeException ee) {
+						this.logger.error(ee, ERROR_HANDLER_THREW_AN_EXCEPTION);
+						return ee;
+					}
+					catch (Error er) { // NOSONAR
+						this.logger.error(er, "Error handler threw an error");
+						throw er;
+					}
 				}
-				catch (RuntimeException ee) {
-					this.logger.error(ee, ERROR_HANDLER_THREW_AN_EXCEPTION);
-					return ee;
-				}
-				catch (Error er) { // NOSONAR
-					this.logger.error(er, "Error handler threw an error");
-					throw er;
-				}
-			}
-			return null;
+				return null;
+			});
 		}
 
 		private void commitOffsetsIfNeeded(final ConsumerRecord<K, V> record) {

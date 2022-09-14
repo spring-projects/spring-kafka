@@ -335,12 +335,14 @@ project ('spring-kafka') {
 		optionalApi 'io.projectreactor:reactor-core'
 		optionalApi 'io.projectreactor.kafka:reactor-kafka'
 		optionalApi 'io.micrometer:micrometer-core'
+		api 'io.micrometer:micrometer-observation'
 		optionalApi 'io.micrometer:micrometer-tracing'
 
 		testImplementation project (':spring-kafka-test')
 		testImplementation 'io.projectreactor:reactor-test'
 		testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 		testImplementation "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
+		testImplementation 'io.micrometer:micrometer-observation-test'
 		testImplementation 'io.micrometer:micrometer-tracing-bridge-brave'
 		testImplementation 'io.micrometer:micrometer-tracing-test'
 		testImplementation 'io.micrometer:micrometer-tracing-integration-test'
