@@ -692,6 +692,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	/**
 	 * Send the producer record.
 	 * @param producerRecord the producer record.
+	 * @param observation the observation.
 	 * @return a Future for the {@link org.apache.kafka.clients.producer.RecordMetadata
 	 * RecordMetadata}.
 	 */
