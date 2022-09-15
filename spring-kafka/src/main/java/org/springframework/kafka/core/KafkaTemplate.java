@@ -677,7 +677,17 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
 					new KafkaRecordSenderContext(producerRecord, this.beanName), this.observationRegistry);
 		}
-		return observation.observe(() -> doSend(producerRecord));
+		try {
+			observation.start();
+			return doSend(producerRecord, observation);
+		}
+		catch (RuntimeException ex) {
+			observation.error(ex);
+			throw ex;
+		}
+		finally {
+			observation.stop();
+		}
 	}
 	/**
 	 * Send the producer record.
@@ -685,7 +695,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * @return a Future for the {@link org.apache.kafka.clients.producer.RecordMetadata
 	 * RecordMetadata}.
 	 */
-	protected CompletableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
+	protected CompletableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord,
+			@Nullable Observation observation) {
+
 		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
 		this.logger.trace(() -> "Sending: " + KafkaUtils.format(producerRecord));
 		final CompletableFuture<SendResult<K, V>> future = new CompletableFuture<>();
@@ -697,7 +709,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			this.producerInterceptor.onSend(producerRecord);
 		}
 		Future<RecordMetadata> sendFuture =
-				producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample));
+				producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample, observation));
 		// May be an immediate failure
 		if (sendFuture.isDone()) {
 			try {
@@ -719,7 +731,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private Callback buildCallback(final ProducerRecord<K, V> producerRecord, final Producer<K, V> producer,
-			final CompletableFuture<SendResult<K, V>> future, @Nullable Object sample) {
+			final CompletableFuture<SendResult<K, V>> future, @Nullable Object sample, Observation observation) {
 
 		return (metadata, exception) -> {
 			try {
@@ -735,6 +747,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					if (sample != null) {
 						this.micrometerHolder.success(sample);
 					}
+					observation.stop();
 					future.complete(new SendResult<>(producerRecord, metadata));
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
@@ -746,6 +759,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					if (sample != null) {
 						this.micrometerHolder.failure(sample, exception.getClass().getSimpleName());
 					}
+					observation.error(exception);
+					observation.stop();
 					future.completeExceptionally(
 							new KafkaProducerException(producerRecord, "Failed to send", exception));
 					if (KafkaTemplate.this.producerListener != null) {
