@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
@@ -56,6 +57,7 @@ import io.micrometer.tracing.test.simple.SpansAssert;
  */
 public class ObservationIntegrationTests extends SampleTestRunner {
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public SampleTestRunnerConsumer yourCode() {
 		// template -> listener -> template -> listener
@@ -73,17 +75,19 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 			SpansAssert.assertThat(finishedSpans)
 					.haveSameTraceId()
 					.hasSize(4);
-			SpanAssert.assertThat(finishedSpans.get(0))
-					.hasKindEqualTo(Kind.PRODUCER)
+			List<FinishedSpan> producerSpans = finishedSpans.stream()
+					.filter(span -> span.getKind().equals(Kind.PRODUCER))
+					.collect(Collectors.toList());
+			List<FinishedSpan> consumerSpans = finishedSpans.stream()
+					.filter(span -> span.getKind().equals(Kind.CONSUMER))
+					.collect(Collectors.toList());
+			SpanAssert.assertThat(producerSpans.get(0))
 					.hasTag("spring.kafka.template.name", "template");
-			SpanAssert.assertThat(finishedSpans.get(1))
-					.hasKindEqualTo(Kind.CONSUMER)
+			SpanAssert.assertThat(producerSpans.get(1))
+					.hasTag("spring.kafka.template.name", "template");
+			SpanAssert.assertThat(consumerSpans.get(0))
 					.hasTag("spring.kafka.listener.id", "obs1-0");
-			SpanAssert.assertThat(finishedSpans.get(2))
-					.hasKindEqualTo(Kind.PRODUCER)
-					.hasTag("spring.kafka.template.name", "template");
-			SpanAssert.assertThat(finishedSpans.get(3))
-					.hasKindEqualTo(Kind.CONSUMER)
+			SpanAssert.assertThat(consumerSpans.get(1))
 					.hasTag("spring.kafka.listener.id", "obs2-0");
 
 			MeterRegistryAssert.assertThat(getMeterRegistry())
