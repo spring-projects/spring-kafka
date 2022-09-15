@@ -40,11 +40,6 @@ public class DefaultKafkaListenerObservationConvention implements KafkaListenerO
 	}
 
 	@Override
-	public KeyValues getHighCardinalityKeyValues(KafkaRecordReceiverContext context) {
-		return KeyValues.empty();
-	}
-
-	@Override
 	public String getContextualName(KafkaRecordReceiverContext context) {
 		return context.getSource() + " receive";
 	}

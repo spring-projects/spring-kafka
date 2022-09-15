@@ -65,7 +65,7 @@ public enum KafkaTemplateObservation implements DocumentedObservation {
 
 			@Override
 			public String asString() {
-				return "bean.name";
+				return "spring.kafka.template.name";
 			}
 
 		}

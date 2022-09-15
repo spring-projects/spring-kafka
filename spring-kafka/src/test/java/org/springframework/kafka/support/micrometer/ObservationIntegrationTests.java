@@ -75,22 +75,26 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 					.hasSize(4);
 			SpanAssert.assertThat(finishedSpans.get(0))
 					.hasKindEqualTo(Kind.PRODUCER)
-					.hasTag("bean.name", "template");
+					.hasTag("spring.kafka.template.name", "template");
 			SpanAssert.assertThat(finishedSpans.get(1))
 					.hasKindEqualTo(Kind.PRODUCER)
-					.hasTag("bean.name", "template");
+					.hasTag("spring.kafka.template.name", "template");
 			SpanAssert.assertThat(finishedSpans.get(2))
 					.hasKindEqualTo(Kind.CONSUMER)
-					.hasTag("listener.id", "obs1-0");
+					.hasTag("spring.kafka.listener.id", "obs1-0");
 			SpanAssert.assertThat(finishedSpans.get(3))
 					.hasKindEqualTo(Kind.CONSUMER)
-					.hasTag("listener.id", "obs2-0");
+					.hasTag("spring.kafka.listener.id", "obs2-0");
 
 			MeterRegistryAssert.assertThat(getMeterRegistry())
-					.hasTimerWithNameAndTags("spring.kafka.template", KeyValues.of("bean.name", "template"))
-					.hasTimerWithNameAndTags("spring.kafka.template", KeyValues.of("bean.name", "template"))
-					.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("listener.id", "obs1-0"))
-					.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("listener.id", "obs2-0"));
+					.hasTimerWithNameAndTags("spring.kafka.template",
+							KeyValues.of("spring.kafka.template.name", "template"))
+					.hasTimerWithNameAndTags("spring.kafka.template",
+							KeyValues.of("spring.kafka.template.name", "template"))
+					.hasTimerWithNameAndTags("spring.kafka.listener",
+							KeyValues.of("spring.kafka.listener.id", "obs1-0"))
+					.hasTimerWithNameAndTags("spring.kafka.listener",
+							KeyValues.of("spring.kafka.listener.id", "obs2-0"));
 		};
 	}
 

@@ -47,6 +47,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.lang.Nullable;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import io.micrometer.common.KeyValues;
@@ -74,6 +75,7 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
  */
 @SpringJUnitConfig
 @EmbeddedKafka(topics = { "observation.testT1", "observation.testT2" })
+@DirtiesContext
 public class ObservationTests {
 
 	@Test
@@ -91,18 +93,20 @@ public class ObservationTests {
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		assertThat(spans).hasSize(4);
 		SimpleSpan span = spans.poll();
-		assertThat(span.getTags()).containsEntry("bean.name", "template");
+		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getName()).isEqualTo("observation.testT1 send");
 		span = spans.poll();
 		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("listener.id", "obs1-0", "foo", "some foo value", "bar", "some bar value"));
+				.containsAllEntriesOf(
+						Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar", "some bar value"));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
 		span = spans.poll();
-		assertThat(span.getTags()).containsEntry("bean.name", "template");
+		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getName()).isEqualTo("observation.testT2 send");
 		span = spans.poll();
 		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("listener.id", "obs2-0", "foo", "some foo value", "bar", "some bar value"));
+				.containsAllEntriesOf(
+						Map.of("spring.kafka.listener.id", "obs2-0", "foo", "some foo value", "bar", "some bar value"));
 		assertThat(span.getName()).isEqualTo("observation.testT2 receive");
 		template.setObservationConvention(new DefaultKafkaTemplateObservationConvention() {
 
@@ -131,31 +135,33 @@ public class ObservationTests {
 		assertThat(headers.lastHeader("bar")).extracting(hdr -> hdr.value()).isEqualTo("some bar value".getBytes());
 		assertThat(spans).hasSize(4);
 		span = spans.poll();
-		assertThat(span.getTags()).containsEntry("bean.name", "template");
+		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getTags()).containsEntry("foo", "bar");
 		assertThat(span.getName()).isEqualTo("observation.testT1 send");
 		span = spans.poll();
 		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("listener.id", "obs1-0", "foo", "some foo value", "bar", "some bar value",
-						"baz", "qux"));
+				.containsAllEntriesOf(Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar",
+						"some bar value", "baz", "qux"));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
 		span = spans.poll();
-		assertThat(span.getTags()).containsEntry("bean.name", "template");
+		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getTags()).containsEntry("foo", "bar");
 		assertThat(span.getName()).isEqualTo("observation.testT2 send");
 		span = spans.poll();
 		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("listener.id", "obs2-0", "foo", "some foo value", "bar", "some bar value"));
+				.containsAllEntriesOf(
+						Map.of("spring.kafka.listener.id", "obs2-0", "foo", "some foo value", "bar", "some bar value"));
 		assertThat(span.getTags()).doesNotContainEntry("baz", "qux");
 		assertThat(span.getName()).isEqualTo("observation.testT2 receive");
 		MeterRegistryAssert.assertThat(meterRegistry)
-				.hasTimerWithNameAndTags("spring.kafka.template", KeyValues.of("bean.name", "template"))
 				.hasTimerWithNameAndTags("spring.kafka.template",
-						KeyValues.of("bean.name", "template", "foo", "bar"))
-				.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("listener.id", "obs1-0"))
+						KeyValues.of("spring.kafka.template.name", "template"))
+				.hasTimerWithNameAndTags("spring.kafka.template",
+						KeyValues.of("spring.kafka.template.name", "template", "foo", "bar"))
+				.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("spring.kafka.listener.id", "obs1-0"))
 				.hasTimerWithNameAndTags("spring.kafka.listener",
-						KeyValues.of("listener.id", "obs1-0", "baz", "qux"))
-				.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("listener.id", "obs2-0"));
+						KeyValues.of("spring.kafka.listener.id", "obs1-0", "baz", "qux"))
+				.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("spring.kafka.listener.id", "obs2-0"));
 	}
 
 	@Configuration

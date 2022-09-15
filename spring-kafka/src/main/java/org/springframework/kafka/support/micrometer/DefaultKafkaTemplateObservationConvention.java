@@ -40,11 +40,6 @@ public class DefaultKafkaTemplateObservationConvention implements KafkaTemplateO
 	}
 
 	@Override
-	public KeyValues getHighCardinalityKeyValues(KafkaRecordSenderContext context) {
-		return KeyValues.empty();
-	}
-
-	@Override
 	public String getContextualName(KafkaRecordSenderContext context) {
 		return context.getDestination() + " send";
 	}

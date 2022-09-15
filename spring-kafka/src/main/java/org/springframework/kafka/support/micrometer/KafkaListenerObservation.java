@@ -65,7 +65,7 @@ public enum KafkaListenerObservation implements DocumentedObservation {
 
 			@Override
 			public String asString() {
-				return "listener.id";
+				return "spring.kafka.listener.id";
 			}
 
 		}
