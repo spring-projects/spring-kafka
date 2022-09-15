@@ -3310,7 +3310,6 @@ IMPORTANT: By default, the application context's event multicaster invokes event
 If you change the multicaster to use an async executor, thread cleanup is not effective.
 
 [[micrometer]]
-
 ==== Monitoring
 
 ===== Monitoring Listener Performance
@@ -3397,6 +3396,21 @@ double count = this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
 ====
 
 A similar listener is provided for the `StreamsBuilderFactoryBean` - see <<streams-micrometer>>.
+
+[[observation]]
+===== Micrometer Observation
+
+Using Micrometer for observation is now supported, since version 3.0, for the `KafkaTemplate` and listener containers.
+
+Set `observationEnabled` on each component to enable observation; this will disable <<micrometer,Micrometer Timers>> because the timers will now be managed with each observation.
+
+Refer to https://micrometer.io/docs/tracing#_running_integration_tests[Micrometer Tracing] for more information.
+
+To add tags to timers/traces, configure a custom `KafkaTemplateObservationConvention` or `KafkaListenerObservationConvention` to the template or listener container, respectively.
+
+The default implementations add the `bean.name` tag for template observations and `listener.id` tag for containers.
+
+You can either subclass `DefaultKafkaTemplateObservationConvention` or `DefaultKafkaListenerObservationConvention` or provide completely new implementations.
 
 [[transactions]]
 ==== Transactions
