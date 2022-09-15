@@ -3404,7 +3404,7 @@ Using Micrometer for observation is now supported, since version 3.0, for the `K
 
 Set `observationEnabled` on each component to enable observation; this will disable <<micrometer,Micrometer Timers>> because the timers will now be managed with each observation.
 
-Refer to https://micrometer.io/docs/tracing#_running_integration_tests[Micrometer Tracing] for more information.
+Refer to https://micrometer.io/docs/tracing[Micrometer Tracing] for more information.
 
 To add tags to timers/traces, configure a custom `KafkaTemplateObservationConvention` or `KafkaListenerObservationConvention` to the template or listener container, respectively.
 
