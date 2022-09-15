@@ -683,10 +683,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		}
 		catch (RuntimeException ex) {
 			observation.error(ex);
-			throw ex;
-		}
-		finally {
 			observation.stop();
+			throw ex;
 		}
 	}
 	/**

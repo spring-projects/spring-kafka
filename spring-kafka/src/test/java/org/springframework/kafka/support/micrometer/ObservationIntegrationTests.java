@@ -77,11 +77,11 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 					.hasKindEqualTo(Kind.PRODUCER)
 					.hasTag("spring.kafka.template.name", "template");
 			SpanAssert.assertThat(finishedSpans.get(1))
-					.hasKindEqualTo(Kind.PRODUCER)
-					.hasTag("spring.kafka.template.name", "template");
-			SpanAssert.assertThat(finishedSpans.get(2))
 					.hasKindEqualTo(Kind.CONSUMER)
 					.hasTag("spring.kafka.listener.id", "obs1-0");
+			SpanAssert.assertThat(finishedSpans.get(2))
+					.hasKindEqualTo(Kind.PRODUCER)
+					.hasTag("spring.kafka.template.name", "template");
 			SpanAssert.assertThat(finishedSpans.get(3))
 					.hasKindEqualTo(Kind.CONSUMER)
 					.hasTag("spring.kafka.listener.id", "obs2-0");
