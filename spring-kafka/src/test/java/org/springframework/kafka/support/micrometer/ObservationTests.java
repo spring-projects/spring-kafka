@@ -79,7 +79,7 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
 public class ObservationTests {
 
 	@Test
-	void endToEnd(@Autowired Listener listener, @Autowired KafkaTemplate<Integer, String>template,
+	void endToEnd(@Autowired Listener listener, @Autowired KafkaTemplate<Integer, String> template,
 			@Autowired SimpleTracer tracer, @Autowired KafkaListenerEndpointRegistry rler,
 			@Autowired MeterRegistry meterRegistry)
 					throws InterruptedException, ExecutionException, TimeoutException {
@@ -251,7 +251,7 @@ public class ObservationTests {
 		}
 
 		@Bean
-		Listener listener(KafkaTemplate<Integer, String>template) {
+		Listener listener(KafkaTemplate<Integer, String> template) {
 			return new Listener(template);
 		}
 
