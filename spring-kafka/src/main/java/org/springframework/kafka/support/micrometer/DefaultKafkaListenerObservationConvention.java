@@ -44,4 +44,9 @@ public class DefaultKafkaListenerObservationConvention implements KafkaListenerO
 		return KeyValues.empty();
 	}
 
+	@Override
+	public String getContextualName(KafkaRecordReceiverContext context) {
+		return context.getSource() + " receive";
+	}
+
 }
