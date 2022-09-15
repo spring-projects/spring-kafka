@@ -175,8 +175,8 @@ public class ObservationTests {
 		}
 
 		@Bean
-		KafkaTemplate template(ProducerFactory<Integer, String> pf) {
-			KafkaTemplate template = new KafkaTemplate(pf);
+		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf) {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 			template.setObservationEnabled(true);
 			return template;
 		}
@@ -261,7 +261,7 @@ public class ObservationTests {
 
 		volatile ConsumerRecord<?, ?> record;
 
-		public Listener(KafkaTemplate template) {
+		public Listener(KafkaTemplate<Integer, String> template) {
 			this.template = template;
 		}
 

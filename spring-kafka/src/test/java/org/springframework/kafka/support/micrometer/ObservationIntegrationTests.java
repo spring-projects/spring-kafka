@@ -117,8 +117,8 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 		}
 
 		@Bean
-		KafkaTemplate template(ProducerFactory<Integer, String> pf) {
-			KafkaTemplate template = new KafkaTemplate(pf);
+		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf) {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 			template.setObservationEnabled(true);
 			return template;
 		}
