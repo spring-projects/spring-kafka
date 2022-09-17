@@ -46,11 +46,6 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 		return this.beanName;
 	}
 
-	@Override
-	public String getName() {
-		return "spring.kafka.template";
-	}
-
 	/**
 	 * Return the destination topic.
 	 * @return the topic.

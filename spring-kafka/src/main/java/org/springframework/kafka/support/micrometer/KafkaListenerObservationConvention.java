@@ -33,4 +33,9 @@ public interface KafkaListenerObservationConvention extends ObservationConventio
 		return context instanceof KafkaRecordReceiverContext;
 	}
 
+	@Override
+	default String getName() {
+		return "spring.kafka.listener";
+	}
+
 }

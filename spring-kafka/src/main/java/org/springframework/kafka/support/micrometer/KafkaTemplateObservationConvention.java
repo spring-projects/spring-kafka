@@ -33,4 +33,9 @@ public interface KafkaTemplateObservationConvention extends ObservationConventio
 		return context instanceof KafkaRecordSenderContext;
 	}
 
+	@Override
+	default String getName() {
+		return "spring.kafka.template";
+	}
+
 }

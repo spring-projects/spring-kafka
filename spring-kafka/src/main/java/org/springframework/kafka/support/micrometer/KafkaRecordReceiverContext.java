@@ -53,11 +53,6 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 		return this.listenerId;
 	}
 
-	@Override
-	public String getName() {
-		return "spring.kafka.listener";
-	}
-
 	/**
 	 * Return the source topic.
 	 * @return the source.
