@@ -86,9 +86,13 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 			SpanAssert.assertThat(producerSpans.get(1))
 					.hasTag("spring.kafka.template.name", "template");
 			SpanAssert.assertThat(consumerSpans.get(0))
-					.hasTag("spring.kafka.listener.id", "obs1-0");
+					.hasTagWithKey("spring.kafka.listener.id");
+			assertThat(consumerSpans.get(0).getTags().get("spring.kafka.listener.id")).isIn("obs1-0", "obs2-0");
 			SpanAssert.assertThat(consumerSpans.get(1))
-					.hasTag("spring.kafka.listener.id", "obs2-0");
+					.hasTagWithKey("spring.kafka.listener.id");
+			assertThat(consumerSpans.get(1).getTags().get("spring.kafka.listener.id")).isIn("obs1-0", "obs2-0");
+			assertThat(consumerSpans.get(0).getTags().get("spring.kafka.listener.id"))
+					.isNotEqualTo(consumerSpans.get(1).getTags().get("spring.kafka.listener.id"));
 
 			MeterRegistryAssert.assertThat(getMeterRegistry())
 					.hasTimerWithNameAndTags("spring.kafka.template",

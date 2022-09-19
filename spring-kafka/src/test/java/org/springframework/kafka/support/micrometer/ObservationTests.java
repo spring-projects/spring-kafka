@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.micrometer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.util.Arrays;
 import java.util.Deque;
@@ -100,9 +101,11 @@ public class ObservationTests {
 				.containsAllEntriesOf(
 						Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar", "some bar value"));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
+		await().until(() -> spans.peekFirst().getTags().size() == 1);
 		span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getName()).isEqualTo("observation.testT2 send");
+		await().until(() -> spans.peekFirst().getTags().size() == 3);
 		span = spans.poll();
 		assertThat(span.getTags())
 				.containsAllEntriesOf(
@@ -138,15 +141,18 @@ public class ObservationTests {
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getTags()).containsEntry("foo", "bar");
 		assertThat(span.getName()).isEqualTo("observation.testT1 send");
+		await().until(() -> spans.peekFirst().getTags().size() == 4);
 		span = spans.poll();
 		assertThat(span.getTags())
 				.containsAllEntriesOf(Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar",
 						"some bar value", "baz", "qux"));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
+		await().until(() -> spans.peekFirst().getTags().size() == 2);
 		span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getTags()).containsEntry("foo", "bar");
 		assertThat(span.getName()).isEqualTo("observation.testT2 send");
+		await().until(() -> spans.peekFirst().getTags().size() == 3);
 		span = spans.poll();
 		assertThat(span.getTags())
 				.containsAllEntriesOf(
