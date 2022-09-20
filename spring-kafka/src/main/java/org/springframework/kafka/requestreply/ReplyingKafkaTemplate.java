@@ -84,7 +84,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private final GenericMessageListenerContainer<K, R> replyContainer;
 
-	private final ConcurrentMap<CorrelationKey, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
+	private final ConcurrentMap<Object, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
 
 	private final byte[] replyTopic;
 
@@ -102,7 +102,10 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private boolean sharedReplyTopic;
 
-	private Function<ProducerRecord<K, V>, CorrelationKey> correlationStrategy = ReplyingKafkaTemplate::defaultCorrelationIdStrategy;
+	private Function<ProducerRecord<K, V>, CorrelationKey> correlationStrategy =
+			ReplyingKafkaTemplate::defaultCorrelationIdStrategy;
+
+	private boolean binaryCorrelation = true;
 
 	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
 
@@ -292,6 +295,20 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.replyErrorChecker = replyErrorChecker;
 	}
 
+	/**
+	 * Set to false to use the String representation of the correlation as the
+	 * correlationId rather than the binary representation. Default true.
+	 * @param binaryCorrelation false for String.
+	 * @since 3.0
+	 */
+	public void setBinaryCorrelation(boolean binaryCorrelation) {
+		this.binaryCorrelation = binaryCorrelation;
+	}
+
+	protected boolean isBinaryCorrelation() {
+		return this.binaryCorrelation;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		if (!this.schedulerSet && !this.schedulerInitialized) {
@@ -407,22 +424,26 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 				headers.add(new RecordHeader(this.replyPartitionHeaderName, this.replyPartition));
 			}
 		}
-		headers.add(new RecordHeader(this.correlationHeaderName, correlationId.getCorrelationId()));
+		Object correlation = this.binaryCorrelation ? correlationId : correlationId.toString();
+		byte[] correlationValue = this.binaryCorrelation
+				? correlationId.getCorrelationId()
+				: ((String) correlation).getBytes(StandardCharsets.UTF_8);
+		headers.add(new RecordHeader(this.correlationHeaderName, correlationValue));
 		this.logger.debug(() -> "Sending: " + KafkaUtils.format(record) + WITH_CORRELATION_ID + correlationId);
 		RequestReplyFuture<K, V, R> future = new RequestReplyFuture<>();
-		this.futures.put(correlationId, future);
+		this.futures.put(correlation, future);
 		try {
 			future.setSendFuture(send(record));
 		}
 		catch (Exception e) {
-			this.futures.remove(correlationId);
+			this.futures.remove(correlation);
 			throw new KafkaException("Send failed", e);
 		}
-		scheduleTimeout(record, correlationId, timeout);
+		scheduleTimeout(record, correlation, timeout);
 		return future;
 	}
 
-	private void scheduleTimeout(ProducerRecord<K, V> record, CorrelationKey correlationId, Duration replyTimeout) {
+	private void scheduleTimeout(ProducerRecord<K, V> record, Object correlationId, Duration replyTimeout) {
 		this.scheduler.schedule(() -> {
 			RequestReplyFuture<K, V, R> removed = this.futures.remove(correlationId);
 			if (removed != null) {
@@ -443,7 +464,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * @return true to indicate the future has been completed.
 	 * @since 2.3
 	 */
-	protected boolean handleTimeout(@SuppressWarnings("unused") CorrelationKey correlationId,
+	protected boolean handleTimeout(@SuppressWarnings("unused") Object correlationId,
 			@SuppressWarnings("unused") RequestReplyFuture<K, V, R> future) {
 
 		return false;
@@ -455,7 +476,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * @return true if pending.
 	 * @since 2.3
 	 */
-	protected boolean isPending(CorrelationKey correlationId) {
+	protected boolean isPending(Object correlationId) {
 		return this.futures.containsKey(correlationId);
 	}
 
@@ -481,9 +502,11 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	public void onMessage(List<ConsumerRecord<K, R>> data) {
 		data.forEach(record -> {
 			Header correlationHeader = record.headers().lastHeader(this.correlationHeaderName);
-			CorrelationKey correlationId = null;
+			Object correlationId = null;
 			if (correlationHeader != null) {
-				correlationId = new CorrelationKey(correlationHeader.value());
+				correlationId = this.binaryCorrelation
+						? new CorrelationKey(correlationHeader.value())
+						: new String(correlationHeader.value(), StandardCharsets.UTF_8);
 			}
 			if (correlationId == null) {
 				this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.format(record)
@@ -492,7 +515,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 			}
 			else {
 				RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);
-				CorrelationKey correlationKey = correlationId;
+				Object correlationKey = correlationId;
 				if (future == null) {
 					logLateArrival(record, correlationId);
 				}
@@ -562,7 +585,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		return null;
 	}
 
-	protected void logLateArrival(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
+	protected void logLateArrival(ConsumerRecord<K, R> record, Object correlationId) {
 		if (this.sharedReplyTopic) {
 			this.logger.debug(() -> missingCorrelationLogMessage(record, correlationId));
 		}
@@ -571,7 +594,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		}
 	}
 
-	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, CorrelationKey correlationId) {
+	private String missingCorrelationLogMessage(ConsumerRecord<K, R> record, Object correlationId) {
 		return "No pending reply: " + KafkaUtils.format(record) + WITH_CORRELATION_ID
 				+ correlationId + ", perhaps timed out, or using a shared reply topic";
 	}
