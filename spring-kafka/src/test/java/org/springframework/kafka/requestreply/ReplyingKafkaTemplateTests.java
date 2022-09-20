@@ -493,7 +493,7 @@ public class ReplyingKafkaTemplateTests {
 	}
 
 	@Test
-	public void testAggregateNormaStringCorrelationl() throws Exception {
+	public void testAggregateNormalStringCorrelation() throws Exception {
 		AggregatingReplyingKafkaTemplate<Integer, String, String> template = aggregatingTemplate(
 				new TopicPartitionOffset(D_REPLY, 0), 2, new AtomicInteger());
 		try {
