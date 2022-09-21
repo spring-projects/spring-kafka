@@ -143,6 +143,9 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware implements C
 
 	private final class SeekAfterRecoverFailsOrInterrupted implements CommonErrorHandler {
 
+		SeekAfterRecoverFailsOrInterrupted() {
+		}
+
 		@Override
 		public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 				MessageListenerContainer container, Runnable invokeListener) {
