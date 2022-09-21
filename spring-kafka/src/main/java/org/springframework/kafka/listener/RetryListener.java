@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 /**
  * A listener for retry activity.
@@ -51,6 +52,33 @@ public interface RetryListener {
 	 * @param failure the exception thrown by the recoverer.
 	 */
 	default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+	}
+
+	/**
+	 * Called after a delivery failed for batch records.
+	 * @param records the records.
+	 * @param ex the exception.
+	 * @param deliveryAttempt the delivery attempt, if available.
+	 * @since 2.8.10
+	 */
+	default void failedDelivery(ConsumerRecords<?, ?> records, Exception ex, int deliveryAttempt) {
+	}
+
+	/**
+	 * Called after a failing record was successfully recovered.
+	 * @param records the record.
+	 * @param ex the exception.
+	 */
+	default void recovered(ConsumerRecords<?, ?> records, Exception ex) {
+	}
+
+	/**
+	 * Called after a recovery attempt failed.
+	 * @param records the record.
+	 * @param original the original exception causing the recovery attempt.
+	 * @param failure the exception thrown by the recoverer.
+	 */
+	default void recoveryFailed(ConsumerRecords<?, ?> records, Exception original, Exception failure) {
 	}
 
 }

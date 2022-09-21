@@ -5279,6 +5279,7 @@ public DefaultErrorHandler errorHandler(ConsumerRecordRecoverer recoverer) {
 ====
 
 The error handler can be configured with one or more `RetryListener` s, receiving notifications of retry and recovery progress.
+Starting with version 2.8.10, methods for batch listeners were added.
 
 ====
 [source, java]
@@ -5293,6 +5294,15 @@ public interface RetryListener {
 
     default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
     }
+
+	default void failedDelivery(ConsumerRecords<?, ?> records, Exception ex, int deliveryAttempt) {
+	}
+
+	default void recovered(ConsumerRecords<?, ?> records, Exception ex) {
+	}
+
+	default void recoveryFailed(ConsumerRecords<?, ?> records, Exception original, Exception failure) {
+	}
 
 }
 ----

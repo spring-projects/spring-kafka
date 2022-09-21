@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -53,6 +55,8 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private final FailedRecordTracker failureTracker;
+
+	private final List<RetryListener> retryListeners = new ArrayList<>();
 
 	private boolean commitRecovered;
 
@@ -130,7 +134,14 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @since 2.7
 	 */
 	public void setRetryListeners(RetryListener... listeners) {
+		Assert.noNullElements(listeners, "'listeners' cannot have null elements");
 		this.failureTracker.setRetryListeners(listeners);
+		this.retryListeners.clear();
+		this.retryListeners.addAll(Arrays.asList(listeners));
+	}
+
+	protected List<RetryListener> getRetryListeners() {
+		return this.retryListeners;
 	}
 
 	/**

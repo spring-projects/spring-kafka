@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -27,6 +28,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
 
@@ -39,7 +41,26 @@ import org.springframework.util.backoff.BackOffExecution;
  */
 public final class ErrorHandlingUtils {
 
+	private static final ThreadLocal<List<RetryListener>> retryListeners = new ThreadLocal<>();
+
 	private ErrorHandlingUtils() {
+	}
+
+	/**
+	 * Set the retry listeners.
+	 * @param listeners the listeners.
+	 * @since 2.8.10
+	 */
+	public static void setRetryListeners(List<RetryListener> listeners) {
+		retryListeners.set(listeners);
+	}
+
+	/**
+	 * Clear the retry listeners.
+	 * @since 2.8.10
+	 */
+	public static void clearRetryListeners() {
+		retryListeners.remove();
 	}
 
 	/**
@@ -67,6 +88,9 @@ public final class ErrorHandlingUtils {
 		String failed = null;
 		Set<TopicPartition> assignment = consumer.assignment();
 		consumer.pause(assignment);
+		List<RetryListener> listeners = retryListeners.get();
+		int attempt = 1;
+		listen(listeners, records, thrownException, attempt++);
 		if (container instanceof KafkaMessageListenerContainer) {
 			((KafkaMessageListenerContainer<?, ?>) container).publishConsumerPausedEvent(assignment, "For batch retry");
 		}
@@ -88,20 +112,27 @@ public final class ErrorHandlingUtils {
 					invokeListener.run();
 					return;
 				}
-				catch (Exception e) {
+				catch (Exception ex) {
+					listen(listeners, records, ex, attempt++);
 					if (failed == null) {
 						failed = recordsToString(records);
 					}
 					String toLog = failed;
-					logger.debug(e, () -> "Retry failed for: " + toLog);
+					logger.debug(ex, () -> "Retry failed for: " + toLog);
 				}
 				nextBackOff = execution.nextBackOff();
 			}
 			try {
 				recoverer.accept(records, thrownException);
+				if (listeners != null) {
+					listeners.forEach(listener -> listener.recovered(records, thrownException));
+				}
 			}
-			catch (Exception e) {
-				logger.error(e, () -> "Recoverer threw an exception; re-seeking batch");
+			catch (Exception ex) {
+				logger.error(ex, () -> "Recoverer threw an exception; re-seeking batch");
+				if (listeners != null) {
+					listeners.forEach(listener -> listener.recoveryFailed(records, thrownException, ex));
+				}
 				seeker.handleBatch(thrownException, records, consumer, container, () -> { });
 			}
 		}
@@ -111,6 +142,14 @@ public final class ErrorHandlingUtils {
 			if (container instanceof KafkaMessageListenerContainer) {
 				((KafkaMessageListenerContainer<?, ?>) container).publishConsumerResumedEvent(assignment2);
 			}
+		}
+	}
+
+	private static void listen(@Nullable List<RetryListener> listeners, ConsumerRecords<?, ?> records,
+			Exception thrownException, int attempt) {
+
+		if (listeners != null) {
+			listeners.forEach(listener -> listener.failedDelivery(records, thrownException, attempt));
 		}
 	}
 

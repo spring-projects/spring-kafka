@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
@@ -203,6 +205,33 @@ public class DefaultErrorHandlerBatchTests {
 					records, mockConsumer, mock(MessageListenerContainer.class), () -> { }))
 				.withMessageStartingWith("Seek to current after exception");
 		verify(mockConsumer).seek(tp, 0L);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void fallbackListener() {
+		Consumer mockConsumer = mock(Consumer.class);
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
+		DefaultErrorHandler beh = new DefaultErrorHandler(recoverer, new FixedBackOff(0, 2));
+		RetryListener retryListener = mock(RetryListener.class);
+		beh.setRetryListeners(retryListener);
+		TopicPartition tp = new TopicPartition("foo", 0);
+		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
+				List.of(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+								new RecordHeaders(), Optional.empty()),
+						new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+								new RecordHeaders(), Optional.empty()))));
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		beh.handleBatch(new ListenerExecutionFailedException("test"),
+				records, mockConsumer, container, () -> {
+					throw new ListenerExecutionFailedException("test");
+				});
+		verify(retryListener).failedDelivery(any(ConsumerRecords.class), any(), eq(1));
+		verify(retryListener).failedDelivery(any(ConsumerRecords.class), any(), eq(2));
+		verify(retryListener).failedDelivery(any(ConsumerRecords.class), any(), eq(3));
+		verify(recoverer, times(2)).accept(any(), any()); // each record in batch
+		verify(retryListener).recovered(any(ConsumerRecords.class), any());
 	}
 
 	@Configuration
