@@ -23,7 +23,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.core.log.LogAccessor;
@@ -170,37 +169,6 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	@Override
 	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
 		return this.failureTracker.deliveryAttempt(topicPartitionOffset);
-	}
-
-	/**
-	 * Return a {@link RecoveryStrategy} to call to determine whether the first record in the
-	 * list should be skipped.
-	 * @param records the records.
-	 * @param thrownException the exception.
-	 * @return the {@link RecoveryStrategy}.
-	 * @since 2.7
-	 * @deprecated - no longer used.
-	 */
-	@Deprecated
-	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records, Exception thrownException) {
-		return getRecoveryStrategy(records, null, thrownException);
-	}
-
-	/**
-	 * Return a {@link RecoveryStrategy} to call to determine whether the first record in the
-	 * list should be skipped.
-	 * @param records the records.
-	 * @param recoveryConsumer the consumer.
-	 * @param thrownException the exception.
-	 * @return the {@link RecoveryStrategy}.
-	 * @since 2.8.4
-	 * @deprecated - no longer used.
-	 */
-	@Deprecated
-	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records,
-												@Nullable Consumer<?, ?> recoveryConsumer, Exception thrownException) {
-
-		return this.failureTracker::recovered;
 	}
 
 	/**

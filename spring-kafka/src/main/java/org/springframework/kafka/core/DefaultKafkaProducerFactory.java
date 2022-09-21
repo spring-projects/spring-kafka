@@ -440,7 +440,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
 	 * longer supported.
 	 */
-	@Deprecated
+	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
 	public void setProducerPerConsumerPartition(boolean producerPerConsumerPartition) {
 	}
 
@@ -452,7 +452,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
 	 * longer supported.
 	 */
-	@Deprecated
+	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
 	@Override
 	public boolean isProducerPerConsumerPartition() {
 		return false;

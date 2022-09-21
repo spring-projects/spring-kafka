@@ -84,7 +84,7 @@ public interface ProducerFactory<K, V> {
 	 * @since 1.3.8
 	 * @deprecated - no longer needed.
 	 */
-	@Deprecated
+	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
 	default void closeProducerFor(String transactionIdSuffix) {
 	}
 
@@ -96,7 +96,7 @@ public interface ProducerFactory<K, V> {
 	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
 	 * longer supported.
 	 */
-	@Deprecated
+	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
 	default boolean isProducerPerConsumerPartition() {
 		return false;
 	}

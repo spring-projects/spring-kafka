@@ -28,7 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @author Gary Russell
  * @deprecated in favor of {@link CommonErrorHandler}.
  */
-@Deprecated
+@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 public interface ErrorHandler extends GenericErrorHandler<ConsumerRecord<?, ?>> {
 
 	/**

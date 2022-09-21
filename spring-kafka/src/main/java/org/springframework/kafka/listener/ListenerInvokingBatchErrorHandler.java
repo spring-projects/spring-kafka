@@ -29,7 +29,7 @@ import org.springframework.lang.Nullable;
  * @deprecated in favor of {@link CommonErrorHandler}.
  *
  */
-@Deprecated
+@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 @FunctionalInterface
 public interface ListenerInvokingBatchErrorHandler extends ContainerAwareBatchErrorHandler {
 

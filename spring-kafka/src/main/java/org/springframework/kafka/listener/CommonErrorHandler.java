@@ -47,7 +47,7 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * @see #handleRecord(Exception, ConsumerRecord, Consumer, MessageListenerContainer)
 	 * @see #handleRemaining(Exception, List, Consumer, MessageListenerContainer)
 	 */
-	@Deprecated
+	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
 	default boolean remainingRecords() {
 		return false;
 	}
@@ -97,7 +97,7 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * {@link #handleOne(Exception, ConsumerRecord, Consumer, MessageListenerContainer)}.
 	 * @see #remainingRecords()
 	 */
-	@Deprecated
+	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
 	default void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 

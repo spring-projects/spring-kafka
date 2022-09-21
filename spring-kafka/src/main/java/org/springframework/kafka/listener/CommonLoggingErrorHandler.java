@@ -48,7 +48,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 	}
 
 	@Override
-	@Deprecated
+	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
 	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 

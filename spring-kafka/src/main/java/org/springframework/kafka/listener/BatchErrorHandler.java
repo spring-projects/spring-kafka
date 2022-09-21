@@ -31,7 +31,7 @@ import org.springframework.lang.Nullable;
  * @since 1.1
  * @deprecated in favor of {@link CommonErrorHandler}.
  */
-@Deprecated
+@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 public interface BatchErrorHandler extends GenericErrorHandler<ConsumerRecords<?, ?>> {
 
 	/**

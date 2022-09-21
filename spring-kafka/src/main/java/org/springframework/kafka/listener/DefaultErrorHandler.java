@@ -134,7 +134,7 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	}
 
 	@Override
-	@Deprecated
+	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
 	public boolean remainingRecords() {
 		return isSeekAfterError();
 	}

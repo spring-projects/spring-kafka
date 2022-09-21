@@ -29,7 +29,7 @@ import org.apache.kafka.clients.consumer.Consumer;
  * @deprecated - use {@link RecordInterceptor}.
  *
  */
-@Deprecated
+@Deprecated(since = "3.0", forRemoval = true) // in 3.1
 @FunctionalInterface
 public interface ConsumerAwareRecordInterceptor<K, V> extends RecordInterceptor<K, V> {
 

@@ -213,7 +213,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated
+	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 	public void setErrorHandler(org.springframework.kafka.listener.ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -225,7 +225,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated
+	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 	public void setBatchErrorHandler(org.springframework.kafka.listener.BatchErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}

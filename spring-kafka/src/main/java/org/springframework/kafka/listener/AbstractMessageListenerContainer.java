@@ -214,7 +214,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated
+	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 	public void setErrorHandler(ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -226,7 +226,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated
+	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 	public void setGenericErrorHandler(@Nullable GenericErrorHandler<?> errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -238,7 +238,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated
+	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 	public void setBatchErrorHandler(BatchErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -250,7 +250,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #getCommonErrorHandler()}
 	 * @see #getCommonErrorHandler()
 	 */
-	@Deprecated
+	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
 	@Nullable
 	public GenericErrorHandler<?> getGenericErrorHandler() {
 		return this.errorHandler;

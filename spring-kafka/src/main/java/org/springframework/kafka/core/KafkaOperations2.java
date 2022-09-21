@@ -50,7 +50,7 @@ import org.springframework.messaging.Message;
  * @since 2.9
  * @deprecated no longer needed; use {@code KafkaOperations}.
  */
-@Deprecated
+@Deprecated(since = "3.0", forRemoval = true) // in 3.1
 public interface KafkaOperations2<K, V> {
 
 	/**

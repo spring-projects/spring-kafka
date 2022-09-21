@@ -65,7 +65,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 
 	private boolean contextRefreshed;
 
-	@Deprecated
+	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
 	public DefaultDestinationTopicResolver(Clock clock, ApplicationContext applicationContext) {
 		this(clock);
 		this.applicationContext = applicationContext;

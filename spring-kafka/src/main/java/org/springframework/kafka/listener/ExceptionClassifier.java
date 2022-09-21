@@ -172,30 +172,6 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	 * </ul>
 	 * All others will be retried, unless {@link #defaultFalse()} has been called.
 	 * @param exceptionType the exception type.
-	 * @return true if the removal was successful.
-	 * @deprecated in favor of {@link #removeClassification(Class)}
-	 * @see #addNotRetryableExceptions(Class...)
-	 * @see #setClassifications(Map, boolean)
-	 * @see #defaultFalse()
-	 */
-	@Deprecated
-	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
-		return Boolean.TRUE.equals(removeClassification(exceptionType)) ? true : false;
-	}
-
-	/**
-	 * Remove an exception type from the configured list. By default, the following
-	 * exceptions will not be retried:
-	 * <ul>
-	 * <li>{@link DeserializationException}</li>
-	 * <li>{@link MessageConversionException}</li>
-	 * <li>{@link ConversionException}</li>
-	 * <li>{@link MethodArgumentResolutionException}</li>
-	 * <li>{@link NoSuchMethodException}</li>
-	 * <li>{@link ClassCastException}</li>
-	 * </ul>
-	 * All others will be retried, unless {@link #defaultFalse()} has been called.
-	 * @param exceptionType the exception type.
 	 * @return the classification of the exception if removal was successful;
 	 * null otherwise.
 	 * @since 2.8.4
