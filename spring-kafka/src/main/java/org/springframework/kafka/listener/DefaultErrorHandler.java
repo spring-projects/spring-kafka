@@ -107,7 +107,7 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 	}
 
 	private static CommonErrorHandler createFallback(BackOff backOff, @Nullable ConsumerRecordRecoverer recoverer) {
-		return new ErrorHandlerAdapter(new FallbackBatchErrorHandler(backOff, recoverer));
+		return new FallbackBatchErrorHandler(backOff, recoverer);
 	}
 
 	/**

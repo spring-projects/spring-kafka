@@ -74,7 +74,7 @@ public class FallbackBatchErrorHandlerTests {
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
-		eh.handle(new RuntimeException(), records, consumer, container, () -> {
+		eh.handleBatch(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;
 			throw new RuntimeException();
 		});
@@ -103,7 +103,7 @@ public class FallbackBatchErrorHandlerTests {
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
-		eh.handle(new RuntimeException(), records, consumer, container, () -> this.invoked++);
+		eh.handleBatch(new RuntimeException(), records, consumer, container, () -> this.invoked++);
 		assertThat(this.invoked).isEqualTo(1);
 		assertThat(recovered).hasSize(0);
 		verify(consumer).pause(any());
@@ -131,7 +131,7 @@ public class FallbackBatchErrorHandlerTests {
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
-		eh.handle(new RuntimeException(), records, consumer, container, () -> {
+		eh.handleBatch(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;
 			throw new RuntimeException();
 		}));
@@ -163,7 +163,7 @@ public class FallbackBatchErrorHandlerTests {
 		AtomicBoolean stopped = new AtomicBoolean(true);
 		willAnswer(inv -> stopped.get()).given(container).isRunning();
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
-			eh.handle(new RuntimeException(), records, consumer, container, () -> {
+			eh.handleBatch(new RuntimeException(), records, consumer, container, () -> {
 				this.invoked++;
 				stopped.set(false);
 				throw new RuntimeException();
@@ -195,7 +195,7 @@ public class FallbackBatchErrorHandlerTests {
 		}).given(consumer).poll(any());
 		KafkaMessageListenerContainer<?, ?> container = mock(KafkaMessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
-		eh.handle(new RuntimeException(), records, consumer, container, () -> {
+		eh.handleBatch(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;
 			throw new RuntimeException();
 		});
@@ -230,7 +230,7 @@ public class FallbackBatchErrorHandlerTests {
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
 		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
 
-		assertThatThrownBy(() -> eh.handle(new RuntimeException(), records, consumer, container, () -> { }))
+		assertThatThrownBy(() -> eh.handleBatch(new RuntimeException(), records, consumer, container, () -> { }))
 				.isSameAs(exception);
 
 		assertThat(getRetryingFieldValue(eh))

@@ -16,8 +16,13 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -25,7 +30,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -41,9 +48,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.3.7
  *
  */
-@SuppressWarnings("deprecation")
-class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
-		implements ListenerInvokingBatchErrorHandler {
+class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware implements CommonErrorHandler {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
@@ -51,12 +56,13 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 
 	private final BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer;
 
-	@SuppressWarnings("deprecation")
-	private final CommonErrorHandler seeker = new ErrorHandlerAdapter(new SeekToCurrentBatchErrorHandler());
-
-	private boolean ackAfterHandle = true;
+	private final CommonErrorHandler seeker = new SeekAfterRecoverFailsOrInterrupted();
 
 	private final ThreadLocal<Boolean> retrying = ThreadLocal.withInitial(() -> false);
+
+	private final List<RetryListener> retryListeners = new ArrayList<>();
+
+	private boolean ackAfterHandle = true;
 
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
@@ -85,6 +91,18 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 		};
 	}
 
+	/**
+	 * Set one or more {@link RetryListener} to receive notifications of retries and
+	 * recovery.
+	 * @param listeners the listeners.
+	 * @since 3.0
+	 */
+	public void setRetryListeners(RetryListener... listeners) {
+		Assert.noNullElements(listeners, "'listeners' cannot have null elements");
+		this.retryListeners.clear();
+		this.retryListeners.addAll(Arrays.asList(listeners));
+	}
+
 	@Override
 	public boolean isAckAfterHandle() {
 		return this.ackAfterHandle;
@@ -96,7 +114,7 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 	}
 
 	@Override
-	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> records,
+	public void handleBatch(Exception thrownException, @Nullable ConsumerRecords<?, ?> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		if (records == null || records.count() == 0) {
@@ -106,13 +124,14 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 		this.retrying.set(true);
 		try {
 			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-					this.seeker, this.recoverer, this.logger, getLogLevel());
+					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners);
 		}
 		finally {
 			this.retrying.set(false);
 		}
 	}
 
+	@Override
 	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
 			Runnable publishPause) {
 
@@ -120,6 +139,25 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 			consumer.pause(consumer.assignment());
 			publishPause.run();
 		}
+	}
+
+	private final class SeekAfterRecoverFailsOrInterrupted implements CommonErrorHandler {
+
+		@Override
+		public void handleBatch(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+				MessageListenerContainer container, Runnable invokeListener) {
+
+			data.partitions()
+					.stream()
+					.collect(
+							Collectors.toMap(tp -> tp,
+									tp -> data.records(tp).get(0).offset(), (u, v) -> (long) v, LinkedHashMap::new))
+					.forEach(consumer::seek);
+
+			throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
+
+		}
+
 	}
 
 }

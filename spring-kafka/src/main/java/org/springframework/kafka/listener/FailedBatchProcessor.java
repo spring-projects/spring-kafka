@@ -35,6 +35,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.KafkaException.Level;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 
@@ -84,6 +85,22 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		this.fallbackBatchHandler = fallbackHandler;
 	}
 
+	@Override
+	public void setRetryListeners(RetryListener... listeners) {
+		super.setRetryListeners(listeners);
+		if (this.fallbackBatchHandler instanceof FallbackBatchErrorHandler handler) {
+			handler.setRetryListeners(listeners);
+		}
+	}
+
+	@Override
+	public void setLogLevel(Level logLevel) {
+		super.setLogLevel(logLevel);
+		if (this.fallbackBatchHandler instanceof KafkaExceptionLogLevelAware handler) {
+			handler.setLogLevel(logLevel);
+		}
+	}
+
 	/**
 	 * Return the fallback batch error handler.
 	 * @return the handler.
@@ -127,13 +144,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 	private void fallback(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 
-		ErrorHandlingUtils.setRetryListeners(getRetryListeners());
-		try {
-			this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
-		}
-		finally {
-			ErrorHandlingUtils.clearRetryListeners();
-		}
+		this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
 	}
 
 	private int findIndex(ConsumerRecords<?, ?> data, ConsumerRecord<?, ?> record) {
