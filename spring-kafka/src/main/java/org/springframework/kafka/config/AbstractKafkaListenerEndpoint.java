@@ -45,6 +45,7 @@ import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapte
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
+import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.lang.Nullable;
@@ -116,6 +117,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
 	private byte[] listenerInfo;
+
+	private String correlationHeaderName;
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
@@ -445,6 +448,16 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.batchToRecordAdapter = batchToRecordAdapter;
 	}
 
+	/**
+	 * Set a custom header name for the correlation id. Default
+	 * {@link org.springframework.kafka.support.KafkaHeaders#CORRELATION_ID}. This header
+	 * will be echoed back in any reply message.
+	 * @param correlationHeaderName the header name.
+	 * @since 3.0
+	 */
+	public void setCorrelationHeaderName(String correlationHeaderName) {
+		this.correlationHeaderName = correlationHeaderName;
+	}
 
 	@Override
 	public void afterPropertiesSet() {
@@ -485,9 +498,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 			@Nullable MessageConverter messageConverter) {
 
 		MessagingMessageListenerAdapter<K, V> adapter = createMessageListener(container, messageConverter);
-		if (this.replyHeadersConfigurer != null) {
-			adapter.setReplyHeadersConfigurer(this.replyHeadersConfigurer);
-		}
+		JavaUtils.INSTANCE
+				.acceptIfNotNull(this.replyHeadersConfigurer, adapter::setReplyHeadersConfigurer)
+				.acceptIfNotNull(this.correlationHeaderName, adapter::setCorrelationHeaderName);
 		adapter.setSplitIterables(this.splitIterables);
 		Object messageListener = adapter;
 		boolean isBatchListener = isBatchListener();

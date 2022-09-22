@@ -726,6 +726,9 @@ These header names are used by the `@KafkaListener` infrastructure to route the 
 Starting with version 2.3, you can customize the header names - the template has 3 properties `correlationHeaderName`, `replyTopicHeaderName`, and `replyPartitionHeaderName`.
 This is useful if your server is not a Spring application (or does not use the `@KafkaListener`).
 
+NOTE: Conversely, if the requesting application is not a spring application and puts correlation information in a different header, starting with version 3.0, you can configure a custom `correlationHeaderName` on the listener container factory and that header will be echoed back.
+Previously, the listener had to echo custom correlation headers.
+
 [[exchanging-messages]]
 ====== Request/Reply with `Message<?>` s
 

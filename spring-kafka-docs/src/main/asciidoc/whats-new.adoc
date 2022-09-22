@@ -52,3 +52,9 @@ See <<kafka-template>>.
 
 The futures returned by this class are now `CompletableFuture` s instead of `ListenableFuture` s.
 See <<replying-template>> and <<exchanging-messages>>.
+
+[[x30-listener]]
+==== `@KafkaListener` Changes
+
+You can now use a custom correlation header which will be echoed in any reply message.
+See the note at the end of <<replying-template>> for more information.

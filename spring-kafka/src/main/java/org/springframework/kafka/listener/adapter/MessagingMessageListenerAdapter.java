@@ -128,9 +128,28 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private boolean splitIterables = true;
 
+	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
+
+	/**
+	 * Create an instance with the provided bean and method.
+	 * @param bean the bean.
+	 * @param method the method.
+	 */
 	public MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
 		this.inferredType = determineInferredType(method); // NOSONAR = intentionally not final
+	}
+
+	/**
+	 * Set a custom header name for the correlation id. Default
+	 * {@link KafkaHeaders#CORRELATION_ID}. This header will be echoed back in any reply
+	 * message.
+	 * @param correlationHeaderName the header name.
+	 * @since 3.0
+	 */
+	public void setCorrelationHeaderName(String correlationHeaderName) {
+		Assert.notNull(correlationHeaderName, "'correlationHeaderName' cannot be null");
+		this.correlationHeaderName = correlationHeaderName;
 	}
 
 	/**
@@ -478,7 +497,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		MessageHeaders headers = reply.getHeaders();
 		boolean needsTopic = headers.get(KafkaHeaders.TOPIC) == null;
 		boolean sourceIsMessage = source instanceof Message;
-		boolean needsCorrelation = headers.get(KafkaHeaders.CORRELATION_ID) == null && sourceIsMessage;
+		boolean needsCorrelation = headers.get(this.correlationHeaderName) == null && sourceIsMessage;
 		boolean needsPartition = headers.get(KafkaHeaders.PARTITION) == null && sourceIsMessage
 				&& getReplyPartition((Message<?>) source) != null;
 		if (needsTopic || needsCorrelation || needsPartition) {
@@ -487,8 +506,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				builder.setHeader(KafkaHeaders.TOPIC, topic);
 			}
 			if (needsCorrelation && sourceIsMessage) {
-				builder.setHeader(KafkaHeaders.CORRELATION_ID,
-						((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID));
+				builder.setHeader(this.correlationHeaderName,
+						((Message<?>) source).getHeaders().get(this.correlationHeaderName));
 			}
 			if (sourceIsMessage && reply.getHeaders().get(KafkaHeaders.REPLY_PARTITION) == null) {
 				setPartition(builder, (Message<?>) source);
@@ -503,8 +522,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		byte[] correlationId = null;
 		boolean sourceIsMessage = source instanceof Message;
 		if (sourceIsMessage
-				&& ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID) != null) {
-			correlationId = ((Message<?>) source).getHeaders().get(KafkaHeaders.CORRELATION_ID, byte[].class);
+				&& ((Message<?>) source).getHeaders().get(this.correlationHeaderName) != null) {
+			correlationId = ((Message<?>) source).getHeaders().get(this.correlationHeaderName, byte[].class);
 		}
 		if (sourceIsMessage) {
 			sendReplyForMessageSource(result, topic, source, correlationId);
@@ -515,7 +534,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	@SuppressWarnings("unchecked")
-	private void sendReplyForMessageSource(Object result, String topic, Object source, byte[] correlationId) {
+	private void sendReplyForMessageSource(Object result, String topic, Object source, @Nullable byte[] correlationId) {
 		MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
 				.setHeader(KafkaHeaders.TOPIC, topic);
 		if (this.replyHeadersConfigurer != null) {
@@ -523,7 +542,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					.filter(e -> {
 						String key = e.getKey();
 						return !key.equals(MessageHeaders.ID) && !key.equals(MessageHeaders.TIMESTAMP)
-								&& !key.equals(KafkaHeaders.CORRELATION_ID)
+								&& !key.equals(this.correlationHeaderName)
 								&& !key.startsWith(KafkaHeaders.RECEIVED);
 					})
 					.filter(e -> this.replyHeadersConfigurer.shouldCopy(e.getKey(), e.getValue()))
@@ -537,7 +556,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 		if (correlationId != null) {
-			builder.setHeader(KafkaHeaders.CORRELATION_ID, correlationId);
+			builder.setHeader(this.correlationHeaderName, correlationId);
 		}
 		setPartition(builder, ((Message<?>) source));
 		this.replyTemplate.send(builder.build());
