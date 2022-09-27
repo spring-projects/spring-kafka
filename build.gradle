@@ -1,5 +1,6 @@
 buildscript {
 	ext.kotlinVersion = '1.7.0'
+	ext.isCI = System.getenv('GITHUB_ACTION') || System.getenv('bamboo_buildKey')
 	repositories {
 		mavenCentral()
 		gradlePluginPortal()
@@ -66,8 +67,9 @@ ext {
 	junitJupiterVersion = '5.9.0'
 	kafkaVersion = '3.3.1'
 	log4jVersion = '2.18.0'
-	micrometerVersion = '1.10.0-M6'
-	micrometerTracingVersion = '1.0.0-M8'
+	micrometerDocsVersion = "1.0.0-SNAPSHOT"
+	micrometerVersion = '1.10.0-SNAPSHOT'
+	micrometerTracingVersion = '1.0.0-SNAPSHOT'
 	mockitoVersion = '4.5.1'
 	reactorVersion = '2022.0.0-M6'
 	scalaVersion = '2.13'
@@ -241,7 +243,7 @@ subprojects { subproject ->
 	}
 
 	task updateCopyrights {
-		onlyIf { gitPresent && !System.getenv('GITHUB_ACTION') && !System.getenv('bamboo_buildKey') }
+		onlyIf { !isCI }
 		if (gitPresent) {
 			inputs.files(modifiedFiles.filter { f -> f.path.contains(subproject.name) })
 		}
@@ -300,12 +302,16 @@ subprojects { subproject ->
 	tasks.withType(Javadoc) {
 		options.addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
 		options.addBooleanOption('Werror', true) // fail build on Javadoc warnings
-    }
+	}
 
 }
 
 project ('spring-kafka') {
 	description = 'Spring Kafka Support'
+
+	configurations {
+		adoc
+	}
 
 	dependencies {
 		api 'org.springframework:spring-context'
@@ -346,7 +352,36 @@ project ('spring-kafka') {
 		testImplementation 'io.micrometer:micrometer-tracing-bridge-brave'
 		testImplementation 'io.micrometer:micrometer-tracing-test'
 		testImplementation 'io.micrometer:micrometer-tracing-integration-test'
+
+		adoc "io.micrometer:micrometer-docs-generator-spans:$micrometerDocsVersion"
+		adoc "io.micrometer:micrometer-docs-generator-metrics:$micrometerDocsVersion"
 	}
+
+	def inputDir = file('src/main/java/org/springframework/kafka/support/micrometer').absolutePath
+	def outputDir = rootProject.file('spring-kafka-docs/src/main/asciidoc').absolutePath
+
+	task generateObservabilityMetricsDocs(type: JavaExec) {
+		onlyIf { !isCI }
+		mainClass = 'io.micrometer.docs.metrics.DocsFromSources'
+		inputs.dir(inputDir)
+		outputs.dir(outputDir)
+		classpath configurations.adoc
+		args inputDir, '.*', outputDir
+	}
+
+	task generateObservabilitySpansDocs(type: JavaExec) {
+		onlyIf { !isCI }
+		mainClass = 'io.micrometer.docs.spans.DocsFromSources'
+		inputs.dir(inputDir)
+		outputs.dir(outputDir)
+		classpath configurations.adoc
+		args inputDir, '.*', outputDir
+	}
+
+	// javadoc {
+	// 	finalizedBy generateObservabilityMetricsDocs, generateObservabilitySpansDocs
+	// }
+
 }
 
 project ('spring-kafka-test') {
@@ -564,7 +599,7 @@ task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 		into "${baseDir}"
 	}
 
-    from("$project.rootDir") {
+	from("$project.rootDir") {
 		include 'LICENSE.txt'
 		into "${baseDir}"
 	}

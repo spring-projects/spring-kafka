@@ -16,10 +16,11 @@
 
 package org.springframework.kafka.support.micrometer;
 
+import io.micrometer.common.KeyValues;
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation.Context;
 import io.micrometer.observation.ObservationConvention;
-import io.micrometer.observation.docs.DocumentedObservation;
+import io.micrometer.observation.docs.ObservationDocumentation;
 
 /**
  * Spring for Apache Kafka Observation for
@@ -29,10 +30,10 @@ import io.micrometer.observation.docs.DocumentedObservation;
  * @since 3.0
  *
  */
-public enum KafkaTemplateObservation implements DocumentedObservation {
+public enum KafkaTemplateObservation implements ObservationDocumentation {
 
 	/**
-	 * {@link org.springframework.kafka.core.KafkaTemplate} observation.
+	 * Observation for KafkaTemplates.
 	 */
 	TEMPLATE_OBSERVATION {
 
@@ -68,6 +69,39 @@ public enum KafkaTemplateObservation implements DocumentedObservation {
 				return "spring.kafka.template.name";
 			}
 
+		}
+
+	}
+
+	/**
+	 * Default {@link KafkaTemplateObservationConvention} for Kafka template key values.
+	 *
+	 * @author Gary Russell
+	 * @since 3.0
+	 *
+	 */
+	public static class DefaultKafkaTemplateObservationConvention implements KafkaTemplateObservationConvention {
+
+		/**
+		 * A singleton instance of the convention.
+		 */
+		public static final DefaultKafkaTemplateObservationConvention INSTANCE =
+				new DefaultKafkaTemplateObservationConvention();
+
+		@Override
+		public KeyValues getLowCardinalityKeyValues(KafkaRecordSenderContext context) {
+			return KeyValues.of(KafkaTemplateObservation.TemplateLowCardinalityTags.BEAN_NAME.asString(),
+							context.getBeanName());
+		}
+
+		@Override
+		public String getContextualName(KafkaRecordSenderContext context) {
+			return context.getDestination() + " send";
+		}
+
+		@Override
+		public String getName() {
+			return "spring.kafka.template";
 		}
 
 	}

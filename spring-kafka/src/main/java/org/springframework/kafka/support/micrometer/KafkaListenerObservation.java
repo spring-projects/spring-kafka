@@ -16,10 +16,11 @@
 
 package org.springframework.kafka.support.micrometer;
 
+import io.micrometer.common.KeyValues;
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation.Context;
 import io.micrometer.observation.ObservationConvention;
-import io.micrometer.observation.docs.DocumentedObservation;
+import io.micrometer.observation.docs.ObservationDocumentation;
 
 /**
  * Spring for Apache Kafka Observation for listeners.
@@ -28,10 +29,10 @@ import io.micrometer.observation.docs.DocumentedObservation;
  * @since 3.0
  *
  */
-public enum KafkaListenerObservation implements DocumentedObservation {
+public enum KafkaListenerObservation implements ObservationDocumentation {
 
 	/**
-	 * Observation for Kafka listeners.
+	 * Observation for Apache Kafka listeners.
 	 */
 	LISTENER_OBSERVATION {
 
@@ -59,7 +60,7 @@ public enum KafkaListenerObservation implements DocumentedObservation {
 	public enum ListenerLowCardinalityTags implements KeyName {
 
 		/**
-		 * Listener id.
+		 * Listener id (or listener container bean name).
 		 */
 		LISTENER_ID {
 
@@ -68,6 +69,39 @@ public enum KafkaListenerObservation implements DocumentedObservation {
 				return "spring.kafka.listener.id";
 			}
 
+		}
+
+	}
+
+	/**
+	 * Default {@link KafkaListenerObservationConvention} for Kafka listener key values.
+	 *
+	 * @author Gary Russell
+	 * @since 3.0
+	 *
+	 */
+	public static class DefaultKafkaListenerObservationConvention implements KafkaListenerObservationConvention {
+
+		/**
+		 * A singleton instance of the convention.
+		 */
+		public static final DefaultKafkaListenerObservationConvention INSTANCE =
+				new DefaultKafkaListenerObservationConvention();
+
+		@Override
+		public KeyValues getLowCardinalityKeyValues(KafkaRecordReceiverContext context) {
+			return KeyValues.of(KafkaListenerObservation.ListenerLowCardinalityTags.LISTENER_ID.asString(),
+							context.getListenerId());
+		}
+
+		@Override
+		public String getContextualName(KafkaRecordReceiverContext context) {
+			return context.getSource() + " receive";
+		}
+
+		@Override
+		public String getName() {
+			return "spring.kafka.listener";
 		}
 
 	}

@@ -28,6 +28,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -64,9 +65,9 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.kafka.support.micrometer.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaRecordSenderContext;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservation;
+import org.springframework.kafka.support.micrometer.KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservationConvention;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.lang.Nullable;
@@ -145,7 +146,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private KafkaTemplateObservationConvention observationConvention;
 
-	private ObservationRegistry observationRegistry;
+	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -418,7 +419,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	@Override
 	public void afterSingletonsInstantiated() {
-		if (this.observationEnabled && this.observationRegistry == null && this.applicationContext != null) {
+		if (this.observationEnabled && this.applicationContext != null) {
 			ObjectProvider<ObservationRegistry> registry =
 					this.applicationContext.getBeanProvider(ObservationRegistry.class);
 			this.observationRegistry = registry.getIfUnique();
@@ -668,15 +669,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private CompletableFuture<SendResult<K, V>> observeSend(final ProducerRecord<K, V> producerRecord) {
-		Observation observation;
-		if (!this.observationEnabled || this.observationRegistry == null) {
-			observation = Observation.NOOP;
-		}
-		else {
-			observation = KafkaTemplateObservation.TEMPLATE_OBSERVATION.observation(
-					this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
-					new KafkaRecordSenderContext(producerRecord, this.beanName), this.observationRegistry);
-		}
+		Observation observation = KafkaTemplateObservation.TEMPLATE_OBSERVATION.observation(
+				this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
+				(Supplier<KafkaRecordSenderContext>) () -> new KafkaRecordSenderContext(producerRecord, this.beanName),
+				this.observationRegistry);
 		try {
 			observation.start();
 			return doSend(producerRecord, observation);

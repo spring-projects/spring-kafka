@@ -3415,6 +3415,8 @@ The default implementations add the `bean.name` tag for template observations an
 
 You can either subclass `DefaultKafkaTemplateObservationConvention` or `DefaultKafkaListenerObservationConvention` or provide completely new implementations.
 
+See <<observation-gen>> for details of the observations that are recorded.
+
 [[transactions]]
 ==== Transactions
 

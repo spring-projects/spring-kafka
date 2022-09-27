@@ -50,6 +50,16 @@ dependencies {
 The test scope dependencies are only needed if you are using the embedded Kafka broker in tests.
 
 [appendix]
+[[observation-gen]]
+== Micrometer Observation Documentation
+
+include::./_metrics.adoc[]
+
+include::./_spans.adoc[]
+
+include::./_conventions.adoc[]
+
+[appendix]
 [[history]]
 == Change History
 

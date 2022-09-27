@@ -1,0 +1,38 @@
+[[observability-spans]]
+=== Observability - Spans
+
+Below you can find a list of all spans declared by this project.
+
+[[observability-spans-listener-observation]]
+==== Listener Observation Span
+
+> Observation for Apache Kafka listeners.
+
+**Span name** `spring.kafka.listener` (defined by convention class `KafkaListenerObservation$DefaultKafkaListenerObservationConvention`).
+
+Name of the enclosing class `KafkaListenerObservation`.
+
+IMPORTANT: All tags and event names must be prefixed with `spring.kafka.listener` prefix!
+
+.Tag Keys
+|===
+|Name | Description
+|`spring.kafka.listener.id`|Listener id (or listener container bean name).
+|===
+
+[[observability-spans-template-observation]]
+==== Template Observation Span
+
+> Observation for KafkaTemplates.
+
+**Span name** `spring.kafka.template` (defined by convention class `KafkaTemplateObservation$DefaultKafkaTemplateObservationConvention`).
+
+Name of the enclosing class `KafkaTemplateObservation`.
+
+IMPORTANT: All tags and event names must be prefixed with `spring.kafka.template` prefix!
+
+.Tag Keys
+|===
+|Name | Description
+|`spring.kafka.template.name`|Bean name of the template.
+|===
