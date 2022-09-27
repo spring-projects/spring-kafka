@@ -4643,6 +4643,9 @@ void listen(List<ConsumerRecord<String, Thing>> in) {
 ----
 ====
 
+IMPORTANT: If you are also using a `DeadLetterPublishingRecoverer`, the record published for a `DeserializationException` will have a `record.value()` of type `byte[]`; this should not be serialized.
+Consider using a `DelegatingByTypeSerializer` configured to use a `ByteArraySerializer` for `byte[]` and the normal serializer (Json, Avro, etc) for all other types.
+
 [[payload-conversion-with-batch]]
 ===== Payload Conversion with Batch Listeners
 
