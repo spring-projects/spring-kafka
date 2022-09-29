@@ -24,9 +24,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.ContextualProcessor;
+import org.apache.kafka.streams.processor.api.ProcessorContext;
+import org.apache.kafka.streams.processor.api.Record;
+import org.apache.kafka.streams.processor.api.RecordMetadata;
 
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
@@ -38,52 +40,47 @@ import org.springframework.util.Assert;
  * converting to/from spring-messaging {@link Message}. Can be used, for example,
  * to invoke a Spring Integration flow.
  *
- * @param <K> the key type.
- * @param <V> the value type.
- * @param <R> the result value type.
+ * @param <Kin> the input key type.
+ * @param <Vin> the input value type.
+ * @param <Kout> the output key type.
+ * @param <Vout> the output value type.
  *
  * @author Gary Russell
  * @since 2.3
- * @deprecated in favor of {@link MessagingProcessor}.
  *
  */
-@Deprecated
-public class MessagingTransformer<K, V, R> implements Transformer<K, V, KeyValue<K, R>> {
+public class MessagingProcessor<Kin, Vin, Kout, Vout> extends ContextualProcessor<Kin, Vin, Kout, Vout> {
 
 	private final MessagingFunction function;
 
 	private final MessagingMessageConverter converter;
-
-	private ProcessorContext processorContext;
 
 	/**
 	 * Construct an instance with the provided function and converter.
 	 * @param function the function.
 	 * @param converter the converter.
 	 */
-	public MessagingTransformer(MessagingFunction function, MessagingMessageConverter converter) {
+	public MessagingProcessor(MessagingFunction function, MessagingMessageConverter converter) {
 		Assert.notNull(function, "'function' cannot be null");
 		Assert.notNull(converter, "'converter' cannot be null");
 		this.function = function;
 		this.converter = converter;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public void init(ProcessorContext context) {
-		this.processorContext = context;
-	}
-
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	@Override
-	public KeyValue<K, R> transform(K key, V value) {
-		Headers headers = this.processorContext.headers();
-		ConsumerRecord<Object, Object> record = new ConsumerRecord<Object, Object>(this.processorContext.topic(),
-				this.processorContext.partition(), this.processorContext.offset(),
-				this.processorContext.timestamp(), TimestampType.NO_TIMESTAMP_TYPE,
+	public void process(Record<Kin, Vin> record) {
+		ProcessorContext<Kout, Vout> context = context();
+		RecordMetadata meta = context.recordMetadata().orElse(null);
+		Assert.state(meta != null, "No record metadata present");
+		Headers headers = record.headers();
+		ConsumerRecord<Object, Object> rebuilt = new ConsumerRecord<Object, Object>(meta.topic(),
+				meta.partition(), meta.offset(),
+				record.timestamp(), TimestampType.NO_TIMESTAMP_TYPE,
 				0, 0,
-				key, value,
+				record.key(), record.value(),
 				headers, Optional.empty());
-		Message<?> message = this.converter.toMessage(record, null, null, null);
+		Message<?> message = this.converter.toMessage(rebuilt, null, null, null);
 		message = this.function.exchange(message);
 		List<String> headerList = new ArrayList<>();
 		headers.forEach(header -> headerList.add(header.key()));
@@ -94,8 +91,8 @@ public class MessagingTransformer<K, V, R> implements Transformer<K, V, KeyValue
 				headers.add(header);
 			}
 		});
-		Object key2 = message.getHeaders().get(KafkaHeaders.KEY);
-		return new KeyValue(key2 == null ? key : key2, message.getPayload());
+		context.forward(new Record<>((Kout) message.getHeaders().get(KafkaHeaders.KEY), (Vout) message.getPayload(),
+				record.timestamp(), headers));
 	}
 
 	@Override

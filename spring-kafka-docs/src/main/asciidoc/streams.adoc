@@ -239,12 +239,13 @@ Starting with version 2.7, the default is to never clean up local state.
 [[streams-header-enricher]]
 ==== Header Enricher
 
-Version 2.3 added the `HeaderEnricher` implementation of `Transformer`.
+Version 3.0 added the `HeaderEnricherProcessor` extension of `ContextualProcessor`; providing the same functionality as the deprecated `HeaderEnricher` which implemented the deprecated `Transformer` interface.
 This can be used to add headers within the stream processing; the header values are SpEL expressions; the root object of the expression evaluation has 3 properties:
 
-* `context` - the `ProcessorContext`, allowing access to the current record metadata
+* `record` - the `org.apache.kafka.streams.processor.api.Record` (`key`, `value`, `timestamp`, `headers`)
 * `key` - the key of the current record
 * `value` - the value of the current record
+* `context` - the `ProcessorContext`, allowing access to the current record metadata
 
 The expressions must return a `byte[]` or a `String` (which will be converted to `byte[]` using `UTF-8`).
 
@@ -253,18 +254,18 @@ To use the enricher within a stream:
 ====
 [source, java]
 ----
-.transform(() -> enricher)
+.process(() -> new HeaderEnricherProcessor(expressions))
 ----
 ====
 
-The transformer does not change the `key` or `value`; it simply adds headers.
+The processor does not change the `key` or `value`; it simply adds headers.
 
-IMPORTANT: If your stream is multi-threaded, you need a new instance for each record.
+IMPORTANT: You need a new instance for each record.
 
 ====
 [source, java]
 ----
-.transform(() -> new HeaderEnricher<..., ...>(expressionMap))
+.process(() -> new HeaderEnricherProcessor<..., ...>(expressionMap))
 ----
 ====
 
@@ -276,19 +277,20 @@ Here is a simple example, adding one literal header and one variable:
 Map<String, Expression> headers = new HashMap<>();
 headers.put("header1", new LiteralExpression("value1"));
 SpelExpressionParser parser = new SpelExpressionParser();
-headers.put("header2", parser.parseExpression("context.timestamp() + ' @' + context.offset()"));
-HeaderEnricher<String, String> enricher = new HeaderEnricher<>(headers);
+headers.put("header2", parser.parseExpression("record.timestamp() + ' @' + record.offset()"));
+ProcessorSupplier supplier = () -> new HeaderEnricher<String, String> enricher = new HeaderEnricher<>(headers);
 KStream<String, String> stream = builder.stream(INPUT);
 stream
-        .transform(() -> enricher)
+        .process(() -> supplier)
         .to(OUTPUT);
 ----
 ====
 
 [[streams-messaging]]
-==== `MessagingTransformer`
+==== `MessagingProcessor`
 
-Version 2.3 added the `MessagingTransformer` this allows a Kafka Streams topology to interact with a Spring Messaging component, such as a Spring Integration flow.
+Version 3.0 added the `MessagingProcessor` extension of `ContextualProcessor`; providing the same functionality as the deprecated `MessagingTransformer` which implemented the deprecated `Transformer` interface.
+This allows a Kafka Streams topology to interact with a Spring Messaging component, such as a Spring Integration flow.
 The transformer requires an implementation of `MessagingFunction`.
 
 ====

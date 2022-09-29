@@ -27,8 +27,6 @@ import org.apache.kafka.clients.consumer.RoundRobinAssignor;
 import org.apache.kafka.clients.consumer.StickyAssignor;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.RoundRobinPartitioner;
-import org.apache.kafka.clients.producer.UniformStickyPartitioner;
-import org.apache.kafka.clients.producer.internals.DefaultPartitioner;
 import org.apache.kafka.common.message.CreateTopicsRequestData.CreatableTopic;
 import org.apache.kafka.common.protocol.Message;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -97,6 +95,7 @@ import org.springframework.lang.Nullable;
  */
 public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
 		ReflectionHints reflectionHints = hints.reflection();
@@ -147,9 +146,9 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 					RoundRobinAssignor.class,
 					StickyAssignor.class,
 					// standard partitioners
-					DefaultPartitioner.class,
+					org.apache.kafka.clients.producer.internals.DefaultPartitioner.class,
 					RoundRobinPartitioner.class,
-					UniformStickyPartitioner.class,
+					org.apache.kafka.clients.producer.UniformStickyPartitioner.class,
 					// standard serialization
 					ByteArrayDeserializer.class,
 					ByteArraySerializer.class,

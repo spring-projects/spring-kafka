@@ -64,7 +64,7 @@ ext {
 	jaywayJsonPathVersion = '2.6.0'
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.9.0'
-	kafkaVersion = '3.2.3'
+	kafkaVersion = '3.3.1'
 	log4jVersion = '2.18.0'
 	micrometerVersion = '1.10.0-M6'
 	micrometerTracingVersion = '1.0.0-M8'

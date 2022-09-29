@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,14 +27,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.ContextualProcessor;
+import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.junit.jupiter.api.Test;
@@ -174,19 +174,12 @@ public class KafkaStreamsCustomizerTests {
 			KStream<String, String> stream = kStreamBuilder.stream("test_topic");
 
 			stream
-					.transform(() -> new Transformer<String, String, KeyValue<String, String>>() {
-						@Override
-						public void init(ProcessorContext context) {
-						}
+					.process(() -> new ContextualProcessor<String, String, String, String>() {
 
 						@Override
-						public KeyValue<String, String> transform(String key, String value) {
-							return null;
+						public void process(Record<String, String> record) {
 						}
 
-						@Override
-						public void close() {
-						}
 					}, "testStateStore")
 					.to("test_output");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,43 +22,38 @@ import java.util.Map;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
-import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.kstream.Transformer;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.ContextualProcessor;
+import org.apache.kafka.streams.processor.api.ProcessorContext;
+import org.apache.kafka.streams.processor.api.Record;
 
 import org.springframework.expression.Expression;
 
 /**
  * Manipulate the headers.
  *
- * @param <K> the key type.
- * @param <V> the value type.
+ * @param <K> the input key type.
+ * @param <V> the input value type.
  *
  * @author Gary Russell
- * @since 2.3
- * @deprecated in favor of {@link HeaderEnricherProcessor}.
+ * @since 3.0
  *
  */
-@Deprecated
-public class HeaderEnricher<K, V> implements Transformer<K, V, KeyValue<K, V>> {
+public class HeaderEnricherProcessor<K, V> extends ContextualProcessor<K, V, K, V> {
 
 	private final Map<String, Expression> headerExpressions = new HashMap<>();
 
-	private ProcessorContext processorContext;
-
-	public HeaderEnricher(Map<String, Expression> headerExpressions) {
+	/**
+	 * Construct an instance with the provided header expressions.
+	 * @param headerExpressions the header expressions; name:expression.
+	 */
+	public HeaderEnricherProcessor(Map<String, Expression> headerExpressions) {
 		this.headerExpressions.putAll(headerExpressions);
 	}
 
 	@Override
-	public void init(ProcessorContext context) {
-		this.processorContext = context;
-	}
-
-	@Override
-	public KeyValue<K, V> transform(K key, V value) {
-		Headers headers = this.processorContext.headers();
-		Container<K, V> container = new Container<>(this.processorContext, key, value);
+	public void process(Record<K, V> record) {
+		Headers headers = record.headers();
+		Container<K, V> container = new Container<>(context(), record.key(), record.value(), record);
 		this.headerExpressions.forEach((name, expression) -> {
 			Object headerValue = expression.getValue(container);
 			if (headerValue instanceof String) {
@@ -69,7 +64,7 @@ public class HeaderEnricher<K, V> implements Transformer<K, V, KeyValue<K, V>> {
 			}
 			headers.add(new RecordHeader(name, (byte[]) headerValue));
 		});
-		return new KeyValue<>(key, value);
+		context().forward(record);
 	}
 
 	@Override
@@ -86,16 +81,19 @@ public class HeaderEnricher<K, V> implements Transformer<K, V, KeyValue<K, V>> {
 	 */
 	public static final class Container<K, V> {
 
-		private final ProcessorContext context;
+		private final ProcessorContext<K, V> context;
 
 		private final K key;
 
 		private final V value;
 
-		private Container(ProcessorContext context, K key, V value) {
+		private final Record record;
+
+		Container(ProcessorContext<K, V> context, K key, V value, Record record) {
 			this.context = context;
 			this.key = key;
 			this.value = value;
+			this.record = record;
 		}
 
 		public ProcessorContext getContext() {
@@ -108,6 +106,10 @@ public class HeaderEnricher<K, V> implements Transformer<K, V, KeyValue<K, V>> {
 
 		public V getValue() {
 			return this.value;
+		}
+
+		public Record getRecord() {
+			return this.record;
 		}
 
 	}

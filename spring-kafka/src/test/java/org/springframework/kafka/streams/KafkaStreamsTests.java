@@ -222,7 +222,6 @@ public class KafkaStreamsTests {
 			headers.put("foo", new LiteralExpression("bar"));
 			SpelExpressionParser parser = new SpelExpressionParser();
 			headers.put("spel", parser.parseExpression("context.timestamp() + key + value"));
-			HeaderEnricher<Integer, String> enricher = new HeaderEnricher<>(headers);
 			stream.mapValues((ValueMapper<String, String>) String::toUpperCase)
 					.mapValues(Foo::new)
 					.repartition(Repartitioned.with(Serdes.Integer(), new JsonSerde<Foo>() { }))
@@ -233,7 +232,7 @@ public class KafkaStreamsTests {
 					.toStream()
 					.map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
 					.filter((i, s) -> s.length() > 40)
-					.transform(() -> enricher)
+					.process(() -> new HeaderEnricherProcessor<>(headers))
 					.to(streamingTopic2);
 
 			stream.print(Printed.toSysOut());
