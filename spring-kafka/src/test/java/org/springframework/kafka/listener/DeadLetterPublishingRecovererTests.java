@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willCallRealMethod;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -874,6 +875,27 @@ public class DeadLetterPublishingRecovererTests {
 		ProducerRecord outRecord = producerRecordCaptor.getValue();
 		Headers headers = outRecord.headers();
 		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(12);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void nonCompliantProducerFactory() throws Exception {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ProducerFactory pf = mock(ProducerFactory.class);
+
+		willCallRealMethod().given(pf).getConfigurationProperties();
+
+		given(template.getProducerFactory()).willReturn(pf);
+		CompletableFuture<?> future = mock(CompletableFuture.class);
+		ArgumentCaptor<Long> timeoutCaptor = ArgumentCaptor.forClass(Long.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		given(future.get(timeoutCaptor.capture(), eq(TimeUnit.MILLISECONDS))).willThrow(new TimeoutException());
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setFailIfSendResultIsError(true);
+		assertThatThrownBy(() -> recoverer.accept(record, new RuntimeException()))
+				.isExactlyInstanceOf(KafkaException.class);
+		assertThat(timeoutCaptor.getValue()).isEqualTo(Duration.ofSeconds(125).toMillis());
 	}
 
 }

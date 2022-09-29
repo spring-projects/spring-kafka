@@ -688,7 +688,13 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	protected Duration determineSendTimeout(KafkaOperations<?, ?> template) {
 		ProducerFactory<? extends Object, ? extends Object> producerFactory = template.getProducerFactory();
 		if (producerFactory != null) { // NOSONAR - will only occur in mock tests
-			Map<String, Object> props = producerFactory.getConfigurationProperties();
+			Map<String, Object> props;
+			try {
+				props = producerFactory.getConfigurationProperties();
+			}
+			catch (UnsupportedOperationException ex) {
+				props = Collections.emptyMap();
+			}
 			if (props != null) { // NOSONAR - will only occur in mock tests
 				return KafkaUtils.determineSendTimeout(props, this.timeoutBuffer,
 						this.waitForSendResultTimeout.toMillis());
