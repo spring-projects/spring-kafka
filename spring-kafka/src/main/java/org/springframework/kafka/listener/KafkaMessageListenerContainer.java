@@ -159,7 +159,7 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Daniel Gentes
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
-		extends AbstractMessageListenerContainer<K, V> {
+		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
 
 	private static final String UNUSED = "unused";
 
@@ -466,7 +466,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
-	void publishConsumerPausedEvent(Collection<TopicPartition> partitions, String reason) {
+	@Override
+	public void publishConsumerPausedEvent(Collection<TopicPartition> partitions, String reason) {
 		ApplicationEventPublisher publisher = getApplicationEventPublisher();
 		if (publisher != null) {
 			publisher.publishEvent(new ConsumerPausedEvent(this, this.thisOrParentContainer,
@@ -474,7 +475,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
-	void publishConsumerResumedEvent(Collection<TopicPartition> partitions) {
+	@Override
+	public void publishConsumerResumedEvent(Collection<TopicPartition> partitions) {
 		ApplicationEventPublisher publisher = getApplicationEventPublisher();
 		if (publisher != null) {
 			publisher.publishEvent(new ConsumerResumedEvent(this, this.thisOrParentContainer,

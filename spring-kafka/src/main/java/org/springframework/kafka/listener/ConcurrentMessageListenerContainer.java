@@ -119,6 +119,23 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
+	public MessageListenerContainer getContainerFor(String topic, int partition) {
+		synchronized (this.lifecycleMonitor) {
+			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
+				Collection<TopicPartition> assignedPartitions = container.getAssignedPartitions();
+				if (assignedPartitions != null) {
+					for (TopicPartition part : assignedPartitions) {
+						if (part.topic().equals(topic) && part.partition() == partition) {
+							return container;
+						}
+					}
+				}
+			}
+			return this;
+		}
+	}
+
+	@Override
 	public Collection<TopicPartition> getAssignedPartitions() {
 		synchronized (this.lifecycleMonitor) {
 			return this.containers.stream()

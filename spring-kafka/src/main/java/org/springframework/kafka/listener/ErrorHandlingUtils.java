@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
@@ -71,8 +72,11 @@ public final class ErrorHandlingUtils {
 		consumer.pause(assignment);
 		int attempt = 1;
 		listen(retryListeners, records, thrownException, attempt++);
-		if (container instanceof KafkaMessageListenerContainer) {
-			((KafkaMessageListenerContainer<?, ?>) container).publishConsumerPausedEvent(assignment, "For batch retry");
+		ConsumerRecord<?, ?> first = records.iterator().next();
+		MessageListenerContainer childOrSingle = container.getContainerFor(first.topic(), first.partition());
+		if (childOrSingle instanceof ConsumerPauseResumeEventPublisher) {
+			((ConsumerPauseResumeEventPublisher) childOrSingle)
+					.publishConsumerPausedEvent(assignment, "For batch retry");
 		}
 		try {
 			while (nextBackOff != BackOffExecution.STOP) {
@@ -115,8 +119,8 @@ public final class ErrorHandlingUtils {
 		finally {
 			Set<TopicPartition> assignment2 = consumer.assignment();
 			consumer.resume(assignment2);
-			if (container instanceof KafkaMessageListenerContainer) {
-				((KafkaMessageListenerContainer<?, ?>) container).publishConsumerResumedEvent(assignment2);
+			if (childOrSingle instanceof ConsumerPauseResumeEventPublisher) {
+				((ConsumerPauseResumeEventPublisher) childOrSingle).publishConsumerResumedEvent(assignment2);
 			}
 		}
 	}

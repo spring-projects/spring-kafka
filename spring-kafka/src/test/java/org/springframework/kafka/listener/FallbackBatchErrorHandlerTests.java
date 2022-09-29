@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
@@ -194,6 +195,7 @@ public class FallbackBatchErrorHandlerTests {
 			return records;
 		}).given(consumer).poll(any());
 		KafkaMessageListenerContainer<?, ?> container = mock(KafkaMessageListenerContainer.class);
+		given(container.getContainerFor(any(), anyInt())).willReturn(container);
 		given(container.isRunning()).willReturn(true);
 		eh.handleBatch(new RuntimeException(), records, consumer, container, () -> {
 			this.invoked++;

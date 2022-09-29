@@ -239,6 +239,17 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 		stop(callback);
 	}
 
+	/**
+	 * If this container has child containers, return the child container that is assigned
+	 * the topic/partition. Return this when there are no child containers.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @return the container.
+	 */
+	default MessageListenerContainer getContainerFor(String topic, int partition) {
+		return this;
+	}
+
 	@Override
 	default void destroy() {
 		stop();
