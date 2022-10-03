@@ -6,7 +6,7 @@ For changes in earlier version, see <<history>>.
 [[x30-kafka-client]]
 ==== Kafka Client Version
 
-This version requires the 3.2.0 `kafka-clients`.
+This version requires the 3.3.1 `kafka-clients`.
 
 [[x30-eos]]
 ==== Exactly Once Semantics

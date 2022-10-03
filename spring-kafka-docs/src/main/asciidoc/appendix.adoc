@@ -9,7 +9,7 @@ If you wish to use a different version of `kafka-clients` or `kafka-streams`, an
 .Maven
 ----
 <properties>
-    <kafka.version>3.2.3</kafka.version>
+    <kafka.version>3.3.1</kafka.version>
 </properties>
 
 <dependency>
