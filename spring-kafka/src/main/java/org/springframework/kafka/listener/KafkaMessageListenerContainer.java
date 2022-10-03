@@ -43,7 +43,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -2710,9 +2709,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 					this.containerProperties.getObservationConvention(),
 					DefaultKafkaListenerObservationConvention.INSTANCE,
-					(Supplier<KafkaRecordReceiverContext>) () -> new KafkaRecordReceiverContext(record,
-							getListenerId()),
-					this.observationRegistry);
+					() -> new KafkaRecordReceiverContext(record, getListenerId()), this.observationRegistry);
 			return observation.observe(() -> {
 				try {
 					invokeOnMessage(record);

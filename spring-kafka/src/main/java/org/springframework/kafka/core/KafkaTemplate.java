@@ -28,7 +28,6 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -671,8 +670,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private CompletableFuture<SendResult<K, V>> observeSend(final ProducerRecord<K, V> producerRecord) {
 		Observation observation = KafkaTemplateObservation.TEMPLATE_OBSERVATION.observation(
 				this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
-				(Supplier<KafkaRecordSenderContext>) () -> new KafkaRecordSenderContext(producerRecord, this.beanName),
-				this.observationRegistry);
+				() -> new KafkaRecordSenderContext(producerRecord, this.beanName), this.observationRegistry);
 		try {
 			observation.start();
 			return doSend(producerRecord, observation);
