@@ -689,7 +689,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * RecordMetadata}.
 	 */
 	protected CompletableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord,
-			@Nullable Observation observation) {
+			Observation observation) {
 
 		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
 		this.logger.trace(() -> "Sending: " + KafkaUtils.format(producerRecord));
