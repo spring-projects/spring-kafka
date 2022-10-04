@@ -57,6 +57,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
+import org.springframework.lang.Nullable;
 
 /**
  * An admin that delegates to an {@link AdminClient} to create topics defined
@@ -94,6 +95,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 	private boolean initializingContext;
 
 	private boolean modifyTopicConfigs;
+
+	private String clusterId;
 
 	/**
 	 * Create an instance with an {@link AdminClient} based on the supplied
@@ -197,6 +200,10 @@ public class KafkaAdmin extends KafkaResourceFactory
 			}
 			if (adminClient != null) {
 				try {
+					synchronized (this) {
+						this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
+								TimeUnit.MILLISECONDS);
+					}
 					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
@@ -216,6 +223,20 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 		this.initializingContext = false;
 		return false;
+	}
+
+	@Override
+	@Nullable
+	public String clusterId() {
+		if (this.clusterId == null) {
+			try (AdminClient client = createAdmin()) {
+				this.clusterId = client.describeCluster().clusterId().get(this.operationTimeout, TimeUnit.MILLISECONDS);
+			}
+			catch (Exception ex) {
+				LOGGER.error(ex, "Could not obtaine cluster info");
+			}
+		}
+		return this.clusterId;
 	}
 
 	@Override

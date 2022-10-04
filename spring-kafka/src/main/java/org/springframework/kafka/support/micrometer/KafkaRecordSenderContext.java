@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.micrometer;
 
 import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 
@@ -35,11 +36,13 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 
 	private final String destination;
 
-	public KafkaRecordSenderContext(ProducerRecord<?, ?> record, String beanName) {
+	public KafkaRecordSenderContext(ProducerRecord<?, ?> record, String beanName, Supplier<String> clusterId) {
 		super((carrier, key, value) -> record.headers().add(key, value.getBytes(StandardCharsets.UTF_8)));
 		setCarrier(record);
 		this.beanName = beanName;
 		this.destination = record.topic();
+		String cluster = clusterId.get();
+		setRemoteServiceName("Apache Kafka" + (cluster != null ? ": " + cluster : ""));
 	}
 
 	public String getBeanName() {

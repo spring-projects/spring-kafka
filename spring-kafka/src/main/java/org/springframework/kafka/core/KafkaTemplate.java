@@ -48,7 +48,6 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -146,6 +145,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private KafkaTemplateObservationConvention observationConvention;
 
 	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
+
+	private KafkaAdmin kafkaAdmin;
+
+	private String clusterId;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -419,13 +422,22 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	@Override
 	public void afterSingletonsInstantiated() {
 		if (this.observationEnabled && this.applicationContext != null) {
-			ObjectProvider<ObservationRegistry> registry =
-					this.applicationContext.getBeanProvider(ObservationRegistry.class);
-			this.observationRegistry = registry.getIfUnique();
+			this.observationRegistry = this.applicationContext.getBeanProvider(ObservationRegistry.class).getIfUnique();
+			this.kafkaAdmin = this.applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+			if (this.kafkaAdmin != null) {
+				this.clusterId = this.kafkaAdmin.clusterId();
+			}
 		}
 		else if (this.micrometerEnabled) {
 			this.micrometerHolder = obtainMicrometerHolder();
 		}
+	}
+
+	private String clusterId() {
+		if (this.kafkaAdmin != null && this.clusterId == null) {
+			this.clusterId = this.kafkaAdmin.clusterId();
+		}
+		return this.clusterId;
 	}
 
 	@Override
@@ -670,7 +682,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private CompletableFuture<SendResult<K, V>> observeSend(final ProducerRecord<K, V> producerRecord) {
 		Observation observation = KafkaTemplateObservation.TEMPLATE_OBSERVATION.observation(
 				this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
-				() -> new KafkaRecordSenderContext(producerRecord, this.beanName), this.observationRegistry);
+				() -> new KafkaRecordSenderContext(producerRecord, this.beanName, this::clusterId),
+				this.observationRegistry);
 		try {
 			observation.start();
 			return doSend(producerRecord, observation);

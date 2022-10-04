@@ -79,6 +79,7 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerPartitionPausedEvent;
@@ -777,6 +778,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final ObservationRegistry observationRegistry;
 
+		@Nullable
+		private final KafkaAdmin kafkaAdmin;
+
+		private String clusterId;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -909,6 +915,31 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastReceivePartition = new HashMap<>();
 			this.lastAlertPartition = new HashMap<>();
 			this.wasIdlePartition = new HashMap<>();
+			this.kafkaAdmin = obtainAdmin();
+			obtainClusterId();
+		}
+
+		@Nullable
+		private KafkaAdmin obtainAdmin() {
+			ApplicationContext applicationContext = getApplicationContext();
+			if (applicationContext != null) {
+				return applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+			}
+			return null;
+		}
+
+		@Nullable
+		private String clusterId() {
+			if (this.clusterId == null && this.kafkaAdmin != null) {
+				obtainClusterId();
+			}
+			return this.clusterId;
+		}
+
+		private void obtainClusterId() {
+			if (this.kafkaAdmin != null) {
+				this.clusterId = this.kafkaAdmin.clusterId();
+			}
 		}
 
 		@Nullable
@@ -2709,7 +2740,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 					this.containerProperties.getObservationConvention(),
 					DefaultKafkaListenerObservationConvention.INSTANCE,
-					() -> new KafkaRecordReceiverContext(record, getListenerId()), this.observationRegistry);
+					() -> new KafkaRecordReceiverContext(record, getListenerId(), this::clusterId),
+					this.observationRegistry);
 			return observation.observe(() -> {
 				try {
 					invokeOnMessage(record);

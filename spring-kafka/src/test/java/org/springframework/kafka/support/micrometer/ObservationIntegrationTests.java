@@ -24,6 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -35,6 +36,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -83,10 +85,16 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 					.collect(Collectors.toList());
 			SpanAssert.assertThat(producerSpans.get(0))
 					.hasTag("spring.kafka.template.name", "template");
+			assertThat(producerSpans.get(0).getRemoteServiceName())
+					.startsWith("Apache Kafka: ")
+					.doesNotEndWith("Kafka: ");
 			SpanAssert.assertThat(producerSpans.get(1))
 					.hasTag("spring.kafka.template.name", "template");
 			SpanAssert.assertThat(consumerSpans.get(0))
 					.hasTagWithKey("spring.kafka.listener.id");
+			assertThat(consumerSpans.get(0).getRemoteServiceName())
+					.startsWith("Apache Kafka: ")
+					.doesNotEndWith("Kafka: ");
 			assertThat(consumerSpans.get(0).getTags().get("spring.kafka.listener.id")).isIn("obs1-0", "obs2-0");
 			SpanAssert.assertThat(consumerSpans.get(1))
 					.hasTagWithKey("spring.kafka.listener.id");
@@ -126,6 +134,11 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
 			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("obs", "false", broker);
 			return new DefaultKafkaConsumerFactory<>(consumerProps);
+		}
+
+		@Bean
+		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
+			return new KafkaAdmin(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString()));
 		}
 
 		@Bean

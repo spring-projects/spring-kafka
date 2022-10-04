@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.micrometer;
 
 import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -36,7 +37,7 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 
 	private final ConsumerRecord<?, ?> record;
 
-	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId) {
+	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, Supplier<String> clusterId) {
 		super((carrier, key) -> {
 			Header header = carrier.headers().lastHeader(key);
 			if (header == null) {
@@ -47,6 +48,8 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 		setCarrier(record);
 		this.record = record;
 		this.listenerId = listenerId;
+		String cluster = clusterId.get();
+		setRemoteServiceName("Apache Kafka" + (cluster != null ? ": " + cluster : ""));
 	}
 
 	public String getListenerId() {

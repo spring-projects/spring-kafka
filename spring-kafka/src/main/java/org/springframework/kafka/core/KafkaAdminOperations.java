@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import java.util.Map;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+
+import org.springframework.lang.Nullable;
 
 /**
  * Provides a number of convenience methods wrapping {@code AdminClient}.
@@ -48,5 +50,13 @@ public interface KafkaAdminOperations {
 	 * @return a map of name:topicDescription.
 	 */
 	Map<String, TopicDescription> describeTopics(String... topicNames);
+
+	/**
+	 * Return the cluster id, if available.
+	 * @return the describe cluster id.
+	 * @since 3.0
+	 */
+	@Nullable
+	String clusterId();
 
 }
