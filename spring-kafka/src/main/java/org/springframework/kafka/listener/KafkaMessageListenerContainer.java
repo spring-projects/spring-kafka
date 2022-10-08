@@ -916,21 +916,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastAlertPartition = new HashMap<>();
 			this.wasIdlePartition = new HashMap<>();
 			this.kafkaAdmin = obtainAdmin();
-			obtainClusterId();
 		}
 
 		@Nullable
 		private KafkaAdmin obtainAdmin() {
-			ApplicationContext applicationContext = getApplicationContext();
-			if (applicationContext != null) {
-				return applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+			if (this.containerProperties.isObservationEnabled()) {
+				ApplicationContext applicationContext = getApplicationContext();
+				if (applicationContext != null) {
+					return applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+				}
 			}
 			return null;
 		}
 
 		@Nullable
 		private String clusterId() {
-			if (this.clusterId == null && this.kafkaAdmin != null) {
+			if (this.kafkaAdmin != null && this.clusterId == null) {
 				obtainClusterId();
 			}
 			return this.clusterId;

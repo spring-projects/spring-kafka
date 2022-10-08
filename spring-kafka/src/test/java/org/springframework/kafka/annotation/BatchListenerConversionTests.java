@@ -17,6 +17,9 @@
 package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,6 +31,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
@@ -44,6 +48,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchListenerFailedException;
@@ -110,7 +115,7 @@ public class BatchListenerConversionTests {
 	}
 
 	@Test
-	public void testBatchOfPojoMessages() throws Exception {
+	public void testBatchOfPojoMessages(@Autowired KafkaAdmin admin) throws Exception {
 		String topic = "blc3";
 		this.template.send(new GenericMessage<>(
 				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
@@ -119,6 +124,7 @@ public class BatchListenerConversionTests {
 		assertThat(listener.received.size()).isGreaterThan(0);
 		assertThat(listener.received.get(0).getPayload()).isInstanceOf(Foo.class);
 		assertThat(listener.received.get(0).getPayload().getBar()).isEqualTo("bar");
+		verify(admin, never()).clusterId();
 	}
 
 	@Test
@@ -151,6 +157,11 @@ public class BatchListenerConversionTests {
 	@Configuration
 	@EnableKafka
 	public static class Config {
+
+		@Bean
+		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
+			return spy(new KafkaAdmin(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString())));
+		}
 
 		@Bean
 		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka,
