@@ -29,6 +29,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -47,6 +49,7 @@ import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -133,11 +136,14 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 	}
 
 	@Test
-	void shouldRetryThirdTopicWithTimeout() {
+	void shouldRetryThirdTopicWithTimeout(@Autowired KafkaAdmin admin) {
 		logger.debug("Sending message to topic " + THIRD_TOPIC);
 		kafkaTemplate.send(THIRD_TOPIC, "Testing topic 3");
 		assertThat(awaitLatch(latchContainer.countDownLatch3)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltOne)).isTrue();
+		Map<String, TopicDescription> topics = admin.describeTopics(THIRD_TOPIC, THIRD_TOPIC + "-dlt");
+		assertThat(topics.get(THIRD_TOPIC).partitions()).hasSize(2);
+		assertThat(topics.get(THIRD_TOPIC + "-dlt").partitions()).hasSize(3);
 	}
 
 	@Test
@@ -525,6 +531,11 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 			Map<String, Object> configs = new HashMap<>();
 			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.broker.getBrokersAsString());
 			return new KafkaAdmin(configs);
+		}
+
+		@Bean
+		public NewTopic topic() {
+			return TopicBuilder.name(THIRD_TOPIC).partitions(2).replicas(1).build();
 		}
 
 		@Bean

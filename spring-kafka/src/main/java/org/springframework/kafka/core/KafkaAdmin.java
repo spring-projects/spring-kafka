@@ -22,9 +22,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +59,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.support.TopicForRetryable;
 import org.springframework.lang.Nullable;
 
 /**
@@ -181,8 +184,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 * @see #setAutoCreate(boolean)
 	 */
 	public final boolean initialize() {
-		Collection<NewTopic> newTopics = new ArrayList<>(
-				this.applicationContext.getBeansOfType(NewTopic.class, false, false).values());
+		Collection<NewTopic> newTopics = newTopics();
 		Collection<NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false).values();
 		wrappers.forEach(wrapper -> newTopics.addAll(wrapper.getNewTopics()));
 		if (newTopics.size() > 0) {
@@ -223,6 +225,30 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 		this.initializingContext = false;
 		return false;
+	}
+
+	/*
+	 * Remove any TopicForRetryable bean if there is also a NewTopic with the same topic name.
+	 */
+	private Collection<NewTopic> newTopics() {
+		Map<String, NewTopic> newTopicsMap = new HashMap<>(
+				this.applicationContext.getBeansOfType(NewTopic.class, false, false));
+		Map<String, NewTopic> topicsForRetry = newTopicsMap.entrySet().stream()
+				.filter(entry -> entry.getValue() instanceof TopicForRetryable)
+				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+		for (Entry<String, NewTopic> entry : topicsForRetry.entrySet()) {
+			Iterator<Entry<String, NewTopic>> iterator = newTopicsMap.entrySet().iterator();
+			while (iterator.hasNext()) {
+				Entry<String, NewTopic> nt = iterator.next();
+				if (nt.getValue().name().equals(entry.getValue().name())
+						&& !(entry.getValue() instanceof TopicForRetryable)) {
+
+					iterator.remove();
+				}
+			}
+		}
+		Collection<NewTopic> newTopics = new ArrayList<>(newTopicsMap.values());
+		return newTopics;
 	}
 
 	@Override

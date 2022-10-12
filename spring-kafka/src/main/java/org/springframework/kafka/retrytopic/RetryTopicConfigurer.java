@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.function.Consumer;
 
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.BeansException;
@@ -37,6 +36,7 @@ import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.kafka.support.TopicForRetryable;
 import org.springframework.lang.Nullable;
 
 
@@ -363,7 +363,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 				String beanName = topic + "-topicRegistrationBean";
 				if (!bf.containsBean(beanName)) {
 					bf.registerSingleton(beanName,
-							new NewTopic(topic, config.getNumPartitions(), config.getReplicationFactor()));
+							new TopicForRetryable(topic, config.getNumPartitions(), config.getReplicationFactor()));
 				}
 			}
 		);
