@@ -3382,14 +3382,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			public void nack(Duration sleep) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
+				Assert.state(!ListenerConsumer.this.containerProperties.isAsyncAcks(),
+						"nack() is not supported with out-of-order commits (asyncAcks=true)");
 				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
 				ListenerConsumer.this.nackSleepDurationMillis = sleep.toMillis();
-				synchronized (ListenerConsumer.this) {
-					if (ListenerConsumer.this.offsetsInThisBatch != null) {
-						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
-						ListenerConsumer.this.deferredOffsets.forEach((part, recs) -> recs.clear());
-					}
-				}
 			}
 
 			@Override
@@ -3429,16 +3425,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			public void nack(int index, Duration sleep) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
+				Assert.state(!ListenerConsumer.this.containerProperties.isAsyncAcks(),
+						"nack() is not supported with out-of-order commits (asyncAcks=true)");
 				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
 				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
 				ListenerConsumer.this.nackIndex = index;
 				ListenerConsumer.this.nackSleepDurationMillis = sleep.toMillis();
-				synchronized (ListenerConsumer.this) {
-					if (ListenerConsumer.this.offsetsInThisBatch != null) {
-						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
-						ListenerConsumer.this.deferredOffsets.forEach((part, recs) -> recs.clear());
-					}
-				}
 				int i = 0;
 				List<ConsumerRecord<K, V>> toAck = new LinkedList<>();
 				for (ConsumerRecord<K, V> record : this.records) {

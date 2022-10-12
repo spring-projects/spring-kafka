@@ -692,7 +692,16 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setAsyncAcks(true);
 		final CountDownLatch latch = new CountDownLatch(4);
 		final List<Acknowledgment> acks = new ArrayList<>();
+		final AtomicReference<IllegalStateException> illegal = new AtomicReference<>();
 		AcknowledgingMessageListener<Integer, String> messageListener = (data, ack) -> {
+			if (latch.getCount() == 4) {
+				try {
+					ack.nack(Duration.ofSeconds(1));
+				}
+				catch (IllegalStateException ex) {
+					illegal.set(ex);
+				}
+			}
 			latch.countDown();
 			acks.add(ack);
 			if (latch.getCount() == 0) {
@@ -723,6 +732,7 @@ public class KafkaMessageListenerContainerTests {
 		verify(consumer).commitSync(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(4L)),
 				Duration.ofMinutes(1));
 		container.stop();
+		assertThat(illegal.get()).isNotNull();
 	}
 
 	private static Stream<Arguments> testInOrderAckPauseUntilAckedParamters() {

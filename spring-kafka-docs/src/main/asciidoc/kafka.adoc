@@ -1219,6 +1219,8 @@ NOTE: If you want to commit a partial batch, using `nack()`, When using transact
 
 IMPORTANT: `nack()` can only be called on the consumer thread that invokes your listener.
 
+IMPORTANT: `nack()` is not allowed when using <<ooo-commits, Out of Order Commits>>.
+
 With a record listener, when `nack()` is called, any pending offsets are committed, the remaining records from the last poll are discarded, and seeks are performed on their partitions so that the failed record and unprocessed records are redelivered on the next `poll()`.
 The consumer can be paused before redelivery, by setting the `sleep` argument.
 This is similar functionality to throwing an exception when the container is configured with a `DefaultErrorHandler`.
@@ -3783,7 +3785,7 @@ If you go with this approach, then you need to set this producer interceptor on 
 Following is an example using the same `MyProducerInterceptor` from above, but changed to not use the internal config property.
 
 ====
-[source]
+[source, java]
 ----
 public class MyProducerInterceptor implements ProducerInterceptor<String, String> {
 
