@@ -19,14 +19,17 @@ package org.springframework.kafka.retrytopic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -54,6 +57,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -136,14 +140,27 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 	}
 
 	@Test
-	void shouldRetryThirdTopicWithTimeout(@Autowired KafkaAdmin admin) {
+	void shouldRetryThirdTopicWithTimeout(@Autowired KafkaAdmin admin) throws Exception {
 		logger.debug("Sending message to topic " + THIRD_TOPIC);
 		kafkaTemplate.send(THIRD_TOPIC, "Testing topic 3");
 		assertThat(awaitLatch(latchContainer.countDownLatch3)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltOne)).isTrue();
-		Map<String, TopicDescription> topics = admin.describeTopics(THIRD_TOPIC, THIRD_TOPIC + "-dlt");
+		Map<String, TopicDescription> topics = admin.describeTopics(THIRD_TOPIC, THIRD_TOPIC + "-dlt", FOURTH_TOPIC);
 		assertThat(topics.get(THIRD_TOPIC).partitions()).hasSize(2);
 		assertThat(topics.get(THIRD_TOPIC + "-dlt").partitions()).hasSize(3);
+		assertThat(topics.get(FOURTH_TOPIC).partitions()).hasSize(2);
+		AtomicReference<Method> method = new AtomicReference<>();
+		org.springframework.util.ReflectionUtils.doWithMethods(KafkaAdmin.class, m -> {
+			m.setAccessible(true);
+			method.set(m);
+		}, m -> m.getName().equals("newTopics"));
+		@SuppressWarnings("unchecked")
+		Collection<NewTopic> weededTopics = (Collection<NewTopic>) method.get().invoke(admin);
+		weededTopics.forEach(topic -> {
+			if (topic.name().equals(THIRD_TOPIC) || topic.name().equals(FOURTH_TOPIC)) {
+				assertThat(topic).isExactlyInstanceOf(NewTopic.class);
+			}
+		});
 	}
 
 	@Test
@@ -536,6 +553,11 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 		@Bean
 		public NewTopic topic() {
 			return TopicBuilder.name(THIRD_TOPIC).partitions(2).replicas(1).build();
+		}
+
+		@Bean
+		public NewTopics topics() {
+			return new NewTopics(TopicBuilder.name(FOURTH_TOPIC).partitions(2).replicas(1).build());
 		}
 
 		@Bean

@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -185,8 +186,6 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 */
 	public final boolean initialize() {
 		Collection<NewTopic> newTopics = newTopics();
-		Collection<NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false).values();
-		wrappers.forEach(wrapper -> newTopics.addAll(wrapper.getNewTopics()));
 		if (newTopics.size() > 0) {
 			AdminClient adminClient = null;
 			try {
@@ -233,18 +232,29 @@ public class KafkaAdmin extends KafkaResourceFactory
 	private Collection<NewTopic> newTopics() {
 		Map<String, NewTopic> newTopicsMap = new HashMap<>(
 				this.applicationContext.getBeansOfType(NewTopic.class, false, false));
+		Map<String, NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false);
+		AtomicInteger count = new AtomicInteger();
+		wrappers.forEach((name, newTopics) -> {
+			newTopics.getNewTopics().forEach(nt -> newTopicsMap.put(name + "#" + count.getAndIncrement(), nt));
+		});
 		Map<String, NewTopic> topicsForRetry = newTopicsMap.entrySet().stream()
 				.filter(entry -> entry.getValue() instanceof TopicForRetryable)
 				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 		for (Entry<String, NewTopic> entry : topicsForRetry.entrySet()) {
 			Iterator<Entry<String, NewTopic>> iterator = newTopicsMap.entrySet().iterator();
+			boolean remove = false;
 			while (iterator.hasNext()) {
 				Entry<String, NewTopic> nt = iterator.next();
+				// if we have a NewTopic and TopicForRetry with the same name, remove the latter
 				if (nt.getValue().name().equals(entry.getValue().name())
-						&& !(entry.getValue() instanceof TopicForRetryable)) {
+						&& !(nt.getValue() instanceof TopicForRetryable)) {
 
-					iterator.remove();
+					remove = true;
+					break;
 				}
+			}
+			if (remove) {
+				newTopicsMap.remove(entry.getKey());
 			}
 		}
 		Collection<NewTopic> newTopics = new ArrayList<>(newTopicsMap.values());
