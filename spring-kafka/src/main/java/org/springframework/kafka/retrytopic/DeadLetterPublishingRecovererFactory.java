@@ -69,6 +69,8 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private ListenerExceptionLoggingStrategy loggingStrategy = ListenerExceptionLoggingStrategy.AFTER_RETRIES_EXHAUSTED;
 
+	private BiFunction<ConsumerRecord<?, ?>, String, Integer> partitionResolver = (cr, nextTopic) -> cr.partition();
+
 	public DeadLetterPublishingRecovererFactory(DestinationTopicResolver destinationTopicResolver) {
 		this.destinationTopicResolver = destinationTopicResolver;
 	}
@@ -81,6 +83,19 @@ public class DeadLetterPublishingRecovererFactory {
 	 */
 	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
 		this.headersFunction = headersFunction;
+	}
+
+	/**
+	 * Set a resolver for the partition number to publish to. By default the same partition as
+	 * the consumer record is used. If the resolver returns {@code null} or a negative number, the
+	 * partition is set to null in the producer record and the {@code KafkaProducer} decides which
+	 * partition to publish to.
+	 * @param resolver the resolver.
+	 * @since 2.9.2
+	 */
+	public void setPartitionResolver(BiFunction<ConsumerRecord<?, ?>, String, Integer> resolver) {
+		Assert.notNull(resolver, "'resolver' cannot be null");
+		this.partitionResolver = resolver;
 	}
 
 	/**
@@ -253,13 +268,17 @@ public class DeadLetterPublishingRecovererFactory {
 	 * and if it doesn't it sets -1, to allow the Producer itself to assign a partition to the record.</p>
 	 *
 	 * <p>Subclasses can inherit from this method to override the implementation, if necessary.</p>
+	 * The destination partition can also be customized using {@link #setPartitionResolver(BiFunction)}.
 	 *
 	 * @param cr The original {@link ConsumerRecord}, which is to be forwarded to DLT
 	 * @param nextDestination The next {@link DestinationTopic}, where the consumerRecord is to be forwarded
-	 * @return An instance of {@link TopicPartition}, specifying the topic and partition, where the cr is to be sent
+	 * @return An instance of {@link TopicPartition}, specifying the topic and partition, where the cr is to be sent.
+	 * @see #setPartitionResolver(BiFunction)
 	 */
 	protected TopicPartition resolveTopicPartition(final ConsumerRecord<?, ?> cr, final DestinationTopic nextDestination) {
-		return new TopicPartition(nextDestination.getDestinationName(), cr.partition());
+		String nextTopic = nextDestination.getDestinationName();
+		Integer partition = this.partitionResolver.apply(cr, nextTopic);
+		return new TopicPartition(nextTopic, partition == null ? -1 : partition);
 	}
 
 	private int getAttempts(ConsumerRecord<?, ?> consumerRecord) {

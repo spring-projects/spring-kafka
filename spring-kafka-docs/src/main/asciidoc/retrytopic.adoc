@@ -200,6 +200,33 @@ public class MyRetryTopicConfiguration extends RetryTopicConfigurationSupport {
 IMPORTANT: When using this configuration approach, the `@EnableKafkaRetryTopic` annotation should not be used to prevent context failing to start due to duplicated beans.
 Use the simple `@EnableKafka` annotation instead.
 
+When `autoCreateTopics` is true, the main and retry topics will be created with the specified number of partitions and replication factor.
+To override these values for a particular topic (e.g. the main topic or DLT), simply add a `NewTopic` `@Bean` with the required properties; that will override the auto creation properties.
+
+IMPORTANT: By default, records are published to the retry topic(s) using the original partition of the received record.
+If the retry topics have fewer partitions than the main topic, you should configure the framework appropriately; an example follows.
+
+====
+[source, java]
+----
+@EnableKafka
+@Configuration
+public class Config extends RetryTopicConfigurationSupport {
+
+    @Override
+    protected Consumer<DeadLetterPublishingRecovererFactory> configureDeadLetterPublishingContainerFactory() {
+        return dlprf -> dlprf.setPartitionResolver((cr, nextTopic) -> null);
+    }
+
+    ...
+
+}
+----
+====
+
+The parameters to the function are the consumer record and the name of the next topic.
+You can return a specific partition number, or `null` to indicate that the `KafkaProducer` should determine the partition.
+
 ==== Features
 
 Most of the features are available both for the `@RetryableTopic` annotation and the `RetryTopicConfiguration` beans.
