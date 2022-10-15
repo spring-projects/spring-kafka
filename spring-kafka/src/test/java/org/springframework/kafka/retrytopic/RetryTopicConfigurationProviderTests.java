@@ -25,6 +25,10 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.Collections;
 
@@ -60,6 +64,8 @@ class RetryTopicConfigurationProviderTests {
 	private final Method annotatedMethod = getAnnotatedMethod("annotatedMethod");
 
 	private final Method nonAnnotatedMethod = getAnnotatedMethod("nonAnnotatedMethod");
+
+	private final Method metaAnnotatedMethod = getAnnotatedMethod("metaAnnotatedMethod");
 
 	private Method getAnnotatedMethod(String methodName) {
 		try {
@@ -136,6 +142,19 @@ class RetryTopicConfigurationProviderTests {
 
 	}
 
+	@Test
+	void shouldProvideFromMetaAnnotation() {
+
+		// setup
+		willReturn(kafkaOperations).given(beanFactory).getBean("retryTopicDefaultKafkaTemplate", KafkaOperations.class);
+
+		// given
+		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
+		RetryTopicConfiguration configuration = provider.findRetryConfigurationFor(topics, metaAnnotatedMethod, bean);
+
+		// then
+		then(this.beanFactory).should(times(0)).getBeansOfType(RetryTopicConfiguration.class);
+	}
 
 	@Test
 	void shouldNotConfigureIfBeanFactoryNull() {
@@ -155,6 +174,17 @@ class RetryTopicConfigurationProviderTests {
 	}
 
 	public void nonAnnotatedMethod() {
+		// NoOps
+	}
+
+	@Target({ElementType.METHOD})
+	@Retention(RetentionPolicy.RUNTIME)
+	@RetryableTopic
+	static @interface MetaAnnotatedRetryableTopic {
+	}
+
+	@MetaAnnotatedRetryableTopic
+	public void metaAnnotatedMethod() {
 		// NoOps
 	}
 }

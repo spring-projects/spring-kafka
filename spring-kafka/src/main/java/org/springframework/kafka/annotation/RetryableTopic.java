@@ -41,7 +41,7 @@ import org.springframework.retry.annotation.Backoff;
  *
  * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
  */
-@Target({ ElementType.METHOD })
+@Target({ ElementType.METHOD, ElementType.ANNOTATION_TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface RetryableTopic {

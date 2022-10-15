@@ -138,11 +138,23 @@ import org.springframework.lang.Nullable;
  *
  * <p>The other, non-exclusive way to configure the endpoints is through the convenient
  * {@link org.springframework.kafka.annotation.RetryableTopic} annotation, that can be placed on any
- * {@link org.springframework.kafka.annotation.KafkaListener} annotated methods, such as:
+ * {@link org.springframework.kafka.annotation.KafkaListener} annotated methods, directly, such as:
  *
  * <pre>
  *     <code>@RetryableTopic(attempts = 3,
  *     		backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     <code>@KafkaListener(topics = "my-annotated-topic")
+ *     public void processMessage(MyPojo message) {
+ *        		// ... message processing
+ *     }</code>
+ *</pre>
+ * <p> Or through meta-annotations, such as:
+ * <pre>
+ *     <code>@RetryableTopic(attempts = 3,
+ *     		backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     <code>public @interface WithExponentialBackoffRetry { }</code>
+ *
+ *     <code>@WithExponentialBackoffRetry</code>
  *     <code>@KafkaListener(topics = "my-annotated-topic")
  *     public void processMessage(MyPojo message) {
  *        		// ... message processing
