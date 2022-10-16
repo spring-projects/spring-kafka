@@ -40,6 +40,10 @@ You can now set a different `concurrency` for the retry containers; by default, 
 
 See <<retry-config>> for more information.
 
+You can now configure multiple `@RetryableTopic` listeners on the same topic in the same application context.
+Previously, this was not possible.
+See <<multi-retry>> for more information.
+
 [[x30-lc-changes]]
 ==== Listener Container Changes
 

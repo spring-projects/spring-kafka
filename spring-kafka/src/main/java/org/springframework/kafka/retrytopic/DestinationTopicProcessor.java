@@ -60,15 +60,17 @@ public interface DestinationTopicProcessor {
 
 	class Context {
 
+		protected final String listenerId; // NOSONAR
+
 		protected final Map<String, List<DestinationTopic>> destinationsByTopicMap; // NOSONAR
 
 		protected final List<DestinationTopic.Properties> properties; // NOSONAR
 
-		public Context(List<DestinationTopic.Properties> properties) {
-
+		public Context(String listenerId, List<DestinationTopic.Properties> properties) {
+			this.listenerId = listenerId;
 			this.destinationsByTopicMap = new HashMap<>();
-
 			this.properties = properties;
 		}
+
 	}
 }

@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -158,10 +159,10 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	@SuppressWarnings("unchecked")
-	public DeadLetterPublishingRecoverer create() {
+	public DeadLetterPublishingRecoverer create(String mainListenerId) {
+		Assert.notNull(mainListenerId, "'listenerId' cannot be null");
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(// NOSONAR anon. class size
-				this::resolveTemplate,
-				false, (this::resolveDestination)) {
+				templateResolver(mainListenerId), false, destinationResolver(mainListenerId)) {
 
 			@Override
 			protected DeadLetterPublishingRecoverer.HeaderNames getHeaderNames() {
@@ -185,7 +186,8 @@ public class DeadLetterPublishingRecovererFactory {
 			}
 		};
 
-		recoverer.setHeadersFunction((consumerRecord, e) -> addHeaders(consumerRecord, e, getAttempts(consumerRecord)));
+		recoverer.setHeadersFunction(
+				(consumerRecord, e) -> addHeaders(mainListenerId, consumerRecord, e, getAttempts(consumerRecord)));
 		if (this.headersFunction != null) {
 			recoverer.addHeadersFunction(this.headersFunction);
 		}
@@ -199,9 +201,9 @@ public class DeadLetterPublishingRecovererFactory {
 		return recoverer;
 	}
 
-	private KafkaOperations<?, ?> resolveTemplate(ProducerRecord<?, ?> outRecord) {
-		return this.destinationTopicResolver
-						.getDestinationTopicByName(outRecord.topic())
+	private Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver(String mainListenerId) {
+		return outRecord -> this.destinationTopicResolver
+						.getDestinationTopicByName(mainListenerId, outRecord.topic())
 						.getKafkaOperations();
 	}
 
@@ -209,23 +211,25 @@ public class DeadLetterPublishingRecovererFactory {
 		this.recovererCustomizer = customizer;
 	}
 
-	private TopicPartition resolveDestination(ConsumerRecord<?, ?> cr, Exception e) {
-		if (SeekUtils.isBackoffException(e)) {
-			throw (NestedRuntimeException) e; // Necessary to not commit the offset and seek to current again
-		}
+	private BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver(String mainListenerId) {
+		return (cr, ex) -> {
+			if (SeekUtils.isBackoffException(ex)) {
+				throw (NestedRuntimeException) ex; // Necessary to not commit the offset and seek to current again
+			}
 
-		DestinationTopic nextDestination = this.destinationTopicResolver.resolveDestinationTopic(
-				cr.topic(), getAttempts(cr), e, getOriginalTimestampHeaderLong(cr));
+			DestinationTopic nextDestination = this.destinationTopicResolver.resolveDestinationTopic(mainListenerId,
+					cr.topic(), getAttempts(cr), ex, getOriginalTimestampHeaderLong(cr));
 
-		LOGGER.debug(() -> "Resolved topic: " + (nextDestination.isNoOpsTopic()
-				? "none"
-				: nextDestination.getDestinationName()));
+			LOGGER.debug(() -> "Resolved topic: " + (nextDestination.isNoOpsTopic()
+					? "none"
+					: nextDestination.getDestinationName()));
 
-		maybeLogListenerException(e, cr, nextDestination);
+			maybeLogListenerException(ex, cr, nextDestination);
 
-		return nextDestination.isNoOpsTopic()
-					? null
-					: resolveTopicPartition(cr, nextDestination);
+			return nextDestination.isNoOpsTopic()
+						? null
+						: resolveTopicPartition(cr, nextDestination);
+		};
 	}
 
 	private void maybeLogListenerException(Exception e, ConsumerRecord<?, ?> cr, DestinationTopic nextDestination) {
@@ -299,25 +303,27 @@ public class DeadLetterPublishingRecovererFactory {
 		return 1;
 	}
 
-	private Headers addHeaders(ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts) {
+	private Headers addHeaders(String mainListenerId, ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts) {
 		Headers headers = new RecordHeaders();
 		byte[] originalTimestampHeader = getOriginalTimestampHeaderBytes(consumerRecord);
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampHeader);
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
 				ByteBuffer.wrap(new byte[Integer.BYTES]).putInt(attempts + 1).array());
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
-				BigInteger.valueOf(getNextExecutionTimestamp(consumerRecord, e, originalTimestampHeader))
+				BigInteger
+						.valueOf(getNextExecutionTimestamp(mainListenerId, consumerRecord, e, originalTimestampHeader))
 						.toByteArray());
 		return headers;
 	}
 
-	private long getNextExecutionTimestamp(ConsumerRecord<?, ?> consumerRecord, Exception e,
+	private long getNextExecutionTimestamp(String mainListenerId, ConsumerRecord<?, ?> consumerRecord, Exception e,
 			byte[] originalTimestampHeader) {
 
 		long originalTimestamp = new BigInteger(originalTimestampHeader).longValue();
 		long failureTimestamp = getFailureTimestamp(e);
-		long nextExecutionTimestamp =  failureTimestamp + this.destinationTopicResolver
-				.resolveDestinationTopic(consumerRecord.topic(), getAttempts(consumerRecord), e, originalTimestamp)
+		long nextExecutionTimestamp = failureTimestamp + this.destinationTopicResolver
+				.resolveDestinationTopic(mainListenerId, consumerRecord.topic(), getAttempts(consumerRecord), e,
+						originalTimestamp)
 				.getDestinationDelay();
 		LOGGER.debug(() -> String.format("FailureTimestamp: %s, Original timestamp: %s, nextExecutionTimestamp: %s",
 				failureTimestamp, originalTimestamp, nextExecutionTimestamp));

@@ -466,6 +466,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (KafkaListener classLevelListener : classLevelListeners) {
 			MultiMethodKafkaListenerEndpoint<K, V> endpoint =
 					new MultiMethodKafkaListenerEndpoint<>(checkedMethods, defaultMethod, bean);
+			endpoint.setId(getEndpointId(classLevelListener));
 			String beanRef = classLevelListener.beanRef();
 			this.listenerScope.addListener(beanRef, bean);
 			processListener(endpoint, classLevelListener, bean, beanName, resolveTopics(classLevelListener),
@@ -478,6 +479,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Method methodToUse = checkProxy(method, bean);
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
 		endpoint.setMethod(methodToUse);
+		endpoint.setId(getEndpointId(kafkaListener));
 
 		String beanRef = kafkaListener.beanRef();
 		this.listenerScope.addListener(beanRef, bean);
@@ -627,7 +629,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 		endpoint.setBean(bean);
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
-		endpoint.setId(getEndpointId(kafkaListener));
 		endpoint.setGroupId(getEndpointGroupId(kafkaListener, endpoint.getId()));
 		endpoint.setTopicPartitions(tps);
 		endpoint.setTopics(topics);

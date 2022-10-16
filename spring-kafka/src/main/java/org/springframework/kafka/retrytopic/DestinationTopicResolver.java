@@ -30,7 +30,7 @@ public interface DestinationTopicResolver extends DestinationTopicContainer {
 	/**
 	 *
 	 * Resolves the destination topic for the failed message.
-	 *
+	 * @param mainListenerId the listener id.
 	 * @param topic the current topic for the message.
 	 * @param attempt the number of processing attempts already made for that message.
 	 * @param e the exception the message processing has thrown
@@ -39,6 +39,7 @@ public interface DestinationTopicResolver extends DestinationTopicContainer {
 	 * @return the {@link DestinationTopic} for the given parameters.
 	 *
 	 */
-	DestinationTopic resolveDestinationTopic(String topic, Integer attempt, Exception e, long originalTimestamp);
+	DestinationTopic resolveDestinationTopic(String mainListenerId, String topic, Integer attempt, Exception e,
+			long originalTimestamp);
 
 }

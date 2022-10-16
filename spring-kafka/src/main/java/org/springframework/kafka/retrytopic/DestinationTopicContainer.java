@@ -31,16 +31,18 @@ public interface DestinationTopicContainer {
 
 	/**
 	 * Adds the provided destination topics to the container.
+	 * @param mainListenerId the listener id.
 	 * @param destinationTopics the {@link DestinationTopic} list to add.
 	 */
-	void addDestinationTopics(List<DestinationTopic> destinationTopics);
+	void addDestinationTopics(String mainListenerId, List<DestinationTopic> destinationTopics);
 
 	/**
 	 * Returns the {@link DestinationTopic} instance registered for that topic.
+	 * @param mainListenerId the listener id.
 	 * @param topicName the topic name of the DestinationTopic to be returned.
 	 * @return the DestinationTopic instance registered for that topic.
 	 */
-	DestinationTopic getDestinationTopicByName(String topicName);
+	DestinationTopic getDestinationTopicByName(String mainListenerId, String topicName);
 
 	/**
 	 * Returns the {@link DestinationTopic} instance registered as the next
@@ -51,18 +53,20 @@ public interface DestinationTopicContainer {
 	 * If you need to find out the exact next topic for a message use the
 	 * {@link DestinationTopicResolver#resolveDestinationTopic(String, Integer, Exception, long)}
 	 * method instead.
+	 * @param mainListenerId the listener id.
 	 * @param topicName the topic name of the DestinationTopic to be returned.
 	 * @return the next DestinationTopic in the chain registered for that topic.
 	 */
-	DestinationTopic getNextDestinationTopicFor(String topicName);
+	DestinationTopic getNextDestinationTopicFor(String mainListenerId, String topicName);
 
 	/**
 	 * Returns the {@link DestinationTopic} instance registered as
 	 * DLT for the given topic, or null if none is found.
+	 * @param mainListenerId the listener id.
 	 * @param topicName the topic name for which to look the DLT for
 	 * @return The {@link DestinationTopic} instance corresponding to the DLT.
 	 */
 	@Nullable
-	DestinationTopic getDltFor(String topicName);
+	DestinationTopic getDltFor(String mainListenerId, String topicName);
 
 }

@@ -119,6 +119,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean stoppedNormally = true;
 
+	@Nullable
+	private String mainListenerId;
+
 	/**
 	 * Construct an instance with the provided factory and properties.
 	 * @param consumerFactory the factory.
@@ -374,6 +377,21 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Nullable
 	public String getListenerId() {
 		return this.beanName; // the container factory sets the bean name to the id attribute
+	}
+
+	/**
+	 * Set the main listener id, if this container is for a retry topic.
+	 * @param id the id.
+	 * @since 3.0.
+	 */
+	public void setMainListenerId(String id) {
+		this.mainListenerId = id;
+	}
+
+	@Override
+	@Nullable
+	public String getMainListenerId() {
+		return this.mainListenerId;
 	}
 
 	@Nullable

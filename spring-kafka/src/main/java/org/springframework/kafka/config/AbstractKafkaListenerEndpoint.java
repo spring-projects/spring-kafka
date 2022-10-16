@@ -120,6 +120,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private String correlationHeaderName;
 
+	@Nullable
+	private String mainListenerId;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -152,6 +155,16 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public void setMainListenerId(String id) {
+		this.mainListenerId = id;
+	}
+
+	@Override
+	@Nullable
+	public String getMainListenerId() {
+		return this.mainListenerId;
 	}
 
 	@Nullable

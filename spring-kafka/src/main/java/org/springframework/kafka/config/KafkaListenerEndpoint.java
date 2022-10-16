@@ -155,4 +155,14 @@ public interface KafkaListenerEndpoint {
 		return null;
 	}
 
+	/**
+	 * Return the main listener id if this container is for a retry topic.
+	 * @return the main listener id or null.
+	 * @since 3.0
+	 */
+	@Nullable
+	default String getMainListenerId() {
+		return null;
+	}
+
 }

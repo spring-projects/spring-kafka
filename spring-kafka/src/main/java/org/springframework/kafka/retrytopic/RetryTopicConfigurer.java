@@ -295,8 +295,8 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 											@Nullable KafkaListenerContainerFactory<?> factory,
 											String defaultContainerFactoryBeanName) {
 		throwIfMultiMethodEndpoint(mainEndpoint);
-		DestinationTopicProcessor.Context context =
-				new DestinationTopicProcessor.Context(configuration.getDestinationTopicProperties());
+		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context(mainEndpoint.getId(),
+				configuration.getDestinationTopicProperties());
 		configureEndpoints(mainEndpoint, endpointProcessor, factory, registrar, configuration, context,
 				defaultContainerFactoryBeanName);
 		this.destinationTopicProcessor.processRegisteredDestinations(getTopicCreationFunction(configuration), context);
@@ -334,9 +334,15 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 						? resolveAndConfigureFactoryForMainEndpoint(factory, defaultFactoryBeanName, configuration)
 						: resolveAndConfigureFactoryForRetryEndpoint(factory, defaultFactoryBeanName, configuration);
 
-		MethodKafkaListenerEndpoint<?, ?> endpoint = destinationTopicProperties.isMainEndpoint()
-				? mainEndpoint
-				: new MethodKafkaListenerEndpoint<>();
+		MethodKafkaListenerEndpoint<?, ?> endpoint;
+		if (destinationTopicProperties.isMainEndpoint()) {
+			endpoint = mainEndpoint;
+		}
+		else {
+			endpoint = new MethodKafkaListenerEndpoint<>();
+			endpoint.setId(mainEndpoint.getId());
+			endpoint.setMainListenerId(mainEndpoint.getId());
+		}
 
 		endpointProcessor.accept(endpoint);
 		Integer concurrency = configuration.getConcurrency();

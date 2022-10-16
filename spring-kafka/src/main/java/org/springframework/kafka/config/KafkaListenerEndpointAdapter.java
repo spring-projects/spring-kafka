@@ -101,4 +101,10 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 		return true;
 	}
 
+	@Override
+	@Nullable
+	public String getMainListenerId() {
+		return null;
+	}
+
 }

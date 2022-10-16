@@ -17,6 +17,7 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 
@@ -50,7 +51,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 	@Test
 	void shouldProcessDestinationProperties() {
 		// setup
-		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context(allProps);
+		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context("foo", allProps);
 		List<DestinationTopic.Properties> processedProps = new ArrayList<>();
 
 		// when
@@ -63,7 +64,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 	@Test
 	void shouldRegisterTopicDestinations() {
 		// setup
-		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context(allProps);
+		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context("foo", allProps);
 
 		// when
 		registerFirstTopicDestinations(context);
@@ -123,7 +124,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 		DefaultDestinationTopicProcessor destinationTopicProcessor =
 				new DefaultDestinationTopicProcessor(destinationTopicResolver);
 
-		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context(allProps);
+		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context("foo", allProps);
 
 		// when
 		registerFirstTopicDestinations(context);
@@ -133,7 +134,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 
 		// then
 		then(destinationTopicResolver).should(times(3))
-				.addDestinationTopics(destinationTopicListCaptor.capture());
+				.addDestinationTopics(eq("foo"), destinationTopicListCaptor.capture());
 
 		List<DestinationTopic> destinationList = destinationTopicListCaptor
 				.getAllValues()
@@ -164,7 +165,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 		DefaultDestinationTopicProcessor destinationTopicProcessor =
 				new DefaultDestinationTopicProcessor(destinationTopicResolver);
 
-		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context(allProps);
+		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context("foo", allProps);
 
 		List<String> allTopics = allFirstDestinationsTopics
 				.stream()

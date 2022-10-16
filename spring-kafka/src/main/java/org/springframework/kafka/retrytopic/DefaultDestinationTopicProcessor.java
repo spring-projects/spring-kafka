@@ -60,7 +60,8 @@ public class DefaultDestinationTopicProcessor implements DestinationTopicProcess
 		context
 				.destinationsByTopicMap
 				.values()
-				.forEach(topicDestinations -> this.destinationTopicResolver.addDestinationTopics(topicDestinations));
+				.forEach(topicDestinations -> this.destinationTopicResolver.addDestinationTopics(
+						context.listenerId, topicDestinations));
 		topicsCallback.accept(getAllTopicsNamesForThis(context));
 	}
 

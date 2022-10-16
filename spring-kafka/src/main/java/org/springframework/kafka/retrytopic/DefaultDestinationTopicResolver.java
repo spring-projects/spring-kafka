@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -35,6 +36,7 @@ import org.springframework.kafka.listener.ExceptionClassifier;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 
 
 /**
@@ -57,7 +59,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	private static final List<Class<? extends Throwable>> FRAMEWORK_EXCEPTIONS =
 			Arrays.asList(ListenerExecutionFailedException.class, TimestampedException.class);
 
-	private final Map<String, DestinationTopicHolder> sourceDestinationsHolderMap;
+	private final Map<String, Map<String, DestinationTopicHolder>> sourceDestinationsHolderMap;
 
 	private final Clock clock;
 
@@ -79,7 +81,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	 */
 	public DefaultDestinationTopicResolver(Clock clock) {
 		this.clock = clock;
-		this.sourceDestinationsHolderMap = new HashMap<>();
+		this.sourceDestinationsHolderMap = new ConcurrentHashMap<>();
 		this.contextRefreshed = false;
 	}
 
@@ -92,16 +94,16 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	}
 
 	@Override
-	public DestinationTopic resolveDestinationTopic(String topic, Integer attempt, Exception e,
+	public DestinationTopic resolveDestinationTopic(String mainListenerId, String topic, Integer attempt, Exception e,
 													long originalTimestamp) {
-		DestinationTopicHolder destinationTopicHolder = getDestinationHolderFor(topic);
+		DestinationTopicHolder destinationTopicHolder = getDestinationHolderFor(mainListenerId, topic);
 		return destinationTopicHolder.getSourceDestination().isDltTopic()
 				? handleDltProcessingFailure(destinationTopicHolder, e)
 				: destinationTopicHolder.getSourceDestination().shouldRetryOn(attempt, maybeUnwrapException(e))
 						&& isNotFatalException(e)
 						&& !isPastTimout(originalTimestamp, destinationTopicHolder)
 					? resolveRetryDestination(destinationTopicHolder)
-					: getDltOrNoOpsDestination(topic);
+					: getDltOrNoOpsDestination(mainListenerId, topic);
 	}
 
 	private Boolean isNotFatalException(Exception e) {
@@ -137,57 +139,63 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	}
 
 	@Override
-	public DestinationTopic getDestinationTopicByName(String topic) {
-		return Objects.requireNonNull(this.sourceDestinationsHolderMap.get(topic),
-				() -> "No DestinationTopic found for " + topic).getSourceDestination();
+	public DestinationTopic getDestinationTopicByName(String mainListenerId, String topic) {
+		Map<String, DestinationTopicHolder> map = this.sourceDestinationsHolderMap.get(mainListenerId);
+		Assert.notNull(map, () -> "No destination resolution information for listener " + mainListenerId);
+		return Objects.requireNonNull(map.get(topic),
+				() -> "No DestinationTopic found for " + mainListenerId + ":" + topic).getSourceDestination();
 	}
 
 	@Nullable
 	@Override
-	public DestinationTopic getDltFor(String topicName) {
-		DestinationTopic destination = getDltOrNoOpsDestination(topicName);
+	public DestinationTopic getDltFor(String mainListenerId, String topicName) {
+		DestinationTopic destination = getDltOrNoOpsDestination(mainListenerId, topicName);
 		return destination.isNoOpsTopic()
 				? null
 				: destination;
 	}
 
-	private DestinationTopic getDltOrNoOpsDestination(String topic) {
-		DestinationTopic destination = getNextDestinationTopicFor(topic);
+	private DestinationTopic getDltOrNoOpsDestination(String mainListenerId, String topic) {
+		DestinationTopic destination = getNextDestinationTopicFor(mainListenerId, topic);
 		return destination.isDltTopic() || destination.isNoOpsTopic()
 				? destination
-				: getDltOrNoOpsDestination(destination.getDestinationName());
+				: getDltOrNoOpsDestination(mainListenerId, destination.getDestinationName());
 	}
 
 	@Override
-	public DestinationTopic getNextDestinationTopicFor(String topic) {
-		return getDestinationHolderFor(topic).getNextDestination();
+	public DestinationTopic getNextDestinationTopicFor(String mainListenerId, String topic) {
+		return getDestinationHolderFor(mainListenerId, topic).getNextDestination();
 	}
 
-	private DestinationTopicHolder getDestinationHolderFor(String topic) {
+	private DestinationTopicHolder getDestinationHolderFor(String mainListenerId, String topic) {
 		return this.contextRefreshed
-				? doGetDestinationFor(topic)
-				: getDestinationTopicSynchronized(topic);
+				? doGetDestinationFor(mainListenerId, topic)
+				: getDestinationTopicSynchronized(mainListenerId, topic);
 	}
 
-	private DestinationTopicHolder getDestinationTopicSynchronized(String topic) {
+	private DestinationTopicHolder getDestinationTopicSynchronized(String mainListenerId, String topic) {
 		synchronized (this.sourceDestinationsHolderMap) {
-			return doGetDestinationFor(topic);
+			return doGetDestinationFor(mainListenerId, topic);
 		}
 	}
 
-	private DestinationTopicHolder doGetDestinationFor(String topic) {
-		return Objects.requireNonNull(this.sourceDestinationsHolderMap.get(topic),
+	private DestinationTopicHolder doGetDestinationFor(String mainListenerId, String topic) {
+		Map<String, DestinationTopicHolder> map = this.sourceDestinationsHolderMap.get(mainListenerId);
+		Assert.notNull(map, () -> "No destination resolution information for listener " + mainListenerId);
+		return Objects.requireNonNull(map.get(topic),
 				() -> "No destination found for topic: " + topic);
 	}
 
 	@Override
-	public void addDestinationTopics(List<DestinationTopic> destinationsToAdd) {
+	public void addDestinationTopics(String mainListenerId, List<DestinationTopic> destinationsToAdd) {
 		if (this.contextRefreshed) {
 			throw new IllegalStateException("Cannot add new destinations, "
 					+ DefaultDestinationTopicResolver.class.getSimpleName() + " is already refreshed.");
 		}
 		synchronized (this.sourceDestinationsHolderMap) {
-			this.sourceDestinationsHolderMap.putAll(correlatePairSourceAndDestinationValues(destinationsToAdd));
+			Map<String, DestinationTopicHolder> map = this.sourceDestinationsHolderMap.computeIfAbsent(mainListenerId,
+					id -> new HashMap<>());
+			map.putAll(correlatePairSourceAndDestinationValues(destinationsToAdd));
 		}
 	}
 
@@ -197,7 +205,8 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 				.range(0, destinationList.size())
 				.boxed()
 				.collect(Collectors.toMap(index -> destinationList.get(index).getDestinationName(),
-						index -> new DestinationTopicHolder(destinationList.get(index), getNextDestinationTopic(destinationList, index))));
+						index -> new DestinationTopicHolder(destinationList.get(index),
+								getNextDestinationTopic(destinationList, index))));
 	}
 
 	private DestinationTopic getNextDestinationTopic(List<DestinationTopic> destinationList, int index) {

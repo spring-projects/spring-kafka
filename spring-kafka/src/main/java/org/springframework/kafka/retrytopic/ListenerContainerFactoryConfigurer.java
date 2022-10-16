@@ -220,12 +220,19 @@ public class ListenerContainerFactoryConfigurer {
 			return decorate(this.delegate.createListenerContainer(endpoint));
 		}
 
-		private ConcurrentMessageListenerContainer<?, ?> decorate(ConcurrentMessageListenerContainer<?, ?> listenerContainer) {
+		private ConcurrentMessageListenerContainer<?, ?> decorate(
+				ConcurrentMessageListenerContainer<?, ?> listenerContainer) {
+			String mainListenerId = listenerContainer.getMainListenerId();
+			if (mainListenerId == null) {
+				mainListenerId = listenerContainer.getListenerId();
+			}
 			listenerContainer
 					.setCommonErrorHandler(createErrorHandler(
-							ListenerContainerFactoryConfigurer.this.deadLetterPublishingRecovererFactory.create(),
+							ListenerContainerFactoryConfigurer.this.deadLetterPublishingRecovererFactory
+									.create(mainListenerId),
 							this.configuration));
-			setupBackoffAwareMessageListenerAdapter(listenerContainer, this.configuration, this.isSetContainerProperties);
+			setupBackoffAwareMessageListenerAdapter(listenerContainer, this.configuration,
+					this.isSetContainerProperties);
 			return listenerContainer;
 		}
 

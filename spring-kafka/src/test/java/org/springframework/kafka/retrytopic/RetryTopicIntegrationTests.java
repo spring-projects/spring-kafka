@@ -36,6 +36,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -93,7 +94,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryTopicIntegrationTests.SECOND_TOPIC,
 		RetryTopicIntegrationTests.THIRD_TOPIC,
 		RetryTopicIntegrationTests.FOURTH_TOPIC,
-		RetryTopicIntegrationTests.FIFTH_TOPIC })
+		RetryTopicIntegrationTests.TWO_LISTENERS_TOPIC })
 @TestPropertySource(properties = "five.attempts=5")
 public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTests {
 
@@ -107,7 +108,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 
 	public final static String FOURTH_TOPIC = "myRetryTopic4";
 
-	public final static String FIFTH_TOPIC = "myRetryTopic5";
+	public final static String TWO_LISTENERS_TOPIC = "myRetryTopic5";
 
 	public final static String NOT_RETRYABLE_EXCEPTION_TOPIC = "noRetryTopic";
 
@@ -126,7 +127,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 	void shouldRetryFirstTopic(@Autowired KafkaListenerEndpointRegistry registry) {
 		logger.debug("Sending message to topic " + FIRST_TOPIC);
 		kafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
-		assertThat(topicContainer.getNextDestinationTopicFor(FIRST_TOPIC).getDestinationName())
+		assertThat(topicContainer.getNextDestinationTopicFor("firstTopicId", FIRST_TOPIC).getDestinationName())
 				.isEqualTo("myRetryTopic1-retry");
 		assertThat(awaitLatch(latchContainer.countDownLatch1)).isTrue();
 		assertThat(awaitLatch(latchContainer.customDltCountdownLatch)).isTrue();
@@ -206,14 +207,22 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 	}
 
 	@Test
-	void shouldRetryFifthTopicWithTwoListenersAndManualAssignment() {
-		logger.debug("Sending two messages to topic " + FIFTH_TOPIC);
-		kafkaTemplate.send(FIFTH_TOPIC, 0, "0", "Testing topic 5 - 0");
-		kafkaTemplate.send(FIFTH_TOPIC, 1, "0", "Testing topic 5 - 1");
+	void shouldRetryFifthTopicWithTwoListenersAndManualAssignment(@Autowired FifthTopicListener1 listener1,
+			@Autowired FifthTopicListener2 listener2) {
+
+		logger.debug("Sending two messages to topic " + TWO_LISTENERS_TOPIC);
+		kafkaTemplate.send(TWO_LISTENERS_TOPIC, 0, "0", "Testing topic 5 - 0");
+		kafkaTemplate.send(TWO_LISTENERS_TOPIC, 1, "0", "Testing topic 5 - 1");
 		assertThat(awaitLatch(latchContainer.countDownLatch51)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatch52)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltThree)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltFour)).isTrue();
+		assertThat(listener1.topics).containsExactly(TWO_LISTENERS_TOPIC, TWO_LISTENERS_TOPIC
+				+ "-listener1-0", TWO_LISTENERS_TOPIC + "-listener1-1", TWO_LISTENERS_TOPIC + "-listener1-2",
+				TWO_LISTENERS_TOPIC + "-listener1-dlt");
+		assertThat(listener2.topics).containsExactly(TWO_LISTENERS_TOPIC, TWO_LISTENERS_TOPIC
+				+ "-listener2-0", TWO_LISTENERS_TOPIC + "-listener2-1", TWO_LISTENERS_TOPIC + "-listener2-2",
+				TWO_LISTENERS_TOPIC + "-listener2-dlt");
 	}
 
 	@Test
@@ -318,30 +327,39 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 
 	static class FifthTopicListener1 {
 
+		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
+
 		@Autowired
 		CountDownLatchContainer container;
 
 		@RetryableTopic(attempts = "4",
 				backoff = @Backoff(250),
 				numPartitions = "2",
+				retryTopicSuffix = "-listener1", dltTopicSuffix = "-listener1-dlt",
+				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
 				kafkaTemplate = "kafkaTemplate")
-		@KafkaListener(id = "fifthTopicId1", topicPartitions = {@TopicPartition(topic = FIFTH_TOPIC,
+		@KafkaListener(id = "fifthTopicId1", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 				partitionOffsets = @PartitionOffset(partition = "0", initialOffset = "0"))},
 				containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.topics.add(receivedTopic);
 			container.countDownIfNotKnown(receivedTopic, container.countDownLatch51);
 			logger.debug("Message {} received in annotated topic {} ", message, receivedTopic);
 			throw new RuntimeException("Annotated woooops... " + receivedTopic);
 		}
 
 		@DltHandler
-		public void annotatedDltMethod(Object message) {
+		public void annotatedDltMethod(ConsumerRecord<?, ?> record) {
 			logger.debug("Received message in annotated Dlt method");
+			this.topics.add(record.topic());
 			container.countDownLatchDltThree.countDown();
 		}
+
 	}
 
 	static class FifthTopicListener2 {
+
+		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
 
 		@Autowired
 		CountDownLatchContainer container;
@@ -349,19 +367,23 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 		@RetryableTopic(attempts = "4",
 				backoff = @Backoff(250),
 				numPartitions = "2",
+				retryTopicSuffix = "-listener2", dltTopicSuffix = "-listener2-dlt",
+				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
 				kafkaTemplate = "kafkaTemplate")
-		@KafkaListener(id = "fifthTopicId2", topicPartitions = {@TopicPartition(topic = FIFTH_TOPIC,
+		@KafkaListener(id = "fifthTopicId2", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 				partitionOffsets = @PartitionOffset(partition = "1", initialOffset = "0"))},
 				containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.topics.add(receivedTopic);
 			container.countDownLatch52.countDown();
 			logger.debug("Message {} received in annotated topic {} ", message, receivedTopic);
 			throw new RuntimeException("Annotated woooops... " + receivedTopic);
 		}
 
 		@DltHandler
-		public void annotatedDltMethod(Object message) {
+		public void annotatedDltMethod(ConsumerRecord<?, ?> record) {
 			logger.debug("Received message in annotated Dlt method");
+			this.topics.add(record.topic());
 			container.countDownLatchDltFour.countDown();
 		}
 
@@ -398,7 +420,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 		CountDownLatch countDownLatch3 = new CountDownLatch(3);
 		CountDownLatch countDownLatch4 = new CountDownLatch(4);
 		CountDownLatch countDownLatch51 = new CountDownLatch(4);
-		CountDownLatch countDownLatch52 = new CountDownLatch(3);
+		CountDownLatch countDownLatch52 = new CountDownLatch(4);
 		CountDownLatch countDownLatchNoRetry = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltOne = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltTwo = new CountDownLatch(1);
