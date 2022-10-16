@@ -45,6 +45,7 @@ import org.springframework.kafka.core.KafkaOperations;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Fabio da Silva Jr.
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)

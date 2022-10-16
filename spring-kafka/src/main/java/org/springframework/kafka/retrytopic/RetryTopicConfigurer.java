@@ -204,6 +204,7 @@ import org.springframework.lang.Nullable;
  * If no DLT handler is provided, the default {@link LoggingDltListenerHandlerMethod} is used.
  *
  * @author Tomaz Fernandes
+ * @author Fabio da Silva Jr.
  * @since 2.7
  *
  * @see RetryTopicConfigurationBuilder
