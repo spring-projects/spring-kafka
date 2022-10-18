@@ -242,7 +242,7 @@ public class RetryTopicConfigurationBuilder {
 	/* ---------------- Configure BackOff -------------- */
 
 	/**
-	 * Configure the maximum delivery attempts.
+	 * Configure the maximum delivery attempts (including the first).
 	 * @param maxAttempts the attempts.
 	 * @return the builder.
 	 */
@@ -255,8 +255,8 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	/**
-	 * Configure a global timeout, after which a record will go straight to the DLT the
-	 * next time a listener throws an exception.
+	 * Configure a global timeout, in milliseconds, after which a record will go straight
+	 * to the DLT the next time a listener throws an exception. Default no timeout.
 	 * @param timeout the timeout.
 	 * @return the builder.
 	 */
