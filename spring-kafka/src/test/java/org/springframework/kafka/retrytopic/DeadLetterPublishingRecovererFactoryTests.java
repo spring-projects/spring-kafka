@@ -66,6 +66,7 @@ import org.springframework.kafka.test.condition.LogLevels;
 
 /**
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)

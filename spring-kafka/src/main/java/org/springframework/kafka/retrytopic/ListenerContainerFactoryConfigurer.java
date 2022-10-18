@@ -53,6 +53,7 @@ import org.springframework.util.backoff.BackOff;
  * non-retryable endpoints.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */

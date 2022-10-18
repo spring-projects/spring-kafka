@@ -25,6 +25,7 @@ import org.springframework.lang.Nullable;
  * Provides methods to store and retrieve {@link DestinationTopic} instances.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  */
 public interface DestinationTopicContainer {

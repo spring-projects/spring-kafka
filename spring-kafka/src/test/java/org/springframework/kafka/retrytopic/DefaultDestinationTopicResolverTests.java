@@ -39,6 +39,7 @@ import org.springframework.kafka.support.converter.ConversionException;
 /**
  * @author Tomaz Fernandes
  * @author Yvette Quinby
+ * @author Gary Russell
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)

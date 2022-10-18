@@ -205,6 +205,7 @@ import org.springframework.lang.Nullable;
  *
  * @author Tomaz Fernandes
  * @author Fabio da Silva Jr.
+ * @author Gary Russell
  * @since 2.7
  *
  * @see RetryTopicConfigurationBuilder
