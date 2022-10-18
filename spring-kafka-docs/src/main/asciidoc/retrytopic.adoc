@@ -52,6 +52,9 @@ NOTE: It is not necessary to also add `@EnableKafka`, if you add this annotation
 Also, starting with that version, for more advanced configuration of the feature's components and global features, the `RetryTopicConfigurationSupport` class should be extended in a `@Configuration` class, and the appropriate methods overridden.
 For more details refer to <<retry-topic-global-settings>>.
 
+By default, the containers for the retry topics will have the same concurrency as the main container.
+Starting with version 3.0, you can set a different `concurrency` for the retry containers (either on the annotation, or in `RetryConfigurationBuilder`).
+
 IMPORTANT: Only one of the above techniques can be used, and only one `@Configuration` class can extend `RetryTopicConfigurationSupport`.
 
 ===== Using the `@RetryableTopic` annotation
@@ -114,6 +117,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .fixedBackoff(3000)
             .maxAttempts(5)
+            .concurrency(1)
             .includeTopics("my-topic", "my-other-topic")
             .create(template);
 }

@@ -33,6 +33,9 @@ See <<same-broker-multiple-tests>> for more information.
 ==== Retryable Topics Changes
 
 The bootstrapping of <<retry-topic>> infrastructure beans has changed in this release to avoid some timing problems that occurred in some application regarding application initialization.
+
+You can now set a different `concurrency` for the retry containers; by default, the concurrency is the same as the main container.
+
 See <<retry-config>> for more information.
 
 [[x30-lc-changes]]

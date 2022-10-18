@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.springframework.kafka.support.AllowDenyCollectionManager;
 import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.lang.Nullable;
 
 /**
  * Contains the provided configuration for the retryable topics.
@@ -45,18 +46,23 @@ public class RetryTopicConfiguration {
 
 	private final ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig;
 
+	@Nullable
+	private final Integer concurrency;
+
 	RetryTopicConfiguration(List<DestinationTopic.Properties> destinationTopicProperties,
 							EndpointHandlerMethod dltHandlerMethod,
 							TopicCreation kafkaTopicAutoCreationConfig,
 							AllowDenyCollectionManager<String> topicAllowListManager,
 							ListenerContainerFactoryResolver.Configuration factoryResolverConfig,
-							ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig) {
+							ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig,
+							@Nullable Integer concurrency) {
 		this.destinationTopicProperties = destinationTopicProperties;
 		this.dltHandlerMethod = dltHandlerMethod;
 		this.kafkaTopicAutoCreationConfig = kafkaTopicAutoCreationConfig;
 		this.topicAllowListManager = topicAllowListManager;
 		this.factoryResolverConfig = factoryResolverConfig;
 		this.factoryConfigurerConfig = factoryConfigurerConfig;
+		this.concurrency = concurrency;
 	}
 
 	public boolean hasConfigurationForTopics(String[] topics) {
@@ -81,6 +87,11 @@ public class RetryTopicConfiguration {
 
 	public List<DestinationTopic.Properties> getDestinationTopicProperties() {
 		return this.destinationTopicProperties;
+	}
+
+	@Nullable
+	public Integer getConcurrency() {
+		return this.concurrency;
 	}
 
 	static class TopicCreation {

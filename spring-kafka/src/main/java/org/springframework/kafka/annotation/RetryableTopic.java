@@ -194,4 +194,12 @@ public @interface RetryableTopic {
 	 */
 	String autoStartDltHandler() default "";
 
+	/**
+	 * Concurrency for the retry and DLT containers; if not specified, the main container
+	 * concurrency is used.
+	 * @return the concurrency.
+	 * @since 3.0
+	 */
+	String concurrency() default "";
+
 }

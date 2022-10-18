@@ -339,6 +339,10 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 				: new MethodKafkaListenerEndpoint<>();
 
 		endpointProcessor.accept(endpoint);
+		Integer concurrency = configuration.getConcurrency();
+		if (!destinationTopicProperties.isMainEndpoint() && concurrency != null) {
+			endpoint.setConcurrency(concurrency);
+		}
 
 		EndpointHandlerMethod endpointBeanMethod =
 				getEndpointHandlerMethod(mainEndpoint, configuration, destinationTopicProperties);

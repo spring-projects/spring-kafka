@@ -53,6 +53,7 @@ import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -61,6 +62,7 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -121,7 +123,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 	DestinationTopicContainer topicContainer;
 
 	@Test
-	void shouldRetryFirstTopic() {
+	void shouldRetryFirstTopic(@Autowired KafkaListenerEndpointRegistry registry) {
 		logger.debug("Sending message to topic " + FIRST_TOPIC);
 		kafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
 		assertThat(topicContainer.getNextDestinationTopicFor(FIRST_TOPIC).getDestinationName())
@@ -130,6 +132,20 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 		assertThat(awaitLatch(latchContainer.customDltCountdownLatch)).isTrue();
 		assertThat(awaitLatch(latchContainer.customErrorHandlerCountdownLatch)).isTrue();
 		assertThat(awaitLatch(latchContainer.customMessageConverterCountdownLatch)).isTrue();
+		registry.getListenerContainerIds().stream()
+				.filter(id -> id.startsWith("first"))
+				.forEach(id -> {
+					ConcurrentMessageListenerContainer<?, ?> container = (ConcurrentMessageListenerContainer<?, ?>) registry
+							.getListenerContainer(id);
+					if (id.equals("firstTopicId")) {
+						assertThat(container.getConcurrency()).isEqualTo(2);
+					}
+					else {
+						assertThat(container.getConcurrency())
+								.describedAs("Expected %s to have concurrency", id)
+								.isEqualTo(1);
+					}
+				});
 	}
 
 	@Test
@@ -141,7 +157,8 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 	}
 
 	@Test
-	void shouldRetryThirdTopicWithTimeout(@Autowired KafkaAdmin admin) throws Exception {
+	void shouldRetryThirdTopicWithTimeout(@Autowired KafkaAdmin admin,
+			@Autowired KafkaListenerEndpointRegistry registry) throws Exception {
 		logger.debug("Sending message to topic " + THIRD_TOPIC);
 		kafkaTemplate.send(THIRD_TOPIC, "Testing topic 3");
 		assertThat(awaitLatch(latchContainer.countDownLatch3)).isTrue();
@@ -165,6 +182,20 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 			}
 		});
 		assertThat(weeded.get()).isEqualTo(2);
+		registry.getListenerContainerIds().stream()
+				.filter(id -> id.startsWith("third"))
+				.forEach(id -> {
+					ConcurrentMessageListenerContainer<?, ?> container =
+							(ConcurrentMessageListenerContainer<?, ?>) registry.getListenerContainer(id);
+					if (id.equals("thirdTopicId")) {
+						assertThat(container.getConcurrency()).isEqualTo(2);
+					}
+					else {
+						assertThat(container.getConcurrency())
+								.describedAs("Expected %s to have concurrency", id)
+								.isEqualTo(1);
+					}
+				});
 	}
 
 	@Test
@@ -213,7 +244,8 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 		CountDownLatchContainer container;
 
 		@KafkaListener(id = "firstTopicId", topics = FIRST_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-				errorHandler = "myCustomErrorHandler", contentTypeConverter = "myCustomMessageConverter")
+				errorHandler = "myCustomErrorHandler", contentTypeConverter = "myCustomMessageConverter",
+				concurrency = "2")
 		public void listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			logger.debug("Message {} received in topic {}", message, receivedTopic);
 			container.countDownLatch1.countDown();
@@ -245,8 +277,11 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 				backoff = @Backoff(delay = 250, maxDelay = 1000, multiplier = 1.5),
 				numPartitions = "#{3}",
 				timeout = "${missing.property:2000}",
-				include = MyRetryException.class, kafkaTemplate = "kafkaTemplate")
-		@KafkaListener(id = "thirdTopicId", topics = THIRD_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
+				include = MyRetryException.class, kafkaTemplate = "kafkaTemplate",
+				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
+				concurrency = "1")
+		@KafkaListener(id = "thirdTopicId", topics = THIRD_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+				concurrency = "2")
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.countDownIfNotKnown(receivedTopic, container.countDownLatch3);
 			logger.debug("========================== Message {} received in annotated topic {} ", message, receivedTopic);
@@ -427,6 +462,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 					.newInstance()
 					.fixedBackOff(50)
 					.maxAttempts(5)
+					.concurrency(1)
 					.useSingleTopicForFixedDelays()
 					.includeTopic(FIRST_TOPIC)
 					.doNotRetryOnDltFailure()

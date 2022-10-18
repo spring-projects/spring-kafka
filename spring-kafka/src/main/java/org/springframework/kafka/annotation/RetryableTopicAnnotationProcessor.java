@@ -129,6 +129,7 @@ public class RetryableTopicAnnotationProcessor {
 		}
 		return RetryTopicConfigurationBuilder.newInstance()
 				.maxAttempts(resolveExpressionAsInteger(annotation.attempts(), "attempts", true))
+				.concurrency(resolveExpressionAsInteger(annotation.concurrency(), "concurrency", false))
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
 				.retryTopicSuffix(resolveExpressionAsString(annotation.retryTopicSuffix(), "retryTopicSuffix"))
 				.dltSuffix(resolveExpressionAsString(annotation.dltTopicSuffix(), "dltTopicSuffix"))

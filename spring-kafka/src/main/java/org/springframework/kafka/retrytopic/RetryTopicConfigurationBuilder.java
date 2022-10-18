@@ -80,6 +80,8 @@ public class RetryTopicConfigurationBuilder {
 
 	private Boolean autoStartDltHandler;
 
+	private Integer concurrency;
+
 	/* ---------------- DLT Behavior -------------- */
 	/**
 	 * Configure a DLT handler method.
@@ -90,6 +92,11 @@ public class RetryTopicConfigurationBuilder {
 	 */
 	public RetryTopicConfigurationBuilder dltHandlerMethod(String beanName, String methodName) {
 		this.dltHandlerMethod = RetryTopicConfigurer.createHandlerMethodWith(beanName, methodName);
+		return this;
+	}
+
+	public RetryTopicConfigurationBuilder concurrency(Integer concurrency) {
+		this.concurrency = concurrency;
 		return this;
 	}
 
@@ -360,7 +367,7 @@ public class RetryTopicConfigurationBuilder {
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
 				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager,
-				factoryResolverConfig, factoryConfigurerConfig);
+				factoryResolverConfig, factoryConfigurerConfig, this.concurrency);
 	}
 
 	private BinaryExceptionClassifier buildClassifier() {
