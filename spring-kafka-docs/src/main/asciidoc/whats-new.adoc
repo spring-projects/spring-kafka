@@ -32,6 +32,8 @@ See <<same-broker-multiple-tests>> for more information.
 [[x30-retryable]]
 ==== Retryable Topics Changes
 
+This feature is no longer considered experimental (as far as its API is concerned), the feature itself has been supported since 2.7, but with a greater than normal possibility of breaking API changes.
+
 The bootstrapping of <<retry-topic>> infrastructure beans has changed in this release to avoid some timing problems that occurred in some application regarding application initialization.
 See <<retry-config>> for more information.
 

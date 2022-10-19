@@ -1,13 +1,7 @@
 [[retry-topic]]
 === Non-Blocking Retries
 
-IMPORTANT: This is an experimental feature and the usual rule of no breaking API changes does not apply to this feature until the experimental designation is removed.
-Users are encouraged to try out the feature and provide feedback via GitHub Issues or GitHub discussions.
-This is regarding the API only; the feature is considered to be complete, and robust.
-
 Version 2.9 changed the mechanism to bootstrap infrastructure beans; see <<retry-config>> for the two mechanisms that are now required to bootstrap the feature.
-
-After these changes, we are intending to remove the experimental designation, probably in version 3.0.
 
 Achieving non-blocking retry / dlt functionality with Kafka usually requires setting up extra topics and creating and configuring the corresponding listeners.
 Since 2.7 Spring for Apache Kafka offers support for that via the `@RetryableTopic` annotation and `RetryTopicConfiguration` class to simplify that bootstrapping.
