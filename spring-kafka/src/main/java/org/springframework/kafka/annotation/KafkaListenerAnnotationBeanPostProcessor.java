@@ -240,6 +240,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return this.messageHandlerMethodFactory;
 	}
 
+	/**
+	 * Return the {@link KafkaListenerEndpointRegistrar}.
+	 * @return the registrar.
+	 * @since 2.9.3
+	 */
+	public KafkaListenerEndpointRegistrar getEndpointRegistrar() {
+		return this.registrar;
+	}
+
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
