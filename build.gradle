@@ -353,25 +353,15 @@ project ('spring-kafka') {
 		testImplementation 'io.micrometer:micrometer-tracing-test'
 		testImplementation 'io.micrometer:micrometer-tracing-integration-test'
 
-		adoc "io.micrometer:micrometer-docs-generator-spans:$micrometerDocsVersion"
-		adoc "io.micrometer:micrometer-docs-generator-metrics:$micrometerDocsVersion"
+		adoc "io.micrometer:micrometer-docs-generator:$micrometerDocsVersion"
 	}
 
 	def inputDir = file('src/main/java/org/springframework/kafka/support/micrometer').absolutePath
 	def outputDir = rootProject.file('spring-kafka-docs/src/main/asciidoc').absolutePath
 
-	task generateObservabilityMetricsDocs(type: JavaExec) {
+	task generateObservabilityDocs(type: JavaExec) {
 		onlyIf { !isCI }
-		mainClass = 'io.micrometer.docs.metrics.DocsFromSources'
-		inputs.dir(inputDir)
-		outputs.dir(outputDir)
-		classpath configurations.adoc
-		args inputDir, '.*', outputDir
-	}
-
-	task generateObservabilitySpansDocs(type: JavaExec) {
-		onlyIf { !isCI }
-		mainClass = 'io.micrometer.docs.spans.DocsFromSources'
+		mainClass = 'io.micrometer.docs.DocsGeneratorCommand'
 		inputs.dir(inputDir)
 		outputs.dir(outputDir)
 		classpath configurations.adoc
