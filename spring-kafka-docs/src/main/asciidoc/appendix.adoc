@@ -53,11 +53,11 @@ The test scope dependencies are only needed if you are using the embedded Kafka 
 [[observation-gen]]
 == Micrometer Observation Documentation
 
-include::./_metrics.adoc[]
+include::../docs/generated/metrics.adoc[]
 
-include::./_spans.adoc[]
+include::../docs/generated/spans.adoc[]
 
-include::./_conventions.adoc[]
+include::../docs/generated/conventions.adoc[]
 
 [appendix]
 [[history]]

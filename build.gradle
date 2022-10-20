@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.7.0'
+	ext.kotlinVersion = '1.7.20'
 	ext.isCI = System.getenv('GITHUB_ACTION') || System.getenv('bamboo_buildKey')
 	repositories {
 		mavenCentral()
@@ -67,7 +67,7 @@ ext {
 	junitJupiterVersion = '5.9.1'
 	kafkaVersion = '3.3.1'
 	log4jVersion = '2.19.0'
-	micrometerDocsVersion = "1.0.0-RC1"
+	micrometerDocsVersion = "1.0.0-SNAPSHOT"
 	micrometerVersion = '1.10.0-RC1'
 	micrometerTracingVersion = '1.0.0-RC1'
 	mockitoVersion = '4.8.0'
@@ -309,10 +309,6 @@ subprojects { subproject ->
 project ('spring-kafka') {
 	description = 'Spring Kafka Support'
 
-	configurations {
-		adoc
-	}
-
 	dependencies {
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-messaging'
@@ -353,24 +349,7 @@ project ('spring-kafka') {
 		testImplementation 'io.micrometer:micrometer-tracing-test'
 		testImplementation 'io.micrometer:micrometer-tracing-integration-test'
 
-		adoc "io.micrometer:micrometer-docs-generator:$micrometerDocsVersion"
 	}
-
-	def inputDir = file('src/main/java/org/springframework/kafka/support/micrometer').absolutePath
-	def outputDir = rootProject.file('spring-kafka-docs/src/main/asciidoc').absolutePath
-
-	task generateObservabilityDocs(type: JavaExec) {
-		onlyIf { !isCI }
-		mainClass = 'io.micrometer.docs.DocsGeneratorCommand'
-		inputs.dir(inputDir)
-		outputs.dir(outputDir)
-		classpath configurations.adoc
-		args inputDir, '.*', outputDir
-	}
-
-	// javadoc {
-	// 	finalizedBy generateObservabilityMetricsDocs, generateObservabilitySpansDocs
-	// }
 
 }
 
@@ -439,10 +418,12 @@ sonarqube {
 
 configurations {
 	asciidoctorExtensions
+	micrometerDocs
 }
 
 dependencies {
 	asciidoctorExtensions "io.spring.asciidoctor.backends:spring-asciidoctor-backends:${springAsciidoctorBackendsVersion}"
+	micrometerDocs "io.micrometer:micrometer-docs-generator:$micrometerDocsVersion"
 }
 
 task prepareAsciidocBuild(type: Sync) {
@@ -452,8 +433,28 @@ task prepareAsciidocBuild(type: Sync) {
 	into "$buildDir/asciidoc"
 }
 
+def observationInputDir = file('spring-kafka/src/main/java/org/springframework/kafka/support/micrometer').absolutePath
+def generatedDocsDir = file("$buildDir/docs/generated").absolutePath
+
+task generateObservabilityDocs(type: JavaExec) {
+	mainClass = 'io.micrometer.docs.DocsGeneratorCommand'
+	inputs.dir(observationInputDir)
+	outputs.dir(generatedDocsDir)
+	classpath configurations.micrometerDocs
+	args observationInputDir, /.+/, generatedDocsDir
+}
+
+task filterMetricsDocsContent(type: Copy) {
+	dependsOn generateObservabilityDocs
+	from generatedDocsDir
+	include '_*.adoc'
+	into generatedDocsDir
+	rename { filename -> filename.replace '_', '' }
+	filter { line -> line.replaceAll('org.springframework.kafka.support.micrometer.', '').replaceAll('^Fully qualified n', 'N') }
+}
+
 asciidoctorPdf {
-	dependsOn prepareAsciidocBuild
+	dependsOn prepareAsciidocBuild, filterMetricsDocsContent
 	baseDirFollowsSourceFile()
 	configurations 'asciidoctorExt'
 
