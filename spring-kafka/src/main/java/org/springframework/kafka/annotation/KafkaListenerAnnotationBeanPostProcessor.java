@@ -377,7 +377,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 								AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
 				multiMethods.addAll(methodsWithHandler);
 			}
-			if (annotatedMethods.isEmpty()) {
+			if (annotatedMethods.isEmpty() && !hasClassLevelListeners) {
 				this.nonAnnotatedClasses.add(bean.getClass());
 				this.logger.trace(() -> "No @KafkaListener annotations found on bean type: " + bean.getClass());
 			}

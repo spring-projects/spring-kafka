@@ -185,7 +185,7 @@ import jakarta.validation.constraints.Max;
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
 		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42",
-		"annotated43", "annotated43reply"})
+		"annotated43", "annotated43reply" })
 @TestPropertySource(properties = "spel.props=fetch.min.bytes=420000,max.poll.records=10")
 public class EnableKafkaIntegrationTests {
 
@@ -1004,6 +1004,12 @@ public class EnableKafkaIntegrationTests {
 		this.registry.setAlwaysStartAfterRefresh(true);
 	}
 
+	@Test
+	void classLevelTwoInstancesSameClass() {
+		assertThat(this.registry.getListenerContainer("multiTwoOne")).isNotNull();
+		assertThat(this.registry.getListenerContainer("multiTwoTwo")).isNotNull();
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -1737,6 +1743,16 @@ public class EnableKafkaIntegrationTests {
 		@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 		ProtoListener proto() {
 			return new ProtoListener();
+		}
+
+		@Bean
+		MultiListenerTwoInstances multiInstanceOne() {
+			return new MultiListenerTwoInstances("multiTwoOne");
+		}
+
+		@Bean
+		MultiListenerTwoInstances multiInstanceTwo() {
+			return new MultiListenerTwoInstances("multiTwoTwo");
 		}
 
 	}
@@ -2476,6 +2492,25 @@ public class EnableKafkaIntegrationTests {
 		public String bar(@Payload(required = false) KafkaNull nul,
 				@Header(KafkaHeaders.RECEIVED_KEY) int key) {
 			return "BAR";
+		}
+
+	}
+
+	@KafkaListener(id = "#{__listener.id}", topics = "multiWithTwoInstances", autoStartup = "false")
+	static class MultiListenerTwoInstances {
+
+		private final String id;
+
+		public MultiListenerTwoInstances(String id) {
+			this.id = id;
+		}
+
+		public String getId() {
+			return this.id;
+		}
+
+		@KafkaHandler
+		void listen(String in) {
 		}
 
 	}
