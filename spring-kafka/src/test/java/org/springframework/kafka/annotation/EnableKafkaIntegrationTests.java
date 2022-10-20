@@ -2501,7 +2501,7 @@ public class EnableKafkaIntegrationTests {
 
 		private final String id;
 
-		public MultiListenerTwoInstances(String id) {
+		MultiListenerTwoInstances(String id) {
 			this.id = id;
 		}
 
