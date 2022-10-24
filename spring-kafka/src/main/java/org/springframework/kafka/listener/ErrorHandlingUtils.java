@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.KafkaUtils;
@@ -59,11 +60,13 @@ public final class ErrorHandlingUtils {
 	 * @param logger the logger.
 	 * @param logLevel the log level.
 	 * @param retryListeners the retry listeners.
+	 * @param classifier the exception classifier.
+	 * @since 2.8.11
 	 */
 	public static void retryBatch(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener, BackOff backOff,
 			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
-			KafkaException.Level logLevel, List<RetryListener> retryListeners) {
+			KafkaException.Level logLevel, List<RetryListener> retryListeners, BinaryExceptionClassifier classifier) {
 
 		BackOffExecution execution = backOff.start();
 		long nextBackOff = execution.nextBackOff();
@@ -79,7 +82,8 @@ public final class ErrorHandlingUtils {
 					.publishConsumerPausedEvent(assignment, "For batch retry");
 		}
 		try {
-			while (nextBackOff != BackOffExecution.STOP) {
+			Boolean retryable = classifier.classify(unwrapIfNeeded(thrownException));
+			while (Boolean.TRUE.equals(retryable) && nextBackOff != BackOffExecution.STOP) {
 				consumer.poll(Duration.ZERO);
 				try {
 					ListenerUtils.stoppableSleep(container, nextBackOff);
@@ -143,6 +147,24 @@ public final class ErrorHandlingUtils {
 				.append(','));
 		sb.deleteCharAt(sb.length() - 1);
 		return sb.toString();
+	}
+
+	/**
+	 * Remove a {@link TimestampedException}, if present.
+	 * Remove a {@link ListenerExecutionFailedException}, if present.
+	 * @param exception the exception.
+	 * @return the unwrapped cause or cause of cause.
+	 * @since 2.8.11
+	 */
+	public static Exception unwrapIfNeeded(Exception exception) {
+		Exception theEx = exception;
+		if (theEx instanceof TimestampedException && theEx.getCause() instanceof Exception cause) {
+			theEx = cause;
+		}
+		if (theEx instanceof ListenerExecutionFailedException && theEx.getCause() instanceof Exception cause) {
+			theEx = cause;
+		}
+		return theEx;
 	}
 
 }

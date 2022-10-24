@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -99,6 +100,31 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		if (this.fallbackBatchHandler instanceof KafkaExceptionLogLevelAware handler) {
 			handler.setLogLevel(logLevel);
 		}
+	}
+
+	@Override
+	protected void notRetryable(Stream<Class<? extends Exception>> notRetryable) {
+		if (this.fallbackBatchHandler instanceof ExceptionClassifier handler) {
+			notRetryable.forEach(ex -> handler.addNotRetryableExceptions(ex));
+		}
+	}
+
+	@Override
+	public void setClassifications(Map<Class<? extends Throwable>, Boolean> classifications, boolean defaultValue) {
+		super.setClassifications(classifications, defaultValue);
+		if (this.fallbackBatchHandler instanceof ExceptionClassifier handler) {
+			handler.setClassifications(classifications, defaultValue);
+		}
+	}
+
+	@Override
+	@Nullable
+	public Boolean removeClassification(Class<? extends Exception> exceptionType) {
+		Boolean removed = super.removeClassification(exceptionType);
+		if (this.fallbackBatchHandler instanceof ExceptionClassifier handler) {
+			handler.removeClassification(exceptionType);
+		}
+		return removed;
 	}
 
 	/**

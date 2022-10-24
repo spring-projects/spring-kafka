@@ -48,7 +48,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @since 2.3.7
  *
  */
-class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware implements CommonErrorHandler {
+class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErrorHandler {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
@@ -124,7 +124,7 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware implements C
 		this.retrying.set(true);
 		try {
 			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners);
+					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getClassifier());
 		}
 		finally {
 			this.retrying.set(false);
