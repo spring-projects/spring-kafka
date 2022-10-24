@@ -70,6 +70,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -896,6 +897,24 @@ public class DeadLetterPublishingRecovererTests {
 		assertThatThrownBy(() -> recoverer.accept(record, new RuntimeException()))
 				.isExactlyInstanceOf(KafkaException.class);
 		assertThat(timeoutCaptor.getValue()).isEqualTo(Duration.ofSeconds(125).toMillis());
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void blockingRetryRuntimeException() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		CompletableFuture future = mock(CompletableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.defaultFalse(true);
+		recoverer.addRetryableExceptions(RuntimeException.class);
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group",
+				new TimestampedException(
+						new ListenerExecutionFailedException("test", new ConversionException("test", null)))));
+		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(producerRecordCaptor.capture());
+		ProducerRecord outRecord = producerRecordCaptor.getValue();
 	}
 
 }

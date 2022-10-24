@@ -143,6 +143,7 @@ class RetryTopicConfigurationSupportTests {
 		then(lcfc).should().setErrorHandlerCustomizer(errorHandlerCustomizer);
 		assertThatThrownBy(lcfc::setBlockingRetryableExceptions).isInstanceOf(IllegalStateException.class);
 		then(lcfc).should().setBlockingRetriesBackOff(backoff);
+		then(lcfc).should().setRetainStandardFatal(true);
 		then(dlprfCustomizer).should().accept(dlprf);
 		then(rtconfigurer).should().accept(topicConfigurer);
 		then(lcfcConsumer).should().accept(lcfc);

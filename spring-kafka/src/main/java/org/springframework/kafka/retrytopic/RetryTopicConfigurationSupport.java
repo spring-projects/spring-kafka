@@ -141,7 +141,7 @@ public class RetryTopicConfigurationSupport {
 		CustomizersConfigurer customizersConfigurer = new CustomizersConfigurer();
 		configureCustomizers(customizersConfigurer);
 		JavaUtils.INSTANCE
-				.acceptIfNotNull(customizersConfigurer.deadLetterPublishingRecovererCustomizer,
+				.acceptIfNotNull(customizersConfigurer.getDeadLetterPublishingRecovererCustomizer(),
 						deadLetterPublishingRecovererFactory::setDeadLetterPublishingRecovererCustomizer);
 		Consumer<DeadLetterPublishingRecovererFactory> dlprfConsumer = configureDeadLetterPublishingContainerFactory();
 		Assert.notNull(dlprfConsumer, "configureDeadLetterPublishingContainerFactory must not return null");
@@ -159,24 +159,28 @@ public class RetryTopicConfigurationSupport {
 
 	/**
 	 * Internal method for processing the {@link ListenerContainerFactoryConfigurer}.
-	 * Consider overriding {@link #configureListenerContainerFactoryConfigurer()}
-	 * if further customization is required.
-	 * @param listenerContainerFactoryConfigurer the {@link ListenerContainerFactoryConfigurer} instance.
+	 * Consider overriding {@link #configureListenerContainerFactoryConfigurer()} if
+	 * further customization is required.
+	 * @param listenerContainerFactoryConfigurer the
+	 * {@link ListenerContainerFactoryConfigurer} instance.
 	 */
-	private void processListenerContainerFactoryConfigurer(ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer) {
+	private void processListenerContainerFactoryConfigurer(
+			ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer) {
+
 		CustomizersConfigurer customizersConfigurer = new CustomizersConfigurer();
 		configureCustomizers(customizersConfigurer);
 		BlockingRetriesConfigurer blockingRetriesConfigurer = new BlockingRetriesConfigurer();
 		configureBlockingRetries(blockingRetriesConfigurer);
 		JavaUtils.INSTANCE
-				.acceptIfNotNull(blockingRetriesConfigurer.backOff,
+				.acceptIfNotNull(blockingRetriesConfigurer.getBackOff(),
 						listenerContainerFactoryConfigurer::setBlockingRetriesBackOff)
-				.acceptIfNotNull(blockingRetriesConfigurer.retryableExceptions,
+				.acceptIfNotNull(blockingRetriesConfigurer.getRetryableExceptions(),
 						listenerContainerFactoryConfigurer::setBlockingRetryableExceptions)
-				.acceptIfNotNull(customizersConfigurer.errorHandlerCustomizer,
+				.acceptIfNotNull(customizersConfigurer.getErrorHandlerCustomizer(),
 						listenerContainerFactoryConfigurer::setErrorHandlerCustomizer)
-				.acceptIfNotNull(customizersConfigurer.listenerContainerCustomizer,
+				.acceptIfNotNull(customizersConfigurer.getListenerContainerCustomizer(),
 						listenerContainerFactoryConfigurer::setContainerCustomizer);
+		listenerContainerFactoryConfigurer.setRetainStandardFatal(true);
 		Consumer<ListenerContainerFactoryConfigurer> lcfcConfigurer = configureListenerContainerFactoryConfigurer();
 		Assert.notNull(lcfcConfigurer, "configureListenerContainerFactoryConfigurer must not return null.");
 		lcfcConfigurer.accept(listenerContainerFactoryConfigurer);
@@ -341,6 +345,15 @@ public class RetryTopicConfigurationSupport {
 			this.backOff = backoff;
 			return this;
 		}
+
+		BackOff getBackOff() {
+			return this.backOff;
+		}
+
+		Class<? extends Exception>[] getRetryableExceptions() {
+			return this.retryableExceptions;
+		}
+
 	}
 
 	/**
@@ -387,6 +400,19 @@ public class RetryTopicConfigurationSupport {
 			this.deadLetterPublishingRecovererCustomizer = dlprCustomizer;
 			return this;
 		}
+
+		Consumer<DefaultErrorHandler> getErrorHandlerCustomizer() {
+			return this.errorHandlerCustomizer;
+		}
+
+		Consumer<ConcurrentMessageListenerContainer<?, ?>> getListenerContainerCustomizer() {
+			return this.listenerContainerCustomizer;
+		}
+
+		Consumer<DeadLetterPublishingRecoverer> getDeadLetterPublishingRecovererCustomizer() {
+			return this.deadLetterPublishingRecovererCustomizer;
+		}
+
 	}
 
 }

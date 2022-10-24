@@ -62,6 +62,8 @@ public class ListenerContainerFactoryConfigurer {
 
 	private Class<? extends Exception>[] blockingExceptionTypes = null;
 
+	private boolean retainStandardFatal;
+
 	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> {
 	};
 
@@ -141,6 +143,16 @@ public class ListenerContainerFactoryConfigurer {
 		this.blockingExceptionTypes = Arrays.copyOf(exceptionTypes, exceptionTypes.length);
 	}
 
+	/**
+	 * Set to true to retain standard fatal exceptions as not retryable when configuring
+	 * blocking retries.
+	 * @param retainStandardFatal true to retain standard fatal exceptions.
+	 * @since 3.0
+	 */
+	public void setRetainStandardFatal(boolean retainStandardFatal) {
+		this.retainStandardFatal = retainStandardFatal;
+	}
+
 	public void setContainerCustomizer(Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer) {
 		Assert.notNull(containerCustomizer, "'containerCustomizer' cannot be null");
 		this.containerCustomizer = containerCustomizer;
@@ -153,7 +165,7 @@ public class ListenerContainerFactoryConfigurer {
 	protected CommonErrorHandler createErrorHandler(DeadLetterPublishingRecoverer deadLetterPublishingRecoverer,
 												Configuration configuration) {
 		DefaultErrorHandler errorHandler = createDefaultErrorHandlerInstance(deadLetterPublishingRecoverer);
-		errorHandler.defaultFalse();
+		errorHandler.defaultFalse(this.retainStandardFatal);
 		errorHandler.setCommitRecovered(true);
 		errorHandler.setLogLevel(KafkaException.Level.DEBUG);
 		if (this.blockingExceptionTypes != null) {
