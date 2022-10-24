@@ -24,6 +24,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -230,6 +231,33 @@ public class DefaultErrorHandlerBatchTests {
 		verify(retryListener).failedDelivery(any(ConsumerRecords.class), any(), eq(1));
 		verify(retryListener).failedDelivery(any(ConsumerRecords.class), any(), eq(2));
 		verify(retryListener).failedDelivery(any(ConsumerRecords.class), any(), eq(3));
+		verify(recoverer, times(2)).accept(any(), any()); // each record in batch
+		verify(retryListener).recovered(any(ConsumerRecords.class), any());
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void notRetryable() {
+		Consumer mockConsumer = mock(Consumer.class);
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
+		DefaultErrorHandler beh = new DefaultErrorHandler(recoverer, new FixedBackOff(0, 2));
+		beh.addNotRetryableExceptions(IllegalStateException.class);
+		RetryListener retryListener = mock(RetryListener.class);
+		beh.setRetryListeners(retryListener);
+		TopicPartition tp = new TopicPartition("foo", 0);
+		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
+				List.of(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+								new RecordHeaders(), Optional.empty()),
+						new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+								new RecordHeaders(), Optional.empty()))));
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		beh.handleBatch(new ListenerExecutionFailedException("test", new IllegalStateException()),
+				records, mockConsumer, container, () -> {
+				});
+		verify(retryListener).failedDelivery(any(ConsumerRecords.class), any(), eq(1));
+		// no retries
+		verify(retryListener, never()).failedDelivery(any(ConsumerRecords.class), any(), eq(2));
 		verify(recoverer, times(2)).accept(any(), any()); // each record in batch
 		verify(retryListener).recovered(any(ConsumerRecords.class), any());
 	}

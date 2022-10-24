@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
@@ -77,18 +78,49 @@ public final class ErrorHandlingUtils {
 	 * @param recoverer the recoverer.
 	 * @param logger the logger.
 	 * @param logLevel the log level.
+	 * @deprecated in favor of
+	 * {@link #retryBatch(Exception, ConsumerRecords, Consumer, MessageListenerContainer, Runnable, BackOff, CommonErrorHandler, BiConsumer, LogAccessor, org.springframework.kafka.KafkaException.Level, List, BinaryExceptionClassifier)}.
 	 */
+	@Deprecated
 	public static void retryBatch(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener, BackOff backOff,
 			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
 			KafkaException.Level logLevel) {
+
+		retryBatch(thrownException, records, consumer, container, invokeListener, backOff, seeker, null, logger,
+				logLevel, null, new BinaryExceptionClassifier(true));
+	}
+
+	/**
+	 * Retry a complete batch by pausing the consumer and then, in a loop, poll the
+	 * consumer, wait for the next back off, then call the listener. When retries are
+	 * exhausted, call the recoverer with the {@link ConsumerRecords}.
+	 * @param thrownException the exception.
+	 * @param records the records.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 * @param invokeListener the {@link Runnable} to run (call the listener).
+	 * @param backOff the backOff.
+	 * @param seeker the common error handler that re-seeks the entire batch.
+	 * @param recoverer the recoverer.
+	 * @param logger the logger.
+	 * @param logLevel the log level.
+	 * @param retryListenersArg the retry listeners.
+	 * @param classifier the exception classifier.
+	 * @since 2.8.11
+	 */
+	public static void retryBatch(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
+			MessageListenerContainer container, Runnable invokeListener, BackOff backOff,
+			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
+			KafkaException.Level logLevel, @Nullable List<RetryListener> retryListenersArg,
+			BinaryExceptionClassifier classifier) {
 
 		BackOffExecution execution = backOff.start();
 		long nextBackOff = execution.nextBackOff();
 		String failed = null;
 		Set<TopicPartition> assignment = consumer.assignment();
 		consumer.pause(assignment);
-		List<RetryListener> listeners = retryListeners.get();
+		List<RetryListener> listeners = retryListenersArg != null ? retryListenersArg : retryListeners.get();
 		int attempt = 1;
 		listen(listeners, records, thrownException, attempt++);
 		ConsumerRecord<?, ?> first = records.iterator().next();
@@ -98,7 +130,8 @@ public final class ErrorHandlingUtils {
 					.publishConsumerPausedEvent(assignment, "For batch retry");
 		}
 		try {
-			while (nextBackOff != BackOffExecution.STOP) {
+			Boolean retryable = classifier.classify(unwrapIfNeeded(thrownException));
+			while (Boolean.TRUE.equals(retryable) && nextBackOff != BackOffExecution.STOP) {
 				consumer.poll(Duration.ZERO);
 				try {
 					ListenerUtils.stoppableSleep(container, nextBackOff);
@@ -169,6 +202,24 @@ public final class ErrorHandlingUtils {
 				.append(','));
 		sb.deleteCharAt(sb.length() - 1);
 		return sb.toString();
+	}
+
+	/**
+	 * Remove a {@link TimestampedException}, if present.
+	 * Remove a {@link ListenerExecutionFailedException}, if present.
+	 * @param exception the exception.
+	 * @return the unwrapped cause or cause of cause.
+	 * @since 2.8.11
+	 */
+	public static Exception unwrapIfNeeded(Exception exception) {
+		Exception theEx = exception;
+		if (theEx instanceof TimestampedException && theEx.getCause() instanceof Exception) {
+			theEx = (Exception) theEx.getCause();
+		}
+		if (theEx instanceof ListenerExecutionFailedException && theEx.getCause() instanceof Exception) {
+			theEx = (Exception) theEx.getCause();
+		}
+		return theEx;
 	}
 
 }

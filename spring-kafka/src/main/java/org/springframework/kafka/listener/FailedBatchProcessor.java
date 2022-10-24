@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -35,6 +36,7 @@ import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.KafkaException.Level;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 
@@ -82,6 +84,39 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 
 		super(recoverer, backOff, backOffHandler);
 		this.fallbackBatchHandler = fallbackHandler;
+	}
+
+	@Override
+	public void setLogLevel(Level logLevel) {
+		super.setLogLevel(logLevel);
+		if (this.fallbackBatchHandler instanceof KafkaExceptionLogLevelAware) {
+			((KafkaExceptionLogLevelAware) this.fallbackBatchHandler).setLogLevel(logLevel);
+		}
+	}
+
+	@Override
+	protected void notRetryable(Stream<Class<? extends Exception>> notRetryable) {
+		if (this.fallbackBatchHandler instanceof ExceptionClassifier) {
+			notRetryable.forEach(ex -> ((ExceptionClassifier) this.fallbackBatchHandler).addNotRetryableExceptions(ex));
+		}
+	}
+
+	@Override
+	public void setClassifications(Map<Class<? extends Throwable>, Boolean> classifications, boolean defaultValue) {
+		super.setClassifications(classifications, defaultValue);
+		if (this.fallbackBatchHandler instanceof ExceptionClassifier) {
+			((ExceptionClassifier) this.fallbackBatchHandler).setClassifications(classifications, defaultValue);
+		}
+	}
+
+	@Override
+	@Nullable
+	public Boolean removeClassification(Class<? extends Exception> exceptionType) {
+		Boolean removed = super.removeClassification(exceptionType);
+		if (this.fallbackBatchHandler instanceof ExceptionClassifier) {
+			((ExceptionClassifier) this.fallbackBatchHandler).removeClassification(exceptionType);
+		}
+		return removed;
 	}
 
 	/**

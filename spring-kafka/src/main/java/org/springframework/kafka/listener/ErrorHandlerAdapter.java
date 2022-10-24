@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -26,6 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -35,7 +38,7 @@ import org.springframework.util.Assert;
  * @since 2.7.4
  *
  */
-class ErrorHandlerAdapter implements CommonErrorHandler {
+class ErrorHandlerAdapter extends ExceptionClassifier implements CommonErrorHandler {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private static final ConsumerRecords EMPTY_BATCH = new ConsumerRecords(Collections.emptyMap());
@@ -169,6 +172,31 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 			((FallbackBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions,
 					publishPause);
 		}
+	}
+
+	@Override
+	protected void notRetryable(Stream<Class<? extends Exception>> notRetryable) {
+		if (this.batchErrorHandler instanceof ExceptionClassifier) {
+			notRetryable.forEach(ex -> ((ExceptionClassifier) this.batchErrorHandler).addNotRetryableExceptions(ex));
+		}
+	}
+
+	@Override
+	public void setClassifications(Map<Class<? extends Throwable>, Boolean> classifications, boolean defaultValue) {
+		super.setClassifications(classifications, defaultValue);
+		if (this.batchErrorHandler instanceof ExceptionClassifier) {
+			((ExceptionClassifier) this.batchErrorHandler).setClassifications(classifications, defaultValue);
+		}
+	}
+
+	@Override
+	@Nullable
+	public Boolean removeClassification(Class<? extends Exception> exceptionType) {
+		Boolean removed = super.removeClassification(exceptionType);
+		if (this.batchErrorHandler instanceof ExceptionClassifier) {
+			((ExceptionClassifier) this.batchErrorHandler).removeClassification(exceptionType);
+		}
+		return removed;
 	}
 
 }
