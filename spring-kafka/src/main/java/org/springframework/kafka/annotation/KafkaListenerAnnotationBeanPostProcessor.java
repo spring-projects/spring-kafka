@@ -466,9 +466,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (KafkaListener classLevelListener : classLevelListeners) {
 			MultiMethodKafkaListenerEndpoint<K, V> endpoint =
 					new MultiMethodKafkaListenerEndpoint<>(checkedMethods, defaultMethod, bean);
-			endpoint.setId(getEndpointId(classLevelListener));
 			String beanRef = classLevelListener.beanRef();
 			this.listenerScope.addListener(beanRef, bean);
+			endpoint.setId(getEndpointId(classLevelListener));
 			processListener(endpoint, classLevelListener, bean, beanName, resolveTopics(classLevelListener),
 					resolveTopicPartitions(classLevelListener));
 			this.listenerScope.removeListener(beanRef);
