@@ -304,11 +304,13 @@ class ListenerContainerFactoryConfigurerTests {
 	void shouldUseGivenBackOffAndExceptionsKeepStandard() {
 
 		// given
+		String testListenerId = "testListenerId";
 		given(container.getContainerProperties()).willReturn(containerProperties);
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
+		given(deadLetterPublishingRecovererFactory.create(testListenerId)).willReturn(recoverer);
 		given(containerProperties.getMessageListener()).willReturn(listener);
 		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
+		given(container.getListenerId()).willReturn(testListenerId);
 		BackOff backOffMock = mock(BackOff.class);
 		BackOffExecution backOffExecutionMock = mock(BackOffExecution.class);
 		given(backOffMock.start()).willReturn(backOffExecutionMock);
