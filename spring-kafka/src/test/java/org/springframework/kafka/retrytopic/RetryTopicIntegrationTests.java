@@ -95,7 +95,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryTopicIntegrationTests.THIRD_TOPIC,
 		RetryTopicIntegrationTests.FOURTH_TOPIC,
 		RetryTopicIntegrationTests.TWO_LISTENERS_TOPIC })
-@TestPropertySource(properties = "five.attempts=5")
+@TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
 public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicIntegrationTests.class);
@@ -286,7 +286,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 				backoff = @Backoff(delay = 250, maxDelay = 1000, multiplier = 1.5),
 				numPartitions = "#{3}",
 				timeout = "${missing.property:2000}",
-				include = MyRetryException.class, kafkaTemplate = "kafkaTemplate",
+				include = MyRetryException.class, kafkaTemplate = "${kafka.template}",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
 				concurrency = "1")
 		@KafkaListener(id = "thirdTopicId", topics = THIRD_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
@@ -311,7 +311,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 		CountDownLatchContainer container;
 
 		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @Backoff(300),
-				kafkaTemplate = "kafkaTemplate")
+				kafkaTemplate = "${kafka.template}")
 		@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			logger.debug("Message {} received in topic {} ", message, receivedTopic);
@@ -337,7 +337,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 				numPartitions = "2",
 				retryTopicSuffix = "-listener1", dltTopicSuffix = "-listener1-dlt",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
-				kafkaTemplate = "kafkaTemplate")
+				kafkaTemplate = "${kafka.template}")
 		@KafkaListener(id = "fifthTopicId1", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 				partitionOffsets = @PartitionOffset(partition = "0", initialOffset = "0"))},
 				containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
@@ -369,7 +369,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 				numPartitions = "2",
 				retryTopicSuffix = "-listener2", dltTopicSuffix = "-listener2-dlt",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
-				kafkaTemplate = "kafkaTemplate")
+				kafkaTemplate = "${kafka.template}")
 		@KafkaListener(id = "fifthTopicId2", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 				partitionOffsets = @PartitionOffset(partition = "1", initialOffset = "0"))},
 				containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
@@ -397,7 +397,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 
 		@RetryableTopic(attempts = "3", numPartitions = "3", exclude = MyDontRetryException.class,
 				backoff = @Backoff(delay = 50, maxDelay = 100, multiplier = 3),
-				traversingCauses = "true", kafkaTemplate = "kafkaTemplate")
+				traversingCauses = "true", kafkaTemplate = "${kafka.template}")
 		@KafkaListener(topics = NOT_RETRYABLE_EXCEPTION_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.countDownIfNotKnown(receivedTopic, container.countDownLatchNoRetry);
@@ -592,7 +592,7 @@ public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTes
 			return new DefaultKafkaProducerFactory<>(configProps);
 		}
 
-		@Bean
+		@Bean("customKafkaTemplate")
 		public KafkaTemplate<String, String> kafkaTemplate() {
 			return new KafkaTemplate<>(producerFactory());
 		}
