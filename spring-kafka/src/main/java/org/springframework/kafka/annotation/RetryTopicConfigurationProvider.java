@@ -27,7 +27,10 @@ import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.MergedAnnotation;
+import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.core.annotation.MergedAnnotations.SearchStrategy;
+import org.springframework.core.annotation.RepeatableContainers;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 
@@ -88,7 +91,11 @@ public class RetryTopicConfigurationProvider {
 		this.expressionContext = expressionContext;
 	}
 	public RetryTopicConfiguration findRetryConfigurationFor(String[] topics, Method method, Object bean) {
-		RetryableTopic annotation = AnnotationUtils.findAnnotation(method, RetryableTopic.class);
+		RetryableTopic annotation = MergedAnnotations.from(method, SearchStrategy.TYPE_HIERARCHY,
+					RepeatableContainers.none())
+				.get(RetryableTopic.class)
+				.synthesize(MergedAnnotation::isPresent)
+				.orElse(null);
 		return annotation != null
 				? new RetryableTopicAnnotationProcessor(this.beanFactory, this.resolver, this.expressionContext)
 						.processAnnotation(topics, method, annotation, bean)

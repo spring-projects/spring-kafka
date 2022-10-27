@@ -38,6 +38,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.kafka.annotation.RetryTopicConfigurationProvider;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.core.KafkaOperations;
@@ -155,6 +156,8 @@ class RetryTopicConfigurationProviderTests {
 
 		// then
 		then(this.beanFactory).should(times(0)).getBeansOfType(RetryTopicConfiguration.class);
+		assertThat(configuration.getConcurrency()).isEqualTo(3);
+
 	}
 
 	@Test
@@ -182,6 +185,8 @@ class RetryTopicConfigurationProviderTests {
 	@Retention(RetentionPolicy.RUNTIME)
 	@RetryableTopic
 	static @interface MetaAnnotatedRetryableTopic {
+		@AliasFor(attribute = "concurrency", annotation = RetryableTopic.class)
+		String parallelism() default "3";
 	}
 
 	@MetaAnnotatedRetryableTopic
