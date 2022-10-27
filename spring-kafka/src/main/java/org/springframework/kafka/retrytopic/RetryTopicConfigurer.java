@@ -150,11 +150,13 @@ import org.springframework.lang.Nullable;
  *</pre>
  * <p> Or through meta-annotations, such as:
  * <pre>
- *     <code>@RetryableTopic(attempts = 3,
- *     		backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
- *     <code>public @interface WithExponentialBackoffRetry { }</code>
+ *     <code>@RetryableTopic(backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     <code>public @interface WithExponentialBackoffRetry {</code>
+ *     <code>   	{@literal @}AliasFor(attribute = "attempts", annotation = RetryableTopic.class)
+ *        	String retries();
+ *     }</code>
  *
- *     <code>@WithExponentialBackoffRetry</code>
+ *     <code>@WithExponentialBackoffRetry(retries = "3")</code>
  *     <code>@KafkaListener(topics = "my-annotated-topic")
  *     public void processMessage(MyPojo message) {
  *        		// ... message processing
