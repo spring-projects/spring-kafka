@@ -19,6 +19,7 @@ package org.springframework.kafka.test.utils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import java.time.Duration;
 import java.util.Map;
 
 import org.apache.kafka.clients.admin.AdminClient;
@@ -72,7 +73,7 @@ public class KafkaTestUtilsTests {
 		broker.consumeFromEmbeddedTopics(consumer, "singleTopic4", "singleTopic5");
 		long t1 = System.currentTimeMillis();
 		assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() ->
-			KafkaTestUtils.getSingleRecord(consumer, "singleTopic5", 2000L));
+			KafkaTestUtils.getSingleRecord(consumer, "singleTopic5", Duration.ofSeconds(2)));
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(2000L);
 		producer.send(new ProducerRecord<>("singleTopic5", 1, "foo"));
 		producer.close();
@@ -92,14 +93,14 @@ public class KafkaTestUtilsTests {
 		producer.send(new ProducerRecord<>("singleTopic3", 0, 1, "foo"));
 		producer.close();
 		ConsumerRecord<?, ?> oneRecord = KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "getOne",
-				"singleTopic3", 0, false, true, 10_000L);
+				"singleTopic3", 0, false, true, Duration.ofSeconds(10));
 		assertThat(oneRecord.value()).isEqualTo("foo");
 		assertThat(KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), "getOne", "singleTopic3", 0))
 				.isNotNull()
 				.extracting(omd -> omd.offset())
 				.isEqualTo(1L);
 		oneRecord = KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "getOne",
-				"singleTopic3", 0, true, true, 10_000L);
+				"singleTopic3", 0, true, true, Duration.ofSeconds(10));
 		assertThat(oneRecord.value()).isEqualTo("foo");
 		assertThat(KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), "getOne", "singleTopic3", 0))
 				.isNotNull()
@@ -124,7 +125,7 @@ public class KafkaTestUtilsTests {
 				Thread.currentThread().interrupt();
 			}
 		}).start();
-		ConsumerRecords<Integer, String> records = KafkaTestUtils.getRecords(consumer, 10_000L, 2);
+		ConsumerRecords<Integer, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(10), 2);
 		assertThat(records.count()).isEqualTo(2);
 		producer.close();
 		consumer.close();
@@ -138,7 +139,7 @@ public class KafkaTestUtilsTests {
 			producer.send(new ProducerRecord<>("singleTopic3", 0, 1, "foo"));
 
 			KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "testGetCurrentOffsetWithAdminClient",
-					"singleTopic3", 0, false, true, 10_000L);
+					"singleTopic3", 0, false, true, Duration.ofSeconds(10));
 			assertThat(KafkaTestUtils.getCurrentOffset(adminClient, "testGetCurrentOffsetWithAdminClient", "singleTopic3", 0))
 					.isNotNull()
 					.extracting(omd -> omd.offset())

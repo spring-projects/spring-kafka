@@ -136,10 +136,10 @@ public final class KafkaTestUtils {
 	 * @param <V> the value type.
 	 * @return the record.
 	 * @throws IllegalStateException if exactly one record is not received.
-	 * @see #getSingleRecord(Consumer, String, long)
+	 * @see #getSingleRecord(Consumer, String, Duration)
 	 */
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic) {
-		return getSingleRecord(consumer, topic, 60000); // NOSONAR magic #
+		return getSingleRecord(consumer, topic, Duration.ofSeconds(60)); // NOSONAR magic #
 	}
 
 	/**
@@ -152,14 +152,31 @@ public final class KafkaTestUtils {
 	 * @return the record.
 	 * @throws IllegalStateException if exactly one record is not received.
 	 * @since 2.0
+	 * @deprecated in favor of {@link #getSingleRecord(Consumer, String, Duration)}
 	 */
+	@Deprecated(since = "2.9.3", forRemoval = true)
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
-		long expire = System.currentTimeMillis() + timeout;
+		return getSingleRecord(consumer, topic, Duration.ofMillis(timeout));
+	}
+
+	/**
+	 * Poll the consumer, expecting a single record for the specified topic.
+	 * @param consumer the consumer.
+	 * @param topic the topic.
+	 * @param timeout max duration to wait for records; forwarded to {@link Consumer#poll(Duration)}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @return the record.
+	 * @throws IllegalStateException if exactly one record is not received.
+	 * @since 2.9.3
+	 */
+	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, Duration timeout) {
+		long expire = System.currentTimeMillis() + timeout.toMillis();
 		ConsumerRecords<K, V> received;
 		Iterator<ConsumerRecord<K, V>> iterator;
-		long remaining = timeout;
+		long remaining = timeout.toMillis();
 		do {
-			received = getRecords(consumer, remaining);
+			received = getRecords(consumer, Duration.ofMillis(remaining));
 			iterator = received.records(topic).iterator();
 			Map<TopicPartition, Long> reset = new HashMap<>();
 			received.forEach(rec -> {
@@ -198,11 +215,31 @@ public final class KafkaTestUtils {
 	 * @param timeout the timeout.
 	 * @return the record or null if no record received.
 	 * @since 2.3
+	 * @deprecated in favor of {@link #getOneRecord(String, String, String, int, boolean, boolean, Duration)}
+	 */
+	@Nullable
+	@Deprecated(since = "2.9.3", forRemoval = true)
+	public static ConsumerRecord<?, ?> getOneRecord(String brokerAddresses, String group, String topic, int partition,
+													boolean seekToLast, boolean commit, long timeout) {
+		return getOneRecord(brokerAddresses, group, topic, partition, seekToLast, commit, Duration.ofMillis(timeout));
+	}
+
+	/**
+	 * Get a single record for the group from the topic/partition. Optionally, seeking to the current last record.
+	 * @param brokerAddresses the broker address(es).
+	 * @param group the group.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param seekToLast true to fetch an existing last record, if present.
+	 * @param commit commit offset after polling or not.
+	 * @param timeout the timeout.
+	 * @return the record or null if no record received.
+	 * @since 2.9.3
 	 */
 	@Nullable
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static ConsumerRecord<?, ?> getOneRecord(String brokerAddresses, String group, String topic, int partition,
-			boolean seekToLast, boolean commit, long timeout) {
+			boolean seekToLast, boolean commit, Duration timeout) {
 
 		Map<String, Object> consumerConfig = consumerProps(brokerAddresses, group, "false");
 		consumerConfig.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
@@ -215,7 +252,7 @@ public final class KafkaTestUtils {
 					consumer.seek(topicPart, consumer.position(topicPart) - 1);
 				}
 			}
-			ConsumerRecords<?, ?> records = consumer.poll(Duration.ofMillis(timeout));
+			ConsumerRecords<?, ?> records = consumer.poll(timeout);
 			ConsumerRecord<?, ?> record = records.count() == 1 ? records.iterator().next() : null;
 			if (record != null && commit) {
 				consumer.commitSync();
@@ -298,23 +335,24 @@ public final class KafkaTestUtils {
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the records.
-	 * @see #getRecords(Consumer, long)
+	 * @see #getRecords(Consumer, Duration)
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer) {
-		return getRecords(consumer, 60000); // NOSONAR magic #
+		return getRecords(consumer, Duration.ofSeconds(60)); // NOSONAR magic #
 	}
 
 	/**
 	 * Poll the consumer for records.
 	 * @param consumer the consumer.
-	 * @param timeout max time in milliseconds to wait for records; forwarded to
-	 * {@link Consumer#poll(long)}.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 * @return the records.
 	 * @throws IllegalStateException if the poll returns null (since 2.3.4).
 	 * @since 2.0
+	 * @deprecated in favor of {@link #getRecords(Consumer, Duration)}
 	 */
+	@Deprecated(since = "2.9.3", forRemoval = true)
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
 		return getRecords(consumer, timeout, -1);
 	}
@@ -322,20 +360,49 @@ public final class KafkaTestUtils {
 	/**
 	 * Poll the consumer for records.
 	 * @param consumer the consumer.
-	 * @param timeout max time in milliseconds to wait for records; forwarded to
-	 * {@link Consumer#poll(long)}.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(Duration)}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
-	 * @param minRecords wait until the timeout or at least this number of receords are
-	 * received.
+	 * @return the records.
+	 * @throws IllegalStateException if the poll returns null (since 2.3.4).
+	 * @since 2.9.3
+	 */
+	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, Duration timeout) {
+		return getRecords(consumer, timeout, -1);
+	}
+
+	/**
+	 * Poll the consumer for records.
+	 * @param consumer the consumer.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param minRecords wait until the timeout or at least this number of records are received.
 	 * @return the records.
 	 * @throws IllegalStateException if the poll returns null.
 	 * @since 2.4.2
+	 * @deprecated in favor of {#{@link #getRecords(Consumer, Duration, int)}}
 	 */
+	@Deprecated(since = "2.9.3", forRemoval = true)
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout, int minRecords) {
+		return getRecords(consumer, Duration.ofMillis(timeout), minRecords);
+	}
+
+	/**
+	 * Poll the consumer for records.
+	 * @param consumer the consumer.
+	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(Duration)}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param minRecords wait until the timeout or at least this number of records are received.
+	 * @return the records.
+	 * @throws IllegalStateException if the poll returns null.
+	 * @since 2.9.3
+	 */
+	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, Duration timeout, int minRecords) {
 		logger.debug("Polling...");
 		Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
-		long remaining = timeout;
+		long remaining = timeout.toMillis();
 		int count = 0;
 		do {
 			long t1 = System.currentTimeMillis();
@@ -344,8 +411,7 @@ public final class KafkaTestUtils {
 					+ received.partitions().stream()
 					.flatMap(p -> received.records(p).stream())
 					// map to same format as send metadata toString()
-					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-					.collect(Collectors.toList()));
+					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset()).toList());
 			if (received == null) {
 				throw new IllegalStateException("null received from consumer.poll()");
 			}
