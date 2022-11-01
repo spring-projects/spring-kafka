@@ -154,7 +154,7 @@ public final class KafkaTestUtils {
 	 * @since 2.0
 	 * @deprecated in favor of {@link #getSingleRecord(Consumer, String, Duration)}
 	 */
-	@Deprecated(since = "2.9.3", forRemoval = true)
+	@Deprecated
 	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
 		return getSingleRecord(consumer, topic, Duration.ofMillis(timeout));
 	}
@@ -218,7 +218,7 @@ public final class KafkaTestUtils {
 	 * @deprecated in favor of {@link #getOneRecord(String, String, String, int, boolean, boolean, Duration)}
 	 */
 	@Nullable
-	@Deprecated(since = "2.9.3", forRemoval = true)
+	@Deprecated
 	public static ConsumerRecord<?, ?> getOneRecord(String brokerAddresses, String group, String topic, int partition,
 													boolean seekToLast, boolean commit, long timeout) {
 		return getOneRecord(brokerAddresses, group, topic, partition, seekToLast, commit, Duration.ofMillis(timeout));
@@ -352,7 +352,7 @@ public final class KafkaTestUtils {
 	 * @since 2.0
 	 * @deprecated in favor of {@link #getRecords(Consumer, Duration)}
 	 */
-	@Deprecated(since = "2.9.3", forRemoval = true)
+	@Deprecated
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
 		return getRecords(consumer, timeout, -1);
 	}
@@ -383,7 +383,7 @@ public final class KafkaTestUtils {
 	 * @since 2.4.2
 	 * @deprecated in favor of {#{@link #getRecords(Consumer, Duration, int)}}
 	 */
-	@Deprecated(since = "2.9.3", forRemoval = true)
+	@Deprecated
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout, int minRecords) {
 		return getRecords(consumer, Duration.ofMillis(timeout), minRecords);
 	}
