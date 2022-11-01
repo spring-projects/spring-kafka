@@ -146,23 +146,6 @@ public final class KafkaTestUtils {
 	 * Poll the consumer, expecting a single record for the specified topic.
 	 * @param consumer the consumer.
 	 * @param topic the topic.
-	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @return the record.
-	 * @throws IllegalStateException if exactly one record is not received.
-	 * @since 2.0
-	 * @deprecated in favor of {@link #getSingleRecord(Consumer, String, Duration)}
-	 */
-	@Deprecated(since = "2.9.3", forRemoval = true)
-	public static <K, V> ConsumerRecord<K, V> getSingleRecord(Consumer<K, V> consumer, String topic, long timeout) {
-		return getSingleRecord(consumer, topic, Duration.ofMillis(timeout));
-	}
-
-	/**
-	 * Poll the consumer, expecting a single record for the specified topic.
-	 * @param consumer the consumer.
-	 * @param topic the topic.
 	 * @param timeout max duration to wait for records; forwarded to {@link Consumer#poll(Duration)}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
@@ -202,26 +185,6 @@ public final class KafkaTestUtils {
 			throw new IllegalStateException("More than one record for topic found");
 		}
 		return received.records(topic).iterator().next();
-	}
-
-	/**
-	 * Get a single record for the group from the topic/partition. Optionally, seeking to the current last record.
-	 * @param brokerAddresses the broker address(es).
-	 * @param group the group.
-	 * @param topic the topic.
-	 * @param partition the partition.
-	 * @param seekToLast true to fetch an existing last record, if present.
-	 * @param commit commit offset after polling or not.
-	 * @param timeout the timeout.
-	 * @return the record or null if no record received.
-	 * @since 2.3
-	 * @deprecated in favor of {@link #getOneRecord(String, String, String, int, boolean, boolean, Duration)}
-	 */
-	@Nullable
-	@Deprecated(since = "2.9.3", forRemoval = true)
-	public static ConsumerRecord<?, ?> getOneRecord(String brokerAddresses, String group, String topic, int partition,
-													boolean seekToLast, boolean commit, long timeout) {
-		return getOneRecord(brokerAddresses, group, topic, partition, seekToLast, commit, Duration.ofMillis(timeout));
 	}
 
 	/**
@@ -344,22 +307,6 @@ public final class KafkaTestUtils {
 	/**
 	 * Poll the consumer for records.
 	 * @param consumer the consumer.
-	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @return the records.
-	 * @throws IllegalStateException if the poll returns null (since 2.3.4).
-	 * @since 2.0
-	 * @deprecated in favor of {@link #getRecords(Consumer, Duration)}
-	 */
-	@Deprecated(since = "2.9.3", forRemoval = true)
-	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout) {
-		return getRecords(consumer, timeout, -1);
-	}
-
-	/**
-	 * Poll the consumer for records.
-	 * @param consumer the consumer.
 	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(Duration)}.
 	 * @param <K> the key type.
 	 * @param <V> the value type.
@@ -369,23 +316,6 @@ public final class KafkaTestUtils {
 	 */
 	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, Duration timeout) {
 		return getRecords(consumer, timeout, -1);
-	}
-
-	/**
-	 * Poll the consumer for records.
-	 * @param consumer the consumer.
-	 * @param timeout max time in milliseconds to wait for records; forwarded to {@link Consumer#poll(long)}.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @param minRecords wait until the timeout or at least this number of records are received.
-	 * @return the records.
-	 * @throws IllegalStateException if the poll returns null.
-	 * @since 2.4.2
-	 * @deprecated in favor of {#{@link #getRecords(Consumer, Duration, int)}}
-	 */
-	@Deprecated(since = "2.9.3", forRemoval = true)
-	public static <K, V> ConsumerRecords<K, V> getRecords(Consumer<K, V> consumer, long timeout, int minRecords) {
-		return getRecords(consumer, Duration.ofMillis(timeout), minRecords);
 	}
 
 	/**
