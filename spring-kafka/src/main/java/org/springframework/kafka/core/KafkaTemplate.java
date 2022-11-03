@@ -422,7 +422,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	@Override
 	public void afterSingletonsInstantiated() {
 		if (this.observationEnabled && this.applicationContext != null) {
-			this.observationRegistry = this.applicationContext.getBeanProvider(ObservationRegistry.class).getIfUnique();
+			this.observationRegistry = this.applicationContext.getBeanProvider(ObservationRegistry.class)
+					.getIfUnique(() -> this.observationRegistry);
 			this.kafkaAdmin = this.applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
 			if (this.kafkaAdmin != null) {
 				this.clusterId = this.kafkaAdmin.clusterId();
@@ -433,6 +434,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		}
 	}
 
+	@Nullable
 	private String clusterId() {
 		if (this.kafkaAdmin != null && this.clusterId == null) {
 			this.clusterId = this.kafkaAdmin.clusterId();

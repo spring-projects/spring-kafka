@@ -371,7 +371,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		if (applicationContext != null && containerProperties.isObservationEnabled()) {
 			ObjectProvider<ObservationRegistry> registry =
 					applicationContext.getBeanProvider(ObservationRegistry.class);
-			observationRegistry = registry.getIfUnique();
+			ObservationRegistry reg = registry.getIfUnique();
+			if (reg != null) {
+				observationRegistry = reg;
+			}
 		}
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType, observationRegistry);
 		setRunning(true);
