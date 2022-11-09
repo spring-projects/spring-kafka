@@ -135,7 +135,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param bean the bean.
 	 * @param method the method.
 	 */
-	public MessagingMessageListenerAdapter(Object bean, Method method) {
+	protected MessagingMessageListenerAdapter(Object bean, Method method) {
 		this.bean = bean;
 		this.inferredType = determineInferredType(method); // NOSONAR = intentionally not final
 	}
@@ -310,35 +310,35 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
-		if (this.bean instanceof ConsumerSeekAware) {
-			((ConsumerSeekAware) this.bean).registerSeekCallback(callback);
+		if (this.bean instanceof ConsumerSeekAware csa) {
+			csa.registerSeekCallback(callback);
 		}
 	}
 
 	@Override
 	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-		if (this.bean instanceof ConsumerSeekAware) {
-			((ConsumerSeekAware) this.bean).onPartitionsAssigned(assignments, callback);
+		if (this.bean instanceof ConsumerSeekAware csa) {
+			csa.onPartitionsAssigned(assignments, callback);
 		}
 	}
 
 	@Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-		if (this.bean instanceof ConsumerSeekAware) {
-			((ConsumerSeekAware) this.bean).onPartitionsRevoked(partitions);
+		if (this.bean instanceof ConsumerSeekAware csa) {
+			csa.onPartitionsRevoked(partitions);
 		}
 	}
 
 	@Override
 	public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-		if (this.bean instanceof ConsumerSeekAware) {
-			((ConsumerSeekAware) this.bean).onIdleContainer(assignments, callback);
+		if (this.bean instanceof ConsumerSeekAware csa) {
+			csa.onIdleContainer(assignments, callback);
 		}
 	}
 
-	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, @Nullable Acknowledgment acknowledgment,
+	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> cRecord, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
-		return getMessageConverter().toMessage(record, acknowledgment, consumer, getType());
+		return getMessageConverter().toMessage(cRecord, acknowledgment, consumer, getType());
 	}
 
 	/**
@@ -417,8 +417,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	@Nullable
 	private String evaluateReplyTopic(Object request, Object source, Object result) {
 		String replyTo = null;
-		if (result instanceof InvocationResult) {
-			replyTo = evaluateTopic(request, source, result, ((InvocationResult) result).getSendTo());
+		if (result instanceof InvocationResult invResult) {
+			replyTo = evaluateTopic(request, source, result, invResult.getSendTo());
 		}
 		else if (this.replyTopicExpression != null) {
 			replyTo = evaluateTopic(request, source, result, this.replyTopicExpression);
@@ -492,7 +492,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
-	private Message<?> checkHeaders(Object result, String topic, Object source) { // NOSONAR (complexity)
+	private Message<?> checkHeaders(Object result, String topic, @Nullable Object source) { // NOSONAR (complexity)
 		Message<?> reply = (Message<?>) result;
 		MessageHeaders headers = reply.getHeaders();
 		boolean needsTopic = headers.get(KafkaHeaders.TOPIC) == null;
@@ -642,8 +642,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					allowedBatchParameters++;
 				}
 				else {
-					if (parameterType instanceof ParameterizedType
-							&& ((ParameterizedType) parameterType).getRawType().equals(Consumer.class)) {
+					if (parameterType instanceof ParameterizedType paramType
+							&& paramType.getRawType().equals(Consumer.class)) {
 						allowedBatchParameters++;
 					}
 				}
@@ -672,8 +672,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private Type extractGenericParameterTypFromMethodParameter(MethodParameter methodParameter) {
 		Type genericParameterType = methodParameter.getGenericParameterType();
-		if (genericParameterType instanceof ParameterizedType) {
-			ParameterizedType parameterizedType = (ParameterizedType) genericParameterType;
+		if (genericParameterType instanceof ParameterizedType parameterizedType) {
 			if (parameterizedType.getRawType().equals(Message.class)) {
 				genericParameterType = ((ParameterizedType) genericParameterType).getActualTypeArguments()[0];
 			}
@@ -684,8 +683,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				this.isConsumerRecordList = paramType.equals(ConsumerRecord.class)
 						|| (isSimpleListOfConsumerRecord(paramType)
 						|| isListOfConsumerRecordUpperBounded(paramType));
-				boolean messageHasGeneric = paramType instanceof ParameterizedType
-						&& ((ParameterizedType) paramType).getRawType().equals(Message.class);
+				boolean messageHasGeneric = paramType instanceof ParameterizedType pType
+						&& pType.getRawType().equals(Message.class);
 				this.isMessageList = paramType.equals(Message.class) || messageHasGeneric;
 				if (messageHasGeneric) {
 					genericParameterType = ((ParameterizedType) paramType).getActualTypeArguments()[0];
@@ -699,26 +698,23 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	private boolean isSimpleListOfConsumerRecord(Type paramType) {
-		return paramType instanceof ParameterizedType
-				&& ((ParameterizedType) paramType).getRawType().equals(ConsumerRecord.class);
+		return paramType instanceof ParameterizedType pType && pType.getRawType().equals(ConsumerRecord.class);
 	}
 
 	private boolean isListOfConsumerRecordUpperBounded(Type paramType) {
 		return isWildCardWithUpperBound(paramType)
-			&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType
-			&& ((ParameterizedType) ((WildcardType) paramType).getUpperBounds()[0])
-						.getRawType().equals(ConsumerRecord.class);
+			&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType wildCardZero
+			&& wildCardZero.getRawType().equals(ConsumerRecord.class);
 	}
 
 	private boolean isWildCardWithUpperBound(Type paramType) {
-		return paramType instanceof WildcardType
-			&& ((WildcardType) paramType).getUpperBounds() != null
-			&& ((WildcardType) paramType).getUpperBounds().length > 0;
+		return paramType instanceof WildcardType wcType
+			&& wcType.getUpperBounds() != null
+			&& wcType.getUpperBounds().length > 0;
 	}
 
 	private boolean isMessageWithNoTypeInfo(Type parameterType) {
-		if (parameterType instanceof ParameterizedType) {
-			ParameterizedType parameterizedType = (ParameterizedType) parameterType;
+		if (parameterType instanceof ParameterizedType parameterizedType) {
 			Type rawType = parameterizedType.getRawType();
 			if  (rawType.equals(Message.class)) {
 				return parameterizedType.getActualTypeArguments()[0] instanceof WildcardType;
@@ -728,8 +724,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	private boolean parameterIsType(Type parameterType, Type type) {
-		if (parameterType instanceof ParameterizedType) {
-			ParameterizedType parameterizedType = (ParameterizedType) parameterType;
+		if (parameterType instanceof ParameterizedType parameterizedType) {
 			Type rawType = parameterizedType.getRawType();
 			if (rawType.equals(type)) {
 				return true;
@@ -740,34 +735,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	/**
 	 * Root object for reply expression evaluation.
+	 * @param request the request.
+	 * @param source the source.
+	 * @param result the result.
 	 * @since 2.0
 	 */
-	public static final class ReplyExpressionRoot {
-
-		private final Object request;
-
-		private final Object source;
-
-		private final Object result;
-
-		public ReplyExpressionRoot(Object request, Object source, Object result) {
-			this.request = request;
-			this.source = source;
-			this.result = result;
-		}
-
-		public Object getRequest() {
-			return this.request;
-		}
-
-		public Object getSource() {
-			return this.source;
-		}
-
-		public Object getResult() {
-			return this.result;
-		}
-
+	public record ReplyExpressionRoot(Object request, Object source, Object result) {
 	}
 
 }
