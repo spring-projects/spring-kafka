@@ -268,8 +268,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 */
 	public void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
-		if (beanFactory instanceof ConfigurableListableBeanFactory) {
-			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
+		if (beanFactory instanceof ConfigurableListableBeanFactory clbf) {
+			this.resolver = clbf.getBeanExpressionResolver();
 			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory,
 					this.listenerScope);
 		}
@@ -295,9 +295,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	public void afterSingletonsInstantiated() {
 		this.registrar.setBeanFactory(this.beanFactory);
 
-		if (this.beanFactory instanceof ListableBeanFactory) {
+		if (this.beanFactory instanceof ListableBeanFactory lbf) {
 			Map<String, KafkaListenerConfigurer> instances =
-					((ListableBeanFactory) this.beanFactory).getBeansOfType(KafkaListenerConfigurer.class);
+					lbf.getBeansOfType(KafkaListenerConfigurer.class);
 			for (KafkaListenerConfigurer configurer : instances.values()) {
 				configurer.configureKafkaListeners(this.registrar);
 			}
@@ -342,7 +342,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				List<AnnotationEnhancer> enhancers = enhancersMap.values()
 						.stream()
 						.sorted(new OrderComparator())
-						.collect(Collectors.toList());
+						.toList();
 				this.enhancer = (attrs, element) -> {
 					Map<String, Object> newAttrs = attrs;
 					for (AnnotationEnhancer enh : enhancers) {
@@ -364,7 +364,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (!this.nonAnnotatedClasses.contains(bean.getClass())) {
 			Class<?> targetClass = AopUtils.getTargetClass(bean);
 			Collection<KafkaListener> classLevelListeners = findListenerAnnotations(targetClass);
-			final boolean hasClassLevelListeners = classLevelListeners.size() > 0;
+			final boolean hasClassLevelListeners = !classLevelListeners.isEmpty();
 			final List<Method> multiMethods = new ArrayList<>();
 			Map<Method, Set<KafkaListener>> annotatedMethods = MethodIntrospector.selectMethods(targetClass,
 					(MethodIntrospector.MetadataLookup<Set<KafkaListener>>) method -> {
@@ -432,7 +432,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (anns != null) {
 			listeners.addAll(Arrays.stream(anns.value())
 					.map(anno -> enhance(method, anno))
-					.collect(Collectors.toList()));
+					.toList());
 		}
 		return listeners;
 	}
@@ -500,7 +500,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			retryableCandidates = Arrays.stream(tps)
 					.map(tp -> tp.getTopic())
 					.distinct()
-					.collect(Collectors.toList())
+					.toList()
 					.toArray(new String[0]);
 		}
 
@@ -541,12 +541,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private RetryTopicConfigurer createDefaultConfigurer() {
-		if (this.applicationContext instanceof GenericApplicationContext) {
-			GenericApplicationContext gac = (GenericApplicationContext) this.applicationContext;
+		if (this.applicationContext instanceof GenericApplicationContext gac) {
 			gac.registerBean(
 					RetryTopicBeanNames.DEFAULT_RETRY_TOPIC_CONFIG_SUPPORT_BEAN_NAME,
 					RetryTopicConfigurationSupport.class,
-					() -> new RetryTopicConfigurationSupport());
+					RetryTopicConfigurationSupport::new);
 			RetryTopicConfigurationSupport rtcs = this.applicationContext.getBean(
 					RetryTopicBeanNames.DEFAULT_RETRY_TOPIC_CONFIG_SUPPORT_BEAN_NAME,
 					RetryTopicConfigurationSupport.class);
@@ -638,8 +637,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		String group = kafkaListener.containerGroup();
 		if (StringUtils.hasText(group)) {
 			Object resolvedGroup = resolveExpression(group);
-			if (resolvedGroup instanceof String) {
-				endpoint.setGroup((String) resolvedGroup);
+			if (resolvedGroup instanceof String str) {
+				endpoint.setGroup(str);
 			}
 		}
 		String concurrency = kafkaListener.concurrency();
@@ -663,8 +662,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
 		Object errorHandler = resolveExpression(kafkaListener.errorHandler());
-		if (errorHandler instanceof KafkaListenerErrorHandler) {
-			endpoint.setErrorHandler((KafkaListenerErrorHandler) errorHandler);
+		if (errorHandler instanceof KafkaListenerErrorHandler kleh) {
+			endpoint.setErrorHandler(kleh);
 		}
 		else {
 			String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
@@ -677,8 +676,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private void resolveContentTypeConverter(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
 		Object converter = resolveExpression(kafkaListener.contentTypeConverter());
-		if (converter instanceof SmartMessageConverter) {
-			endpoint.setMessagingConverter((SmartMessageConverter) converter);
+		if (converter instanceof SmartMessageConverter smc) {
+			endpoint.setMessagingConverter(smc);
 		}
 		else {
 			String converterBeanName = resolveExpressionAsString(kafkaListener.contentTypeConverter(),
@@ -693,8 +692,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	@SuppressWarnings({ "rawtypes", UNCHECKED })
 	private void resolveFilter(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
 		Object filter = resolveExpression(kafkaListener.filter());
-		if (filter instanceof RecordFilterStrategy) {
-			endpoint.setRecordFilterStrategy((RecordFilterStrategy) filter);
+		if (filter instanceof RecordFilterStrategy rfs) {
+			endpoint.setRecordFilterStrategy(rfs);
 		}
 		else {
 			String filterBeanName = resolveExpressionAsString(kafkaListener.filter(), "filter");
@@ -757,14 +756,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				if (value instanceof String) {
 					loadProperty(properties, property, value);
 				}
-				else if (value instanceof String[]) {
-					for (String prop : (String[]) value) {
+				else if (value instanceof String[] strArr) {
+					for (String prop : strArr) {
 						loadProperty(properties, prop, prop);
 					}
 				}
 				else if (value instanceof Collection) {
 					Collection<?> values = (Collection<?>) value;
-					if (values.size() > 0 && values.iterator().next() instanceof String) {
+					if (!values.isEmpty() && values.iterator().next() instanceof String) {
 						for (String prop : (Collection<String>) value) {
 							loadProperty(properties, prop, prop);
 						}
@@ -836,11 +835,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		String text = kafkaListener.topicPattern();
 		if (StringUtils.hasText(text)) {
 			Object resolved = resolveExpression(text);
-			if (resolved instanceof Pattern) {
-				pattern = (Pattern) resolved;
+			if (resolved instanceof Pattern pat) {
+				pattern = pat;
 			}
-			else if (resolved instanceof String) {
-				pattern = Pattern.compile((String) resolved);
+			else if (resolved instanceof String str) {
+				pattern = Pattern.compile(str);
 			}
 			else if (resolved != null) {
 				throw new IllegalStateException(
@@ -877,20 +876,20 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						resolveInitialOffset(topic, partitionOffset), isRelative(topic, partitionOffset), true);
 			}
 		}
-		Assert.isTrue(result.size() > 0, () -> "At least one partition required for " + topic);
+		Assert.isTrue(!result.isEmpty(), () -> "At least one partition required for " + topic);
 		return result;
 	}
 
 	private Long resolveInitialOffset(Object topic, PartitionOffset partitionOffset) {
 		Object initialOffsetValue = resolveExpression(partitionOffset.initialOffset());
 		Long initialOffset;
-		if (initialOffsetValue instanceof String) {
-			Assert.state(StringUtils.hasText((String) initialOffsetValue),
+		if (initialOffsetValue instanceof String str) {
+			Assert.state(StringUtils.hasText(str),
 					() -> "'initialOffset' in @PartitionOffset for topic '" + topic + "' cannot be empty");
-			initialOffset = Long.valueOf((String) initialOffsetValue);
+			initialOffset = Long.valueOf(str);
 		}
-		else if (initialOffsetValue instanceof Long) {
-			initialOffset = (Long) initialOffsetValue;
+		else if (initialOffsetValue instanceof Long lng) {
+			initialOffset = lng;
 		}
 		else {
 			throw new IllegalArgumentException(String.format(
@@ -903,11 +902,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private boolean isRelative(Object topic, PartitionOffset partitionOffset) {
 		Object relativeToCurrentValue = resolveExpression(partitionOffset.relativeToCurrent());
 		Boolean relativeToCurrent;
-		if (relativeToCurrentValue instanceof String) {
-			relativeToCurrent = Boolean.valueOf((String) relativeToCurrentValue);
+		if (relativeToCurrentValue instanceof String str) {
+			relativeToCurrent = Boolean.valueOf(str);
 		}
-		else if (relativeToCurrentValue instanceof Boolean) {
-			relativeToCurrent = (Boolean) relativeToCurrentValue;
+		else if (relativeToCurrentValue instanceof Boolean bool) {
+			relativeToCurrent = bool;
 		}
 		else {
 			throw new IllegalArgumentException(String.format(
@@ -919,13 +918,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	@SuppressWarnings(UNCHECKED)
 	private void resolveAsString(Object resolvedValue, List<String> result) {
-		if (resolvedValue instanceof String[]) {
-			for (Object object : (String[]) resolvedValue) {
+		if (resolvedValue instanceof String[] strArr) {
+			for (Object object : strArr) {
 				resolveAsString(object, result);
 			}
 		}
-		else if (resolvedValue instanceof String) {
-			result.add((String) resolvedValue);
+		else if (resolvedValue instanceof String str) {
+			result.add(str);
 		}
 		else if (resolvedValue instanceof Iterable) {
 			for (Object object : (Iterable<Object>) resolvedValue) {
@@ -942,17 +941,17 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
 			List<TopicPartitionOffset> result, @Nullable Long offset, boolean isRelative, boolean checkDups) {
 
-		if (resolvedValue instanceof String[]) {
-			for (Object object : (String[]) resolvedValue) {
+		if (resolvedValue instanceof String[] strArr) {
+			for (Object object : strArr) {
 				resolvePartitionAsInteger(topic, object, result, offset, isRelative, checkDups);
 			}
 		}
-		else if (resolvedValue instanceof String) {
-			Assert.state(StringUtils.hasText((String) resolvedValue),
+		else if (resolvedValue instanceof String str) {
+			Assert.state(StringUtils.hasText(str),
 					() -> "partition in @TopicPartition for topic '" + topic + "' cannot be empty");
-			List<TopicPartitionOffset> collected = parsePartitions((String) resolvedValue)
+			List<TopicPartitionOffset> collected = parsePartitions(str)
 					.map(part -> new TopicPartitionOffset(topic, part, offset, isRelative))
-					.collect(Collectors.toList());
+					.toList();
 			if (checkDups) {
 				collected.forEach(tpo -> {
 					Assert.state(!result.contains(tpo), () ->
@@ -962,13 +961,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 			result.addAll(collected);
 		}
-		else if (resolvedValue instanceof Integer[]) {
-			for (Integer partition : (Integer[]) resolvedValue) {
+		else if (resolvedValue instanceof Integer[] intArr) {
+			for (Integer partition : intArr) {
 				result.add(new TopicPartitionOffset(topic, partition));
 			}
 		}
-		else if (resolvedValue instanceof Integer) {
-			result.add(new TopicPartitionOffset(topic, (Integer) resolvedValue));
+		else if (resolvedValue instanceof Integer intgr) {
+			result.add(new TopicPartitionOffset(topic, intgr));
 		}
 		else if (resolvedValue instanceof Iterable) {
 			for (Object object : (Iterable<Object>) resolvedValue) {
@@ -983,8 +982,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private String resolveExpressionAsString(String value, String attribute) {
 		Object resolved = resolveExpression(value);
-		if (resolved instanceof String) {
-			return (String) resolved;
+		if (resolved instanceof String str) {
+			return str;
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String. "
@@ -996,13 +995,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	@Nullable
 	private byte[] resolveExpressionAsBytes(String value, String attribute) {
 		Object resolved = resolveExpression(value);
-		if (resolved instanceof String) {
-			if (StringUtils.hasText((CharSequence) resolved)) {
-				return ((String) resolved).getBytes(this.charset);
+		if (resolved instanceof String str) {
+			if (StringUtils.hasText(str)) {
+				return str.getBytes(this.charset);
 			}
 		}
-		else if (resolved instanceof byte[]) {
-			return (byte[]) resolved;
+		else if (resolved instanceof byte[] bytes) {
+			return bytes;
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String or byte[]. "
@@ -1014,11 +1013,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private Integer resolveExpressionAsInteger(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		Integer result = null;
-		if (resolved instanceof String) {
-			result = Integer.parseInt((String) resolved);
+		if (resolved instanceof String str) {
+			result = Integer.parseInt(str);
 		}
-		else if (resolved instanceof Number) {
-			result = ((Number) resolved).intValue();
+		else if (resolved instanceof Number nbr) {
+			result = nbr.intValue();
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(
@@ -1031,11 +1030,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private Boolean resolveExpressionAsBoolean(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		Boolean result = null;
-		if (resolved instanceof Boolean) {
-			result = (Boolean) resolved;
+		if (resolved instanceof Boolean bool) {
+			result = bool;
 		}
-		else if (resolved instanceof String) {
-			result = Boolean.parseBoolean((String) resolved);
+		else if (resolved instanceof String str) {
+			result = Boolean.parseBoolean(str);
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(
@@ -1056,8 +1055,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * @see ConfigurableBeanFactory#resolveEmbeddedValue
 	 */
 	private String resolve(String value) {
-		if (this.beanFactory != null && this.beanFactory instanceof ConfigurableBeanFactory) {
-			return ((ConfigurableBeanFactory) this.beanFactory).resolveEmbeddedValue(value);
+		if (this.beanFactory instanceof ConfigurableBeanFactory cbf) {
+			return cbf.resolveEmbeddedValue(value);
 		}
 		return value;
 	}
@@ -1078,9 +1077,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private <T> Collection<T> getBeansOfType(Class<T> type) {
-		if (KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ListableBeanFactory) {
-			return ((ListableBeanFactory) KafkaListenerAnnotationBeanPostProcessor.this.beanFactory)
-					.getBeansOfType(type)
+		if (KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ListableBeanFactory lbf) {
+			return lbf.getBeansOfType(type)
 					.values();
 		}
 		else {
@@ -1276,11 +1274,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				return ByteBuffer.wrap(bytes).getInt();
 			}
 			else if (targetType.getType().equals(short.class) || targetType.getType().equals(Short.class)) {
-				Assert.state(bytes.length >= 2, "At least 2 bytes needed to convert a byte[] to a short");
+				Assert.state(bytes.length >= 2, "At least 2 bytes needed to convert a byte[] to a short"); // NOSONAR
 				return ByteBuffer.wrap(bytes).getShort();
 			}
 			else if (targetType.getType().equals(byte.class) || targetType.getType().equals(Byte.class)) {
-				Assert.state(bytes.length >= 1, "At least 1 byte needed to convert a byte[] to a byte");
+				Assert.state(bytes.length >= 1, "At least 1 byte needed to convert a byte[] to a byte"); // NOSONAR
 				return ByteBuffer.wrap(bytes).get();
 			}
 			return null;
