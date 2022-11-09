@@ -1428,7 +1428,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			doProcessCommits();
 			fixTxOffsetsIfNeeded();
 			idleBetweenPollIfNecessary();
-			if (this.seeks.size() > 0) {
+			if (!this.seeks.isEmpty()) {
 				processSeeks();
 			}
 			pauseConsumerIfNecessary();
@@ -1586,7 +1586,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							toFix.put(tp, createOffsetAndMetadata(position));
 						}
 					});
-					if (toFix.size() > 0) {
+					if (!toFix.isEmpty()) {
 						this.logger.debug(() -> "Fixing TX offsets: " + toFix);
 						if (this.kafkaTxManager == null) {
 							if (this.syncCommits) {
@@ -1689,7 +1689,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void checkRebalanceCommits() {
-			if (this.commitsDuringRebalance.size() > 0) {
+			if (!this.commitsDuringRebalance.isEmpty()) {
 				// Attempt to recommit the offsets for partitions that we still own
 				Map<TopicPartition, OffsetAndMetadata> commits = this.commitsDuringRebalance.entrySet()
 						.stream()
@@ -1729,7 +1729,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							.flatMap(p -> records.records(p).stream())
 							// map to same format as send metadata toString()
 							.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset())
-							.collect(Collectors.toList()).toString());
+							.toList()
+							.toString());
 				}
 			}
 		}
@@ -1756,11 +1757,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void doPauseConsumerIfNecessary() {
-			if (this.pausedForNack.size() > 0) {
+			if (!this.pausedForNack.isEmpty()) {
 				this.logger.debug("Still paused for nack sleep");
 				return;
 			}
-			if (this.offsetsInThisBatch != null && this.offsetsInThisBatch.size() > 0 && !this.pausedForAsyncAcks) {
+			if (this.offsetsInThisBatch != null && !this.offsetsInThisBatch.isEmpty() && !this.pausedForAsyncAcks) {
 				this.pausedForAsyncAcks = true;
 				this.logger.debug(() -> "Pausing for incomplete async acks: " + this.offsetsInThisBatch);
 			}
@@ -1801,7 +1802,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void doResumeConsumerIfNeccessary() {
-			if (this.pausedForAsyncAcks && this.offsetsInThisBatch.size() == 0) {
+			if (this.pausedForAsyncAcks && this.offsetsInThisBatch.isEmpty()) {
 				this.pausedForAsyncAcks = false;
 				this.logger.debug("Resuming after manual async acks cleared");
 			}
@@ -1823,8 +1824,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						.stream()
 						.filter(tp -> isPartitionPauseRequested(tp)
 								&& !pausedConsumerPartitions.contains(tp))
-						.collect(Collectors.toList());
-				if (partitionsToPause.size() > 0) {
+						.toList();
+				if (!partitionsToPause.isEmpty()) {
 					this.consumer.pause(partitionsToPause);
 					this.pausedPartitions.addAll(partitionsToPause);
 					this.logger.debug(() -> "Paused consumption from " + partitionsToPause);
@@ -1840,8 +1841,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						.stream()
 						.filter(tp -> !isPartitionPauseRequested(tp)
 								&& this.pausedPartitions.contains(tp))
-						.collect(Collectors.toList());
-				if (partitionsToResume.size() > 0) {
+						.toList();
+				if (!partitionsToResume.isEmpty()) {
 					this.consumer.resume(partitionsToResume);
 					this.pausedPartitions.removeAll(partitionsToResume);
 					this.logger.debug(() -> "Resumed consumption from " + partitionsToResume);
@@ -1877,7 +1878,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void idleBetweenPollIfNecessary() {
 			long idleBetweenPolls = this.containerProperties.getIdleBetweenPolls();
 			Collection<TopicPartition> assigned = getAssignedPartitions();
-			if (idleBetweenPolls > 0 && assigned != null && assigned.size() > 0) {
+			if (idleBetweenPolls > 0 && assigned != null && !assigned.isEmpty()) {
 				idleBetweenPolls = Math.min(idleBetweenPolls,
 						this.maxPollInterval - (System.currentTimeMillis() - this.lastPoll)
 								- 5000); // NOSONAR - less by five seconds to avoid race condition with rebalance
@@ -1960,7 +1961,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void commitPendingAcks() {
 			processCommits();
-			if (this.offsets.size() > 0) {
+			if (!this.offsets.isEmpty()) {
 				// we always commit after stopping the invoker
 				commitIfNecessary();
 			}
@@ -2056,19 +2057,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			TopicPartition part = new TopicPartition(record.topic(), record.partition());
 			List<Long> offs = this.offsetsInThisBatch.get(part);
 			List<ConsumerRecord<K, V>> deferred = this.deferredOffsets.get(part);
-			if (offs.size() > 0) {
+			if (!offs.isEmpty()) {
 				if (offs.get(0) == record.offset()) {
 					offs.remove(0);
 					ConsumerRecord<K, V> recordToAck = record;
-					if (deferred.size() > 0) {
+					if (!deferred.isEmpty()) {
 						Collections.sort(deferred, (a, b) -> Long.compare(a.offset(), b.offset()));
-						while (deferred.size() > 0 && deferred.get(0).offset() == recordToAck.offset() + 1) {
+						while (!deferred.isEmpty() && deferred.get(0).offset() == recordToAck.offset() + 1) {
 							recordToAck = deferred.remove(0);
 							offs.remove(0);
 						}
 					}
 					processAck(recordToAck);
-					if (offs.size() == 0) {
+					if (offs.isEmpty()) {
 						this.deferredOffsets.remove(part);
 						this.offsetsInThisBatch.remove(part);
 					}
@@ -2148,7 +2149,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!this.wantsFullRecords) {
 				recordList = createRecordList(records);
 			}
-			if (this.wantsFullRecords || recordList.size() > 0) {
+			if (this.wantsFullRecords || !recordList.isEmpty()) {
 				if (this.transactionTemplate != null) {
 					invokeBatchListenerInTx(records, recordList); // NOSONAR
 				}
@@ -2625,7 +2626,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					remaining.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(next);
 				}
-				if (remaining.size() > 0) {
+				if (!remaining.isEmpty()) {
 					this.remainingRecords = new ConsumerRecords<>(remaining);
 					return true;
 				}
@@ -2693,7 +2694,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Iterator<ConsumerRecord<K, V>> iterator2 = records.iterator();
 			while (iterator2.hasNext()) {
 				ConsumerRecord<K, V> next = iterator2.next();
-				if (list.size() > 0 || recordsEqual(record, next)) {
+				if (!list.isEmpty() || recordsEqual(record, next)) {
 					list.add(next);
 				}
 			}
@@ -2908,7 +2909,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(next);
 				}
-				if (records.size() > 0) {
+				if (!records.isEmpty()) {
 					this.remainingRecords = new ConsumerRecords<>(records);
 					this.pauseForPending = true;
 				}
@@ -3180,10 +3181,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void doInitialSeeks(Map<TopicPartition, OffsetMetadata> partitions, Set<TopicPartition> beginnings,
 				Set<TopicPartition> ends) {
 
-			if (beginnings.size() > 0) {
+			if (!beginnings.isEmpty()) {
 				this.consumer.seekToBeginning(beginnings);
 			}
-			if (ends.size() > 0) {
+			if (!ends.isEmpty()) {
 				this.consumer.seekToEnd(ends);
 			}
 			for (Entry<TopicPartition, OffsetMetadata> entry : partitions.entrySet()) {
@@ -3312,7 +3313,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		public void seekToBeginning(Collection<TopicPartition> partitions) {
 			this.seeks.addAll(partitions.stream()
 					.map(tp -> new TopicPartitionOffset(tp.topic(), tp.partition(), SeekPosition.BEGINNING))
-					.collect(Collectors.toList()));
+					.toList());
 		}
 
 		@Override
@@ -3324,7 +3325,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		public void seekToEnd(Collection<TopicPartition> partitions) {
 			this.seeks.addAll(partitions.stream()
 					.map(tp -> new TopicPartitionOffset(tp.topic(), tp.partition(), SeekPosition.END))
-					.collect(Collectors.toList()));
+					.toList());
 		}
 
 		@Override
@@ -3564,7 +3565,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						toRepause.add(tp);
 					}
 				});
-				if (!ListenerConsumer.this.consumerPaused && toRepause.size() > 0) {
+				if (!ListenerConsumer.this.consumerPaused && !toRepause.isEmpty()) {
 					ListenerConsumer.this.consumer.pause(toRepause);
 					ListenerConsumer.this.logger.debug(() -> "Paused consumption from: " + toRepause);
 					publishConsumerPausedEvent(toRepause, "Re-paused after rebalance");
@@ -3572,7 +3573,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.revoked.removeAll(toRepause);
 				ListenerConsumer.this.pausedPartitions.removeAll(this.revoked);
 				this.revoked.clear();
-				if (ListenerConsumer.this.pausedForNack.size() > 0) {
+				if (!ListenerConsumer.this.pausedForNack.isEmpty()) {
 					ListenerConsumer.this.consumer.pause(ListenerConsumer.this.pausedForNack);
 				}
 			}
@@ -3597,7 +3598,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						return false;
 					}
 				}
-				if (offsetsToCommit.size() > 0) {
+				if (!offsetsToCommit.isEmpty()) {
 					commitCurrentOffsets(offsetsToCommit);
 				}
 				return true;
