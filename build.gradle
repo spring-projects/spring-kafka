@@ -83,6 +83,9 @@ ext {
 	zookeeperVersion = '3.6.3'
 
 	idPrefix = 'kafka'
+
+	javaProjects = subprojects - project(':spring-kafka-bom')
+
 }
 
 nohttp {
@@ -127,10 +130,10 @@ allprojects {
 
 }
 
-subprojects { subproject ->
+configure(javaProjects) { subproject ->
 	apply plugin: 'java-library'
 	apply plugin: 'java'
-	apply from: "${rootProject.projectDir}/publish-maven.gradle"
+	apply from: "${rootProject.projectDir}/gradle/publish-maven.gradle"
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
 	apply plugin: 'jacoco'
@@ -356,6 +359,35 @@ project ('spring-kafka') {
 
 }
 
+project('spring-kafka-bom') {
+	description = 'Spring for Apache Kafka (Bill of Materials)'
+
+	apply plugin: 'java-platform'
+	apply from: "${rootDir}/gradle/publish-maven.gradle"
+
+	dependencies {
+		constraints {
+			javaProjects.sort { "$it.name" }.each {
+				if (it.name != 'spring-kafka-docs') {
+					api it
+				}
+			}
+		}
+	}
+
+	publishing {
+		publications {
+			mavenJava(MavenPublication) {
+				from components.javaPlatform
+			}
+		}
+	}
+
+	sonarqube {
+		skipProject = true
+	}
+}
+
 project ('spring-kafka-test') {
 	description = 'Spring Kafka Test Support'
 
@@ -544,11 +576,11 @@ task api(type: Javadoc) {
 		addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
 	}
 
-	source subprojects.collect { project ->
+	source javaProjects.collect { project ->
 		project.sourceSets.main.allJava
 	}
 
-	classpath = files(subprojects.collect { project ->
+	classpath = files(javaProjects.collect { project ->
 		project.sourceSets.main.compileClasspath
 	})
 	destinationDir = new File(buildDir, 'api')
@@ -602,13 +634,19 @@ task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 		into "${baseDir}/docs"
 	}
 
-	subprojects.each { subproject ->
+	javaProjects.each { subproject ->
 		into ("${baseDir}/libs") {
 			from subproject.jar
 			from subproject.sourcesJar
 			from subproject.javadocJar
 		}
 	}
+
+	from(project(':spring-kafka-bom').generatePomFileForMavenJavaPublication) {
+		into "${baseDir}/libs"
+		rename 'pom-default.xml', "spring-kafka-bom-${project.version}.xml"
+	}
+
 }
 
 artifacts {
@@ -621,7 +659,7 @@ task dist(dependsOn: assemble) {
 	description = 'Builds -dist, -docs distribution archives.'
 }
 
-apply from: "${rootProject.projectDir}/publish-maven.gradle"
+apply from: "${rootProject.projectDir}/gradle/publish-maven.gradle"
 
 publishing {
 	publications {
