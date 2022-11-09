@@ -42,6 +42,9 @@ You can now set a different `concurrency` for the retry containers; by default, 
 
 See <<retry-config>> for more information.
 
+The default replication factor for the retry topics is now `-1` (use broker default).
+If your broker is earlier that version 2.4, you will now need to explicitly set the property.
+
 You can now configure multiple `@RetryableTopic` listeners on the same topic in the same application context.
 Previously, this was not possible.
 See <<multi-retry>> for more information.

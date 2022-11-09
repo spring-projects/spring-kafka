@@ -109,13 +109,13 @@ public class RetryTopicConfiguration {
 		TopicCreation() {
 			this.shouldCreateTopics = true;
 			this.numPartitions = 1;
-			this.replicationFactor = 1;
+			this.replicationFactor = -1;
 		}
 
 		TopicCreation(boolean shouldCreateTopics) {
 			this.shouldCreateTopics = shouldCreateTopics;
 			this.numPartitions = 1;
-			this.replicationFactor = 1;
+			this.replicationFactor = -1;
 		}
 
 		public int getNumPartitions() {
@@ -130,4 +130,5 @@ public class RetryTopicConfiguration {
 			return this.shouldCreateTopics;
 		}
 	}
+
 }

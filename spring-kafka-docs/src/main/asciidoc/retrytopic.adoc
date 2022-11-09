@@ -216,6 +216,8 @@ IMPORTANT: When using this configuration approach, the `@EnableKafkaRetryTopic` 
 Use the simple `@EnableKafka` annotation instead.
 
 When `autoCreateTopics` is true, the main and retry topics will be created with the specified number of partitions and replication factor.
+Starting with version 3.0, the default replication factor is `-1`, meaning use the broker default.
+If your broker version is earlier than 2.4, you will need to set an explicit value.
 To override these values for a particular topic (e.g. the main topic or DLT), simply add a `NewTopic` `@Bean` with the required properties; that will override the auto creation properties.
 
 IMPORTANT: By default, records are published to the retry topic(s) using the original partition of the received record.
@@ -546,6 +548,8 @@ NOTE: The default behavior is to include all topics.
 
 Unless otherwise specified the framework will auto create the required topics using `NewTopic` beans that are consumed by the `KafkaAdmin` bean.
 You can specify the number of partitions and the replication factor with which the topics will be created, and you can turn this feature off.
+Starting with version 3.0, the default replication factor is `-1`, meaning use the broker default.
+If your broker version is earlier than 2.4, you will need to set an explicit value.
 
 IMPORTANT: Note that if you're not using Spring Boot you'll have to provide a KafkaAdmin bean in order to use this feature.
 
@@ -584,7 +588,8 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> 
 ----
 ====
 
-NOTE: By default the topics are autocreated with one partition and a replication factor of one.
+NOTE: By default the topics are autocreated with one partition and a replication factor of -1 (meaning use the broker default).
+If your broker version is earlier than 2.4, you will need to set an explicit value.
 
 [[retry-headers]]
 ===== Failure Header Management

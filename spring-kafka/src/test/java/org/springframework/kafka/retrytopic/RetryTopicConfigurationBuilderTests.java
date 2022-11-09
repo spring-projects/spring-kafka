@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -59,6 +60,8 @@ class RetryTopicConfigurationBuilderTests {
 
 		// then
 		assertThat(configuration.hasConfigurationForTopics(topicNames)).isFalse();
+		assertThat(KafkaTestUtils.getPropertyValue(builder, "topicCreationConfiguration.replicationFactor"))
+				.isEqualTo((short) -1);
 	}
 
 	@Test
