@@ -53,7 +53,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @EmbeddedKafka
-public class DltStartupTests extends AbstractRetryTopicIntegrationTests {
+public class DltStartupTests {
 
 	@Test
 	void dltStartOverridesCorrect(@Autowired KafkaListenerEndpointRegistry registry) {

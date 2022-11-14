@@ -60,7 +60,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @DirtiesContext
 @EmbeddedKafka(topics = { RetryTopicConfigurationManualAssignmentIntegrationTests.TOPIC1,
 		RetryTopicConfigurationManualAssignmentIntegrationTests.TOPIC2 }, partitions = 1)
-class RetryTopicConfigurationManualAssignmentIntegrationTests extends AbstractRetryTopicIntegrationTests {
+class RetryTopicConfigurationManualAssignmentIntegrationTests {
 
 	public static final String TOPIC1 = "RetryTopicConfigurationManualAssignmentIntegrationTests.1";
 

@@ -36,7 +36,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
  * @since 2.8
  *
  */
-public class CircularDltHandlerTests extends AbstractRetryTopicIntegrationTests {
+public class CircularDltHandlerTests {
 
 	@Test
 	void contextLoads() {

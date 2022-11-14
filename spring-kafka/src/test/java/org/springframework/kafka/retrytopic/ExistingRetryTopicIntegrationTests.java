@@ -76,7 +76,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		ExistingRetryTopicIntegrationTests.MAIN_TOPIC_WITH_PARTITION_INFO,
 		ExistingRetryTopicIntegrationTests.RETRY_TOPIC_WITH_PARTITION_INFO}, partitions = 4)
 @TestPropertySource(properties = "two.attempts=2")
-public class ExistingRetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTests {
+public class ExistingRetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(ExistingRetryTopicIntegrationTests.class);
 

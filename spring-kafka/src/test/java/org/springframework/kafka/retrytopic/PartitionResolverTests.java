@@ -60,7 +60,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @DirtiesContext
 @SpringJUnitConfig
 @EmbeddedKafka(topics = "partition.resolver.tests")
-public class PartitionResolverTests extends AbstractRetryTopicIntegrationTests {
+public class PartitionResolverTests {
 
 	@Test
 	void testNullPartition(@Autowired KafkaOperations<Integer, String> template,

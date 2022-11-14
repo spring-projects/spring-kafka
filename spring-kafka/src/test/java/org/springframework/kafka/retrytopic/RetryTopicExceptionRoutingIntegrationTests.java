@@ -70,7 +70,7 @@ import org.springframework.util.backoff.FixedBackOff;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka
-public class RetryTopicExceptionRoutingIntegrationTests extends AbstractRetryTopicIntegrationTests {
+public class RetryTopicExceptionRoutingIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicExceptionRoutingIntegrationTests.class);
 

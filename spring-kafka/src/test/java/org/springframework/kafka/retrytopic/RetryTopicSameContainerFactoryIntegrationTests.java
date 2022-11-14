@@ -67,7 +67,7 @@ import org.springframework.util.backoff.FixedBackOff;
 @DirtiesContext
 @EmbeddedKafka(topics = { RetryTopicSameContainerFactoryIntegrationTests.FIRST_TOPIC,
 		RetryTopicSameContainerFactoryIntegrationTests.SECOND_TOPIC}, partitions = 1)
-public class RetryTopicSameContainerFactoryIntegrationTests extends AbstractRetryTopicIntegrationTests {
+public class RetryTopicSameContainerFactoryIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicSameContainerFactoryIntegrationTests.class);
 

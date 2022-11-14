@@ -22,20 +22,23 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
-import java.lang.reflect.Field;
 import java.time.Clock;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerPartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
@@ -43,6 +46,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.support.converter.ConversionException;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.util.backoff.BackOff;
 
@@ -52,13 +56,6 @@ import org.springframework.util.backoff.BackOff;
  * @since 2.9
  */
 class RetryTopicConfigurationSupportTests {
-
-	@BeforeEach
-	void reset() throws Exception { // NOSONAR
-		Field field = RetryTopicConfigurationSupport.class.getDeclaredField("ONLY_ONE_ALLOWED");
-		field.setAccessible(true);
-		((AtomicBoolean) field.get(null)).set(true);
-	}
 
 	@SuppressWarnings("unchecked")
 	@Test
@@ -240,6 +237,25 @@ class RetryTopicConfigurationSupportTests {
 	void testCreatesComponentFactory() {
 		RetryTopicConfigurationSupport configurationSupport = new RetryTopicConfigurationSupport();
 		assertThat(configurationSupport).hasFieldOrProperty("componentFactory").isNotNull();
+	}
+
+	@Test
+	void twoSupports() {
+		RetryTopicConfigurationSupport configurationSupport = new RetryTopicConfigurationSupport();
+		LogAccessor logger = spy(KafkaTestUtils.getPropertyValue(configurationSupport, "logger", LogAccessor.class));
+		new DirectFieldAccessor(configurationSupport).setPropertyValue("logger", logger);
+		ApplicationContext ctx = mock(ApplicationContext.class);
+		configurationSupport.setApplicationContext(ctx);
+		Map<String, RetryTopicConfigurationSupport> beans = new LinkedHashMap<>();
+		beans.put("foo", configurationSupport);
+		beans.put("bar", configurationSupport);
+		given(ctx.getBeansOfType(RetryTopicConfigurationSupport.class)).willReturn(beans);
+		configurationSupport.afterSingletonsInstantiated();
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<Supplier<String>> captor = ArgumentCaptor.forClass(Supplier.class);
+		verify(logger).warn(captor.capture());
+		assertThat(captor.getValue().get()).isEqualTo("Only one RetryTopicConfigurationSupport object expected, found "
+				+ "[foo, bar]; this may result in unexpected behavior");
 	}
 
 }

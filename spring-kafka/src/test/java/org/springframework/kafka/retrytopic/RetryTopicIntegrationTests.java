@@ -96,7 +96,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryTopicIntegrationTests.FOURTH_TOPIC,
 		RetryTopicIntegrationTests.TWO_LISTENERS_TOPIC })
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
-public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTests {
+public class RetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicIntegrationTests.class);
 

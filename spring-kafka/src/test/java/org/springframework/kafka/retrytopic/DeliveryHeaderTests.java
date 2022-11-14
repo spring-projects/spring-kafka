@@ -58,7 +58,7 @@ import org.springframework.util.backoff.FixedBackOff;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(topics = "dh1")
-public class DeliveryHeaderTests extends AbstractRetryTopicIntegrationTests {
+public class DeliveryHeaderTests {
 
 	@Test
 	void deliveryAttempts(@Autowired Config config, @Autowired KafkaTemplate<Integer, String> template)
