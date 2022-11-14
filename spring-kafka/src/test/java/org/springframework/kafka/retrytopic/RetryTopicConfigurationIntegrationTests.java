@@ -17,6 +17,8 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 import java.util.Map;
@@ -63,7 +65,8 @@ class RetryTopicConfigurationIntegrationTests {
 
 	@Test
 	void includeTopic(@Autowired EmbeddedKafkaBroker broker, @Autowired ConsumerFactory<Integer, String> cf,
-			@Autowired KafkaTemplate<Integer, String> template, @Autowired Config config) throws InterruptedException {
+			@Autowired KafkaTemplate<Integer, String> template, @Autowired Config config,
+			@Autowired RetryTopicComponentFactory componentFactory) throws InterruptedException {
 
 		Consumer<Integer, String> consumer = cf.createConsumer("grp2", "");
 		Map<String, List<PartitionInfo>> topics = consumer.listTopics();
@@ -72,6 +75,7 @@ class RetryTopicConfigurationIntegrationTests {
 				"RetryTopicConfigurationIntegrationTests.1-retry-110");
 		template.send(TOPIC1, "foo");
 		assertThat(config.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(componentFactory).destinationTopicResolver();
 	}
 
 	@Configuration(proxyBeanMethods = false)
@@ -87,6 +91,11 @@ class RetryTopicConfigurationIntegrationTests {
 
 		void dlt(String in) {
 			this.latch.countDown();
+		}
+
+		@Bean
+		RetryTopicComponentFactory componentFactory() {
+			return spy(new RetryTopicComponentFactory());
 		}
 
 		@Bean

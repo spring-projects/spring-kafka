@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
@@ -104,6 +105,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	 * To configure it, consider overriding the {@link #configureRetryTopicConfigurer()}.
 	 * @param kafkaConsumerBackoffManager the global {@link KafkaConsumerBackoffManager}.
 	 * @param destinationTopicResolver the global {@link DestinationTopicResolver}.
+	 * @param componentFactoryProvider the component factory provider.
 	 * @param beanFactory the {@link BeanFactory}.
 	 * @return the instance.
 	 * @see KafkaListenerAnnotationBeanPostProcessor
@@ -113,24 +115,26 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 			KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
 			@Qualifier(RetryTopicBeanNames.DESTINATION_TOPIC_RESOLVER_BEAN_NAME)
 			DestinationTopicResolver destinationTopicResolver,
+			ObjectProvider<RetryTopicComponentFactory> componentFactoryProvider,
 			BeanFactory beanFactory) {
 
-		DestinationTopicProcessor destinationTopicProcessor = this.componentFactory
+		RetryTopicComponentFactory compFactory = componentFactoryProvider.getIfUnique(() -> this.componentFactory);
+		DestinationTopicProcessor destinationTopicProcessor = compFactory
 				.destinationTopicProcessor(destinationTopicResolver);
-		DeadLetterPublishingRecovererFactory dlprf = this.componentFactory
+		DeadLetterPublishingRecovererFactory dlprf = compFactory
 				.deadLetterPublishingRecovererFactory(destinationTopicResolver);
-		ListenerContainerFactoryConfigurer lcfc = this.componentFactory
+		ListenerContainerFactoryConfigurer lcfc = compFactory
 				.listenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						dlprf, this.componentFactory.internalRetryTopicClock());
-		ListenerContainerFactoryResolver factoryResolver = this.componentFactory
+						dlprf, compFactory.internalRetryTopicClock());
+		ListenerContainerFactoryResolver factoryResolver = compFactory
 				.listenerContainerFactoryResolver(beanFactory);
 		RetryTopicNamesProviderFactory retryTopicNamesProviderFactory =
-				this.componentFactory.retryTopicNamesProviderFactory();
+				compFactory.retryTopicNamesProviderFactory();
 
 		processDeadLetterPublishingContainerFactory(dlprf);
 		processListenerContainerFactoryConfigurer(lcfc);
 
-		RetryTopicConfigurer retryTopicConfigurer = this.componentFactory
+		RetryTopicConfigurer retryTopicConfigurer = compFactory
 				.retryTopicConfigurer(destinationTopicProcessor, lcfc,
 						factoryResolver, retryTopicNamesProviderFactory);
 
@@ -255,11 +259,15 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	 * <li>{@link #configureDestinationTopicResolver} to further customize the component.
 	 * <li>{@link #createComponentFactory} to provide a subclass instance.
 	 * </ul>
+	 * @param componentFactoryProvider the component factory provider.
 	 * @return the instance.
 	 */
 	@Bean(name = RetryTopicBeanNames.DESTINATION_TOPIC_RESOLVER_BEAN_NAME)
-	public DestinationTopicResolver destinationTopicResolver() {
-		DestinationTopicResolver destinationTopicResolver = this.componentFactory.destinationTopicResolver();
+	public DestinationTopicResolver destinationTopicResolver(
+			ObjectProvider<RetryTopicComponentFactory> componentFactoryProvider) {
+
+		RetryTopicComponentFactory compFactory = componentFactoryProvider.getIfUnique(() -> this.componentFactory);
+		DestinationTopicResolver destinationTopicResolver = compFactory.destinationTopicResolver();
 		JavaUtils.INSTANCE.acceptIfInstanceOf(DefaultDestinationTopicResolver.class, destinationTopicResolver,
 				this::configureNonBlockingFatalExceptions);
 		Consumer<DestinationTopicResolver> resolverConsumer = configureDestinationTopicResolver();
@@ -294,6 +302,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	 * @param applicationContext the application context.
 	 * @param registry the {@link ListenerContainerRegistry} to be used to fetch the
 	 * {@link MessageListenerContainer} at runtime to be backed off.
+	 * @param componentFactoryProvider the component factory provider.
 	 * @param wrapper a {@link RetryTopicSchedulerWrapper}.
 	 * @param taskScheduler a {@link TaskScheduler}.
 	 * @return the instance.
@@ -301,11 +310,14 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
 	public KafkaConsumerBackoffManager kafkaConsumerBackoffManager(ApplicationContext applicationContext,
 			@Qualifier(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
-					ListenerContainerRegistry registry, @Nullable RetryTopicSchedulerWrapper wrapper,
+					ListenerContainerRegistry registry,
+					ObjectProvider<RetryTopicComponentFactory> componentFactoryProvider,
+					@Nullable RetryTopicSchedulerWrapper wrapper,
 					@Nullable TaskScheduler taskScheduler) {
 
+		RetryTopicComponentFactory compFactory = componentFactoryProvider.getIfUnique(() -> this.componentFactory);
 		KafkaBackOffManagerFactory backOffManagerFactory =
-				this.componentFactory.kafkaBackOffManagerFactory(registry, applicationContext);
+				compFactory.kafkaBackOffManagerFactory(registry, applicationContext);
 		JavaUtils.INSTANCE.acceptIfInstanceOf(ContainerPartitionPausingBackOffManagerFactory.class, backOffManagerFactory,
 				factory -> configurePartitionPausingFactory(factory, registry,
 						wrapper != null ? wrapper.getScheduler() : taskScheduler));

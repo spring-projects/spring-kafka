@@ -18,9 +18,11 @@ package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -37,6 +39,7 @@ import org.mockito.ArgumentCaptor;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -125,7 +128,14 @@ class RetryTopicConfigurationSupportTests {
 			}
 		};
 
-		RetryTopicConfigurer retryTopicConfigurer = support.retryTopicConfigurer(backoffManager, resolver, beanFactory);
+		@SuppressWarnings("unchecked")
+		ObjectProvider<RetryTopicComponentFactory> prov = mock(ObjectProvider.class);
+		willAnswer(inv -> {
+			Supplier<RetryTopicComponentFactory> sup = inv.getArgument(0);
+			return sup.get();
+		}).given(prov).getIfUnique(any());
+		RetryTopicConfigurer retryTopicConfigurer = support.retryTopicConfigurer(backoffManager, resolver,
+				prov, beanFactory);
 		assertThat(retryTopicConfigurer).isNotNull();
 
 		then(componentFactory).should().destinationTopicProcessor(resolver);
@@ -153,7 +163,14 @@ class RetryTopicConfigurationSupportTests {
 		DestinationTopicResolver resolver = mock(DestinationTopicResolver.class);
 		BeanFactory beanFactory = mock(BeanFactory.class);
 		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport();
-		RetryTopicConfigurer retryTopicConfigurer = support.retryTopicConfigurer(backoffManager, resolver, beanFactory);
+		@SuppressWarnings("unchecked")
+		ObjectProvider<RetryTopicComponentFactory> prov = mock(ObjectProvider.class);
+		willAnswer(inv -> {
+			Supplier<RetryTopicComponentFactory> sup = inv.getArgument(0);
+			return sup.get();
+		}).given(prov).getIfUnique(any());
+		RetryTopicConfigurer retryTopicConfigurer = support.retryTopicConfigurer(backoffManager, resolver, prov,
+				beanFactory);
 		assertThat(retryTopicConfigurer).isNotNull();
 	}
 
@@ -177,7 +194,13 @@ class RetryTopicConfigurationSupportTests {
 			}
 
 		};
-		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(ctx, registry, null,
+		@SuppressWarnings("unchecked")
+		ObjectProvider<RetryTopicComponentFactory> prov = mock(ObjectProvider.class);
+		willAnswer(inv -> {
+			Supplier<RetryTopicComponentFactory> sup = inv.getArgument(0);
+			return sup.get();
+		}).given(prov).getIfUnique(any());
+		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(ctx, registry, prov, null,
 				taskSchedulerMock);
 		assertThat(backoffManager).isEqualTo(backoffManagerMock);
 		then(componentFactory).should().kafkaBackOffManagerFactory(registry, ctx);
@@ -190,7 +213,13 @@ class RetryTopicConfigurationSupportTests {
 		TaskScheduler scheduler = mock(TaskScheduler.class);
 		ApplicationContext ctx = mock(ApplicationContext.class);
 		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport();
-		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(ctx, registry, null,
+		@SuppressWarnings("unchecked")
+		ObjectProvider<RetryTopicComponentFactory> prov = mock(ObjectProvider.class);
+		willAnswer(inv -> {
+			Supplier<RetryTopicComponentFactory> sup = inv.getArgument(0);
+			return sup.get();
+		}).given(prov).getIfUnique(any());
+		KafkaConsumerBackoffManager backoffManager = support.kafkaConsumerBackoffManager(ctx, registry, prov, null,
 				scheduler);
 		assertThat(backoffManager).isNotNull();
 	}
@@ -218,7 +247,14 @@ class RetryTopicConfigurationSupportTests {
 				nonBlockingRetries.remove(ConversionException.class);
 			}
 		};
-		DefaultDestinationTopicResolver resolver = (DefaultDestinationTopicResolver) support.destinationTopicResolver();
+		@SuppressWarnings("unchecked")
+		ObjectProvider<RetryTopicComponentFactory> prov = mock(ObjectProvider.class);
+		willAnswer(inv -> {
+			Supplier<RetryTopicComponentFactory> sup = inv.getArgument(0);
+			return sup.get();
+		}).given(prov).getIfUnique(any());
+		DefaultDestinationTopicResolver resolver = (DefaultDestinationTopicResolver) support
+				.destinationTopicResolver(prov);
 		assertThat(resolver).isEqualTo(resolverMock);
 		then(dtrConsumer).should().accept(resolverMock);
 		ArgumentCaptor<Map<Class<? extends Throwable>, Boolean>> captor = ArgumentCaptor.forClass(Map.class);
@@ -229,8 +265,13 @@ class RetryTopicConfigurationSupportTests {
 	@Test
 	void testCreateDestinationTopicResolverNoConfiguration() {
 		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport();
-		DestinationTopicResolver resolver = support.destinationTopicResolver();
+		@SuppressWarnings("unchecked")
+		ObjectProvider<RetryTopicComponentFactory> prov = mock(ObjectProvider.class);
+		RetryTopicComponentFactory factory = spy(new RetryTopicComponentFactory());
+		given(prov.getIfUnique(any())).willReturn(factory);
+		DestinationTopicResolver resolver = support.destinationTopicResolver(prov);
 		assertThat(resolver).isNotNull();
+		verify(factory).destinationTopicResolver();
 	}
 
 	@Test
@@ -257,5 +298,4 @@ class RetryTopicConfigurationSupportTests {
 		assertThat(captor.getValue().get()).isEqualTo("Only one RetryTopicConfigurationSupport object expected, found "
 				+ "[foo, bar]; this may result in unexpected behavior");
 	}
-
 }

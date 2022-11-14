@@ -18,6 +18,8 @@ package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -82,7 +84,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 	private CountDownLatchContainer latchContainer;
 
 	@Test
-	void shouldRetryFirstAndSecondTopics() {
+	void shouldRetryFirstAndSecondTopics(@Autowired RetryTopicComponentFactory componentFactory) {
 		logger.debug("Sending message to topic " + FIRST_TOPIC);
 		sendKafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
 		logger.debug("Sending message to topic " + SECOND_TOPIC);
@@ -91,6 +93,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 		assertThat(awaitLatch(latchContainer.countDownLatchDltOne)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatch2)).isTrue();
 		assertThat(awaitLatch(latchContainer.customizerLatch)).isTrue();
+		verify(componentFactory).destinationTopicResolver();
 	}
 
 	private boolean awaitLatch(CountDownLatch latch) {
@@ -238,6 +241,11 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 		@Bean
 		TaskScheduler sched() {
 			return new ThreadPoolTaskScheduler();
+		}
+
+		@Bean
+		RetryTopicComponentFactory componentFactory() {
+			return spy(new RetryTopicComponentFactory());
 		}
 
 	}

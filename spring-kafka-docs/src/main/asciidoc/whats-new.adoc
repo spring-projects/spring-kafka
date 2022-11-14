@@ -49,6 +49,9 @@ You can now configure multiple `@RetryableTopic` listeners on the same topic in 
 Previously, this was not possible.
 See <<multi-retry>> for more information.
 
+There are breaking API changes in `RetryTopicConfigurationSupport`; specifically, if you override the bean definition methods for `destinationTopicResolver`, `kafkaConsumerBackoffManager` and/or `retryTopicConfigurer`;
+these methods now require an `ObjectProvider<RetryTopicComponentFactory>` parameter.
+
 [[x30-lc-changes]]
 ==== Listener Container Changes
 

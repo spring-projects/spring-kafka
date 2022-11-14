@@ -51,6 +51,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.ObjectFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
@@ -89,6 +90,7 @@ import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.retrytopic.DestinationTopicResolver;
 import org.springframework.kafka.retrytopic.RetryTopicBeanNames;
+import org.springframework.kafka.retrytopic.RetryTopicComponentFactory;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
@@ -549,7 +551,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			RetryTopicConfigurationSupport rtcs = this.applicationContext.getBean(
 					RetryTopicBeanNames.DEFAULT_RETRY_TOPIC_CONFIG_SUPPORT_BEAN_NAME,
 					RetryTopicConfigurationSupport.class);
-			DestinationTopicResolver destResolver = rtcs.destinationTopicResolver();
+			ObjectProvider<RetryTopicComponentFactory> provider = gac.getBeanProvider(RetryTopicComponentFactory.class);
+			DestinationTopicResolver destResolver = rtcs.destinationTopicResolver(provider);
 			RetryTopicSchedulerWrapper schedW = gac.getBeanProvider(RetryTopicSchedulerWrapper.class).getIfUnique();
 			TaskScheduler sched = gac.getBeanProvider(TaskScheduler.class).getIfUnique();
 			if (schedW == null && sched == null) {
@@ -560,8 +563,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 			KafkaConsumerBackoffManager bom =
 					rtcs.kafkaConsumerBackoffManager(this.applicationContext, this.registrar.getEndpointRegistry(), // NOSONAR
-							schedW, sched);
-			RetryTopicConfigurer rtc = rtcs.retryTopicConfigurer(bom, destResolver, this.beanFactory);
+							provider, schedW, sched);
+			RetryTopicConfigurer rtc = rtcs.retryTopicConfigurer(bom, destResolver, provider, this.beanFactory);
 
 			gac.registerBean(RetryTopicBeanNames.DESTINATION_TOPIC_RESOLVER_BEAN_NAME, DestinationTopicResolver.class,
 					() -> destResolver);
