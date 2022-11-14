@@ -249,7 +249,7 @@ class RetryTopicConfigurationSupportTests {
 		Map<String, RetryTopicConfigurationSupport> beans = new LinkedHashMap<>();
 		beans.put("foo", configurationSupport);
 		beans.put("bar", configurationSupport);
-		given(ctx.getBeansOfType(RetryTopicConfigurationSupport.class)).willReturn(beans);
+		given(ctx.getBeansOfType(RetryTopicConfigurationSupport.class, false, false)).willReturn(beans);
 		configurationSupport.afterSingletonsInstantiated();
 		@SuppressWarnings("unchecked")
 		ArgumentCaptor<Supplier<String>> captor = ArgumentCaptor.forClass(Supplier.class);
