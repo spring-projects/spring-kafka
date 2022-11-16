@@ -84,10 +84,27 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public static final String BROKER_PROPERTIES_LOCATION_PROPERTY_NAME =
 			"spring.kafka.embedded.broker.properties.location";
 
+	private static final boolean JUNIT_PLATFORM_COMPATIBLE;
+
+	static {
+		boolean compat = false;
+		try {
+			TestPlan.class.getDeclaredMethod("getConfigurationParameters");
+			compat = true;
+		}
+		catch (NoSuchMethodException | SecurityException e) {
+			LOGGER.debug("JUnit Platform version must be >= 1.8 to use a global embedded kafka server");
+		}
+		JUNIT_PLATFORM_COMPATIBLE = compat;
+	}
+
 	private EmbeddedKafkaBroker embeddedKafkaBroker;
 
 	@Override
 	public void testPlanExecutionStarted(TestPlan testPlan) {
+		if (!JUNIT_PLATFORM_COMPATIBLE) {
+			return;
+		}
 		ConfigurationParameters configurationParameters = testPlan.getConfigurationParameters();
 		boolean enabled = configurationParameters.getBoolean(LISTENER_ENABLED_PROPERTY_NAME).orElse(false);
 		if (enabled) {
