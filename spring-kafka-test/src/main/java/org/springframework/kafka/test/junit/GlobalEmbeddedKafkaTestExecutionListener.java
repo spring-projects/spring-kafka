@@ -43,6 +43,7 @@ import org.springframework.util.StringUtils;
  * to enable it.
  *
  * @author Artem Bilan
+ * @author Gary Russell
  *
  * @since 3.0
  */
