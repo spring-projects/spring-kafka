@@ -60,6 +60,16 @@ include::../docs/generated/spans.adoc[]
 include::../docs/generated/conventions.adoc[]
 
 [appendix]
+[[native-images]]
+== Native Images
+
+https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#aot[Spring AOT] native hints are provided to assist in developing native images for Spring applications that use Spring for Apache Kafka, including hints for AVRO generated classes used in `@KafkaListener` s.
+
+IMPORTANT: `spring-kafka-test` (and, specifically, its `EmbeddedKafkaBroker`) is not supported in native images.
+
+Some examples can be seen in the https://github.com/spring-projects/spring-aot-smoke-tests/tree/main/integration[`spring-aot-smoke-tests` GitHub repository].
+
+[appendix]
 [[history]]
 == Change History
 
