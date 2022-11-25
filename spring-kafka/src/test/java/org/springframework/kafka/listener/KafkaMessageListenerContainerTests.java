@@ -3366,7 +3366,7 @@ public class KafkaMessageListenerContainerTests {
 			assertThat(commits).hasSize(3);
 			assertThat(commits.get(0)).hasSize(2); // assignment
 			assertThat(commits.get(1)).hasSize(2); // batch commit
-			assertThat(commits.get(2)).hasSize(1); // re-commit
+			assertThat(commits.get(2)).hasSize(2); // GH-2489: offsets for both partition should be re-committed before partition 1 is revoked
 		});
 	}
 
@@ -3379,7 +3379,7 @@ public class KafkaMessageListenerContainerTests {
 			assertThat(commits.get(2)).hasSize(1);
 			assertThat(commits.get(3)).hasSize(1);
 			assertThat(commits.get(4)).hasSize(1);
-			assertThat(commits.get(5)).hasSize(1); // re-commit
+			assertThat(commits.get(5)).hasSize(2); // GH-2489: offsets for both partition should be re-committed before partition 1 is revoked
 			assertThat(commits.get(5).get(new TopicPartition("foo", 1)))
 				.isNotNull()
 				.extracting(om -> om.offset())

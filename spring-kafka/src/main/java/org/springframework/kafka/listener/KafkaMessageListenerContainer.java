@@ -3490,6 +3490,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				try {
 					// Wait until now to commit, in case the user listener added acks
+					checkRebalanceCommits();
 					commitPendingAcks();
 					fixTxOffsetsIfNeeded();
 				}
