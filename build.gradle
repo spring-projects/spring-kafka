@@ -408,7 +408,7 @@ project ('spring-kafka-test') {
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
 		api 'org.junit.jupiter:junit-jupiter-api'
-		providedApi 'org.junit.platform:junit-platform-launcher'
+		api 'org.junit.platform:junit-platform-launcher'
 		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
 		optionalApi "org.mockito:mockito-core:$mockitoVersion"
 		optionalApi ("junit:junit:$junit4Version") {

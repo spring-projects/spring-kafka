@@ -240,6 +240,9 @@ For example, a `spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-se
 NOTE: It is recommended to not combine a global embedded Kafka and per-test class in a single test suite.
 Both of them share the same system properties, so it is very likely going to lead to unexpected behavior.
 
+NOTE: `spring-kafka-test` has transitive dependencies on `junit-jupiter-api` and `junit-platform-launcher` (the latter to support the global embedded broker).
+If you wish to use the embedded broker and are NOT using JUnit, you may wish to exclude these dependencies.
+
 [[embedded-kafka-annotation]]
 ==== @EmbeddedKafka Annotation
 We generally recommend that you use the rule as a `@ClassRule` to avoid starting and stopping the broker between tests (and use a different topic for each test).
