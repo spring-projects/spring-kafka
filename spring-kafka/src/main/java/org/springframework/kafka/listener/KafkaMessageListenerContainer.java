@@ -3789,7 +3789,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				KafkaMessageListenerContainer.this.logger
 						.debug(() -> KafkaMessageListenerContainer.this + " stopped normally");
 			}
-			this.callback.run();
+			if (this.callback != null) {
+				this.callback.run();
+			}
 		}
 
 	}
