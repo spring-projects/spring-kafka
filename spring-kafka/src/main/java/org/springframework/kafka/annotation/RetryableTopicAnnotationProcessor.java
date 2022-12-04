@@ -146,6 +146,7 @@ public class RetryableTopicAnnotationProcessor {
 				.dltProcessingFailureStrategy(annotation.dltStrategy())
 				.autoStartDltHandler(autoStartDlt)
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
+				.sameIntervalTopicReuseStrategy(annotation.sameIntervalTopicReuseStrategy())
 				.timeoutAfter(timeout)
 				.create(getKafkaTemplate(resolveExpressionAsString(annotation.kafkaTemplate(), "kafkaTemplate"), topics));
 	}

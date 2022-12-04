@@ -25,6 +25,7 @@ import java.lang.annotation.Target;
 import org.springframework.kafka.retrytopic.DltStrategy;
 import org.springframework.kafka.retrytopic.FixedDelayStrategy;
 import org.springframework.kafka.retrytopic.RetryTopicConstants;
+import org.springframework.kafka.retrytopic.SameIntervalTopicReuseStrategy;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.annotation.Backoff;
 
@@ -176,6 +177,13 @@ public @interface RetryableTopic {
 	 * @return the strategy.
 	 */
 	TopicSuffixingStrategy topicSuffixingStrategy() default TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
+
+
+	/**
+	 * Topic reuse strategy for sequential attempts made with a same backoff interval.
+	 * @return the strategy.
+	 */
+	SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy() default SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
 
 	/**
 	 * Whether or not create a DLT, and redeliver to the DLT if delivery fails or just give up.

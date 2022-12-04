@@ -398,39 +398,6 @@ If your back off policy requires delays with values bigger than that, adjust the
 
 IMPORTANT: The first attempt counts against `maxAttempts`, so if you provide a `maxAttempts` value of 4 there'll be the original attempt plus 3 retries.
 
-===== Single Topic Fixed Delay Retries
-
-If you're using fixed delay policies such as `FixedBackOffPolicy` or `NoBackOffPolicy` you can use a single topic to accomplish the non-blocking retries.
-This topic will be suffixed with the provided or default suffix, and will not have either the index or the delay values appended.
-
-====
-[source, java]
-----
-@RetryableTopic(backoff = @Backoff(2000), fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC)
-@KafkaListener(topics = "my-annotated-topic")
-public void processMessage(MyPojo message) {
-        // ... message processing
-}
-----
-====
-
-====
-[source, java]
-----
-@Bean
-public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
-    return RetryTopicConfigurationBuilder
-            .newInstance()
-            .fixedBackoff(3000)
-            .maxAttempts(5)
-            .useSingleTopicForFixedDelays()
-            .build();
-}
-----
-====
-
-NOTE: The default behavior is creating separate retry topics for each attempt, appended with their index value: retry-0, retry-1, ...
-
 ===== Global timeout
 
 You can set the global timeout for the retrying process.
@@ -677,7 +644,7 @@ IMPORTANT: Note that the blocking retries behavior is allowlist - you add the ex
 
 IMPORTANT: The non-blocking exception classification behavior also depends on the specific topic's configuration.
 
-==== Topic Naming
+==== Topic Amount and Naming
 
 Retry topics and DLT are named by suffixing the main topic with a provided or default value, appended by either the delay or index for that topic.
 
@@ -687,6 +654,11 @@ Examples:
 
 "my-other-topic" -> "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix".
 
+NOTE: The default behavior is creating separate retry topics for each attempt, appended with their index value: retry-0, retry-1, ..., retry-n. Therefore, by default the amount of retry topics is the configured `maxAttempts` minus 1.
+
+You can <<retry-topics-and-dlt-suffixes,configure the suffixes>>, choose whether to append <<append-index-or-delay,the attempt index or delay>>, use a <<single-topic-fixed-delay,single retry topic when using fixed backoff>>, and use a <<single-topic-maxinterval-delay,single retry topic for the attemps with the maxInterval>> when using exponential backoffs.
+
+[[retry-topics-and-dlt-suffixes]]
 ===== Retry Topics and Dlt Suffixes
 
 You can specify the suffixes that will be used by the retry and dlt topics.
@@ -718,6 +690,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyOtherPojo> t
 
 NOTE: The default suffixes are "-retry" and "-dlt", for retry topics and dlt respectively.
 
+[[append-index-or-delay]]
 ===== Appending the Topic's Index or Delay
 
 You can either append the topic's index or delay values after the suffix.
@@ -747,6 +720,98 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 ====
 
 NOTE: The default behavior is to suffix with the delay values, except for fixed delay configurations with multiple topics, in which case the topics are suffixed with the topic's index.
+
+[[single-topic-fixed-delay]]
+===== Single Topic for Fixed Delay Retries
+
+If you're using fixed delay policies such as `FixedBackOffPolicy` or `NoBackOffPolicy` you can use a single topic to accomplish the non-blocking retries.
+This topic will be suffixed with the provided or default suffix, and will not have either the index or the delay values appended.
+
+====
+[source, java]
+----
+@RetryableTopic(backoff = @Backoff(2000), fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC)
+@KafkaListener(topics = "my-annotated-topic")
+public void processMessage(MyPojo message) {
+        // ... message processing
+}
+----
+====
+
+====
+[source, java]
+----
+@Bean
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .fixedBackoff(3000)
+            .maxAttempts(5)
+            .useSingleTopicForFixedDelays()
+            .build();
+}
+----
+====
+
+NOTE: The default behavior is creating separate retry topics for each attempt, appended with their index value: retry-0, retry-1, ...
+
+
+[[single-topic-maxinterval-delay]]
+===== Single Topic for maxInterval Exponential Delay 
+
+If you're using exponential backoff policy (`ExponentialBackOffPolicy`), you can use a single retry topic to accomplish the non-blocking retries of the attempts whose delays are the configured `maxInterval`. This "final" retry topic will be suffixed with the provided or default suffix, and will have either the index or the `maxInterval` value appended.
+
+NOTE: By opting to use a single topic for the retries with the `maxInterval` delay, it may become more viable to configure an exponential retry policy that keeps retrying for a long time, because in this approach you do not need a large amount of topics.
+
+By default, the default behavior is to work with an amount of retry topics equal to the configured `maxAttempts` minus 1, and when using exponential backoff, the retry topics are suffixed with the delay values, with the last retry topics (corresponding to the `maxInterval` delay) being suffixed with an additional index.
+
+For instance, when configuring the exponential backoff with `initialInterval=1000`, `multiplier=2`, and `maxInterval=16000`, in order to keep trying for one hour, one would need to configure `maxAttempts` as 229, and by default the needed retry topics would be:
+
+* -retry-1000
+* -retry-2000
+* -retry-4000
+* -retry-8000
+* -retry-16000-0
+* -retry-16000-1
+* -retry-16000-2
+* ...
+* -retry-16000-224
+
+When using the strategy that reuses the retry topic for the same intervals, in the same configuration above the needed retry topics would be:
+
+* -retry-1000
+* -retry-2000
+* -retry-4000
+* -retry-8000
+* -retry-16000
+
+====
+[source, java]
+----
+@RetryableTopic(attempts = 230,
+    backoff = @Backoff(delay = 1000, multiplier = 2, maxDelay = 16000),
+    sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+@KafkaListener(topics = "my-annotated-topic")
+public void processMessage(MyPojo message) {
+        // ... message processing
+}
+----
+====
+
+====
+[source, java]
+----
+@Bean
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()            
+            .exponentialBackoff(1000, 2, 16000)
+            .maxAttempts(230)
+            .useSingleTopicForSameIntervals()
+            .build();
+}
+----
+====
 
 ===== Custom naming strategies
 

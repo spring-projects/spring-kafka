@@ -79,6 +79,8 @@ public class RetryTopicConfigurationBuilder {
 
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
+	private SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
+
 	@Nullable
 	private Boolean autoStartDltHandler;
 
@@ -238,6 +240,29 @@ public class RetryTopicConfigurationBuilder {
 	 */
 	public RetryTopicConfigurationBuilder setTopicSuffixingStrategy(TopicSuffixingStrategy topicSuffixingStrategy) {
 		this.topicSuffixingStrategy = topicSuffixingStrategy;
+		return this;
+	}
+
+	/**
+	 * Configure the retry topic name {@link SameIntervalTopicReuseStrategy}.
+	 * @param sameIntervalTopicReuseStrategy the strategy.
+	 * @return the builder.
+	 */
+	public RetryTopicConfigurationBuilder sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy) {
+		this.sameIntervalTopicReuseStrategy = sameIntervalTopicReuseStrategy;
+		return this;
+	}
+
+	/**
+	 * For exponential backoff, configure the use of a single retry topic
+	 * for the attempts that have the {@code maxInterval}.
+	 *
+	 * @return the builder.
+	 * @see SameIntervalTopicReuseStrategy#SINGLE_TOPIC
+	 *
+	 */
+	public RetryTopicConfigurationBuilder useSingleTopicForSameIntervals() {
+		this.sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC;
 		return this;
 	}
 
@@ -553,7 +578,7 @@ public class RetryTopicConfigurationBuilder {
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
 						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
 						sendToTopicKafkaTemplate, this.fixedDelayStrategy, this.dltStrategy,
-						this.topicSuffixingStrategy, this.timeout)
+						this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout)
 								.autoStartDltHandler(this.autoStartDltHandler)
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,

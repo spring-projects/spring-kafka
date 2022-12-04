@@ -68,8 +68,8 @@ public class DestinationTopic {
 		return Type.NO_OPS.equals(this.properties.type);
 	}
 
-	public boolean isSingleTopicRetry() {
-		return Type.SINGLE_TOPIC_RETRY.equals(this.properties.type);
+	public boolean isReusableRetryTopic() {
+		return Type.REUSABLE_RETRY_TOPIC.equals(this.properties.type);
 	}
 
 	public boolean isMainTopic() {
@@ -280,6 +280,6 @@ public class DestinationTopic {
 	}
 
 	enum Type {
-		MAIN, RETRY, SINGLE_TOPIC_RETRY, DLT, NO_OPS
+		MAIN, RETRY, REUSABLE_RETRY_TOPIC, DLT, NO_OPS
 	}
 }
