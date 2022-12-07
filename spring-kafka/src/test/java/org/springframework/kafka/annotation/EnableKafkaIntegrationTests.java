@@ -920,6 +920,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.projectionLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.name).isEqualTo("SomeName");
 		assertThat(this.listener.username).isEqualTo("SomeUsername");
+		assertThat(this.listener.customThreadName).isEqualTo("foo.projection-0");
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1167,6 +1168,8 @@ public class EnableKafkaIntegrationTests {
 			typeMapper.addTrustedPackages("*");
 			converter.setTypeMapper(typeMapper);
 			factory.setMessageConverter(new ProjectingMessageConverter(converter));
+			factory.setChangeConsumerThreadName(true);
+			factory.setThreadNameSupplier(container -> "foo." + container.getListenerId());
 			return factory;
 		}
 
@@ -1888,6 +1891,8 @@ public class EnableKafkaIntegrationTests {
 
 		volatile String batchOverrideStackTrace;
 
+		volatile String customThreadName;
+
 		@KafkaListener(id = "manualStart", topics = "manualStart",
 				containerFactory = "kafkaAutoStartFalseListenerContainerFactory",
 				properties = { ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG + ":301000",
@@ -2206,6 +2211,7 @@ public class EnableKafkaIntegrationTests {
 			this.username = sample.getUsername();
 			this.name = sample.getName();
 			this.projectionLatch.countDown();
+			this.customThreadName = Thread.currentThread().getName();
 		}
 
 		@KafkaListener(id = "customMethodArgumentResolver", topics = "annotated39")
