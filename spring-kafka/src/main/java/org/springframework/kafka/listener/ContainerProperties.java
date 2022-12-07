@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.aopalliance.aop.Advice;
@@ -33,6 +34,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
+import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -286,6 +288,11 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean pauseImmediate;
 
 	private KafkaListenerObservationConvention observationConvention;
+
+	private boolean changeConsumerThreadName;
+
+	@NonNull
+	private Function<MessageListenerContainer, String> threadNameSupplier = container -> container.getListenerId();
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -945,6 +952,48 @@ public class ContainerProperties extends ConsumerProperties {
 		this.observationConvention = observationConvention;
 	}
 
+	/**
+	 * Return true if the container should change the consumer thread name during
+	 * initialization.
+	 * @return true to change.
+	 * @since 3.0.1
+	 */
+	public boolean isChangeConsumerThreadName() {
+		return this.changeConsumerThreadName;
+	}
+
+	/**
+	 * Set to true to instruct the container to change the consumer thread name during
+	 * initialization.
+	 * @param changeConsumerThreadName true to change.
+	 * @since 3.0.1
+	 * @see #setThreadNameSupplier(Function)
+	 */
+	public void setChangeConsumerThreadName(boolean changeConsumerThreadName) {
+		this.changeConsumerThreadName = changeConsumerThreadName;
+	}
+
+	/**
+	 * Return the function used to change the consumer thread name.
+	 * @return the function.
+	 * @since 3.0.1
+	 */
+	public Function<MessageListenerContainer, String> getThreadNameSupplier() {
+		return this.threadNameSupplier;
+	}
+
+	/**
+	 * Set a function used to change the consumer thread name. The default returns the
+	 * container {@code listenerId}.
+	 * @param threadNameSupplier the function.
+	 * @since 3.0.1
+	 * @see #setChangeConsumerThreadName(boolean)
+	 */
+	public void setThreadNameSupplier(Function<MessageListenerContainer, String> threadNameSupplier) {
+		Assert.notNull(threadNameSupplier, "'threadNameSupplier' cannot be null");
+		this.threadNameSupplier = threadNameSupplier;
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
@@ -981,6 +1030,7 @@ public class ContainerProperties extends ConsumerProperties {
 				+ (this.observationConvention != null
 						? "\n observationConvention=" + this.observationConvention
 						: "")
+				+ "\n changeConsumerThreadName=" + this.changeConsumerThreadName
 				+ "\n]";
 	}
 

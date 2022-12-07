@@ -1397,6 +1397,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void initialize() {
+			if (this.containerProperties.isChangeConsumerThreadName()) {
+				Thread.currentThread().setName(
+						this.containerProperties.getThreadNameSupplier().apply(KafkaMessageListenerContainer.this));
+			}
 			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
 			setupSeeks();
