@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,12 +27,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
-import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
+import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.util.backoff.FixedBackOff;
 
 import com.common.Bar2;
@@ -56,8 +57,8 @@ public class Application {
 	 * Boot will autowire this into the container factory.
 	 */
 	@Bean
-	public SeekToCurrentErrorHandler errorHandler(KafkaOperations<Object, Object> template) {
-		return new SeekToCurrentErrorHandler(
+	public CommonErrorHandler errorHandler(KafkaOperations<Object, Object> template) {
+		return new DefaultErrorHandler(
 				new DeadLetterPublishingRecoverer(template), new FixedBackOff(1000L, 2));
 	}
 

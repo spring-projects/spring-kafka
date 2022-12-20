@@ -35,6 +35,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.stereotype.Component;
 
 import com.common.Foo2;
 
@@ -48,9 +49,7 @@ import com.common.Foo2;
 @SpringBootApplication
 public class Application {
 
-	private final Logger LOGGER = LoggerFactory.getLogger(Application.class);
-
-	private final static CountDownLatch LATCH = new CountDownLatch(1);
+	final static CountDownLatch LATCH = new CountDownLatch(1);
 
 	public static void main(String[] args) throws InterruptedException {
 		ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
@@ -69,6 +68,23 @@ public class Application {
 		return new BatchMessagingMessageConverter(converter());
 	}
 
+	@Bean
+	public NewTopic topic2() {
+		return TopicBuilder.name("topic2").partitions(1).replicas(1).build();
+	}
+
+	@Bean
+	public NewTopic topic3() {
+		return TopicBuilder.name("topic3").partitions(1).replicas(1).build();
+	}
+
+}
+
+@Component
+class Listener {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(Listener.class);
+
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
 
@@ -83,17 +99,7 @@ public class Application {
 	@KafkaListener(id = "fooGroup3", topics = "topic3")
 	public void listen2(List<String> in) {
 		LOGGER.info("Received: " + in);
-		LATCH.countDown();
-	}
-
-	@Bean
-	public NewTopic topic2() {
-		return TopicBuilder.name("topic2").partitions(1).replicas(1).build();
-	}
-
-	@Bean
-	public NewTopic topic3() {
-		return TopicBuilder.name("topic3").partitions(1).replicas(1).build();
+		Application.LATCH.countDown();
 	}
 
 }
