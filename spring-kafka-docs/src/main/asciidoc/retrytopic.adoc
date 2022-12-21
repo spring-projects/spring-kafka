@@ -917,7 +917,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
+            .dltHandlerMethod("dltProcessorBean", "processDltMessage")
             .doNotRetryOnDltFailure()
             .create(template);
 }
