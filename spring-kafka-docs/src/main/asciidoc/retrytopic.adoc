@@ -370,7 +370,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .fixedBackoff(3000)
             .maxAttempts(4)
-            .build();
+            .create(template);
 }
 ----
 ====
@@ -386,7 +386,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .customBackOff(new MyCustomBackOffPolicy())
             .maxAttempts(5)
-            .build();
+            .create(template);
 }
 ----
 ====
@@ -424,7 +424,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .fixedBackoff(3000)
             .maxAttempts(5)
             .useSingleTopicForFixedDelays()
-            .build();
+            .create(template);
 }
 ----
 ====
@@ -456,7 +456,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .fixedBackoff(2000)
             .timeoutAfter(5000)
-            .build();
+            .create(template);
 }
 ----
 ====
