@@ -30,6 +30,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
@@ -38,6 +39,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -426,6 +428,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					.getIfUnique(() -> this.observationRegistry);
 			this.kafkaAdmin = this.applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
 			if (this.kafkaAdmin != null) {
+				Object producerServers = this.producerFactory.getConfigurationProperties()
+						.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
+				String adminServers = this.kafkaAdmin.getBootstrapServers();
+				if (!producerServers.equals(adminServers)) {
+					Map<String, Object> props = new HashMap<>(this.kafkaAdmin.getConfigurationProperties());
+					props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, producerServers);
+					this.kafkaAdmin = new KafkaAdmin(props);
+				}
 				this.clusterId = this.kafkaAdmin.clusterId();
 			}
 		}

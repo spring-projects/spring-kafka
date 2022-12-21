@@ -46,6 +46,7 @@ import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -784,6 +785,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@Nullable
 		private final KafkaAdmin kafkaAdmin;
 
+		private final Object bootstrapServers;
+
 		private String clusterId;
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
@@ -848,6 +851,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							this.containerProperties.getClientId(),
 							KafkaMessageListenerContainer.this.clientIdSuffix,
 							consumerProperties);
+			this.bootstrapServers = determineBootstrapServers(consumerProperties);
 
 			this.clientId = determineClientId();
 			this.transactionTemplate = determineTransactionTemplate();
@@ -922,11 +926,29 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Nullable
+		private Object determineBootstrapServers(Properties consumerProperties) {
+			Object servers = consumerProperties.getProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG);
+			if (servers == null) {
+				servers = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
+						.get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG);
+			}
+			return servers;
+		}
+
+		@Nullable
 		private KafkaAdmin obtainAdmin() {
 			if (this.containerProperties.isObservationEnabled()) {
 				ApplicationContext applicationContext = getApplicationContext();
 				if (applicationContext != null) {
-					return applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+					KafkaAdmin admin = applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+					if (admin != null) {
+						Map<String, Object> props = new HashMap<>(admin.getConfigurationProperties());
+						if (!props.get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG).equals(this.bootstrapServers)) {
+							props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
+							admin = new KafkaAdmin(props);
+						}
+					}
+					return admin;
 				}
 			}
 			return null;
