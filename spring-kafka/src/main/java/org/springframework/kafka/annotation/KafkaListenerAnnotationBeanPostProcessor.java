@@ -481,10 +481,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Method methodToUse = checkProxy(method, bean);
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
 		endpoint.setMethod(methodToUse);
-		endpoint.setId(getEndpointId(kafkaListener));
 
 		String beanRef = kafkaListener.beanRef();
 		this.listenerScope.addListener(beanRef, bean);
+		endpoint.setId(getEndpointId(kafkaListener));
 		String[] topics = resolveTopics(kafkaListener);
 		TopicPartitionOffset[] tps = resolveTopicPartitions(kafkaListener);
 		if (!processMainAndRetryListeners(kafkaListener, bean, beanName, methodToUse, endpoint, topics, tps)) {

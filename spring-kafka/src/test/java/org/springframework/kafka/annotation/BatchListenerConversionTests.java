@@ -46,6 +46,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
@@ -97,7 +98,8 @@ public class BatchListenerConversionTests {
 	private KafkaTemplate<Integer, Object> template;
 
 	@Test
-	public void testBatchOfPojos() throws Exception {
+	public void testBatchOfPojos(@Autowired KafkaListenerEndpointRegistry registry) throws Exception {
+		assertThat(registry.getListenerContainerIds()).contains("blc1.id", "blc2.id");
 		doTest(this.listener1, "blc1");
 		doTest(this.listener2, "blc2");
 	}
@@ -273,7 +275,8 @@ public class BatchListenerConversionTests {
 			return this.cf;
 		}
 
-		@KafkaListener(topics = "#{__listener.topic}", groupId = "#{__listener.topic}.group",
+		@KafkaListener(id = "#{__listener.topic}.id", topics = "#{__listener.topic}",
+				groupId = "#{__listener.topic}.group",
 				containerFactory = "#{__listener.containerFactory}")
 		// @SendTo("foo") test WARN log for void return
 		public void listen1(List<Foo> foos, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
