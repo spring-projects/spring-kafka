@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,6 +68,7 @@ import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaOperations.OperationsCallback;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.SingleRecordHeader;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.ConversionException;
@@ -876,6 +877,33 @@ public class DeadLetterPublishingRecovererTests {
 		ProducerRecord outRecord = producerRecordCaptor.getValue();
 		Headers headers = outRecord.headers();
 		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(12);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void replaceNotAppendHeader() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		CompletableFuture future = mock(CompletableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		Headers headers = new RecordHeaders().add(new RecordHeader("foo", "orig".getBytes()));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+				-1, -1, null, "bar", headers, Optional.empty());
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setHeadersFunction((rec, ex) -> {
+			RecordHeaders toReplace = new RecordHeaders(
+					new RecordHeader[] { new SingleRecordHeader("foo", "one".getBytes()) });
+			return toReplace;
+		});
+		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
+		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+		verify(template).send(producerRecordCaptor.capture());
+		ProducerRecord outRecord = producerRecordCaptor.getValue();
+		Headers outHeaders = outRecord.headers();
+		assertThat(KafkaTestUtils.getPropertyValue(outHeaders, "headers", List.class)).hasSize(11);
+		Iterator<Header> iterator = outHeaders.headers("foo").iterator();
+		assertThat(iterator.hasNext()).isTrue();
+		assertThat(iterator.next().value()).isEqualTo("one".getBytes());
+		assertThat(iterator.hasNext()).isFalse();
 	}
 
 	@SuppressWarnings("unchecked")

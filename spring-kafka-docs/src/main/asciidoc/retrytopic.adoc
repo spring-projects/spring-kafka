@@ -621,6 +621,9 @@ protected void configureCustomizers(CustomizersConfigurer customizersConfigurer)
 
 Starting with version 2.8.4, if you wish to add custom headers (in addition to the retry information headers added by the factory, you can add a `headersFunction` to the factory - `factory.setHeadersFunction((rec, ex) -> { ... })`
 
+By default, any headers added will be cumulative - Kafka headers can contain multiple values.
+Starting with version 2.9.5, if the `Headers` returned by the function contains a header of type `DeadLetterPublishingRecoverer.SingleRecordHeader`, then any existing values for that header will be removed and only the new single value will remain.
+
 [[retry-topic-combine-blocking]]
 ==== Combining Blocking and Non-Blocking Retries
 
