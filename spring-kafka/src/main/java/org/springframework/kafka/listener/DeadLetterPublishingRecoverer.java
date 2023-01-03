@@ -230,7 +230,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * {@link SingleRecordHeader}, then that header will replace any existing header of
 	 * that name, rather than being appended as a new value.
 	 * @param headersFunction the headers function.
-	 * @param headersFunction the headers function.
 	 * @since 2.5.4
 	 * @see #addHeadersFunction(BiFunction)
 	 */
