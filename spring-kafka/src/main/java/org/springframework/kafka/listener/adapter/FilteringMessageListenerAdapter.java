@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 
 /**
  * A {@link MessageListener} adapter that implements filter logic
@@ -64,20 +65,15 @@ public class FilteringMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(ConsumerRecord<K, V> consumerRecord, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	public void onMessage(ConsumerRecord<K, V> consumerRecord, @Nullable Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
+
 		if (!filter(consumerRecord)) {
 			switch (this.delegateType) {
-				case ACKNOWLEDGING_CONSUMER_AWARE:
-					this.delegate.onMessage(consumerRecord, acknowledgment, consumer);
-					break;
-				case ACKNOWLEDGING:
-					this.delegate.onMessage(consumerRecord, acknowledgment);
-					break;
-				case CONSUMER_AWARE:
-					this.delegate.onMessage(consumerRecord, consumer);
-					break;
-				case SIMPLE:
-					this.delegate.onMessage(consumerRecord);
+				case ACKNOWLEDGING_CONSUMER_AWARE -> this.delegate.onMessage(consumerRecord, acknowledgment, consumer);
+				case ACKNOWLEDGING -> this.delegate.onMessage(consumerRecord, acknowledgment);
+				case CONSUMER_AWARE -> this.delegate.onMessage(consumerRecord, consumer);
+				case SIMPLE -> this.delegate.onMessage(consumerRecord);
 			}
 		}
 		else {
@@ -85,16 +81,15 @@ public class FilteringMessageListenerAdapter<K, V>
 		}
 	}
 
-	private void ackFilteredIfNecessary(Acknowledgment acknowledgment) {
+	private void ackFilteredIfNecessary(@Nullable Acknowledgment acknowledgment) {
 		switch (this.delegateType) {
-			case ACKNOWLEDGING_CONSUMER_AWARE:
-			case ACKNOWLEDGING:
+			case ACKNOWLEDGING_CONSUMER_AWARE, ACKNOWLEDGING -> {
 				if (this.ackDiscarded && acknowledgment != null) {
 					acknowledgment.acknowledge();
 				}
-				break;
-			case CONSUMER_AWARE:
-			case SIMPLE:
+			}
+			case CONSUMER_AWARE, SIMPLE -> {
+			}
 		}
 	}
 

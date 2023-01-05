@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,26 +107,13 @@ public class KafkaException extends NestedRuntimeException {
 	 */
 	public void selfLog(String message, LogAccessor logger) {
 		switch (this.logLevel) {
-		case FATAL:
-			logger.fatal(this, message);
-			break;
-		case ERROR:
-			logger.error(this, message);
-			break;
-		case WARN:
-			logger.warn(this, message);
-			break;
-		case INFO:
-			logger.info(this, message);
-			break;
-		case DEBUG:
-			logger.debug(this, message);
-			break;
-		case TRACE:
-			logger.trace(this, message);
-			break;
-		default:
-			logger.error(this, message);
+			case FATAL -> logger.fatal(this, message);
+			case ERROR -> logger.error(this, message);
+			case WARN -> logger.warn(this, message);
+			case INFO -> logger.info(this, message);
+			case DEBUG -> logger.debug(this, message);
+			case TRACE -> logger.trace(this, message);
+			default -> logger.error(this, message);
 		}
 	}
 

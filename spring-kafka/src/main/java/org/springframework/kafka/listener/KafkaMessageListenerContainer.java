@@ -2466,24 +2466,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			try {
 				switch (this.listenerType) {
-					case ACKNOWLEDGING_CONSUMER_AWARE:
+					case ACKNOWLEDGING_CONSUMER_AWARE ->
 						this.batchListener.onMessage(recordList,
 								this.isAnyManualAck
 										? new ConsumerBatchAcknowledgment(records)
 										: null, this.consumer);
-						break;
-					case ACKNOWLEDGING:
+					case ACKNOWLEDGING ->
 						this.batchListener.onMessage(recordList,
 								this.isAnyManualAck
 										? new ConsumerBatchAcknowledgment(records)
 										: null);
-						break;
-					case CONSUMER_AWARE:
-						this.batchListener.onMessage(recordList, this.consumer);
-						break;
-					case SIMPLE:
-						this.batchListener.onMessage(recordList);
-						break;
+					case CONSUMER_AWARE -> this.batchListener.onMessage(recordList, this.consumer);
+					case SIMPLE -> this.batchListener.onMessage(recordList);
 				}
 			}
 			catch (Exception ex) { //  NOSONAR
@@ -2877,24 +2871,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				try {
 					switch (this.listenerType) {
-						case ACKNOWLEDGING_CONSUMER_AWARE:
+						case ACKNOWLEDGING_CONSUMER_AWARE ->
 							this.listener.onMessage(cRecord,
 									this.isAnyManualAck
 											? new ConsumerAcknowledgment(cRecord)
 											: null, this.consumer);
-							break;
-						case CONSUMER_AWARE:
-							this.listener.onMessage(cRecord, this.consumer);
-							break;
-						case ACKNOWLEDGING:
+						case CONSUMER_AWARE -> this.listener.onMessage(cRecord, this.consumer);
+						case ACKNOWLEDGING ->
 							this.listener.onMessage(cRecord,
 									this.isAnyManualAck
 											? new ConsumerAcknowledgment(cRecord)
 											: null);
-							break;
-						case SIMPLE:
-							this.listener.onMessage(cRecord);
-							break;
+						case SIMPLE -> this.listener.onMessage(cRecord);
 					}
 				}
 				catch (Exception ex) { // NOSONAR
