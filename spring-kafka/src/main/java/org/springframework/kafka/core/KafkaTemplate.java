@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -434,9 +434,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				if (!producerServers.equals(adminServers)) {
 					Map<String, Object> props = new HashMap<>(this.kafkaAdmin.getConfigurationProperties());
 					props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, producerServers);
+					int opTo = this.kafkaAdmin.getOperationTimeout();
 					this.kafkaAdmin = new KafkaAdmin(props);
+					this.kafkaAdmin.setOperationTimeout(opTo);
 				}
-				this.clusterId = this.kafkaAdmin.clusterId();
 			}
 		}
 		else if (this.micrometerEnabled) {

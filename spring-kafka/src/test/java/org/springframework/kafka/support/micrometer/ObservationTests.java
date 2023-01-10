@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,12 +103,14 @@ public class ObservationTests {
 		SimpleSpan span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getName()).isEqualTo("observation.testT1 send");
+		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
 		await().until(() -> spans.peekFirst().getTags().size() == 3);
 		span = spans.poll();
 		assertThat(span.getTags())
 				.containsAllEntriesOf(
 						Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar", "some bar value"));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
+		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
 		await().until(() -> spans.peekFirst().getTags().size() == 1);
 		span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
@@ -179,24 +181,27 @@ public class ObservationTests {
 		assertThat(admin.getConfigurationProperties())
 				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 		// producer factory broker different to admin
-		assertThat(
-				KafkaTestUtils.getPropertyValue(template, "kafkaAdmin", KafkaAdmin.class).getConfigurationProperties())
-						.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-								broker.getBrokersAsString() + "," + broker.getBrokersAsString());
+		KafkaAdmin pAdmin = KafkaTestUtils.getPropertyValue(template, "kafkaAdmin", KafkaAdmin.class);
+		assertThat(pAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
+		assertThat(pAdmin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+						broker.getBrokersAsString() + "," + broker.getBrokersAsString());
 		Object container = KafkaTestUtils
 				.getPropertyValue(endpointRegistry.getListenerContainer("obs1"), "containers", List.class).get(0);
 		// consumer factory broker different to admin
-		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class)
-				.getConfigurationProperties())
-						.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-								broker.getBrokersAsString() + "," + broker.getBrokersAsString() + ","
-										+ broker.getBrokersAsString());
+		KafkaAdmin cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
+		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
+		assertThat(cAdmin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+						broker.getBrokersAsString() + "," + broker.getBrokersAsString() + ","
+								+ broker.getBrokersAsString());
 		// broker override in annotation
 		container = KafkaTestUtils
 				.getPropertyValue(endpointRegistry.getListenerContainer("obs2"), "containers", List.class).get(0);
-		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class)
-				.getConfigurationProperties())
-						.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
+		cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
+		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
+		assertThat(cAdmin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 	}
 
 	@Configuration
@@ -205,7 +210,10 @@ public class ObservationTests {
 
 		@Bean
 		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
-			return new KafkaAdmin(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString()));
+			KafkaAdmin admin = new KafkaAdmin(
+					Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString()));
+			admin.setOperationTimeout(42);
+			return admin;
 		}
 
 		@Bean

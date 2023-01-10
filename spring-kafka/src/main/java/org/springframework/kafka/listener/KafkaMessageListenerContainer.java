@@ -945,7 +945,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						Map<String, Object> props = new HashMap<>(admin.getConfigurationProperties());
 						if (!props.get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG).equals(this.bootstrapServers)) {
 							props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
+							int opTo = admin.getOperationTimeout();
 							admin = new KafkaAdmin(props);
+							admin.setOperationTimeout(opTo);
 						}
 					}
 					return admin;
