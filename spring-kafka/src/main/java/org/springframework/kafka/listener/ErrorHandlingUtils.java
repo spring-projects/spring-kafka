@@ -36,7 +36,8 @@ import org.springframework.util.backoff.BackOffExecution;
 /**
  * Utilities for error handling.
  *
- * @author Gary Russell, Andrii Pelesh
+ * @author Gary Russell
+ * @author Andrii Pelesh
  * @since 2.8
  *
  */
