@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,7 +49,6 @@ import org.mockito.InOrder;
 import org.springframework.kafka.KafkaException;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.backoff.FixedBackOff;
-
 
 /**
  * @author Gary Russell
