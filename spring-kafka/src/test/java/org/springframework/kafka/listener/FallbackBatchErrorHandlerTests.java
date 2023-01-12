@@ -174,7 +174,7 @@ public class FallbackBatchErrorHandlerTests {
 	}
 
 	@Test
-	void rePauseOnRebalance() throws InterruptedException {
+	void rePauseOnRebalance() {
 		this.invoked = 0;
 		List<ConsumerRecord<?, ?>> recovered = new ArrayList<>();
 		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0L, 1L), (cr, ex) ->  {
