@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -208,10 +208,19 @@ class DeadLetterPublishingRecovererFactoryTests {
 		// then
 		then(kafkaOperations).should(times(1)).send(producerRecordCaptor.capture());
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
+		Iterable<Header> attempts = producerRecord.headers().headers(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
+		assertThat(attempts).hasSize(2);
 		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
 		assertThat(attemptsHeader).isNotNull();
 		assertThat(attemptsHeader.value().length).isEqualTo(Integer.BYTES);
 		assertThat(ByteBuffer.wrap(attemptsHeader.value()).getInt()).isEqualTo(128);
+
+		factory.setRetainAllRetryHeaderValues(false);
+		deadLetterPublishingRecoverer.accept(consumerRecord, e);
+		then(kafkaOperations).should(times(2)).send(producerRecordCaptor.capture());
+		producerRecord = producerRecordCaptor.getValue();
+		attempts = producerRecord.headers().headers(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
+		assertThat(attempts).hasSize(1);
 	}
 
 	@Test

@@ -244,6 +244,9 @@ public class Config extends RetryTopicConfigurationSupport {
 The parameters to the function are the consumer record and the name of the next topic.
 You can return a specific partition number, or `null` to indicate that the `KafkaProducer` should determine the partition.
 
+By default, all values of retry headers (number of attempts, timestamps) are retained when a record transitions through the retry topics.
+Starting with version 2.9.6, if you want to retain just the last value of these headers, use the `configureDeadLetterPublishingContainerFactory()` method shown above to set the factory's `retainAllRetryHeaderValues` property to `false`.
+
 ==== Programmatic Construction
 
 The feature is designed to be used with `@KafkaListener`; however, several users have requested information on how to configure non-blocking retries programmatically.
