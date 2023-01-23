@@ -840,7 +840,7 @@ The framework provides a few strategies for working with DLTs. You can provide a
 
 ===== Dlt Processing Method
 
-You can specify the method used to process the Dlt for the topic, as well as the behavior if that processing fails.
+You can specify the method used to process the DLT for the topic, as well as the behavior if that processing fails.
 
 To do that you can use the `@DltHandler` annotation in a method of the class with the `@RetryableTopic` annotation(s).
 Note that the same method will be used for all the `@RetryableTopic` annotated methods within that class.
@@ -870,7 +870,7 @@ The DLT handler method can also be provided through the RetryTopicConfigurationB
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .dltProcessor("myCustomDltProcessor", "processDltMessage")
+            .dltHandlerMethod("myCustomDltProcessor", "processDltMessage")
             .create(template);
 }
 
@@ -923,7 +923,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .dltHandlerMethod("dltProcessorBean", "processDltMessage")
+            .dltHandlerMethod("myCustomDltProcessor", "processDltMessage")
             .doNotRetryOnDltFailure()
             .create(template);
 }

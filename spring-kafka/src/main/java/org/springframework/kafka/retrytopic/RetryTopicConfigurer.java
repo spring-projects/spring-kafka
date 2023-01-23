@@ -178,7 +178,7 @@ import org.springframework.lang.Nullable;
  *     public RetryTopicConfiguration otherRetryTopic(KafkaTemplate&lt;Integer, MyPojo&gt; template) {
  *         return RetryTopicConfigurationBuilder
  *                 .newInstance()
- *                 .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
+ *                 .dltHandlerMethod("myCustomDltProcessor", "processDltMessage")
  *                 .create(template);
  *     }</code>
  *
