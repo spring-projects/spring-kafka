@@ -70,6 +70,7 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
+import org.springframework.util.ReflectionUtils;
 
 import kafka.cluster.EndPoint;
 import kafka.server.KafkaConfig;
@@ -122,6 +123,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private static final Method GET_BROKER_STATE_METHOD;
 
+	private static final Method BROKER_CONFIGS_METHOD;
+
 	static {
 		try {
 			Method method = KafkaServer.class.getDeclaredMethod("brokerState");
@@ -132,9 +135,23 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				GET_BROKER_STATE_METHOD = null;
 			}
 		}
-		catch (NoSuchMethodException | SecurityException e) {
+		catch (NoSuchMethodException | SecurityException ex) {
 			throw new IllegalStateException("Failed to determine KafkaServer.brokerState() method; client version: "
-					+ AppInfoParser.getVersion(), e);
+					+ AppInfoParser.getVersion(), ex);
+		}
+		try {
+			AtomicReference<Method> configsMethod = new AtomicReference<>();
+			ReflectionUtils.doWithMethods(TestUtils.class,
+					method -> configsMethod.set(method),
+					method -> method.getName().equals("createBrokerConfig"));
+			BROKER_CONFIGS_METHOD = configsMethod.get();
+			if (BROKER_CONFIGS_METHOD == null) {
+				throw new IllegalStateException();
+			}
+		}
+		catch (IllegalStateException ex) {
+			throw new IllegalStateException("Failed to obtain TestUtils.createBrokerConfig method; client version: "
+					+ AppInfoParser.getVersion(), ex);
 		}
 	}
 
@@ -395,13 +412,29 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	private Properties createBrokerProperties(int i) {
-		return TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
-				true, this.kafkaPorts[i],
-				scala.Option.apply(null),
-				scala.Option.apply(null),
-				scala.Option.apply(null),
-				true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false,
-				this.partitionsPerTopic, (short) this.count);
+		try {
+			if (BROKER_CONFIGS_METHOD.getParameterTypes().length == 21) { // 3.3.2
+				return (Properties) BROKER_CONFIGS_METHOD.invoke(null, i, this.zkConnect, this.controlledShutdown,
+					true, this.kafkaPorts[i],
+					scala.Option.apply(null),
+					scala.Option.apply(null),
+					scala.Option.apply(null),
+					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false,
+					this.partitionsPerTopic, (short) this.count, false);
+			}
+			else {
+				return (Properties) BROKER_CONFIGS_METHOD.invoke(null, i, this.zkConnect, this.controlledShutdown,
+						true, this.kafkaPorts[i],
+						scala.Option.apply(null),
+						scala.Option.apply(null),
+						scala.Option.apply(null),
+						true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false,
+						this.partitionsPerTopic, (short) this.count);
+			}
+		}
+		catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+			throw new IllegalStateException(ex);
+		}
 	}
 
 	/**

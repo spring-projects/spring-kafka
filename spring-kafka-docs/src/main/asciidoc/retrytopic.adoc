@@ -244,6 +244,9 @@ public class Config extends RetryTopicConfigurationSupport {
 The parameters to the function are the consumer record and the name of the next topic.
 You can return a specific partition number, or `null` to indicate that the `KafkaProducer` should determine the partition.
 
+By default, all values of retry headers (number of attempts, timestamps) are retained when a record transitions through the retry topics.
+Starting with version 2.9.6, if you want to retain just the last value of these headers, use the `configureDeadLetterPublishingContainerFactory()` method shown above to set the factory's `retainAllRetryHeaderValues` property to `false`.
+
 ==== Programmatic Construction
 
 The feature is designed to be used with `@KafkaListener`; however, several users have requested information on how to configure non-blocking retries programmatically.
@@ -620,6 +623,9 @@ protected void configureCustomizers(CustomizersConfigurer customizersConfigurer)
 ====
 
 Starting with version 2.8.4, if you wish to add custom headers (in addition to the retry information headers added by the factory, you can add a `headersFunction` to the factory - `factory.setHeadersFunction((rec, ex) -> { ... })`
+
+By default, any headers added will be cumulative - Kafka headers can contain multiple values.
+Starting with version 2.9.5, if the `Headers` returned by the function contains a header of type `DeadLetterPublishingRecoverer.SingleRecordHeader`, then any existing values for that header will be removed and only the new single value will remain.
 
 [[retry-topic-combine-blocking]]
 ==== Combining Blocking and Non-Blocking Retries

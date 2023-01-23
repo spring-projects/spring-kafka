@@ -68,18 +68,18 @@ ext {
 	jaywayJsonPathVersion = '2.7.0'
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.9.1'
-	kafkaVersion = '3.3.1'
+	kafkaVersion = '3.3.2'
 	log4jVersion = '2.19.0'
-	micrometerDocsVersion = "1.0.0"
-	micrometerVersion = '1.10.2'
-	micrometerTracingVersion = '1.0.0'
+	micrometerDocsVersion = "1.0.1"
+	micrometerVersion = '1.10.3'
+	micrometerTracingVersion = '1.0.1'
 	mockitoVersion = '4.8.1'
-	reactorVersion = '2022.0.1'
+	reactorVersion = '2022.0.2'
 	scalaVersion = '2.13'
-	springBootVersion = '2.6.14' // docs module
-	springDataVersion = '2022.0.0'
+	springBootVersion = '3.0.1' // docs module
+	springDataVersion = '2022.0.1'
 	springRetryVersion = '2.0.0'
-	springVersion = '6.0.3'
+	springVersion = '6.0.4'
 	zookeeperVersion = '3.6.3'
 
 	idPrefix = 'kafka'

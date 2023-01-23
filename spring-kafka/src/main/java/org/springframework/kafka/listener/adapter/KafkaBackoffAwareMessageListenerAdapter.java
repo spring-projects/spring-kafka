@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,17 +103,10 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 
 	private void invokeDelegateOnMessage(ConsumerRecord<K, V> consumerRecord, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		switch (this.delegateType) {
-			case ACKNOWLEDGING_CONSUMER_AWARE:
-				this.delegate.onMessage(consumerRecord, acknowledgment, consumer);
-				break;
-			case ACKNOWLEDGING:
-				this.delegate.onMessage(consumerRecord, acknowledgment);
-				break;
-			case CONSUMER_AWARE:
-				this.delegate.onMessage(consumerRecord, consumer);
-				break;
-			case SIMPLE:
-				this.delegate.onMessage(consumerRecord);
+			case ACKNOWLEDGING_CONSUMER_AWARE -> this.delegate.onMessage(consumerRecord, acknowledgment, consumer);
+			case ACKNOWLEDGING -> this.delegate.onMessage(consumerRecord, acknowledgment);
+			case CONSUMER_AWARE -> this.delegate.onMessage(consumerRecord, consumer);
+			case SIMPLE -> this.delegate.onMessage(consumerRecord);
 		}
 	}
 
