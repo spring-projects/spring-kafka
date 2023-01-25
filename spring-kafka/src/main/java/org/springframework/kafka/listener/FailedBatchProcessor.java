@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -155,9 +155,17 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 			ConsumerRecord<?, ?> record = batchListenerFailedException.getRecord();
 			int index = record != null ? findIndex(data, record) : batchListenerFailedException.getIndex();
 			if (index < 0 || index >= data.count()) {
-				this.logger.warn(batchListenerFailedException, () ->
-						String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
-								record.topic(), record.partition(), record.offset()));
+				this.logger.warn(batchListenerFailedException, () -> {
+					if (record != null) {
+						return String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
+								record.topic(), record.partition(), record.offset());
+					}
+					else {
+						return String.format("Record not found in batch, index %d out of bounds (0, %d); "
+								+ "re-seeking batch", index, data.count() - 1);
+
+					}
+				});
 				fallback(thrownException, data, consumer, container, invokeListener);
 			}
 			else {
