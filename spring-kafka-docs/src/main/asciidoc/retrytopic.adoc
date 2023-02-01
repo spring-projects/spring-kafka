@@ -146,7 +146,8 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<String, MyOtherPo
 ----
 ====
 
-NOTE: The retry topics' and dlt's consumers will be assigned to a consumer group with a group id that is the combination of the one with you provide in the `groupId` parameter of the `@KafkaListener` annotation with the topic's suffix. If you don't provide any they'll all belong to the same group, and rebalance on a retry topic will cause an unnecessary rebalance on the main topic.
+NOTE: The retry topics' and dlt's consumers will be assigned to a consumer group with a group id that is the combination of the one with you provide in the `groupId` parameter of the `@KafkaListener` annotation with the topic's suffix.
+If you don't provide any they'll all belong to the same group, and rebalance on a retry topic will cause an unnecessary rebalance on the main topic.
 
 IMPORTANT: If the consumer is configured with an <<error-handling-deserializer,`ErrorHandlingDeserializer`>>, to handle deserilialization exceptions, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
 The generic value type of the template should be `Object`.
@@ -650,7 +651,7 @@ IMPORTANT: Note that the blocking retries behavior is allowlist - you add the ex
 
 IMPORTANT: The non-blocking exception classification behavior also depends on the specific topic's configuration.
 
-==== Topic Amount and Naming
+==== Topic Amount
 
 Retry topics and DLT are named by suffixing the main topic with a provided or default value, appended by either the delay or index for that topic.
 
@@ -660,7 +661,8 @@ Examples:
 
 "my-other-topic" -> "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix".
 
-NOTE: The default behavior is creating separate retry topics for each attempt, appended with their index value: retry-0, retry-1, ..., retry-n. Therefore, by default the amount of retry topics is the configured `maxAttempts` minus 1.
+NOTE: The default behavior is to create separate retry topics for each attempt, appended with an index value: retry-0, retry-1, ..., retry-n.
+Therefore, by default the amount of retry topics is the configured `maxAttempts` minus 1.
 
 You can <<retry-topics-and-dlt-suffixes,configure the suffixes>>, choose whether to append <<append-index-or-delay,the attempt index or delay>>, use a <<single-topic-fixed-delay,single retry topic when using fixed backoff>>, and use a <<single-topic-maxinterval-delay,single retry topic for the attempts with the maxInterval>> when using exponential backoffs.
 
@@ -733,6 +735,8 @@ NOTE: The default behavior is to suffix with the delay values, except for fixed 
 If you're using fixed delay policies such as `FixedBackOffPolicy` or `NoBackOffPolicy` you can use a single topic to accomplish the non-blocking retries.
 This topic will be suffixed with the provided or default suffix, and will not have either the index or the delay values appended.
 
+NOTE: `FixedDelayStrategy` is now deprecated, and will be replaced by `SameIntervalTopicReuseStrategy` in a future release.
+
 ====
 [source, java]
 ----
@@ -754,7 +758,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .fixedBackoff(3000)
             .maxAttempts(5)
             .useSingleTopicForFixedDelays()
-            .build();
+            .create(template);
 }
 ----
 ====
@@ -765,7 +769,9 @@ NOTE: The default behavior is creating separate retry topics for each attempt, a
 [[single-topic-maxinterval-delay]]
 ===== Single Topic for maxInterval Exponential Delay 
 
-If you're using exponential backoff policy (`ExponentialBackOffPolicy`), you can use a single retry topic to accomplish the non-blocking retries of the attempts whose delays are the configured `maxInterval`. This "final" retry topic will be suffixed with the provided or default suffix, and will have either the index or the `maxInterval` value appended.
+If you're using exponential backoff policy (`ExponentialBackOffPolicy`), you can use a single retry topic to accomplish the non-blocking retries of the attempts whose delays are the configured `maxInterval`.
+
+This "final" retry topic will be suffixed with the provided or default suffix, and will have either the index or the `maxInterval` value appended.
 
 NOTE: By opting to use a single topic for the retries with the `maxInterval` delay, it may become more viable to configure an exponential retry policy that keeps retrying for a long time, because in this approach you do not need a large amount of topics.
 
@@ -814,14 +820,15 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .exponentialBackoff(1000, 2, 16000)
             .maxAttempts(230)
             .useSingleTopicForSameIntervals()
-            .build();
+            .create(template);
 }
 ----
 ====
 
 ===== Custom naming strategies
 
-More complex naming strategies can be accomplished by registering a bean that implements `RetryTopicNamesProviderFactory`. The default implementation is `SuffixingRetryTopicNamesProviderFactory` and a different implementation can be registered in the following way:
+More complex naming strategies can be accomplished by registering a bean that implements `RetryTopicNamesProviderFactory`.
+The default implementation is `SuffixingRetryTopicNamesProviderFactory` and a different implementation can be registered in the following way:
 
 ====
 [source, java]
@@ -901,7 +908,9 @@ The framework will configure and use a separate set of retry topics for each lis
 
 ==== Dlt Strategies
 
-The framework provides a few strategies for working with DLTs. You can provide a method for DLT processing, use the default logging method, or have no DLT at all. Also you can choose what happens if DLT processing fails.
+The framework provides a few strategies for working with DLTs.
+You can provide a method for DLT processing, use the default logging method, or have no DLT at all.
+Also you can choose what happens if DLT processing fails.
 
 ===== Dlt Processing Method
 
@@ -1110,7 +1119,8 @@ Use the `DestinationTopicResolver` interface if you need to weigh in these facto
 [[change-kboe-logging-level]]
 ==== Changing KafkaBackOffException Logging Level
 
-When a message in the retry topic is not due for consumption, a `KafkaBackOffException` is thrown. Such exceptions are logged by default at `DEBUG` level, but you can change this behavior by setting an error handler customizer in the `ListenerContainerFactoryConfigurer` in a `@Configuration` class.
+When a message in the retry topic is not due for consumption, a `KafkaBackOffException` is thrown.
+Such exceptions are logged by default at `DEBUG` level, but you can change this behavior by setting an error handler customizer in the `ListenerContainerFactoryConfigurer` in a `@Configuration` class.
 
 For example, to change the logging level to WARN you might add:
 

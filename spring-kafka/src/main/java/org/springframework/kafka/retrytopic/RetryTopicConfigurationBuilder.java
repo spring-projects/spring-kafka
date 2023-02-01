@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -244,7 +244,7 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	/**
-	 * Configure the retry topic name {@link SameIntervalTopicReuseStrategy}.
+	 * Configure the {@link SameIntervalTopicReuseStrategy}.
 	 * @param sameIntervalTopicReuseStrategy the strategy.
 	 * @return the builder.
 	 */
@@ -254,11 +254,16 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	/**
-	 * For exponential backoff, configure the use of a single retry topic
-	 * for the attempts that have the {@code maxInterval}.
+	 * Configure the use of a single retry topic
+	 * for the attempts that have the same backoff interval
+	 * (as long as these attempts are in the middle of the chain).
+	 *
+	 * Currently used only for the last retries of exponential backoff,
+	 * and in a future release this will dictate whether to use
+	 * a single retry topic for fixed backoff.
 	 *
 	 * @return the builder.
-	 * @see SameIntervalTopicReuseStrategy#SINGLE_TOPIC
+	 * @see SameIntervalTopicReuseStrategy
 	 *
 	 */
 	public RetryTopicConfigurationBuilder useSingleTopicForSameIntervals() {
@@ -399,8 +404,10 @@ public class RetryTopicConfigurationBuilder {
 	/**
 	 * Configure the use of a single retry topic with fixed delays.
 	 * @return the builder.
+	 * @deprecated in a future release, configuration for single retry topic with fixed delays will have to be done with {@link #useSingleTopicForSameIntervals()}.
 	 * @see FixedDelayStrategy#SINGLE_TOPIC
 	 */
+	@Deprecated(forRemoval = true) // in 3.1
 	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays() {
 		this.fixedDelayStrategy = FixedDelayStrategy.SINGLE_TOPIC;
 		return this;
@@ -411,7 +418,9 @@ public class RetryTopicConfigurationBuilder {
 	 * {@link FixedDelayStrategy#MULTIPLE_TOPICS}.
 	 * @param delayStrategy the delay strategy.
 	 * @return the builder.
+	 * @deprecated in a future release, retry topic reuse configuration for fixed delays will have to be done with {@link #sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy)}.
 	 */
+	@Deprecated(forRemoval = true) // in 3.1
 	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(FixedDelayStrategy delayStrategy) {
 		this.fixedDelayStrategy = delayStrategy;
 		return this;

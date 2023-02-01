@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -194,7 +194,9 @@ public @interface RetryableTopic {
 	/**
 	 * Whether to use a single or multiple topics when using a fixed delay.
 	 * @return the fixed delay strategy.
+	 * @deprecated in a future release, will be replaced by {@link #sameIntervalTopicReuseStrategy()}.
 	 */
+	@Deprecated(forRemoval = true) // in 3.1
 	FixedDelayStrategy fixedDelayTopicStrategy() default FixedDelayStrategy.MULTIPLE_TOPICS;
 
 	/**

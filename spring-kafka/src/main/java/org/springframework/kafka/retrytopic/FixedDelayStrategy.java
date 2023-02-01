@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ package org.springframework.kafka.retrytopic;
  *
  * @author Tomaz Fernandes
  * @since 2.7
+ * @deprecated in a future release, will be replaced by {@link SameIntervalTopicReuseStrategy}.
  *
  */
+@Deprecated(forRemoval = true) // in 3.1
 public enum FixedDelayStrategy {
 
 	/**
