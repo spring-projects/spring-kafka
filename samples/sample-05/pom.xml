@@ -5,13 +5,13 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.0.0-SNAPSHOT</version>
+		<version>3.0.1-SNAPSHOT</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
 	<groupId>com.example</groupId>
 	<artifactId>kafka-sample-05</artifactId>
-	<version>3.0.0-SNAPSHOT</version>
+	<version>3.0.2-SNAPSHOT</version>
 
 	<name>kafka-sample-05</name>
 	<description>Kafka Sample 5</description>
@@ -19,7 +19,6 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<spring-kafka.version>3.0.0-SNAPSHOT</spring-kafka.version>
 	</properties>
 
 	<dependencies>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,8 +54,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
-import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -63,12 +61,13 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Tomaz Fernandes
+ * @author Cenk Akin
  * @since 2.8.3
  */
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(topics = { RetryTopicSameContainerFactoryIntegrationTests.FIRST_TOPIC,
-		RetryTopicSameContainerFactoryIntegrationTests.SECOND_TOPIC}, partitions = 1)
+		RetryTopicSameContainerFactoryIntegrationTests.SECOND_TOPIC, RetryTopicSameContainerFactoryIntegrationTests.THIRD_TOPIC}, partitions = 1)
 public class RetryTopicSameContainerFactoryIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicSameContainerFactoryIntegrationTests.class);
@@ -76,6 +75,8 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 	public final static String FIRST_TOPIC = "myRetryTopic1";
 
 	public final static String SECOND_TOPIC = "myRetryTopic2";
+
+	public final static String THIRD_TOPIC = "myRetryTopic3";
 
 	@Autowired
 	private KafkaTemplate<String, String> sendKafkaTemplate;
@@ -89,9 +90,13 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 		sendKafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
 		logger.debug("Sending message to topic " + SECOND_TOPIC);
 		sendKafkaTemplate.send(SECOND_TOPIC, "Testing topic 2");
-		assertThat(awaitLatch(latchContainer.countDownLatch1)).isTrue();
+		logger.debug("Sending message to topic " + THIRD_TOPIC);
+		sendKafkaTemplate.send(THIRD_TOPIC, "Testing topic 3");
+		assertThat(awaitLatch(latchContainer.countDownLatchFirstRetryable)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltOne)).isTrue();
-		assertThat(awaitLatch(latchContainer.countDownLatch2)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatchSecondRetryable)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatchDltSecond)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatchBasic)).isTrue();
 		assertThat(awaitLatch(latchContainer.customizerLatch)).isTrue();
 		verify(componentFactory).destinationTopicResolver();
 	}
@@ -107,7 +112,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 	}
 
 	@Component
-	static class RetryableKafkaListener {
+	static class FirstRetryableKafkaListener {
 
 		@Autowired
 		CountDownLatchContainer countDownLatchContainer;
@@ -119,9 +124,9 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE)
 		@KafkaListener(topics = RetryTopicSameContainerFactoryIntegrationTests.FIRST_TOPIC)
 		public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-			countDownLatchContainer.countDownLatch1.countDown();
+			countDownLatchContainer.countDownLatchFirstRetryable.countDown();
 			logger.warn(in + " from " + topic);
-			throw new RuntimeException("test");
+			throw new RuntimeException("from FirstRetryableKafkaListener");
 		}
 
 		@DltHandler
@@ -132,30 +137,52 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 	}
 
 	@Component
-	static class BasicKafkaListener {
+	static class SecondRetryableKafkaListener {
 
 		@Autowired
 		CountDownLatchContainer countDownLatchContainer;
 
+		@RetryableTopic
 		@KafkaListener(topics = RetryTopicSameContainerFactoryIntegrationTests.SECOND_TOPIC)
 		public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+			countDownLatchContainer.countDownLatchSecondRetryable.countDown();
 			logger.info(in + " from " + topic);
-			throw new RuntimeException("another test");
+			throw new RuntimeException("from SecondRetryableKafkaListener");
+		}
+
+		@DltHandler
+		public void dlt(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+			countDownLatchContainer.countDownLatchDltSecond.countDown();
+			logger.warn(in + " from " + topic);
+		}
+	}
+
+
+	@Component
+	static class BasicKafkaListener {
+
+		@KafkaListener(topics = RetryTopicSameContainerFactoryIntegrationTests.THIRD_TOPIC)
+		public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+			logger.info(in + " from " + topic);
+			throw new RuntimeException("from BasicKafkaListener");
 		}
 	}
 
 	@Component
 	static class CountDownLatchContainer {
 
-		CountDownLatch countDownLatch1 = new CountDownLatch(4);
-		CountDownLatch countDownLatch2 = new CountDownLatch(1);
+		CountDownLatch countDownLatchFirstRetryable = new CountDownLatch(4);
+		CountDownLatch countDownLatchSecondRetryable = new CountDownLatch(3);
 		CountDownLatch countDownLatchDltOne = new CountDownLatch(1);
-		CountDownLatch customizerLatch = new CountDownLatch(6);
+		CountDownLatch countDownLatchDltSecond = new CountDownLatch(1);
+
+		CountDownLatch countDownLatchBasic = new CountDownLatch(1);
+		CountDownLatch customizerLatch = new CountDownLatch(10);
 	}
 
 	@EnableKafka
 	@Configuration
-	static class Config extends RetryTopicConfigurationSupport {
+	static class Config {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
@@ -166,8 +193,13 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 		}
 
 		@Bean
-		RetryableKafkaListener retryableKafkaListener() {
-			return new RetryableKafkaListener();
+		FirstRetryableKafkaListener firstRetryableKafkaListener() {
+			return new FirstRetryableKafkaListener();
+		}
+
+		@Bean
+		SecondRetryableKafkaListener secondRetryableKafkaListener() {
+			return new SecondRetryableKafkaListener();
 		}
 
 		@Bean
@@ -187,7 +219,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 			props.setIdlePartitionEventInterval(100L);
 			factory.setConsumerFactory(consumerFactory);
 			DefaultErrorHandler errorHandler = new DefaultErrorHandler(
-					(cr, ex) -> latchContainer.countDownLatch2.countDown(),
+					(cr, ex) -> latchContainer.countDownLatchBasic.countDown(),
 					new FixedBackOff(0, 2));
 			factory.setCommonErrorHandler(errorHandler);
 			factory.setConcurrency(1);
@@ -236,11 +268,6 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 			return new DefaultKafkaConsumerFactory<>(props);
-		}
-
-		@Bean
-		TaskScheduler sched() {
-			return new ThreadPoolTaskScheduler();
 		}
 
 		@Bean

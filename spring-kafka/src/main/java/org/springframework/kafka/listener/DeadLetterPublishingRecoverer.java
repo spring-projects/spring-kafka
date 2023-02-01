@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
@@ -224,7 +226,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	/**
 	 * Set a function which will be called to obtain additional headers to add to the
-	 * published record.
+	 * published record. If a {@link Header} returned is an instance of
+	 * {@link SingleRecordHeader}, then that header will replace any existing header of
+	 * that name, rather than being appended as a new value.
 	 * @param headersFunction the headers function.
 	 * @since 2.5.4
 	 * @see #addHeadersFunction(BiFunction)
@@ -411,7 +415,10 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	/**
 	 * Add a function which will be called to obtain additional headers to add to the
 	 * published record. Functions are called in the order that they are added, and after
-	 * any function passed into {@link #setHeadersFunction(BiFunction)}.
+	 * any function passed into {@link #setHeadersFunction(BiFunction)}. If a
+	 * {@link Header} returned is an instance of {@link SingleRecordHeader}, then that
+	 * header will replace any existing header of that name, rather than being appended as
+	 * a new value.
 	 * @param headersFunction the headers function.
 	 * @since 2.8.4
 	 * @see #setHeadersFunction(BiFunction)
@@ -707,7 +714,12 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		maybeAddOriginalHeaders(kafkaHeaders, record, exception);
 		Headers headers = this.headersFunction.apply(record, exception);
 		if (headers != null) {
-			headers.forEach(kafkaHeaders::add);
+			headers.forEach(header -> {
+				if (header instanceof SingleRecordHeader) {
+					kafkaHeaders.remove(header.key());
+				}
+				kafkaHeaders.add(header);
+			});
 		}
 	}
 
@@ -1371,6 +1383,36 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		 * @param headerNames the heaader names to use.
 		 */
 		void create(Headers kafkaHeaders, Exception exception, boolean isKey, HeaderNames headerNames);
+
+	}
+
+	/**
+	 * A {@link Header} that indicates that this header should replace any existing headers
+	 * with this name, rather than being appended to the headers, which is the normal behavior.
+	 *
+	 * @since 2.9.5
+	 * @see DeadLetterPublishingRecoverer#setHeadersFunction(BiFunction)
+	 * @see DeadLetterPublishingRecoverer#addHeadersFunction(BiFunction)
+	 */
+	public static class SingleRecordHeader extends RecordHeader {
+
+		/**
+		 * Construct an instance.
+		 * @param key the key.
+		 * @param value the value.
+		 */
+		public SingleRecordHeader(String key, byte[] value) {
+			super(key, value);
+		}
+
+		/**
+		 * Construct an instance.
+		 * @param keyBuffer the key buffer.
+		 * @param valueBuffer the value buffer.
+		 */
+		public SingleRecordHeader(ByteBuffer keyBuffer, ByteBuffer valueBuffer) {
+			super(keyBuffer, valueBuffer);
+		}
 
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * Utilities for error handling.
  *
  * @author Gary Russell
+ * @author Andrii Pelesh
  * @since 2.8
  *
  */
@@ -96,6 +97,7 @@ public final class ErrorHandlingUtils {
 				if (!container.isRunning()) {
 					throw new KafkaException("Container stopped during retries");
 				}
+				consumer.poll(Duration.ZERO);
 				try {
 					invokeListener.run();
 					return;

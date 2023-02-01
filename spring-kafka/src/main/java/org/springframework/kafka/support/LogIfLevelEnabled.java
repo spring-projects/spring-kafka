@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,47 +81,23 @@ public final class LogIfLevelEnabled {
 
 	public void log(Supplier<CharSequence> messageSupplier) {
 		switch (this.level) {
-			case FATAL:
-				fatal(messageSupplier, null);
-				break;
-			case ERROR:
-				error(messageSupplier, null);
-				break;
-			case WARN:
-				warn(messageSupplier, null);
-				break;
-			case INFO:
-				info(messageSupplier, null);
-				break;
-			case DEBUG:
-				debug(messageSupplier, null);
-				break;
-			case TRACE:
-				trace(messageSupplier, null);
-				break;
+			case FATAL -> fatal(messageSupplier, null);
+			case ERROR -> error(messageSupplier, null);
+			case WARN -> warn(messageSupplier, null);
+			case INFO -> info(messageSupplier, null);
+			case DEBUG -> debug(messageSupplier, null);
+			case TRACE -> trace(messageSupplier, null);
 		}
 	}
 
 	public void log(Supplier<CharSequence> messageSupplier, Throwable thrown) {
 		switch (this.level) {
-			case FATAL:
-			fatal(messageSupplier, thrown);
-				break;
-			case ERROR:
-			error(messageSupplier, thrown);
-				break;
-			case WARN:
-			warn(messageSupplier, thrown);
-				break;
-			case INFO:
-			info(messageSupplier, thrown);
-				break;
-			case DEBUG:
-			debug(messageSupplier, thrown);
-				break;
-			case TRACE:
-			trace(messageSupplier, thrown);
-				break;
+			case FATAL -> fatal(messageSupplier, thrown);
+			case ERROR -> error(messageSupplier, thrown);
+			case WARN -> warn(messageSupplier, thrown);
+			case INFO -> info(messageSupplier, thrown);
+			case DEBUG -> debug(messageSupplier, thrown);
+			case TRACE -> trace(messageSupplier, thrown);
 		}
 	}
 

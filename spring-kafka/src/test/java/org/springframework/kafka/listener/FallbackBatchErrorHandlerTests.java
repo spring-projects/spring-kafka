@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ public class FallbackBatchErrorHandlerTests {
 		assertThat(this.invoked).isEqualTo(3);
 		assertThat(recovered).hasSize(2);
 		verify(consumer).pause(any());
-		verify(consumer, times(3)).poll(any());
+		verify(consumer, times(2 * this.invoked)).poll(any());
 		verify(consumer).resume(any());
 		verify(consumer, times(2)).assignment();
 		verifyNoMoreInteractions(consumer);
@@ -108,7 +108,7 @@ public class FallbackBatchErrorHandlerTests {
 		assertThat(this.invoked).isEqualTo(1);
 		assertThat(recovered).hasSize(0);
 		verify(consumer).pause(any());
-		verify(consumer).poll(any());
+		verify(consumer, times(2)).poll(any());
 		verify(consumer).resume(any());
 		verify(consumer, times(2)).assignment();
 		verifyNoMoreInteractions(consumer);
@@ -139,7 +139,7 @@ public class FallbackBatchErrorHandlerTests {
 		assertThat(this.invoked).isEqualTo(3);
 		assertThat(recovered).hasSize(1);
 		verify(consumer).pause(any());
-		verify(consumer, times(3)).poll(any());
+		verify(consumer, times(2 * this.invoked)).poll(any());
 		verify(consumer).resume(any());
 		verify(consumer, times(2)).assignment();
 		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
@@ -208,9 +208,11 @@ public class FallbackBatchErrorHandlerTests {
 		inOrder.verify(container).publishConsumerPausedEvent(map.keySet(), "For batch retry");
 		inOrder.verify(consumer).poll(any());
 		inOrder.verify(consumer).pause(any());
+		inOrder.verify(consumer).poll(any());
+		inOrder.verify(consumer).pause(any());
 		inOrder.verify(consumer).resume(any());
 		inOrder.verify(container).publishConsumerResumedEvent(map.keySet());
-		verify(consumer, times(3)).assignment();
+		verify(consumer, times(4)).assignment();
 		verifyNoMoreInteractions(consumer);
 		assertThat(pubPauseCalled.get()).isTrue();
 	}

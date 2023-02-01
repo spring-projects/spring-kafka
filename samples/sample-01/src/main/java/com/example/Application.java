@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,8 +29,9 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.util.backoff.FixedBackOff;
@@ -59,8 +60,8 @@ public class Application {
 	 * Boot will autowire this into the container factory.
 	 */
 	@Bean
-	public SeekToCurrentErrorHandler errorHandler(KafkaOperations<Object, Object> template) {
-		return new SeekToCurrentErrorHandler(
+	public CommonErrorHandler errorHandler(KafkaOperations<Object, Object> template) {
+		return new DefaultErrorHandler(
 				new DeadLetterPublishingRecoverer(template), new FixedBackOff(1000L, 2));
 	}
 
@@ -79,8 +80,8 @@ public class Application {
 	}
 
 	@KafkaListener(id = "dltGroup", topics = "topic1.DLT")
-	public void dltListen(String in) {
-		logger.info("Received from DLT: " + in);
+	public void dltListen(byte[] in) {
+		logger.info("Received from DLT: " + new String(in));
 		this.exec.execute(() -> System.out.println("Hit Enter to terminate..."));
 	}
 

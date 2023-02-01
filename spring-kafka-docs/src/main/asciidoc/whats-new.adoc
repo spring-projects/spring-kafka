@@ -64,6 +64,9 @@ these methods now require an `ObjectProvider<RetryTopicComponentFactory>` parame
 Events related to consumer authentication and authorization failures are now published by the container.
 See <<events>> for more information.
 
+You can now customize the thread names used by consumer threads.
+See <<container-thread-naming>> for more information.
+
 [[x30-template-changes]]
 ==== `KafkaTemplate` Changes
 

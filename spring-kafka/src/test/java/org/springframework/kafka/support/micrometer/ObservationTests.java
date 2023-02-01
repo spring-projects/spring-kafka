@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.header.Headers;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +45,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
@@ -84,7 +88,8 @@ public class ObservationTests {
 	@Test
 	void endToEnd(@Autowired Listener listener, @Autowired KafkaTemplate<Integer, String> template,
 			@Autowired SimpleTracer tracer, @Autowired KafkaListenerEndpointRegistry rler,
-			@Autowired MeterRegistry meterRegistry)
+			@Autowired MeterRegistry meterRegistry, @Autowired EmbeddedKafkaBroker broker,
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry, @Autowired KafkaAdmin admin)
 					throws InterruptedException, ExecutionException, TimeoutException {
 
 		template.send("observation.testT1", "test").get(10, TimeUnit.SECONDS);
@@ -98,12 +103,14 @@ public class ObservationTests {
 		SimpleSpan span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getName()).isEqualTo("observation.testT1 send");
+		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
 		await().until(() -> spans.peekFirst().getTags().size() == 3);
 		span = spans.poll();
 		assertThat(span.getTags())
 				.containsAllEntriesOf(
 						Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar", "some bar value"));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
+		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
 		await().until(() -> spans.peekFirst().getTags().size() == 1);
 		span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
@@ -171,6 +178,30 @@ public class ObservationTests {
 				.hasTimerWithNameAndTags("spring.kafka.listener",
 						KeyValues.of("spring.kafka.listener.id", "obs1-0", "baz", "qux"))
 				.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("spring.kafka.listener.id", "obs2-0"));
+		assertThat(admin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
+		// producer factory broker different to admin
+		KafkaAdmin pAdmin = KafkaTestUtils.getPropertyValue(template, "kafkaAdmin", KafkaAdmin.class);
+		assertThat(pAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
+		assertThat(pAdmin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+						broker.getBrokersAsString() + "," + broker.getBrokersAsString());
+		Object container = KafkaTestUtils
+				.getPropertyValue(endpointRegistry.getListenerContainer("obs1"), "containers", List.class).get(0);
+		// consumer factory broker different to admin
+		KafkaAdmin cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
+		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
+		assertThat(cAdmin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+						broker.getBrokersAsString() + "," + broker.getBrokersAsString() + ","
+								+ broker.getBrokersAsString());
+		// broker override in annotation
+		container = KafkaTestUtils
+				.getPropertyValue(endpointRegistry.getListenerContainer("obs2"), "containers", List.class).get(0);
+		cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
+		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
+		assertThat(cAdmin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 	}
 
 	@Configuration
@@ -178,14 +209,26 @@ public class ObservationTests {
 	public static class Config {
 
 		@Bean
+		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
+			KafkaAdmin admin = new KafkaAdmin(
+					Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString()));
+			admin.setOperationTimeout(42);
+			return admin;
+		}
+
+		@Bean
 		ProducerFactory<Integer, String> producerFactory(EmbeddedKafkaBroker broker) {
 			Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
+			producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,  broker.getBrokersAsString() + ","
+					+ broker.getBrokersAsString());
 			return new DefaultKafkaProducerFactory<>(producerProps);
 		}
 
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
 			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("obs", "false", broker);
+			consumerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,  broker.getBrokersAsString() + ","
+					+ broker.getBrokersAsString() + "," + broker.getBrokersAsString());
 			return new DefaultKafkaConsumerFactory<>(consumerProps);
 		}
 
@@ -288,7 +331,8 @@ public class ObservationTests {
 			this.template.send("observation.testT2", in.value());
 		}
 
-		@KafkaListener(id = "obs2", topics = "observation.testT2")
+		@KafkaListener(id = "obs2", topics = "observation.testT2",
+				properties = ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG + ":" + "#{@embeddedKafka.brokersAsString}")
 		void listen2(ConsumerRecord<?, ?> in) {
 			this.record = in;
 			this.latch1.countDown();

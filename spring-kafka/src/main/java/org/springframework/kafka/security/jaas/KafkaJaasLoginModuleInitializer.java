@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,22 +109,13 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 
 	public void setControlFlag(ControlFlag controlFlag) {
 		Assert.notNull(controlFlag, "cannot be null");
-		switch (controlFlag) {
-		case OPTIONAL:
-			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL;
-			break;
-		case REQUIRED:
-			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.REQUIRED;
-			break;
-		case REQUISITE:
-			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.REQUISITE;
-			break;
-		case SUFFICIENT:
-			this.controlFlag = AppConfigurationEntry.LoginModuleControlFlag.SUFFICIENT;
-			break;
-		default:
-			throw new IllegalArgumentException(controlFlag + " is not a supported control flag");
-		}
+		this.controlFlag = switch (controlFlag) {
+			case OPTIONAL -> AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL;
+			case REQUIRED -> AppConfigurationEntry.LoginModuleControlFlag.REQUIRED;
+			case REQUISITE -> AppConfigurationEntry.LoginModuleControlFlag.REQUISITE;
+			case SUFFICIENT -> AppConfigurationEntry.LoginModuleControlFlag.SUFFICIENT;
+			default -> throw new IllegalArgumentException(controlFlag + " is not a supported control flag");
+		};
 	}
 
 	public void setOptions(Map<String, String> options) {

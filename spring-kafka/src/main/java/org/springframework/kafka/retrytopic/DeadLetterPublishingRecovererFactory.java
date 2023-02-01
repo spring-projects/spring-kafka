@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.core.NestedRuntimeException;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.SingleRecordHeader;
 import org.springframework.kafka.listener.SeekUtils;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -73,6 +74,8 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private BiFunction<ConsumerRecord<?, ?>, String, Integer> partitionResolver = (cr, nextTopic) -> cr.partition();
 
+	private boolean retainAllRetryHeaderValues = true;
+
 	public DeadLetterPublishingRecovererFactory(DestinationTopicResolver destinationTopicResolver) {
 		this.destinationTopicResolver = destinationTopicResolver;
 	}
@@ -98,6 +101,16 @@ public class DeadLetterPublishingRecovererFactory {
 	public void setPartitionResolver(BiFunction<ConsumerRecord<?, ?>, String, Integer> resolver) {
 		Assert.notNull(resolver, "'resolver' cannot be null");
 		this.partitionResolver = resolver;
+	}
+
+	/**
+	 * Set to false to only retain the last value for {@link RetryTopicHeaders}; true by
+	 * default, which retains all the values as the record transitions through topics.
+	 * @param retainAllRetryHeaderValues false to only store the last values.
+	 * @since 2.9.6
+	 */
+	public void setRetainAllRetryHeaderValues(boolean retainAllRetryHeaderValues) {
+		this.retainAllRetryHeaderValues = retainAllRetryHeaderValues;
 	}
 
 	/**
@@ -307,13 +320,27 @@ public class DeadLetterPublishingRecovererFactory {
 	private Headers addHeaders(String mainListenerId, ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts) {
 		Headers headers = new RecordHeaders();
 		byte[] originalTimestampHeader = getOriginalTimestampHeaderBytes(consumerRecord);
-		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampHeader);
-		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
-				ByteBuffer.wrap(new byte[Integer.BYTES]).putInt(attempts + 1).array());
-		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
-				BigInteger
-						.valueOf(getNextExecutionTimestamp(mainListenerId, consumerRecord, e, originalTimestampHeader))
-						.toByteArray());
+		if (!this.retainAllRetryHeaderValues) {
+			headers.add(new SingleRecordHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP,
+					originalTimestampHeader));
+			headers.add(new SingleRecordHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
+					ByteBuffer.wrap(new byte[Integer.BYTES]).putInt(attempts + 1).array()));
+			headers.add(new SingleRecordHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
+					BigInteger
+							.valueOf(getNextExecutionTimestamp(mainListenerId, consumerRecord, e,
+									originalTimestampHeader))
+							.toByteArray()));
+		}
+		else {
+			headers.add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampHeader);
+			headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
+					ByteBuffer.wrap(new byte[Integer.BYTES]).putInt(attempts + 1).array());
+			headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
+					BigInteger
+							.valueOf(getNextExecutionTimestamp(mainListenerId, consumerRecord, e,
+									originalTimestampHeader))
+							.toByteArray());
+		}
 		return headers;
 	}
 

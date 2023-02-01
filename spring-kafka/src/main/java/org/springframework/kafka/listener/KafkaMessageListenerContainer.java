@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -784,6 +785,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@Nullable
 		private final KafkaAdmin kafkaAdmin;
 
+		private final Object bootstrapServers;
+
 		private String clusterId;
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
@@ -848,6 +851,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							this.containerProperties.getClientId(),
 							KafkaMessageListenerContainer.this.clientIdSuffix,
 							consumerProperties);
+			this.bootstrapServers = determineBootstrapServers(consumerProperties);
 
 			this.clientId = determineClientId();
 			this.transactionTemplate = determineTransactionTemplate();
@@ -922,11 +926,31 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Nullable
+		private Object determineBootstrapServers(Properties consumerProperties) {
+			Object servers = consumerProperties.getProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG);
+			if (servers == null) {
+				servers = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties()
+						.get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG);
+			}
+			return servers;
+		}
+
+		@Nullable
 		private KafkaAdmin obtainAdmin() {
 			if (this.containerProperties.isObservationEnabled()) {
 				ApplicationContext applicationContext = getApplicationContext();
 				if (applicationContext != null) {
-					return applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+					KafkaAdmin admin = applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+					if (admin != null) {
+						Map<String, Object> props = new HashMap<>(admin.getConfigurationProperties());
+						if (!props.get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG).equals(this.bootstrapServers)) {
+							props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
+							int opTo = admin.getOperationTimeout();
+							admin = new KafkaAdmin(props);
+							admin.setOperationTimeout(opTo);
+						}
+					}
+					return admin;
 				}
 			}
 			return null;
@@ -1397,6 +1421,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void initialize() {
+			if (KafkaMessageListenerContainer.this.thisOrParentContainer.isChangeConsumerThreadName()) {
+				Thread.currentThread().setName(
+						KafkaMessageListenerContainer.this.thisOrParentContainer.getThreadNameSupplier()
+								.apply(KafkaMessageListenerContainer.this));
+			}
 			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
 			setupSeeks();
@@ -2439,24 +2468,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			try {
 				switch (this.listenerType) {
-					case ACKNOWLEDGING_CONSUMER_AWARE:
+					case ACKNOWLEDGING_CONSUMER_AWARE ->
 						this.batchListener.onMessage(recordList,
 								this.isAnyManualAck
 										? new ConsumerBatchAcknowledgment(records)
 										: null, this.consumer);
-						break;
-					case ACKNOWLEDGING:
+					case ACKNOWLEDGING ->
 						this.batchListener.onMessage(recordList,
 								this.isAnyManualAck
 										? new ConsumerBatchAcknowledgment(records)
 										: null);
-						break;
-					case CONSUMER_AWARE:
-						this.batchListener.onMessage(recordList, this.consumer);
-						break;
-					case SIMPLE:
-						this.batchListener.onMessage(recordList);
-						break;
+					case CONSUMER_AWARE -> this.batchListener.onMessage(recordList, this.consumer);
+					case SIMPLE -> this.batchListener.onMessage(recordList);
 				}
 			}
 			catch (Exception ex) { //  NOSONAR
@@ -2850,24 +2873,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				try {
 					switch (this.listenerType) {
-						case ACKNOWLEDGING_CONSUMER_AWARE:
+						case ACKNOWLEDGING_CONSUMER_AWARE ->
 							this.listener.onMessage(cRecord,
 									this.isAnyManualAck
 											? new ConsumerAcknowledgment(cRecord)
 											: null, this.consumer);
-							break;
-						case CONSUMER_AWARE:
-							this.listener.onMessage(cRecord, this.consumer);
-							break;
-						case ACKNOWLEDGING:
+						case CONSUMER_AWARE -> this.listener.onMessage(cRecord, this.consumer);
+						case ACKNOWLEDGING ->
 							this.listener.onMessage(cRecord,
 									this.isAnyManualAck
 											? new ConsumerAcknowledgment(cRecord)
 											: null);
-							break;
-						case SIMPLE:
-							this.listener.onMessage(cRecord);
-							break;
+						case SIMPLE -> this.listener.onMessage(cRecord);
 					}
 				}
 				catch (Exception ex) { // NOSONAR
@@ -3569,6 +3586,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.consumer.pause(toRepause);
 					ListenerConsumer.this.logger.debug(() -> "Paused consumption from: " + toRepause);
 					publishConsumerPausedEvent(toRepause, "Re-paused after rebalance");
+					ListenerConsumer.this.pausedPartitions.addAll(toRepause);
 				}
 				this.revoked.removeAll(toRepause);
 				ListenerConsumer.this.pausedPartitions.removeAll(this.revoked);

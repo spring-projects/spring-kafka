@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -125,6 +126,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Nullable
 	private String mainListenerId;
+
+	private boolean changeConsumerThreadName;
+
+	@NonNull
+	private Function<MessageListenerContainer, String> threadNameSupplier = container -> container.getListenerId();
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -421,6 +427,48 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	public void setTopicCheckTimeout(int topicCheckTimeout) {
 		this.topicCheckTimeout = topicCheckTimeout;
+	}
+
+	/**
+	 * Return true if the container should change the consumer thread name during
+	 * initialization.
+	 * @return true to change.
+	 * @since 3.0.1
+	 */
+	public boolean isChangeConsumerThreadName() {
+		return this.changeConsumerThreadName;
+	}
+
+	/**
+	 * Set to true to instruct the container to change the consumer thread name during
+	 * initialization.
+	 * @param changeConsumerThreadName true to change.
+	 * @since 3.0.1
+	 * @see #setThreadNameSupplier(Function)
+	 */
+	public void setChangeConsumerThreadName(boolean changeConsumerThreadName) {
+		this.changeConsumerThreadName = changeConsumerThreadName;
+	}
+
+	/**
+	 * Return the function used to change the consumer thread name.
+	 * @return the function.
+	 * @since 3.0.1
+	 */
+	public Function<MessageListenerContainer, String> getThreadNameSupplier() {
+		return this.threadNameSupplier;
+	}
+
+	/**
+	 * Set a function used to change the consumer thread name. The default returns the
+	 * container {@code listenerId}.
+	 * @param threadNameSupplier the function.
+	 * @since 3.0.1
+	 * @see #setChangeConsumerThreadName(boolean)
+	 */
+	public void setThreadNameSupplier(Function<MessageListenerContainer, String> threadNameSupplier) {
+		Assert.notNull(threadNameSupplier, "'threadNameSupplier' cannot be null");
+		this.threadNameSupplier = threadNameSupplier;
 	}
 
 	protected RecordInterceptor<K, V> getRecordInterceptor() {

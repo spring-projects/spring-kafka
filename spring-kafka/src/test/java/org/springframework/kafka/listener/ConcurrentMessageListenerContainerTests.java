@@ -152,6 +152,7 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setConcurrency(2);
 		container.setBeanName("testAuto");
+		container.setChangeConsumerThreadName(true);
 		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
 		CountDownLatch stopLatch = new CountDownLatch(4);
 		container.setApplicationEventPublisher(e -> {
@@ -178,17 +179,15 @@ public class ConcurrentMessageListenerContainerTests {
 		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
-		template.sendDefault(0, "foo");
-		template.sendDefault(2, "bar");
-		template.sendDefault(0, "baz");
-		template.sendDefault(2, "qux");
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 2, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 2, "qux");
 		template.flush();
 		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
-		for (String threadName : listenerThreadNames) {
-			assertThat(threadName).contains("-C-");
-		}
+		assertThat(listenerThreadNames).contains("testAuto-0", "testAuto-1");
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
 		assertThat(containers).hasSize(2);

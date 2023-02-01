@@ -19,6 +19,7 @@ package org.springframework.kafka.config;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.LogFactory;
@@ -38,6 +39,7 @@ import org.springframework.kafka.listener.AfterRollbackProcessor;
 import org.springframework.kafka.listener.BatchInterceptor;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.RecordInterceptor;
 import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
@@ -109,6 +111,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private ContainerCustomizer<K, V, C> containerCustomizer;
 
 	private String correlationHeaderName;
+
+	private Boolean changeConsumerThreadName;
+
+	private Function<MessageListenerContainer, String> threadNameSupplier;
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -334,6 +340,29 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.correlationHeaderName = correlationHeaderName;
 	}
 
+	/**
+	 * Set to true to instruct the container to change the consumer thread name during
+	 * initialization.
+	 * @param changeConsumerThreadName true to change.
+	 * @since 3.0.1
+	 * @see #setThreadNameSupplier(Function)
+	 */
+	public void setChangeConsumerThreadName(boolean changeConsumerThreadName) {
+		this.changeConsumerThreadName = changeConsumerThreadName;
+	}
+
+	/**
+	 * Set a function used to change the consumer thread name. The default returns the
+	 * container {@code listenerId}.
+	 * @param threadNameSupplier the function.
+	 * @since 3.0.1
+	 * @see #setChangeConsumerThreadName(boolean)
+	 */
+	public void setThreadNameSupplier(Function<MessageListenerContainer, String> threadNameSupplier) {
+		Assert.notNull(threadNameSupplier, "'threadNameSupplier' cannot be null");
+		this.threadNameSupplier = threadNameSupplier;
+	}
+
 	@SuppressWarnings("deprecation")
 	@Override
 	public void afterPropertiesSet() {
@@ -414,7 +443,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 						properties::setSubBatchPerPartition)
 				.acceptIfNotNull(this.errorHandler, instance::setGenericErrorHandler)
 				.acceptIfNotNull(this.commonErrorHandler, instance::setCommonErrorHandler)
-				.acceptIfNotNull(this.missingTopicsFatal, instance.getContainerProperties()::setMissingTopicsFatal);
+				.acceptIfNotNull(this.missingTopicsFatal, instance.getContainerProperties()::setMissingTopicsFatal)
+				.acceptIfNotNull(this.changeConsumerThreadName, instance::setChangeConsumerThreadName)
+				.acceptIfNotNull(this.threadNameSupplier, instance::setThreadNameSupplier);
 		Boolean autoStart = endpoint.getAutoStartup();
 		if (autoStart != null) {
 			instance.setAutoStartup(autoStart);

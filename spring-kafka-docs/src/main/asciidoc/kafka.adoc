@@ -1469,6 +1469,8 @@ public void listen(@Payload String foo,
 ----
 ====
 
+IMPORTANT: Parameter annotations (`@Payload`, `@Header`) must be specified on the concrete implementation of the listener method; they will not be detected if they are defined on an interface.
+
 Starting with version 2.5, instead of using discrete headers, you can receive record metadata in a `ConsumerRecordMetadata` parameter.
 
 ====
@@ -1732,18 +1734,23 @@ IMPORTANT: This is available in record listeners and batch listeners that receiv
 It is **not** available in a batch listener that receives a `ConsumerRecords<?, ?>` argument.
 Use the `KafkaUtils` mechanism in that case.
 
+[[container-thread-naming]]
 ===== Container Thread Naming
 
-Listener containers currently use two task executors, one to invoke the consumer and another that is used to invoke the listener when the kafka consumer property `enable.auto.commit` is `false`.
-You can provide custom executors by setting the `consumerExecutor` and `listenerExecutor` properties of the container's `ContainerProperties`.
+A `TaskExecutor` is used to invoke the consumer and the listener.
+You can provide a custom executor by setting the `consumerExecutor` property of the container's `ContainerProperties`.
 When using pooled executors, be sure that enough threads are available to handle the concurrency across all the containers in which they are used.
-When using the `ConcurrentMessageListenerContainer`, a thread from each is used for each consumer (`concurrency`).
+When using the `ConcurrentMessageListenerContainer`, a thread from the executor is used for each consumer (`concurrency`).
 
-If you do not provide a consumer executor, a `SimpleAsyncTaskExecutor` is used.
-This executor creates threads with names similar to `<beanName>-C-1` (consumer thread).
+If you do not provide a consumer executor, a `SimpleAsyncTaskExecutor` is used for each container.
+This executor creates threads with names similar to `<beanName>-C-<n>`.
 For the `ConcurrentMessageListenerContainer`, the `<beanName>` part of the thread name becomes `<beanName>-m`, where `m` represents the consumer instance.
 `n` increments each time the container is started.
 So, with a bean name of `container`, threads in this container will be named `container-0-C-1`, `container-1-C-1` etc., after the container is started the first time; `container-0-C-2`, `container-1-C-2` etc., after a stop and subsequent start.
+
+Starting with version `3.0.1`, you can now change the name of the thread, regardless of which executor is used.
+Set the `AbstractMessageListenerContainer.changeConsumerThreadName` property to `true` and the `AbstractMessageListenerContainer.threadNameSupplier` will be invoked to obtain the thread name.
+This is a `Function<MessageListenerContainer, String>`, with the default implementation returning `container.getListenerId()`.
 
 [[kafka-listener-meta]]
 ===== `@KafkaListener` as a Meta Annotation
@@ -2965,7 +2972,7 @@ The event is normally published on the consumer thread, so it is safe to interac
 The following example uses both `@KafkaListener` and `@EventListener`:
 
 ====
-[source, xml]
+[source, java]
 ----
 public class Listener {
 
@@ -3407,7 +3414,7 @@ A similar listener is provided for the `StreamsBuilderFactoryBean` - see <<strea
 
 Using Micrometer for observation is now supported, since version 3.0, for the `KafkaTemplate` and listener containers.
 
-Set `observationEnabled` on each component to enable observation; this will disable <<micrometer,Micrometer Timers>> because the timers will now be managed with each observation.
+Set `observationEnabled` to `true` on the `KafkaTemplate` and `ContainerProperties` to enable observation; this will disable <<micrometer,Micrometer Timers>> because the timers will now be managed with each observation.
 
 Refer to https://micrometer.io/docs/tracing[Micrometer Tracing] for more information.
 
@@ -3437,11 +3444,9 @@ Spring for Apache Kafka adds support in the following ways:
 Transactions are enabled by providing the `DefaultKafkaProducerFactory` with a `transactionIdPrefix`.
 In that case, instead of managing a single shared `Producer`, the factory maintains a cache of transactional producers.
 When the user calls `close()` on a producer, it is returned to the cache for reuse instead of actually being closed.
-The `transactional.id` property of each producer is `transactionIdPrefix` + `n`, where `n` starts with `0` and is incremented for each new producer, unless the transaction is started by a listener container with a record-based listener.
-In that case, the `transactional.id` is `<transactionIdPrefix>.<group.id>.<topic>.<partition>`.
-This is to properly support fencing zombies, https://www.confluent.io/blog/transactions-apache-kafka/[as described here].
-This new behavior was added in versions 1.3.7, 2.0.6, 2.1.10, and 2.2.0.
-If you wish to revert to the previous behavior, you can set the `producerPerConsumerPartition` property on the `DefaultKafkaProducerFactory` to `false`.
+The `transactional.id` property of each producer is `transactionIdPrefix` + `n`, where `n` starts with `0` and is incremented for each new producer.
+In previous versions of Spring for Apache Kafka, the `transactional.id` was generated differently for transactions started by a listener container with a record-based listener, to support fencing zombies, which is not necessary any more, with `EOSMode.V2` being the only option starting with 3.0.
+For applications running with multiple instances, the `transactionIdPrefix` must be unique per instance.
 
 Also see <<exactly-once>>.
 

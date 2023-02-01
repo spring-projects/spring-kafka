@@ -244,6 +244,9 @@ public class Config extends RetryTopicConfigurationSupport {
 The parameters to the function are the consumer record and the name of the next topic.
 You can return a specific partition number, or `null` to indicate that the `KafkaProducer` should determine the partition.
 
+By default, all values of retry headers (number of attempts, timestamps) are retained when a record transitions through the retry topics.
+Starting with version 2.9.6, if you want to retain just the last value of these headers, use the `configureDeadLetterPublishingContainerFactory()` method shown above to set the factory's `retainAllRetryHeaderValues` property to `false`.
+
 ==== Programmatic Construction
 
 The feature is designed to be used with `@KafkaListener`; however, several users have requested information on how to configure non-blocking retries programmatically.
@@ -370,7 +373,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .fixedBackoff(3000)
             .maxAttempts(4)
-            .build();
+            .create(template);
 }
 ----
 ====
@@ -386,7 +389,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .customBackOff(new MyCustomBackOffPolicy())
             .maxAttempts(5)
-            .build();
+            .create(template);
 }
 ----
 ====
@@ -423,7 +426,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .fixedBackoff(2000)
             .timeoutAfter(5000)
-            .build();
+            .create(template);
 }
 ----
 ====
@@ -587,6 +590,9 @@ protected void configureCustomizers(CustomizersConfigurer customizersConfigurer)
 ====
 
 Starting with version 2.8.4, if you wish to add custom headers (in addition to the retry information headers added by the factory, you can add a `headersFunction` to the factory - `factory.setHeadersFunction((rec, ex) -> { ... })`
+
+By default, any headers added will be cumulative - Kafka headers can contain multiple values.
+Starting with version 2.9.5, if the `Headers` returned by the function contains a header of type `DeadLetterPublishingRecoverer.SingleRecordHeader`, then any existing values for that header will be removed and only the new single value will remain.
 
 [[retry-topic-combine-blocking]]
 ==== Combining Blocking and Non-Blocking Retries
@@ -899,7 +905,7 @@ The framework provides a few strategies for working with DLTs. You can provide a
 
 ===== Dlt Processing Method
 
-You can specify the method used to process the Dlt for the topic, as well as the behavior if that processing fails.
+You can specify the method used to process the DLT for the topic, as well as the behavior if that processing fails.
 
 To do that you can use the `@DltHandler` annotation in a method of the class with the `@RetryableTopic` annotation(s).
 Note that the same method will be used for all the `@RetryableTopic` annotated methods within that class.
@@ -929,7 +935,7 @@ The DLT handler method can also be provided through the RetryTopicConfigurationB
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .dltProcessor("myCustomDltProcessor", "processDltMessage")
+            .dltHandlerMethod("myCustomDltProcessor", "processDltMessage")
             .create(template);
 }
 
@@ -982,7 +988,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .dltProcessor(MyCustomDltProcessor.class, "processDltMessage")
+            .dltHandlerMethod("myCustomDltProcessor", "processDltMessage")
             .doNotRetryOnDltFailure()
             .create(template);
 }
