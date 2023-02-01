@@ -191,9 +191,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush setting.
 	 * <p>
-	 * Set autoFlush to {@code true} if you have configured the producer's
-	 * {@code linger.ms} to a non-default value and wish send operations on this template
-	 * to occur immediately, regardless of that setting, or if you wish to block until the
+	 * Set autoFlush to {@code true} if you wish for the send operations on this template
+	 * to occur immediately, regardless of what linger.ms or batch.size are set to. This will also block until the
 	 * broker has acknowledged receipt according to the producer's {@code acks} property.
 	 * If the configOverrides is not null or empty, a new
 	 * {@link ProducerFactory} will be created using
