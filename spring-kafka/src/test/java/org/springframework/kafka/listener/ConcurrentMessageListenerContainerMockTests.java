@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
@@ -842,6 +843,60 @@ public class ConcurrentMessageListenerContainerMockTests {
 		else {
 			verify(consumer).commitSync(any(), any());
 		}
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void removeFromPartitionPauseRequestedWhenNotAssigned() throws InterruptedException {
+		Consumer consumer = mock(Consumer.class);
+		CountDownLatch pollLatch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			pollLatch.countDown();
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		}).given(consumer).poll(any());
+		CountDownLatch pauseLatch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			pauseLatch.countDown();
+			return null;
+		}).given(consumer).pause(any());
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		List<TopicPartition> assignments = Arrays.asList(tp0);
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		willAnswer(invocation -> {
+			rebal.set(invocation.getArgument(1));
+			rebal.get().onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties())
+				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest"));
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener) rec -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		containerProperties.setAssignmentCommitOption(AssignmentCommitOption.LATEST_ONLY);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf,
+				containerProperties);
+		container.start();
+		assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.pausePartition(tp0);
+		KafkaMessageListenerContainer child = (KafkaMessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(container, "containers", List.class).get(0);
+		assertThat(child.isPartitionPauseRequested(tp0)).isTrue();
+		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		rebal.get().onPartitionsRevoked(assignments);
+		assertThat(child.isPartitionPauseRequested(tp0)).isTrue();
+		// immediate pause when re-assigned
+		rebal.get().onPartitionsAssigned(assignments);
+		verify(consumer, times(2)).pause(any());
+		rebal.get().onPartitionsRevoked(assignments);
+		// resume partition while unassigned
+		container.resumePartition(tp0);
+		assertThat(child.isPartitionPauseRequested(tp0)).isFalse();
+		rebal.get().onPartitionsAssigned(assignments);
+		verify(consumer, times(2)).pause(any()); // no immediate pause this time
 	}
 
 	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {
