@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -165,7 +165,7 @@ public class BatchAdapterConversionErrorsTests {
 		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setMessageConverter(new BatchMessagingMessageConverter(new JsonMessageConverter()));
+			factory.setBatchMessageConverter(new BatchMessagingMessageConverter(new JsonMessageConverter()));
 			factory.setBatchListener(true);
 			return factory;
 		}

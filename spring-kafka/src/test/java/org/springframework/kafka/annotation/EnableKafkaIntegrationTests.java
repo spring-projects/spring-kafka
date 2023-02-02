@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1091,7 +1091,7 @@ public class EnableKafkaIntegrationTests {
 				}
 			});
 			factory.getContainerProperties().setMicrometerTags(Collections.singletonMap("extraTag", "foo"));
-			factory.setMessageConverter(new RecordMessageConverter() {
+			factory.setRecordMessageConverter(new RecordMessageConverter() {
 
 				@Override
 				public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment,
@@ -1137,7 +1137,7 @@ public class EnableKafkaIntegrationTests {
 			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
 			converter.setTypeMapper(typeMapper);
-			factory.setMessageConverter(converter);
+			factory.setRecordMessageConverter(converter);
 			return factory;
 		}
 
@@ -1154,7 +1154,7 @@ public class EnableKafkaIntegrationTests {
 			typeMapper.addTrustedPackages("*");
 			typeMapper.setTypePrecedence(TypePrecedence.TYPE_ID);
 			converter.setTypeMapper(typeMapper);
-			factory.setMessageConverter(converter);
+			factory.setRecordMessageConverter(converter);
 			return factory;
 		}
 
@@ -1167,7 +1167,7 @@ public class EnableKafkaIntegrationTests {
 			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
 			converter.setTypeMapper(typeMapper);
-			factory.setMessageConverter(new ProjectingMessageConverter(converter));
+			factory.setRecordMessageConverter(new ProjectingMessageConverter(converter));
 			factory.setChangeConsumerThreadName(true);
 			factory.setThreadNameSupplier(container -> "foo." + container.getListenerId());
 			return factory;
