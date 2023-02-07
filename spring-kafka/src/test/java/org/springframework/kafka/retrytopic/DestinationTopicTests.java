@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,68 +62,68 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties mainTopicProps =
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout, 0);
 
 	protected DestinationTopic.Properties firstRetryProps =
 			new DestinationTopic.Properties(1000, retrySuffix + "-1000", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout, 1);
 
 	protected DestinationTopic.Properties secondRetryProps =
 			new DestinationTopic.Properties(2000, retrySuffix + "-2000", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout, 2);
 
 	protected DestinationTopic.Properties dltTopicProps =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout, null);
 
 	protected List<DestinationTopic.Properties> allProps = Arrays
 			.asList(mainTopicProps, firstRetryProps, secondRetryProps, dltTopicProps);
 
 	protected DestinationTopic.Properties mainTopicProps2 =
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout, 0);
 
 	protected DestinationTopic.Properties firstRetryProps2 =
 			new DestinationTopic.Properties(1000, retrySuffix + "-0", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout, 1);
 
 	protected DestinationTopic.Properties secondRetryProps2 =
 			new DestinationTopic.Properties(1000, retrySuffix + "-1", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout, 2);
 
 	protected DestinationTopic.Properties dltTopicProps2 =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
 
 	protected List<DestinationTopic.Properties> allProps2 = Arrays
 			.asList(mainTopicProps2, firstRetryProps2, secondRetryProps2, dltTopicProps2);
 
 	protected DestinationTopic.Properties mainTopicProps3 =
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
-					DltStrategy.NO_DLT, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.NO_DLT, kafkaOperations2, getShouldRetryOn(), timeout, 0);
 
 	protected DestinationTopic.Properties firstRetryProps3 =
 			new DestinationTopic.Properties(1000, retrySuffix + "-0", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.NO_DLT, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.NO_DLT, kafkaOperations2, getShouldRetryOn(), timeout, 1);
 
 	protected DestinationTopic.Properties secondRetryProps3 =
 			new DestinationTopic.Properties(1000, retrySuffix + "-1", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.NO_DLT, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.NO_DLT, kafkaOperations2, getShouldRetryOn(), timeout, 2);
 
 	protected List<DestinationTopic.Properties> allProps3 = Arrays
 			.asList(mainTopicProps3, firstRetryProps3, secondRetryProps3);
 
 	protected DestinationTopic.Properties mainTopicProps4 =
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout, 0);
 
 	protected DestinationTopic.Properties singleFixedRetryTopicProps4 =
 			new DestinationTopic.Properties(1000, retrySuffix, DestinationTopic.Type.REUSABLE_RETRY_TOPIC, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout, 1);
 
 	protected DestinationTopic.Properties dltTopicProps4 =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
 
 	protected List<DestinationTopic.Properties> allProps4 = Arrays
 			.asList(mainTopicProps4, singleFixedRetryTopicProps4, dltTopicProps4);

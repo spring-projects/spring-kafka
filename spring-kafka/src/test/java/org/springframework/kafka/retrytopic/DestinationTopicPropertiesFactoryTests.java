@@ -151,6 +151,7 @@ class DestinationTopicPropertiesFactoryTests {
 		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-1000");
 		assertThat(firstRetryProperties.isDltTopic()).isFalse();
 		DestinationTopic firstRetryDestinationTopic = destinationTopicList.get(1);
+		assertThat(firstRetryDestinationTopic.isSingleTopicRetry()).isFalse();
 		assertThat(firstRetryDestinationTopic.isReusableRetryTopic()).isFalse();
 		assertThat(firstRetryDestinationTopic.getDestinationDelay()).isEqualTo(1000);
 		assertThat(firstRetryDestinationTopic.getDestinationPartitions()).isEqualTo(numPartitions);
@@ -162,6 +163,7 @@ class DestinationTopicPropertiesFactoryTests {
 		assertThat(secondRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-2000");
 		assertThat(secondRetryProperties.isDltTopic()).isFalse();
 		DestinationTopic secondRetryDestinationTopic = destinationTopicList.get(2);
+		assertThat(secondRetryDestinationTopic.isSingleTopicRetry()).isFalse();
 		assertThat(secondRetryDestinationTopic.isReusableRetryTopic()).isFalse();
 		assertThat(secondRetryDestinationTopic.getDestinationDelay()).isEqualTo(2000);
 		assertThat(secondRetryDestinationTopic.getDestinationPartitions()).isEqualTo(numPartitions);
@@ -224,6 +226,7 @@ class DestinationTopicPropertiesFactoryTests {
 		DestinationTopic.Properties firstRetryProperties = propertiesList.get(1);
 		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix);
 		DestinationTopic retryDestinationTopic = destinationTopicList.get(1);
+		assertThat(retryDestinationTopic.isSingleTopicRetry()).isTrue();
 		assertThat(retryDestinationTopic.isReusableRetryTopic()).isTrue();
 		assertThat(retryDestinationTopic.getDestinationDelay()).isEqualTo(1000);
 
@@ -266,12 +269,14 @@ class DestinationTopicPropertiesFactoryTests {
 		DestinationTopic.Properties firstRetryProperties = propertiesList.get(1);
 		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-0");
 		DestinationTopic retryDestinationTopic = destinationTopicList.get(1);
+		assertThat(retryDestinationTopic.isSingleTopicRetry()).isFalse();
 		assertThat(retryDestinationTopic.isReusableRetryTopic()).isFalse();
 		assertThat(retryDestinationTopic.getDestinationDelay()).isEqualTo(5000);
 
 		DestinationTopic.Properties secondRetryProperties = propertiesList.get(2);
 		assertThat(secondRetryProperties.suffix()).isEqualTo(retryTopicSuffix + "-1");
 		DestinationTopic secondRetryDestinationTopic = destinationTopicList.get(2);
+		assertThat(secondRetryDestinationTopic.isSingleTopicRetry()).isFalse();
 		assertThat(secondRetryDestinationTopic.isReusableRetryTopic()).isFalse();
 		assertThat(secondRetryDestinationTopic.getDestinationDelay()).isEqualTo(5000);
 
@@ -380,9 +385,9 @@ class DestinationTopicPropertiesFactoryTests {
 		assertThat(factory.retryTopicsAmount()).isEqualTo(3);
 		assertThat(propertiesList.size()).isEqualTo(5);
 		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
-		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false);
-		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000", false);
-		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-3000", true);
+		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false, false);
+		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000", false, false);
+		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-3000", true, false);
 		assertThat(propertiesList.get(4).suffix()).isEqualTo(dltSuffix);
 	}
 
@@ -409,9 +414,9 @@ class DestinationTopicPropertiesFactoryTests {
 		assertThat(factory.retryTopicsAmount()).isEqualTo(3);
 		assertThat(propertiesList.size()).isEqualTo(5);
 		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
-		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-0", false);
-		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-1", false);
-		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-2", true);
+		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-0", false, false);
+		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-1", false, false);
+		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-2", true, false);
 		assertThat(propertiesList.get(4).suffix()).isEqualTo(dltSuffix);
 	}
 
@@ -434,19 +439,21 @@ class DestinationTopicPropertiesFactoryTests {
 		assertThat(factory.retryTopicsAmount()).isEqualTo(5);
 		assertThat(propertiesList.size()).isEqualTo(7);
 		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
-		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false);
-		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000-0", false);
-		assertRetryTopic(propertiesList.get(3), maxAttempts, 2000L, retryTopicSuffix + "-2000-1", false);
-		assertRetryTopic(propertiesList.get(4), maxAttempts, 2000L, retryTopicSuffix + "-2000-2", false);
-		assertRetryTopic(propertiesList.get(5), maxAttempts, 3000L, retryTopicSuffix + "-3000", false);
+		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false, false);
+		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000-0", false, false);
+		assertRetryTopic(propertiesList.get(3), maxAttempts, 2000L, retryTopicSuffix + "-2000-1", false, false);
+		assertRetryTopic(propertiesList.get(4), maxAttempts, 2000L, retryTopicSuffix + "-2000-2", false, false);
+		assertRetryTopic(propertiesList.get(5), maxAttempts, 3000L, retryTopicSuffix + "-3000", false, false);
 		assertThat(propertiesList.get(6).suffix()).isEqualTo(dltSuffix);
 	}
 
 	private void assertRetryTopic(DestinationTopic.Properties topicProperties, int maxAttempts,
-			Long expectedDelay, String expectedSuffix, boolean expectedReusableTopic) {
+			Long expectedDelay, String expectedSuffix, boolean expectedReusableTopic,
+			boolean expectedIsSingleTopicRetry) {
 		assertThat(topicProperties.suffix()).isEqualTo(expectedSuffix);
 		DestinationTopic topic = new DestinationTopic("irrelevant" + topicProperties.suffix(), topicProperties);
 		assertThat(topic.isDltTopic()).isFalse();
+		assertThat(topic.isSingleTopicRetry()).isEqualTo(expectedIsSingleTopicRetry);
 		assertThat(topic.isReusableRetryTopic()).isEqualTo(expectedReusableTopic);
 		assertThat(topic.getDestinationDelay()).isEqualTo(expectedDelay);
 		assertThat(topic.getDestinationPartitions()).isEqualTo(numPartitions);

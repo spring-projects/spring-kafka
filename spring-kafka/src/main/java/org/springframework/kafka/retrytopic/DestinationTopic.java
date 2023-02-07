@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,12 @@ public class DestinationTopic {
 		return Type.REUSABLE_RETRY_TOPIC.equals(this.properties.type);
 	}
 
+	@Deprecated(forRemoval = true) // in 3.1
+	public boolean isSingleTopicRetry() {
+		return ((Type.REUSABLE_RETRY_TOPIC.equals(this.properties.type)) &&
+				(Integer.valueOf(1).equals(this.properties.firstAttemptIndex)));
+	}
+
 	public boolean isMainTopic() {
 		return Type.MAIN.equals(this.properties.type);
 	}
@@ -137,6 +143,8 @@ public class DestinationTopic {
 
 		private final long timeout;
 
+		private final Integer firstAttemptIndex;
+
 		@Nullable
 		private final Boolean autoStartDltHandler;
 
@@ -152,15 +160,17 @@ public class DestinationTopic {
 		 * @param kafkaOperations the {@link KafkaOperations}.
 		 * @param shouldRetryOn the exception classifications.
 		 * @param timeout the timeout.
+		 * @param firstAttemptIndex the first attempt this topic is used with.
 		 */
 		public Properties(long delayMs, String suffix, Type type,
 						int maxAttempts, int numPartitions,
 						DltStrategy dltStrategy,
 						KafkaOperations<?, ?> kafkaOperations,
-						BiPredicate<Integer, Throwable> shouldRetryOn, long timeout) {
+						BiPredicate<Integer, Throwable> shouldRetryOn, long timeout,
+						Integer firstAttemptIndex) {
 
 			this(delayMs, suffix, type, maxAttempts, numPartitions, dltStrategy, kafkaOperations, shouldRetryOn,
-					timeout, null);
+					timeout, null, firstAttemptIndex);
 		}
 
 		/**
@@ -173,7 +183,7 @@ public class DestinationTopic {
 		public Properties(Properties sourceProperties, String suffix, Type type) {
 			this(sourceProperties.delayMs, suffix, type, sourceProperties.maxAttempts, sourceProperties.numPartitions,
 					sourceProperties.dltStrategy, sourceProperties.kafkaOperations, sourceProperties.shouldRetryOn,
-					sourceProperties.timeout, null);
+					sourceProperties.timeout, null, sourceProperties.firstAttemptIndex);
 		}
 
 		/**
@@ -188,13 +198,15 @@ public class DestinationTopic {
 		 * @param shouldRetryOn the exception classifications.
 		 * @param timeout the timeout.
 		 * @param autoStartDltHandler whether or not to start the DLT handler.
+		 * @param firstAttemptIndex the first attempt this topic is used with.
 		 * @since 2.8
 		 */
 		public Properties(long delayMs, String suffix, Type type,
 				int maxAttempts, int numPartitions,
 				DltStrategy dltStrategy,
 				KafkaOperations<?, ?> kafkaOperations,
-				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler) {
+				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler,
+				Integer firstAttemptIndex) {
 
 			this.delayMs = delayMs;
 			this.suffix = suffix;
@@ -206,6 +218,7 @@ public class DestinationTopic {
 			this.shouldRetryOn = shouldRetryOn;
 			this.timeout = timeout;
 			this.autoStartDltHandler = autoStartDltHandler;
+			this.firstAttemptIndex = firstAttemptIndex;
 		}
 
 		public boolean isDltTopic() {

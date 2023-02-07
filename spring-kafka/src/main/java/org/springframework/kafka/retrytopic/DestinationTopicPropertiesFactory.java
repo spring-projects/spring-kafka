@@ -184,13 +184,13 @@ public class DestinationTopicPropertiesFactory {
 
 	private DestinationTopic.Properties createMainTopicProperties() {
 		return new DestinationTopic.Properties(0, MAIN_TOPIC_SUFFIX, DestinationTopic.Type.MAIN, this.maxAttempts,
-				this.numPartitions, this.dltStrategy, this.kafkaOperations, getShouldRetryOn(), this.timeout);
+				this.numPartitions, this.dltStrategy, this.kafkaOperations, getShouldRetryOn(), this.timeout, 0);
 	}
 
 	private DestinationTopic.Properties createDltProperties() {
 		return new DestinationTopic.Properties(0, this.destinationTopicSuffixes.getDltSuffix(),
 				DestinationTopic.Type.DLT, this.maxAttempts, this.numPartitions, this.dltStrategy,
-				this.kafkaOperations, (a, e) -> false, this.timeout, this.autoStartDltHandler);
+				this.kafkaOperations, (a, e) -> false, this.timeout, this.autoStartDltHandler, null);
 	}
 
 	private BiPredicate<Integer, Throwable> getShouldRetryOn() {
@@ -255,7 +255,7 @@ public class DestinationTopicPropertiesFactory {
 														String suffix) {
 		return new DestinationTopic.Properties(this.backOffValues.get(indexInBackoffValues), suffix,
 				topicType, this.maxAttempts, this.numPartitions, this.dltStrategy,
-				this.kafkaOperations, shouldRetryOn, this.timeout);
+				this.kafkaOperations, shouldRetryOn, this.timeout, indexInBackoffValues + 1);
 	}
 
 	private boolean isFixedDelay() {
