@@ -3498,7 +3498,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			@Override
 			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 				this.revoked.addAll(partitions);
-				removeRevokationsFromPending(partitions);
+				removeRevocationsFromPending(partitions);
 				if (this.consumerAwareListener != null) {
 					this.consumerAwareListener.onPartitionsRevokedBeforeCommit(ListenerConsumer.this.consumer,
 							partitions);
@@ -3538,7 +3538,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 
-			private void removeRevokationsFromPending(Collection<TopicPartition> partitions) {
+			private void removeRevocationsFromPending(Collection<TopicPartition> partitions) {
 				ConsumerRecords<K, V> remaining = ListenerConsumer.this.remainingRecords;
 				if (remaining != null && !partitions.isEmpty()) {
 					Set<TopicPartition> remainingParts = new LinkedHashSet<>(remaining.partitions());
