@@ -130,6 +130,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import io.micrometer.observation.Observation;
@@ -2085,14 +2086,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private synchronized void ackInOrder(ConsumerRecord<K, V> cRecord) {
 			TopicPartition part = new TopicPartition(cRecord.topic(), cRecord.partition());
 			List<Long> offs = this.offsetsInThisBatch.get(part);
-			List<ConsumerRecord<K, V>> deferred = this.deferredOffsets.get(part);
-			if (!offs.isEmpty()) {
+			if (!ObjectUtils.isEmpty(offs)) {
+				List<ConsumerRecord<K, V>> deferred = this.deferredOffsets.get(part);
 				if (offs.get(0) == cRecord.offset()) {
 					offs.remove(0);
 					ConsumerRecord<K, V> recordToAck = cRecord;
 					if (!deferred.isEmpty()) {
 						Collections.sort(deferred, (a, b) -> Long.compare(a.offset(), b.offset()));
-						while (!deferred.isEmpty() && deferred.get(0).offset() == recordToAck.offset() + 1) {
+						while (!ObjectUtils.isEmpty(deferred) && deferred.get(0).offset() == recordToAck.offset() + 1) {
 							recordToAck = deferred.remove(0);
 							offs.remove(0);
 						}
@@ -3434,8 +3435,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			@Override
 			public void acknowledge() {
 				Map<TopicPartition, List<Long>> offs = ListenerConsumer.this.offsetsInThisBatch;
-				Map<TopicPartition, List<ConsumerRecord<K, V>>> deferred = ListenerConsumer.this.deferredOffsets;
 				if (!this.acked) {
+					Map<TopicPartition, List<ConsumerRecord<K, V>>> deferred = ListenerConsumer.this.deferredOffsets;
 					for (ConsumerRecord<K, V> cRecord : getHighestOffsetRecords(this.records)) {
 						if (offs != null) {
 							offs.remove(new TopicPartition(cRecord.topic(), cRecord.partition()));
@@ -3529,11 +3530,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				ListenerConsumer.this.pausedForNack.removeAll(partitions);
 				partitions.forEach(ListenerConsumer.this.lastCommits::remove);
 				synchronized (ListenerConsumer.this) {
-					if (ListenerConsumer.this.offsetsInThisBatch != null) {
+					Map<TopicPartition, List<Long>> pendingOffsets = ListenerConsumer.this.offsetsInThisBatch;
+					if (pendingOffsets != null) {
 						partitions.forEach(tp -> {
-							ListenerConsumer.this.offsetsInThisBatch.remove(tp);
+							pendingOffsets.remove(tp);
 							ListenerConsumer.this.deferredOffsets.remove(tp);
 						});
+						if (pendingOffsets.isEmpty()) {
+							ListenerConsumer.this.consumerPaused = false;
+						}
 					}
 				}
 			}
@@ -3586,7 +3591,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			private void repauseIfNeeded(Collection<TopicPartition> partitions) {
-				if (isPaused() || ListenerConsumer.this.remainingRecords != null && !partitions.isEmpty()) {
+				boolean pending = false;
+				synchronized (ListenerConsumer.this) {
+					Map<TopicPartition, List<Long>> pendingOffsets = ListenerConsumer.this.offsetsInThisBatch;
+					if (pendingOffsets != null && !pendingOffsets.isEmpty()) {
+						pending = true;
+					}
+				}
+				if ((pending || isPaused() || ListenerConsumer.this.remainingRecords != null)
+						&& !partitions.isEmpty()) {
+
 					ListenerConsumer.this.consumer.pause(partitions);
 					ListenerConsumer.this.consumerPaused = true;
 					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
