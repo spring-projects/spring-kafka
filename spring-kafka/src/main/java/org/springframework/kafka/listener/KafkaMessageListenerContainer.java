@@ -3594,7 +3594,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				boolean pending = false;
 				synchronized (ListenerConsumer.this) {
 					Map<TopicPartition, List<Long>> pendingOffsets = ListenerConsumer.this.offsetsInThisBatch;
-					if (!ObjectUtils.isEmpty(pendingOffsets) {
+					if (!ObjectUtils.isEmpty(pendingOffsets)) {
 						pending = true;
 					}
 				}
