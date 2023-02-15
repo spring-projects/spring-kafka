@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * @author Antonio Tomac
- * @since 3.1
+ * @since 2.9.6
  * @see [ProducerFactory.createProducer]
  */
 class KotlinProducerFactoryTests {
