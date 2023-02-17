@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -211,6 +211,8 @@ public class DestinationTopic {
 		public boolean isDltTopic() {
 			return Type.DLT.equals(this.type);
 		}
+
+		public boolean isRetryTopic() { return Type.RETRY.equals(this.type) || Type.SINGLE_TOPIC_RETRY.equals(this.type); }
 
 		public String suffix() {
 			return this.suffix;
