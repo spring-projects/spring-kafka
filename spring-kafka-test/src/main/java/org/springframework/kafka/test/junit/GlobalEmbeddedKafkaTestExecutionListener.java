@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +49,6 @@ import org.springframework.util.StringUtils;
  */
 public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionListener {
 
-	private static final Log LOGGER = LogFactory.getLog(GlobalEmbeddedKafkaTestExecutionListener.class);
-
 	/**
 	 * Property name used to enable the {@code GlobalEmbeddedKafkaTestExecutionListener}.
 	 * The {@code GlobalEmbeddedKafkaTestExecutionListener} is registered automatically via
@@ -85,27 +83,22 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public static final String BROKER_PROPERTIES_LOCATION_PROPERTY_NAME =
 			"spring.kafka.embedded.broker.properties.location";
 
-	private static final boolean JUNIT_PLATFORM_COMPATIBLE;
-
-	static {
-		boolean compat = false;
-		try {
-			TestPlan.class.getDeclaredMethod("getConfigurationParameters");
-			compat = true;
-		}
-		catch (NoSuchMethodException | SecurityException e) {
-			LOGGER.debug("JUnit Platform version must be >= 1.8 to use a global embedded kafka server");
-		}
-		JUNIT_PLATFORM_COMPATIBLE = compat;
-	}
-
 	private EmbeddedKafkaBroker embeddedKafkaBroker;
+
+	private Log logger;
 
 	@Override
 	public void testPlanExecutionStarted(TestPlan testPlan) {
-		if (!JUNIT_PLATFORM_COMPATIBLE) {
+		// We have to postpone initialization for native images because of Service Loader at build time.
+		this.logger = LogFactory.getLog(GlobalEmbeddedKafkaTestExecutionListener.class);
+		try {
+			TestPlan.class.getDeclaredMethod("getConfigurationParameters");
+		}
+		catch (NoSuchMethodException | SecurityException ex) {
+			this.logger.debug("JUnit Platform version must be >= 1.8 to use a global embedded kafka server");
 			return;
 		}
+
 		ConfigurationParameters configurationParameters = testPlan.getConfigurationParameters();
 		boolean enabled = configurationParameters.getBoolean(LISTENER_ENABLED_PROPERTY_NAME).orElse(false);
 		if (enabled) {
@@ -130,7 +123,7 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 							.kafkaPorts(ports);
 			this.embeddedKafkaBroker.afterPropertiesSet();
 
-			LOGGER.info("Started global Embedded Kafka on: " + this.embeddedKafkaBroker.getBrokersAsString());
+			this.logger.info("Started global Embedded Kafka on: " + this.embeddedKafkaBroker.getBrokersAsString());
 		}
 	}
 
@@ -156,7 +149,7 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public void testPlanExecutionFinished(TestPlan testPlan) {
 		if (this.embeddedKafkaBroker != null) {
 			this.embeddedKafkaBroker.destroy();
-			LOGGER.info("Stopped global Embedded Kafka.");
+			this.logger.info("Stopped global Embedded Kafka.");
 		}
 	}
 
