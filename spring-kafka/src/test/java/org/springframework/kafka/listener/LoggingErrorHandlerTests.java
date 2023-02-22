@@ -201,6 +201,7 @@ public class LoggingErrorHandlerTests {
 			factory.setConsumerFactory(consumerFactory());
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			factory.getContainerProperties().setDeliveryAttemptHeader(true);
+			factory.getContainerProperties().setPollTimeoutWhilePaused(Duration.ZERO);
 			factory.setCommonErrorHandler(eh);
 			return factory;
 		}
