@@ -692,6 +692,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Duration pollTimeout = Duration.ofMillis(this.containerProperties.getPollTimeout());
 
+		private final Duration pollTimeoutWhilePaused = this.containerProperties.getPollTimeoutWhilePaused();
+
 		private final boolean checkNullKeyForExceptions;
 
 		private final boolean checkNullValueForExceptions;
@@ -1692,7 +1694,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private ConsumerRecords<K, V> pollConsumer() {
 			beforePoll();
 			try {
-				return this.consumer.poll(this.pollTimeout);
+				return this.consumer.poll(this.consumerPaused ? this.pollTimeoutWhilePaused : this.pollTimeout);
 			}
 			catch (WakeupException ex) {
 				return ConsumerRecords.empty();
@@ -2915,17 +2917,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
 			}
 			else {
-				boolean handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer);
+				boolean handled = false;
+				try {
+					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				catch (Exception ex) {
+					this.logger.error(ex, "ErrorHandler threw unexpected exception");
+				}
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
 				if (!handled) {
 					records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(cRecord);
-				}
-				while (iterator.hasNext()) {
-					ConsumerRecord<K, V> next = iterator.next();
-					records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
-							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(next);
+					while (iterator.hasNext()) {
+						ConsumerRecord<K, V> next = iterator.next();
+						records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
+								tp -> new ArrayList<ConsumerRecord<K, V>>()).add(next);
+					}
 				}
 				if (!records.isEmpty()) {
 					this.remainingRecords = new ConsumerRecords<>(records);

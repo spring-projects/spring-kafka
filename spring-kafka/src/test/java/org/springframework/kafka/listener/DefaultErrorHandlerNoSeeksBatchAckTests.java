@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -101,6 +101,7 @@ public class DefaultErrorHandlerNoSeeksBatchAckTests {
 		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(1L));
 		inOrder.verify(this.consumer).commitSync(offsets, Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).pause(any());
+		inOrder.verify(this.consumer).poll(Duration.ZERO);
 		inOrder.verify(this.consumer).resume(any());
 		offsets = new LinkedHashMap<>();
 		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
@@ -190,7 +191,7 @@ public class DefaultErrorHandlerNoSeeksBatchAckTests {
 						}
 						return ConsumerRecords.empty();
 				}
-			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+			}).given(consumer).poll(any());
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;
@@ -208,6 +209,7 @@ public class DefaultErrorHandlerNoSeeksBatchAckTests {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
 			factory.getContainerProperties().setAckMode(AckMode.BATCH);
+			factory.getContainerProperties().setPollTimeoutWhilePaused(Duration.ZERO);
 			DefaultErrorHandler eh = new DefaultErrorHandler();
 			eh.setSeekAfterError(false);
 			factory.setCommonErrorHandler(eh);

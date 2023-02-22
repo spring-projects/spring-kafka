@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,7 +112,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(1L)),
 				Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).pause(any());
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(this.consumer).poll(Duration.ZERO);
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(2L)),
 				Duration.ofSeconds(60));
@@ -243,9 +243,9 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return ConsumerRecords.empty();
 				}
-			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+			}).given(consumer).poll(any());
 			List<TopicPartition> paused = new ArrayList<>();
 			willAnswer(i -> {
 				this.commitLatch.countDown();
@@ -276,6 +276,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 			factory.setConsumerFactory(consumerFactory());
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			factory.getContainerProperties().setDeliveryAttemptHeader(true);
+			factory.getContainerProperties().setPollTimeoutWhilePaused(Duration.ZERO);
 			factory.setRecordInterceptor((record, consumer) -> {
 				Config.this.deliveryAttempt = record.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT);
 				return record;

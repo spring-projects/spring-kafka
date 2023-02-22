@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -175,6 +175,10 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private static final double DEFAULT_IDLE_BEFORE_DATA_MULTIPLIER = 5.0;
 
+	private static final long ONE_HUNDRED = 100L;
+
+	private static final Duration DEFAULT_PAUSED_POLL_TIMEOUT = Duration.ofMillis(ONE_HUNDRED);
+
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
 	private final List<Advice> adviceChain = new ArrayList<>();
@@ -188,7 +192,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * when they all have been processed by the listener</li>
 	 * <li>TIME: Commit pending offsets after {@link #setAckTime(long) ackTime} number of
 	 * milliseconds; (should be greater than
-	 * {@code #setPollTimeout(long) pollTimeout}.</li>
+	 * {@code ConsumerProperties#setPollTimeout(long) pollTimeout}.</li>
 	 * <li>COUNT: Commit pending offsets after at least {@link #setAckCount(int) ackCount}
 	 * number of records have been processed</li>
 	 * <li>COUNT_TIME: Commit pending offsets after {@link #setAckTime(long) ackTime}
@@ -287,6 +291,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private KafkaListenerObservationConvention observationConvention;
 
+	private Duration pollTimeoutWhilePaused = DEFAULT_PAUSED_POLL_TIMEOUT;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -336,7 +342,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * when they all have been processed by the listener</li>
 	 * <li>TIME: Commit pending offsets after {@link #setAckTime(long) ackTime} number of
 	 * milliseconds; (should be greater than
-	 * {@code #setPollTimeout(long) pollTimeout}.</li>
+	 * {@code ConsumerProperties#setPollTimeout(long) pollTimeout}.</li>
 	 * <li>COUNT: Commit pending offsets after at least {@link #setAckCount(int) ackCount}
 	 * number of records have been processed</li>
 	 * <li>COUNT_TIME: Commit pending offsets after {@link #setAckTime(long) ackTime}
@@ -568,11 +574,10 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * If the time since the last poll / {@link #getPollTimeout() poll timeout}
-	 * exceeds this value, a NonResponsiveConsumerEvent is published.
-	 * This value should be more than 1.0 to avoid a race condition that can cause
-	 * spurious events to be published.
-	 * Default {@value #DEFAULT_NO_POLL_THRESHOLD}.
+	 * If the time since the last poll / {@link ConsumerProperties#getPollTimeout() poll
+	 * timeout} exceeds this value, a NonResponsiveConsumerEvent is published. This value
+	 * should be more than 1.0 to avoid a race condition that can cause spurious events to
+	 * be published. Default {@value #DEFAULT_NO_POLL_THRESHOLD}.
 	 * @param noPollThreshold the threshold
 	 * @since 1.3.1
 	 */
@@ -945,6 +950,28 @@ public class ContainerProperties extends ConsumerProperties {
 		this.observationConvention = observationConvention;
 	}
 
+	/**
+	 * The poll timeout to use while paused; usually a lower number than
+	 * {@link ConsumerProperties#setPollTimeout(long) pollTimeout}.
+	 * @return the pollTimeoutWhilePaused
+	 * @since 2.9.7
+	 */
+	public Duration getPollTimeoutWhilePaused() {
+		return this.pollTimeoutWhilePaused;
+	}
+
+	/**
+	 * Set the poll timeout to use while paused; usually a lower number than
+	 * {@link ConsumerProperties#setPollTimeout(long) pollTimeout}. Should be greater than
+	 * zero to avoid a tight CPU loop while the consumer is paused. Default is 100ms.
+	 * @param pollTimeoutWhilePaused the pollTimeoutWhilePaused to set
+	 * @since 2.9.7
+	 */
+	public void setPollTimeoutWhilePaused(Duration pollTimeoutWhilePaused) {
+		Assert.notNull(pollTimeoutWhilePaused, "'pollTimeoutWhilePaused' cannot be null");
+		this.pollTimeoutWhilePaused = pollTimeoutWhilePaused;
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
@@ -967,6 +994,7 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n monitorInterval=" + this.monitorInterval
 				+ (this.scheduler != null ? "\n scheduler=" + this.scheduler : "")
 				+ "\n noPollThreshold=" + this.noPollThreshold
+				+ "\n pollTimeoutWhilePaused=" + this.pollTimeoutWhilePaused
 				+ "\n subBatchPerPartition=" + this.subBatchPerPartition
 				+ "\n assignmentCommitOption=" + this.assignmentCommitOption
 				+ "\n deliveryAttemptHeader=" + this.deliveryAttemptHeader

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ public class PauseContainerManualAssignmentTests {
 		inOrder.verify(this.consumer).pause(pauses.capture());
 		assertThat(pauses.getValue().stream().collect(Collectors.toList())).contains(new TopicPartition("foo", 0),
 				new TopicPartition("foo", 1), new TopicPartition("foo", 2));
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(this.consumer).poll(Duration.ZERO);
 		verify(this.consumer, never()).resume(any());
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux");
@@ -200,7 +200,7 @@ public class PauseContainerManualAssignmentTests {
 						}
 						return new ConsumerRecords(Collections.emptyMap());
 				}
-			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+			}).given(consumer).poll(any());
 			List<TopicPartition> paused = new ArrayList<>();
 			willAnswer(i -> {
 				this.commitLatch.countDown();
@@ -231,6 +231,7 @@ public class PauseContainerManualAssignmentTests {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory(registry));
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
+			factory.getContainerProperties().setPollTimeoutWhilePaused(Duration.ZERO);
 			DefaultErrorHandler eh = new DefaultErrorHandler();
 			eh.setSeekAfterError(false);
 			factory.setCommonErrorHandler(eh);
