@@ -67,7 +67,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-public class LoggingErrorHandlerNoPauseAfterHandle {
+public class LoggingErrorHandlerTests {
 
 	@SuppressWarnings("rawtypes")
 	@Autowired
@@ -81,7 +81,7 @@ public class LoggingErrorHandlerNoPauseAfterHandle {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void noPause(@Autowired CommonLoggingErrorHandler eh) throws Exception {
+	public void noPauseAfterHandle(@Autowired CommonLoggingErrorHandler eh) throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
