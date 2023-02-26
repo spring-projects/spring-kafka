@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2022 the original author or authors.
+ * Copyright 2014-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,9 @@ import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
 import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.util.Assert;
 
 /**
@@ -82,7 +84,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private Integer phase;
 
-	private MessageConverter messageConverter;
+	private RecordMessageConverter recordMessageConverter;
+
+	private BatchMessageConverter batchMessageConverter;
 
 	private RecordFilterStrategy<? super K, ? super V> recordFilterStrategy;
 
@@ -154,9 +158,38 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	/**
 	 * Set the message converter to use if dynamic argument type matching is needed.
 	 * @param messageConverter the converter.
+	 * @deprecated since 2.9.6 in favor of
+	 * {@link #setBatchMessageConverter(BatchMessageConverter)} and
+	 * {@link #setRecordMessageConverter(RecordMessageConverter)}.
 	 */
+	@Deprecated
 	public void setMessageConverter(MessageConverter messageConverter) {
-		this.messageConverter = messageConverter;
+		if (messageConverter instanceof RecordMessageConverter) {
+			setRecordMessageConverter((RecordMessageConverter) messageConverter);
+		}
+		else {
+			setBatchMessageConverter((BatchMessageConverter) messageConverter);
+		}
+	}
+
+	/**
+	 * Set the message converter to use if dynamic argument type matching is needed for
+	 * record listeners.
+	 * @param recordMessageConverter the converter.
+	 * @since 2.9.6
+	 */
+	public void setRecordMessageConverter(RecordMessageConverter recordMessageConverter) {
+		this.recordMessageConverter = recordMessageConverter;
+	}
+
+	/**
+	 * Set the message converter to use if dynamic argument type matching is needed for
+	 * batch listeners.
+	 * @param batchMessageConverter the converter.
+	 * @since 2.9.6
+	 */
+	public void setBatchMessageConverter(BatchMessageConverter batchMessageConverter) {
+		this.batchMessageConverter = batchMessageConverter;
 	}
 
 	/**
@@ -391,7 +424,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			configureEndpoint((AbstractKafkaListenerEndpoint<K, V>) endpoint);
 		}
 
-		endpoint.setupListenerContainer(instance, this.messageConverter);
+		if (Boolean.TRUE.equals(endpoint.getBatchListener())) {
+			endpoint.setupListenerContainer(instance, this.batchMessageConverter);
+		}
+		else {
+			endpoint.setupListenerContainer(instance, this.recordMessageConverter);
+		}
 		initializeContainer(instance, endpoint);
 		customizeContainer(instance);
 		return instance;

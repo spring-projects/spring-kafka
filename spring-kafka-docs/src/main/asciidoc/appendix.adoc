@@ -2,14 +2,17 @@
 == Override Spring Boot Dependencies
 
 When using Spring for Apache Kafka in a Spring Boot application, the Apache Kafka dependency versions are determined by Spring Boot's dependency management.
-If you wish to use a different version of `kafka-clients` or `kafka-streams`, and use the embedded kafka broker for testing, you need to override their version used by Spring Boot dependency management and add two `test` artifacts for Apache Kafka.
+If you wish to use a different version of `kafka-clients` or `kafka-streams`, and use the embedded kafka broker for testing, you need to override their version used by Spring Boot dependency management; set the `kafka.version` property.
+
+Or, to use a different Spring for Apache Kafka version with a supported Spring Boot version, set the `spring-kafka.version` property.
 
 ====
 [source, xml, subs="+attributes", role="primary"]
 .Maven
 ----
 <properties>
-    <kafka.version>3.3.1</kafka.version>
+    <kafka.version>3.4.0</kafka.version>
+    <spring-kafka.version>{project-version}</spring-kafka.version>
 </properties>
 
 <dependency>
@@ -32,17 +35,13 @@ If you wish to use a different version of `kafka-clients` or `kafka-streams`, an
 [source, groovy, subs="+attributes", role="secondary"]
 .Gradle
 ----
-ext['kafka.version'] = '3.2.3'
+ext['kafka.version'] = '3.4.0'
+ext['spring-kafka.version'] = '{project-version}'
 
 dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
-    implementation "org.apache.kafka:kafka-streams" // optional - only needed when using kafka-streams
-    testImplementation ('org.springframework.kafka:spring-kafka-test') {
-            // needed if downgrading to Apache Kafka 2.8.1
-            exclude group: 'org.apache.zookeeper', module: 'zookeeper'
-        }
-    testImplementation "org.apache.kafka:kafka-clients:${kafka.version}:test"
-    testImplementation "org.apache.kafka:kafka_2.13:${kafka.version}:test"
+    implementation 'org.apache.kafka:kafka-streams' // optional - only needed when using kafka-streams
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
 ----
 ====

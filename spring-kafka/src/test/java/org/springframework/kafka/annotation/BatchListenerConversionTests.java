@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -173,7 +173,7 @@ public class BatchListenerConversionTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory(embeddedKafka));
 			factory.setBatchListener(true);
-			factory.setMessageConverter(new BatchMessagingMessageConverter(converter()));
+			factory.setBatchMessageConverter(new BatchMessagingMessageConverter(converter()));
 			factory.setReplyTemplate(template(embeddedKafka));
 			DefaultErrorHandler eh = new DefaultErrorHandler(new DeadLetterPublishingRecoverer(template));
 			factory.setCommonErrorHandler(eh);

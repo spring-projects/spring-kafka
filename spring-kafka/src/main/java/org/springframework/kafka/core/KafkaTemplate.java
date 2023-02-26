@@ -176,10 +176,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush setting.
 	 * <p>
-	 * Set autoFlush to {@code true} if you have configured the producer's
-	 * {@code linger.ms} to a non-default value and wish send operations on this template
-	 * to occur immediately, regardless of that setting, or if you wish to block until the
-	 * broker has acknowledged receipt according to the producer's {@code acks} property.
+	 * Set autoFlush to {@code true} if you wish for the send operations on this template
+	 * to occur immediately, regardless of the {@code linger.ms} or {@code batch.size}
+	 * property values. This will also block until the broker has acknowledged receipt
+	 * according to the producer's {@code acks} property.
 	 * @param producerFactory the producer factory.
 	 * @param autoFlush true to flush after each send.
 	 * @see Producer#flush()
@@ -191,20 +191,18 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush setting.
 	 * <p>
-	 * Set autoFlush to {@code true} if you have configured the producer's
-	 * {@code linger.ms} to a non-default value and wish send operations on this template
-	 * to occur immediately, regardless of that setting, or if you wish to block until the
-	 * broker has acknowledged receipt according to the producer's {@code acks} property.
-	 * If the configOverrides is not null or empty, a new
-	 * {@link ProducerFactory} will be created using
+	 * Set autoFlush to {@code true} if you wish for the send operations on this template
+	 * to occur immediately, regardless of the {@code linger.ms} or {@code batch.size}
+	 * property values. This will also block until the broker has acknowledged receipt
+	 * according to the producer's {@code acks} property. If the configOverrides is not
+	 * null or empty, a new {@link ProducerFactory} will be created using
 	 * {@link org.springframework.kafka.core.ProducerFactory#copyWithConfigurationOverride(java.util.Map)}
-	 * The factory shall apply the overrides after the supplied factory's properties.
-	 * The {@link org.springframework.kafka.core.ProducerPostProcessor}s from the
-	 * original factory are copied over to keep instrumentation alive.
-	 * Registered {@link org.springframework.kafka.core.ProducerFactory.Listener}s are
-	 * also added to the new factory. If the factory implementation does not support
-	 * the copy operation, a generic copy of the ProducerFactory is created which will
-	 * be of type
+	 * The factory shall apply the overrides after the supplied factory's properties. The
+	 * {@link org.springframework.kafka.core.ProducerPostProcessor}s from the original
+	 * factory are copied over to keep instrumentation alive. Registered
+	 * {@link org.springframework.kafka.core.ProducerFactory.Listener}s are also added to
+	 * the new factory. If the factory implementation does not support the copy operation,
+	 * a generic copy of the ProducerFactory is created which will be of type
 	 * DefaultKafkaProducerFactory.
 	 * @param producerFactory the producer factory.
 	 * @param autoFlush true to flush after each send.

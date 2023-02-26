@@ -1509,6 +1509,9 @@ public KafkaListenerContainerFactory<?> batchFactory() {
 NOTE: Starting with version 2.8, you can override the factory's `batchListener` propery using the `batch` property on the `@KafkaListener` annotation.
 This, together with the changes to <<error-handlers>> allows the same factory to be used for both record and batch listeners.
 
+NOTE: Starting with version 2.9.6, the container factory has separate setters for the `recordMessageConverter` and `batchMessageConverter` properties.
+Previously, there was only one property `messageConverter` which applied to both record and batch listeners.
+
 The following example shows how to receive a list of payloads:
 
 ====
@@ -4395,7 +4398,7 @@ public KafkaListenerContainerFactory<?> kafkaJsonListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
-    factory.setMessageConverter(new JsonMessageConverter());
+    factory.setRecordMessageConverter(new JsonMessageConverter());
     return factory;
 }
 ...
@@ -4677,7 +4680,7 @@ public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
             new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
     factory.setBatchListener(true);
-    factory.setMessageConverter(new BatchMessagingMessageConverter(converter()));
+    factory.setBatchMessageConverter(new BatchMessagingMessageConverter(converter()));
     return factory;
 }
 
@@ -5341,7 +5344,7 @@ handler.setBackOffFunction((record, ex) -> { ... });
 If the function returns `null`, the handler's default `BackOff` will be used.
 
 Set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
-By default, the exception type is not considered.
+When `false` (the default before version 2.9), the exception type is not considered.
 
 Starting with version 2.9, this is now `true` by default.
 

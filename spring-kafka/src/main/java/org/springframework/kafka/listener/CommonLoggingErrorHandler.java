@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,12 +47,13 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 		this.ackAfterHandle = ackAfterHandle;
 	}
 
+
 	@Override
-	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
-	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+	public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		LOGGER.error(thrownException, () -> "Error occured while processing: " + KafkaUtils.format(record));
+		return true;
 	}
 
 	@Override

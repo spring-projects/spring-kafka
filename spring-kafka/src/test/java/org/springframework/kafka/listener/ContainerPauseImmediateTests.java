@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ public class ContainerPauseImmediateTests {
 		inOrder.verify(this.consumer).assign(any(Collection.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(this.consumer).pause(any());
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+		inOrder.verify(this.consumer).poll(Duration.ZERO);
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux");
 		this.registry.getListenerContainer("id").resume();
@@ -178,7 +178,7 @@ public class ContainerPauseImmediateTests {
 						}
 						return new ConsumerRecords(Collections.emptyMap());
 				}
-			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
+			}).given(consumer).poll(any());
 			List<TopicPartition> paused = new ArrayList<>();
 			willAnswer(i -> {
 				this.commitLatch.countDown();
@@ -209,6 +209,7 @@ public class ContainerPauseImmediateTests {
 			factory.setConsumerFactory(consumerFactory(registry));
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			factory.getContainerProperties().setPauseImmediate(true);
+			factory.getContainerProperties().setPollTimeoutWhilePaused(Duration.ZERO);
 			return factory;
 		}
 

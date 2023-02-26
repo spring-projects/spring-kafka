@@ -18,40 +18,34 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.BDDMockito.willReturn;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -61,7 +55,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -73,18 +67,11 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@SuppressWarnings("deprecation")
-public class DefaultErrorHandlerNoSeeksBatchListenerTests {
-
-	private static final String CONTAINER_ID = "container";
+public class LoggingErrorHandlerTests {
 
 	@SuppressWarnings("rawtypes")
 	@Autowired
 	private Consumer consumer;
-
-	@SuppressWarnings("rawtypes")
-	@Autowired
-	private Producer producer;
 
 	@Autowired
 	private Config config;
@@ -92,61 +79,46 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 	@Autowired
 	private KafkaListenerEndpointRegistry registry;
 
-	/*
-	 * Deliver 6 records from three partitions, fail on the second record second
-	 * partition.
-	 */
 	@SuppressWarnings("unchecked")
 	@Test
-	void retriesWithNoSeeksBatchListener() throws Exception {
+	public void noPauseAfterHandle(@Autowired CommonLoggingErrorHandler eh) throws Exception {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		InOrder inOrder = inOrder(this.consumer, this.producer);
-		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
-		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
-		offsets.put(new TopicPartition("foo", 0), new OffsetAndMetadata(2L));
-		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(1L));
-		inOrder.verify(this.consumer).commitSync(offsets, Duration.ofSeconds(60));
-		inOrder.verify(this.consumer).pause(any());
-		inOrder.verify(this.consumer).poll(Duration.ZERO);
-		offsets = new LinkedHashMap<>();
-		offsets.put(new TopicPartition("foo", 1), new OffsetAndMetadata(2L));
-		offsets.put(new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
-		inOrder.verify(this.consumer).commitSync(offsets, Duration.ofSeconds(60));
-		inOrder.verify(this.consumer).resume(any());
-		assertThat(this.config.ehException).isInstanceOf(ListenerExecutionFailedException.class);
-		assertThat(((ListenerExecutionFailedException) this.config.ehException).getGroupId()).isEqualTo(CONTAINER_ID);
-		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "qux", "qux", "fiz", "buz");
+		assertThat(this.config.count).isEqualTo(6);
+		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "fiz", "buz");
+		verify(this.consumer, never()).seek(any(), anyLong());
+		verify(this.consumer, never()).pause(any());
+		verify(this.consumer, never()).poll(Duration.ZERO);
+		verify(eh).handleOne(any(), any(), any(), any());
 	}
 
 	@Configuration
 	@EnableKafka
 	public static class Config {
 
-		final CountDownLatch pollLatch = new CountDownLatch(1);
+		final List<String> contents = new ArrayList<>();
 
-		final CountDownLatch deliveryLatch = new CountDownLatch(2);
+		final CountDownLatch pollLatch = new CountDownLatch(4);
+
+		final CountDownLatch deliveryLatch = new CountDownLatch(6);
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 
-		final CountDownLatch commitLatch = new CountDownLatch(2);
+		final CountDownLatch commitLatch = new CountDownLatch(6);
 
-		final AtomicBoolean fail = new AtomicBoolean(true);
+		int count;
 
-		final List<String> contents = new ArrayList<>();
-
-		volatile Exception ehException;
-
-		@KafkaListener(id = CONTAINER_ID, topics = "foo")
-		public void foo(List<String> in) {
-			this.contents.addAll(in);
+		@KafkaListener(groupId = "grp",
+				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
+						partitions = "#{'0,1,2'.split(',')}"))
+		public void foo(String in) {
+			this.contents.add(in);
 			this.deliveryLatch.countDown();
-			if (this.fail.getAndSet(false)) {
-				throw new BatchListenerFailedException("test", 3);
+			if (++this.count == 4) { // part 1, offset 1
+				throw new RuntimeException("foo");
 			}
 		}
 
@@ -155,7 +127,7 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 		public ConsumerFactory consumerFactory() {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
-			given(consumerFactory.createConsumer(CONTAINER_ID, "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+			given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
 				.willReturn(consumer);
 			return consumerFactory;
 		}
@@ -167,11 +139,6 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 			final TopicPartition topicPartition0 = new TopicPartition("foo", 0);
 			final TopicPartition topicPartition1 = new TopicPartition("foo", 1);
 			final TopicPartition topicPartition2 = new TopicPartition("foo", 2);
-			willAnswer(i -> {
-				((ConsumerRebalanceListener) i.getArgument(1)).onPartitionsAssigned(
-						Collections.singletonList(topicPartition1));
-				return null;
-			}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 			Map<TopicPartition, List<ConsumerRecord>> records1 = new LinkedHashMap<>();
 			records1.put(topicPartition0, Arrays.asList(
 					new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
@@ -201,9 +168,10 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return ConsumerRecords.empty();
 				}
 			}).given(consumer).poll(any());
+			List<TopicPartition> paused = new ArrayList<>();
 			willAnswer(i -> {
 				this.commitLatch.countDown();
 				return null;
@@ -212,47 +180,36 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			willReturn(new ConsumerGroupMetadata(CONTAINER_ID)).given(consumer).groupMetadata();
+			willAnswer(i -> {
+				paused.addAll(i.getArgument(0));
+				return null;
+			}).given(consumer).pause(any());
+			willAnswer(i -> {
+				return new HashSet<>(paused);
+			}).given(consumer).paused();
+			willAnswer(i -> {
+				paused.removeAll(i.getArgument(0));
+				return null;
+			}).given(consumer).resume(any());
 			return consumer;
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
+		ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory(CommonLoggingErrorHandler eh) {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setBatchListener(true);
+			factory.getContainerProperties().setAckMode(AckMode.RECORD);
+			factory.getContainerProperties().setDeliveryAttemptHeader(true);
 			factory.getContainerProperties().setPollTimeoutWhilePaused(Duration.ZERO);
-			DefaultErrorHandler eh = new DefaultErrorHandler() {
-
-				@Override
-				public <K, V> ConsumerRecords<K, V> handleBatchAndReturnRemaining(Exception thrownException,
-						ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container,
-						Runnable invokeListener) {
-
-					Config.this.ehException = thrownException;
-					return super.handleBatchAndReturnRemaining(thrownException, data, consumer, container, invokeListener);
-				}
-
-			};
-			eh.setSeekAfterError(false);
 			factory.setCommonErrorHandler(eh);
 			return factory;
 		}
 
-		@SuppressWarnings("rawtypes")
 		@Bean
-		public ProducerFactory producerFactory() {
-			ProducerFactory pf = mock(ProducerFactory.class);
-			given(pf.createProducer(isNull())).willReturn(producer());
-			given(pf.transactionCapable()).willReturn(true);
-			return pf;
-		}
-
-		@SuppressWarnings("rawtypes")
-		@Bean
-		public Producer producer() {
-			return mock(Producer.class);
+		CommonLoggingErrorHandler eh() {
+			CommonLoggingErrorHandler eh = spy(new CommonLoggingErrorHandler());
+			return eh;
 		}
 
 	}
