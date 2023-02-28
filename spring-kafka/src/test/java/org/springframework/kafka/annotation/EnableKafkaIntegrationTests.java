@@ -651,6 +651,11 @@ public class EnableKafkaIntegrationTests {
 		assertThat(list.get(0)).isInstanceOf(Message.class);
 		Message<?> m = (Message<?>) list.get(0);
 		assertThat(m.getPayload()).isInstanceOf(String.class);
+		assertThat(this.listener.latch14a.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.payload2).isInstanceOf(List.class);
+		list = (List<?>) this.listener.payload2;
+		assertThat(list.size()).isGreaterThan(0);
+		assertThat(list.get(0)).isInstanceOf(Message.class);
 	}
 
 	@Test
@@ -1807,6 +1812,8 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch latch14 = new CountDownLatch(1);
 
+		final CountDownLatch latch14a = new CountDownLatch(1);
+
 		final CountDownLatch latch15 = new CountDownLatch(1);
 
 		final CountDownLatch latch16 = new CountDownLatch(1);
@@ -1844,6 +1851,8 @@ public class EnableKafkaIntegrationTests {
 		volatile Acknowledgment ack;
 
 		volatile Object payload;
+
+		volatile Object payload2;
 
 		volatile Exception validationException;
 
@@ -2081,6 +2090,12 @@ public class EnableKafkaIntegrationTests {
 		public void listen14(List<Message<?>> list) {
 			this.payload = list;
 			this.latch14.countDown();
+		}
+
+		@KafkaListener(id = "list5a", topics = "annotated18", containerFactory = "batchFactory")
+		public void listen14a(List<? extends Message<?>> list) {
+			this.payload2 = list;
+			this.latch14a.countDown();
 		}
 
 		@KafkaListener(id = "list6", topics = "annotated19", containerFactory = "batchManualFactory2")

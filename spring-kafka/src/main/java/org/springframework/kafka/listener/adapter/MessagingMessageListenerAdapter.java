@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -683,11 +683,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				this.isConsumerRecordList = paramType.equals(ConsumerRecord.class)
 						|| (isSimpleListOfConsumerRecord(paramType)
 						|| isListOfConsumerRecordUpperBounded(paramType));
-				boolean messageHasGeneric = paramType instanceof ParameterizedType pType
-						&& pType.getRawType().equals(Message.class);
-				this.isMessageList = paramType.equals(Message.class) || messageHasGeneric;
-				if (messageHasGeneric) {
-					genericParameterType = ((ParameterizedType) paramType).getActualTypeArguments()[0];
+				boolean messageWithGeneric = isMessageWithGeneric(paramType);
+				this.isMessageList = paramType.equals(Message.class) || messageWithGeneric;
+				if (messageWithGeneric) {
+					genericParameterType = messagePayloadType(paramType);
 				}
 			}
 			else {
@@ -695,6 +694,24 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 		return genericParameterType;
+	}
+
+	private Type messagePayloadType(Type paramType) {
+		if (paramType instanceof ParameterizedType pType) {
+			return pType.getActualTypeArguments()[0];
+		}
+		else {
+			return ((ParameterizedType) ((WildcardType) paramType).getUpperBounds()[0]).getActualTypeArguments()[0];
+		}
+	}
+
+	private boolean isMessageWithGeneric(Type paramType) {
+		boolean messageHasGeneric = (paramType instanceof ParameterizedType pType
+				&& pType.getRawType().equals(Message.class))
+				|| (isWildCardWithUpperBound(paramType)
+						&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType wildCardZero
+						&& wildCardZero.getRawType().equals(Message.class));
+		return messageHasGeneric;
 	}
 
 	private boolean isSimpleListOfConsumerRecord(Type paramType) {
