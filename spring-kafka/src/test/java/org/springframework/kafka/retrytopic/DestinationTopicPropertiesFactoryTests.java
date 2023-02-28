@@ -511,6 +511,7 @@ class DestinationTopicPropertiesFactoryTests {
 			Long expectedDelay, String expectedSuffix, boolean expectedReusableTopic,
 			boolean expectedIsSingleTopicRetry) {
 		assertThat(topicProperties.suffix()).isEqualTo(expectedSuffix);
+		assertThat(topicProperties.isRetryTopic()).isTrue();
 		DestinationTopic topic = new DestinationTopic("irrelevant" + topicProperties.suffix(), topicProperties);
 		assertThat(topic.isDltTopic()).isFalse();
 		assertThat(topic.isSingleTopicRetry()).isEqualTo(expectedIsSingleTopicRetry);

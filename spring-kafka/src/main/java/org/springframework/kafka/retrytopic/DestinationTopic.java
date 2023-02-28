@@ -225,7 +225,8 @@ public class DestinationTopic {
 		}
 
 		public boolean isRetryTopic() {
-			return Type.RETRY.equals(this.type) || Type.SINGLE_TOPIC_RETRY.equals(this.type);
+			return Type.RETRY.equals(this.type) || Type.SINGLE_TOPIC_RETRY.equals(this.type)
+					|| Type.REUSABLE_RETRY_TOPIC.equals(this.type);
 		}
 
 		public String suffix() {
