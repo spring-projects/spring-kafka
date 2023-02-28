@@ -39,6 +39,7 @@ import org.springframework.retry.annotation.Backoff;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Fabio da Silva Jr.
+ * @author João Lima
  * @since 2.7
  *
  * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
@@ -181,6 +182,10 @@ public @interface RetryableTopic {
 
 	/**
 	 * Topic reuse strategy for sequential attempts made with a same backoff interval.
+	 *
+	 * <p>Note: for fixed backoffs, when this is configured as
+	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}, it has precedence over
+	 * the configuration in {@link #fixedDelayTopicStrategy()}.
 	 * @return the strategy.
 	 */
 	SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy() default SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
@@ -194,9 +199,9 @@ public @interface RetryableTopic {
 	/**
 	 * Whether to use a single or multiple topics when using a fixed delay.
 	 * @return the fixed delay strategy.
-	 * @deprecated in a future release, will be replaced by {@link #sameIntervalTopicReuseStrategy()}.
+	 * @deprecated in favor of {@link #sameIntervalTopicReuseStrategy()}.
 	 */
-	@Deprecated(forRemoval = true) // in 3.1
+	@Deprecated
 	FixedDelayStrategy fixedDelayTopicStrategy() default FixedDelayStrategy.MULTIPLE_TOPICS;
 
 	/**

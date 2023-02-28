@@ -239,6 +239,48 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	void shouldCreateOneRetryPropertyForFixedBackoffWithSingleTopicSameIntervalReuseStrategy() {
+
+		// when
+		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
+		backOffPolicy.setBackOffPeriod(1000);
+		int maxAttempts = 5;
+
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+
+		List<DestinationTopic.Properties> propertiesList =
+				new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
+						classifier, numPartitions, kafkaOperations, FixedDelayStrategy.MULTIPLE_TOPICS,
+						dltStrategy, suffixWithDelayValueSuffixingStrategy, singleTopicSameIntervalReuseStrategy,
+						-1).createProperties();
+
+		List<DestinationTopic> destinationTopicList = propertiesList
+				.stream()
+				.map(properties -> new DestinationTopic("mainTopic" + properties.suffix(), properties))
+				.collect(Collectors.toList());
+
+		// then
+		assertThat(propertiesList.size() == 3).isTrue();
+
+		DestinationTopic mainDestinationTopic = destinationTopicList.get(0);
+		assertThat(mainDestinationTopic.isMainTopic()).isTrue();
+
+		DestinationTopic.Properties firstRetryProperties = propertiesList.get(1);
+		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix);
+		DestinationTopic retryDestinationTopic = destinationTopicList.get(1);
+		assertThat(retryDestinationTopic.isSingleTopicRetry()).isTrue();
+		assertThat(retryDestinationTopic.isReusableRetryTopic()).isFalse();
+		assertThat(retryDestinationTopic.getDestinationDelay()).isEqualTo(1000);
+
+		DestinationTopic.Properties dltProperties = propertiesList.get(2);
+		assertThat(dltProperties.suffix()).isEqualTo(dltSuffix);
+		assertThat(dltProperties.isDltTopic()).isTrue();
+		DestinationTopic dltTopic = destinationTopicList.get(2);
+		assertThat(dltTopic.getDestinationDelay()).isEqualTo(0);
+		assertThat(dltTopic.getDestinationPartitions()).isEqualTo(numPartitions);
+	}
+
+	@Test
 	void shouldCreateRetryPropertiesForFixedBackoffWithMultiTopicStrategy() {
 
 		// when

@@ -72,7 +72,14 @@ public class DestinationTopic {
 		return Type.REUSABLE_RETRY_TOPIC.equals(this.properties.type);
 	}
 
-	@Deprecated(forRemoval = true) // in 3.1
+	/**
+	 * Whether this is a single retry topic.
+	 *
+	 * @return whether this is a single retry topic.
+	 * @deprecated in favor of using {@link DestinationTopic.Type#REUSABLE_RETRY_TOPIC}
+	 * and {@link #isReusableRetryTopic()}.
+	 */
+	@Deprecated
 	public boolean isSingleTopicRetry() {
 		return Type.SINGLE_TOPIC_RETRY.equals(this.properties.type);
 	}

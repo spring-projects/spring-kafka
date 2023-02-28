@@ -245,6 +245,11 @@ public class RetryTopicConfigurationBuilder {
 
 	/**
 	 * Configure the {@link SameIntervalTopicReuseStrategy}.
+	 *
+	 * <p>Note: for fixed backoffs, when this is configured as
+	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}, it has precedence over
+	 * the configuration done through
+	 * {@link #useSingleTopicForFixedDelays(FixedDelayStrategy)}.
 	 * @param sameIntervalTopicReuseStrategy the strategy.
 	 * @return the builder.
 	 */
@@ -404,10 +409,10 @@ public class RetryTopicConfigurationBuilder {
 	/**
 	 * Configure the use of a single retry topic with fixed delays.
 	 * @return the builder.
-	 * @deprecated in a future release, configuration for single retry topic with fixed delays will have to be done with {@link #useSingleTopicForSameIntervals()}.
+	 * @deprecated in favor of {@link #useSingleTopicForSameIntervals()}.
 	 * @see FixedDelayStrategy#SINGLE_TOPIC
 	 */
-	@Deprecated(forRemoval = true) // in 3.1
+	@Deprecated
 	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays() {
 		this.fixedDelayStrategy = FixedDelayStrategy.SINGLE_TOPIC;
 		return this;
@@ -418,9 +423,10 @@ public class RetryTopicConfigurationBuilder {
 	 * {@link FixedDelayStrategy#MULTIPLE_TOPICS}.
 	 * @param delayStrategy the delay strategy.
 	 * @return the builder.
-	 * @deprecated in a future release, retry topic reuse configuration for fixed delays will have to be done with {@link #sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy)}.
+	 * @deprecated in favor of
+	 * {@link #sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy)}.
 	 */
-	@Deprecated(forRemoval = true) // in 3.1
+	@Deprecated
 	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(FixedDelayStrategy delayStrategy) {
 		this.fixedDelayStrategy = delayStrategy;
 		return this;

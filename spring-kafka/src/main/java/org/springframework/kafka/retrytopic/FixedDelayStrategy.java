@@ -22,10 +22,10 @@ package org.springframework.kafka.retrytopic;
  *
  * @author Tomaz Fernandes
  * @since 2.7
- * @deprecated in a future release, will be replaced by {@link SameIntervalTopicReuseStrategy}.
+ * @deprecated in favor of {@link SameIntervalTopicReuseStrategy}.
  *
  */
-@Deprecated(forRemoval = true) // in 3.1
+@Deprecated
 public enum FixedDelayStrategy {
 
 	/**

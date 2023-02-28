@@ -129,7 +129,7 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private boolean isSingleTopicFixedDelay() {
-		return isFixedDelay() && isSingleTopicStrategy();
+		return isFixedDelay() && (isSingleTopicStrategy() || isSingleTopicSameIntervalTopicReuseStrategy());
 	}
 
 	private boolean isSingleTopicStrategy() {
