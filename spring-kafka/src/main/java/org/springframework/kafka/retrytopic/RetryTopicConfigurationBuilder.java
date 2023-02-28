@@ -71,6 +71,7 @@ public class RetryTopicConfigurationBuilder {
 	@Nullable
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
+	@SuppressWarnings("deprecation")
 	private FixedDelayStrategy fixedDelayStrategy = FixedDelayStrategy.MULTIPLE_TOPICS;
 
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;

@@ -55,6 +55,7 @@ public class DestinationTopicPropertiesFactory {
 
 	private final KafkaOperations<?, ?> kafkaOperations;
 
+	@SuppressWarnings("deprecation")
 	private final FixedDelayStrategy fixedDelayStrategy;
 
 	private final DltStrategy dltStrategy;
@@ -68,6 +69,7 @@ public class DestinationTopicPropertiesFactory {
 	@Nullable
 	private Boolean autoStartDltHandler;
 
+	@SuppressWarnings("deprecation")
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,
 			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
@@ -91,6 +93,7 @@ public class DestinationTopicPropertiesFactory {
 		this.maxAttempts = this.backOffValues.size() + 1;
 	}
 
+	@SuppressWarnings("deprecation")
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,
 			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
@@ -132,6 +135,7 @@ public class DestinationTopicPropertiesFactory {
 		return isFixedDelay() && (isSingleTopicStrategy() || isSingleTopicSameIntervalTopicReuseStrategy());
 	}
 
+	@SuppressWarnings("deprecation")
 	private boolean isSingleTopicStrategy() {
 		return FixedDelayStrategy.SINGLE_TOPIC.equals(this.fixedDelayStrategy);
 	}
@@ -197,6 +201,7 @@ public class DestinationTopicPropertiesFactory {
 		return (attempt, throwable) -> attempt < this.maxAttempts && this.exceptionClassifier.classify(throwable);
 	}
 
+	@SuppressWarnings("deprecation")
 	private DestinationTopic.Properties createRetryProperties(int index,
 															BiPredicate<Integer, Throwable> shouldRetryOn) {
 		int indexInBackoffValues = index - 1;

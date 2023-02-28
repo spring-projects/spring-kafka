@@ -51,6 +51,7 @@ class DestinationTopicPropertiesFactoryTests {
 
 	private final int numPartitions = 0;
 
+	@SuppressWarnings("deprecation")
 	private final FixedDelayStrategy fixedDelayStrategy =
 			FixedDelayStrategy.SINGLE_TOPIC;
 
@@ -125,6 +126,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldCreateTwoRetryPropertiesForMultipleBackoffValues() {
 		// when
 		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
@@ -197,6 +199,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldCreateOneRetryPropertyForFixedBackoffWithSingleTopicStrategy() {
 
 		// when
@@ -239,6 +242,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldCreateOneRetryPropertyForFixedBackoffWithSingleTopicSameIntervalReuseStrategy() {
 
 		// when
@@ -281,6 +285,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldCreateRetryPropertiesForFixedBackoffWithMultiTopicStrategy() {
 
 		// when
@@ -331,6 +336,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldSuffixRetryTopicsWithIndexIfSuffixWithIndexStrategy() {
 
 		// setup
@@ -352,6 +358,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldSuffixRetryTopicsWithIndexIfFixedDelayWithMultipleTopics() {
 
 		// setup
@@ -375,6 +382,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldSuffixRetryTopicsWithMixedIfMaxDelayReached() {
 
 		// setup
@@ -405,6 +413,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldReuseRetryTopicsIfMaxDelayReachedWithDelayValueSuffixingStrategy() {
 
 		// setup
@@ -434,6 +443,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldReuseRetryTopicsIfMaxDelayReachedWithIndexValueSuffixingStrategy() {
 
 		// setup
@@ -463,6 +473,7 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	void shouldNotReuseRetryTopicsIfRepeatedIntervalsAreInTheMiddleOfChain() {
 
 		// setup
@@ -489,6 +500,7 @@ class DestinationTopicPropertiesFactoryTests {
 		assertThat(propertiesList.get(6).suffix()).isEqualTo(dltSuffix);
 	}
 
+	@SuppressWarnings("deprecation")
 	private void assertRetryTopic(DestinationTopic.Properties topicProperties, int maxAttempts,
 			Long expectedDelay, String expectedSuffix, boolean expectedReusableTopic,
 			boolean expectedIsSingleTopicRetry) {

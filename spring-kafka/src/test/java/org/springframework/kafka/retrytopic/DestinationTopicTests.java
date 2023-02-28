@@ -117,6 +117,7 @@ public class DestinationTopicTests {
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
 					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
 
+	@SuppressWarnings("deprecation")
 	protected DestinationTopic.Properties singleFixedRetryTopicProps4 =
 			new DestinationTopic.Properties(1000, retrySuffix, DestinationTopic.Type.SINGLE_TOPIC_RETRY, 4, 1,
 					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
