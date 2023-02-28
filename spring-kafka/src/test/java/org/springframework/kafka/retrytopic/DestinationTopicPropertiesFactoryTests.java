@@ -227,7 +227,7 @@ class DestinationTopicPropertiesFactoryTests {
 		assertThat(firstRetryProperties.suffix()).isEqualTo(retryTopicSuffix);
 		DestinationTopic retryDestinationTopic = destinationTopicList.get(1);
 		assertThat(retryDestinationTopic.isSingleTopicRetry()).isTrue();
-		assertThat(retryDestinationTopic.isReusableRetryTopic()).isTrue();
+		assertThat(retryDestinationTopic.isReusableRetryTopic()).isFalse();
 		assertThat(retryDestinationTopic.getDestinationDelay()).isEqualTo(1000);
 
 		DestinationTopic.Properties dltProperties = propertiesList.get(2);

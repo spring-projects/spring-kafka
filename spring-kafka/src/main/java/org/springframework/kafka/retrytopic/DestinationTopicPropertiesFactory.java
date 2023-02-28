@@ -184,13 +184,13 @@ public class DestinationTopicPropertiesFactory {
 
 	private DestinationTopic.Properties createMainTopicProperties() {
 		return new DestinationTopic.Properties(0, MAIN_TOPIC_SUFFIX, DestinationTopic.Type.MAIN, this.maxAttempts,
-				this.numPartitions, this.dltStrategy, this.kafkaOperations, getShouldRetryOn(), this.timeout, 0);
+				this.numPartitions, this.dltStrategy, this.kafkaOperations, getShouldRetryOn(), this.timeout);
 	}
 
 	private DestinationTopic.Properties createDltProperties() {
 		return new DestinationTopic.Properties(0, this.destinationTopicSuffixes.getDltSuffix(),
 				DestinationTopic.Type.DLT, this.maxAttempts, this.numPartitions, this.dltStrategy,
-				this.kafkaOperations, (a, e) -> false, this.timeout, this.autoStartDltHandler, null);
+				this.kafkaOperations, (a, e) -> false, this.timeout, this.autoStartDltHandler);
 	}
 
 	private BiPredicate<Integer, Throwable> getShouldRetryOn() {
@@ -201,9 +201,11 @@ public class DestinationTopicPropertiesFactory {
 															BiPredicate<Integer, Throwable> shouldRetryOn) {
 		int indexInBackoffValues = index - 1;
 		Long thisBackOffValue = this.backOffValues.get(indexInBackoffValues);
-		DestinationTopic.Type topicTypeToUse = isDelayWithReusedTopic(thisBackOffValue)
-			? Type.REUSABLE_RETRY_TOPIC
-			: Type.RETRY;
+		DestinationTopic.Type topicTypeToUse = isSingleTopicFixedDelay()
+			? Type.SINGLE_TOPIC_RETRY
+			: isDelayWithReusedTopic(thisBackOffValue)
+				? Type.REUSABLE_RETRY_TOPIC
+				: Type.RETRY;
 		return createProperties(topicTypeToUse, shouldRetryOn, indexInBackoffValues,
 				getTopicSuffix(indexInBackoffValues, thisBackOffValue));
 	}
@@ -255,7 +257,7 @@ public class DestinationTopicPropertiesFactory {
 														String suffix) {
 		return new DestinationTopic.Properties(this.backOffValues.get(indexInBackoffValues), suffix,
 				topicType, this.maxAttempts, this.numPartitions, this.dltStrategy,
-				this.kafkaOperations, shouldRetryOn, this.timeout, indexInBackoffValues + 1);
+				this.kafkaOperations, shouldRetryOn, this.timeout);
 	}
 
 	private boolean isFixedDelay() {

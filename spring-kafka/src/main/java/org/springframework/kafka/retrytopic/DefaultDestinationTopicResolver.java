@@ -134,7 +134,8 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	}
 
 	private DestinationTopic resolveRetryDestination(DestinationTopicHolder destinationTopicHolder) {
-		return destinationTopicHolder.getSourceDestination().isReusableRetryTopic()
+		return ((destinationTopicHolder.getSourceDestination().isReusableRetryTopic()) ||
+				(destinationTopicHolder.getSourceDestination().isSingleTopicRetry()))
 				? destinationTopicHolder.getSourceDestination()
 				: destinationTopicHolder.getNextDestination();
 	}

@@ -70,6 +70,7 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		defaultDestinationTopicContainer.addDestinationTopics("id", allSecondDestinationTopics);
 		defaultDestinationTopicContainer.addDestinationTopics("id", allThirdDestinationTopics);
 		defaultDestinationTopicContainer.addDestinationTopics("id", allFourthDestinationTopics);
+		defaultDestinationTopicContainer.addDestinationTopics("id", allFifthDestinationTopics);
 
 	}
 
@@ -112,6 +113,18 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic("id", singleFixedRetryDestinationTopic4.getDestinationName(), maxAttempts,
 						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(dltDestinationTopic4);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", mainDestinationTopic5.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(reusableRetryDestinationTopic5);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", reusableRetryDestinationTopic5.getDestinationName(), maxAttempts - 1,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(reusableRetryDestinationTopic5);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", reusableRetryDestinationTopic5.getDestinationName(), maxAttempts,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(dltDestinationTopic5);
 	}
 
 	@Test
@@ -212,7 +225,7 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		destinationResolver.addDestinationTopics("id", allFirstDestinationsTopics);
 
 		List<DestinationTopic> destinationTopics = Arrays
-				.asList(mainDestinationTopic4, singleFixedRetryDestinationTopic4, singleFixedRetryDestinationTopic4, dltDestinationTopic4);
+				.asList(mainDestinationTopic5, reusableRetryDestinationTopic5, reusableRetryDestinationTopic5, dltDestinationTopic5);
 
 		assertThatIllegalArgumentException().isThrownBy(
 				() -> destinationResolver.addDestinationTopics("id", destinationTopics))

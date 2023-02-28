@@ -74,8 +74,7 @@ public class DestinationTopic {
 
 	@Deprecated(forRemoval = true) // in 3.1
 	public boolean isSingleTopicRetry() {
-		return ((Type.REUSABLE_RETRY_TOPIC.equals(this.properties.type)) &&
-				(Integer.valueOf(1).equals(this.properties.firstAttemptIndex)));
+		return Type.SINGLE_TOPIC_RETRY.equals(this.properties.type);
 	}
 
 	public boolean isMainTopic() {
@@ -143,8 +142,6 @@ public class DestinationTopic {
 
 		private final long timeout;
 
-		private final Integer firstAttemptIndex;
-
 		@Nullable
 		private final Boolean autoStartDltHandler;
 
@@ -160,17 +157,15 @@ public class DestinationTopic {
 		 * @param kafkaOperations the {@link KafkaOperations}.
 		 * @param shouldRetryOn the exception classifications.
 		 * @param timeout the timeout.
-		 * @param firstAttemptIndex the first attempt this topic is used with.
 		 */
 		public Properties(long delayMs, String suffix, Type type,
 						int maxAttempts, int numPartitions,
 						DltStrategy dltStrategy,
 						KafkaOperations<?, ?> kafkaOperations,
-						BiPredicate<Integer, Throwable> shouldRetryOn, long timeout,
-						Integer firstAttemptIndex) {
+						BiPredicate<Integer, Throwable> shouldRetryOn, long timeout) {
 
 			this(delayMs, suffix, type, maxAttempts, numPartitions, dltStrategy, kafkaOperations, shouldRetryOn,
-					timeout, null, firstAttemptIndex);
+					timeout, null);
 		}
 
 		/**
@@ -183,7 +178,7 @@ public class DestinationTopic {
 		public Properties(Properties sourceProperties, String suffix, Type type) {
 			this(sourceProperties.delayMs, suffix, type, sourceProperties.maxAttempts, sourceProperties.numPartitions,
 					sourceProperties.dltStrategy, sourceProperties.kafkaOperations, sourceProperties.shouldRetryOn,
-					sourceProperties.timeout, null, sourceProperties.firstAttemptIndex);
+					sourceProperties.timeout, null);
 		}
 
 		/**
@@ -198,15 +193,13 @@ public class DestinationTopic {
 		 * @param shouldRetryOn the exception classifications.
 		 * @param timeout the timeout.
 		 * @param autoStartDltHandler whether or not to start the DLT handler.
-		 * @param firstAttemptIndex the first attempt this topic is used with.
 		 * @since 2.8
 		 */
 		public Properties(long delayMs, String suffix, Type type,
 				int maxAttempts, int numPartitions,
 				DltStrategy dltStrategy,
 				KafkaOperations<?, ?> kafkaOperations,
-				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler,
-				Integer firstAttemptIndex) {
+				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler) {
 
 			this.delayMs = delayMs;
 			this.suffix = suffix;
@@ -218,7 +211,6 @@ public class DestinationTopic {
 			this.shouldRetryOn = shouldRetryOn;
 			this.timeout = timeout;
 			this.autoStartDltHandler = autoStartDltHandler;
-			this.firstAttemptIndex = firstAttemptIndex;
 		}
 
 		public boolean isDltTopic() {
@@ -293,6 +285,14 @@ public class DestinationTopic {
 	}
 
 	enum Type {
-		MAIN, RETRY, REUSABLE_RETRY_TOPIC, DLT, NO_OPS
+		MAIN, RETRY,
+		/**
+		 * A single retry topic for all retries.
+		 *
+		 * @deprecated Use {@code REUSABLE_RETRY_TOPIC} instead.
+		 */
+		@Deprecated
+		SINGLE_TOPIC_RETRY,
+		REUSABLE_RETRY_TOPIC, DLT, NO_OPS
 	}
 }
