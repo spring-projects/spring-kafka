@@ -297,7 +297,10 @@ public class DestinationTopic {
 	}
 
 	enum Type {
-		MAIN, RETRY,
+		MAIN,
+
+		RETRY,
+
 		/**
 		 * A single retry topic for all retries.
 		 *
@@ -305,6 +308,17 @@ public class DestinationTopic {
 		 */
 		@Deprecated
 		SINGLE_TOPIC_RETRY,
-		REUSABLE_RETRY_TOPIC, DLT, NO_OPS
+
+		/**
+		 * A retry topic reused along sequential retries
+		 * with the same backoff interval.
+		 *
+		 * @since 3.0.4
+		 */
+		REUSABLE_RETRY_TOPIC,
+
+		DLT,
+
+		NO_OPS
 	}
 }

@@ -27,7 +27,7 @@ package org.springframework.kafka.retrytopic;
  * interval in the middle of the retry chain).
  *
  * @author João Lima
- * @since 3.1
+ * @since 3.0.4
  *
  */
 public enum SameIntervalTopicReuseStrategy {

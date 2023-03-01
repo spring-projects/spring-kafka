@@ -186,6 +186,7 @@ public @interface RetryableTopic {
 	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}, it has precedence over
 	 * the configuration in {@link #fixedDelayTopicStrategy()}.
 	 * @return the strategy.
+	 * @since 3.0.4
 	 */
 	SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy() default SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
 

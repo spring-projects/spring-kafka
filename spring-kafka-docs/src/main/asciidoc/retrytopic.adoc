@@ -651,7 +651,7 @@ IMPORTANT: Note that the blocking retries behavior is allowlist - you add the ex
 
 IMPORTANT: The non-blocking exception classification behavior also depends on the specific topic's configuration.
 
-==== Topic Amount
+==== Topic Naming
 
 Retry topics and DLT are named by suffixing the main topic with a provided or default value, appended by either the delay or index for that topic.
 
@@ -662,7 +662,7 @@ Examples:
 "my-other-topic" -> "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix".
 
 NOTE: The default behavior is to create separate retry topics for each attempt, appended with an index value: retry-0, retry-1, ..., retry-n.
-Therefore, by default the amount of retry topics is the configured `maxAttempts` minus 1.
+Therefore, by default the number of retry topics is the configured `maxAttempts` minus 1.
 
 You can <<retry-topics-and-dlt-suffixes,configure the suffixes>>, choose whether to append <<append-index-or-delay,the attempt index or delay>>, use a <<single-topic-fixed-delay,single retry topic when using fixed backoff>>, and use a <<single-topic-maxinterval-delay,single retry topic for the attempts with the maxInterval>> when using exponential backoffs.
 
@@ -775,7 +775,7 @@ This "final" retry topic will be suffixed with the provided or default suffix, a
 
 NOTE: By opting to use a single topic for the retries with the `maxInterval` delay, it may become more viable to configure an exponential retry policy that keeps retrying for a long time, because in this approach you do not need a large amount of topics.
 
-The default behavior is to work with an amount of retry topics equal to the configured `maxAttempts` minus 1, and when using exponential backoff, the retry topics are suffixed with the delay values, with the last retry topics (corresponding to the `maxInterval` delay) being suffixed with an additional index.
+The default behavior is to work with the number of retry topics equal to the configured `maxAttempts` minus 1 and, when using exponential backoff, the retry topics are suffixed with the delay values, with the last retry topic (corresponding to the `maxInterval` delay) being suffixed with an additional index.
 
 For instance, when configuring the exponential backoff with `initialInterval=1000`, `multiplier=2`, and `maxInterval=16000`, in order to keep trying for one hour, one would need to configure `maxAttempts` as 229, and by default the needed retry topics would be:
 
@@ -796,6 +796,8 @@ When using the strategy that reuses the retry topic for the same intervals, in t
 * -retry-4000
 * -retry-8000
 * -retry-16000
+
+This will be the default in a future release.
 
 ====
 [source, java]

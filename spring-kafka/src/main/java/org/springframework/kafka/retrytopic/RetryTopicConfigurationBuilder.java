@@ -253,6 +253,7 @@ public class RetryTopicConfigurationBuilder {
 	 * {@link #useSingleTopicForFixedDelays(FixedDelayStrategy)}.
 	 * @param sameIntervalTopicReuseStrategy the strategy.
 	 * @return the builder.
+	 * @since 3.0.4
 	 */
 	public RetryTopicConfigurationBuilder sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy) {
 		this.sameIntervalTopicReuseStrategy = sameIntervalTopicReuseStrategy;
@@ -262,13 +263,14 @@ public class RetryTopicConfigurationBuilder {
 	/**
 	 * Configure the use of a single retry topic
 	 * for the attempts that have the same backoff interval
-	 * (as long as these attempts are in the middle of the chain).
+	 * (as long as these attempts are in the end of the chain).
 	 *
 	 * Currently used only for the last retries of exponential backoff,
 	 * and in a future release this will dictate whether to use
 	 * a single retry topic for fixed backoff.
 	 *
 	 * @return the builder.
+	 * @since 3.0.4
 	 * @see SameIntervalTopicReuseStrategy
 	 *
 	 */
