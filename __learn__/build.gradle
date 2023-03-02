@@ -1,0 +1,20 @@
+buildscript {
+  ext.kotlinVersion = '1.7.20'
+  ext.isCI = System.getenv('GITHUB_ACTION') || System.getenv('bamboo_buildKey')
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+    maven { 
+      url 'https://repo.spring.io/plugins-release-local'
+    }
+    if (version.endsWith('SNAPSHOT')) {
+      maven {
+        url 'https://repo.spring.io/snapshot'
+      }
+    }
+  }
+  dependencies {
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
+  }
+}
