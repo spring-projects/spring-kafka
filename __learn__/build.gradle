@@ -1,0 +1,34 @@
+buildscript {
+  ext.kotlinVersion = '1.7.20'
+  ext.isCI = System.getenv('GITHUB_ACTION') || System.getenv('bamboo_buildKey')
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+    maven { 
+      url 'https://repo.spring.io/plugins-release-local'
+    }
+    if (version.endsWith('SNAPSHOT')) {
+      maven {
+        url 'https://repo.spring.io/snapshot'
+      }
+    }
+  }
+  dependencies {
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
+  }
+}
+
+plugins {
+  id 'base'
+  id 'project-report'
+  id 'idea'
+  id 'org.sonarqube' version '2.8'
+  id 'org.ajoberstar.grgit' version '4.0.1' apply false
+  id 'io.spring.nohttp' version '0.0.5.RELEASE'
+  id 'io.spring.dependency-management' version '1.0.10.RELEASE' apply false
+  id 'com.jfrog.artifactory' version '4.18.2' apply false
+  id 'org.asciidoctor.jvm.pdf' version '3.3.2'
+  id 'org.asciidocotr.jvm.gems' version '3.3.2'
+  id 'org.asciidoctor.jvm.convert' version '3.3.2'
+}
