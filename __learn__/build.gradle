@@ -32,3 +32,64 @@ plugins {
   id 'org.asciidocotr.jvm.gems' version '3.3.2'
   id 'org.asciidoctor.jvm.convert' version '3.3.2'
 }
+
+apply plugin: 'io.spring.nohttp'
+
+def gitPresent = new File('.git').exists()
+
+if(gitPresent) {
+  apply plugin: 'org.ajoberstar.grgit'
+}
+
+description = 'Spring for Apache Kafka'
+
+ext {
+  linkHomepage = 'https://github.com/spring-projects/spring-kafka'
+  linkCi = 'https://build.spring.io/browse/SK'
+  linkIssue = 'https://github.com/spring-projects/spring-kafka/issues'
+  linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
+  linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
+  linkScmDevConnection = 'https://github.com/spring-projects/spring-kafka.git'
+  springAsciidoctorBackendsValidation = '0.0.3'
+
+  javadocLinks = [
+    'https://docs.oracle.com/en/java/javase/17/docs/api/',
+    'https://docs.spring.io/spring-framework/docs/current/javadoc-api',
+  ] as String[]
+
+  if (gitPresent) {
+    modifiedFiles = 
+      files(grgit.status().unstaged.modified)
+      .filter{ f ->
+        f.name.endsWith('.java') || f.name.endsWith('.kt')
+      }
+  }
+
+  assertjVersion = '3.23.1'
+  awaitilityVersion = '4.2.0'
+  googleJsd305Version = '3.0.2'
+  hamcrestVersion = '2.2'
+  hibernateValidationVersion = '8.0.0.Final'
+  jacksonBomVersion = '2.14.2'
+  jaywayJsonPathVersion = '2.7.0'
+  junit4Version = '4.13.2'
+  junitJupiterVersion = '5.9.1'
+  kafkaVersion = '3.3.2'
+  log4jVersion = '2.19.0'
+  micrometerDocsVersion = '1.0.1'
+  micrometerVersion = '1.10.4'
+  micrometerTracingVersion = '1.0.2'
+  mockitoVersion = '4.8.1'
+  reactorVersion = '2022.0.4'
+  scalaVersion = '2.13'
+  springBootVersion = '3.0.2' // module with documentation
+  springDataVersion = '2022.0.2'
+  springRetryVersion = '2.0.0'
+  springVersion = '6.0.6'
+  zookeeperVersion = '3.6.3'
+
+  idPrefix = 'kafka'
+
+  javaProjects = subprojects - project(':spring-kafka-bom')
+  
+}
