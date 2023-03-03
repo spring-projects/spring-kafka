@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ExceptionClassifier;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.TimestampedException;
+import org.springframework.kafka.retrytopic.DestinationTopic.Type;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -132,8 +133,10 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 					: destinationTopicHolder.getNextDestination();
 	}
 
+	@SuppressWarnings("deprecation")
 	private DestinationTopic resolveRetryDestination(DestinationTopicHolder destinationTopicHolder) {
-		return destinationTopicHolder.getSourceDestination().isSingleTopicRetry()
+		return ((destinationTopicHolder.getSourceDestination().isReusableRetryTopic()) ||
+				(destinationTopicHolder.getSourceDestination().isSingleTopicRetry()))
 				? destinationTopicHolder.getSourceDestination()
 				: destinationTopicHolder.getNextDestination();
 	}
@@ -192,10 +195,23 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 			throw new IllegalStateException("Cannot add new destinations, "
 					+ DefaultDestinationTopicResolver.class.getSimpleName() + " is already refreshed.");
 		}
+		validateDestinations(destinationsToAdd);
 		synchronized (this.sourceDestinationsHolderMap) {
 			Map<String, DestinationTopicHolder> map = this.sourceDestinationsHolderMap.computeIfAbsent(mainListenerId,
 					id -> new HashMap<>());
 			map.putAll(correlatePairSourceAndDestinationValues(destinationsToAdd));
+		}
+	}
+
+	private void validateDestinations(List<DestinationTopic> destinationsToAdd) {
+		for (int i = 0; i < destinationsToAdd.size(); i++) {
+			DestinationTopic destination = destinationsToAdd.get(i);
+			if (destination.isReusableRetryTopic()) {
+				Assert.isTrue((i == (destinationsToAdd.size() - 1) ||
+						((i == (destinationsToAdd.size() - 2)) && (destinationsToAdd.get(i + 1).isDltTopic()))),
+						String.format("In the destination topic chain, the type %s can only be "
+								+ "specified as the last retry topic.", Type.REUSABLE_RETRY_TOPIC));
+			}
 		}
 	}
 

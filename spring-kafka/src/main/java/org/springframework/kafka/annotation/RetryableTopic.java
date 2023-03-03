@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.springframework.kafka.retrytopic.DltStrategy;
-import org.springframework.kafka.retrytopic.FixedDelayStrategy;
 import org.springframework.kafka.retrytopic.RetryTopicConstants;
+import org.springframework.kafka.retrytopic.SameIntervalTopicReuseStrategy;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.annotation.Backoff;
 
@@ -38,6 +38,7 @@ import org.springframework.retry.annotation.Backoff;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Fabio da Silva Jr.
+ * @author João Lima
  * @since 2.7
  *
  * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
@@ -177,6 +178,18 @@ public @interface RetryableTopic {
 	 */
 	TopicSuffixingStrategy topicSuffixingStrategy() default TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
+
+	/**
+	 * Topic reuse strategy for sequential attempts made with a same backoff interval.
+	 *
+	 * <p>Note: for fixed backoffs, when this is configured as
+	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}, it has precedence over
+	 * the configuration in {@link #fixedDelayTopicStrategy()}.
+	 * @return the strategy.
+	 * @since 3.0.4
+	 */
+	SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy() default SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
+
 	/**
 	 * Whether or not create a DLT, and redeliver to the DLT if delivery fails or just give up.
 	 * @return the dlt strategy.
@@ -186,8 +199,10 @@ public @interface RetryableTopic {
 	/**
 	 * Whether to use a single or multiple topics when using a fixed delay.
 	 * @return the fixed delay strategy.
+	 * @deprecated in favor of {@link #sameIntervalTopicReuseStrategy()}.
 	 */
-	FixedDelayStrategy fixedDelayTopicStrategy() default FixedDelayStrategy.MULTIPLE_TOPICS;
+	@Deprecated
+	org.springframework.kafka.retrytopic.FixedDelayStrategy fixedDelayTopicStrategy() default org.springframework.kafka.retrytopic.FixedDelayStrategy.MULTIPLE_TOPICS;
 
 	/**
 	 * Override the container factory's {@code autoStartup} property for just the DLT container.

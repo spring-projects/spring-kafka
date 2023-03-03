@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,8 @@ public class KafkaResourceHolder<K, V> extends ResourceHolderSupport {
 
 	private final Duration closeTimeout;
 
+	private boolean committed;
+
 	/**
 	 * Construct an instance for the producer.
 	 * @param producer the producer.
@@ -55,7 +57,10 @@ public class KafkaResourceHolder<K, V> extends ResourceHolderSupport {
 	}
 
 	public void commit() {
-		this.producer.commitTransaction();
+		if (!this.committed) {
+			this.producer.commitTransaction();
+			this.committed = true;
+		}
 	}
 
 	public void close() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -101,6 +101,7 @@ public class RetryableTopicAnnotationProcessor {
 		this.expressionContext = expressionContext;
 	}
 
+	@SuppressWarnings("deprecation")
 	public RetryTopicConfiguration processAnnotation(String[] topics, Method method, RetryableTopic annotation,
 			Object bean) {
 
@@ -146,6 +147,7 @@ public class RetryableTopicAnnotationProcessor {
 				.dltProcessingFailureStrategy(annotation.dltStrategy())
 				.autoStartDltHandler(autoStartDlt)
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
+				.sameIntervalTopicReuseStrategy(annotation.sameIntervalTopicReuseStrategy())
 				.timeoutAfter(timeout)
 				.create(getKafkaTemplate(resolveExpressionAsString(annotation.kafkaTemplate(), "kafkaTemplate"), topics));
 	}
