@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,22 @@ package org.springframework.kafka.retrytopic;
 
 /**
  *
- * Defines the topic strategy to handle fixed delays.
+ * Strategy for topic reuse when multiple, sequential retries have the same backoff
+ * interval.
  *
- * @author Tomaz Fernandes
- * @since 2.7
- * @deprecated in favor of {@link SameIntervalTopicReuseStrategy}.
+ * <p>
+ * It can be used only when the retries that have the same interval are located
+ * in the end of the retry chain (it cannot be used for retries with the same
+ * interval in the middle of the retry chain).
+ *
+ * @author João Lima
+ * @since 3.0.4
  *
  */
-@Deprecated
-public enum FixedDelayStrategy {
+public enum SameIntervalTopicReuseStrategy {
 
 	/**
-	 * Uses a single topic to achieve non-blocking retry.
+	 * Uses a single retry topic for sequential attempts with the same interval.
 	 */
 	SINGLE_TOPIC,
 

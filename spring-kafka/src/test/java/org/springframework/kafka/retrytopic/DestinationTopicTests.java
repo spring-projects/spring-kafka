@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,12 +56,12 @@ public class DestinationTopicTests {
 
 	// MaxAttempts
 
-	private final int maxAttempts = 3;
+	protected final int maxAttempts = 3;
 
 	// DestinationTopic Properties
 
 	protected DestinationTopic.Properties mainTopicProps =
-			new DestinationTopic.Properties(0, "", DestinationTopic.Type.RETRY, 4, 1,
+			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
 					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
 
 	protected DestinationTopic.Properties firstRetryProps =
@@ -74,13 +74,13 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties dltTopicProps =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout, null);
 
 	protected List<DestinationTopic.Properties> allProps = Arrays
 			.asList(mainTopicProps, firstRetryProps, secondRetryProps, dltTopicProps);
 
 	protected DestinationTopic.Properties mainTopicProps2 =
-			new DestinationTopic.Properties(0, "", DestinationTopic.Type.RETRY, 4, 1,
+			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
 					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
 
 	protected DestinationTopic.Properties firstRetryProps2 =
@@ -93,13 +93,13 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties dltTopicProps2 =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
 
 	protected List<DestinationTopic.Properties> allProps2 = Arrays
 			.asList(mainTopicProps2, firstRetryProps2, secondRetryProps2, dltTopicProps2);
 
 	protected DestinationTopic.Properties mainTopicProps3 =
-			new DestinationTopic.Properties(0, "", DestinationTopic.Type.RETRY, 4, 1,
+			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
 					DltStrategy.NO_DLT, kafkaOperations2, getShouldRetryOn(), timeout);
 
 	protected DestinationTopic.Properties firstRetryProps3 =
@@ -113,6 +113,30 @@ public class DestinationTopicTests {
 	protected List<DestinationTopic.Properties> allProps3 = Arrays
 			.asList(mainTopicProps3, firstRetryProps3, secondRetryProps3);
 
+	protected DestinationTopic.Properties mainTopicProps4 =
+			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+
+	@SuppressWarnings("deprecation")
+	protected DestinationTopic.Properties singleFixedRetryTopicProps4 =
+			new DestinationTopic.Properties(1000, retrySuffix, DestinationTopic.Type.SINGLE_TOPIC_RETRY, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+
+	protected DestinationTopic.Properties dltTopicProps4 =
+			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
+
+	protected DestinationTopic.Properties mainTopicProps5 =
+			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+
+	protected DestinationTopic.Properties reusableRetryTopicProps5 =
+			new DestinationTopic.Properties(1000, retrySuffix, DestinationTopic.Type.REUSABLE_RETRY_TOPIC, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+
+	protected DestinationTopic.Properties dltTopicProps5 =
+			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
 
 	// Holders
 
@@ -159,6 +183,14 @@ public class DestinationTopicTests {
 
 	protected List<PropsHolder> allThirdDestinationHolders = Arrays
 			.asList(mainDestinationHolder3, firstRetryDestinationHolder3, secondRetryDestinationHolder3);
+
+	protected final static String FOURTH_TOPIC = "fourthTopic";
+
+	protected PropsHolder mainDestinationHolder4 =
+			new PropsHolder(FOURTH_TOPIC, mainTopicProps4);
+
+	protected PropsHolder dltDestinationHolder4 =
+			new PropsHolder(FOURTH_TOPIC, dltTopicProps4);
 
 	// DestinationTopics
 
@@ -215,6 +247,32 @@ public class DestinationTopicTests {
 
 	protected List<DestinationTopic> allThirdDestinationTopics = Arrays
 			.asList(mainDestinationTopic3, firstRetryDestinationTopic3, secondRetryDestinationTopic3);
+
+	protected DestinationTopic mainDestinationTopic4 =
+			new DestinationTopic(FOURTH_TOPIC + mainTopicProps4.suffix(), mainTopicProps4);
+
+	protected DestinationTopic singleFixedRetryDestinationTopic4 =
+			new DestinationTopic(FOURTH_TOPIC + singleFixedRetryTopicProps4.suffix(), singleFixedRetryTopicProps4);
+
+	protected DestinationTopic dltDestinationTopic4 =
+			new DestinationTopic(FOURTH_TOPIC + dltTopicProps4.suffix(), dltTopicProps4);
+
+	protected List<DestinationTopic> allFourthDestinationTopics = Arrays
+			.asList(mainDestinationTopic4, singleFixedRetryDestinationTopic4, dltDestinationTopic4);
+
+	protected final static String FIFTH_TOPIC = "fifthTopic";
+
+	protected DestinationTopic mainDestinationTopic5 =
+			new DestinationTopic(FIFTH_TOPIC + mainTopicProps5.suffix(), mainTopicProps5);
+
+	protected DestinationTopic reusableRetryDestinationTopic5 =
+			new DestinationTopic(FIFTH_TOPIC + reusableRetryTopicProps5.suffix(), reusableRetryTopicProps5);
+
+	protected DestinationTopic dltDestinationTopic5 =
+			new DestinationTopic(FIFTH_TOPIC + dltTopicProps5.suffix(), dltTopicProps5);
+
+	protected List<DestinationTopic> allFifthDestinationTopics = Arrays
+			.asList(mainDestinationTopic5, reusableRetryDestinationTopic5, dltDestinationTopic5);
 
 	// Classifiers
 

@@ -17,12 +17,15 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.TimestampedException;
+import org.springframework.kafka.retrytopic.DestinationTopic.Type;
 import org.springframework.kafka.support.converter.ConversionException;
 
 /**
@@ -57,8 +61,6 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 
 	private final long originalTimestamp = Instant.now(this.clock).toEpochMilli();
 
-	private final long failureTimestamp = Instant.now(this.clock).plusMillis(500).toEpochMilli();
-
 	@BeforeEach
 	public void setup() {
 
@@ -67,6 +69,8 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		defaultDestinationTopicContainer.addDestinationTopics("id", allFirstDestinationsTopics);
 		defaultDestinationTopicContainer.addDestinationTopics("id", allSecondDestinationTopics);
 		defaultDestinationTopicContainer.addDestinationTopics("id", allThirdDestinationTopics);
+		defaultDestinationTopicContainer.addDestinationTopics("id", allFourthDestinationTopics);
+		defaultDestinationTopicContainer.addDestinationTopics("id", allFifthDestinationTopics);
 
 	}
 
@@ -97,6 +101,30 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic("id", dltDestinationTopic2.getDestinationName(), 1,
 						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(dltDestinationTopic2);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", mainDestinationTopic4.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(singleFixedRetryDestinationTopic4);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", singleFixedRetryDestinationTopic4.getDestinationName(), maxAttempts - 1,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(singleFixedRetryDestinationTopic4);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", singleFixedRetryDestinationTopic4.getDestinationName(), maxAttempts,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(dltDestinationTopic4);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", mainDestinationTopic5.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(reusableRetryDestinationTopic5);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", reusableRetryDestinationTopic5.getDestinationName(), maxAttempts - 1,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(reusableRetryDestinationTopic5);
+
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic("id", reusableRetryDestinationTopic5.getDestinationName(), maxAttempts,
+						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(dltDestinationTopic5);
 	}
 
 	@Test
@@ -191,14 +219,24 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 	}
 
 	@Test
+	void shouldThrowIfMultipleReusableRetryTopicsAdded() {
+		DefaultDestinationTopicResolver destinationResolver = new DefaultDestinationTopicResolver(clock);
+		destinationResolver.setApplicationContext(applicationContext);
+		destinationResolver.addDestinationTopics("id", allFirstDestinationsTopics);
+
+		List<DestinationTopic> destinationTopics = Arrays
+				.asList(mainDestinationTopic5, reusableRetryDestinationTopic5, reusableRetryDestinationTopic5, dltDestinationTopic5);
+
+		assertThatIllegalArgumentException().isThrownBy(
+				() -> destinationResolver.addDestinationTopics("id", destinationTopics))
+			.withMessageMatching(String.format(".*%s.*last retry topic.*", Type.REUSABLE_RETRY_TOPIC));
+	}
+
+	@Test
 	void shouldResolveNoOpsIfDltAndNotRetryable() {
 		assertThat(defaultDestinationTopicContainer
 						.resolveDestinationTopic("id", mainDestinationTopic3.getDestinationName(), 0,
 						new RuntimeException(), originalTimestamp)).isEqualTo(noOpsDestinationTopic3);
-	}
-
-	private long getExpectedNextExecutionTime(DestinationTopic destinationTopic) {
-		return failureTimestamp + destinationTopic.getDestinationDelay();
 	}
 
 	@Test

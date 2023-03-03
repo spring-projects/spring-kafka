@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,6 +71,7 @@ public class RetryTopicConfigurationBuilder {
 	@Nullable
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
+	@SuppressWarnings("deprecation")
 	private FixedDelayStrategy fixedDelayStrategy = FixedDelayStrategy.MULTIPLE_TOPICS;
 
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
@@ -78,6 +79,8 @@ public class RetryTopicConfigurationBuilder {
 	private long timeout = RetryTopicConstants.NOT_SET;
 
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
+
+	private SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
 
 	@Nullable
 	private Boolean autoStartDltHandler;
@@ -241,6 +244,38 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
+	/**
+	 * Configure the {@link SameIntervalTopicReuseStrategy}.
+	 *
+	 * <p>Note: for fixed backoffs, when this is configured as
+	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}, it has precedence over
+	 * the configuration done through
+	 * {@link #useSingleTopicForFixedDelays(FixedDelayStrategy)}.
+	 * @param sameIntervalTopicReuseStrategy the strategy.
+	 * @return the builder.
+	 * @since 3.0.4
+	 */
+	public RetryTopicConfigurationBuilder sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy) {
+		this.sameIntervalTopicReuseStrategy = sameIntervalTopicReuseStrategy;
+		return this;
+	}
+
+	/**
+	 * Configure the use of a single retry topic for the attempts that have the same
+	 * backoff interval (as long as these attempts are in the end of the chain).
+	 *
+	 * Used for the last retries of exponential backoff (when a {@code maxDelay} is
+	 * provided), and to use a single retry topic for fixed backoff.
+	 *
+	 * @return the builder.
+	 * @since 3.0.4
+	 * @see SameIntervalTopicReuseStrategy
+	 */
+	public RetryTopicConfigurationBuilder useSingleTopicForSameIntervals() {
+		this.sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC;
+		return this;
+	}
+
 	/* ---------------- Configure BackOff -------------- */
 
 	/**
@@ -374,8 +409,10 @@ public class RetryTopicConfigurationBuilder {
 	/**
 	 * Configure the use of a single retry topic with fixed delays.
 	 * @return the builder.
+	 * @deprecated in favor of {@link #useSingleTopicForSameIntervals()}.
 	 * @see FixedDelayStrategy#SINGLE_TOPIC
 	 */
+	@Deprecated
 	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays() {
 		this.fixedDelayStrategy = FixedDelayStrategy.SINGLE_TOPIC;
 		return this;
@@ -386,7 +423,10 @@ public class RetryTopicConfigurationBuilder {
 	 * {@link FixedDelayStrategy#MULTIPLE_TOPICS}.
 	 * @param delayStrategy the delay strategy.
 	 * @return the builder.
+	 * @deprecated in favor of
+	 * {@link #sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy)}.
 	 */
+	@Deprecated
 	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(FixedDelayStrategy delayStrategy) {
 		this.fixedDelayStrategy = delayStrategy;
 		return this;
@@ -553,7 +593,7 @@ public class RetryTopicConfigurationBuilder {
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
 						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
 						sendToTopicKafkaTemplate, this.fixedDelayStrategy, this.dltStrategy,
-						this.topicSuffixingStrategy, this.timeout)
+						this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout)
 								.autoStartDltHandler(this.autoStartDltHandler)
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
