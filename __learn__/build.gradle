@@ -93,3 +93,20 @@ ext {
   javaProjects = subprojects - project(':spring-kafka-bom')
   
 }
+
+nohttp {
+  source.include '**/src/**'
+  source.exclude '**/.gif', '**/*.ks'
+}
+
+allprojects {
+  group = 'org.springframework.kafka'
+
+  apply plugin: 'io.spring.dependency-management'
+
+  dependencyManagement {
+    resolutionStrategy {
+      cacheChangingModulesFor 0, 'seconds'
+    }  
+  }
+}
