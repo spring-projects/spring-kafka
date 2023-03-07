@@ -161,4 +161,9 @@ configure(javaProjects) { subproject ->
     sourceCompatibility = 17
     targetCompatibility = 17
   }
+
+  compileTestJava {
+    sourceCompatibility = 17
+    options.encoding = 'UTF-8'
+  }
 }
