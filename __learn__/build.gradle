@@ -93,3 +93,88 @@ ext {
   javaProjects = subprojects - project(':spring-kafka-bom')
   
 }
+
+nohttp {
+  source.include '**/src/**'
+  source.exclude '**/.gif', '**/*.ks'
+}
+
+allprojects {
+  group = 'org.springframework.kafka'
+
+  apply plugin: 'io.spring.dependency-management'
+
+  dependencyManagement {
+    resolutionStrategy {
+      cacheChangingModulesFor 0, 'seconds'
+    }
+    applyMavenExclusions = false
+    generatedPomCustomization {
+      enabled = false
+    }
+
+    imports {
+      mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonBomVersion"
+      mavenBom "org.junit:junit-bom:$junitJupiterVersion"
+      mavenBom "org.springframework:spring-framework-bom:$springVersion"
+      mavenBom "io.projectreactor:reactor-bom:$reactorVersion"
+      mavenBom "org.springframework.data:spring-data-bom:$springDataVersion"
+      mavenBom "io.micrometer:micrometer-bom:$micrometerVersion"
+      mavenBom "io.micrometer:micrometer-tracing-bom:$micrometerTracingVersion"
+    }
+  }
+
+  repositories {
+    mavenCentral()
+    maven { url 'https://repo.spring.io/release'}
+    maven { url 'https://repo.spring.io/milestone' }
+    if (version.endsWith('SNAPSHOT')) {
+      maven { url 'https://repo.spring.io/snapshot'}
+    }
+    // maven { url 'https://repository.apache.org/content/groups/staging' }
+  }
+}
+
+configure(javaProjects) { subproject ->
+  apply plugin: 'java-library'
+  apply plugin: 'java'
+  apply from: "${rootProject.projectDir}/gradle/publish-maven.gradle"
+  apply plugin: 'eclipse'
+  apply plugin: 'idea'
+  apply plugin: 'jacoco'
+  apply plugin: 'checkstyle'
+  apply plugin: 'kotlin'
+  apply plugin: 'kotlin-spring'
+
+  java {
+    withJavadocJar()
+    withSourcesJar()
+    registerFeature('optional') {
+      usingSourceSet(sourceSets.main)
+    }
+    registerFeature('provided') {
+      usingSourceSet(sourceSets.main)
+    }
+  }
+
+  compileJava {
+    sourceCompatibility = 17
+    targetCompatibility = 17
+  }
+
+  compileTestJava {
+    sourceCompatibility = 17
+    options.encoding = 'UTF-8'
+  }
+   compileTestKotlin {
+    kotlinOptions {
+      jvmTarget = '17'
+    }
+   }
+
+   eclipse.project.natures ++ 'org.springframework.ide.eclipse.core.springnature'
+
+   jacoco {
+    toolVersion = '0.8.7'
+   }
+}

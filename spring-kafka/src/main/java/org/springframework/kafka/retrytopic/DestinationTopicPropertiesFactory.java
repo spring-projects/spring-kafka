@@ -41,6 +41,8 @@ import org.springframework.util.StringUtils;
  */
 public class DestinationTopicPropertiesFactory {
 
+	private static final String DEPRECATION = "deprecation";
+
 	private static final String MAIN_TOPIC_SUFFIX = "";
 
 	private final DestinationTopicSuffixes destinationTopicSuffixes;
@@ -55,7 +57,7 @@ public class DestinationTopicPropertiesFactory {
 
 	private final KafkaOperations<?, ?> kafkaOperations;
 
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings(DEPRECATION)
 	private final FixedDelayStrategy fixedDelayStrategy;
 
 	private final DltStrategy dltStrategy;
@@ -69,7 +71,7 @@ public class DestinationTopicPropertiesFactory {
 	@Nullable
 	private Boolean autoStartDltHandler;
 
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings(DEPRECATION)
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,
 			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
@@ -93,7 +95,7 @@ public class DestinationTopicPropertiesFactory {
 		this.maxAttempts = this.backOffValues.size() + 1;
 	}
 
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings(DEPRECATION)
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,
 			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
@@ -135,7 +137,7 @@ public class DestinationTopicPropertiesFactory {
 		return isFixedDelay() && (isSingleTopicStrategy() || isSingleTopicSameIntervalTopicReuseStrategy());
 	}
 
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings(DEPRECATION)
 	private boolean isSingleTopicStrategy() {
 		return FixedDelayStrategy.SINGLE_TOPIC.equals(this.fixedDelayStrategy);
 	}
@@ -201,7 +203,7 @@ public class DestinationTopicPropertiesFactory {
 		return (attempt, throwable) -> attempt < this.maxAttempts && this.exceptionClassifier.classify(throwable);
 	}
 
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings(DEPRECATION)
 	private DestinationTopic.Properties createRetryProperties(int index,
 															BiPredicate<Integer, Throwable> shouldRetryOn) {
 		int indexInBackoffValues = index - 1;
