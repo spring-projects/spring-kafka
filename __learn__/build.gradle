@@ -166,15 +166,21 @@ configure(javaProjects) { subproject ->
     sourceCompatibility = 17
     options.encoding = 'UTF-8'
   }
-   compileTestKotlin {
+  compileTestKotlin {
     kotlinOptions {
       jvmTarget = '17'
     }
-   }
+  }
 
-   eclipse.project.natures ++ 'org.springframework.ide.eclipse.core.springnature'
+  eclipse.project.natures ++ 'org.springframework.ide.eclipse.core.springnature'
 
-   jacoco {
+  jacoco {
     toolVersion = '0.8.7'
-   }
+  }
+
+  // common dependencies across all projects
+  dependencies {
+    implementation "com.google.code.findbugs:jsr305:$googleJsr305Version"
+  }
+
 }
