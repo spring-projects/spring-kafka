@@ -31,6 +31,8 @@ public class Application {
 	private final TaskExecutor exec = new SimpleAsyncTaskExecutor();
 
 	private final String instruction = "press Enter to stop this app!";
+  private final String topicName = "topic1";
+  private final String topicDltName = "topic1.DLT";
 
 	public static void main(String[] args) {
 		SpringApplication.run(Application.class, args).close();
@@ -50,7 +52,7 @@ public class Application {
 		return new JsonMessageConverter();
 	}
 
-	@KafkaListener(id = "fooGroup", topics = "topic1")
+	@KafkaListener(id = "fooGroup", topics = topicName)
 	public void listen(Foo2 foo) {
 		logger.info("Received message: " + foo);
 		if (foo.getFoo().startsWith("fail")) {
@@ -59,7 +61,7 @@ public class Application {
 		this.exec.execute(() -> System.out.println(instruction));
 	}
 
-	@KafkaListener(id = "dltGroup", topics = "topic1.DLT")
+	@KafkaListener(id = "dltGroup", topics = topicDltName)
 	public void dltListen(byte[] in) {
 		logger.info("Received message from DLT: " + new String(in));
 		this.exec.execute(() -> System.out.println(instruction));
@@ -67,12 +69,12 @@ public class Application {
 
 	@Bean
 	public NewTopic topic() {
-		return new Topic("topic1", 1, (short) 1);
+		return new Topic(topicName, 1, (short) 1);
 	}
 
 	@Bean
 	public NewTopic dlt() {
-		return new Topic("topic1.DLT", 1, (short) 1);
+		return new Topic(topicDltName, 1, (short) 1);
 	}
 
 	@Bean
