@@ -172,7 +172,7 @@ configure(javaProjects) { subproject ->
     }
   }
 
-  eclipse.project.natures ++ 'org.springframework.ide.eclipse.core.springnature'
+  eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
   jacoco {
     toolVersion = '0.8.7'
