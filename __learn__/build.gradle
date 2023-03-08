@@ -181,6 +181,25 @@ configure(javaProjects) { subproject ->
   // common dependencies across all projects
   dependencies {
     implementation "com.google.code.findbugs:jsr305:$googleJsr305Version"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    testruntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // prevent compiler complaints about @API annotations in JUnit tests
+    testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
+
+    testRuntimeOnly "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+
+    testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
+    testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+    testImplementation("org.awaitility:awaitility:$awaitilityVersion") {
+      exclude group: 'org.hamcrest'
+    }
+    testImplementation "org.hamcrest:hamcrest-core:$hamcrestVersion"
+    optionalApi "org.assertj:assertj-core:$assertjVersion"
   }
+
+  // turn on all compiler warnings - we'll give individual projects the freedom to customize further
+  [compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:all,-options']
 
 }
