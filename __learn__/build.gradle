@@ -202,4 +202,38 @@ configure(javaProjects) { subproject ->
   // turn on all compiler warnings - we'll give individual projects the freedom to customize further
   [compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:all,-options']
 
+  test {
+    testLogging {
+      events "skipped", "failed"
+      showStandardStreams = project.hasProperty("showStandardStreams") ?: false
+      showExceptions = true
+      showStackTraces = true
+      exceptionFormat = 'full'
+    }
+
+    maxHeapSize = '1536m'
+    // jvmArgs '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:8111'
+    jacoco {
+      destinationFile = file("$buildDir/jacoco.exec")
+    }
+    useJUnitPlatform()
+
+    if (System.properties['sonar.host.url']) {
+      finalizedBy jacocoTestReport
+    }
+  }
+
+  checkstyle {
+    configDirectory.set(rootProject.file("src/checkstyle"))
+    toolVersion = '9.0'
+  }
+
+  jacocoTestReport {
+    reports {
+      xml.enabled true
+      csv.enabled false
+      html.enabled flase
+      xml.destination file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+    }
+  }
 }
