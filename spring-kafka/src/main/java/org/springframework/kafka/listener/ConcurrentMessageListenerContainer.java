@@ -36,6 +36,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -64,9 +65,13 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final List<AsyncTaskExecutor> executors = new ArrayList<>();
 
+	private final AtomicInteger stoppedContainers = new AtomicInteger();
+
 	private int concurrency = 1;
 
 	private boolean alwaysClientIdSuffix = true;
+
+	private volatile Reason reason;
 
 	/**
 	 * Construct an instance with the supplied configuration properties.
@@ -340,6 +345,23 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			this.containers.clear();
 			setStoppedNormally(normal);
+		}
+	}
+
+	@Override
+	public void childStopped(MessageListenerContainer child, Reason reason) {
+		synchronized (this.lifecycleMonitor) {
+			if (this.reason == null || reason.equals(Reason.AUTH)) {
+				this.reason = reason;
+			}
+			if (Reason.AUTH.equals(this.reason)
+					&& getContainerProperties().isRestartAfterAuthExceptions()
+					&& this.concurrency == this.stoppedContainers.incrementAndGet()) {
+
+				this.reason = null;
+				this.stoppedContainers.set(0);
+				doStart();
+			}
 		}
 	}
 

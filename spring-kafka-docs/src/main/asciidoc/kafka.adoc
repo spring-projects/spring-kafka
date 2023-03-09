@@ -2556,7 +2556,15 @@ See `monitorInterval`.
 
 |[[pollTimeout]]<<pollTimeout,`pollTimeout`>>
 |5000
-|The timeout passed into `Consumer.poll()`.
+|The timeout passed into `Consumer.poll()` in milliseconds.
+
+|[[pollTimeoutWhilePaused]]<<pollTimeoutWhilePaused,`pollTimeoutWhilePaused`>>
+|100
+|The timeout passed into `Consumer.poll()` (in milliseconds) when the container is in a paused state.
+
+|[[restartAfterAuthExceptions]]<<restartAfterAuthExceptions,`restartAfterAuthExceptions`>>
+|false
+|True to restart the container if it is stopped due to authorization/authentication exceptions.
 
 |[[scheduler]]<<scheduler,`scheduler`>>
 |`ThreadPoolTaskScheduler`

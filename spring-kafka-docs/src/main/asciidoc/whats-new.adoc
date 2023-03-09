@@ -67,6 +67,9 @@ See <<events>> for more information.
 You can now customize the thread names used by consumer threads.
 See <<container-thread-naming>> for more information.
 
+The container property `restartAfterAuthException` has been added.
+See <<container-props>> for more information.
+
 [[x30-template-changes]]
 ==== `KafkaTemplate` Changes
 

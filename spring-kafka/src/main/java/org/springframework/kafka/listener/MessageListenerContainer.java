@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.lang.Nullable;
 
@@ -258,6 +259,16 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	 */
 	default MessageListenerContainer getContainerFor(String topic, int partition) {
 		return this;
+	}
+
+	/**
+	 * Notify a parent container that a child container has stopped due to an
+	 * authentication or authorization problem.
+	 * @param child the container.
+	 * @param reason the reason.
+	 * @since 2.9.7
+	 */
+	default void childStoppedForAuth(MessageListenerContainer child, ConsumerStoppedEvent.Reason reason) {
 	}
 
 	@Override

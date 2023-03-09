@@ -431,6 +431,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
+	@Override
+	public void childStopped(MessageListenerContainer child, Reason reason) {
+		if (reason.equals(Reason.AUTH) && child.equals(this)
+				&& getContainerProperties().isRestartAfterAuthExceptions()) {
+			setStoppedNormally(true);
+			start();
+		}
+	}
+
 	private void publishIdlePartitionEvent(long idleTime, TopicPartition topicPartition, Consumer<K, V> consumer, boolean paused) {
 		ApplicationEventPublisher publisher = getApplicationEventPublisher();
 		if (publisher != null) {
@@ -540,6 +549,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			publisher.publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer,
 					reason));
+			this.thisOrParentContainer.childStopped(this, reason);
 		}
 	}
 

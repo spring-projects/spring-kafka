@@ -293,6 +293,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private Duration pollTimeoutWhilePaused = DEFAULT_PAUSED_POLL_TIMEOUT;
 
+	private boolean restartAfterAuthExceptions;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -972,6 +974,25 @@ public class ContainerProperties extends ConsumerProperties {
 		this.pollTimeoutWhilePaused = pollTimeoutWhilePaused;
 	}
 
+	/**
+	 * Restart the container if stopped due to an auth exception.
+	 * @return the restartAfterAuthExceptions
+	 * @since 2.9.7
+	 */
+	public boolean isRestartAfterAuthExceptions() {
+		return this.restartAfterAuthExceptions;
+	}
+
+	/**
+	 * Set to true to automatically restart the container if an auth exception is
+	 * detected by the container (or all child containers).
+	 * @param restartAfterAuthExceptions true to restart.
+	 * @since 2.9.7
+	 */
+	public void setRestartAfterAuthExceptions(boolean restartAfterAuthExceptions) {
+		this.restartAfterAuthExceptions = restartAfterAuthExceptions;
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
@@ -1009,6 +1030,7 @@ public class ContainerProperties extends ConsumerProperties {
 				+ (this.observationConvention != null
 						? "\n observationConvention=" + this.observationConvention
 						: "")
+				+ "\n restartAfterAuthExceptions=" + this.restartAfterAuthExceptions
 				+ "\n]";
 	}
 
