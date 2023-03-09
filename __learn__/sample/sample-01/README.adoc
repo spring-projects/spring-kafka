@@ -1,0 +1,16 @@
+== Sample 1
+This is a simple demo of producer and conumer. The producer messages instances of type `Foo1`; the consumer receives instances of type `Foo2`. They share the same field, `foo`.
+
+`JsonSerializer` is used by the producer; `ByteArrayDeserializer` is used by the consumer. `JsonMessageConverter` is used as the adapter for conversion to listener method argument type.
+
+Run and use curl to message the service: `curl -X POST http://localhost:8080/send/foo/bar` 
+
+Console:
+`2020-01-01 07:00:00.123 INFO 12345 -- [ fooGroup-0-C-1] com.example.Application : Received message: Foo2 [foo=bar]`
+
+The consumer is set up with a `SeekToCurrentErrorHandler` - replays failed messages max twice (1 second delay between failed messages). The bad message is sent to the dead letter topic after the retries are exhausted.
+
+`curl -X POST http://localhost:8080/send/foo/fail`
+
+The second `@KafkaListener` parses the raw JSON from the message.
+`2020-01-02 07:00:01.123 INFO 12345 -- [ fooGroup-0-C-1] com.example.Application : Received message: Foo2 [foo=fail]`
