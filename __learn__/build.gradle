@@ -236,4 +236,19 @@ configure(javaProjects) { subproject ->
       xml.destination file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
     }
   }
+
+  publishing {
+    publications {
+      mavenJava(MavenPublication) {
+        suppressAllPomMetadataWarnings()
+        from components.java
+        pom.withXml {
+          def pomDeps = asNode().dependencies.first()
+          subproject.configurations.providedImplementation.allDependencies.each { dep ->
+            pomDeps.remove(pomDeps.'*'.find { it.artifact.text() == dep.name })
+          }
+        }
+      }
+    }
+  }
 }
