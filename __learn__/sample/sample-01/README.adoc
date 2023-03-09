@@ -6,11 +6,18 @@ This is a simple demo of producer and conumer. The producer messages instances o
 Run and use curl to message the service: `curl -X POST http://localhost:8080/send/foo/bar` 
 
 Console:
-`2020-01-01 07:00:00.123 INFO 12345 -- [ fooGroup-0-C-1] com.example.Application : Received message: Foo2 [foo=bar]`
+`2020-01-01 07:00:00.123 INFO 12345 -- [ fooGroup-0-C-1] com.example.Application                    : Received message: Foo2 [foo=bar]`
 
 The consumer is set up with a `SeekToCurrentErrorHandler` - replays failed messages max twice (1 second delay between failed messages). The bad message is sent to the dead letter topic after the retries are exhausted.
 
 `curl -X POST http://localhost:8080/send/foo/fail`
 
 The second `@KafkaListener` parses the raw JSON from the message.
-`2020-01-02 07:00:01.123 INFO 12345 -- [ fooGroup-0-C-1] com.example.Application : Received message: Foo2 [foo=fail]`
+`2020-01-02 07:00:01.123  INFO 12345 -- [ fooGroup-0-C-1] com.example.Application                    : Received message: Foo2 [foo=fail]`
+`2020-01-02 07:00:01.234 ERROR 12345 -- [ fooGroup-0-C-1] essageListenerContainer$ListenerConsumer   : Error handler threw an exception`
+`...`
+`2020-01-02 07:00:02.123  INFO 12345 -- [ fooGroup-0-C-1] com.example.Application                    : Received message: Foo2 [foo=fail]`
+`2020-01-02 07:00:02.345 ERROR 12345 -- [ fooGroup-0-C-1] essageListenerContainer$ListenerConsumer   : Error handler threw an exception`
+`...`
+`2020-01-02 07:00:02:567  INFO 12345 -- [ fooGroup-0-C-1] com.example.Application                    : Received message: Foo2 [foo=fail]`
+`2020-01-02 07:00:12:123  INFO 12345 -- [ dltGroup-0-C-1] com.example.Application                    : Received message from DLT: {"foo":"fail"}`
