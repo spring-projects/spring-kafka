@@ -6,6 +6,6 @@ public class Foo2 {
   public String getFoo() { return this.foo; }
   @Override
   public String toString() {
-    return "Foo2 [foo=]" + this.foo + "]";
+    return "Foo2 [foo=" + this.foo + "]";
   }
 }
