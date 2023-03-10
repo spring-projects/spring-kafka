@@ -21,6 +21,7 @@ import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation.Context;
 import io.micrometer.observation.ObservationConvention;
 import io.micrometer.observation.docs.ObservationDocumentation;
+import org.springframework.util.StringUtils;
 
 /**
  * Spring for Apache Kafka Observation for listeners.
@@ -68,6 +69,114 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 				return "spring.kafka.listener.id";
 			}
 
+		},
+
+		/**
+		 * Messaging system
+		 */
+		MESSAGING_SYSTEM {
+
+			@Override
+			public String asString() {
+				return "messaging.system";
+			}
+
+		},
+
+		/**
+		 * Messaging operation
+		 */
+		MESSAGING_OPERATION {
+
+			@Override
+			public String asString() {
+				return "messaging.operation";
+			}
+
+		},
+
+		/**
+		 * Messaging consumer id
+		 */
+		MESSAGING_CONSUMER_ID {
+
+			@Override
+			public String asString() {
+				return "messaging.consumer.id";
+			}
+
+		},
+
+		/**
+		 * Messaging source name
+		 */
+		MESSAGING_SOURCE_NAME {
+
+			@Override
+			public String asString() {
+				return "messaging.source.name";
+			}
+
+		},
+
+		/**
+		 * Messaging source kind
+		 */
+		MESSAGING_SOURCE_KIND {
+
+			@Override
+			public String asString() {
+				return "messaging.source.kind";
+			}
+
+		},
+
+		/**
+		 * Messaging consumer group
+		 */
+		MESSAGING_CONSUMER_GROUP {
+
+			@Override
+			public String asString() {
+				return "messaging.kafka.consumer.group";
+			}
+
+		},
+
+		/**
+		 * Messaging client id
+		 */
+		MESSAGING_CLIENT_ID {
+
+			@Override
+			public String asString() {
+				return "messaging.kafka.client_id";
+			}
+
+		},
+
+		/**
+		 * Messaging partition
+		 */
+		MESSAGING_PARTITION {
+
+			@Override
+			public String asString() {
+				return "messaging.kafka.partition";
+			}
+
+		},
+
+		/**
+		 * Messaging message offset
+		 */
+		MESSAGING_OFFSET {
+
+			@Override
+			public String asString() {
+				return "messaging.kafka.message.offset";
+			}
+
 		}
 
 	}
@@ -89,8 +198,23 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		@Override
 		public KeyValues getLowCardinalityKeyValues(KafkaRecordReceiverContext context) {
-			return KeyValues.of(KafkaListenerObservation.ListenerLowCardinalityTags.LISTENER_ID.asString(),
-							context.getListenerId());
+			KeyValues keyValues = KeyValues.of(
+					ListenerLowCardinalityTags.LISTENER_ID.withValue(context.getListenerId()),
+					ListenerLowCardinalityTags.MESSAGING_CONSUMER_ID.withValue(getConsumerId(context)),
+					ListenerLowCardinalityTags.MESSAGING_SYSTEM.withValue("kafka"),
+					ListenerLowCardinalityTags.MESSAGING_OPERATION.withValue("receive"),
+					ListenerLowCardinalityTags.MESSAGING_SOURCE_NAME.withValue(context.getSource()),
+					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic"),
+					ListenerLowCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
+					ListenerLowCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset()),
+					ListenerLowCardinalityTags.MESSAGING_CONSUMER_GROUP.withValue(context.getGroupId())
+			);
+
+			if (StringUtils.hasText(context.getClientId())) {
+				keyValues = keyValues.and(ListenerLowCardinalityTags.MESSAGING_CLIENT_ID.withValue(context.getClientId()));
+			}
+
+			return keyValues;
 		}
 
 		@Override
@@ -101,6 +225,13 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		@Override
 		public String getName() {
 			return "spring.kafka.listener";
+		}
+
+		private String getConsumerId(KafkaRecordReceiverContext context) {
+			if (StringUtils.hasText(context.getClientId())) {
+				return context.getGroupId() + " - " + context.getClientId();
+			}
+			return context.getGroupId();
 		}
 
 	}

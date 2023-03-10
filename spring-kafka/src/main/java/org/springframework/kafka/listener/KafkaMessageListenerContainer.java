@@ -2687,7 +2687,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 					this.containerProperties.getObservationConvention(),
 					DefaultKafkaListenerObservationConvention.INSTANCE,
-					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), this::clusterId),
+					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), getGroupId(), this::clusterId),
 					this.observationRegistry);
 			return observation.observe(() -> {
 				try {

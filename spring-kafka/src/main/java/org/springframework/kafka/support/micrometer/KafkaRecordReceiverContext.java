@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,10 +34,12 @@ import io.micrometer.observation.transport.ReceiverContext;
 public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?, ?>> {
 
 	private final String listenerId;
+	private final String clientId;
+	private final String groupId;
 
 	private final ConsumerRecord<?, ?> record;
 
-	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, Supplier<String> clusterId) {
+	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, String clientId, String groupId, Supplier<String> clusterId) {
 		super((carrier, key) -> {
 			Header header = carrier.headers().lastHeader(key);
 			if (header == null || header.value() == null) {
@@ -48,6 +50,8 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 		setCarrier(record);
 		this.record = record;
 		this.listenerId = listenerId;
+		this.clientId = clientId;
+		this.groupId = groupId;
 		String cluster = clusterId.get();
 		setRemoteServiceName("Apache Kafka" + (cluster != null ? ": " + cluster : ""));
 	}
@@ -58,6 +62,13 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	 */
 	public String getListenerId() {
 		return this.listenerId;
+	}
+	public String getGroupId() {
+		return this.groupId;
+	}
+
+	public String getClientId() {
+		return clientId;
 	}
 
 	/**
@@ -75,6 +86,24 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	 */
 	public ConsumerRecord<?, ?> getRecord() {
 		return this.record;
+	}
+
+	/**
+	 * Return the partition.
+	 * @return the partition.
+	 * @since 3.2
+	 */
+	public String getPartition() {
+		return Integer.toString(this.record.partition());
+	}
+
+	/**
+	 * Return the offset.
+	 * @return the offset.
+	 * @since 3.2
+	 */
+	public String getOffset() {
+		return Long.toString(this.record.offset());
 	}
 
 }
