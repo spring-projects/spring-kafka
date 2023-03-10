@@ -262,13 +262,12 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	}
 
 	/**
-	 * Notify a parent container that a child container has stopped due to an
-	 * authentication or authorization problem.
+	 * Notify a parent container that a child container has stopped.
 	 * @param child the container.
 	 * @param reason the reason.
 	 * @since 2.9.7
 	 */
-	default void childStoppedForAuth(MessageListenerContainer child, ConsumerStoppedEvent.Reason reason) {
+	default void childStopped(MessageListenerContainer child, ConsumerStoppedEvent.Reason reason) {
 	}
 
 	@Override
