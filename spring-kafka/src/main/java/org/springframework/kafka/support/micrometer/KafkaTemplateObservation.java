@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,6 +69,54 @@ public enum KafkaTemplateObservation implements ObservationDocumentation {
 				return "spring.kafka.template.name";
 			}
 
+		},
+
+		/**
+		 * Messaging system
+		 */
+		MESSAGING_SYSTEM {
+
+			@Override
+			public String asString() {
+				return "messaging.system";
+			}
+
+		},
+
+		/**
+		 * Messaging operation
+		 */
+		MESSAGING_OPERATION {
+
+			@Override
+			public String asString() {
+				return "messaging.operation";
+			}
+
+		},
+
+		/**
+		 * Messaging destination name
+		 */
+		MESSAGING_DESTINATION_NAME {
+
+			@Override
+			public String asString() {
+				return "messaging.destination.name";
+			}
+
+		},
+
+		/**
+		 * Messaging destination kind
+		 */
+		MESSAGING_DESTINATION_KIND {
+
+			@Override
+			public String asString() {
+				return "messaging.destination.kind";
+			}
+
 		}
 
 	}
@@ -90,13 +138,17 @@ public enum KafkaTemplateObservation implements ObservationDocumentation {
 
 		@Override
 		public KeyValues getLowCardinalityKeyValues(KafkaRecordSenderContext context) {
-			return KeyValues.of(KafkaTemplateObservation.TemplateLowCardinalityTags.BEAN_NAME.asString(),
-							context.getBeanName());
+			return KeyValues.of(
+					TemplateLowCardinalityTags.BEAN_NAME.withValue(context.getBeanName()),
+					TemplateLowCardinalityTags.MESSAGING_SYSTEM.withValue("kafka"),
+					TemplateLowCardinalityTags.MESSAGING_OPERATION.withValue("publish"),
+					TemplateLowCardinalityTags.MESSAGING_DESTINATION_KIND.withValue("topic"),
+					TemplateLowCardinalityTags.MESSAGING_DESTINATION_NAME.withValue(context.getDestination()));
 		}
 
 		@Override
 		public String getContextualName(KafkaRecordSenderContext context) {
-			return context.getDestination() + " send";
+			return context.getDestination() + " publish";
 		}
 
 		@Override

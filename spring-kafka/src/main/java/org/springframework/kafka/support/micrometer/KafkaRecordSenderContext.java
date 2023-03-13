@@ -70,5 +70,4 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 	public ProducerRecord<?, ?> getRecord() {
 		return this.record;
 	}
-
 }

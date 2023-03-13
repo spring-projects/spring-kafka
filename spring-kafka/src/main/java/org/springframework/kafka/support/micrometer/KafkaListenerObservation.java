@@ -162,7 +162,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 			@Override
 			public String asString() {
-				return "messaging.kafka.partition";
+				return "messaging.kafka.source.partition";
 			}
 
 		},
