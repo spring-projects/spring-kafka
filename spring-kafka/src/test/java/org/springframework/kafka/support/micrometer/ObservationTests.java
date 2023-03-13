@@ -104,8 +104,13 @@ public class ObservationTests {
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		assertThat(spans).hasSize(4);
 		SimpleSpan span = spans.poll();
-		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
-		assertThat(span.getName()).isEqualTo("observation.testT1 send");
+		assertThat(span.getTags())
+				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
+						"messaging.operation", "publish",
+						"messaging.system", "kafka",
+						"messaging.destination.kind", "topic",
+						"messaging.destination.name", "observation.testT1"));
+		assertThat(span.getName()).isEqualTo("observation.testT1 publish");
 		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
 		await().until(() -> spans.peekFirst().getTags().size() == 12);
 		span = spans.poll();
@@ -118,17 +123,22 @@ public class ObservationTests {
 								Map.entry("messaging.kafka.client_id", "consumer-obs1-2"),
 								Map.entry("messaging.kafka.consumer.group", "obs1"),
 								Map.entry("messaging.kafka.message.offset", "0"),
-								Map.entry("messaging.kafka.partition", "0"),
+								Map.entry("messaging.kafka.source.partition", "0"),
 								Map.entry("messaging.operation", "receive"),
 								Map.entry("messaging.source.kind", "topic"),
 								Map.entry("messaging.source.name", "observation.testT1"),
 								Map.entry("messaging.system", "kafka")));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
 		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
-		await().until(() -> spans.peekFirst().getTags().size() == 1);
+		await().until(() -> spans.peekFirst().getTags().size() == 5);
 		span = spans.poll();
-		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
-		assertThat(span.getName()).isEqualTo("observation.testT2 send");
+		assertThat(span.getTags())
+				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
+						"messaging.operation", "publish",
+						"messaging.system", "kafka",
+						"messaging.destination.kind", "topic",
+						"messaging.destination.name", "observation.testT2"));
+		assertThat(span.getName()).isEqualTo("observation.testT2 publish");
 		await().until(() -> spans.peekFirst().getTags().size() == 12);
 		span = spans.poll();
 		assertThat(span.getTags())
@@ -140,7 +150,7 @@ public class ObservationTests {
 								Map.entry("messaging.kafka.client_id", "consumer-obs2-1"),
 								Map.entry("messaging.kafka.consumer.group", "obs2"),
 								Map.entry("messaging.kafka.message.offset", "0"),
-								Map.entry("messaging.kafka.partition", "0"),
+								Map.entry("messaging.kafka.source.partition", "0"),
 								Map.entry("messaging.operation", "receive"),
 								Map.entry("messaging.source.kind", "topic"),
 								Map.entry("messaging.source.name", "observation.testT2"),
@@ -173,20 +183,30 @@ public class ObservationTests {
 		assertThat(headers.lastHeader("bar")).extracting(hdr -> hdr.value()).isEqualTo("some bar value".getBytes());
 		assertThat(spans).hasSize(4);
 		span = spans.poll();
-		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
-		assertThat(span.getTags()).containsEntry("foo", "bar");
-		assertThat(span.getName()).isEqualTo("observation.testT1 send");
+		assertThat(span.getTags())
+				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
+						"foo", "bar",
+						"messaging.operation", "publish",
+						"messaging.system", "kafka",
+						"messaging.destination.kind", "topic",
+						"messaging.destination.name", "observation.testT1"));
+		assertThat(span.getName()).isEqualTo("observation.testT1 publish");
 		await().until(() -> spans.peekFirst().getTags().size() == 13);
 		span = spans.poll();
 		assertThat(span.getTags())
 				.containsAllEntriesOf(Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar",
 						"some bar value", "baz", "qux"));
 		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
-		await().until(() -> spans.peekFirst().getTags().size() == 2);
+		await().until(() -> spans.peekFirst().getTags().size() == 6);
 		span = spans.poll();
-		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
-		assertThat(span.getTags()).containsEntry("foo", "bar");
-		assertThat(span.getName()).isEqualTo("observation.testT2 send");
+		assertThat(span.getTags())
+				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
+						"foo", "bar",
+						"messaging.operation", "publish",
+						"messaging.system", "kafka",
+						"messaging.destination.kind", "topic",
+						"messaging.destination.name", "observation.testT2"));
+		assertThat(span.getName()).isEqualTo("observation.testT2 publish");
 		await().until(() -> spans.peekFirst().getTags().size() == 12);
 		span = spans.poll();
 		assertThat(span.getTags())
@@ -198,7 +218,7 @@ public class ObservationTests {
 								Map.entry("messaging.kafka.client_id", "consumer-obs2-1"),
 								Map.entry("messaging.kafka.consumer.group", "obs2"),
 								Map.entry("messaging.kafka.message.offset", "1"),
-								Map.entry("messaging.kafka.partition", "0"),
+								Map.entry("messaging.kafka.source.partition", "0"),
 								Map.entry("messaging.operation", "receive"),
 								Map.entry("messaging.source.kind", "topic"),
 								Map.entry("messaging.source.name", "observation.testT2"),
@@ -207,16 +227,24 @@ public class ObservationTests {
 		assertThat(span.getName()).isEqualTo("observation.testT2 receive");
 		MeterRegistryAssert.assertThat(meterRegistry)
 				.hasTimerWithNameAndTags("spring.kafka.template",
-						KeyValues.of("spring.kafka.template.name", "template"))
+						KeyValues.of("spring.kafka.template.name", "template",
+								"messaging.operation", "publish",
+								"messaging.system", "kafka",
+								"messaging.destination.kind", "topic",
+								"messaging.destination.name", "observation.testT1"))
 				.hasTimerWithNameAndTags("spring.kafka.template",
-						KeyValues.of("spring.kafka.template.name", "template", "foo", "bar"))
+						KeyValues.of("spring.kafka.template.name", "template", "foo", "bar",
+								"messaging.operation", "publish",
+								"messaging.system", "kafka",
+								"messaging.destination.kind", "topic",
+								"messaging.destination.name", "observation.testT2"))
 				.hasTimerWithNameAndTags("spring.kafka.listener",
 						KeyValues.of("spring.kafka.listener.id", "obs1-0",
 								"messaging.consumer.id", "obs1 - consumer-obs1-2",
 								"messaging.kafka.client_id", "consumer-obs1-2",
 								"messaging.kafka.consumer.group", "obs1",
 								"messaging.kafka.message.offset", "0",
-								"messaging.kafka.partition", "0",
+								"messaging.kafka.source.partition", "0",
 								"messaging.operation", "receive",
 								"messaging.source.kind", "topic",
 								"messaging.source.name", "observation.testT1",
@@ -228,7 +256,7 @@ public class ObservationTests {
 								"messaging.kafka.client_id", "consumer-obs1-3",
 								"messaging.kafka.consumer.group", "obs1",
 								"messaging.kafka.message.offset", "1",
-								"messaging.kafka.partition", "0",
+								"messaging.kafka.source.partition", "0",
 								"messaging.operation", "receive",
 								"messaging.source.kind", "topic",
 								"messaging.source.name", "observation.testT1",
@@ -239,7 +267,7 @@ public class ObservationTests {
 								"messaging.kafka.client_id", "consumer-obs2-1",
 								"messaging.kafka.consumer.group", "obs2",
 								"messaging.kafka.message.offset", "0",
-								"messaging.kafka.partition", "0",
+								"messaging.kafka.source.partition", "0",
 								"messaging.operation", "receive",
 								"messaging.source.kind", "topic",
 								"messaging.source.name", "observation.testT2",
