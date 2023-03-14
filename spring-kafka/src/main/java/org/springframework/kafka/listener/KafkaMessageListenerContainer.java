@@ -386,7 +386,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				(result, ex) -> {
 					if (ex == null) {
 						this.startLatch.countDown();
-					} else {
+					}
+					else {
 						throw new RuntimeException(ex);
 					}
 				}
