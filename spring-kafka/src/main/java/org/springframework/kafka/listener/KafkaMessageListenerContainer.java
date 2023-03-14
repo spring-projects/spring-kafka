@@ -380,8 +380,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType, observationRegistry);
 		setRunning(true);
-		this.startLatch = new CountDownLatch(1);
+		this.startLatch = new CountDownLatch(2);
 		this.listenerConsumerFuture = consumerExecutor.submitCompletable(this.listenerConsumer);
+		this.listenerConsumerFuture.whenComplete(
+				(result, ex) -> {
+					if (ex == null) {
+						this.startLatch.countDown();
+					} else {
+						throw new RuntimeException(ex);
+					}
+				}
+		);
 		try {
 			if (!this.startLatch.await(containerProperties.getConsumerStartTimeout().toMillis(),
 					TimeUnit.MILLISECONDS)) {
