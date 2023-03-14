@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,8 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 
 	private boolean ackAfterHandle = true;
 
+	private boolean reclassifyOnExceptionChange = true;
+
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
 	 * a 5 second back off).
@@ -113,6 +115,28 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 		this.ackAfterHandle = ackAfterHandle;
 	}
 
+	/**
+	 * True to reclassify the exception if different from the previous failure. If
+	 * classified as retryable, the existing back off sequence is used; a new sequence is
+	 * not started.
+	 * @return the reclassifyOnExceptionChange
+	 * @since 2.9.7
+	 */
+	protected boolean isReclassifyOnExceptionChange() {
+		return this.reclassifyOnExceptionChange;
+	}
+
+	/**
+	 * Set to false to not reclassify the exception if different from the previous
+	 * failure. If the changed exception is classified as retryable, the existing back off
+	 * sequence is used; a new sequence is not started. Default true.
+	 * @param reclassifyOnExceptionChange false to not reclassify.
+	 * @since 2.9.7
+	 */
+	public void setReclassifyOnExceptionChange(boolean reclassifyOnExceptionChange) {
+		this.reclassifyOnExceptionChange = reclassifyOnExceptionChange;
+	}
+
 	@Override
 	public void handleBatch(Exception thrownException, @Nullable ConsumerRecords<?, ?> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
@@ -124,7 +148,8 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 		this.retrying.set(true);
 		try {
 			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getClassifier());
+					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getClassifier(),
+					this.reclassifyOnExceptionChange);
 		}
 		finally {
 			this.retrying.set(false);

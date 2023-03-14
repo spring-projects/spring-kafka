@@ -102,6 +102,21 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		}
 	}
 
+	/**
+	 * Set to false to not reclassify the exception if different from the previous
+	 * failure. If the changed exception is classified as retryable, the existing back off
+	 * sequence is used; a new sequence is not started. Default true. Only applies when
+	 * the fallback batch error handler (for exceptions other than
+	 * {@link BatchListenerFailedException}) is the default.
+	 * @param reclassifyOnExceptionChange false to not reclassify.
+	 * @since 2.9.7
+	 */
+	public void setReclassifyOnExceptionChange(boolean reclassifyOnExceptionChange) {
+		if (this.fallbackBatchHandler instanceof FallbackBatchErrorHandler handler) {
+			handler.setReclassifyOnExceptionChange(reclassifyOnExceptionChange);
+		}
+	}
+
 	@Override
 	protected void notRetryable(Stream<Class<? extends Exception>> notRetryable) {
 		if (this.fallbackBatchHandler instanceof ExceptionClassifier handler) {

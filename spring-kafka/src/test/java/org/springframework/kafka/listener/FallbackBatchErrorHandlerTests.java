@@ -38,6 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -240,6 +242,50 @@ public class FallbackBatchErrorHandlerTests {
 		assertThat(getRetryingFieldValue(eh))
 				.withFailMessage("retrying field was not reset to false")
 				.isFalse();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void reclassifyOnExceptionChange() {
+		AtomicReference<Exception> thrown = new AtomicReference<>();
+		DefaultErrorHandler eh = new DefaultErrorHandler((cr, ex) ->  {
+			thrown.set(ex);
+		}, new FixedBackOff(0L, Long.MAX_VALUE));
+		eh.addNotRetryableExceptions(IllegalArgumentException.class);
+		ConsumerRecords records = new ConsumerRecords(
+				Map.of(new TopicPartition("foo", 0), List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))));
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		eh.handleBatch(new IllegalStateException(), records, mock(Consumer.class), container,
+				() -> {
+					throw new ListenerExecutionFailedException("", new IllegalArgumentException());
+				});
+		assertThat(thrown.get()).isInstanceOf(ListenerExecutionFailedException.class)
+				.extracting("cause")
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void reclassifyUseSameBackOffOnExceptionChange() {
+		AtomicReference<Exception> thrown = new AtomicReference<>();
+		DefaultErrorHandler eh = new DefaultErrorHandler((cr, ex) ->  {
+			thrown.set(ex);
+		}, new FixedBackOff(0L, 3));
+		ConsumerRecords records = new ConsumerRecords(
+				Map.of(new TopicPartition("foo", 0), List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))));
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		AtomicInteger retries = new AtomicInteger();
+		eh.handleBatch(new IllegalStateException(), records, mock(Consumer.class), container,
+				() -> {
+					retries.incrementAndGet();
+					throw new ListenerExecutionFailedException("", new IllegalArgumentException());
+				});
+		assertThat(thrown.get()).isInstanceOf(ListenerExecutionFailedException.class)
+				.extracting("cause")
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThat(retries.get()).isEqualTo(3);
 	}
 
 	private boolean getRetryingFieldValue(FallbackBatchErrorHandler errorHandler) {
