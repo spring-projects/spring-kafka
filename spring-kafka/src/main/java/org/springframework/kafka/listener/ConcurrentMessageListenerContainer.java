@@ -350,18 +350,22 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public void childStopped(MessageListenerContainer child, Reason reason) {
-		synchronized (this.lifecycleMonitor) {
-			if (this.reason == null || reason.equals(Reason.AUTH)) {
-				this.reason = reason;
-			}
-			if (Reason.AUTH.equals(this.reason)
-					&& getContainerProperties().isRestartAfterAuthExceptions()
-					&& this.concurrency == this.stoppedContainers.incrementAndGet()) {
+		if (this.reason == null || reason.equals(Reason.AUTH)) {
+			this.reason = reason;
+		}
+		if (Reason.AUTH.equals(this.reason)
+				&& getContainerProperties().isRestartAfterAuthExceptions()
+				&& this.concurrency == this.stoppedContainers.incrementAndGet()) {
 
-				this.reason = null;
-				this.stoppedContainers.set(0);
-				doStart();
+			this.reason = null;
+			this.stoppedContainers.set(0);
+
+			// This has to run on another thread to avoid a deadlock on lifecycleMonitor
+			AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
+			if (exec == null) {
+				exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
 			}
+			exec.execute(() -> start());
 		}
 	}
 
