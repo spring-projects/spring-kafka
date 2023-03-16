@@ -950,7 +950,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Nullable
 		private KafkaAdmin obtainAdmin() {
-			if (this.containerProperties.isObservationEnabled()) {
+			KafkaAdmin customAdmin = KafkaMessageListenerContainer.this.thisOrParentContainer.getKafkaAdmin();
+			if (customAdmin == null && this.containerProperties.isObservationEnabled()) {
 				ApplicationContext applicationContext = getApplicationContext();
 				if (applicationContext != null) {
 					KafkaAdmin admin = applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
@@ -965,6 +966,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 					return admin;
 				}
+			}
+			else {
+				return customAdmin;
 			}
 			return null;
 		}

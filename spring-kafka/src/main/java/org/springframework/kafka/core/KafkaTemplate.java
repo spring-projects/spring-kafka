@@ -148,6 +148,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
 
+	@Nullable
 	private KafkaAdmin kafkaAdmin;
 
 	private String clusterId;
@@ -419,22 +420,44 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		this.observationConvention = observationConvention;
 	}
 
+	/**
+	 * Return the {@link KafkaAdmin}, used to find the cluster id for observation, if
+	 * present.
+	 * @return the kafkaAdmin
+	 * @since 3.0.5
+	 */
+	@Nullable
+	public KafkaAdmin getKafkaAdmin() {
+		return this.kafkaAdmin;
+	}
+
+	/**
+	 * Set the {@link KafkaAdmin}, used to find the cluster id for observation, if
+	 * present.
+	 * @param kafkaAdmin the admin.
+	 */
+	public void setKafkaAdmin(KafkaAdmin kafkaAdmin) {
+		this.kafkaAdmin = kafkaAdmin;
+	}
+
 	@Override
 	public void afterSingletonsInstantiated() {
 		if (this.observationEnabled && this.applicationContext != null) {
 			this.observationRegistry = this.applicationContext.getBeanProvider(ObservationRegistry.class)
 					.getIfUnique(() -> this.observationRegistry);
-			this.kafkaAdmin = this.applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
-			if (this.kafkaAdmin != null) {
-				Object producerServers = this.producerFactory.getConfigurationProperties()
-						.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
-				String adminServers = this.kafkaAdmin.getBootstrapServers();
-				if (!producerServers.equals(adminServers)) {
-					Map<String, Object> props = new HashMap<>(this.kafkaAdmin.getConfigurationProperties());
-					props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, producerServers);
-					int opTo = this.kafkaAdmin.getOperationTimeout();
-					this.kafkaAdmin = new KafkaAdmin(props);
-					this.kafkaAdmin.setOperationTimeout(opTo);
+			if (this.kafkaAdmin == null) {
+				this.kafkaAdmin = this.applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+				if (this.kafkaAdmin != null) {
+					Object producerServers = this.producerFactory.getConfigurationProperties()
+							.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
+					String adminServers = this.kafkaAdmin.getBootstrapServers();
+					if (!producerServers.equals(adminServers)) {
+						Map<String, Object> props = new HashMap<>(this.kafkaAdmin.getConfigurationProperties());
+						props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, producerServers);
+						int opTo = this.kafkaAdmin.getOperationTimeout();
+						this.kafkaAdmin = new KafkaAdmin(props);
+						this.kafkaAdmin.setOperationTimeout(opTo);
+					}
 				}
 			}
 		}

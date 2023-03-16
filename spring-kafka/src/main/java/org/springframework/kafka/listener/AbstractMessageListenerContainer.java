@@ -46,6 +46,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -131,6 +132,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@NonNull
 	private Function<MessageListenerContainer, String> threadNameSupplier = container -> container.getListenerId();
+
+	@Nullable
+	private KafkaAdmin kafkaAdmin;
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -469,6 +473,26 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public void setThreadNameSupplier(Function<MessageListenerContainer, String> threadNameSupplier) {
 		Assert.notNull(threadNameSupplier, "'threadNameSupplier' cannot be null");
 		this.threadNameSupplier = threadNameSupplier;
+	}
+
+	/**
+	 * Return the {@link KafkaAdmin}, used to find the cluster id for observation, if
+	 * present.
+	 * @return the kafkaAdmin
+	 * @since 3.0.5
+	 */
+	@Nullable
+	public KafkaAdmin getKafkaAdmin() {
+		return this.kafkaAdmin;
+	}
+
+	/**
+	 * Set the {@link KafkaAdmin}, used to find the cluster id for observation, if
+	 * present.
+	 * @param kafkaAdmin the admin.
+	 */
+	public void setKafkaAdmin(KafkaAdmin kafkaAdmin) {
+		this.kafkaAdmin = kafkaAdmin;
 	}
 
 	protected RecordInterceptor<K, V> getRecordInterceptor() {

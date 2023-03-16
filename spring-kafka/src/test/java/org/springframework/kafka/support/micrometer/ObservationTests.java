@@ -18,6 +18,7 @@ package org.springframework.kafka.support.micrometer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
 import java.util.Deque;
@@ -48,6 +49,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -81,7 +83,7 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
  *
  */
 @SpringJUnitConfig
-@EmbeddedKafka(topics = { "observation.testT1", "observation.testT2" })
+@EmbeddedKafka(topics = { "observation.testT1", "observation.testT2", "ObservationTests.testT3" })
 @DirtiesContext
 public class ObservationTests {
 
@@ -89,7 +91,8 @@ public class ObservationTests {
 	void endToEnd(@Autowired Listener listener, @Autowired KafkaTemplate<Integer, String> template,
 			@Autowired SimpleTracer tracer, @Autowired KafkaListenerEndpointRegistry rler,
 			@Autowired MeterRegistry meterRegistry, @Autowired EmbeddedKafkaBroker broker,
-			@Autowired KafkaListenerEndpointRegistry endpointRegistry, @Autowired KafkaAdmin admin)
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry, @Autowired KafkaAdmin admin,
+			@Autowired KafkaTemplate<Integer, String> customTemplate, @Autowired Config config)
 					throws InterruptedException, ExecutionException, TimeoutException {
 
 		template.send("observation.testT1", "test").get(10, TimeUnit.SECONDS);
@@ -186,9 +189,12 @@ public class ObservationTests {
 		assertThat(pAdmin.getConfigurationProperties())
 				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
 						broker.getBrokersAsString() + "," + broker.getBrokersAsString());
+		// custom admin
+		assertThat(customTemplate.getKafkaAdmin()).isSameAs(config.mockAdmin);
+
+		// consumer factory broker different to admin
 		Object container = KafkaTestUtils
 				.getPropertyValue(endpointRegistry.getListenerContainer("obs1"), "containers", List.class).get(0);
-		// consumer factory broker different to admin
 		KafkaAdmin cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
 		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
 		assertThat(cAdmin.getConfigurationProperties())
@@ -202,11 +208,18 @@ public class ObservationTests {
 		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
 		assertThat(cAdmin.getConfigurationProperties())
 				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
+		// custom admin
+		container = KafkaTestUtils
+				.getPropertyValue(endpointRegistry.getListenerContainer("obs3"), "containers", List.class).get(0);
+		cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
+		assertThat(cAdmin).isSameAs(config.mockAdmin);
 	}
 
 	@Configuration
 	@EnableKafka
 	public static class Config {
+
+		KafkaAdmin mockAdmin = mock(KafkaAdmin.class);
 
 		@Bean
 		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
@@ -240,6 +253,14 @@ public class ObservationTests {
 		}
 
 		@Bean
+		KafkaTemplate<Integer, String> customTemplate(ProducerFactory<Integer, String> pf) {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+			template.setObservationEnabled(true);
+			template.setKafkaAdmin(this.mockAdmin);
+			return template;
+		}
+
+		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
 				ConsumerFactory<Integer, String> cf) {
 
@@ -247,6 +268,11 @@ public class ObservationTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
 			factory.getContainerProperties().setObservationEnabled(true);
+			factory.setContainerCustomizer(container -> {
+				if (container.getListenerId().equals("obs3")) {
+					((AbstractMessageListenerContainer<Integer, String>) container).setKafkaAdmin(this.mockAdmin);
+				}
+			});
 			return factory;
 		}
 
@@ -337,6 +363,10 @@ public class ObservationTests {
 			this.record = in;
 			this.latch1.countDown();
 			this.latch2.countDown();
+		}
+
+		@KafkaListener(id = "obs3", topics = "observation.testT3")
+		void listen3(ConsumerRecord<Integer, String> in) {
 		}
 
 	}
