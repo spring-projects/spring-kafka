@@ -38,7 +38,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -67,6 +69,7 @@ import org.springframework.kafka.test.condition.LogLevels;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -339,6 +342,29 @@ class DeadLetterPublishingRecovererFactoryTests {
 
 		// then
 		then(dlprCustomizer).should(times(1)).accept(deadLetterPublishingRecoverer);
+	}
+
+	@Test
+	void shouldUseCustomSubclassOfDLPR() {
+		// given
+		class CustomDeadLetterPublishingRecoverer extends RetryTopicPublishingRecoverer {
+			CustomDeadLetterPublishingRecoverer(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver, boolean transactional, BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+				super(templateResolver, transactional, destinationResolver);
+			}
+		}
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver) {
+			@Override
+			protected DeadLetterPublishingRecoverer createDeadLetterPublishingRecovererInstance(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver, boolean transactional, BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+				return new CustomDeadLetterPublishingRecoverer(templateResolver, transactional, destinationResolver);
+			}
+		};
+
+		// when
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create("id");
+
+		// then
+		assertThat(deadLetterPublishingRecoverer).isInstanceOf(CustomDeadLetterPublishingRecoverer.class);
 	}
 
 	@Test

@@ -52,6 +52,7 @@ import org.springframework.util.Assert;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  *
  */
@@ -175,31 +176,9 @@ public class DeadLetterPublishingRecovererFactory {
 	@SuppressWarnings("unchecked")
 	public DeadLetterPublishingRecoverer create(String mainListenerId) {
 		Assert.notNull(mainListenerId, "'listenerId' cannot be null");
-		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(// NOSONAR anon. class size
-				templateResolver(mainListenerId), false, destinationResolver(mainListenerId)) {
 
-			@Override
-			protected DeadLetterPublishingRecoverer.HeaderNames getHeaderNames() {
-				return DeadLetterPublishingRecoverer.HeaderNames.Builder
-						.original()
-							.offsetHeader(KafkaHeaders.ORIGINAL_OFFSET)
-							.timestampHeader(KafkaHeaders.ORIGINAL_TIMESTAMP)
-							.timestampTypeHeader(KafkaHeaders.ORIGINAL_TIMESTAMP_TYPE)
-							.topicHeader(KafkaHeaders.ORIGINAL_TOPIC)
-							.partitionHeader(KafkaHeaders.ORIGINAL_PARTITION)
-							.consumerGroupHeader(KafkaHeaders.ORIGINAL_CONSUMER_GROUP)
-						.exception()
-							.keyExceptionFqcn(KafkaHeaders.KEY_EXCEPTION_FQCN)
-							.exceptionFqcn(KafkaHeaders.EXCEPTION_FQCN)
-							.exceptionCauseFqcn(KafkaHeaders.EXCEPTION_CAUSE_FQCN)
-							.keyExceptionMessage(KafkaHeaders.KEY_EXCEPTION_MESSAGE)
-							.exceptionMessage(KafkaHeaders.EXCEPTION_MESSAGE)
-							.keyExceptionStacktrace(KafkaHeaders.KEY_EXCEPTION_STACKTRACE)
-							.exceptionStacktrace(KafkaHeaders.EXCEPTION_STACKTRACE)
-						.build();
-			}
-		};
-
+		DeadLetterPublishingRecoverer recoverer = createDeadLetterPublishingRecovererInstance(
+			templateResolver(mainListenerId), false, destinationResolver(mainListenerId));
 		recoverer.setHeadersFunction(
 				(consumerRecord, e) -> addHeaders(mainListenerId, consumerRecord, e, getAttempts(consumerRecord)));
 		if (this.headersFunction != null) {
@@ -213,6 +192,10 @@ public class DeadLetterPublishingRecovererFactory {
 		this.fatalExceptions.forEach(recoverer::addNotRetryableExceptions);
 		this.nonFatalExceptions.forEach(recoverer::removeClassification);
 		return recoverer;
+	}
+
+	protected DeadLetterPublishingRecoverer createDeadLetterPublishingRecovererInstance(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver, boolean transactional, BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+		return new RetryTopicPublishingRecoverer(templateResolver, false, destinationResolver);
 	}
 
 	private Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver(String mainListenerId) {
