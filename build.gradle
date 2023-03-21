@@ -71,15 +71,15 @@ ext {
 	kafkaVersion = '3.3.2'
 	log4jVersion = '2.19.0'
 	micrometerDocsVersion = "1.0.1"
-	micrometerVersion = '1.10.4'
-	micrometerTracingVersion = '1.0.2'
+	micrometerVersion = '1.10.5'
+	micrometerTracingVersion = '1.0.3'
 	mockitoVersion = '4.8.1'
-	reactorVersion = '2022.0.4'
+	reactorVersion = '2022.0.5'
 	scalaVersion = '2.13'
-	springBootVersion = '3.0.2' // docs module
-	springDataVersion = '2022.0.2'
-	springRetryVersion = '2.0.0'
-	springVersion = '6.0.7-SNAPSHOT'
+	springBootVersion = '3.0.4' // docs module
+	springDataVersion = '2022.0.4'
+	springRetryVersion = '2.0.1'
+	springVersion = '6.0.7'
 	zookeeperVersion = '3.6.3'
 
 	idPrefix = 'kafka'
