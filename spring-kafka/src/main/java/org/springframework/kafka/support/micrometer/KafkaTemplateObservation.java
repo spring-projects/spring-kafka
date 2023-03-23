@@ -27,6 +27,7 @@ import io.micrometer.observation.docs.ObservationDocumentation;
  * {@link org.springframework.kafka.core.KafkaTemplate}.
  *
  * @author Gary Russell
+ * @author Christian Mergenthaler
  * @since 3.0
  *
  */
@@ -72,7 +73,7 @@ public enum KafkaTemplateObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging system
+		 * Messaging system.
 		 */
 		MESSAGING_SYSTEM {
 
@@ -84,7 +85,7 @@ public enum KafkaTemplateObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging operation
+		 * Messaging operation.
 		 */
 		MESSAGING_OPERATION {
 
@@ -96,7 +97,7 @@ public enum KafkaTemplateObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging destination name
+		 * Messaging destination name.
 		 */
 		MESSAGING_DESTINATION_NAME {
 
@@ -108,7 +109,7 @@ public enum KafkaTemplateObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging destination kind
+		 * Messaging destination kind.
 		 */
 		MESSAGING_DESTINATION_KIND {
 

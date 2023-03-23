@@ -28,6 +28,7 @@ import io.micrometer.observation.transport.ReceiverContext;
  * {@link ReceiverContext} for {@link ConsumerRecord}s.
  *
  * @author Gary Russell
+ * @author Christian Mergenthaler
  * @since 3.0
  *
  */
@@ -39,7 +40,8 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 
 	private final ConsumerRecord<?, ?> record;
 
-	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, String clientId, String groupId, Supplier<String> clusterId) {
+	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, String clientId, String groupId,
+			Supplier<String> clusterId) {
 		super((carrier, key) -> {
 			Header header = carrier.headers().lastHeader(key);
 			if (header == null || header.value() == null) {
@@ -63,12 +65,13 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	public String getListenerId() {
 		return this.listenerId;
 	}
+
 	public String getGroupId() {
 		return this.groupId;
 	}
 
 	public String getClientId() {
-		return clientId;
+		return this.clientId;
 	}
 
 	/**

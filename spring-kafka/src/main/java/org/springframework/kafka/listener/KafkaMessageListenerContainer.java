@@ -163,6 +163,7 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Soby Chacko
  * @author Wang Zhiyang
  * @author Raphael Rösch
+ * @author Christian Mergenthaler
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -2687,7 +2688,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 					this.containerProperties.getObservationConvention(),
 					DefaultKafkaListenerObservationConvention.INSTANCE,
-					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), getGroupId(), this::clusterId),
+					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), getGroupId(),
+							this::clusterId),
 					this.observationRegistry);
 			return observation.observe(() -> {
 				try {
