@@ -16,12 +16,13 @@
 
 package org.springframework.kafka.support.micrometer;
 
+import org.springframework.util.StringUtils;
+
 import io.micrometer.common.KeyValues;
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation.Context;
 import io.micrometer.observation.ObservationConvention;
 import io.micrometer.observation.docs.ObservationDocumentation;
-import org.springframework.util.StringUtils;
 
 /**
  * Spring for Apache Kafka Observation for listeners.
@@ -73,7 +74,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging system
+		 * Messaging system.
 		 */
 		MESSAGING_SYSTEM {
 
@@ -85,7 +86,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging operation
+		 * Messaging operation.
 		 */
 		MESSAGING_OPERATION {
 
@@ -97,7 +98,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging consumer id
+		 * Messaging consumer id.
 		 */
 		MESSAGING_CONSUMER_ID {
 
@@ -109,7 +110,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging source name
+		 * Messaging source name.
 		 */
 		MESSAGING_SOURCE_NAME {
 
@@ -121,7 +122,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging source kind
+		 * Messaging source kind.
 		 */
 		MESSAGING_SOURCE_KIND {
 
@@ -133,7 +134,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging consumer group
+		 * Messaging consumer group.
 		 */
 		MESSAGING_CONSUMER_GROUP {
 
@@ -145,7 +146,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging client id
+		 * Messaging client id.
 		 */
 		MESSAGING_CLIENT_ID {
 
@@ -157,7 +158,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging partition
+		 * Messaging partition.
 		 */
 		MESSAGING_PARTITION {
 
@@ -169,7 +170,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging message offset
+		 * Messaging message offset.
 		 */
 		MESSAGING_OFFSET {
 

@@ -27,6 +27,7 @@ import io.micrometer.observation.transport.SenderContext;
  * {@link SenderContext} for {@link ProducerRecord}s.
  *
  * @author Gary Russell
+ * @author Christian Mergenthaler
  * @since 3.0
  *
  */

@@ -79,6 +79,7 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
 
 /**
  * @author Gary Russell
+ * @author Christian Mergenthaler
  * @since 3.0
  *
  */
