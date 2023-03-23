@@ -148,7 +148,7 @@ public enum KafkaTemplateObservation implements ObservationDocumentation {
 
 		@Override
 		public String getContextualName(KafkaRecordSenderContext context) {
-			return context.getDestination() + " publish";
+			return context.getDestination() + " send";
 		}
 
 		@Override
