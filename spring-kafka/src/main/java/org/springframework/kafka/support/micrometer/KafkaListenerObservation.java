@@ -206,14 +206,22 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 					ListenerLowCardinalityTags.MESSAGING_OPERATION.withValue("receive"),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_NAME.withValue(context.getSource()),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic"),
-					ListenerLowCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
-					ListenerLowCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset()),
 					ListenerLowCardinalityTags.MESSAGING_CONSUMER_GROUP.withValue(context.getGroupId())
 			);
 
 			if (StringUtils.hasText(context.getClientId())) {
 				keyValues = keyValues.and(ListenerLowCardinalityTags.MESSAGING_CLIENT_ID.withValue(context.getClientId()));
 			}
+
+			return keyValues;
+		}
+
+		@Override
+		public KeyValues getHighCardinalityKeyValues(KafkaRecordReceiverContext context) {
+			KeyValues keyValues = KeyValues.of(
+					ListenerLowCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
+					ListenerLowCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset())
+			);
 
 			return keyValues;
 		}

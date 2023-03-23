@@ -83,7 +83,7 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
  *
  */
 @SpringJUnitConfig
-@EmbeddedKafka(topics = { "observation.testT1", "observation.testT2", "ObservationTests.testT3" })
+@EmbeddedKafka(topics = { "observation.testT1", "observation.testT2", "ObservationTests.testT3" }, partitions = 1)
 @DirtiesContext
 public class ObservationTests {
 
@@ -110,7 +110,7 @@ public class ObservationTests {
 						"messaging.system", "kafka",
 						"messaging.destination.kind", "topic",
 						"messaging.destination.name", "observation.testT1"));
-		assertThat(span.getName()).isEqualTo("observation.testT1 publish");
+		assertThat(span.getName()).isEqualTo("observation.testT1 send");
 		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
 		await().until(() -> spans.peekFirst().getTags().size() == 12);
 		span = spans.poll();
@@ -119,8 +119,8 @@ public class ObservationTests {
 						Map.ofEntries(Map.entry("spring.kafka.listener.id", "obs1-0"),
 								Map.entry("foo", "some foo value"),
 								Map.entry("bar", "some bar value"),
-								Map.entry("messaging.consumer.id", "obs1 - consumer-obs1-2"),
-								Map.entry("messaging.kafka.client_id", "consumer-obs1-2"),
+								Map.entry("messaging.consumer.id", "obs1 - consumer-obs1-3"),
+								Map.entry("messaging.kafka.client_id", "consumer-obs1-3"),
 								Map.entry("messaging.kafka.consumer.group", "obs1"),
 								Map.entry("messaging.kafka.message.offset", "0"),
 								Map.entry("messaging.kafka.source.partition", "0"),
@@ -138,7 +138,7 @@ public class ObservationTests {
 						"messaging.system", "kafka",
 						"messaging.destination.kind", "topic",
 						"messaging.destination.name", "observation.testT2"));
-		assertThat(span.getName()).isEqualTo("observation.testT2 publish");
+		assertThat(span.getName()).isEqualTo("observation.testT2 send");
 		await().until(() -> spans.peekFirst().getTags().size() == 12);
 		span = spans.poll();
 		assertThat(span.getTags())
@@ -146,8 +146,8 @@ public class ObservationTests {
 						Map.ofEntries(Map.entry("spring.kafka.listener.id", "obs2-0"),
 								Map.entry("foo", "some foo value"),
 								Map.entry("bar", "some bar value"),
-								Map.entry("messaging.consumer.id", "obs2 - consumer-obs2-1"),
-								Map.entry("messaging.kafka.client_id", "consumer-obs2-1"),
+								Map.entry("messaging.consumer.id", "obs2 - consumer-obs2-2"),
+								Map.entry("messaging.kafka.client_id", "consumer-obs2-2"),
 								Map.entry("messaging.kafka.consumer.group", "obs2"),
 								Map.entry("messaging.kafka.message.offset", "0"),
 								Map.entry("messaging.kafka.source.partition", "0"),
@@ -190,7 +190,7 @@ public class ObservationTests {
 						"messaging.system", "kafka",
 						"messaging.destination.kind", "topic",
 						"messaging.destination.name", "observation.testT1"));
-		assertThat(span.getName()).isEqualTo("observation.testT1 publish");
+		assertThat(span.getName()).isEqualTo("observation.testT1 send");
 		await().until(() -> spans.peekFirst().getTags().size() == 13);
 		span = spans.poll();
 		assertThat(span.getTags())
@@ -206,7 +206,7 @@ public class ObservationTests {
 						"messaging.system", "kafka",
 						"messaging.destination.kind", "topic",
 						"messaging.destination.name", "observation.testT2"));
-		assertThat(span.getName()).isEqualTo("observation.testT2 publish");
+		assertThat(span.getName()).isEqualTo("observation.testT2 send");
 		await().until(() -> spans.peekFirst().getTags().size() == 12);
 		span = spans.poll();
 		assertThat(span.getTags())
@@ -214,8 +214,8 @@ public class ObservationTests {
 						Map.ofEntries(Map.entry("spring.kafka.listener.id", "obs2-0"),
 								Map.entry("foo", "some foo value"),
 								Map.entry("bar", "some bar value"),
-								Map.entry("messaging.consumer.id", "obs2 - consumer-obs2-1"),
-								Map.entry("messaging.kafka.client_id", "consumer-obs2-1"),
+								Map.entry("messaging.consumer.id", "obs2 - consumer-obs2-2"),
+								Map.entry("messaging.kafka.client_id", "consumer-obs2-2"),
 								Map.entry("messaging.kafka.consumer.group", "obs2"),
 								Map.entry("messaging.kafka.message.offset", "1"),
 								Map.entry("messaging.kafka.source.partition", "0"),
@@ -240,11 +240,9 @@ public class ObservationTests {
 								"messaging.destination.name", "observation.testT2"))
 				.hasTimerWithNameAndTags("spring.kafka.listener",
 						KeyValues.of("spring.kafka.listener.id", "obs1-0",
-								"messaging.consumer.id", "obs1 - consumer-obs1-2",
-								"messaging.kafka.client_id", "consumer-obs1-2",
+								"messaging.consumer.id", "obs1 - consumer-obs1-3",
+								"messaging.kafka.client_id", "consumer-obs1-3",
 								"messaging.kafka.consumer.group", "obs1",
-								"messaging.kafka.message.offset", "0",
-								"messaging.kafka.source.partition", "0",
 								"messaging.operation", "receive",
 								"messaging.source.kind", "topic",
 								"messaging.source.name", "observation.testT1",
@@ -252,22 +250,18 @@ public class ObservationTests {
 				.hasTimerWithNameAndTags("spring.kafka.listener",
 						KeyValues.of("spring.kafka.listener.id", "obs1-0",
 								"baz", "qux",
-								"messaging.consumer.id", "obs1 - consumer-obs1-3",
-								"messaging.kafka.client_id", "consumer-obs1-3",
+								"messaging.consumer.id", "obs1 - consumer-obs1-4",
+								"messaging.kafka.client_id", "consumer-obs1-4",
 								"messaging.kafka.consumer.group", "obs1",
-								"messaging.kafka.message.offset", "1",
-								"messaging.kafka.source.partition", "0",
 								"messaging.operation", "receive",
 								"messaging.source.kind", "topic",
 								"messaging.source.name", "observation.testT1",
 								"messaging.system", "kafka"))
 				.hasTimerWithNameAndTags("spring.kafka.listener",
 						KeyValues.of("spring.kafka.listener.id", "obs2-0",
-								"messaging.consumer.id", "obs2 - consumer-obs2-1",
-								"messaging.kafka.client_id", "consumer-obs2-1",
+								"messaging.consumer.id", "obs2 - consumer-obs2-2",
+								"messaging.kafka.client_id", "consumer-obs2-2",
 								"messaging.kafka.consumer.group", "obs2",
-								"messaging.kafka.message.offset", "0",
-								"messaging.kafka.source.partition", "0",
 								"messaging.operation", "receive",
 								"messaging.source.kind", "topic",
 								"messaging.source.name", "observation.testT2",
