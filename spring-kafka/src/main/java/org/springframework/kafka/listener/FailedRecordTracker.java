@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,8 +200,9 @@ class FailedRecordTracker implements RecoveryStrategy {
 			Map<TopicPartition, FailedRecord> map, TopicPartition topicPartition) {
 
 		Exception realException = exception;
-		if (realException  instanceof ListenerExecutionFailedException
-				&& realException.getCause() instanceof Exception) {
+		while ((realException  instanceof ListenerExecutionFailedException
+				|| realException instanceof TimestampedException)
+						&& realException.getCause() instanceof Exception) {
 
 			realException = (Exception) realException.getCause();
 		}

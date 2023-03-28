@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
@@ -184,6 +186,34 @@ public class FailedRecordTrackerTests {
 					.get(new TopicPartition("foo", 0)), "backOffExecution"))
 				.isSameAs(be1);
 		}
+	}
+
+	@Test
+	void exceptionChangesWithTimestampedException() throws InterruptedException {
+		FixedBackOff bo1 = new FixedBackOff(0L, 5L);
+		FailedRecordTracker tracker = new FailedRecordTracker((rec, ex) -> { }, bo1, mock(LogAccessor.class));
+		AtomicReference<Exception> captured = new AtomicReference<>();
+		tracker.setBackOffFunction((record, ex) -> {
+			captured.set(ex);
+			if (ex instanceof IllegalStateException) {
+				return bo1;
+			}
+			else {
+				return new FixedBackOff(0L, 0L);
+			}
+		});
+		IllegalStateException ise = new IllegalStateException();
+		Exception ex = new ListenerExecutionFailedException("", new TimestampedException(
+				new ListenerExecutionFailedException("", ise)));
+		ConsumerRecord<?, ?> record = mock(ConsumerRecord.class);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		assertThat(tracker.recovered(record, ex, mock(MessageListenerContainer.class), consumer)).isFalse();
+		assertThat(captured.get()).isSameAs(ise);
+		IllegalArgumentException iae = new IllegalArgumentException();
+		ex = new ListenerExecutionFailedException("", new TimestampedException(
+				new ListenerExecutionFailedException("", iae)));
+		assertThat(tracker.recovered(record, ex, mock(MessageListenerContainer.class), consumer)).isTrue();
+		assertThat(captured.get()).isSameAs(iae);
 	}
 
 }
