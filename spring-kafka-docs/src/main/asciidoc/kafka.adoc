@@ -3377,7 +3377,7 @@ The timers are named `spring.kafka.template` and have the following tags:
 
 You can add additional tags using the template's `micrometerTags` property.
 
-Starting with versions 2.9.8, 3.0.6, you can provide a function in `ContainerProperties` `micrometerTagsProvider`; the function receives the `ProducerRecord<?, ?>` and returns tags which can be based on that record, and merged with any static tags in `micrometerTags`.
+Starting with versions 2.9.8, 3.0.6, you can provide a `KafkaContainer.setMicrometerTagsProvider(Function<ProducerRecord<?, ?>, Map<String, String>>)` property; the function receives the `ProducerRecord<?, ?>` and returns tags which can be based on that record, and merged with any static tags in `micrometerTags`.
 
 [[micrometer-native]]
 ===== Micrometer Native Metrics
