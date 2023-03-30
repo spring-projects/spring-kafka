@@ -2532,6 +2532,14 @@ Also see `idleBeforeDataMultiplier`.
 |`true`
 |Whether or not to maintain Micrometer timers for the consumer threads.
 
+|[[micrometerTags]]<<micrometerTags,`micrometerTags`>>
+|empty
+|A map of static tags to be added to micrometer metrics.
+
+|[[micrometerTagsProvider]]<<micrometerTagsProvider,`micrometerTagsProvider`>>
+|`null`
+|A function that provides dynamic tags, based on the consumer record.
+
 |[[missingTopicsFatal]]<<missingTopicsFatal,`missingTopicsFatal`>>
 |`false`
 |When true prevents the container from starting if the confifgured topic(s) are not present on the broker.
@@ -3350,6 +3358,8 @@ The timers are named `spring.kafka.listener` and have the following tags:
 
 You can add additional tags using the `ContainerProperties` `micrometerTags` property.
 
+Starting with versions 2.9.8, 3.0.6, you can provide a function in `ContainerProperties` `micrometerTagsProvider`; the function receives the `ConsumerRecord<?, ?>` and returns tags which can be based on that record, and merged with any static tags in `micrometerTags`.
+
 NOTE: With the concurrent container, timers are created for each thread and the `name` tag is suffixed with `-n` where n is `0` to `concurrency-1`.
 
 ===== Monitoring KafkaTemplate Performance
@@ -3366,6 +3376,8 @@ The timers are named `spring.kafka.template` and have the following tags:
 * `exception` : `none` or the exception class name for failures
 
 You can add additional tags using the template's `micrometerTags` property.
+
+Starting with versions 2.9.8, 3.0.6, you can provide a function in `ContainerProperties` `micrometerTagsProvider`; the function receives the `ProducerRecord<?, ?>` and returns tags which can be based on that record, and merged with any static tags in `micrometerTags`.
 
 [[micrometer-native]]
 ===== Micrometer Native Metrics

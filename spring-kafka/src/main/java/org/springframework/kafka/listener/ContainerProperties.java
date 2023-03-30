@@ -23,9 +23,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.aopalliance.aop.Advice;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
@@ -182,6 +184,9 @@ public class ContainerProperties extends ConsumerProperties {
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
 	private final List<Advice> adviceChain = new ArrayList<>();
+
+	@Nullable
+	private Function<ConsumerRecord<?, ?>, Map<String, String>> micrometerTagsProvider;
 
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
@@ -660,7 +665,8 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set to true to enable observation via Micrometer.
+	 * Set to true to enable observation via Micrometer. When false (default)
+	 * basic Micrometer timers are used instead (when enabled).
 	 * @param observationEnabled true to enable.
 	 * @since 3.0
 	 * @see #setMicrometerEnabled(boolean)
@@ -680,8 +686,40 @@ public class ContainerProperties extends ConsumerProperties {
 		}
 	}
 
+	/**
+	 * Return static Micrometer tags.
+	 * @return the tags.
+	 * @since 2.3
+	 */
 	public Map<String, String> getMicrometerTags() {
 		return Collections.unmodifiableMap(this.micrometerTags);
+	}
+
+	/**
+	 * Set a function to provide dynamic tags based on the consumer record. These tags
+	 * will be added to any static tags provided in {@link #setMicrometerTags(Map)
+	 * micrometerTags}. Only applies to record listeners, ignored for batch listeners.
+	 * Does not apply if observation is enabled.
+	 * @param micrometerTagsProvider the micrometerTagsProvider.
+	 * @since 2.9.8
+	 * @see #setMicrometerEnabled(boolean)
+	 * @see #setMicrometerTags(Map)
+	 * @see #setObservationEnabled(boolean)
+	 */
+	public void setMicrometerTagsProvider(
+			@Nullable Function<ConsumerRecord<?, ?>, Map<String, String>> micrometerTagsProvider) {
+
+		this.micrometerTagsProvider = micrometerTagsProvider;
+	}
+
+	/**
+	 * Return the Micrometer tags provider.
+	 * @return the micrometerTagsProvider.
+	 * @since 2.9.8
+	 */
+	@Nullable
+	public Function<ConsumerRecord<?, ?>, Map<String, String>> getMicrometerTagsProvider() {
+		return this.micrometerTagsProvider;
 	}
 
 	public Duration getConsumerStartTimeout() {

@@ -552,8 +552,26 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testNulls() throws Exception {
-		template.send("annotated12", null, null);
+		this.kafkaJsonTemplate.send("annotated12", null, null);
 		assertThat(this.listener.latch8.await(60, TimeUnit.SECONDS)).isTrue();
+
+		assertThat(this.meterRegistry.get("spring.kafka.template")
+				.tag("name", "kafkaJsonTemplate")
+				.tag("extraTag", "bar")
+				.tag("topic", "annotated12")
+				.tag("result", "success")
+				.timer()
+				.count())
+						.isGreaterThan(0L);
+
+		assertThat(this.meterRegistry.get("spring.kafka.listener")
+				.tag("name", "quux-0")
+				.tag("extraTag", "foo")
+				.tag("topic", "annotated12")
+				.tag("result", "success")
+				.timer()
+				.count())
+						.isGreaterThan(0L);
 	}
 
 	@Test
@@ -1069,6 +1087,11 @@ public class EnableKafkaIntegrationTests {
 
 			});
 			factory.getContainerProperties().setMicrometerTags(Collections.singletonMap("extraTag", "foo"));
+			factory.setContainerCustomizer(container -> {
+				if ("quux".equals(container.getListenerId())) {
+					container.getContainerProperties().setMicrometerTagsProvider(cr -> Map.of("topic", cr.topic()));
+				}
+			});
 			// ensure annotation wins, even with explicitly set here
 			factory.setBatchListener(false);
 			return factory;
@@ -1480,6 +1503,8 @@ public class EnableKafkaIntegrationTests {
 		public KafkaTemplate<Integer, String> kafkaJsonTemplate() {
 			KafkaTemplate<Integer, String> kafkaTemplate = new KafkaTemplate<>(producerFactory());
 			kafkaTemplate.setMessageConverter(new StringJsonMessageConverter());
+			kafkaTemplate.setMicrometerTags(Collections.singletonMap("extraTag", "bar"));
+			kafkaTemplate.setMicrometerTagsProvider(pr -> Map.of("topic", pr.topic()));
 			return kafkaTemplate;
 		}
 

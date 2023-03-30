@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,12 @@ package org.springframework.kafka.support.micrometer;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -49,7 +51,7 @@ public final class MicrometerHolder {
 
 	private final String name;
 
-	private final Map<String, String> tags;
+	private final Function<Object, Map<String, String>> tagsProvider;
 
 	/**
 	 * Create an instance with the provided properties.
@@ -58,10 +60,29 @@ public final class MicrometerHolder {
 	 * @param timerName the timer name.
 	 * @param timerDesc the timer description.
 	 * @param tags additional tags.
+	 * @deprecated in favor of
+	 * {@link #MicrometerHolder(ApplicationContext, String, String, String, Function)}.
 	 */
+	@Deprecated
 	public MicrometerHolder(@Nullable ApplicationContext context, String name,
 			String timerName, String timerDesc, Map<String, String> tags) {
 
+		this(context, name, timerName, timerDesc, cr -> tags);
+	}
+
+	/**
+	 * Create an instance with the provided properties.
+	 * @param context the application context from which to obtain the meter registry.
+	 * @param name the value of the 'name' tag.
+	 * @param timerName the timer name.
+	 * @param timerDesc the timer description.
+	 * @param tagsProvider the tags provider.
+	 * @since 2.9.7
+	 */
+	public MicrometerHolder(@Nullable ApplicationContext context, String name,
+			String timerName, String timerDesc, Function<Object, Map<String, String>> tagsProvider) {
+
+		Assert.notNull(tagsProvider, "'tagsProvider' cannot be null");
 		if (context == null) {
 			throw new IllegalStateException("No micrometer registry present");
 		}
@@ -75,8 +96,8 @@ public final class MicrometerHolder {
 			this.timerName = timerName;
 			this.timerDesc = timerDesc;
 			this.name = name;
-			this.tags = tags;
-			buildTimer(NONE_EXCEPTION_METERS_KEY);
+			this.tagsProvider = tagsProvider;
+			buildTimer(NONE_EXCEPTION_METERS_KEY, null);
 		}
 		else {
 			throw new IllegalStateException("No micrometer registry present (or more than one and "
@@ -113,22 +134,50 @@ public final class MicrometerHolder {
 	public void failure(Object sample, String exception) {
 		Timer timer = this.meters.get(exception);
 		if (timer == null) {
-			timer = buildTimer(exception);
+			timer = buildTimer(exception, null);
 		}
 		((Sample) sample).stop(timer);
 	}
 
-	private Timer buildTimer(String exception) {
+	/**
+	 * Record success.
+	 * @param sample the sample.
+	 * @param record the consumer record.
+	 * @see #start()
+	 */
+	public void success(Object sample, Object record) {
+		Timer timer = buildTimer("none", record);
+		if (timer != null) {
+			((Sample) sample).stop(timer);
+		}
+	}
+
+	/**
+	 * Record failure.
+	 * @param sample the sample.
+	 * @param exception the exception name.
+	 * @param record the consumer record.
+	 * @see #start()
+	 */
+	public void failure(Object sample, String exception, Object record) {
+		Timer timer = buildTimer(exception, record);
+		((Sample) sample).stop(timer);
+	}
+
+	private Timer buildTimer(String exception, @Nullable Object record) {
 		Builder builder = Timer.builder(this.timerName)
 			.description(this.timerDesc)
 			.tag("name", this.name)
 			.tag("result", exception.equals(NONE_EXCEPTION_METERS_KEY) ? "success" : "failure")
 			.tag("exception", exception);
-		if (this.tags != null && !this.tags.isEmpty()) {
-			this.tags.forEach(builder::tag);
+		Map<String, String> extra = this.tagsProvider.apply(record);
+		if (extra != null && !extra.isEmpty()) {
+			extra.forEach(builder::tag);
 		}
 		Timer registeredTimer = builder.register(this.registry);
-		this.meters.put(exception, registeredTimer);
+		if (record == null) {
+			this.meters.put(exception, registeredTimer);
+		}
 		return registeredTimer;
 	}
 
