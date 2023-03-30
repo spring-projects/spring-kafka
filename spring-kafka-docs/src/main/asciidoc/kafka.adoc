@@ -3447,7 +3447,11 @@ The default implementations add the `bean.name` tag for template observations an
 
 You can either subclass `DefaultKafkaTemplateObservationConvention` or `DefaultKafkaListenerObservationConvention` or provide completely new implementations.
 
-See <<observation-gen>> for details of the observations that are recorded.
+See <<observation-gen>> for details of the default observations that are recorded.
+
+Starting with version 3.0.6, you can add dynamic tags to the timers and traces, based on information in the consumer or producer records.
+To do so, add a custom `KafkaListenerObservationConvention` and/or `KafkaTemplateObservationConvention` to the listener container properties or `KafkaTemplate` respectively.
+The `record` property in both observation contexts contains the `ConsumerRecord` or `ProducerRecord` respectively.
 
 [[transactions]]
 ==== Transactions

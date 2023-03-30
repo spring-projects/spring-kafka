@@ -34,17 +34,21 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 
 	private final String beanName;
 
-	private final String destination;
+	private final ProducerRecord<?, ?> record;
 
 	public KafkaRecordSenderContext(ProducerRecord<?, ?> record, String beanName, Supplier<String> clusterId) {
 		super((carrier, key, value) -> record.headers().add(key, value.getBytes(StandardCharsets.UTF_8)));
 		setCarrier(record);
 		this.beanName = beanName;
-		this.destination = record.topic();
+		this.record = record;
 		String cluster = clusterId.get();
 		setRemoteServiceName("Apache Kafka" + (cluster != null ? ": " + cluster : ""));
 	}
 
+	/**
+	 * Return the template's bean name.
+	 * @return the name.
+	 */
 	public String getBeanName() {
 		return this.beanName;
 	}
@@ -54,7 +58,16 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 	 * @return the topic.
 	 */
 	public String getDestination() {
-		return this.destination;
+		return this.record.topic();
+	}
+
+	/**
+	 * Return the producer record.
+	 * @return the record the record.
+	 * @since 3.0.6
+	 */
+	public ProducerRecord<?, ?> getRecord() {
+		return this.record;
 	}
 
 }

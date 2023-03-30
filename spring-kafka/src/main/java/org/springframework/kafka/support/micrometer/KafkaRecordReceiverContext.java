@@ -52,6 +52,10 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 		setRemoteServiceName("Apache Kafka" + (cluster != null ? ": " + cluster : ""));
 	}
 
+	/**
+	 * Return the listener id.
+	 * @return the listener id.
+	 */
 	public String getListenerId() {
 		return this.listenerId;
 	}
@@ -62,6 +66,15 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	 */
 	public String getSource() {
 		return this.record.topic();
+	}
+
+	/**
+	 * Return the consumer record.
+	 * @return the record the record.
+	 * @since 3.0.6
+	 */
+	public ConsumerRecord<?, ?> getRecord() {
+		return this.record;
 	}
 
 }
