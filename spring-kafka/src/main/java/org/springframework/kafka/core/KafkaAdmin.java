@@ -283,7 +283,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 				Thread.currentThread().interrupt();
 			}
 			catch (Exception ex) {
-				LOGGER.error(ex, "Could not obtaine cluster info");
+				LOGGER.error(ex, "Could not obtain cluster info");
 			}
 		}
 		return this.clusterId;
