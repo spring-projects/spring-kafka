@@ -18,6 +18,7 @@ package org.springframework.kafka.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -161,6 +162,8 @@ import org.springframework.validation.Validator;
 
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.search.MeterNotFoundException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -555,23 +558,41 @@ public class EnableKafkaIntegrationTests {
 		this.kafkaJsonTemplate.send("annotated12", null, null);
 		assertThat(this.listener.latch8.await(60, TimeUnit.SECONDS)).isTrue();
 
-		assertThat(this.meterRegistry.get("spring.kafka.template")
-				.tag("name", "kafkaJsonTemplate")
-				.tag("extraTag", "bar")
-				.tag("topic", "annotated12")
-				.tag("result", "success")
-				.timer()
-				.count())
-						.isGreaterThan(0L);
+		await().untilAsserted(() -> {
+			Timer timer = null;
+			try {
+				timer = this.meterRegistry.get("spring.kafka.template")
+						.tag("name", "kafkaJsonTemplate")
+						.tag("extraTag", "bar")
+						.tag("topic", "annotated12")
+						.tag("result", "success")
+						.timer();
+			}
+			catch (MeterNotFoundException ex) {
+			}
+			assertThat(timer)
+					.describedAs("Timer not found in " + ((SimpleMeterRegistry) this.meterRegistry).getMetersAsString())
+					.isNotNull();
+			assertThat(timer.count()).isGreaterThan(0L);
+		});
 
-		assertThat(this.meterRegistry.get("spring.kafka.listener")
-				.tag("name", "quux-0")
-				.tag("extraTag", "foo")
-				.tag("topic", "annotated12")
-				.tag("result", "success")
-				.timer()
-				.count())
-						.isGreaterThan(0L);
+		await().untilAsserted(() -> {
+			Timer timer = null;
+			try {
+				timer = this.meterRegistry.get("spring.kafka.listener")
+						.tag("name", "quux-0")
+						.tag("extraTag", "foo")
+						.tag("topic", "annotated12")
+						.tag("result", "success")
+						.timer();
+			}
+			catch (MeterNotFoundException ex) {
+			}
+			assertThat(timer)
+					.describedAs("Timer not found in " + ((SimpleMeterRegistry) this.meterRegistry).getMetersAsString())
+					.isNotNull();
+			assertThat(timer.count()).isGreaterThan(0L);
+		});
 	}
 
 	@Test
