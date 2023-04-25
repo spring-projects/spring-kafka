@@ -52,7 +52,7 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 			onPartitionsRevoked(partitions);
 		}
 		catch (Exception e) { // NOSONAR
-			LOGGER.debug(e, "User method threw exception");
+			LOGGER.error(e, "User method threw exception");
 		}
 	}
 
@@ -76,7 +76,7 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 			onPartitionsLost(partitions);
 		}
 		catch (Exception e) { // NOSONAR
-			LOGGER.debug(e, "User method threw exception");
+			LOGGER.error(e, "User method threw exception");
 		}
 	}
 
@@ -91,7 +91,7 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 			onPartitionsAssigned(partitions);
 		}
 		catch (Exception e) { // NOSONAR
-			LOGGER.debug(e, "User method threw exception");
+			LOGGER.error(e, "User method threw exception");
 		}
 	}
 
