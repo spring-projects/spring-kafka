@@ -44,7 +44,7 @@ public static class PartitionFinder {
 
 Using this in conjunction with `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG=earliest` will load all records each time the application is started.
 You should also set the container's `AckMode` to `MANUAL` to prevent the container from committing offsets for a `null` consumer group.
-Howewever, starting with version 2.5.5, as shown above, you can apply an initial offset to all partitions; see <<manual-assignment>> for more information.
+However, starting with version 2.5.5, as shown above, you can apply an initial offset to all partitions; see <<manual-assignment>> for more information.
 
 [[ex-jdbc-sync]]
 === Examples of Kafka Transactions with Other Transaction Managers
