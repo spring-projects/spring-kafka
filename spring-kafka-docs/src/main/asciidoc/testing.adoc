@@ -624,3 +624,71 @@ received = records.poll(10, TimeUnit.SECONDS);
 assertThat(received).has(allOf(keyValue(2, "baz"), partition(0)));
 ----
 ====
+
+[[mock-cons-prod]]
+==== Mock Consumer and Producer
+
+The `kafka-clients` library provides `MockConsumer` and `MockProducer` classes for testing purposes.
+
+If you wish to use these classes in some of your tests with listener containers or `KafkaTemplate` respectively, starting with version 3.0.7, the framework now provides `MockConsumerFactory` and `MockProducerFactory` implementations.
+
+These factories can be used in the listener container and template instead of the default factories, which require a running (or embedded) broker.
+
+Here is an example of a simple implementation returning a single consumer:
+
+====
+[source, java]
+----
+@Bean
+ConsumerFactory<String, String> consumerFactory() {
+    MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+    TopicPartition topicPartition0 = new TopicPartition("topic", 0);
+    List<TopicPartition> topicPartitions = Arrays.asList(topicPartition0);
+    Map<TopicPartition, Long> beginningOffsets = topicPartitions.stream().collect(Collectors
+            .toMap(Function.identity(), tp -> 0L));
+    consumer.updateBeginningOffsets(beginningOffsets);
+    consumer.schedulePollTask(() -> {
+        consumer.addRecord(
+                new ConsumerRecord<>("topic", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "test1",
+                        new RecordHeaders(), Optional.empty()));
+        consumer.addRecord(
+                new ConsumerRecord<>("topic", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "test2",
+                        new RecordHeaders(), Optional.empty()));
+    });
+    return new MockConsumerFactory(() -> consumer);
+}
+----
+====
+
+If you wish to test with concurrency, the `Supplier` lambda in the factory's constructor would need create a new instance each time.
+
+With the `MockProducerFactory`, there are two constructors; one to create a simple factory, and one to create factory that supports transactions.
+
+Here are examples:
+
+====
+[source, java]
+----
+@Bean
+ProducerFactory<String, String> nonTransFactory() {
+    return new MockProducerFactory<>(() -> 
+            new MockProducer<>(true, new StringSerializer(), new StringSerializer()));
+}
+
+@Bean
+ProducerFactory<String, String> transFactory() {
+    MockProducer<String, String> mockProducer = 
+            new MockProducer<>(true, new StringSerializer(), new StringSerializer());
+    mockProducer.initTransactions();
+    return new MockProducerFactory<String, String>((tx, id) -> mockProducer, "defaultTxId");
+}
+----
+====
+
+Notice in the second case, the lambda is a `BiFunction<Boolean, String>` where the first parameter is true if the caller wants a transactional producer; the optional second parameter contains the transactional id.
+This can be the default (as provided in the constructor), or can be overridden by the `KafkaTransactionManager` (or `KafkaTemplate` for local transactions), if so configured.
+The transactional id is provided in case you wish to use a different `MockProducer` based on this value.
+
+If you are using transactional producers in a multi-threaded environment, the `BiFunction` must return multiple producers (perhaps thread-bound using a `ThreadLocal`).
+
+IMPORTANT: Transactional `MockProducer` s must be initialized for transactions by calling `initTransaction()`.

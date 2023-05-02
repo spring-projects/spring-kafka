@@ -98,3 +98,9 @@ Four constants in `KafkaHeaders` that were deprecated in 2.9.x have now been rem
 * Instead of `PARTITION_ID`, use `PARTITION`
 
 Similarly, `RECEIVED_MESSAGE_KEY` is replaced by `RECEIVED_KEY` and `RECEIVED_PARTITION_ID` is replaced by `RECEIVED_PARTITION`.
+
+[[x30-testing]]
+==== Testing Changes
+
+Version 3.0.7 introduced a `MockConsumerFactory` and `MockProducerFactory`.
+See <<mock-cons-prod>> for more information.
