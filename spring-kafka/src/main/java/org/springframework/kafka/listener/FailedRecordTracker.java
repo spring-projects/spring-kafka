@@ -199,13 +199,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	private FailedRecord getFailedRecordInstance(ConsumerRecord<?, ?> record, Exception exception,
 			Map<TopicPartition, FailedRecord> map, TopicPartition topicPartition) {
 
-		Exception realException = exception;
-		while ((realException  instanceof ListenerExecutionFailedException
-				|| realException instanceof TimestampedException)
-						&& realException.getCause() instanceof Exception) {
-
-			realException = (Exception) realException.getCause();
-		}
+		Exception realException = ErrorHandlingUtils.findRootCause(exception);
 		FailedRecord failedRecord = map.get(topicPartition);
 		if (failedRecord == null || failedRecord.getOffset() != record.offset()
 				|| (this.resetStateOnExceptionChange

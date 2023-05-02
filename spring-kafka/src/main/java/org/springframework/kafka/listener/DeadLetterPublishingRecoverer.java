@@ -762,23 +762,44 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				isKey ? names.exceptionInfo.keyExceptionFqcn : names.exceptionInfo.exceptionFqcn,
 				() -> exception.getClass().getName().getBytes(StandardCharsets.UTF_8),
 				HeaderNames.HeadersToAdd.EXCEPTION);
-		if (exception.getCause() != null) {
+		Exception cause = ErrorHandlingUtils.findRootCause(exception);
+		if (cause != null) {
 			appendOrReplace(kafkaHeaders,
 					names.exceptionInfo.exceptionCauseFqcn,
-					() -> exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8),
+					() -> cause.getClass().getName().getBytes(StandardCharsets.UTF_8),
 					HeaderNames.HeadersToAdd.EX_CAUSE);
 		}
-		String message = exception.getMessage();
+		String message = buildMessage(exception, cause);
 		if (message != null) {
 			appendOrReplace(kafkaHeaders,
 					isKey ? names.exceptionInfo.keyExceptionMessage : names.exceptionInfo.exceptionMessage,
-					() -> exception.getMessage().getBytes(StandardCharsets.UTF_8),
+					() -> message.getBytes(StandardCharsets.UTF_8),
 					HeaderNames.HeadersToAdd.EX_MSG);
 		}
 		appendOrReplace(kafkaHeaders,
 				isKey ? names.exceptionInfo.keyExceptionStacktrace : names.exceptionInfo.exceptionStacktrace,
 				() -> getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8),
 				HeaderNames.HeadersToAdd.EX_STACKTRACE);
+	}
+
+	@Nullable
+	private String buildMessage(Exception exception, Throwable cause) {
+		String message = exception.getMessage();
+		if (!exception.equals(cause)) {
+			if (message != null) {
+				message = message + "; ";
+			}
+			String causeMsg = cause.getMessage();
+			if (causeMsg != null) {
+				if (message != null) {
+					message = message + causeMsg;
+				}
+				else {
+					message = causeMsg;
+				}
+			}
+		}
+		return message;
 	}
 
 	private void appendOrReplace(Headers headers, String header, Supplier<byte[]> valueSupplier,

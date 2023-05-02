@@ -212,4 +212,22 @@ public final class ErrorHandlingUtils {
 		return theEx;
 	}
 
+	/**
+	 * Find the root cause, ignoring any {@link ListenerExecutionFailedException} and
+	 * {@link TimestampedException}.
+	 * @param exception the exception to examine.
+	 * @return the root cause.
+	 * @since 3.0.7
+	 */
+	public static Exception findRootCause(Exception exception) {
+		Exception realException = exception;
+		while ((realException  instanceof ListenerExecutionFailedException
+				|| realException instanceof TimestampedException)
+						&& realException.getCause() instanceof Exception cause) {
+
+			realException = cause;
+		}
+		return realException;
+	}
+
 }

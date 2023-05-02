@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -751,8 +751,8 @@ public class TransactionalContainerTests {
 				.contains("ListenerExecutionFailedException");
 		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN, byte[].class)))
 				.isEqualTo("java.lang.RuntimeException");
-		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_MESSAGE, byte[].class))
-				.contains("Listener failed".getBytes());
+		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_MESSAGE, byte[].class)))
+				.contains("Listener failed; fail for max failures");
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE, byte[].class))
 				.contains("fail for max failures".getBytes());

@@ -258,7 +258,7 @@ public class DeadLetterPublishingRecovererTests {
 		headers = captor.getValue().headers();
 		assertThat(headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
 		assertThat(headers.lastHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
-		assertThat(headers.lastHeader(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE).value()).isEqualTo("testK".getBytes());
+		assertThat(new String(headers.lastHeader(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE).value())).isEqualTo("testK");
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE).value()).isEqualTo("testV".getBytes());
 	}
 
@@ -399,7 +399,8 @@ public class DeadLetterPublishingRecovererTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		recoverer.setAppendOriginalHeaders(true);
 		recoverer.setStripPreviousExceptionHeaders(false);
-		recoverer.accept(record, new RuntimeException(new IllegalStateException()));
+		recoverer.accept(record, new ListenerExecutionFailedException("Listener failed",
+				new TimestampedException(new RuntimeException("ex1 msg", new IllegalStateException()))));
 		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
 		then(template).should(times(1)).send(producerRecordCaptor.capture());
 		Headers headers = producerRecordCaptor.getValue().headers();
@@ -412,11 +413,15 @@ public class DeadLetterPublishingRecovererTests {
 		Header firstExceptionCauseType = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN);
 		Header firstExceptionMessage = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE);
 		Header firstExceptionStackTrace = headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE);
+		assertThat(new String(firstExceptionMessage.value())).isEqualTo("Listener failed; ex1 msg");
+		assertThat(new String(firstExceptionType.value())).isEqualTo(ListenerExecutionFailedException.class.getName());
+		assertThat(new String(firstExceptionCauseType.value())).isEqualTo(RuntimeException.class.getName());
 
 		ConsumerRecord<String, String> anotherRecord = new ConsumerRecord<>("bar", 1, 12L, 4321L,
 				TimestampType.LOG_APPEND_TIME, 321, 321, "bar", null, new RecordHeaders(), Optional.empty());
 		headers.forEach(header -> anotherRecord.headers().add(header));
-		recoverer.accept(anotherRecord, new RuntimeException(new IllegalStateException()));
+		recoverer.accept(anotherRecord, new ListenerExecutionFailedException("Listener failed",
+				new TimestampedException(new RuntimeException("ex2 msg", new IllegalStateException()))));
 		ArgumentCaptor<ProducerRecord> anotherProducerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
 		then(template).should(times(2)).send(anotherProducerRecordCaptor.capture());
 		Headers anotherHeaders = anotherProducerRecordCaptor.getAllValues().get(1).headers();
@@ -436,6 +441,8 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN))
 				.isNotSameAs(firstExceptionCauseType);
 		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE)).isNotSameAs(firstExceptionMessage);
+		assertThat(new String(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE).value()))
+				.isEqualTo("Listener failed; ex2 msg");
 		assertThat(anotherHeaders.lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE))
 				.isNotSameAs(firstExceptionStackTrace);
 		Iterator<Header> exceptionHeaders = anotherHeaders.headers(KafkaHeaders.DLT_EXCEPTION_FQCN).iterator();
