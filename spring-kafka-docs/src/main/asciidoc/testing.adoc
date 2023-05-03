@@ -689,6 +689,6 @@ Notice in the second case, the lambda is a `BiFunction<Boolean, String>` where t
 This can be the default (as provided in the constructor), or can be overridden by the `KafkaTransactionManager` (or `KafkaTemplate` for local transactions), if so configured.
 The transactional id is provided in case you wish to use a different `MockProducer` based on this value.
 
-If you are using transactional producers in a multi-threaded environment, the `BiFunction` must return multiple producers (perhaps thread-bound using a `ThreadLocal`).
+If you are using producers in a multi-threaded environment, the `BiFunction` should return multiple producers (perhaps thread-bound using a `ThreadLocal`).
 
 IMPORTANT: Transactional `MockProducer` s must be initialized for transactions by calling `initTransaction()`.
