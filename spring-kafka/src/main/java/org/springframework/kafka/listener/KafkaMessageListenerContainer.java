@@ -2858,7 +2858,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				if (this.remainingRecords == null
 						|| !cRecord.equals(this.remainingRecords.iterator().next())) {
-					ackCurrent(cRecord);
+					if (this.offsetsInThisBatch != null) { // NOSONAR (sync)
+						ackInOrder(cRecord);
+					}
+					else {
+						ackCurrent(cRecord);
+					}
 				}
 				if (this.isManualAck) {
 					this.commitRecovered = false;
