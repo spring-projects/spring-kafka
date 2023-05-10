@@ -89,7 +89,7 @@ include::{kotlin-examples}/topics/Config.kt[tag=topicBeans]
 ----
 ====
 
-Starting with version 2.6, you can omit `.partitions()` and/or `replicas()` and the broker defaults will be applied to those properties.
+Starting with version 2.6, you can omit `partitions()` and/or `replicas()` and the broker defaults will be applied to those properties.
 The broker version must be at least 2.4.0 to support this feature - see https://cwiki.apache.org/confluence/display/KAFKA/KIP-464%3A+Defaults+for+AdminClient%23createTopic[KIP-464].
 
 ====
@@ -211,7 +211,7 @@ interface ProducerCallback<K, V, T> {
 See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/core/KafkaTemplate.html[Javadoc] for more detail.
 
 IMPORTANT: In version 3.0, the methods that previously returned `ListenableFuture` have been changed to return `CompletableFuture`.
-To facilitate the migration, the 2.9 version added a method `.usingCompletableFuture()` which provided the same methods with `CompletableFuture` return types; this method is no longer available.
+To facilitate the migration, the 2.9 version added a method `usingCompletableFuture()` which provided the same methods with `CompletableFuture` return types; this method is no longer available.
 
 The `sendDefault` API requires that a default topic has been provided to the template.
 
