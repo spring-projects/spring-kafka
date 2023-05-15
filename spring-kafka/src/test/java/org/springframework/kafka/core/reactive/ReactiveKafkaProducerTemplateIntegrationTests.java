@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverRecord;
+import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
@@ -69,6 +70,7 @@ import reactor.util.function.Tuple2;
 /**
  * @author Mark Norkin
  * @author Gary Russell
+ * @author Adrian Chlebosz
  *
  * @since 2.3.0
  */
@@ -132,8 +134,15 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 	@Test
 	public void shouldNotCreateTemplateIfOptionsIsNull() {
 		assertThatIllegalArgumentException()
-				.isThrownBy(() -> new ReactiveKafkaProducerTemplate<String, String>(null))
+				.isThrownBy(() -> new ReactiveKafkaProducerTemplate<>((SenderOptions<String, String>) null))
 				.withMessage("Sender options can not be null");
+	}
+
+	@Test
+	public void shouldNotCreateTemplateIfSenderIsNull() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ReactiveKafkaProducerTemplate<>((KafkaSender<String, String>) null))
+				.withMessage("Sender can not be null");
 	}
 
 	@Test
@@ -143,6 +152,11 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 				.isThrownBy(() ->
 						new ReactiveKafkaProducerTemplate<String, String>(Mockito.mock(SenderOptions.class), null))
 				.withMessage("Message converter can not be null");
+
+		assertThatIllegalArgumentException()
+			.isThrownBy(() ->
+						new ReactiveKafkaProducerTemplate<String, String>(Mockito.mock(KafkaSender.class), null))
+			.withMessage("Message converter can not be null");
 	}
 
 	@Test

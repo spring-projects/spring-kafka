@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.SenderOptions;
@@ -65,6 +66,7 @@ import reactor.test.StepVerifier;
  * @author Mark Norkin
  * @author Gary Russell
  * @author Will Kennedy
+ * @author Adrian Chlebosz
  *
  * @since 2.3.0
  */
@@ -138,8 +140,15 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	@Test
 	public void shouldNotCreateTemplateIfOptionsIsNull() {
 		assertThatIllegalArgumentException()
-				.isThrownBy(() -> new ReactiveKafkaConsumerTemplate<String, String>(null))
+				.isThrownBy(() -> new ReactiveKafkaConsumerTemplate<>((ReceiverOptions<String, String>) null))
 				.withMessage("Receiver options can not be null");
+	}
+
+	@Test
+	public void shouldNotCreateTemplateIfReceiverIsNull() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ReactiveKafkaConsumerTemplate<>((KafkaReceiver<String, String>) null))
+				.withMessage("Kafka receiver can not be null");
 	}
 
 	@Test
