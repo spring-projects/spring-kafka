@@ -477,7 +477,7 @@ See <<retry-topic-global-settings>> for more information.
 ----
 
 @Override
-protected void manageNonBlockingRetriesFatalExceptions(List<Class<? extends Throwable>> nonBlockingFatalExceptions) {
+protected void manageNonBlockingFatalExceptions(List<Class<? extends Throwable>> nonBlockingFatalExceptions) {
     nonBlockingFatalExceptions.add(MyNonBlockingException.class);
 }
 
