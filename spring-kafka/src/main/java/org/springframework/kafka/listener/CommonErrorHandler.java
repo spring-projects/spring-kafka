@@ -38,10 +38,10 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 public interface CommonErrorHandler extends DeliveryAttemptAware {
 
 	/**
-	 * Return false if this error handler should only receive the current failed record;
-	 * remaining records will be passed to the listener after the error handler returns.
-	 * When true (default), all remaining records including the failed record are passed
-	 * to the error handler.
+	 * Return false (default) if this error handler should only receive the current failed
+	 * record; remaining records will be passed to the listener after the error handler
+	 * returns. When true, all remaining records including the failed record are passed to
+	 * the error handler.
 	 * @return false to receive only the failed record.
 	 * @deprecated in favor of {@link #seeksAfterHandling()}.
 	 * @see #handleRecord(Exception, ConsumerRecord, Consumer, MessageListenerContainer)
