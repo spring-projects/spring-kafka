@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ package org.springframework.kafka.test.context;
 
 import java.util.List;
 
-import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.test.context.ContextConfigurationAttributes;
 import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.ContextCustomizerFactory;
+import org.springframework.test.context.TestContextAnnotationUtils;
 
 /**
  * The {@link ContextCustomizerFactory} implementation to produce a
@@ -38,7 +38,7 @@ class EmbeddedKafkaContextCustomizerFactory implements ContextCustomizerFactory 
 	public ContextCustomizer createContextCustomizer(Class<?> testClass,
 			List<ContextConfigurationAttributes> configAttributes) {
 		EmbeddedKafka embeddedKafka =
-				AnnotatedElementUtils.findMergedAnnotation(testClass, EmbeddedKafka.class);
+				TestContextAnnotationUtils.findMergedAnnotation(testClass, EmbeddedKafka.class);
 		return embeddedKafka != null ? new EmbeddedKafkaContextCustomizer(embeddedKafka) : null;
 	}
 
