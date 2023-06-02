@@ -18,6 +18,7 @@ package org.springframework.kafka.test.context;
 
 import java.util.List;
 
+import org.junit.jupiter.engine.discovery.predicates.IsNestedTestClass;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.test.context.ContextConfigurationAttributes;
 import org.springframework.test.context.ContextCustomizer;
@@ -34,12 +35,26 @@ import org.springframework.test.context.ContextCustomizerFactory;
  */
 class EmbeddedKafkaContextCustomizerFactory implements ContextCustomizerFactory {
 
+	private final IsNestedTestClass isNestedTestClass = new IsNestedTestClass();
+
 	@Override
 	public ContextCustomizer createContextCustomizer(Class<?> testClass,
-			List<ContextConfigurationAttributes> configAttributes) {
+													 List<ContextConfigurationAttributes> configAttributes) {
 		EmbeddedKafka embeddedKafka =
 				AnnotatedElementUtils.findMergedAnnotation(testClass, EmbeddedKafka.class);
-		return embeddedKafka != null ? new EmbeddedKafkaContextCustomizer(embeddedKafka) : null;
+		if(embeddedKafka != null) {
+			return new EmbeddedKafkaContextCustomizer(embeddedKafka);
+		}
+
+		Class<?> search = testClass;
+		while(isNestedTestClass.test(search)) {
+			search = search.getDeclaringClass();
+			embeddedKafka = AnnotatedElementUtils.findMergedAnnotation(search, EmbeddedKafka.class);
+			if(embeddedKafka != null) {
+				return new EmbeddedKafkaContextCustomizer(embeddedKafka);
+			}
+		}
+		return null;
 	}
 
 }
