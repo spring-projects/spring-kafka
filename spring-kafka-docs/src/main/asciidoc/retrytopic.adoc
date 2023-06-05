@@ -126,7 +126,7 @@ To achieve more fine-grained control over how to handle non-blocking retrials fo
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .fixedBackoff(3000)
+            .fixedBackOff(3000)
             .maxAttempts(5)
             .concurrency(1)
             .includeTopics("my-topic", "my-other-topic")
