@@ -123,7 +123,7 @@ public interface ProducerFactory<K, V> {
 	 * @since 2.5
 	 */
 	default Map<String, Object> getConfigurationProperties() {
-		throw new UnsupportedOperationException("This implementation doesn't support this method");
+		return Collections.emptyMap();
 	}
 
 	/**
