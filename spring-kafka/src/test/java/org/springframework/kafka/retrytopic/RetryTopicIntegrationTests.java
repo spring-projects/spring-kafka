@@ -18,6 +18,7 @@ package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.awaitility.Awaitility.await;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,11 +37,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +70,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -94,7 +101,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryTopicIntegrationTests.SECOND_TOPIC,
 		RetryTopicIntegrationTests.THIRD_TOPIC,
 		RetryTopicIntegrationTests.FOURTH_TOPIC,
-		RetryTopicIntegrationTests.TWO_LISTENERS_TOPIC })
+		RetryTopicIntegrationTests.TWO_LISTENERS_TOPIC,
+		RetryTopicIntegrationTests.MANUAL_TOPIC })
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
 public class RetryTopicIntegrationTests {
 
@@ -109,6 +117,8 @@ public class RetryTopicIntegrationTests {
 	public final static String FOURTH_TOPIC = "myRetryTopic4";
 
 	public final static String TWO_LISTENERS_TOPIC = "myRetryTopic5";
+
+	public final static String MANUAL_TOPIC = "myRetryTopic6";
 
 	public final static String NOT_RETRYABLE_EXCEPTION_TOPIC = "noRetryTopic";
 
@@ -226,6 +236,38 @@ public class RetryTopicIntegrationTests {
 	}
 
 	@Test
+	void shouldRetryManualTopicWithDefaultDlt(@Autowired KafkaListenerEndpointRegistry registry,
+			@Autowired ConsumerFactory<String, String> cf) {
+
+		logger.debug("Sending message to topic " + MANUAL_TOPIC);
+		kafkaTemplate.send(MANUAL_TOPIC, "Testing topic 6");
+		assertThat(awaitLatch(latchContainer.countDownLatch6)).isTrue();
+		registry.getListenerContainerIds().stream()
+				.filter(id -> id.startsWith("manual"))
+				.forEach(id -> {
+					ConcurrentMessageListenerContainer<?, ?> container =
+							(ConcurrentMessageListenerContainer<?, ?>) registry.getListenerContainer(id);
+					assertThat(container).extracting("commonErrorHandler")
+							.extracting("seekAfterError", InstanceOfAssertFactories.BOOLEAN)
+							.isFalse();
+				});
+		Consumer<String, String> consumer = cf.createConsumer("manual-dlt", "");
+		Set<org.apache.kafka.common.TopicPartition> tp =
+				Set.of(new org.apache.kafka.common.TopicPartition(MANUAL_TOPIC + "-dlt", 0));
+		consumer.assign(tp);
+		try {
+			await().untilAsserted(() -> {
+				OffsetAndMetadata offsetAndMetadata = consumer.committed(tp).get(tp.iterator().next());
+				assertThat(offsetAndMetadata).isNotNull();
+				assertThat(offsetAndMetadata.offset()).isEqualTo(1L);
+			});
+		}
+		finally {
+			consumer.close();
+		}
+	}
+
+	@Test
 	public void shouldGoStraightToDlt() {
 		logger.debug("Sending message to topic " + NOT_RETRYABLE_EXCEPTION_TOPIC);
 		kafkaTemplate.send(NOT_RETRYABLE_EXCEPTION_TOPIC, "Testing topic with annotation 1");
@@ -260,6 +302,7 @@ public class RetryTopicIntegrationTests {
 			container.countDownLatch1.countDown();
 			throw new RuntimeException("Woooops... in topic " + receivedTopic);
 		}
+
 	}
 
 	@Component
@@ -390,6 +433,24 @@ public class RetryTopicIntegrationTests {
 	}
 
 	@Component
+	static class SixthTopicDefaultDLTListener {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		@RetryableTopic(attempts = "4", backoff = @Backoff(50))
+		@KafkaListener(id = "manual", topics = MANUAL_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
+		public void listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
+				@SuppressWarnings("unused") Acknowledgment ack) {
+
+			logger.debug("Message {} received in topic {} ", message, receivedTopic);
+			container.countDownIfNotKnown(receivedTopic, container.countDownLatch6);
+			throw new IllegalStateException("Another woooops... " + receivedTopic);
+		}
+
+	}
+
+	@Component
 	static class NoRetryTopicListener {
 
 		@Autowired
@@ -421,6 +482,7 @@ public class RetryTopicIntegrationTests {
 		CountDownLatch countDownLatch4 = new CountDownLatch(4);
 		CountDownLatch countDownLatch51 = new CountDownLatch(4);
 		CountDownLatch countDownLatch52 = new CountDownLatch(4);
+		CountDownLatch countDownLatch6 = new CountDownLatch(4);
 		CountDownLatch countDownLatchNoRetry = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltOne = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltTwo = new CountDownLatch(1);
@@ -557,6 +619,11 @@ public class RetryTopicIntegrationTests {
 		}
 
 		@Bean
+		SixthTopicDefaultDLTListener manualTopicListener() {
+			return new SixthTopicDefaultDLTListener();
+		}
+
+		@Bean
 		public NoRetryTopicListener noRetryTopicListener() {
 			return new NoRetryTopicListener();
 		}
@@ -668,6 +735,12 @@ public class RetryTopicIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory);
 			factory.setConcurrency(1);
+			factory.setContainerCustomizer(container -> {
+				if (container.getListenerId().startsWith("manual")) {
+					container.getContainerProperties().setAckMode(AckMode.MANUAL);
+					container.getContainerProperties().setAsyncAcks(true);
+				}
+			});
 			return factory;
 		}
 

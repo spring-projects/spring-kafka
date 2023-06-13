@@ -50,6 +50,8 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		extends AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
+	private static final Acknowledgment NO_OP_ACK = new NoOpAck();
+
 	private final String listenerId;
 
 	private final String backoffTimestampHeader;
@@ -94,7 +96,12 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 				.ifPresent(nextExecutionTimestamp -> this.kafkaConsumerBackoffManager
 						.backOffIfNecessary(createContext(consumerRecord, nextExecutionTimestamp, consumer)));
 		try {
-			invokeDelegateOnMessage(consumerRecord, acknowledgment, consumer);
+			Acknowledgment ack = acknowledgment;
+			if (ack == null) {
+				// The default DLT handler now requires an Acknowledgment.
+				ack = NO_OP_ACK;
+			}
+			invokeDelegateOnMessage(consumerRecord, ack, consumer);
 		}
 		catch (Exception ex) {
 			throw new TimestampedException(ex, Instant.now(this.clock));
@@ -143,4 +150,13 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	public void onMessage(ConsumerRecord<K, V> data, Consumer<?, ?> consumer) {
 		onMessage(data, null, consumer);
 	}
+
+	static class NoOpAck implements Acknowledgment {
+
+		@Override
+		public void acknowledge() {
+		}
+
+	}
+
 }

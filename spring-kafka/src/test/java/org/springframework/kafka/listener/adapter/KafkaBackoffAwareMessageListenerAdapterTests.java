@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.listener.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -147,7 +148,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.backOffIfNecessary(context);
 
-		then(delegate).should(times(1)).onMessage(data, null, null);
+		then(delegate).should(times(1)).onMessage(eq(data), any(), isNull());
 	}
 
 	@Test
@@ -159,7 +160,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 		given(kafkaConsumerBackoffManager.createContext(originalTimestamp, listenerId, topicPartition, null))
 				.willReturn(context);
 		RuntimeException thrownException = new RuntimeException();
-		willThrow(thrownException).given(delegate).onMessage(data, null, null);
+		willThrow(thrownException).given(delegate).onMessage(eq(data), any(), isNull());
 
 		KafkaBackoffAwareMessageListenerAdapter<Object, Object> backoffAwareMessageListenerAdapter =
 				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
@@ -175,7 +176,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.backOffIfNecessary(context);
 
-		then(delegate).should(times(1)).onMessage(data, null, null);
+		then(delegate).should(times(1)).onMessage(eq(data), any(), isNull());
 	}
 
 	@Test
@@ -224,7 +225,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.backOffIfNecessary(context);
 
-		then(delegate).should(times(1)).onMessage(data, null, consumer);
+		then(delegate).should(times(1)).onMessage(eq(data), any(), eq(consumer));
 	}
 
 	@Test

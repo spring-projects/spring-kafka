@@ -34,6 +34,7 @@ import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicForRetryable;
@@ -468,7 +469,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 
 		public static final String DEFAULT_DLT_METHOD_NAME = "logMessage";
 
-		public void logMessage(Object message) {
+		public void logMessage(Object message, @Nullable Acknowledgment ack) {
 			if (message instanceof ConsumerRecord) {
 				LOGGER.info(() -> "Received message in dlt listener: "
 						+ KafkaUtils.format((ConsumerRecord<?, ?>) message));
@@ -476,7 +477,11 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 			else {
 				LOGGER.info(() -> "Received message in dlt listener.");
 			}
+			if (ack != null) {
+				ack.acknowledge();
+			}
 		}
+
 	}
 
 }
