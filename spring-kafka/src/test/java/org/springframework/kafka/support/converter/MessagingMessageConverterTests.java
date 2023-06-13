@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -36,6 +37,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.AbstractMessageConverter;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.util.MimeType;
 
 /**
@@ -46,6 +48,18 @@ import org.springframework.util.MimeType;
  *
  */
 public class MessagingMessageConverterTests {
+
+	@Test
+	void partition() {
+		MessagingMessageConverter converter = new MessagingMessageConverter();
+		Message<?> msg = new GenericMessage<>("foo", Map.of(KafkaHeaders.PARTITION, 42));
+		ProducerRecord<?, ?> record = converter.fromMessage(msg, "topic");
+		assertThat(record.partition()).isEqualTo(42);
+		converter = new MessagingMessageConverter(m -> m.getHeaders().get("part", Integer.class));
+		msg = new GenericMessage<>("foo", Map.of(KafkaHeaders.PARTITION, 42, "part", 43));
+		record = converter.fromMessage(msg, "topic");
+		assertThat(record.partition()).isEqualTo(43);
+	}
 
 	@Test
 	void missingHeaders() {

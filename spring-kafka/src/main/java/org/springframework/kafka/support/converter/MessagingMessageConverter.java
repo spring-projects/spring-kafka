@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -61,6 +62,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
+	private final Function<Message<?>, Integer> partitionProvider;
+
 	private boolean generateMessageId = false;
 
 	private boolean generateTimestamp = false;
@@ -71,13 +74,29 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	private SmartMessageConverter messagingConverter;
 
+	/**
+	 * Construct an instance that uses the {@link KafkaHeaders#PARTITION} to determine the
+	 * target partition.
+	 */
 	public MessagingMessageConverter() {
+		this(msg -> msg.getHeaders().get(KafkaHeaders.PARTITION, Integer.class));
+	}
+
+	/**
+	 * Construct an instance that uses the supplied partition provider function. The
+	 * function can return null to delegate the partition selection to the kafka client.
+	 * @param partitionProvider the provider.
+	 * @since 3.0.8
+	 */
+	public MessagingMessageConverter(Function<Message<?>, Integer> partitionProvider) {
+		Assert.notNull(partitionProvider, "'partitionProvider' cannot be null");
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
 		}
 		else {
 			this.headerMapper = new SimpleKafkaHeaderMapper();
 		}
+		this.partitionProvider = partitionProvider;
 	}
 
 	/**
@@ -227,7 +246,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 			throw new IllegalStateException(KafkaHeaders.TOPIC + " must be a String or byte[], not "
 					+ topicHeader.getClass());
 		}
-		Integer partition = headers.get(KafkaHeaders.PARTITION, Integer.class);
+		Integer partition = this.partitionProvider.apply(message);
 		Object key = headers.get(KafkaHeaders.KEY);
 		Object payload = convertPayload(message);
 		Long timestamp = headers.get(KafkaHeaders.TIMESTAMP, Long.class);
