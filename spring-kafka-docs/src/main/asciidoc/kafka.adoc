@@ -1489,6 +1489,9 @@ This contains all the data from the `ConsumerRecord` except the key and value.
 ====== Batch Listeners
 
 Starting with version 1.1, you can configure `@KafkaListener` methods to receive the entire batch of consumer records received from the consumer poll.
+
+IMPORTANT: <<retry-topic>> are not supported with batch listeners.
+
 To configure the listener container factory to create batch listeners, you can set the `batchListener` property.
 The following example shows how to do so:
 
