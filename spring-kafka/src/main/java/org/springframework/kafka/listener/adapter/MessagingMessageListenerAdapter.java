@@ -52,6 +52,7 @@ import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -83,6 +84,8 @@ import org.springframework.util.StringUtils;
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
 
 	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
+
+	private static final Acknowledgment NO_OP_ACK = new NoOpAck();
 
 	/**
 	 * Message used when no conversion is needed.
@@ -119,6 +122,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private KafkaTemplate replyTemplate;
 
 	private boolean hasAckParameter;
+
+	private boolean noOpAck;
 
 	private boolean hasMetadataParameter;
 
@@ -353,25 +358,29 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	protected final Object invokeHandler(Object data, @Nullable Acknowledgment acknowledgment, Message<?> message,
 			Consumer<?, ?> consumer) {
 
+		Acknowledgment ack = acknowledgment;
+		if (ack == null && this.noOpAck) {
+			ack = NO_OP_ACK;
+		}
 		try {
 			if (data instanceof List && !this.isConsumerRecordList) {
-				return this.handlerMethod.invoke(message, acknowledgment, consumer);
+				return this.handlerMethod.invoke(message, ack, consumer);
 			}
 			else {
 				if (this.hasMetadataParameter) {
-					return this.handlerMethod.invoke(message, data, acknowledgment, consumer,
+					return this.handlerMethod.invoke(message, data, ack, consumer,
 							AdapterUtils.buildConsumerRecordMetadata(data));
 				}
 				else {
-					return this.handlerMethod.invoke(message, data, acknowledgment, consumer);
+					return this.handlerMethod.invoke(message, data, ack, consumer);
 				}
 			}
 		}
 		catch (org.springframework.messaging.converter.MessageConversionException ex) {
-			throw checkAckArg(acknowledgment, message, new MessageConversionException("Cannot handle message", ex));
+			throw checkAckArg(ack, message, new MessageConversionException("Cannot handle message", ex));
 		}
 		catch (MethodArgumentNotValidException ex) {
-			throw checkAckArg(acknowledgment, message, ex);
+			throw checkAckArg(ack, message, ex);
 		}
 		catch (MessagingException ex) {
 			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
@@ -607,6 +616,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			boolean isNotConvertible = parameterIsType(parameterType, ConsumerRecord.class);
 			boolean isAck = parameterIsType(parameterType, Acknowledgment.class);
 			this.hasAckParameter |= isAck;
+			if (isAck) {
+				this.noOpAck |= methodParameter.getParameterAnnotation(NonNull.class) != null;
+			}
 			isNotConvertible |= isAck;
 			boolean isConsumer = parameterIsType(parameterType, Consumer.class);
 			isNotConvertible |= isConsumer;
@@ -757,6 +769,14 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @since 2.0
 	 */
 	public record ReplyExpressionRoot(Object request, Object source, Object result) {
+	}
+
+	static class NoOpAck implements Acknowledgment {
+
+		@Override
+		public void acknowledge() {
+		}
+
 	}
 
 }
