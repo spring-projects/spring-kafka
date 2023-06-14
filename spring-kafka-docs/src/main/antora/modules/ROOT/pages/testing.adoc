@@ -3,6 +3,16 @@
 
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
+[[ekb]]
+== EmbeddedKafkaBroker
+
+Two implementations are provided:
+
+* `EmbeddedKafkaZKBroker` - legacy implementation which starts an embedded `Zookeeper` instance.
+* `EmbeddedKafkaKraftBroker` - uses Kraft instead of `Zookeeper` in combinder controller and broker modes (since 3.6)
+
+There are several techniques to configure the broker as discussed in the following sections.
+
 [[ktu]]
 == KafkaTestUtils
 
@@ -47,7 +57,7 @@ If this is not possible for some reason, note that the `consumeFromEmbeddedTopic
 Since it does not have access to the consumer properties, you must use the overloaded method that takes a `seekToEnd` boolean parameter to seek to the end instead of the beginning.
 ====
 
-A JUnit 4 `@Rule` wrapper for the `EmbeddedKafkaBroker` is provided to create an embedded Kafka and an embedded Zookeeper server.
+A JUnit 4 `@Rule` wrapper for the `EmbeddedKafkaZKBroker` is provided to create an embedded Kafka and an embedded Zookeeper server.
 (See xref:testing.adoc#embedded-kafka-annotation[@EmbeddedKafka Annotation] for information about using `@EmbeddedKafka` with JUnit 5).
 The following listing shows the signatures of those methods:
 
@@ -71,6 +81,8 @@ public EmbeddedKafkaRule(int count, boolean controlledShutdown, String... topics
  */
 public EmbeddedKafkaRule(int count, boolean controlledShutdown, int partitions, String... topics) { ... }
 ----
+
+NOTE: The `EmbeddedKafkaKraftBroker` is not supported with JUnit4.
 
 The `EmbeddedKafkaBroker` class has a utility method that lets you consume for all the topics it created.
 The following example shows how to use it:
@@ -162,7 +174,7 @@ You can use the same broker for multiple test classes with something similar to 
 ----
 public final class EmbeddedKafkaHolder {
 
-    private static EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(1, false)
+    private static EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaZKBroker(1, false)
             .brokerListProperty("spring.kafka.bootstrap-servers");
 
     private static boolean started;
@@ -216,7 +228,8 @@ In addition, these properties can be provided:
 - `spring.kafka.embedded.ports` - ports (comma-separated value) for every Kafka broker to start, `0` if random port is a preferred; the number of values must be equal to the `count` mentioned above;
 - `spring.kafka.embedded.topics` - topics (comma-separated value) to create in the started Kafka cluster;
 - `spring.kafka.embedded.partitions` - number of partitions to provision for the created topics;
-- `spring.kafka.embedded.broker.properties.location` - the location of the file for additional Kafka broker configuration properties; the value of this property must follow the Spring resource abstraction pattern.
+- `spring.kafka.embedded.broker.properties.location` - the location of the file for additional Kafka broker configuration properties; the value of this property must follow the Spring resource abstraction pattern;
+- `spring.kafka.embedded.kraft` - when true, use an `EmbeddedKafkaKraftBroker` instead of an `EmbeddedKafkaZKBroker`.
 
 Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
 
@@ -282,6 +295,8 @@ public class KafkaStreamsTests {
 ----
 
 Starting with version 2.2.4, you can also use the `@EmbeddedKafka` annotation to specify the Kafka ports property.
+
+Starting with version 3.6; set the `kraft` property to `true` to use an `EmbeddedKafkaKraftBroker` instead of an `EmbeddedKafkaZKBroker`.
 
 The following example sets the `topics`, `brokerProperties`, and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
 

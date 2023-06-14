@@ -54,6 +54,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.ReflectionUtils;
@@ -263,7 +264,7 @@ public class KafkaAdminTests {
 
 		@Bean
 		public EmbeddedKafkaBroker kafkaEmbedded() {
-			return new EmbeddedKafkaBroker(3)
+			return new EmbeddedKafkaZKBroker(3)
 					.brokerProperty("default.replication.factor", 2);
 		}
 

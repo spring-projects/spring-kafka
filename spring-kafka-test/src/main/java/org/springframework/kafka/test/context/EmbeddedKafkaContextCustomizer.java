@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.io.Resource;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
 import org.springframework.util.Assert;
@@ -68,14 +70,23 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 						.toArray(String[]::new);
 
 		int[] ports = setupPorts();
-		EmbeddedKafkaBroker embeddedKafkaBroker = new EmbeddedKafkaBroker(this.embeddedKafka.count(),
-					this.embeddedKafka.controlledShutdown(),
+		EmbeddedKafkaBroker embeddedKafkaBroker;
+		if (this.embeddedKafka.kraft()) {
+			embeddedKafkaBroker = new EmbeddedKafkaKraftBroker(this.embeddedKafka.count(),
 					this.embeddedKafka.partitions(),
 					topics)
-				.kafkaPorts(ports)
-				.zkPort(this.embeddedKafka.zookeeperPort())
-				.zkConnectionTimeout(this.embeddedKafka.zkConnectionTimeout())
-				.zkSessionTimeout(this.embeddedKafka.zkSessionTimeout());
+				.kafkaPorts(ports);
+		}
+		else {
+			embeddedKafkaBroker = new EmbeddedKafkaZKBroker(this.embeddedKafka.count(),
+						this.embeddedKafka.controlledShutdown(),
+						this.embeddedKafka.partitions(),
+						topics)
+					.kafkaPorts(ports)
+					.zkPort(this.embeddedKafka.zookeeperPort())
+					.zkConnectionTimeout(this.embeddedKafka.zkConnectionTimeout())
+					.zkSessionTimeout(this.embeddedKafka.zkSessionTimeout());
+		}
 
 		Properties properties = new Properties();
 

@@ -134,6 +134,7 @@ import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrec
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.lang.NonNull;
@@ -178,7 +179,7 @@ import jakarta.validation.constraints.Max;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = { "annotated1", "annotated2", "annotated3",
+@EmbeddedKafka(kraft = true, topics = { "annotated1", "annotated2", "annotated3",
 		"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated8reply",
 		"annotated9", "annotated10",
 		"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
@@ -258,6 +259,7 @@ public class EnableKafkaIntegrationTests {
 
 	@Test
 	public void testAnonymous() {
+		assertThat(this.embeddedKafka).isInstanceOf(EmbeddedKafkaKraftBroker.class);
 		MessageListenerContainer container = this.registry
 				.getListenerContainer("org.springframework.kafka.KafkaListenerEndpointContainer#0");
 		List<?> containers = KafkaTestUtils.getPropertyValue(container, "containers", List.class);
@@ -917,7 +919,7 @@ public class EnableKafkaIntegrationTests {
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testMultiReplying");
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, String> consumer = cf.createConsumer();
-		assertThat(consumer.partitionsFor("morePartitions")).hasSize(10);
+		await().untilAsserted(() -> assertThat(consumer.partitionsFor("morePartitions")).hasSize(10));
 		consumer.close();
 	}
 

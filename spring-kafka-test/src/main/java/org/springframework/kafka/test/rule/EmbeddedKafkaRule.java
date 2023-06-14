@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.Map;
 import org.junit.rules.ExternalResource;
 
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 
 /**
  * A {@link org.junit.rules.TestRule} wrapper around an {@link EmbeddedKafkaBroker}.
@@ -33,7 +34,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
  */
 public class EmbeddedKafkaRule extends ExternalResource {
 
-	private final EmbeddedKafkaBroker embeddedKafka;
+	private final EmbeddedKafkaZKBroker embeddedKafka;
 
 	public EmbeddedKafkaRule(int count) {
 		this(count, false);
@@ -57,7 +58,7 @@ public class EmbeddedKafkaRule extends ExternalResource {
 	 * @param topics the topics to create.
 	 */
 	public EmbeddedKafkaRule(int count, boolean controlledShutdown, int partitions, String... topics) {
-		this.embeddedKafka = new EmbeddedKafkaBroker(count, controlledShutdown, partitions, topics);
+		this.embeddedKafka = new EmbeddedKafkaZKBroker(count, controlledShutdown, partitions, topics);
 	}
 
 	/**

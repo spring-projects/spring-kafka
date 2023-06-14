@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,8 @@ import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.util.Assert;
@@ -121,15 +123,14 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 
 	@SuppressWarnings("unchecked")
 	private EmbeddedKafkaBroker createBroker(EmbeddedKafka embedded) {
-		EmbeddedKafkaBroker broker;
 		int[] ports = setupPorts(embedded);
-		broker = new EmbeddedKafkaBroker(embedded.count(), embedded.controlledShutdown(),
-						embedded.partitions(), embedded.topics())
-				.zkPort(embedded.zookeeperPort())
-				.kafkaPorts(ports)
-				.zkConnectionTimeout(embedded.zkConnectionTimeout())
-				.zkSessionTimeout(embedded.zkSessionTimeout())
-				.adminTimeout(embedded.adminTimeout());
+		EmbeddedKafkaBroker broker;
+		if (embedded.kraft()) {
+			broker = kraftBroker(embedded, ports);
+		}
+		else {
+			broker = zkBroker(embedded, ports);
+		}
 		Properties properties = new Properties();
 
 		for (String pair : embedded.brokerProperties()) {
@@ -168,6 +169,22 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 		}
 		broker.afterPropertiesSet();
 		return broker;
+	}
+
+	private EmbeddedKafkaBroker kraftBroker(EmbeddedKafka embedded, int[] ports) {
+		return new EmbeddedKafkaKraftBroker(embedded.count(), embedded.partitions(), embedded.topics())
+				.kafkaPorts(ports)
+				.adminTimeout(embedded.adminTimeout());
+	}
+
+	private EmbeddedKafkaBroker zkBroker(EmbeddedKafka embedded, int[] ports) {
+		return new EmbeddedKafkaZKBroker(embedded.count(), embedded.controlledShutdown(),
+				embedded.partitions(), embedded.topics())
+						.zkPort(embedded.zookeeperPort())
+						.kafkaPorts(ports)
+						.zkConnectionTimeout(embedded.zkConnectionTimeout())
+						.zkSessionTimeout(embedded.zkSessionTimeout())
+						.adminTimeout(embedded.adminTimeout());
 	}
 
 	private int[] setupPorts(EmbeddedKafka embedded) {

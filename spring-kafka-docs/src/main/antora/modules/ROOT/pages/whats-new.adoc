@@ -12,3 +12,8 @@ For changes in earlier version, see xref:appendix/change-history.adoc[Change His
 
 This version requires the 3.5.1 `kafka-clients`.
 
+[[x30-ekb]]
+=== EmbeddedKafkaBroker
+
+An additional implementation is now provided to use `Kraft` instead of Zookeeper.
+See <<ekb>> for more information.

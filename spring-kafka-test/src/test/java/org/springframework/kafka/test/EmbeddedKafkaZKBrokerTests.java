@@ -25,11 +25,11 @@ import org.junit.jupiter.api.Test;
  * @since 2.3
  *
  */
-public class EmbeddedKafkaBrokerTests {
+public class EmbeddedKafkaZKBrokerTests {
 
 	@Test
 	void testUpDown() {
-		EmbeddedKafkaBroker kafka = new EmbeddedKafkaBroker(1);
+		EmbeddedKafkaZKBroker kafka = new EmbeddedKafkaZKBroker(1);
 		kafka.brokerListProperty("foo.bar");
 		kafka.afterPropertiesSet();
 		assertThat(kafka.getZookeeperConnectionString()).startsWith("127");

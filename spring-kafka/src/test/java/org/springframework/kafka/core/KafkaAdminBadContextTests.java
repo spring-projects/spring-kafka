@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 
 /**
  * @author Gary Russell
@@ -49,7 +50,7 @@ public class KafkaAdminBadContextTests {
 
 		@Bean
 		public EmbeddedKafkaBroker kafkaEmbedded() {
-			return new EmbeddedKafkaBroker(1);
+			return new EmbeddedKafkaZKBroker(1);
 		}
 
 		@Bean

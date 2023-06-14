@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -58,16 +58,16 @@ public class AddressableEmbeddedBrokerTests {
 	private Config config;
 
 	@Autowired
-	private EmbeddedKafkaBroker broker;
+	private EmbeddedKafkaZKBroker broker;
 
 	@Test
 	public void testKafkaEmbedded() {
 		assertThat(broker.getBrokersAsString()).isEqualTo("127.0.0.1:" + this.config.kafkaPort);
 		assertThat(broker.getZkPort()).isEqualTo(this.config.zkPort);
 		assertThat(broker.getBrokersAsString())
-				.isEqualTo(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS));
+				.isEqualTo(System.getProperty(EmbeddedKafkaZKBroker.SPRING_EMBEDDED_KAFKA_BROKERS));
 		assertThat(broker.getZookeeperConnectionString())
-				.isEqualTo(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT));
+				.isEqualTo(System.getProperty(EmbeddedKafkaZKBroker.SPRING_EMBEDDED_ZOOKEEPER_CONNECT));
 	}
 
 	@Test
@@ -98,7 +98,7 @@ public class AddressableEmbeddedBrokerTests {
 		private int zkPort;
 
 		@Bean
-		public EmbeddedKafkaBroker broker() throws IOException {
+		public EmbeddedKafkaZKBroker broker() throws IOException {
 			ServerSocket ss = ServerSocketFactory.getDefault().createServerSocket(0);
 			this.kafkaPort = ss.getLocalPort();
 			ss.close();
@@ -106,7 +106,7 @@ public class AddressableEmbeddedBrokerTests {
 			this.zkPort = ss.getLocalPort();
 			ss.close();
 
-			return new EmbeddedKafkaBroker(1, true, TEST_EMBEDDED)
+			return new EmbeddedKafkaZKBroker(1, true, TEST_EMBEDDED)
 					.zkPort(this.zkPort)
 					.kafkaPorts(this.kafkaPort);
 		}

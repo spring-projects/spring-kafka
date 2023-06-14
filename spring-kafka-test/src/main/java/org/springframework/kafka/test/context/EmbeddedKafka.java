@@ -27,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.core.annotation.AliasFor;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 
 /**
@@ -165,14 +166,14 @@ public @interface EmbeddedKafka {
 	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ZK_CONNECTION_TIMEOUT}.
 	 * @since 2.4
 	 */
-	int zkConnectionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_CONNECTION_TIMEOUT;
+	int zkConnectionTimeout() default EmbeddedKafkaZKBroker.DEFAULT_ZK_CONNECTION_TIMEOUT;
 
 	/**
 	 * Timeout for internal ZK client session.
 	 * @return default {@link EmbeddedKafkaBroker#DEFAULT_ZK_SESSION_TIMEOUT}.
 	 * @since 2.4
 	 */
-	int zkSessionTimeout() default EmbeddedKafkaBroker.DEFAULT_ZK_SESSION_TIMEOUT;
+	int zkSessionTimeout() default EmbeddedKafkaZKBroker.DEFAULT_ZK_SESSION_TIMEOUT;
 
 	/**
 	 * Timeout in seconds for admin operations (e.g. topic creation, close).
@@ -180,6 +181,13 @@ public @interface EmbeddedKafka {
 	 * @since 2.8.5
 	 */
 	int adminTimeout() default EmbeddedKafkaBroker.DEFAULT_ADMIN_TIMEOUT;
+
+	/**
+	 * Use KRaft instead of Zookeeper.
+	 * @return whether to use KRaft.
+	 * @since 3.6
+	 */
+	boolean kraft() default false;
 
 }
 

@@ -52,6 +52,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -164,7 +165,7 @@ public class ErrorHandlingDeserializerTests {
 
 		@Bean
 		public EmbeddedKafkaBroker embeddedKafka() {
-			return new EmbeddedKafkaBroker(1, true, 1, TOPIC);
+			return new EmbeddedKafkaZKBroker(1, true, 1, TOPIC);
 		}
 
 		@Bean
