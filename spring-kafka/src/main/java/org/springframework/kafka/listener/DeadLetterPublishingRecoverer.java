@@ -81,8 +81,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private static final long THIRTY = 30L;
 
-	private final HeaderNames headerNames = getHeaderNames();
-
 	private final boolean transactional;
 
 	private final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver;
@@ -90,6 +88,8 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	private final Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver;
 
 	private final EnumSet<HeaderNames.HeadersToAdd> whichHeaders = EnumSet.allOf(HeaderNames.HeadersToAdd.class);
+
+	private HeaderNames headerNames = getHeaderNames();
 
 	private boolean retainExceptionHeader;
 
@@ -114,6 +114,24 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	private boolean skipSameTopicFatalExceptions = true;
 
 	private ExceptionHeadersCreator exceptionHeadersCreator = this::addExceptionInfoHeaders;
+
+	private Supplier<HeaderNames> headerNamesSupplier = () -> HeaderNames.Builder
+			.original()
+			.offsetHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)
+			.timestampHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)
+			.timestampTypeHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)
+			.topicHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)
+			.partitionHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)
+			.consumerGroupHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)
+		.exception()
+			.keyExceptionFqcn(KafkaHeaders.DLT_KEY_EXCEPTION_FQCN)
+			.exceptionFqcn(KafkaHeaders.DLT_EXCEPTION_FQCN)
+			.exceptionCauseFqcn(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)
+			.keyExceptionMessage(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE)
+			.exceptionMessage(KafkaHeaders.DLT_EXCEPTION_MESSAGE)
+			.keyExceptionStacktrace(KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE)
+			.exceptionStacktrace(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)
+		.build();
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
@@ -186,6 +204,23 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			.map(t -> t.isTransactional())
 			.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
 		this.destinationResolver = destinationResolver;
+	}
+
+	/**
+	* Create an instance with a template resolving function that receives the failed
+	* consumer record and the exception and returns a {@link KafkaOperations} and a
+	* flag on whether or not the publishing from this instance will be transactional
+	* or not. Also receives a destination resolving function that works similarly but
+	* returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
+	* is less than 0, no partition is set when publishing to the topic.
+	*
+	* @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
+	* @param destinationResolver the resolving function.
+	* @since 3.0.9
+	*/
+	public DeadLetterPublishingRecoverer(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
+										BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+		this(templateResolver, false, destinationResolver);
 	}
 
 	/**
@@ -487,6 +522,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	private void addAndEnhanceHeaders(ConsumerRecord<?, ?> record, Exception exception,
 			@Nullable DeserializationException vDeserEx, @Nullable DeserializationException kDeserEx, Headers headers) {
 
+		if (this.headerNames == null) {
+			this.headerNames = this.headerNamesSupplier.get();
+		}
 		if (kDeserEx != null) {
 			if (!this.retainExceptionHeader) {
 				headers.remove(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
@@ -825,25 +863,17 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * in the sent record.
 	 * @return the header names.
 	 * @since 2.7
+	 * @deprecated since 3.0.9 - provide a supplier in the constructor instead
 	 */
+	@Nullable
+	@Deprecated(since = "3.0.9", forRemoval = true)
 	protected HeaderNames getHeaderNames() {
-		return HeaderNames.Builder
-				.original()
-					.offsetHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)
-					.timestampHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)
-					.timestampTypeHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)
-					.topicHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)
-					.partitionHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)
-					.consumerGroupHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)
-				.exception()
-					.keyExceptionFqcn(KafkaHeaders.DLT_KEY_EXCEPTION_FQCN)
-					.exceptionFqcn(KafkaHeaders.DLT_EXCEPTION_FQCN)
-					.exceptionCauseFqcn(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)
-					.keyExceptionMessage(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE)
-					.exceptionMessage(KafkaHeaders.DLT_EXCEPTION_MESSAGE)
-					.keyExceptionStacktrace(KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE)
-					.exceptionStacktrace(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)
-				.build();
+		return null;
+	}
+
+	public void setHeaderNamesSupplier(Supplier<HeaderNames> supplier) {
+		Assert.notNull(supplier, "'HeaderNames supplier cannot be null");
+		this.headerNamesSupplier = supplier;
 	}
 
 	/**

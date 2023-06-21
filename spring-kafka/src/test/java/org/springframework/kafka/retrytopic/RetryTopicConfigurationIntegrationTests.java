@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,10 +24,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +42,15 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -66,7 +74,8 @@ class RetryTopicConfigurationIntegrationTests {
 	@Test
 	void includeTopic(@Autowired EmbeddedKafkaBroker broker, @Autowired ConsumerFactory<Integer, String> cf,
 			@Autowired KafkaTemplate<Integer, String> template, @Autowired Config config,
-			@Autowired RetryTopicComponentFactory componentFactory) throws InterruptedException {
+			@Autowired RetryTopicComponentFactory componentFactory, @Autowired KafkaListenerEndpointRegistry registry)
+					throws InterruptedException {
 
 		Consumer<Integer, String> consumer = cf.createConsumer("grp2", "");
 		Map<String, List<PartitionInfo>> topics = consumer.listTopics();
@@ -76,6 +85,11 @@ class RetryTopicConfigurationIntegrationTests {
 		template.send(TOPIC1, "foo");
 		assertThat(config.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(componentFactory).destinationTopicResolver();
+		assertThat(registry.getListenerContainer(TOPIC1))
+				.extracting("commonErrorHandler")
+				.extracting("failureTracker")
+				.extracting("recoverer")
+				.isInstanceOf(CustomDLPR.class);
 	}
 
 	@Configuration(proxyBeanMethods = false)
@@ -139,9 +153,27 @@ class RetryTopicConfigurationIntegrationTests {
 					.create(template);
 		}
 
+		@Override
+		protected java.util.function.Consumer<DeadLetterPublishingRecovererFactory>
+				configureDeadLetterPublishingContainerFactory() {
+
+			return (factory) -> factory.setDeadLetterPublisherCreator(
+					(templateResolver, destinationResolver) ->
+							new CustomDLPR(templateResolver, destinationResolver));
+		}
+
 		@Bean
 		TaskScheduler sched() {
 			return new ThreadPoolTaskScheduler();
+		}
+
+	}
+
+	static class CustomDLPR extends DeadLetterPublishingRecoverer {
+
+		CustomDLPR(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
+				BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+			super(templateResolver, destinationResolver);
 		}
 
 	}

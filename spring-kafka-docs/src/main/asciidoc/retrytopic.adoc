@@ -613,6 +613,29 @@ Starting with version 2.8.4, if you wish to add custom headers (in addition to t
 By default, any headers added will be cumulative - Kafka headers can contain multiple values.
 Starting with version 2.9.5, if the `Headers` returned by the function contains a header of type `DeadLetterPublishingRecoverer.SingleRecordHeader`, then any existing values for that header will be removed and only the new single value will remain.
 
+[[custom-dlpr]]
+===== Custom DeadLetterPublishingRecoverer
+
+As can be seen in <<retry-headers>> it is possible to customize the default `DeadLetterPublishingRecoverer` instances created by the framework.
+However, for some use cases, it is necessary to subclass the `DeadLetterPublishingRecoverer`, for example to override `createProducerRecord()` to modify the contents sent to the retry (or dead-letter) topics.
+Starting with version 3.0.9, you can override the `RetryConfigurationSupport.configureDeadLetterPublishingContainerFactory()` method to provide a `DeadLetterPublisherCreator` instance, for example:
+
+====
+[source, java]
+----
+@Override
+protected Consumer<DeadLetterPublishingRecovererFactory> 
+        configureDeadLetterPublishingContainerFactory() {
+    
+    return (factory) -> factory.setDeadLetterPublisherCreator(
+            (templateResolver, destinationResolver) ->
+                    new CustomDLPR(templateResolver, destinationResolver));
+}
+----
+====
+
+It is recommended that you use the provided resolvers when constructing the custom instance.
+
 [[retry-topic-combine-blocking]]
 ==== Combining Blocking and Non-Blocking Retries
 

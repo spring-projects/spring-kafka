@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -38,6 +39,7 @@ import org.springframework.core.NestedRuntimeException;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.SingleRecordHeader;
 import org.springframework.kafka.listener.SeekUtils;
 import org.springframework.kafka.listener.TimestampedException;
@@ -76,6 +78,8 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private boolean retainAllRetryHeaderValues = true;
 
+	private DeadLetterPublisherCreator dlpCreator = this::create;
+
 	public DeadLetterPublishingRecovererFactory(DestinationTopicResolver destinationTopicResolver) {
 		this.destinationTopicResolver = destinationTopicResolver;
 	}
@@ -111,6 +115,28 @@ public class DeadLetterPublishingRecovererFactory {
 	 */
 	public void setRetainAllRetryHeaderValues(boolean retainAllRetryHeaderValues) {
 		this.retainAllRetryHeaderValues = retainAllRetryHeaderValues;
+	}
+
+	/**
+	 * Provide a {@link DeadLetterPublisherCreator}; used to create a subclass of the
+	 * {@link DeadLetterPublishingRecoverer}, instead of the default, for example, to
+	 * modify the published records.
+	 * @param creator the creator,
+	 * @since 3.0.9.
+	 */
+	public void setDeadLetterPublisherCreator(DeadLetterPublisherCreator creator) {
+		Assert.notNull(creator, "'creator' cannot be null");
+		this.dlpCreator = creator;
+	}
+
+	/**
+	 * Set a customizer to customize the default {@link DeadLetterPublishingRecoverer}.
+	 * @param customizer the customizer.
+	 * @see #setDeadLetterPublisherCreator(DeadLetterPublisherCreator)
+	 */
+	public void setDeadLetterPublishingRecovererCustomizer(Consumer<DeadLetterPublishingRecoverer> customizer) {
+		Assert.notNull(customizer, "'customizer' cannot be null");
+		this.recovererCustomizer = customizer;
 	}
 
 	/**
@@ -175,31 +201,26 @@ public class DeadLetterPublishingRecovererFactory {
 	@SuppressWarnings("unchecked")
 	public DeadLetterPublishingRecoverer create(String mainListenerId) {
 		Assert.notNull(mainListenerId, "'listenerId' cannot be null");
-		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(// NOSONAR anon. class size
-				templateResolver(mainListenerId), false, destinationResolver(mainListenerId)) {
-
-			@Override
-			protected DeadLetterPublishingRecoverer.HeaderNames getHeaderNames() {
-				return DeadLetterPublishingRecoverer.HeaderNames.Builder
-						.original()
-							.offsetHeader(KafkaHeaders.ORIGINAL_OFFSET)
-							.timestampHeader(KafkaHeaders.ORIGINAL_TIMESTAMP)
-							.timestampTypeHeader(KafkaHeaders.ORIGINAL_TIMESTAMP_TYPE)
-							.topicHeader(KafkaHeaders.ORIGINAL_TOPIC)
-							.partitionHeader(KafkaHeaders.ORIGINAL_PARTITION)
-							.consumerGroupHeader(KafkaHeaders.ORIGINAL_CONSUMER_GROUP)
-						.exception()
-							.keyExceptionFqcn(KafkaHeaders.KEY_EXCEPTION_FQCN)
-							.exceptionFqcn(KafkaHeaders.EXCEPTION_FQCN)
-							.exceptionCauseFqcn(KafkaHeaders.EXCEPTION_CAUSE_FQCN)
-							.keyExceptionMessage(KafkaHeaders.KEY_EXCEPTION_MESSAGE)
-							.exceptionMessage(KafkaHeaders.EXCEPTION_MESSAGE)
-							.keyExceptionStacktrace(KafkaHeaders.KEY_EXCEPTION_STACKTRACE)
-							.exceptionStacktrace(KafkaHeaders.EXCEPTION_STACKTRACE)
-						.build();
-			}
-		};
-
+		Supplier<HeaderNames> headerNamesSupplier = () -> HeaderNames.Builder
+				.original()
+				.offsetHeader(KafkaHeaders.ORIGINAL_OFFSET)
+				.timestampHeader(KafkaHeaders.ORIGINAL_TIMESTAMP)
+				.timestampTypeHeader(KafkaHeaders.ORIGINAL_TIMESTAMP_TYPE)
+				.topicHeader(KafkaHeaders.ORIGINAL_TOPIC)
+				.partitionHeader(KafkaHeaders.ORIGINAL_PARTITION)
+				.consumerGroupHeader(KafkaHeaders.ORIGINAL_CONSUMER_GROUP)
+			.exception()
+				.keyExceptionFqcn(KafkaHeaders.KEY_EXCEPTION_FQCN)
+				.exceptionFqcn(KafkaHeaders.EXCEPTION_FQCN)
+				.exceptionCauseFqcn(KafkaHeaders.EXCEPTION_CAUSE_FQCN)
+				.keyExceptionMessage(KafkaHeaders.KEY_EXCEPTION_MESSAGE)
+				.exceptionMessage(KafkaHeaders.EXCEPTION_MESSAGE)
+				.keyExceptionStacktrace(KafkaHeaders.KEY_EXCEPTION_STACKTRACE)
+				.exceptionStacktrace(KafkaHeaders.EXCEPTION_STACKTRACE)
+			.build();
+		DeadLetterPublishingRecoverer recoverer = this.dlpCreator.create(templateResolver(mainListenerId),
+				destinationResolver(mainListenerId));
+		recoverer.setHeaderNamesSupplier(headerNamesSupplier);
 		recoverer.setHeadersFunction(
 				(consumerRecord, e) -> addHeaders(mainListenerId, consumerRecord, e, getAttempts(consumerRecord)));
 		if (this.headersFunction != null) {
@@ -215,14 +236,17 @@ public class DeadLetterPublishingRecovererFactory {
 		return recoverer;
 	}
 
+	private DeadLetterPublishingRecoverer create(
+			Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
+			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+
+		return new DeadLetterPublishingRecoverer(templateResolver, destinationResolver);
+	}
+
 	private Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver(String mainListenerId) {
 		return outRecord -> this.destinationTopicResolver
 						.getDestinationTopicByName(mainListenerId, outRecord.topic())
 						.getKafkaOperations();
-	}
-
-	public void setDeadLetterPublishingRecovererCustomizer(Consumer<DeadLetterPublishingRecoverer> customizer) {
-		this.recovererCustomizer = customizer;
 	}
 
 	private BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver(String mainListenerId) {
@@ -412,4 +436,24 @@ public class DeadLetterPublishingRecovererFactory {
 		AFTER_RETRIES_EXHAUSTED
 
 	}
+
+	/**
+	 * Implement this interface to create each {@link DeadLetterPublishingRecoverer}.
+	 *
+	 * @since 3.0.9
+	 */
+	@FunctionalInterface
+	public interface DeadLetterPublisherCreator {
+
+		/**
+		 * Create a {@link DeadLetterPublishingRecoverer} using the supplied properties.
+		 * @param templateResolver the template resolver.
+		 * @param destinationResolver the destination resolver.
+		 * @return the publisher.
+		 */
+		DeadLetterPublishingRecoverer create(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
+				BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver);
+
+	}
+
 }
