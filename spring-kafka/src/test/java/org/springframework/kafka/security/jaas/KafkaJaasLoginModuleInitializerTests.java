@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,11 @@ import java.util.Map;
 import javax.security.auth.login.AppConfigurationEntry;
 
 import org.apache.kafka.common.security.JaasContext;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -40,6 +43,7 @@ import com.sun.security.auth.login.ConfigFile;
 /**
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @author Edan Idzerda
  *
  * @since 1.3
  */
@@ -68,6 +72,15 @@ public class KafkaJaasLoginModuleInitializerTests {
 		assertThat(appConfigurationEntries.get(0).getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
 	}
 
+	@Test
+	public void testOtherConfigurationFound() {
+		javax.security.auth.login.Configuration configuration = javax.security.auth.login.Configuration
+				.getConfiguration();
+
+		final AppConfigurationEntry[] otherConfiguration = configuration
+				.getAppConfigurationEntry(PreConfiguredJaasConfig.OtherJaasConfigurationName);
+		assertThat(otherConfiguration).hasSize(1);
+	}
 	@Configuration
 	public static class Config {
 
@@ -86,4 +99,33 @@ public class KafkaJaasLoginModuleInitializerTests {
 
 	}
 
+	@Configuration
+	public static class PreConfiguredJaasConfig implements BeanPostProcessor {
+		private boolean initialized = false;
+		public static String OtherJaasConfigurationName = "other-jaas-configuration-name";
+		@Override
+		public Object postProcessBeforeInitialization(@NotNull Object bean, @NotNull String beanName)
+				throws BeansException {
+			// Install our "other" configuration before the KAFKA_CLIENT_CONTEXT_NAME is installed
+			if (!initialized) {
+				javax.security.auth.login.Configuration.setConfiguration(new OtherJaasConfiguration());
+				initialized = true;
+			}
+			return BeanPostProcessor.super.postProcessBeforeInitialization(bean, beanName);
+		}
+
+		public static class OtherJaasConfiguration extends javax.security.auth.login.Configuration {
+			@Override
+			public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
+				if (name.equals(OtherJaasConfigurationName)) {
+					AppConfigurationEntry dummyAppConfigurationEntry = new AppConfigurationEntry("loginModuleName",
+							AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL, new HashMap<>());
+					return new AppConfigurationEntry[] { dummyAppConfigurationEntry };
+				}
+				else {
+					return null;
+				}
+			}
+		}
+	}
 }
