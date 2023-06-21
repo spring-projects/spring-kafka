@@ -863,7 +863,8 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * in the sent record.
 	 * @return the header names.
 	 * @since 2.7
-	 * @deprecated since 3.0.9 - provide a supplier in the constructor instead
+	 * @deprecated since 3.0.9 - provide a supplier instead.
+	 * @see #setHeaderNamesSupplier(Supplier)
 	 */
 	@Nullable
 	@Deprecated(since = "3.0.9", forRemoval = true)
@@ -871,6 +872,12 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		return null;
 	}
 
+	/**
+	 * Set a {@link Supplier} for {@link HeaderNames}.
+	 * @param supplier the supplier.
+	 * @since3.0.7
+	 *
+	 */
 	public void setHeaderNamesSupplier(Supplier<HeaderNames> supplier) {
 		Assert.notNull(supplier, "'HeaderNames supplier cannot be null");
 		this.headerNamesSupplier = supplier;
