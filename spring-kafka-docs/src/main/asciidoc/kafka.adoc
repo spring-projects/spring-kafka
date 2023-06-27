@@ -5448,7 +5448,7 @@ For a batch listener, all the records in the batch are logged.
 If you wish to use a different error handling strategy for record and batch listeners, the `CommonMixedErrorHandler` is provided allowing the configuration of a specific error handler for each listener type.
 
 [[eh-summary]]
-===== Common Error Handler Summery
+===== Common Error Handler Summary
 
 * `DefaultErrorHandler`
 * `CommonContainerStoppingErrorHandler`
