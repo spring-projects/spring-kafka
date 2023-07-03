@@ -152,6 +152,16 @@ private KafkaAdmin admin;
 ----
 ====
 
+Starting with versions 2.9.10, 3.0.9, you can provide a `Predicate<NewTopic>` which can be used to determine whether a particular `NewTopic` bean should be considered for creation or modification.
+This is useful, for example, if you have multiple `KafkaAdmin` instances pointing to different clusters and you wish to select those topics that should be created or modified by each admin.
+
+====
+[source, java]
+----
+admin.setCreateOrModifyTopic(nt -> !nt.name().equals("dontCreateThisOne"));
+----
+====
+
 [[sending-messages]]
 ==== Sending Messages
 

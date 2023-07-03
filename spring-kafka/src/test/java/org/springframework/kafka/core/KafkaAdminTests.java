@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,6 +85,9 @@ public class KafkaAdminTests {
 	@Autowired
 	private NewTopic mismatchconfig;
 
+	@Autowired
+	private NewTopic dontCreateThisOne;
+
 	@Test
 	public void testTopicConfigs() {
 		assertThat(topic1.configs()).containsEntry(
@@ -97,6 +100,7 @@ public class KafkaAdminTests {
 					.replicas(3)
 					.build().replicationFactor()).isEqualTo((short) 3);
 		assertThat(topic3.replicasAssignments()).hasSize(3);
+		assertThat(admin.newTopics()).doesNotContain(this.dontCreateThisOne);
 	}
 
 	@Test
@@ -269,6 +273,7 @@ public class KafkaAdminTests {
 			KafkaAdmin admin = new KafkaAdmin(configs);
 			admin.setBootstrapServersSupplier(() ->
 					StringUtils.arrayToCommaDelimitedString(kafkaEmbedded().getBrokerAddresses()));
+			admin.setCreateOrModifyTopic(nt -> !nt.name().equals("dontCreate"));
 			return admin;
 		}
 
@@ -336,6 +341,11 @@ public class KafkaAdminTests {
 					TopicBuilder.name("optRepl")
 						.partitions(3)
 						.build());
+		}
+
+		@Bean
+		NewTopic dontCreateThisOne() {
+			return TopicBuilder.name("dontCreate").build();
 		}
 
 	}

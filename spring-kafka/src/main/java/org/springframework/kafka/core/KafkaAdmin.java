@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -62,6 +63,7 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.TopicForRetryable;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 
 /**
  * An admin that delegates to an {@link AdminClient} to create topics defined
@@ -87,6 +89,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 	private final Map<String, Object> configs;
 
 	private ApplicationContext applicationContext;
+
+	private Predicate<NewTopic> createOrModifyTopic = nt -> true;
 
 	private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
@@ -169,6 +173,31 @@ public class KafkaAdmin extends KafkaResourceFactory
 		this.modifyTopicConfigs = modifyTopicConfigs;
 	}
 
+	/**
+	 * Set a predicate that returns true if a discovered {@link NewTopic} bean should be
+	 * considered for creation or modification by this admin instance. The default
+	 * predicate returns true for all {@link NewTopic}s. Used by the default
+	 * implementation of {@link #newTopics()}.
+	 * @param createOrModifyTopic the predicate.
+	 * @since 2.9.10
+	 * @see #newTopics()
+	 */
+	public void setCreateOrModifyTopic(Predicate<NewTopic> createOrModifyTopic) {
+		Assert.notNull(createOrModifyTopic, "'createOrModifyTopic' cannot be null");
+		this.createOrModifyTopic = createOrModifyTopic;
+	}
+
+	/**
+	 * Return the predicate used to determine whether a {@link NewTopic} should be
+	 * considered for creation or modification.
+	 * @return the predicate.
+	 * @since 2.9.10
+	 * @see #newTopics()
+	 */
+	protected Predicate<NewTopic> getCreateOrModifyTopic() {
+		return this.createOrModifyTopic;
+	}
+
 	@Override
 	public Map<String, Object> getConfigurationProperties() {
 		Map<String, Object> configs2 = new HashMap<>(this.configs);
@@ -238,10 +267,17 @@ public class KafkaAdmin extends KafkaResourceFactory
 		return false;
 	}
 
-	/*
-	 * Remove any TopicForRetryable bean if there is also a NewTopic with the same topic name.
+	/**
+	 * Return a collection of {@link NewTopic}s to create or modify. The default
+	 * implementation retrieves all {@link NewTopic} beans in the application context and
+	 * applies the {@link #setCreateOrModifyTopic(Predicate)} predicate to each one. It
+	 * also removes any {@link TopicForRetryable} bean if there is also a NewTopic with
+	 * the same topic name. This is performed before calling the predicate.
+	 * @return the collection of {@link NewTopic}s.
+	 * @since 2.9.10
+	 * @see #setCreateOrModifyTopic(Predicate)
 	 */
-	private Collection<NewTopic> newTopics() {
+	protected Collection<NewTopic> newTopics() {
 		Map<String, NewTopic> newTopicsMap = new HashMap<>(
 				this.applicationContext.getBeansOfType(NewTopic.class, false, false));
 		Map<String, NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false);
@@ -267,6 +303,13 @@ public class KafkaAdmin extends KafkaResourceFactory
 			}
 			if (remove) {
 				newTopicsMap.remove(entry.getKey());
+			}
+		}
+		Iterator<Entry<String, NewTopic>> iterator = newTopicsMap.entrySet().iterator();
+		while (iterator.hasNext()) {
+			Entry<String, NewTopic> next = iterator.next();
+			if (!this.createOrModifyTopic.test(next.getValue())) {
+				iterator.remove();
 			}
 		}
 		return new ArrayList<>(newTopicsMap.values());
