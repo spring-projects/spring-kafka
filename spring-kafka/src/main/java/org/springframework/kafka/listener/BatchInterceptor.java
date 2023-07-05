@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,8 @@ public interface BatchInterceptor<K, V> extends ThreadStateProcessor {
 	/**
 	 * Perform some action on the records or return a different one. If null is returned
 	 * the records will be skipped. Invoked before the listener.
+	 * IMPORTANT: If transactions are being used, and this method throws an exception, it
+	 * cannot be used with the container's {@code interceptBeforeTx} property set to true.
 	 * @param records the records.
 	 * @param consumer the consumer.
 	 * @return the records or null.
