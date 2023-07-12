@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, Supplier<String> clusterId) {
 		super((carrier, key) -> {
 			Header header = carrier.headers().lastHeader(key);
-			if (header == null) {
+			if (header == null || header.value() == null) {
 				return null;
 			}
 			return new String(header.value(), StandardCharsets.UTF_8);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,8 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 	private final ProducerRecord<?, ?> record;
 
 	public KafkaRecordSenderContext(ProducerRecord<?, ?> record, String beanName, Supplier<String> clusterId) {
-		super((carrier, key, value) -> record.headers().add(key, value.getBytes(StandardCharsets.UTF_8)));
+		super((carrier, key, value) -> record.headers().add(key,
+				value == null ? null : value.getBytes(StandardCharsets.UTF_8)));
 		setCarrier(record);
 		this.beanName = beanName;
 		this.record = record;
