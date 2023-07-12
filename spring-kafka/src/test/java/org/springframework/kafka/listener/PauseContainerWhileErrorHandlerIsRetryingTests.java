@@ -18,8 +18,8 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.spy;
 
 import java.time.Duration;
 import java.util.LinkedHashSet;
@@ -181,21 +181,21 @@ public class PauseContainerWhileErrorHandlerIsRetryingTests {
 		@SuppressWarnings({"rawtypes"})
 		private Consumer makePausingAfterPollConsumer(Consumer delegate) {
 			Consumer spied = spy(delegate);
-			doAnswer((call) -> {
+			willAnswer((call) -> {
 				Duration duration = call.getArgument(0, Duration.class);
 				ConsumerRecords records = delegate.poll(duration);
 				if (!duration.isZero() && triggerPause.get()) {
 					pauseContainer();
 				}
 				return records;
-			}).when(spied).poll(any());
+			}).given(spied).poll(any());
 			return spied;
 		}
 
 		@SuppressWarnings({"rawtypes"})
 		private ConsumerFactory makePausingAfterPollConsumerFactory(ConsumerFactory delegate) {
 			ConsumerFactory spied = spy(delegate);
-			doAnswer((invocation -> {
+			willAnswer((invocation -> {
 				Consumer consumerDelegate = delegate.createConsumer(
 						invocation.getArgument(0, String.class),
 						invocation.getArgument(1, String.class),
@@ -203,7 +203,7 @@ public class PauseContainerWhileErrorHandlerIsRetryingTests {
 						invocation.getArgument(3, Properties.class)
 				);
 				return makePausingAfterPollConsumer(consumerDelegate);
-			})).when(spied).createConsumer(any(), any(), any(), any());
+			})).given(spied).createConsumer(any(), any(), any(), any());
 			return spied;
 		}
 
