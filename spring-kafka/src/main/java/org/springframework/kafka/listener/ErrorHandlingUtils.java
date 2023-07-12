@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.core.log.LogAccessor;
@@ -38,6 +39,7 @@ import org.springframework.util.backoff.BackOffExecution;
  *
  * @author Gary Russell
  * @author Andrii Pelesh
+ * @author Antonio Tomac
  * @since 2.8
  *
  */
@@ -120,7 +122,13 @@ public final class ErrorHandlingUtils {
 			Exception lastException = unwrapIfNeeded(thrownException);
 			Boolean retryable = classifier.classify(lastException);
 			while (Boolean.TRUE.equals(retryable) && nextBackOff != BackOffExecution.STOP) {
-				consumer.poll(Duration.ZERO);
+				try {
+					consumer.poll(Duration.ZERO);
+				}
+				catch (WakeupException we) {
+					seeker.handleBatch(thrownException, records, consumer, container, () -> { });
+					throw new KafkaException("Woken up during retry", logLevel, we);
+				}
 				try {
 					ListenerUtils.stoppableSleep(container, nextBackOff);
 				}
@@ -132,7 +140,13 @@ public final class ErrorHandlingUtils {
 				if (!container.isRunning()) {
 					throw new KafkaException("Container stopped during retries");
 				}
-				consumer.poll(Duration.ZERO);
+				try {
+					consumer.poll(Duration.ZERO);
+				}
+				catch (WakeupException we) {
+					seeker.handleBatch(thrownException, records, consumer, container, () -> { });
+					throw new KafkaException("Woken up during retry", logLevel, we);
+				}
 				try {
 					invokeListener.run();
 					return;
