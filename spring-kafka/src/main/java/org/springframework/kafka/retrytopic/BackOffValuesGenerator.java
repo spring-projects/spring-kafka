@@ -44,18 +44,18 @@ public class BackOffValuesGenerator {
 
 	private static final BackOffPolicy DEFAULT_BACKOFF_POLICY = new FixedBackOffPolicy();
 
-	private final int numberOfvaluesToCreate;
+	private final int numberOfValuesToCreate;
 
 	private final BackOffPolicy backOffPolicy;
 
 	public BackOffValuesGenerator(int providedMaxAttempts, BackOffPolicy providedBackOffPolicy) {
-		this.numberOfvaluesToCreate = getMaxAttemps(providedMaxAttempts) - 1;
+		this.numberOfValuesToCreate = getMaxAttempts(providedMaxAttempts) - 1;
 		BackOffPolicy policy = providedBackOffPolicy != null ? providedBackOffPolicy : DEFAULT_BACKOFF_POLICY;
 		checkBackOffPolicyTipe(policy);
 		this.backOffPolicy = policy;
 	}
 
-	public int getMaxAttemps(int providedMaxAttempts) {
+	public int getMaxAttempts(int providedMaxAttempts) {
 		return providedMaxAttempts != RetryTopicConstants.NOT_SET
 				? providedMaxAttempts
 				: RetryTopicConstants.DEFAULT_MAX_ATTEMPTS;
@@ -63,8 +63,8 @@ public class BackOffValuesGenerator {
 
 	public List<Long> generateValues() {
 		return NoBackOffPolicy.class.isAssignableFrom(this.backOffPolicy.getClass())
-				? generateFromNoBackOffPolicy(this.numberOfvaluesToCreate)
-				: generateFromSleepingBackOffPolicy(this.numberOfvaluesToCreate, this.backOffPolicy);
+				? generateFromNoBackOffPolicy(this.numberOfValuesToCreate)
+				: generateFromSleepingBackOffPolicy(this.numberOfValuesToCreate, this.backOffPolicy);
 	}
 
 	private void checkBackOffPolicyTipe(BackOffPolicy providedBackOffPolicy) {
