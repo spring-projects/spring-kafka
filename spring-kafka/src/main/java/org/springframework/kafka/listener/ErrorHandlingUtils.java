@@ -45,6 +45,8 @@ import org.springframework.util.backoff.BackOffExecution;
  */
 public final class ErrorHandlingUtils {
 
+	static Runnable NO_OP = () -> {};
+
 	private ErrorHandlingUtils() {
 	}
 
@@ -126,25 +128,35 @@ public final class ErrorHandlingUtils {
 					consumer.poll(Duration.ZERO);
 				}
 				catch (WakeupException we) {
-					seeker.handleBatch(thrownException, records, consumer, container, () -> { });
+					seeker.handleBatch(thrownException, records, consumer, container, NO_OP);
 					throw new KafkaException("Woken up during retry", logLevel, we);
 				}
 				try {
-					ListenerUtils.stoppableSleep(container, nextBackOff);
+					ListenerUtils.stoppableSleep(
+							() -> container.isRunning() &&
+									!container.isPauseRequested() &&
+									records.partitions().stream().noneMatch(container::isPartitionPauseRequested),
+							nextBackOff
+					);
 				}
 				catch (InterruptedException e1) {
 					Thread.currentThread().interrupt();
-					seeker.handleBatch(thrownException, records, consumer, container, () -> { });
+					seeker.handleBatch(thrownException, records, consumer, container, NO_OP);
 					throw new KafkaException("Interrupted during retry", logLevel, e1);
 				}
 				if (!container.isRunning()) {
 					throw new KafkaException("Container stopped during retries");
 				}
+				if (container.isPauseRequested() ||
+						records.partitions().stream().anyMatch(container::isPartitionPauseRequested)) {
+					seeker.handleBatch(thrownException, records, consumer, container, NO_OP);
+					throw new KafkaException("Container paused requested during retries");
+				}
 				try {
 					consumer.poll(Duration.ZERO);
 				}
 				catch (WakeupException we) {
-					seeker.handleBatch(thrownException, records, consumer, container, () -> { });
+					seeker.handleBatch(thrownException, records, consumer, container, NO_OP);
 					throw new KafkaException("Woken up during retry", logLevel, we);
 				}
 				try {
@@ -176,7 +188,7 @@ public final class ErrorHandlingUtils {
 			catch (Exception ex) {
 				logger.error(ex, () -> "Recoverer threw an exception; re-seeking batch");
 				retryListeners.forEach(listener -> listener.recoveryFailed(records, thrownException, ex));
-				seeker.handleBatch(thrownException, records, consumer, container, () -> { });
+				seeker.handleBatch(thrownException, records, consumer, container, NO_OP);
 			}
 		}
 		finally {

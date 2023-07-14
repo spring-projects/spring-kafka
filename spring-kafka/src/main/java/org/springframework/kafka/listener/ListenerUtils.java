@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectStreamClass;
+import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -39,6 +40,7 @@ import org.springframework.util.backoff.BackOffExecution;
  *
  * @author Gary Russell
  * @author Francois Rosiere
+ * @author Antonio Tomac
  * @since 2.0
  *
  */
@@ -185,11 +187,22 @@ public final class ListenerUtils {
 	 * @since 2.7
 	 */
 	public static void stoppableSleep(MessageListenerContainer container, long interval) throws InterruptedException {
+		stoppableSleep(container::isRunning, interval);
+	}
+
+	/**
+	 * Sleep for the desired timeout, as long as shouldSleepCondition supplies true.
+	 * @param shouldSleepCondition to.
+	 * @param interval the timeout.
+	 * @throws InterruptedException if the thread is interrupted.
+	 * @since 3.0.9
+	 */
+	public static void stoppableSleep(Supplier<Boolean> shouldSleepCondition, long interval) throws InterruptedException {
 		long timeout = System.currentTimeMillis() + interval;
 		long sleepInterval = interval > SMALL_INTERVAL_THRESHOLD ? DEFAULT_SLEEP_INTERVAL : SMALL_SLEEP_INTERVAL;
 		do {
 			Thread.sleep(sleepInterval);
-			if (!container.isRunning()) {
+			if (!shouldSleepCondition.get()) {
 				break;
 			}
 		}

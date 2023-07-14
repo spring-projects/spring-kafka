@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 /**
  * @author Gary Russell
  * @author Francois Rosiere
+ * @author Antonio Tomac
  * @since 2.7.1
  *
  */
@@ -38,6 +39,20 @@ public class ListenerUtilsTests {
 		long t1 = System.currentTimeMillis();
 		ListenerUtils.stoppableSleep(container, 500);
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(500);
+	}
+
+	@Test
+	void stoppableSleepWithConditionTrue() throws InterruptedException {
+		long t1 = System.currentTimeMillis();
+		ListenerUtils.stoppableSleep(() -> true, 500);
+		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(500);
+	}
+
+	@Test
+	void stoppableSleepWithConditionFalse() throws InterruptedException {
+		long t1 = System.currentTimeMillis();
+		ListenerUtils.stoppableSleep(() -> false, 500);
+		assertThat(System.currentTimeMillis() - t1).isLessThan(500);
 	}
 
 	@Test
