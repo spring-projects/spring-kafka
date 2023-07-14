@@ -45,7 +45,7 @@ import org.springframework.util.backoff.BackOffExecution;
  */
 public final class ErrorHandlingUtils {
 
-	static Runnable NO_OP = () -> {};
+	static Runnable NO_OP = () -> { };
 
 	private ErrorHandlingUtils() {
 	}
