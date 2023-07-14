@@ -42,16 +42,16 @@ public class ListenerUtilsTests {
 	}
 
 	@Test
-	void stoppableSleepWithConditionTrue() throws InterruptedException {
+	void conditionalSleepWithConditionTrue() throws InterruptedException {
 		long t1 = System.currentTimeMillis();
-		ListenerUtils.stoppableSleep(() -> true, 500);
+		ListenerUtils.conditionalSleep(() -> true, 500);
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(500);
 	}
 
 	@Test
-	void stoppableSleepWithConditionFalse() throws InterruptedException {
+	void conditionalSleepWithConditionFalse() throws InterruptedException {
 		long t1 = System.currentTimeMillis();
-		ListenerUtils.stoppableSleep(() -> false, 500);
+		ListenerUtils.conditionalSleep(() -> false, 500);
 		assertThat(System.currentTimeMillis() - t1).isLessThan(500);
 	}
 

@@ -187,7 +187,7 @@ public final class ListenerUtils {
 	 * @since 2.7
 	 */
 	public static void stoppableSleep(MessageListenerContainer container, long interval) throws InterruptedException {
-		stoppableSleep(container::isRunning, interval);
+		conditionalSleep(container::isRunning, interval);
 	}
 
 	/**
@@ -197,7 +197,7 @@ public final class ListenerUtils {
 	 * @throws InterruptedException if the thread is interrupted.
 	 * @since 3.0.9
 	 */
-	public static void stoppableSleep(Supplier<Boolean> shouldSleepCondition, long interval) throws InterruptedException {
+	public static void conditionalSleep(Supplier<Boolean> shouldSleepCondition, long interval) throws InterruptedException {
 		long timeout = System.currentTimeMillis() + interval;
 		long sleepInterval = interval > SMALL_INTERVAL_THRESHOLD ? DEFAULT_SLEEP_INTERVAL : SMALL_SLEEP_INTERVAL;
 		do {

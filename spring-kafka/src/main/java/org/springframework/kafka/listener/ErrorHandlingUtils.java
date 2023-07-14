@@ -132,7 +132,7 @@ public final class ErrorHandlingUtils {
 					throw new KafkaException("Woken up during retry", logLevel, we);
 				}
 				try {
-					ListenerUtils.stoppableSleep(
+					ListenerUtils.conditionalSleep(
 							() -> container.isRunning() &&
 									!container.isPauseRequested() &&
 									records.partitions().stream().noneMatch(container::isPartitionPauseRequested),
