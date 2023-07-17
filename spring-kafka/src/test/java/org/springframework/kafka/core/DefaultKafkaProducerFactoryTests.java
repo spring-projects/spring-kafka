@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -305,11 +305,12 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		final Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isSameAs(aProducer);
 		aProducer.send(null, (meta, ex) -> { });
 		aProducer.close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
+		bProducer = pf.createProducer();
 		verify(producer1).close(any(Duration.class));
-		Producer bProducer = pf.createProducer();
 		assertThat(bProducer).isNotSameAs(aProducer);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -740,6 +740,10 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			return getOrCreateThreadBoundProducer();
 		}
 		synchronized (this) {
+			if (this.producer != null && this.producer.closed) {
+				this.producer.closeDelegate(this.physicalCloseTimeout, this.listeners);
+				this.producer = null;
+			}
 			if (this.producer != null && expire(this.producer)) {
 				this.producer = null;
 			}
@@ -754,7 +758,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private Producer<K, V> getOrCreateThreadBoundProducer() {
 		CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
-		if (tlProducer != null && (this.epoch.get() != tlProducer.epoch || expire(tlProducer))) {
+		if (tlProducer != null && (tlProducer.closed || this.epoch.get() != tlProducer.epoch || expire(tlProducer))) {
 			closeThreadBoundProducer();
 			tlProducer = null;
 		}
@@ -781,21 +785,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * Remove the single shared producer and a thread-bound instance if present.
 	 * @param producerToRemove the producer.
 	 * @param timeout the close timeout.
-	 * @return always true.
+	 * @return true if the producer was closed.
 	 * @since 2.2.13
 	 */
-	protected final synchronized boolean removeProducer(CloseSafeProducer<K, V> producerToRemove, Duration timeout) {
-		if (producerToRemove.closed) {
-			if (producerToRemove.equals(this.producer)) {
-				this.producer = null;
-				producerToRemove.closeDelegate(timeout, this.listeners);
-			}
-			this.threadBoundProducers.remove();
-			return true;
-		}
-		else {
-			return false;
-		}
+	protected final boolean removeProducer(CloseSafeProducer<K, V> producerToRemove, Duration timeout) {
+		return producerToRemove.closed;
 	}
 
 	/**
@@ -1139,7 +1133,12 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 
 		void closeDelegate(Duration timeout, List<Listener<K, V>> listeners) {
-			this.delegate.close(timeout == null ? this.closeTimeout : timeout);
+			try {
+				this.delegate.close(timeout == null ? this.closeTimeout : timeout);
+			}
+			catch (Exception ex) {
+				LOGGER.warn(ex, () -> "Failed to close " + this.delegate);
+			}
 			listeners.forEach(listener -> listener.producerRemoved(this.clientId, this));
 			this.closed = true;
 		}
