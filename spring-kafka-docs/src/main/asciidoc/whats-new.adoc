@@ -104,3 +104,5 @@ Similarly, `RECEIVED_MESSAGE_KEY` is replaced by `RECEIVED_KEY` and `RECEIVED_PA
 
 Version 3.0.7 introduced a `MockConsumerFactory` and `MockProducerFactory`.
 See <<mock-cons-prod>> for more information.
+
+Starting with version 3.0.10, the embedded Kafka broker, by default, sets the Spring Boot property `spring.kafka.bootstrap-servers` to the address(es) of the embedded broker(s).

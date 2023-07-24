@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,16 @@ public class EmbeddedKafkaBrokerTests {
 	@Test
 	void testUpDown() {
 		EmbeddedKafkaBroker kafka = new EmbeddedKafkaBroker(1);
+		kafka.brokerListProperty("foo.bar");
 		kafka.afterPropertiesSet();
 		assertThat(kafka.getZookeeperConnectionString()).startsWith("127");
+		assertThat(System.getProperty("foo.bar")).isNotNull();
+		assertThat(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS))
+				.isEqualTo(System.getProperty("foo.bar"));
 		kafka.destroy();
 		assertThat(kafka.getZookeeperConnectionString()).isNull();
+		assertThat(System.getProperty("foo.bar")).isNull();
+		assertThat(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS)).isNull();
 	}
 
 }

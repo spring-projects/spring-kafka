@@ -119,8 +119,10 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 			this.embeddedKafkaBroker =
 					new EmbeddedKafkaBroker(count, false, partitions, topics)
 							.brokerProperties(brokerProperties)
-							.brokerListProperty(brokerListProperty)
 							.kafkaPorts(ports);
+			if (brokerListProperty != null) {
+				this.embeddedKafkaBroker.brokerListProperty(brokerListProperty);
+			}
 			this.embeddedKafkaBroker.afterPropertiesSet();
 
 			this.logger.info("Started global Embedded Kafka on: " + this.embeddedKafkaBroker.getBrokersAsString());

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private int zkSessionTimeout = DEFAULT_ZK_SESSION_TIMEOUT;
 
-	private String brokerListProperty;
+	private String brokerListProperty = "spring.kafka.bootstrap-servers";
 
 	private volatile ZooKeeperClient zooKeeperClient;
 
@@ -257,6 +257,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	/**
 	 * Set the system property with this name to the list of broker addresses.
+	 * Defaults to {@code spring.kafka.bootstrap-servers} for Spring Boot
+	 * compatibility, since 3.0.10.
 	 * @param brokerListProperty the brokerListProperty to set
 	 * @return this broker.
 	 * @since 2.3
@@ -374,10 +376,10 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		if (this.brokerListProperty == null) {
 			this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
 		}
-		if (this.brokerListProperty == null) {
-			this.brokerListProperty = SPRING_EMBEDDED_KAFKA_BROKERS;
+		if (this.brokerListProperty != null) {
+			System.setProperty(this.brokerListProperty, getBrokersAsString());
 		}
-		System.setProperty(this.brokerListProperty, getBrokersAsString());
+		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 	}
 
@@ -591,7 +593,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	@Override
 	public void destroy() {
-		System.getProperties().remove(brokerListProperty);
+		System.getProperties().remove(this.brokerListProperty);
+		System.getProperties().remove(SPRING_EMBEDDED_KAFKA_BROKERS);
 		System.getProperties().remove(SPRING_EMBEDDED_ZOOKEEPER_CONNECT);
 		for (KafkaServer kafkaServer : this.kafkaServers) {
 			try {

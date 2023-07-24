@@ -133,6 +133,7 @@ Instead of default `spring.embedded.kafka.brokers` system property, the address 
 For this purpose a `spring.embedded.kafka.brokers.property` (`EmbeddedKafkaBroker.BROKER_LIST_PROPERTY`) system property can be set before starting an embedded Kafka.
 For example, with Spring Boot a `spring.kafka.bootstrap-servers` configuration property is expected to be set for auto-configuring Kafka client, respectively.
 So, before running tests with an embedded Kafka on random ports, we can set `spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers` as a system property - and the `EmbeddedKafkaBroker`  will use it to expose its broker addresses.
+This is now the default value for this property (starting with version 3.0.10).
 
 With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)`, you can provide additional properties for the Kafka servers.
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
@@ -235,7 +236,8 @@ In addition, these properties can be provided:
 Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
 
 See more information about configuration properties and how to provide them in the https://junit.org/junit5/docs/current/user-guide/#running-tests-config-params[JUnit 5 User Guide].
-For example, a `spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers` entry (for testing in Spring Boot application) can be added into a `junit-platform.properties` file in the testing classpath.
+For example, a `spring.embedded.kafka.brokers.property=my.bootstrap-servers` entry can be added into a `junit-platform.properties` file in the testing classpath.
+Starting with version 3.0.10, the broker automatically sets this to `spring.kafka.bootstrap-servers`, by default, for testing with Spring Boot applications.
 
 NOTE: It is recommended to not combine a global embedded Kafka and per-test class in a single test suite.
 Both of them share the same system properties, so it is very likely going to lead to unexpected behavior.
@@ -422,7 +424,7 @@ The following example shows how to use an `@EmbeddedKafka` Annotation to create 
 ----
 @RunWith(SpringRunner.class)
 @EmbeddedKafka(topics = "someTopic",
-        bootstrapServersProperty = "spring.kafka.bootstrap-servers")
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers") // this is now the default
 public class MyApplicationTests {
 
     @Autowired
@@ -437,6 +439,7 @@ public class MyApplicationTests {
 ----
 ====
 
+NOTE: The `bootstrapServersProperty` is automatically set to `spring.kafka.bootstrap-servers`, by default, starting with version 3.0.10.
 
 ==== Hamcrest Matchers
 

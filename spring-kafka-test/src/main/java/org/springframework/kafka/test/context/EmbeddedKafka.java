@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -151,13 +151,14 @@ public @interface EmbeddedKafka {
 	String brokerPropertiesLocation() default "";
 
 	/**
-	 * The property name to set with the bootstrap server addresses instead of the default
+	 * The property name to set with the bootstrap server addresses as well as the default
 	 * {@value org.springframework.kafka.test.EmbeddedKafkaBroker#SPRING_EMBEDDED_KAFKA_BROKERS}.
+	 * Defaults to {@code spring.kafka.bootstrap-servers} since 3.0.10.
 	 * @return the property name.
 	 * @since 2.3
 	 * @see org.springframework.kafka.test.EmbeddedKafkaBroker#brokerListProperty(String)
 	 */
-	String bootstrapServersProperty() default "";
+	String bootstrapServersProperty() default "spring.kafka.bootstrap-servers";
 
 	/**
 	 * Timeout for internal ZK client connection.
