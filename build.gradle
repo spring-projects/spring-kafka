@@ -288,7 +288,7 @@ configure(javaProjects) { subproject ->
 					'Created-By': "JDK ${System.properties['java.version']} (${System.properties['java.specification.vendor']})",
 					'Implementation-Title': subproject.name,
 					'Implementation-Vendor-Id': subproject.group,
-					'Implementation-Vendor': 'Pivotal Software, Inc.',
+					'Implementation-Vendor': 'VMware Inc.',
 					'Implementation-URL': linkHomepage,
 					'Automatic-Module-Name': subproject.name.replace('-', '.')  // for Jigsaw
 			)
