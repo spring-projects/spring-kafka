@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ public class ContainerGroup implements Lifecycle {
 	 * @param name the group name.
 	 * @param containers the containers.
 	 */
-	public ContainerGroup(String name, MessageListenerContainer...containers) {
+	public ContainerGroup(String name, MessageListenerContainer... containers) {
 		this.name = name;
 		for (MessageListenerContainer container : containers) {
 			this.containers.add(container);
