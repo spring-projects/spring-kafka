@@ -18,19 +18,27 @@ package org.springframework.kafka.listener;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.classify.BinaryExceptionClassifier;
+import org.springframework.context.ApplicationContext;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.lang.Nullable;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
 
@@ -254,6 +262,68 @@ public final class ErrorHandlingUtils {
 			realException = cause;
 		}
 		return realException;
+	}
+
+	/**
+	 * Determine whether the key or value deserializer is an instance of
+	 * {@link ErrorHandlingDeserializer}.
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 * @param consumerFactory the consumer factory.
+	 * @param consumerOverrides consumer factory property overrides.
+	 * @param isValue true to find the value deserializer.
+	 * @param applicationContext the application context.
+	 * @return true if the deserializer is an instance of
+	 * {@link ErrorHandlingDeserializer}.
+	 * @since 3.0.10
+	 */
+	public static <K, V> boolean checkDeserializer(ConsumerFactory<K, V> consumerFactory,
+			Properties consumerOverrides, boolean isValue, @Nullable ApplicationContext applicationContext) {
+
+		Object deser = findDeserializerClass(consumerFactory, consumerOverrides, isValue);
+		Class<?> deserializer = null;
+		if (deser instanceof Class<?> deserClass) {
+			deserializer = deserClass;
+		}
+		else if (deser instanceof String str) {
+			try {
+				ClassLoader classLoader = applicationContext == null
+						? consumerFactory.getClass().getClassLoader()
+						: applicationContext.getClassLoader();
+				deserializer = ClassUtils.forName(str, classLoader);
+			}
+			catch (ClassNotFoundException | LinkageError e) {
+				throw new IllegalStateException(e);
+			}
+		}
+		else if (deser != null) {
+			throw new IllegalStateException("Deserializer must be a class or class name, not a " + deser.getClass());
+		}
+		return deserializer != null && ErrorHandlingDeserializer.class.isAssignableFrom(deserializer);
+	}
+
+	@Nullable
+	private static <K, V> Object findDeserializerClass(ConsumerFactory<K, V> consumerFactory,
+			Properties consumerOverrides, boolean isValue) {
+
+		Map<String, Object> props = consumerFactory.getConfigurationProperties();
+		Object configuredDeserializer = isValue
+				? consumerFactory.getValueDeserializer()
+				: consumerFactory.getKeyDeserializer();
+		if (configuredDeserializer == null) {
+			Object deser = consumerOverrides.get(isValue
+					? ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
+					: ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
+			if (deser == null) {
+				deser = props.get(isValue
+						? ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
+						: ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
+			}
+			return deser;
+		}
+		else {
+			return configuredDeserializer.getClass();
+		}
 	}
 
 }

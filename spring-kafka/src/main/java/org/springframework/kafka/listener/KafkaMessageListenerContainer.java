@@ -115,7 +115,6 @@ import org.springframework.kafka.support.micrometer.KafkaListenerObservation.Def
 import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.lang.Nullable;
@@ -129,7 +128,6 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
@@ -920,9 +918,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
 			this.checkNullKeyForExceptions = this.containerProperties.isCheckDeserExWhenKeyNull()
-					|| checkDeserializer(findDeserializerClass(props, consumerProperties, false));
+					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory, consumerProperties, false,
+							getApplicationContext());
 			this.checkNullValueForExceptions = this.containerProperties.isCheckDeserExWhenValueNull()
-					|| checkDeserializer(findDeserializerClass(props, consumerProperties, true));
+					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory, consumerProperties, true,
+							getApplicationContext());
 			this.syncCommitTimeout = determineSyncCommitTimeout();
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
 				// update the property so we can use it directly from code elsewhere
@@ -1247,27 +1247,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@Nullable
-		private Object findDeserializerClass(Map<String, Object> props, Properties consumerOverrides, boolean isValue) {
-			Object configuredDeserializer = isValue
-					? KafkaMessageListenerContainer.this.consumerFactory.getValueDeserializer()
-					: KafkaMessageListenerContainer.this.consumerFactory.getKeyDeserializer();
-			if (configuredDeserializer == null) {
-				Object deser = consumerOverrides.get(isValue
-						? ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
-						: ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
-				if (deser == null) {
-					deser = props.get(isValue
-							? ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
-							: ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
-				}
-				return deser;
-			}
-			else {
-				return configuredDeserializer.getClass();
-			}
-		}
-
 		private void subscribeOrAssignTopics(final Consumer<? super K, ? super V> subscribingConsumer) {
 			if (KafkaMessageListenerContainer.this.topicPartitions == null) {
 				ConsumerRebalanceListener rebalanceListener = new ListenerConsumerRebalanceListener();
@@ -1291,29 +1270,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				subscribingConsumer.assign(new ArrayList<>(this.definedPartitions.keySet()));
 			}
-		}
-
-		private boolean checkDeserializer(@Nullable Object deser) {
-			Class<?> deserializer = null;
-			if (deser instanceof Class<?> deserClass) {
-				deserializer = deserClass;
-			}
-			else if (deser instanceof String str) {
-				try {
-					ApplicationContext applicationContext = getApplicationContext();
-					ClassLoader classLoader = applicationContext == null
-							? getClass().getClassLoader()
-							: applicationContext.getClassLoader();
-					deserializer = ClassUtils.forName(str, classLoader);
-				}
-				catch (ClassNotFoundException | LinkageError e) {
-					throw new IllegalStateException(e);
-				}
-			}
-			else if (deser != null) {
-				throw new IllegalStateException("Deserializer must be a class or class name, not a " + deser.getClass());
-			}
-			return deserializer != null && ErrorHandlingDeserializer.class.isAssignableFrom(deserializer);
 		}
 
 		protected void checkConsumer() {
