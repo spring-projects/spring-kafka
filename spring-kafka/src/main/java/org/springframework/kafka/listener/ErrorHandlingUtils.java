@@ -31,7 +31,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
 import org.springframework.classify.BinaryExceptionClassifier;
-import org.springframework.context.ApplicationContext;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -272,13 +271,13 @@ public final class ErrorHandlingUtils {
 	 * @param consumerFactory the consumer factory.
 	 * @param consumerOverrides consumer factory property overrides.
 	 * @param isValue true to find the value deserializer.
-	 * @param applicationContext the application context.
+	 * @param classLoader the class loader to load the deserializer class.
 	 * @return true if the deserializer is an instance of
 	 * {@link ErrorHandlingDeserializer}.
 	 * @since 3.0.10
 	 */
 	public static <K, V> boolean checkDeserializer(ConsumerFactory<K, V> consumerFactory,
-			Properties consumerOverrides, boolean isValue, @Nullable ApplicationContext applicationContext) {
+			Properties consumerOverrides, boolean isValue, ClassLoader classLoader) {
 
 		Object deser = findDeserializerClass(consumerFactory, consumerOverrides, isValue);
 		Class<?> deserializer = null;
@@ -287,9 +286,6 @@ public final class ErrorHandlingUtils {
 		}
 		else if (deser instanceof String str) {
 			try {
-				ClassLoader classLoader = applicationContext == null
-						? consumerFactory.getClass().getClassLoader()
-						: applicationContext.getClassLoader();
 				deserializer = ClassUtils.forName(str, classLoader);
 			}
 			catch (ClassNotFoundException | LinkageError e) {

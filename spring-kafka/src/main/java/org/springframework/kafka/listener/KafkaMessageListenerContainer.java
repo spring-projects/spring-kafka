@@ -917,12 +917,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.info(toString());
 			}
 			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
+			ApplicationContext applicationContext = getApplicationContext();
 			this.checkNullKeyForExceptions = this.containerProperties.isCheckDeserExWhenKeyNull()
-					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory, consumerProperties, false,
-							getApplicationContext());
+					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory,
+							consumerProperties, false,
+							applicationContext == null
+									? getClass().getClassLoader()
+									: applicationContext.getClassLoader());
 			this.checkNullValueForExceptions = this.containerProperties.isCheckDeserExWhenValueNull()
-					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory, consumerProperties, true,
-							getApplicationContext());
+					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory,
+							consumerProperties, true,
+							applicationContext == null
+									? getClass().getClassLoader()
+									: applicationContext.getClassLoader());
 			this.syncCommitTimeout = determineSyncCommitTimeout();
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
 				// update the property so we can use it directly from code elsewhere
