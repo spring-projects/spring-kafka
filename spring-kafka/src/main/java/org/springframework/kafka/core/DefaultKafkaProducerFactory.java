@@ -23,10 +23,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiPredicate;
 import java.util.function.Supplier;
@@ -55,6 +57,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
@@ -111,7 +114,7 @@ import org.springframework.util.StringUtils;
  */
 public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		implements ProducerFactory<K, V>, ApplicationContextAware,
-		BeanNameAware, ApplicationListener<ContextStoppedEvent>, DisposableBean {
+		BeanNameAware, ApplicationListener<ContextStoppedEvent>, DisposableBean, SmartLifecycle {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaProducerFactory.class));
 
@@ -123,6 +126,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private final ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers = new ThreadLocal<>();
 
+	private final Set<CloseSafeProducer<K, V>> threadBoundProducersAll = ConcurrentHashMap.newKeySet();
+
 	private final AtomicInteger epoch = new AtomicInteger();
 
 	private final AtomicInteger clientIdCounter = new AtomicInteger();
@@ -130,6 +135,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	private final List<Listener<K, V>> listeners = new ArrayList<>();
 
 	private final List<ProducerPostProcessor<K, V>> postProcessors = new ArrayList<>();
+
+	private final AtomicBoolean running = new AtomicBoolean();
 
 	private Supplier<Serializer<K>> keySerializerSupplier;
 
@@ -519,6 +526,27 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		this.maxAge = maxAge.toMillis();
 	}
 
+	@Override
+	public void start() {
+		this.running.set(true);
+	}
+
+	@Override
+	public void stop() {
+		this.running.set(false);
+		destroy();
+	}
+
+	@Override
+	public boolean isRunning() {
+		return this.running.get();
+	}
+
+	@Override
+	public int getPhase() {
+		return Integer.MIN_VALUE;
+	}
+
 	/**
 	 * Copy properties of the instance and the given properties to create a new producer factory.
 	 * <p>If the {@link org.springframework.kafka.core.DefaultKafkaProducerFactory} makes a
@@ -677,7 +705,12 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			this.producer = null;
 		}
 		if (producerToClose != null) {
-			producerToClose.closeDelegate(this.physicalCloseTimeout, this.listeners);
+			try {
+				producerToClose.closeDelegate(this.physicalCloseTimeout, this.listeners);
+			}
+			catch (Exception e) {
+				LOGGER.error(e, "Exception while closing producer");
+			}
 		}
 		this.cache.values().forEach(queue -> {
 			CloseSafeProducer<K, V> next = queue.poll();
@@ -691,6 +724,16 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				next = queue.poll();
 			}
 		});
+		this.cache.clear();
+		this.threadBoundProducersAll.forEach(prod -> {
+			try {
+				prod.closeDelegate(this.physicalCloseTimeout, this.listeners);
+			}
+			catch (Exception e) {
+				LOGGER.error(e, "Exception while closing producer");
+			}
+		});
+		this.threadBoundProducersAll.clear();
 		this.epoch.incrementAndGet();
 	}
 
@@ -760,6 +803,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
 		if (tlProducer != null && (tlProducer.closed || this.epoch.get() != tlProducer.epoch || expire(tlProducer))) {
 			closeThreadBoundProducer();
+			this.threadBoundProducersAll.remove(tlProducer);
 			tlProducer = null;
 		}
 		if (tlProducer == null) {
@@ -769,6 +813,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				listener.producerAdded(tlProducer.clientId, tlProducer);
 			}
 			this.threadBoundProducers.set(tlProducer);
+			this.threadBoundProducersAll.add(tlProducer);
 		}
 		return tlProducer;
 	}
@@ -907,6 +952,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
 		if (tlProducer != null) {
 			this.threadBoundProducers.remove();
+			this.threadBoundProducersAll.remove(tlProducer);
 			tlProducer.closeDelegate(this.physicalCloseTimeout, this.listeners);
 		}
 	}
