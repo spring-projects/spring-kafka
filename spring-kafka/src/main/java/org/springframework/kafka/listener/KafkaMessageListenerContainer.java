@@ -858,7 +858,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				ObservationRegistry observationRegistry) {
 
 			this.observationRegistry = observationRegistry;
-			Properties consumerProperties = propertiesFromProperties();
+			Properties consumerProperties = propertiesFromConsumerPropertyOverrides();
 			checkGroupInstance(consumerProperties, KafkaMessageListenerContainer.this.consumerFactory);
 			this.autoCommit = determineAutoCommit(consumerProperties);
 			this.consumer =
@@ -1046,20 +1046,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					return null;
 				}
 			}
-		}
-
-		private Properties propertiesFromProperties() {
-			Properties propertyOverrides = this.containerProperties.getKafkaConsumerProperties();
-			Properties props = new Properties();
-			props.putAll(propertyOverrides);
-			Set<String> stringPropertyNames = propertyOverrides.stringPropertyNames();
-			// User might have provided properties as defaults
-			stringPropertyNames.forEach((name) -> {
-				if (!props.contains(name)) {
-					props.setProperty(name, propertyOverrides.getProperty(name));
-				}
-			});
-			return props;
 		}
 
 		String getClientId() {

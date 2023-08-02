@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -565,6 +566,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					.stream()
 					.filter(entry -> AdminClientConfig.configNames().contains(entry.getKey()))
 					.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+			Properties overrides = propertiesFromConsumerPropertyOverrides();
+			overrides.forEach((key, value) -> {
+				if (key instanceof String) {
+					configs.put((String) key, value);
+				}
+			});
 			List<String> missing = null;
 			try (AdminClient client = AdminClient.create(configs)) { // NOSONAR - false positive null check
 				if (client != null) {
@@ -738,6 +745,25 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	protected AbstractMessageListenerContainer<?, ?> parentOrThis() {
 		return this;
+	}
+
+	/**
+	 * Make any default consumer override properties explicit properties.
+	 * @return the properties.
+	 * @since 2.9.11
+	 */
+	protected Properties propertiesFromConsumerPropertyOverrides() {
+		Properties propertyOverrides = this.containerProperties.getKafkaConsumerProperties();
+		Properties props = new Properties();
+		props.putAll(propertyOverrides);
+		Set<String> stringPropertyNames = propertyOverrides.stringPropertyNames();
+		// User might have provided properties as defaults
+		stringPropertyNames.forEach((name) -> {
+			if (!props.contains(name)) {
+				props.setProperty(name, propertyOverrides.getProperty(name));
+			}
+		});
+		return props;
 	}
 
 }
