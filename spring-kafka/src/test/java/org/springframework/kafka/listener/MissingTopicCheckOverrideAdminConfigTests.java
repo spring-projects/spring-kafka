@@ -43,7 +43,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  *
  */
 @EmbeddedKafka(topics = "mtccac")
-public class MissingTopicCheckOverrideAdminConfig {
+public class MissingTopicCheckOverrideAdminConfigTests {
 
 	@Test
 	void configOverride(EmbeddedKafkaBroker broker) {
