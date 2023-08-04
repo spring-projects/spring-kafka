@@ -3469,8 +3469,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								this.partial));
 				Assert.state(ListenerConsumer.this.isManualImmediateAck,
 						"Partial batch acknowledgment is only supported with AckMode.MANUAL_IMMEDIATE");
-				Assert.state(!ListenerConsumer.this.containerProperties.isAsyncAcks(),
-						"Partial batch acknowledgment is not supported with out-of-order commits (asyncAcks=true)");
 				Assert.state(this.recordList != null,
 						"Listener must receive a List of records to use partial batch acknowledgment");
 				Assert.isTrue(index >= 0 && index < this.recordList.size(),

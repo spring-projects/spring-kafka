@@ -1255,7 +1255,6 @@ The following limitations apply:
 * The listener must consume a `List` rather than the raw `ConsumerRecords`
 * The index must be in the range of the list's elements
 * The index must be larger than that used in a previous call
-* Out of order commits (<<asyncAcks>>) are not supported
 
 These restrictions are enforced and the method will throw an `IllegalArgumentException` or `IllegalStateException`, depending on the violation.
 
