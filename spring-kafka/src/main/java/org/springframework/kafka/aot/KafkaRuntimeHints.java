@@ -72,6 +72,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConsumerProperties;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.support.KafkaMessageHeaderAccessor;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.serializer.DelegatingByTopicDeserializer;
@@ -102,6 +103,7 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 		Stream.of(
 					ConsumerProperties.class,
 					ContainerProperties.class,
+					KafkaMessageHeaderAccessor.class,
 					ProducerListener.class)
 				.forEach(type -> reflectionHints.registerType(type,
 						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_METHODS)));
