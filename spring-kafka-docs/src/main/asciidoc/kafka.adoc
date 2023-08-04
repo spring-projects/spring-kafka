@@ -1245,6 +1245,20 @@ The actual sleep time, and its resolution, depends on the container's `pollTimeo
 The minimum sleep time is equal to the `pollTimeout` and all sleep times will be a multiple of it.
 For small sleep times or, to increase its accuracy, consider reducing the container's `pollTimeout`.
 
+Starting with version 3.0.10, batch listeners can commit the offsets of parts of the batch, using `acknowledge(index)` on the `Acknowledgment` argument.
+When this method is called, the offset of the record at the index (as well as all previous records) will be committed.
+Calling `acknowledge()` after a partial batch commit is performed will commit the offsets of the remainder of the batch.
+The following limitations apply:
+
+* `AckMode.MANUAL_IMMEDIATE` is required
+* The method must be called on the listener thread
+* The listener must consume a `List` rather than the raw `ConsumerRecords`
+* The index must be in the range of the list's elements
+* The index must be larger than that used in a previous call
+* Out of order commits (<<asyncAcks>>) are not supported
+
+These restrictions are enforced and the method will throw an `IllegalArgumentException` or `IllegalStateException`, depending on the violation.
+
 [[container-auto-startup]]
 ====== Listener Container Auto Startup
 
@@ -2442,6 +2456,10 @@ When creating the `TopicPartitionOffset` s for the request, only positive, absol
 |LATEST_ONLY _NO_TX
 |Whether or not to commit the initial position on assignment; by default, the initial offset will only be committed if the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` is `latest` and it won't run in a transaction even if there is a transaction manager present.
 See the javadocs for `ContainerProperties.AssignmentCommitOption` for more information about the available options.
+
+|[[asyncAcks]]<<asyncAcks,`asyncAcks`>>
+|false
+|Enable out-of-order commits (see <<ooo-commits>>); the consumer is paused and commits are deferred until gaps are filled.
 
 |[[authExceptionRetryInterval]]<<authExceptionRetryInterval,`authExceptionRetryInterval`>>
 |`null`

@@ -2446,7 +2446,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.wantsFullRecords) {
 				this.batchListener.onMessage(records, // NOSONAR
 						this.isAnyManualAck
-								? new ConsumerBatchAcknowledgment(records)
+								? new ConsumerBatchAcknowledgment(records, recordList)
 								: null,
 						this.consumer);
 			}
@@ -2456,19 +2456,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void doInvokeBatchOnMessage(final ConsumerRecords<K, V> records,
-				List<ConsumerRecord<K, V>> recordList) {
+				@Nullable List<ConsumerRecord<K, V>> recordList) {
 
 			try {
 				switch (this.listenerType) {
 					case ACKNOWLEDGING_CONSUMER_AWARE ->
 						this.batchListener.onMessage(recordList,
 								this.isAnyManualAck
-										? new ConsumerBatchAcknowledgment(records)
+										? new ConsumerBatchAcknowledgment(records, recordList)
 										: null, this.consumer);
 					case ACKNOWLEDGING ->
 						this.batchListener.onMessage(recordList,
 								this.isAnyManualAck
-										? new ConsumerBatchAcknowledgment(records)
+										? new ConsumerBatchAcknowledgment(records, recordList)
 										: null);
 					case CONSUMER_AWARE -> this.batchListener.onMessage(recordList, this.consumer);
 					case SIMPLE -> this.batchListener.onMessage(recordList);
@@ -3429,14 +3429,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			private final ConsumerRecords<K, V> records;
 
+			private final List<ConsumerRecord<K, V>> recordList;
+
 			private volatile boolean acked;
 
-			ConsumerBatchAcknowledgment(ConsumerRecords<K, V> records) {
+			private volatile int partial = -1;
+
+			ConsumerBatchAcknowledgment(ConsumerRecords<K, V> records,
+					@Nullable List<ConsumerRecord<K, V>> recordList) {
+
 				this.records = records;
+				this.recordList = recordList;
 			}
 
 			@Override
 			public void acknowledge() {
+				if (this.partial >= 0) {
+					acknowledge(this.partial + 1);
+					return;
+				}
 				Map<TopicPartition, List<Long>> offs = ListenerConsumer.this.offsetsInThisBatch;
 				if (!this.acked) {
 					Map<TopicPartition, List<ConsumerRecord<K, V>>> deferred = ListenerConsumer.this.deferredOffsets;
@@ -3449,6 +3460,34 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					processAcks(this.records);
 					this.acked = true;
 				}
+			}
+
+			@Override
+			public void acknowledge(int index) {
+				Assert.isTrue(index > this.partial,
+						() -> String.format("index (%d) must be greater than the previous partial commit (%d)", index,
+								this.partial));
+				Assert.state(ListenerConsumer.this.isManualImmediateAck,
+						"Partial batch acknowledgment is only supported with AckMode.MANUAL_IMMEDIATE");
+				Assert.state(!ListenerConsumer.this.containerProperties.isAsyncAcks(),
+						"Partial batch acknowledgment is not supported with out-of-order commits (asyncAcks=true)");
+				Assert.state(this.recordList != null,
+						"Listener must receive a List of records to use partial batch acknowledgment");
+				Assert.isTrue(index >= 0 && index < this.recordList.size(),
+						() -> String.format("index (%d) is out of range (%d-%d)", index, 0,
+								this.recordList.size() - 1));
+				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
+						"Partial batch acknowledgment is only supported on the consumer thread");
+				Map<TopicPartition, List<ConsumerRecord<K, V>>> offsetsToCommit = new LinkedHashMap<>();
+				for (int i = this.partial + 1; i <= index; i++) {
+					ConsumerRecord<K, V> record = this.recordList.get(i);
+					offsetsToCommit.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
+							tp -> new ArrayList<>()).add(record);
+				}
+				if (!offsetsToCommit.isEmpty()) {
+					processAcks(new ConsumerRecords<>(offsetsToCommit));
+				}
+				this.partial = index;
 			}
 
 			@Override

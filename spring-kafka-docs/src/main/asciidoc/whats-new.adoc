@@ -88,6 +88,9 @@ See <<replying-template>> and <<exchanging-messages>>.
 You can now use a custom correlation header which will be echoed in any reply message.
 See the note at the end of <<replying-template>> for more information.
 
+You can now manually commit parts of a batch before the entire batch is processed.
+See <<committing-offsets>> for more information.
+
 [[x30-headers]]
 ==== `KafkaHeaders` Changes
 
