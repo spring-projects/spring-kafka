@@ -506,9 +506,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		if (consumer != null && this.verifyPartition) {
 			tp = checkPartition(tp, consumer);
 		}
-		DeserializationException vDeserEx = ListenerUtils.getExceptionFromHeader(record,
+		DeserializationException vDeserEx = SerializationUtils.getExceptionFromHeader(record,
 				SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
-		DeserializationException kDeserEx = ListenerUtils.getExceptionFromHeader(record,
+		DeserializationException kDeserEx = SerializationUtils.getExceptionFromHeader(record,
 				SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		Headers headers = new RecordHeaders(record.headers().toArray());
 		addAndEnhanceHeaders(record, exception, vDeserEx, kDeserEx, headers);

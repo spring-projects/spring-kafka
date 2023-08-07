@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,6 @@ import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
-import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -558,7 +557,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * Return a {@link DeserializationException} if either the key or value failed
 	 * deserialization; null otherwise. If you need to determine whether it was the key or
 	 * value, call
-	 * {@link ListenerUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)}
+	 * {@link SerializationUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)}
 	 * with {@link SerializationUtils#KEY_DESERIALIZER_EXCEPTION_HEADER} and
 	 * {@link SerializationUtils#VALUE_DESERIALIZER_EXCEPTION_HEADER} instead.
 	 * @param record the record.
@@ -568,14 +567,14 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 */
 	@Nullable
 	public static DeserializationException checkDeserialization(ConsumerRecord<?, ?> record, LogAccessor logger) {
-		DeserializationException exception = ListenerUtils.getExceptionFromHeader(record,
+		DeserializationException exception = SerializationUtils.getExceptionFromHeader(record,
 				SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, logger);
 		if (exception != null) {
 			logger.error(exception, () -> "Reply value deserialization failed for " + record.topic() + "-"
 					+ record.partition() + "@" + record.offset());
 			return exception;
 		}
-		exception = ListenerUtils.getExceptionFromHeader(record,
+		exception = SerializationUtils.getExceptionFromHeader(record,
 				SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, logger);
 		if (exception != null) {
 			logger.error(exception, () -> "Reply key deserialization failed for " + record.topic() + "-"

@@ -24,12 +24,10 @@ import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
@@ -92,23 +90,15 @@ public final class ListenerUtils {
 	 * @param logger the logger for logging errors.
 	 * @return the exception or null.
 	 * @since 2.3
+	 * @deprecated in favor of
+	 * {@link SerializationUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)}.
 	 */
+	@Deprecated
 	@Nullable
 	public static DeserializationException getExceptionFromHeader(final ConsumerRecord<?, ?> record,
 			String headerName, LogAccessor logger) {
 
-		Header header = record.headers().lastHeader(headerName);
-		if (header != null) {
-			byte[] value = header.value();
-			DeserializationException exception = byteArrayToDeserializationException(logger, value);
-			if (exception != null) {
-				Headers headers = new RecordHeaders(record.headers().toArray());
-				headers.remove(headerName);
-				exception.setHeaders(headers);
-			}
-			return exception;
-		}
-		return null;
+		return SerializationUtils.getExceptionFromHeader(record, headerName, logger);
 	}
 
 	/**
@@ -118,7 +108,11 @@ public final class ListenerUtils {
 	 * @param value the bytes.
 	 * @return the exception or null if deserialization fails.
 	 * @since 2.8.1
+	 * @deprecated in favor of
+	 * {@link SerializationUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)} or
+	 * {@link SerializationUtils#byteArrayToDeserializationException(LogAccessor, org.apache.kafka.common.header.Header)}.
 	 */
+	@Deprecated
 	@Nullable
 	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, byte[] value) {
 		try {

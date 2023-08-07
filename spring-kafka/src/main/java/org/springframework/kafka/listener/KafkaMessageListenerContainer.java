@@ -2985,7 +2985,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		public void checkDeser(final ConsumerRecord<K, V> cRecord, String headerName) {
-			DeserializationException exception = ListenerUtils.getExceptionFromHeader(cRecord, headerName, this.logger);
+			DeserializationException exception = SerializationUtils.getExceptionFromHeader(cRecord, headerName,
+					this.logger);
 			if (exception != null) {
 				/*
 				 * Wrapping in a LEFE is not strictly correct, but required for backwards compatibility.

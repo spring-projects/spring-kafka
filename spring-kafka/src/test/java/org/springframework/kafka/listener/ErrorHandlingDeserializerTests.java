@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -129,8 +129,8 @@ public class ErrorHandlingDeserializerTests {
 		ErrorHandlingDeserializer<String> ehd = new ErrorHandlingDeserializer<>(new MyDes());
 		Headers headers = new RecordHeaders();
 		ehd.deserialize("foo", headers, new byte[1]);
-		DeserializationException dex = ListenerUtils.byteArrayToDeserializationException(null,
-				headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER).value());
+		DeserializationException dex = SerializationUtils.byteArrayToDeserializationException(null,
+				headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
 		assertThat(dex.getCause().getMessage())
 				.contains("Could not serialize")
 				.contains("original exception message");

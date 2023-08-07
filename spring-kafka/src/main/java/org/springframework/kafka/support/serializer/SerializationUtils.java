@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,24 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.BiFunction;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 
+import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
@@ -166,10 +174,82 @@ public final class SerializationUtils {
 			}
 		}
 		headers.add(
-				new RecordHeader(isForKeyArg
+				new DeserializationExceptionHeader(isForKeyArg
 						? KEY_DESERIALIZER_EXCEPTION_HEADER
 						: VALUE_DESERIALIZER_EXCEPTION_HEADER,
 						stream.toByteArray()));
+	}
+
+	/**
+	 * Extract a {@link DeserializationException} from the supplied header name, if
+	 * present.
+	 * @param record the consumer record.
+	 * @param headerName the header name.
+	 * @param logger the logger for logging errors.
+	 * @return the exception or null.
+	 * @since 2.9.11
+	 */
+	@Nullable
+	public static DeserializationException getExceptionFromHeader(final ConsumerRecord<?, ?> record,
+			String headerName, LogAccessor logger) {
+
+		Header header = record.headers().lastHeader(headerName);
+		if (!(header instanceof DeserializationExceptionHeader)) {
+			logger.warn(
+					() -> String.format("Foreign deserialization exception header in (%s) ignored; possible attack?",
+							KafkaUtils.format(record)));
+			return null;
+		}
+		if (header != null) {
+			byte[] value = header.value();
+			DeserializationException exception = byteArrayToDeserializationException(logger, header);
+			if (exception != null) {
+				Headers headers = new RecordHeaders(record.headers().toArray());
+				headers.remove(headerName);
+				exception.setHeaders(headers);
+			}
+			return exception;
+		}
+		return null;
+	}
+
+	/**
+	 * Convert a byte array containing a serialized {@link DeserializationException} to the
+	 * {@link DeserializationException}.
+	 * @param logger a log accessor to log errors.
+	 * @param header the header.
+	 * @return the exception or null if deserialization fails.
+	 * @since 2.9.11
+	 */
+	@Nullable
+	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, Header header) {
+
+		if (!(header instanceof DeserializationExceptionHeader)) {
+			throw new IllegalStateException("Foreign deserialization exception header ignored; possible attack?");
+		}
+		try {
+			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(header.value())) {
+
+				boolean first = true;
+
+				@Override
+				protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+					if (this.first) {
+						this.first = false;
+						Assert.state(desc.getName().equals(DeserializationException.class.getName()),
+								"Header does not contain a DeserializationException");
+					}
+					return super.resolveClass(desc);
+				}
+
+
+			};
+			return (DeserializationException) ois.readObject();
+		}
+		catch (IOException | ClassNotFoundException | ClassCastException e) {
+			logger.error(e, "Failed to deserialize a deserialization exception");
+			return null;
+		}
 	}
 
 }
