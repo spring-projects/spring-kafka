@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -198,6 +198,7 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Producer.class));
 
 		Stream.of(
+				"sun.security.provider.ConfigFile",
 				"org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor",
 				"org.apache.kafka.streams.errors.DefaultProductionExceptionHandler",
 				"org.apache.kafka.streams.processor.FailOnInvalidTimestamp",
