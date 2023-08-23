@@ -213,6 +213,13 @@ public class ToStringSerializationTests {
 	}
 
 	@Test
+	void nullValue() {
+		ParseStringDeserializer<Object> deserializer =
+				new ParseStringDeserializer<>(ToStringSerializationTests::parseWithHeaders);
+		assertThat(deserializer.deserialize("foo", new RecordHeaders(), null)).isNull();
+	}
+
+	@Test
 	@DisplayName("Test deserialization using headers via config")
 	public void testSerialization_usingHeadersViaConfig() {
 
