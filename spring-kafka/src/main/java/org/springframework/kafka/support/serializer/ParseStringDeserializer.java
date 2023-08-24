@@ -67,7 +67,8 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
-	 * Construct an instance with the supplied parser function.
+	 * Construct an instance with the supplied parser function. The function may receive
+	 * null as the input value, for example for a tombstone record in a compacted topic.
 	 * @param parser the function.
 	 */
 	public ParseStringDeserializer(Function<String, T> parser) {
@@ -75,7 +76,8 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
-	 * Construct an instance with the supplied parser function.
+	 * Construct an instance with the supplied parser function. The function may receive
+	 * null as the input value, for example for a tombstone record in a compacted topic.
 	 * @param parser the function.
 	 */
 	public ParseStringDeserializer(BiFunction<String, Headers, T> parser) {
@@ -100,10 +102,7 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 
 	@Override
 	public T deserialize(String topic, Headers headers, byte[] data) {
-		if (data == null) {
-			return null;
-		}
-		return this.parser.apply(new String(data, this.charset), headers);
+		return this.parser.apply(data == null ? null : new String(data, this.charset), headers);
 	}
 
 	/**

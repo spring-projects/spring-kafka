@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
+import org.springframework.lang.Nullable;
 
 /**
  *
@@ -279,7 +280,10 @@ public class ToStringSerializationTests {
 				.isNotEqualTo("tôtô");
 	}
 
-	public static Object parseWithHeaders(String str, Headers headers) {
+	public static Object parseWithHeaders(@Nullable String str, Headers headers) {
+		if (str == null) {
+			return null;
+		}
 		byte[] header = headers.lastHeader(ToStringSerializer.VALUE_TYPE).value();
 		String entityType = new String(header);
 
