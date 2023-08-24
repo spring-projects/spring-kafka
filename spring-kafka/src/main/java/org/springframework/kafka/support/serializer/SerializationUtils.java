@@ -194,7 +194,7 @@ public final class SerializationUtils {
 			String headerName, LogAccessor logger) {
 
 		Header header = record.headers().lastHeader(headerName);
-		if (!(header instanceof DeserializationExceptionHeader)) {
+		if (header != null && !(header instanceof DeserializationExceptionHeader)) {
 			logger.warn(
 					() -> String.format("Foreign deserialization exception header in (%s) ignored; possible attack?",
 							KafkaUtils.format(record)));
@@ -224,7 +224,7 @@ public final class SerializationUtils {
 	@Nullable
 	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, Header header) {
 
-		if (!(header instanceof DeserializationExceptionHeader)) {
+		if (header != null && !(header instanceof DeserializationExceptionHeader)) {
 			throw new IllegalStateException("Foreign deserialization exception header ignored; possible attack?");
 		}
 		try {
