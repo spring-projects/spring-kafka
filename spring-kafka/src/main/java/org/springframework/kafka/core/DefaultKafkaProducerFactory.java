@@ -782,6 +782,10 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		if (this.producerPerThread) {
 			return getOrCreateThreadBoundProducer();
 		}
+		//add the check to reduce sync block, just like double check in Singleton
+		if(this.producer != null && !this.producer.closed && !expireByTime(this.producer)){
+			return producer;
+		}
 		synchronized (this) {
 			if (this.producer != null && this.producer.closed) {
 				this.producer.closeDelegate(this.physicalCloseTimeout, this.listeners);
@@ -866,9 +870,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			return cachedProducer;
 		}
 	}
-
+	private boolean expireByTime(CloseSafeProducer<K, V> producer) {
+		return this.maxAge > 0 && System.currentTimeMillis() - producer.created > this.maxAge;
+	}
 	private boolean expire(CloseSafeProducer<K, V> producer) {
-		boolean expired = this.maxAge > 0 && System.currentTimeMillis() - producer.created > this.maxAge;
+		boolean expired = expireByTime(producer);
 		if (expired) {
 			producer.closeDelegate(this.physicalCloseTimeout, this.listeners);
 		}
