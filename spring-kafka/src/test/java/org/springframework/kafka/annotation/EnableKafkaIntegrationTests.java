@@ -330,8 +330,9 @@ public class EnableKafkaIntegrationTests {
 						.getPropertyValue(this.registry.getListenerContainer("qux"), "containers", List.class).get(0),
 				"listenerConsumer.consumer"));
 		assertThat(
-				KafkaTestUtils.getPropertyValue(this.listener.listen4Consumer, "fetcher.maxPollRecords", Integer.class))
-				.isEqualTo(100);
+				KafkaTestUtils.getPropertyValue(this.listener.listen4Consumer,
+						"fetcher.fetchConfig.maxPollRecords", Integer.class))
+						.isEqualTo(100);
 		assertThat(this.quxGroup).hasSize(1);
 		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
 		List<?> containers = KafkaTestUtils.getPropertyValue(manualContainer, "containers", List.class);
@@ -365,9 +366,11 @@ public class EnableKafkaIntegrationTests {
 				.isEqualTo("fiz");
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.clientId"))
 				.isEqualTo("clientIdViaAnnotation-0");
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.fetcher.maxPollRecords"))
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
+				"listenerConsumer.consumer.fetcher.fetchConfig.maxPollRecords"))
 				.isEqualTo(10);
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.fetcher.minBytes"))
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
+				"listenerConsumer.consumer.fetcher.fetchConfig.minBytes"))
 				.isEqualTo(420000);
 
 		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
@@ -523,9 +526,11 @@ public class EnableKafkaIntegrationTests {
 		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
 						"listenerConsumer.consumer.groupId", Optional.class).get())
 				.isEqualTo("buz.explicitGroupId");
-		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.fetcher.maxPollRecords"))
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
+				"listenerConsumer.consumer.fetcher.fetchConfig.maxPollRecords"))
 				.isEqualTo(5);
-		assertThat(KafkaTestUtils.getPropertyValue(buzContainer, "listenerConsumer.consumer.fetcher.minBytes"))
+		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
+				"listenerConsumer.consumer.fetcher.fetchConfig.minBytes"))
 				.isEqualTo(123456);
 	}
 

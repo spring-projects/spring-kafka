@@ -62,6 +62,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -675,7 +676,7 @@ public class KafkaTemplateTransactionTests {
 
 		@SuppressWarnings("rawtypes")
 		@Bean
-		public ProducerFactory pf(Producer producer1, Producer producer2) {
+		public ProducerFactory pf(@Qualifier("producer1") Producer producer1, @Qualifier("producer2") Producer producer2) {
 			return new MockProducerFactory((tx, id) -> id.equals("default") ? producer1 : producer2, "default");
 		}
 

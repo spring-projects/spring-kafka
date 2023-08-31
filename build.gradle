@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.7.20'
+	ext.kotlinVersion = '1.9.10'
 	ext.isCI = System.getenv('GITHUB_ACTION') || System.getenv('bamboo_buildKey')
 	repositories {
 		mavenCentral()
@@ -59,28 +59,28 @@ ext {
 			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
 	}
 
-	assertjVersion = '3.23.1'
+	assertjVersion = '3.24.2'
 	awaitilityVersion = '4.2.0'
 	googleJsr305Version = '3.0.2'
 	hamcrestVersion = '2.2'
-	hibernateValidationVersion = '8.0.0.Final'
-	jacksonBomVersion = '2.14.3'
-	jaywayJsonPathVersion = '2.7.0'
+	hibernateValidationVersion = '8.0.1.Final'
+	jacksonBomVersion = '2.15.2'
+	jaywayJsonPathVersion = '2.8.0'
 	junit4Version = '4.13.2'
-	junitJupiterVersion = '5.9.3'
-	kafkaVersion = '3.3.2'
-	log4jVersion = '2.19.0'
+	junitJupiterVersion = '5.10.0'
+	kafkaVersion = '3.5.1'
+	log4jVersion = '2.20.0'
 	micrometerDocsVersion = "1.0.2"
-	micrometerVersion = '1.10.10'
-	micrometerTracingVersion = '1.0.9'
-	mockitoVersion = '4.8.1'
-	reactorVersion = '2022.0.10'
+	micrometerVersion = '1.12.0-SNAPSHOT'
+	micrometerTracingVersion = '1.2.0-SNAPSHOT'
+	mockitoVersion = '5.5.0'
+	reactorVersion = '2023.0.0-SNAPSHOT'
 	scalaVersion = '2.13'
 	springBootVersion = '3.0.9' // docs module
-	springDataVersion = '2022.0.9'
+	springDataVersion = '2023.1.0-SNAPSHOT'
 	springRetryVersion = '2.0.2'
-	springVersion = '6.0.11'
-	zookeeperVersion = '3.6.3'
+	springVersion = '6.1.0-SNAPSHOT'
+	zookeeperVersion = '3.6.4'
 
 	idPrefix = 'kafka'
 

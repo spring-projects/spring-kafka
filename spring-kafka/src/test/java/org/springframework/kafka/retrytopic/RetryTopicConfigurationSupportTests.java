@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ class RetryTopicConfigurationSupportTests {
 		KafkaConsumerBackoffManager backoffManager = mock(KafkaConsumerBackoffManager.class);
 		DestinationTopicResolver resolver = mock(DestinationTopicResolver.class);
 		DestinationTopicProcessor processor = mock(DestinationTopicProcessor.class);
-		ListenerContainerFactoryConfigurer lcfc = mock(ListenerContainerFactoryConfigurer.class);
+		ListenerContainerFactoryConfigurer lcfc = new ListenerContainerFactoryConfigurer(null, null, null);
 		ListenerContainerFactoryResolver lcfr = mock(ListenerContainerFactoryResolver.class);
 		RetryTopicNamesProviderFactory namesProviderFactory = mock(RetryTopicNamesProviderFactory.class);
 		BeanFactory beanFactory = mock(BeanFactory.class);
@@ -146,11 +146,14 @@ class RetryTopicConfigurationSupportTests {
 		then(componentFactory).should().retryTopicConfigurer(processor, lcfc, lcfr, namesProviderFactory);
 
 		then(dlprf).should().setDeadLetterPublishingRecovererCustomizer(dlprCustomizer);
-		then(lcfc).should().setContainerCustomizer(listenerContainerCustomizer);
-		then(lcfc).should().setErrorHandlerCustomizer(errorHandlerCustomizer);
+		assertThat(KafkaTestUtils.getPropertyValue(lcfc, "containerCustomizer"))
+				.isSameAs(listenerContainerCustomizer);
+		assertThat(KafkaTestUtils.getPropertyValue(lcfc, "errorHandlerCustomizer"))
+				.isSameAs(errorHandlerCustomizer);
 		assertThatThrownBy(lcfc::setBlockingRetryableExceptions).isInstanceOf(IllegalStateException.class);
-		then(lcfc).should().setBlockingRetriesBackOff(backoff);
-		then(lcfc).should().setRetainStandardFatal(true);
+		assertThat(KafkaTestUtils.getPropertyValue(lcfc, "providedBlockingBackOff"))
+				.isSameAs(backoff);
+		assertThat(KafkaTestUtils.getPropertyValue(lcfc, "retainStandardFatal", Boolean.class)).isTrue();
 		then(dlprfCustomizer).should().accept(dlprf);
 		then(rtconfigurer).should().accept(topicConfigurer);
 		then(lcfcConsumer).should().accept(lcfc);

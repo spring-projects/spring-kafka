@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public class ListenerErrorHandlerTests {
 					return null;
 				});
 		HandlerAdapter handler = mock(HandlerAdapter.class);
-		willThrow(new RuntimeException("test")).given(handler).invoke(any(), any());
+		willThrow(new RuntimeException("test")).given(handler).invoke(any(), any(), any(), any());
 		adapter.setHandlerMethod(handler);
 		Acknowledgment ack = mock(Acknowledgment.class);
 		adapter.onMessage(mock(ConsumerRecord.class), ack, mock(Consumer.class));
@@ -80,7 +80,7 @@ public class ListenerErrorHandlerTests {
 					return null;
 				});
 		HandlerAdapter handler = mock(HandlerAdapter.class);
-		willThrow(new RuntimeException("test")).given(handler).invoke(any(), any());
+		willThrow(new RuntimeException("test")).given(handler).invoke(any(), any(), any());
 		adapter.setHandlerMethod(handler);
 		Acknowledgment ack = mock(Acknowledgment.class);
 		adapter.onMessage(Collections.emptyList(), ack, mock(Consumer.class));

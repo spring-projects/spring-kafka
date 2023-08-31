@@ -37,8 +37,10 @@ import org.apache.kafka.common.header.Headers;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -92,7 +94,8 @@ public class ObservationTests {
 			@Autowired SimpleTracer tracer, @Autowired KafkaListenerEndpointRegistry rler,
 			@Autowired MeterRegistry meterRegistry, @Autowired EmbeddedKafkaBroker broker,
 			@Autowired KafkaListenerEndpointRegistry endpointRegistry, @Autowired KafkaAdmin admin,
-			@Autowired KafkaTemplate<Integer, String> customTemplate, @Autowired Config config)
+			@Autowired @Qualifier("customTemplate") KafkaTemplate<Integer, String> customTemplate,
+			@Autowired Config config)
 					throws InterruptedException, ExecutionException, TimeoutException {
 
 		template.send("observation.testT1", "test").get(10, TimeUnit.SECONDS);
@@ -246,6 +249,7 @@ public class ObservationTests {
 		}
 
 		@Bean
+		@Primary
 		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf) {
 			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 			template.setObservationEnabled(true);

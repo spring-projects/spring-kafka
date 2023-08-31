@@ -2963,7 +2963,7 @@ public class KafkaMessageListenerContainerTests {
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-		ArgumentCaptor<Collection<TopicPartition>> captor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Collection<TopicPartition>> captor = ArgumentCaptor.forClass(Collection.class);
 		verify(consumer).seekToBeginning(captor.capture());
 		assertThat(captor.getValue())
 				.isEqualTo(new HashSet<>(Arrays.asList(new TopicPartition("foo", 0), new TopicPartition("foo", 4))));

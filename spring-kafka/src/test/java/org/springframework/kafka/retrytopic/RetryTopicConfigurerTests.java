@@ -23,7 +23,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willReturn;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
@@ -44,9 +43,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
-import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
@@ -76,8 +73,7 @@ class RetryTopicConfigurerTests {
 	@Mock
 	private BeanFactory beanFactory;
 
-	@Mock
-	private DefaultListableBeanFactory defaultListableBeanFactory;
+	private DefaultListableBeanFactory defaultListableBeanFactory = new DefaultListableBeanFactory();
 
 	@Mock
 	private RetryTopicConfigurer.EndpointProcessor endpointProcessor;
@@ -285,8 +281,7 @@ class RetryTopicConfigurerTests {
 		Consumer<Collection<String>> topicsConsumer = topicsConsumerCaptor.getValue();
 		topicsConsumer.accept(topics);
 
-		then(defaultListableBeanFactory).should(times(2))
-				.registerSingleton(any(String.class), any(NewTopic.class));
+		assertThat(this.defaultListableBeanFactory.getBeansOfType(NewTopic.class)).hasSize(2);
 	}
 
 	private void assertTopicNames(String retrySuffix, DestinationTopic.Properties destinationProperties, DestinationTopicProcessor.Context context, int index) {
@@ -346,8 +341,6 @@ class RetryTopicConfigurerTests {
 
 		// setup
 		String beanName = NoOpsClass.class.getSimpleName() + "-handlerMethod";
-		given(defaultListableBeanFactory.getBean(beanName)).willReturn(new NoOpsClass());
-		willThrow(NoSuchBeanDefinitionException.class).given(defaultListableBeanFactory).getBean(NoOpsClass.class);
 		EndpointHandlerMethod handlerMethod =
 				RetryTopicConfigurer.createHandlerMethodWith(NoOpsClass.class, noOpsMethodName);
 
@@ -355,10 +348,8 @@ class RetryTopicConfigurerTests {
 		Object resolvedBean = handlerMethod.resolveBean(this.defaultListableBeanFactory);
 
 		// then
-		then(defaultListableBeanFactory).should()
-				.registerBeanDefinition(eq(beanName), any(RootBeanDefinition.class));
+		assertThat(this.defaultListableBeanFactory.getBean(NoOpsClass.class)).isNotNull();
 		assertThat(NoOpsClass.class.isAssignableFrom(resolvedBean.getClass())).isTrue();
-
 	}
 
 	@LogLevels(classes = RetryTopicConfigurer.class, level = "info")
