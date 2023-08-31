@@ -292,8 +292,8 @@ public class FallbackBatchErrorHandlerTests {
 		Field field = ReflectionUtils.findField(FallbackBatchErrorHandler.class, "retrying");
 		ReflectionUtils.makeAccessible(field);
 		@SuppressWarnings("unchecked")
-		ThreadLocal<Boolean> value = (ThreadLocal<Boolean>) ReflectionUtils.getField(field, errorHandler);
-		return value.get();
+		Map<Thread, Boolean> value = (Map<Thread, Boolean>) ReflectionUtils.getField(field, errorHandler);
+		return Boolean.TRUE.equals(value.get(Thread.currentThread()));
 	}
 
 }

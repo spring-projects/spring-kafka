@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -52,9 +54,9 @@ import org.springframework.util.backoff.BackOffExecution;
 public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		implements AfterRollbackProcessor<K, V> {
 
-	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static
+	private final Map<Thread, BackOffExecution> backOffs = new ConcurrentHashMap<>();
 
-	private final ThreadLocal<Long> lastIntervals = new ThreadLocal<>(); // Intentionally not static
+	private final Map<Thread, Long> lastIntervals = new ConcurrentHashMap<>();
 
 	private final BackOff backOff;
 
@@ -182,8 +184,9 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	@Override
 	public void clearThreadState() {
 		super.clearThreadState();
-		this.backOffs.remove();
-		this.lastIntervals.remove();
+		Thread currentThread = Thread.currentThread();
+		this.backOffs.remove(currentThread);
+		this.lastIntervals.remove(currentThread);
 	}
 
 	private static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset) {

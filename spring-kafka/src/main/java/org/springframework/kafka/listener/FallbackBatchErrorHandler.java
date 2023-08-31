@@ -21,6 +21,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -58,7 +60,7 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 
 	private final CommonErrorHandler seeker = new SeekAfterRecoverFailsOrInterrupted();
 
-	private final ThreadLocal<Boolean> retrying = ThreadLocal.withInitial(() -> false);
+	private final Map<Thread, Boolean> retrying = new ConcurrentHashMap<>();
 
 	private final List<RetryListener> retryListeners = new ArrayList<>();
 
@@ -145,14 +147,14 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 			this.logger.error(thrownException, "Called with no records; consumer exception");
 			return;
 		}
-		this.retrying.set(true);
+		this.retrying.put(Thread.currentThread(), true);
 		try {
 			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
 					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getClassifier(),
 					this.reclassifyOnExceptionChange);
 		}
 		finally {
-			this.retrying.set(false);
+			this.retrying.remove(Thread.currentThread());
 		}
 	}
 
@@ -160,7 +162,7 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
 			Runnable publishPause) {
 
-		if (this.retrying.get()) {
+		if (Boolean.TRUE.equals(this.retrying.get(Thread.currentThread()))) {
 			consumer.pause(consumer.assignment());
 			publishPause.run();
 		}

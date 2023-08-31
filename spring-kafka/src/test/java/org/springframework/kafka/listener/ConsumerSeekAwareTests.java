@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,7 +107,8 @@ public class ConsumerSeekAwareTests {
 		assertThat(KafkaTestUtils.getPropertyValue(csa, "callbacksToTopic", Map.class)).isEmpty();
 		var checkTL = (Callable<Void>) () -> {
 			csa.unregisterSeekCallback();
-			assertThat(KafkaTestUtils.getPropertyValue(csa, "callbackForThread", ThreadLocal.class).get()).isNull();
+			assertThat(KafkaTestUtils.getPropertyValue(csa, "callbackForThread", Map.class).get(Thread.currentThread()))
+					.isNull();
 			return null;
 		};
 		exec1.submit(checkTL).get();

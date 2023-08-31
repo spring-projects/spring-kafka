@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -310,14 +309,16 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(bProducer).isSameAs(aProducer);
 		bProducer.close();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", Map.class).get(Thread.currentThread()))
+				.isNotNull();
 		pf.setMaxAge(Duration.ofMillis(10));
 		Thread.sleep(50);
 		created.set(false);
 		aProducer = pf.createProducer();
 		assertThat(aProducer).isNotSameAs(bProducer);
 		pf.closeThreadBoundProducer();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNull();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", Map.class).get(Thread.currentThread()))
+				.isNull();
 		verify(producer, times(3)).close(any(Duration.class));
 	}
 
@@ -341,9 +342,10 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(aProducer).isNotNull();
 		aProducer.close();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", ThreadLocal.class).get()).isNotNull();
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", Map.class).get(Thread.currentThread()))
+				.isNotNull();
 		pf.stop();
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducersAll", Set.class)).hasSize(0);
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", Map.class)).hasSize(0);
 		verify(producer).close(any(Duration.class));
 	}
 
@@ -373,7 +375,7 @@ public class DefaultKafkaProducerFactoryTests {
 		bProducer = pf.createProducer();
 		assertThat(bProducer).isNotSameAs(aProducer);
 		bProducer.close();
-		verify(producer1, times(2)).close(any(Duration.class));
+		verify(producer1).close(any(Duration.class));
 	}
 
 	@Test

@@ -120,16 +120,16 @@ public class FailedRecordTrackerTests {
 			}
 		});
 		@SuppressWarnings("unchecked")
-		ThreadLocal<Map<TopicPartition, Object>> failures = (ThreadLocal<Map<TopicPartition, Object>>) KafkaTestUtils
+		Map<Thread, Map<TopicPartition, Object>> failures = (Map<Thread, Map<TopicPartition, Object>>) KafkaTestUtils
 				.getPropertyValue(tracker, "failures");
 		ConsumerRecord<?, ?> record1 = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		tracker.skip(record1, new RuntimeException());
-		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+		assertThat(KafkaTestUtils.getPropertyValue(failures.get(Thread.currentThread())
 					.get(new TopicPartition("foo", 0)), "backOffExecution"))
 				.isSameAs(be2);
 		ConsumerRecord<?, ?> record2 = new ConsumerRecord<>("bar", 0, 0L, "bar", "baz");
 		tracker.skip(record2, new RuntimeException());
-		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+		assertThat(KafkaTestUtils.getPropertyValue(failures.get(Thread.currentThread())
 					.get(new TopicPartition("bar", 0)), "backOffExecution"))
 				.isSameAs(be1);
 	}
@@ -162,11 +162,11 @@ public class FailedRecordTrackerTests {
 		});
 		tracker.setResetStateOnExceptionChange(reset);
 		@SuppressWarnings("unchecked")
-		ThreadLocal<Map<TopicPartition, Object>> failures = (ThreadLocal<Map<TopicPartition, Object>>) KafkaTestUtils
+		Map<Thread, Map<TopicPartition, Object>> failures = (Map<Thread, Map<TopicPartition, Object>>) KafkaTestUtils
 				.getPropertyValue(tracker, "failures");
 		ConsumerRecord<?, ?> record1 = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		tracker.skip(record1, new IllegalStateException());
-		assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+		assertThat(KafkaTestUtils.getPropertyValue(failures.get(Thread.currentThread())
 				.get(new TopicPartition("foo", 0)), "backOffExecution"))
 			.isSameAs(be1);
 		TopicPartitionOffset tpo = new TopicPartitionOffset("foo", 0, 0L);
@@ -176,13 +176,13 @@ public class FailedRecordTrackerTests {
 		tracker.skip(record1, new ListenerExecutionFailedException("test", new IllegalArgumentException()));
 		if (reset) {
 			assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(2);
-			assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+			assertThat(KafkaTestUtils.getPropertyValue(failures.get(Thread.currentThread())
 					.get(new TopicPartition("foo", 0)), "backOffExecution"))
 				.isSameAs(be2);
 		}
 		else {
 			assertThat(tracker.deliveryAttempt(tpo)).isEqualTo(4);
-			assertThat(KafkaTestUtils.getPropertyValue(failures.get()
+			assertThat(KafkaTestUtils.getPropertyValue(failures.get(Thread.currentThread())
 					.get(new TopicPartition("foo", 0)), "backOffExecution"))
 				.isSameAs(be1);
 		}

@@ -20,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectStreamClass;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -151,7 +152,10 @@ public final class ListenerUtils {
 	 * @param container the container or parent container.
 	 * @throws InterruptedException if the thread is interrupted.
 	 * @since 2.7
+	 * @deprecated in favor of
+	 * {@link #unrecoverableBackOff(BackOff, Map, Map, MessageListenerContainer)}.
 	 */
+	@Deprecated
 	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
 			ThreadLocal<Long> lastIntervals, MessageListenerContainer container) throws InterruptedException {
 
@@ -168,6 +172,40 @@ public final class ListenerUtils {
 			}
 		}
 		lastIntervals.set(interval);
+		if (interval > 0) {
+			stoppableSleep(container, interval);
+		}
+	}
+
+	/**
+	 * Sleep according to the {@link BackOff}; when the {@link BackOffExecution} returns
+	 * {@link BackOffExecution#STOP} sleep for the previous backOff.
+	 * @param backOff the {@link BackOff} to create a new {@link BackOffExecution}.
+	 * @param executions a thread local containing the {@link BackOffExecution} for this
+	 * thread.
+	 * @param lastIntervals a thread local containing the previous {@link BackOff}
+	 * interval for this thread.
+	 * @param container the container or parent container.
+	 * @throws InterruptedException if the thread is interrupted.
+	 * @since 3.1
+	 */
+	public static void unrecoverableBackOff(BackOff backOff, Map<Thread, BackOffExecution> executions,
+			Map<Thread, Long> lastIntervals, MessageListenerContainer container) throws InterruptedException {
+
+		Thread currentThread = Thread.currentThread();
+		BackOffExecution backOffExecution = executions.get(currentThread);
+		if (backOffExecution == null) {
+			backOffExecution = backOff.start();
+			executions.put(currentThread, backOffExecution);
+		}
+		Long interval = backOffExecution.nextBackOff();
+		if (interval == BackOffExecution.STOP) {
+			interval = lastIntervals.get(currentThread);
+			if (interval == null) {
+				interval = Long.valueOf(0);
+			}
+		}
+		lastIntervals.put(currentThread, interval);
 		if (interval > 0) {
 			stoppableSleep(container, interval);
 		}

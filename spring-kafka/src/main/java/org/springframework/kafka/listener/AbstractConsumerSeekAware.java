@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import org.springframework.lang.Nullable;
  */
 public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
-	private final ThreadLocal<ConsumerSeekCallback> callbackForThread = new ThreadLocal<>();
+	private final Map<Thread, ConsumerSeekCallback> callbackForThread = new ConcurrentHashMap<>();
 
 	private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
 
@@ -46,12 +46,12 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
-		this.callbackForThread.set(callback);
+		this.callbackForThread.put(Thread.currentThread(), callback);
 	}
 
 	@Override
 	public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
-		ConsumerSeekCallback threadCallback = this.callbackForThread.get();
+		ConsumerSeekCallback threadCallback = this.callbackForThread.get(Thread.currentThread());
 		if (threadCallback != null) {
 			assignments.keySet().forEach(tp -> {
 				this.callbacks.put(tp, threadCallback);
@@ -78,7 +78,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	@Override
 	public void unregisterSeekCallback() {
-		this.callbackForThread.remove();
+		this.callbackForThread.remove(Thread.currentThread());
 	}
 
 	/**

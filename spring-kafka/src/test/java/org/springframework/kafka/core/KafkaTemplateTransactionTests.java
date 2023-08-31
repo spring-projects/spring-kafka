@@ -129,7 +129,7 @@ public class KafkaTemplateTransactionTests {
 					new TopicPartition(LOCAL_TX_IN_TOPIC, singleRecord.partition()),
 					new OffsetAndMetadata(singleRecord.offset() + 1L)), consumer.groupMetadata());
 			assertThat(KafkaTestUtils.getPropertyValue(
-					KafkaTestUtils.getPropertyValue(template, "producers", ThreadLocal.class).get(),
+					KafkaTestUtils.getPropertyValue(template, "producers", Map.class).get(Thread.currentThread()),
 						"delegate.transactionManager.transactionalId")).isEqualTo("my.transaction.0");
 			return null;
 		});
@@ -150,7 +150,7 @@ public class KafkaTemplateTransactionTests {
 		template.setTransactionIdPrefix("tx.template.override.");
 		template.executeInTransaction(t -> {
 			assertThat(KafkaTestUtils.getPropertyValue(
-					KafkaTestUtils.getPropertyValue(template, "producers", ThreadLocal.class).get(),
+					KafkaTestUtils.getPropertyValue(template, "producers", Map.class).get(Thread.currentThread()),
 					"delegate.transactionManager.transactionalId")).isEqualTo("tx.template.override.2");
 			return null;
 		});

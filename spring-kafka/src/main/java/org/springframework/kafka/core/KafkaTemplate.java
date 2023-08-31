@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Function;
@@ -113,7 +114,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private final boolean transactional;
 
-	private final ThreadLocal<Producer<K, V>> producers = new ThreadLocal<>();
+	private final Map<Thread, Producer<K, V>> producers = new ConcurrentHashMap<>();
 
 	private final Map<String, String> micrometerTags = new HashMap<>();
 
@@ -616,7 +617,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	public <T> T executeInTransaction(OperationsCallback<K, V, T> callback) {
 		Assert.notNull(callback, "'callback' cannot be null");
 		Assert.state(this.transactional, "Producer factory does not support transactions");
-		Producer<K, V> producer = this.producers.get();
+		Thread currentThread = Thread.currentThread();
+		Producer<K, V> producer = this.producers.get(currentThread);
 		Assert.state(producer == null, "Nested calls to 'executeInTransaction' are not allowed");
 
 		producer = this.producerFactory.createProducer(this.transactionIdPrefix);
@@ -629,7 +631,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			throw e;
 		}
 
-		this.producers.set(producer);
+		this.producers.put(currentThread, producer);
 		try {
 			T result = callback.doInOperations(this);
 			try {
@@ -648,7 +650,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			throw e;
 		}
 		finally {
-			this.producers.remove();
+			this.producers.remove(currentThread);
 			closeProducer(producer, false);
 		}
 	}
@@ -727,7 +729,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private Producer<K, V> producerForOffsets() {
-		Producer<K, V> producer = this.producers.get();
+		Producer<K, V> producer = this.producers.get(Thread.currentThread());
 		if (producer == null) {
 			@SuppressWarnings("unchecked")
 			KafkaResourceHolder<K, V> resourceHolder = (KafkaResourceHolder<K, V>) TransactionSynchronizationManager
@@ -876,7 +878,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 */
 	@Override
 	public boolean inTransaction() {
-		return this.transactional && (this.producers.get() != null
+		return this.transactional && (this.producers.get(Thread.currentThread()) != null
 				|| TransactionSynchronizationManager.getResource(this.producerFactory) != null
 				|| TransactionSynchronizationManager.isActualTransactionActive());
 	}
@@ -900,7 +902,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			}
 		}
 		if (transactionalProducer) {
-			Producer<K, V> producer = this.producers.get();
+			Producer<K, V> producer = this.producers.get(Thread.currentThread());
 			if (producer != null) {
 				return producer;
 			}

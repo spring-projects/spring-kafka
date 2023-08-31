@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -42,8 +43,6 @@ import org.springframework.util.ClassUtils;
  */
 public final class KafkaUtils {
 
-	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
-
 	private static Function<ProducerRecord<?, ?>, String> prFormatter = ProducerRecord::toString;
 
 	private static Function<ConsumerRecord<?, ?>, String> crFormatter =
@@ -55,7 +54,7 @@ public final class KafkaUtils {
 	public static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
 			"io.micrometer.core.instrument.MeterRegistry", KafkaUtils.class.getClassLoader());
 
-	private static final ThreadLocal<String> GROUP_IDS = new ThreadLocal<>();
+	private static final Map<Thread, String> GROUP_IDS = new ConcurrentHashMap<>();
 
 	/**
 	 * Return true if the method return type is {@link Message} or
@@ -93,7 +92,9 @@ public final class KafkaUtils {
 	 * @since 2.3
 	 */
 	public static void setConsumerGroupId(String groupId) {
-		KafkaUtils.GROUP_IDS.set(groupId);
+		if (groupId != null) {
+			KafkaUtils.GROUP_IDS.put(Thread.currentThread(), groupId);
+		}
 	}
 
 	/**
@@ -102,7 +103,7 @@ public final class KafkaUtils {
 	 * @since 2.3
 	 */
 	public static String getConsumerGroupId() {
-		return KafkaUtils.GROUP_IDS.get();
+		return KafkaUtils.GROUP_IDS.get(Thread.currentThread());
 	}
 
 	/**
@@ -110,7 +111,7 @@ public final class KafkaUtils {
 	 * @since 2.3
 	 */
 	public static void clearConsumerGroupId() {
-		KafkaUtils.GROUP_IDS.remove();
+		KafkaUtils.GROUP_IDS.remove(Thread.currentThread());
 	}
 
 	/**
@@ -149,10 +150,10 @@ public final class KafkaUtils {
 	 * Set to true to only log record metadata.
 	 * @param onlyMeta true to only log record metadata.
 	 * @since 2.7.12
-	 * @see #recordToString(ConsumerRecord)
+	 * @deprecated - no longer used.
 	 */
+	@Deprecated
 	public static void setLogOnlyMetadata(boolean onlyMeta) {
-		LOG_METADATA_ONLY.set(onlyMeta);
 	}
 
 	/**
