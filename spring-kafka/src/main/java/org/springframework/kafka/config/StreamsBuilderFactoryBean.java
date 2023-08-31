@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KafkaClientSupplier;
@@ -72,13 +73,15 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private static final String CLEANUP_CONFIG_MUST_NOT_BE_NULL = "'cleanupConfig' must not be null";
 
+	private final ReentrantLock lifecycleLock = new ReentrantLock();
+
+	private final List<Listener> listeners = new ArrayList<>();
+
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
 
 	private Properties properties;
 
 	private CleanupConfig cleanupConfig;
-
-	private final List<Listener> listeners = new ArrayList<>();
 
 	private KafkaStreamsInfrastructureCustomizer infrastructureCustomizer = new KafkaStreamsInfrastructureCustomizer() {
 	};
@@ -265,7 +268,13 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	@Nullable
 	public synchronized KafkaStreams getKafkaStreams() {
-		return this.kafkaStreams;
+		this.lifecycleLock.lock();
+		try {
+			return this.kafkaStreams;
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	/**
@@ -299,14 +308,20 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	@Override
-	protected synchronized StreamsBuilder createInstance() {
-		if (this.autoStartup) {
-			Assert.state(this.properties != null,
-					"streams configuration properties must not be null");
+	protected StreamsBuilder createInstance() {
+		this.lifecycleLock.lock();
+		try {
+			if (this.autoStartup) {
+				Assert.state(this.properties != null,
+						"streams configuration properties must not be null");
+			}
+			StreamsBuilder builder = new StreamsBuilder();
+			this.infrastructureCustomizer.configureBuilder(builder);
+			return builder;
 		}
-		StreamsBuilder builder = new StreamsBuilder();
-		this.infrastructureCustomizer.configureBuilder(builder);
-		return builder;
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
@@ -323,66 +338,84 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	@Override
-	public synchronized void start() {
-		if (!this.running) {
-			try {
-				Assert.state(this.properties != null,
-						"streams configuration properties must not be null");
-				Topology topol = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
-				this.infrastructureCustomizer.configureTopology(topol);
-				this.topology = topol;
-				LOGGER.debug(() -> topol.describe().toString());
-				this.kafkaStreams = new KafkaStreams(topol, this.properties, this.clientSupplier);
-				this.kafkaStreams.setStateListener(this.stateListener);
-				this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
-				if (this.streamsUncaughtExceptionHandler != null) {
-					this.kafkaStreams.setUncaughtExceptionHandler(this.streamsUncaughtExceptionHandler);
-				}
-				if (this.kafkaStreamsCustomizer != null) {
-					this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
-				}
-				if (this.cleanupConfig.cleanupOnStart()) {
-					this.kafkaStreams.cleanUp();
-				}
-				this.kafkaStreams.start();
-				for (Listener listener : this.listeners) {
-					listener.streamsAdded(this.beanName, this.kafkaStreams);
-				}
-				this.running = true;
-			}
-			catch (Exception e) {
-				throw new KafkaException("Could not start stream: ", e);
-			}
-		}
-	}
-
-	@Override
-	public synchronized void stop() {
-		if (this.running) {
-			try {
-				if (this.kafkaStreams != null) {
-					this.kafkaStreams.close(this.closeTimeout);
-					if (this.cleanupConfig.cleanupOnStop()) {
+	public void start() {
+		this.lifecycleLock.lock();
+		try {
+			if (!this.running) {
+				try {
+					Assert.state(this.properties != null,
+							"streams configuration properties must not be null");
+					Topology topol = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
+					this.infrastructureCustomizer.configureTopology(topol);
+					this.topology = topol;
+					LOGGER.debug(() -> topol.describe().toString());
+					this.kafkaStreams = new KafkaStreams(topol, this.properties, this.clientSupplier);
+					this.kafkaStreams.setStateListener(this.stateListener);
+					this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
+					if (this.streamsUncaughtExceptionHandler != null) {
+						this.kafkaStreams.setUncaughtExceptionHandler(this.streamsUncaughtExceptionHandler);
+					}
+					if (this.kafkaStreamsCustomizer != null) {
+						this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
+					}
+					if (this.cleanupConfig.cleanupOnStart()) {
 						this.kafkaStreams.cleanUp();
 					}
+					this.kafkaStreams.start();
 					for (Listener listener : this.listeners) {
-						listener.streamsRemoved(this.beanName, this.kafkaStreams);
+						listener.streamsAdded(this.beanName, this.kafkaStreams);
 					}
-					this.kafkaStreams = null;
+					this.running = true;
+				}
+				catch (Exception e) {
+					throw new KafkaException("Could not start stream: ", e);
 				}
 			}
-			catch (Exception e) {
-				LOGGER.error(e, "Failed to stop streams");
-			}
-			finally {
-				this.running = false;
-			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
 	@Override
-	public synchronized boolean isRunning() {
-		return this.running;
+	public void stop() {
+		this.lifecycleLock.lock();
+		try {
+			if (this.running) {
+				try {
+					if (this.kafkaStreams != null) {
+						this.kafkaStreams.close(this.closeTimeout);
+						if (this.cleanupConfig.cleanupOnStop()) {
+							this.kafkaStreams.cleanUp();
+						}
+						for (Listener listener : this.listeners) {
+							listener.streamsRemoved(this.beanName, this.kafkaStreams);
+						}
+						this.kafkaStreams = null;
+					}
+				}
+				catch (Exception e) {
+					LOGGER.error(e, "Failed to stop streams");
+				}
+				finally {
+					this.running = false;
+				}
+			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
+	}
+
+	@Override
+	public boolean isRunning() {
+		this.lifecycleLock.lock();
+		try {
+			return this.running;
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	/**

@@ -30,6 +30,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 
@@ -117,6 +118,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		BeanNameAware, ApplicationListener<ContextStoppedEvent>, DisposableBean, SmartLifecycle {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaProducerFactory.class));
+
+	private final ReentrantLock globalLock = new ReentrantLock();
 
 	private final Map<String, Object> configs;
 
@@ -700,9 +703,13 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	@Override
 	public void destroy() {
 		CloseSafeProducer<K, V> producerToClose;
-		synchronized (this) {
+		this.globalLock.lock();
+		try {
 			producerToClose = this.producer;
 			this.producer = null;
+		}
+		finally {
+			this.globalLock.unlock();
 		}
 		if (producerToClose != null) {
 			try {
@@ -782,7 +789,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		if (this.producerPerThread) {
 			return getOrCreateThreadBoundProducer();
 		}
-		synchronized (this) {
+		this.globalLock.lock();
+		try {
 			if (this.producer != null && this.producer.closed) {
 				this.producer.closeDelegate(this.physicalCloseTimeout, this.listeners);
 				this.producer = null;
@@ -796,6 +804,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				this.listeners.forEach(listener -> listener.producerAdded(this.producer.clientId, this.producer));
 			}
 			return this.producer;
+		}
+		finally {
+			this.globalLock.unlock();
 		}
 	}
 
@@ -881,7 +892,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			return true;
 		}
 		else {
-			synchronized (this.cache) {
+			this.globalLock.lock();
+			try {
 				BlockingQueue<CloseSafeProducer<K, V>> txIdCache = getCache(producerToRemove.txIdPrefix);
 				if (producerToRemove.epoch != this.epoch.get()
 						|| (txIdCache != null && !txIdCache.contains(producerToRemove)
@@ -889,6 +901,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 					producerToRemove.closeDelegate(timeout, this.listeners);
 					return true;
 				}
+			}
+			finally {
+				this.globalLock.unlock();
 			}
 			return false;
 		}

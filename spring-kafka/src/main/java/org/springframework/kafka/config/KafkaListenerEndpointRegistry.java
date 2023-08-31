@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2022 the original author or authors.
+ * Copyright 2014-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -78,6 +79,8 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	private final Map<String, MessageListenerContainer> unregisteredContainers = new ConcurrentHashMap<>();
 
 	private final Map<String, MessageListenerContainer> listenerContainers = new ConcurrentHashMap<>();
+
+	private final ReentrantLock containersLock = new ReentrantLock();
 
 	private int phase = AbstractMessageListenerContainer.DEFAULT_PHASE;
 
@@ -213,7 +216,8 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 		String id = endpoint.getId();
 		Assert.hasText(id, "Endpoint id must not be empty");
-		synchronized (this.listenerContainers) {
+		this.containersLock.lock();
+		try {
 			Assert.state(!this.listenerContainers.containsKey(id),
 					"Another endpoint is already registered with id '" + id + "'");
 			MessageListenerContainer container = createListenerContainer(endpoint, factory);
@@ -239,6 +243,9 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 			if (startImmediately) {
 				startIfNecessary(container);
 			}
+		}
+		finally {
+			this.containersLock.unlock();
 		}
 	}
 

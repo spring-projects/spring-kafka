@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -88,7 +89,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private final ContainerProperties containerProperties;
 
-	protected final Object lifecycleMonitor = new Object(); // NOSONAR
+	protected final ReentrantLock lifecycleLock = new ReentrantLock(); // NOSONAR
 
 	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
 
@@ -550,12 +551,16 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Override
 	public final void start() {
 		checkGroupId();
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			if (!isRunning()) {
 				Assert.state(this.containerProperties.getMessageListener() instanceof GenericMessageListener,
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				doStart();
 			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
@@ -642,7 +647,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @since 2.3.8
 	 */
 	public final void stop(boolean wait) {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			if (isRunning()) {
 				if (wait) {
 					final CountDownLatch latch = new CountDownLatch(1);
@@ -660,6 +666,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				}
 			}
 		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
@@ -674,13 +683,17 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public void stop(Runnable callback) {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			if (isRunning()) {
 				doStop(callback);
 			}
 			else {
 				callback.run();
 			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 

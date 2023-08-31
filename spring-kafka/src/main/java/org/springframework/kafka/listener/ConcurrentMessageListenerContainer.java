@@ -118,14 +118,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * this container.
 	 */
 	public List<KafkaMessageListenerContainer<K, V>> getContainers() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			return Collections.unmodifiableList(new ArrayList<>(this.containers));
 		}
-	}
+		finally {
+			this.lifecycleLock.unlock();
+		}
+}
 
 	@Override
 	public MessageListenerContainer getContainerFor(String topic, int partition) {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				Collection<TopicPartition> assignedPartitions = container.getAssignedPartitions();
 				if (assignedPartitions != null) {
@@ -138,22 +143,30 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			return this;
 		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public Collection<TopicPartition> getAssignedPartitions() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			return this.containers.stream()
 					.map(KafkaMessageListenerContainer::getAssignedPartitions)
 					.filter(Objects::nonNull)
 					.flatMap(Collection::stream)
 					.collect(Collectors.toList());
 		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public Map<String, Collection<TopicPartition>> getAssignmentsByClientId() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			Map<String, Collection<TopicPartition>> assignments = new HashMap<>();
 			this.containers.forEach(container -> {
 				Map<String, Collection<TopicPartition>> byClientId = container.getAssignmentsByClientId();
@@ -163,11 +176,15 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			});
 			return assignments;
 		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public boolean isContainerPaused() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			boolean paused = isPaused();
 			if (paused) {
 				for (AbstractMessageListenerContainer<K, V> container : this.containers) {
@@ -177,6 +194,9 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				}
 			}
 			return paused;
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
@@ -195,12 +215,16 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				metrics.putAll(container.metrics());
 			}
 			return Collections.unmodifiableMap(metrics);
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
@@ -371,57 +395,81 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public void pause() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			super.pause();
 			this.containers.forEach(AbstractMessageListenerContainer::pause);
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
 	@Override
 	public void resume() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			super.resume();
 			this.containers.forEach(AbstractMessageListenerContainer::resume);
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
 	@Override
 	public void pausePartition(TopicPartition topicPartition) {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			this.containers
 					.stream()
 					.filter(container -> containsPartition(topicPartition, container))
 					.forEach(container -> container.pausePartition(topicPartition));
 		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public void resumePartition(TopicPartition topicPartition) {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			this.containers
 					.stream()
 					.filter(container -> container.isPartitionPauseRequested(topicPartition))
 					.forEach(container -> container.resumePartition(topicPartition));
 		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public boolean isPartitionPaused(TopicPartition topicPartition) {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			return this
 					.containers
 					.stream()
 					.anyMatch(container -> container.isPartitionPaused(topicPartition));
 		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public boolean isInExpectedState() {
-		synchronized (this.lifecycleMonitor) {
+		this.lifecycleLock.lock();
+		try {
 			return (isRunning() || isStoppedNormally()) && this.containers
 					.stream()
 					.map(container -> container.isInExpectedState())
 					.allMatch(bool -> Boolean.TRUE.equals(bool));
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
