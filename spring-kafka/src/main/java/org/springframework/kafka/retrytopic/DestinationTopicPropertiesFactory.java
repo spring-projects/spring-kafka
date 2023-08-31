@@ -71,6 +71,80 @@ public class DestinationTopicPropertiesFactory {
 	@Nullable
 	private Boolean autoStartDltHandler;
 
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param retryTopicSuffix the suffix.
+	 * @param dltSuffix the dlt suffix.
+	 * @param backOffValues the back off values.
+	 * @param exceptionClassifier the exception classifier.
+	 * @param numPartitions the number of partitions.
+	 * @param kafkaOperations the operations.
+	 * @param dltStrategy the dlt strategy.
+	 * @param topicSuffixingStrategy the topic suffixing strategy.
+	 * @param sameIntervalTopicReuseStrategy the same interval reuse strategy.
+	 * @param timeout the timeout.
+	 * @since 3.0.12
+	 */
+	@SuppressWarnings(DEPRECATION)
+	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
+			BinaryExceptionClassifier exceptionClassifier,
+			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
+			DltStrategy dltStrategy,
+			TopicSuffixingStrategy topicSuffixingStrategy,
+			SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy,
+			long timeout) {
+
+		this(retryTopicSuffix, dltSuffix, backOffValues, exceptionClassifier, numPartitions, kafkaOperations,
+				FixedDelayStrategy.SINGLE_TOPIC, dltStrategy, topicSuffixingStrategy, sameIntervalTopicReuseStrategy,
+				timeout);
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param retryTopicSuffix the suffix.
+	 * @param dltSuffix the dlt suffix.
+	 * @param backOffValues the back off values.
+	 * @param exceptionClassifier the exception classifier.
+	 * @param numPartitions the number of partitions.
+	 * @param kafkaOperations the operations.
+	 * @param fixedDelayStrategy the fixed delay strategy.
+	 * @param dltStrategy the dlt strategy.
+	 * @param topicSuffixingStrategy the topic suffixing strategy.
+	 * @param timeout the timeout.
+	 * @deprecated in favor of
+	 * {@link #DestinationTopicPropertiesFactory(String, String, List, BinaryExceptionClassifier, int, KafkaOperations, DltStrategy, TopicSuffixingStrategy, SameIntervalTopicReuseStrategy, long)}
+	 */
+	@Deprecated
+	@SuppressWarnings(DEPRECATION)
+	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
+			BinaryExceptionClassifier exceptionClassifier,
+			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
+			FixedDelayStrategy fixedDelayStrategy,
+			DltStrategy dltStrategy,
+			TopicSuffixingStrategy topicSuffixingStrategy,
+			long timeout) {
+		this(retryTopicSuffix, dltSuffix, backOffValues, exceptionClassifier, numPartitions, kafkaOperations,
+				fixedDelayStrategy, dltStrategy, topicSuffixingStrategy, SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
+				timeout);
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param retryTopicSuffix the suffix.
+	 * @param dltSuffix the dlt suffix.
+	 * @param backOffValues the back off values.
+	 * @param exceptionClassifier the exception classifier.
+	 * @param numPartitions the number of partitions.
+	 * @param kafkaOperations the operations.
+	 * @param fixedDelayStrategy the fixed delay strategy.
+	 * @param dltStrategy the dlt strategy.
+	 * @param topicSuffixingStrategy the topic suffixing strategy.
+	 * @param sameIntervalTopicReuseStrategy the same interval reuse strategy.
+	 * @param timeout the timeout.
+	 * @deprecated in favor of
+	 * {@link #DestinationTopicPropertiesFactory(String, String, List, BinaryExceptionClassifier, int, KafkaOperations, DltStrategy, TopicSuffixingStrategy, SameIntervalTopicReuseStrategy, long)}
+	 */
+	@Deprecated
 	@SuppressWarnings(DEPRECATION)
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,
@@ -95,18 +169,6 @@ public class DestinationTopicPropertiesFactory {
 		this.maxAttempts = this.backOffValues.size() + 1;
 	}
 
-	@SuppressWarnings(DEPRECATION)
-	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
-			BinaryExceptionClassifier exceptionClassifier,
-			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
-			FixedDelayStrategy fixedDelayStrategy,
-			DltStrategy dltStrategy,
-			TopicSuffixingStrategy topicSuffixingStrategy,
-			long timeout) {
-		this(retryTopicSuffix, dltSuffix, backOffValues, exceptionClassifier, numPartitions, kafkaOperations,
-				fixedDelayStrategy, dltStrategy, topicSuffixingStrategy, SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
-				timeout);
-	}
 	/**
 	 * Set to false to not start the DLT handler.
 	 * @param autoStart false to not start.
