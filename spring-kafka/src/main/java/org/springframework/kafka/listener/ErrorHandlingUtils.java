@@ -73,36 +73,6 @@ public final class ErrorHandlingUtils {
 	 * @param logLevel the log level.
 	 * @param retryListeners the retry listeners.
 	 * @param classifier the exception classifier.
-	 * @since 2.8.11
-	 * @deprecated in favor of
-	 * {@link #retryBatch(Exception, ConsumerRecords, Consumer, MessageListenerContainer, Runnable, BackOff, CommonErrorHandler, BiConsumer, LogAccessor, org.springframework.kafka.KafkaException.Level, List, BinaryExceptionClassifier, boolean)}.
-	 */
-	@Deprecated
-	public static void retryBatch(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
-			MessageListenerContainer container, Runnable invokeListener, BackOff backOff,
-			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
-			KafkaException.Level logLevel, List<RetryListener> retryListeners, BinaryExceptionClassifier classifier) {
-
-		retryBatch(thrownException, records, consumer, container, invokeListener, backOff, seeker, recoverer, logger,
-				logLevel, retryListeners, classifier, false);
-	}
-
-	/**
-	 * Retry a complete batch by pausing the consumer and then, in a loop, poll the
-	 * consumer, wait for the next back off, then call the listener. When retries are
-	 * exhausted, call the recoverer with the {@link ConsumerRecords}.
-	 * @param thrownException the exception.
-	 * @param records the records.
-	 * @param consumer the consumer.
-	 * @param container the container.
-	 * @param invokeListener the {@link Runnable} to run (call the listener).
-	 * @param backOff the backOff.
-	 * @param seeker the common error handler that re-seeks the entire batch.
-	 * @param recoverer the recoverer.
-	 * @param logger the logger.
-	 * @param logLevel the log level.
-	 * @param retryListeners the retry listeners.
-	 * @param classifier the exception classifier.
 	 * @param reClassifyOnExceptionChange true to reset the state if a different exception
 	 * is thrown during retry.
 	 * @since 2.9.7

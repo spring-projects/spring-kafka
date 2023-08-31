@@ -143,7 +143,6 @@ public class RetryableTopicAnnotationProcessor {
 				.retryOn(includes)
 				.notRetryOn(excludes)
 				.traversingCauses(traverse)
-				.useSingleTopicForFixedDelays(annotation.fixedDelayTopicStrategy())
 				.dltProcessingFailureStrategy(annotation.dltStrategy())
 				.autoStartDltHandler(autoStartDlt)
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())

@@ -68,12 +68,6 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 
 	private boolean contextRefreshed;
 
-	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
-	public DefaultDestinationTopicResolver(Clock clock, ApplicationContext applicationContext) {
-		this(clock);
-		this.applicationContext = applicationContext;
-	}
-
 	/**
 	 * Constructs an instance with the given clock.
 	 * @param clock the clock to be used for time-based operations
@@ -135,8 +129,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 
 	@SuppressWarnings("deprecation")
 	private DestinationTopic resolveRetryDestination(DestinationTopicHolder destinationTopicHolder) {
-		return ((destinationTopicHolder.getSourceDestination().isReusableRetryTopic()) ||
-				(destinationTopicHolder.getSourceDestination().isSingleTopicRetry()))
+		return (destinationTopicHolder.getSourceDestination().isReusableRetryTopic())
 				? destinationTopicHolder.getSourceDestination()
 				: destinationTopicHolder.getNextDestination();
 	}

@@ -1012,40 +1012,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return null;
 		}
 
-		@SuppressWarnings("deprecation")
 		@Nullable
 		private CommonErrorHandler determineCommonErrorHandler() {
 			CommonErrorHandler common = getCommonErrorHandler();
-			GenericErrorHandler<?> errHandler = getGenericErrorHandler();
-			if (common != null) {
-				if (errHandler != null) {
-					this.logger.debug("GenericErrorHandler is ignored when a CommonErrorHandler is provided");
-				}
-				return common;
+			if (common == null && this.transactionManager == null) {
+				common = new DefaultErrorHandler();
 			}
-			if (errHandler == null && this.transactionManager == null) {
-				return new DefaultErrorHandler();
-			}
-			if (this.isBatchListener) {
-				validateErrorHandler(true, errHandler);
-				BatchErrorHandler batchErrorHandler = (BatchErrorHandler) errHandler;
-				if (batchErrorHandler != null) {
-					return new ErrorHandlerAdapter(batchErrorHandler);
-				}
-				else {
-					return null;
-				}
-			}
-			else {
-				validateErrorHandler(false, errHandler);
-				ErrorHandler eh = (ErrorHandler) errHandler;
-				if (eh != null) {
-					return new ErrorHandlerAdapter(eh);
-				}
-				else {
-					return null;
-				}
-			}
+			return common;
 		}
 
 		String getClientId() {
@@ -1313,19 +1286,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				this.consumerSeekAwareListener.onPartitionsAssigned(current, this.seekCallback);
 			}
-		}
-
-		@SuppressWarnings("deprecation")
-		private void validateErrorHandler(boolean batch, @Nullable GenericErrorHandler<?> errHandler) {
-			if (errHandler == null) {
-				return;
-			}
-			Class<?> clazz = errHandler.getClass();
-			Assert.state(batch
-						? BatchErrorHandler.class.isAssignableFrom(clazz)
-						: ErrorHandler.class.isAssignableFrom(clazz),
-					() -> "Error handler is not compatible with the message listener, expecting an instance of "
-					+ (batch ? "BatchErrorHandler" : "ErrorHandler") + " not " + errHandler.getClass().getName());
 		}
 
 		@Override
@@ -2493,7 +2453,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
 						records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
 						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
-				if (!afterHandling.isEmpty()) {
+				if (afterHandling != null && !afterHandling.isEmpty()) {
 					this.remainingRecords = afterHandling;
 					this.pauseForPending = true;
 				}

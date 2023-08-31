@@ -79,29 +79,6 @@ public interface ProducerFactory<K, V> {
 	}
 
 	/**
-	 * Remove the specified producer from the cache and close it.
-	 * @param transactionIdSuffix the producer's transaction id suffix.
-	 * @since 1.3.8
-	 * @deprecated - no longer needed.
-	 */
-	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
-	default void closeProducerFor(String transactionIdSuffix) {
-	}
-
-	/**
-	 * Return the producerPerConsumerPartition.
-	 * @return the producerPerConsumerPartition.
-	 * @since 1.3.8
-	 * @deprecated no longer necessary because
-	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
-	 * longer supported.
-	 */
-	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
-	default boolean isProducerPerConsumerPartition() {
-		return false;
-	}
-
-	/**
 	 * If the factory implementation uses thread-bound producers, call this method to
 	 * close and release this thread's producer.
 	 * @since 2.3

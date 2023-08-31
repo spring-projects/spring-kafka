@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,12 +68,6 @@ public class CommonContainerStoppingErrorHandler extends KafkaExceptionLogLevelA
 	 */
 	public void setStopContainerAbnormally(boolean stopContainerAbnormally) {
 		this.stopContainerAbnormally = stopContainerAbnormally;
-	}
-
-	@Override
-	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
-	public boolean remainingRecords() {
-		return true;
 	}
 
 	@Override

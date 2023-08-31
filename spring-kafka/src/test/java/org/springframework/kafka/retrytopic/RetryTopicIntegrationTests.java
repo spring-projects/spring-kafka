@@ -548,7 +548,7 @@ public class RetryTopicIntegrationTests {
 					.fixedBackOff(50)
 					.maxAttempts(5)
 					.concurrency(1)
-					.useSingleTopicForFixedDelays()
+					.useSingleTopicForSameIntervals()
 					.includeTopic(FIRST_TOPIC)
 					.doNotRetryOnDltFailure()
 					.dltHandlerMethod("myCustomDltProcessor", DLT_METHOD_NAME)

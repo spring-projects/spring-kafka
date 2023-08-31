@@ -16,20 +16,11 @@
 
 package org.springframework.kafka.listener;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectStreamClass;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 
-import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.SerializationUtils;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
@@ -84,64 +75,6 @@ public final class ListenerUtils {
 	}
 
 	/**
-	 * Extract a {@link DeserializationException} from the supplied header name, if
-	 * present.
-	 * @param record the consumer record.
-	 * @param headerName the header name.
-	 * @param logger the logger for logging errors.
-	 * @return the exception or null.
-	 * @since 2.3
-	 * @deprecated in favor of
-	 * {@link SerializationUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)}.
-	 */
-	@Deprecated
-	@Nullable
-	public static DeserializationException getExceptionFromHeader(final ConsumerRecord<?, ?> record,
-			String headerName, LogAccessor logger) {
-
-		return SerializationUtils.getExceptionFromHeader(record, headerName, logger);
-	}
-
-	/**
-	 * Convert a byte array containing a serialized {@link DeserializationException} to the
-	 * {@link DeserializationException}.
-	 * @param logger a log accessor to log errors.
-	 * @param value the bytes.
-	 * @return the exception or null if deserialization fails.
-	 * @since 2.8.1
-	 * @deprecated in favor of
-	 * {@link SerializationUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)} or
-	 * {@link SerializationUtils#byteArrayToDeserializationException(LogAccessor, org.apache.kafka.common.header.Header)}.
-	 */
-	@Deprecated
-	@Nullable
-	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, byte[] value) {
-		try {
-			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(value)) {
-
-				boolean first = true;
-
-				@Override
-				protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
-					if (this.first) {
-						this.first = false;
-						Assert.state(desc.getName().equals(DeserializationException.class.getName()),
-								"Header does not contain a DeserializationException");
-					}
-					return super.resolveClass(desc);
-				}
-
-
-			};
-			return (DeserializationException) ois.readObject();
-		}
-		catch (IOException | ClassNotFoundException | ClassCastException e) {
-			logger.error(e, "Failed to deserialize a deserialization exception");
-			return null;
-		}
-	}
-
-	/**
 	 * Sleep according to the {@link BackOff}; when the {@link BackOffExecution} returns
 	 * {@link BackOffExecution#STOP} sleep for the previous backOff.
 	 * @param backOff the {@link BackOff} to create a new {@link BackOffExecution}.
@@ -155,7 +88,7 @@ public final class ListenerUtils {
 	 * @deprecated in favor of
 	 * {@link #unrecoverableBackOff(BackOff, Map, Map, MessageListenerContainer)}.
 	 */
-	@Deprecated
+	@Deprecated(since = "3.1", forRemoval = true) // 3.2
 	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
 			ThreadLocal<Long> lastIntervals, MessageListenerContainer container) throws InterruptedException {
 

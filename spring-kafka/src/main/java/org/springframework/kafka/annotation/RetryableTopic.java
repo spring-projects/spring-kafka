@@ -197,14 +197,6 @@ public @interface RetryableTopic {
 	DltStrategy dltStrategy() default DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
 	/**
-	 * Whether to use a single or multiple topics when using a fixed delay.
-	 * @return the fixed delay strategy.
-	 * @deprecated in favor of {@link #sameIntervalTopicReuseStrategy()}.
-	 */
-	@Deprecated
-	org.springframework.kafka.retrytopic.FixedDelayStrategy fixedDelayTopicStrategy() default org.springframework.kafka.retrytopic.FixedDelayStrategy.MULTIPLE_TOPICS;
-
-	/**
 	 * Override the container factory's {@code autoStartup} property for just the DLT container.
 	 * Usually used to not start the DLT container when {@code autoStartup} is true.
 	 * @return whether or not to override the factory.

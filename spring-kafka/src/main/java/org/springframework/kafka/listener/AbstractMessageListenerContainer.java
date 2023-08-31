@@ -72,8 +72,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
 			ApplicationContextAware {
 
-	private static final String VERSION_2_8 = "2.8";
-
 	/**
 	 * The default {@link org.springframework.context.SmartLifecycle} phase for listener
 	 * containers {@value #DEFAULT_PHASE}.
@@ -97,9 +95,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	private String beanName = "noBeanNameSet";
 
 	private ApplicationEventPublisher applicationEventPublisher;
-
-	@SuppressWarnings("deprecation")
-	private GenericErrorHandler<?> errorHandler;
 
 	private CommonErrorHandler commonErrorHandler;
 
@@ -225,55 +220,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Nullable
 	public ApplicationEventPublisher getApplicationEventPublisher() {
 		return this.applicationEventPublisher;
-	}
-
-	/**
-	 * Set the error handler to call when the listener throws an exception.
-	 * @param errorHandler the error handler.
-	 * @since 2.2
-	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
-	 * @see #setCommonErrorHandler(CommonErrorHandler)
-	 */
-	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
-	public void setErrorHandler(ErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
-	/**
-	 * Set the error handler to call when the listener throws an exception.
-	 * @param errorHandler the error handler.
-	 * @since 2.2
-	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
-	 * @see #setCommonErrorHandler(CommonErrorHandler)
-	 */
-	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
-	public void setGenericErrorHandler(@Nullable GenericErrorHandler<?> errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
-	/**
-	 * Set the batch error handler to call when the listener throws an exception.
-	 * @param errorHandler the error handler.
-	 * @since 2.2
-	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
-	 * @see #setCommonErrorHandler(CommonErrorHandler)
-	 */
-	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
-	public void setBatchErrorHandler(BatchErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
-	/**
-	 * Get the configured error handler.
-	 * @return the error handler.
-	 * @since 2.2
-	 * @deprecated in favor of {@link #getCommonErrorHandler()}
-	 * @see #getCommonErrorHandler()
-	 */
-	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
-	@Nullable
-	public GenericErrorHandler<?> getGenericErrorHandler() {
-		return this.errorHandler;
 	}
 
 	/**

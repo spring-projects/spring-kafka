@@ -1479,16 +1479,17 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setClientId("clientId");
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		BatchErrorHandler errorHandler = mock(BatchErrorHandler.class);
+		CommonErrorHandler errorHandler = mock(CommonErrorHandler.class);
 		given(errorHandler.isAckAfterHandle()).willReturn(true);
-		container.setBatchErrorHandler(errorHandler);
+		given(errorHandler.seeksAfterHandling()).willReturn(true);
+		container.setCommonErrorHandler(errorHandler);
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(messageListener, consumer, errorHandler);
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(messageListener).onMessage(any());
-		inOrder.verify(errorHandler).handle(any(), any(), any(), any(), any());
+		inOrder.verify(errorHandler).handleBatch(any(), any(), any(), any(), any());
 		inOrder.verify(consumer).commitSync(anyMap(), any());
 		container.stop();
 	}
@@ -2404,42 +2405,6 @@ public class KafkaMessageListenerContainerTests {
 		});
 		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
 			.withMessageContaining("Consumer cannot be configured for auto commit for ackMode");
-
-	}
-
-	@Test
-	@SuppressWarnings("deprecation")
-	public void testBadErrorHandler() {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties("foo");
-		containerProps.setMissingTopicsFatal(false);
-		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
-		badContainer.setBatchErrorHandler((thrownException,  data) -> {
-		});
-		badContainer.setupMessageListener((MessageListener<String, String>) m -> {
-		});
-		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
-			.withMessageContaining("Error handler is not compatible with the message listener");
-
-	}
-
-	@Test
-	@SuppressWarnings("deprecation")
-	public void testBadBatchErrorHandler() {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
-		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
-		ContainerProperties containerProps = new ContainerProperties("foo");
-		containerProps.setMissingTopicsFatal(false);
-		KafkaMessageListenerContainer<Integer, Foo1> badContainer =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
-		badContainer.setErrorHandler((thrownException, data) -> {
-		});
-		badContainer.setupMessageListener((BatchMessageListener<String, String>) m -> {
-		});
-		assertThatIllegalStateException().isThrownBy(() -> badContainer.start())
-			.withMessageContaining("Error handler is not compatible with the message listener");
 
 	}
 

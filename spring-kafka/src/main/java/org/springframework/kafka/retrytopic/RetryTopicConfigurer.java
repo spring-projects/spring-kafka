@@ -245,26 +245,6 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 	 * @param destinationTopicProcessor the destination topic processor.
 	 * @param containerFactoryResolver the container factory resolver.
 	 * @param listenerContainerFactoryConfigurer the container factory configurer.
-	 * @param beanFactory the bean factory.
-	 * @param retryTopicNamesProviderFactory the retry topic names factory.
-	 */
-	@Deprecated(since = "2.9", forRemoval = true) // in 3.1
-	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
-								ListenerContainerFactoryResolver containerFactoryResolver,
-								ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
-								BeanFactory beanFactory,
-								RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
-
-		this(destinationTopicProcessor, containerFactoryResolver,
-				listenerContainerFactoryConfigurer, retryTopicNamesProviderFactory);
-		this.beanFactory = beanFactory;
-	}
-
-	/**
-	 * Create an instance with the provided properties.
-	 * @param destinationTopicProcessor the destination topic processor.
-	 * @param containerFactoryResolver the container factory resolver.
-	 * @param listenerContainerFactoryConfigurer the container factory configurer.
 	 * @param retryTopicNamesProviderFactory the retry topic names factory.
 	 */
 	@Autowired

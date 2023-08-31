@@ -72,18 +72,6 @@ public class DestinationTopic {
 		return Type.REUSABLE_RETRY_TOPIC.equals(this.properties.type);
 	}
 
-	/**
-	 * Whether this is a single retry topic.
-	 *
-	 * @return whether this is a single retry topic.
-	 * @deprecated in favor of using {@link DestinationTopic.Type#REUSABLE_RETRY_TOPIC}
-	 * and {@link #isReusableRetryTopic()}.
-	 */
-	@Deprecated
-	public boolean isSingleTopicRetry() {
-		return Type.SINGLE_TOPIC_RETRY.equals(this.properties.type);
-	}
-
 	public boolean isMainTopic() {
 		return Type.MAIN.equals(this.properties.type);
 	}
@@ -225,8 +213,7 @@ public class DestinationTopic {
 		}
 
 		public boolean isRetryTopic() {
-			return Type.RETRY.equals(this.type) || Type.SINGLE_TOPIC_RETRY.equals(this.type)
-					|| Type.REUSABLE_RETRY_TOPIC.equals(this.type);
+			return Type.RETRY.equals(this.type) || Type.REUSABLE_RETRY_TOPIC.equals(this.type);
 		}
 
 		public String suffix() {
@@ -300,14 +287,6 @@ public class DestinationTopic {
 		MAIN,
 
 		RETRY,
-
-		/**
-		 * A single retry topic for all retries.
-		 *
-		 * @deprecated Use {@code REUSABLE_RETRY_TOPIC} instead.
-		 */
-		@Deprecated
-		SINGLE_TOPIC_RETRY,
 
 		/**
 		 * A retry topic reused along sequential retries

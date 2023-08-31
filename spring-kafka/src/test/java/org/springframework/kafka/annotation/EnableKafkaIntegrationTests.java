@@ -1136,12 +1136,13 @@ public class EnableKafkaIntegrationTests {
 			factory.setCommonErrorHandler(new CommonErrorHandler() {
 
 				@Override
-				public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record,
+				public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record,
 						Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 					globalErrorThrowable = thrownException;
 					consumer.seek(new org.apache.kafka.common.TopicPartition(record.topic(), record.partition()),
 							record.offset());
+					return false;
 				}
 			});
 			factory.getContainerProperties().setMicrometerTags(Collections.singletonMap("extraTag", "foo"));

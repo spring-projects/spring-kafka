@@ -248,7 +248,8 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 		CountDownLatchContainer container;
 
 		@SuppressWarnings("deprecation")
-		@RetryableTopic(fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC, backoff = @Backoff(50))
+		@RetryableTopic(sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC,
+				backoff = @Backoff(50))
 		@KafkaListener(topics = FRAMEWORK_FATAL_EXCEPTION_TOPIC)
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.fatalFrameworkLatch.countDown();
@@ -337,7 +338,7 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 					.newInstance()
 					.fixedBackOff(50)
 					.includeTopic(ONLY_RETRY_VIA_TOPIC)
-					.useSingleTopicForFixedDelays()
+					.sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
 					.doNotRetryOnDltFailure()
 					.dltHandlerMethod("dltProcessorWithError", DLT_METHOD_NAME)
 					.create(template);

@@ -71,9 +71,6 @@ public class RetryTopicConfigurationBuilder {
 	@Nullable
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
-	@SuppressWarnings("deprecation")
-	private FixedDelayStrategy fixedDelayStrategy = FixedDelayStrategy.MULTIPLE_TOPICS;
-
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
 	private long timeout = RetryTopicConstants.NOT_SET;
@@ -406,32 +403,6 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
-	/**
-	 * Configure the use of a single retry topic with fixed delays.
-	 * @return the builder.
-	 * @deprecated in favor of {@link #useSingleTopicForSameIntervals()}.
-	 * @see FixedDelayStrategy#SINGLE_TOPIC
-	 */
-	@Deprecated
-	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays() {
-		this.fixedDelayStrategy = FixedDelayStrategy.SINGLE_TOPIC;
-		return this;
-	}
-
-	/**
-	 * Configure the {@link FixedDelayStrategy}; default is
-	 * {@link FixedDelayStrategy#MULTIPLE_TOPICS}.
-	 * @param delayStrategy the delay strategy.
-	 * @return the builder.
-	 * @deprecated in favor of
-	 * {@link #sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy)}.
-	 */
-	@Deprecated
-	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(FixedDelayStrategy delayStrategy) {
-		this.fixedDelayStrategy = delayStrategy;
-		return this;
-	}
-
 	/* ---------------- Configure Topics Auto Creation -------------- */
 
 	/**
@@ -592,7 +563,7 @@ public class RetryTopicConfigurationBuilder {
 		List<DestinationTopic.Properties> destinationTopicProperties =
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
 						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
-						sendToTopicKafkaTemplate, this.fixedDelayStrategy, this.dltStrategy,
+						sendToTopicKafkaTemplate, this.dltStrategy,
 						this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout)
 								.autoStartDltHandler(this.autoStartDltHandler)
 								.createProperties();

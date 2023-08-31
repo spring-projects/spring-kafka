@@ -61,7 +61,6 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
-import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -438,33 +437,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	public boolean isProducerPerThread() {
 		return this.producerPerThread;
 	}
-
-	/**
-	 * This is no longer needed now that only {@link EOSMode#V2} is supported. Ignored.
-	 * @param producerPerConsumerPartition false to revert.
-	 * @since 1.3.7
-	 * @deprecated no longer necessary because
-	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
-	 * longer supported.
-	 */
-	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
-	public void setProducerPerConsumerPartition(boolean producerPerConsumerPartition) {
-	}
-
-	/**
-	 * This is no longer needed now that only {@link EOSMode#V2} is supported. Ignored.
-	 * @return the producerPerConsumerPartition.
-	 * @since 1.3.8
-	 * @deprecated no longer necessary because
-	 * {@code org.springframework.kafka.listener.ContainerProperties.EOSMode#V1} is no
-	 * longer supported.
-	 */
-	@Deprecated(since = "3.0", forRemoval = true) // in 3.1
-	@Override
-	public boolean isProducerPerConsumerPartition() {
-		return false;
-	}
-
 
 	@Override
 	@Nullable

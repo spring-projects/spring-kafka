@@ -156,7 +156,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.setCommonErrorHandler(new CommonErrorHandler() {
 
 			@Override
-			public boolean remainingRecords() {
+			public boolean seeksAfterHandling() {
 				return true;
 			}
 

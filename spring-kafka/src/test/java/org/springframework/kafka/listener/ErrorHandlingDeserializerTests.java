@@ -185,7 +185,7 @@ public class ErrorHandlingDeserializerTests {
 			factory.setCommonErrorHandler(new CommonErrorHandler() {
 
 				@Override
-				public void handleRecord(Exception t, ConsumerRecord<?, ?> r,
+				public boolean handleOne(Exception t, ConsumerRecord<?, ?> r,
 						Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 					if (r.value() == null && t.getCause() instanceof DeserializationException) {
@@ -196,6 +196,7 @@ public class ErrorHandlingDeserializerTests {
 						keyErrorCount.incrementAndGet();
 					}
 					latch.countDown();
+					return true;
 				}
 
 			});

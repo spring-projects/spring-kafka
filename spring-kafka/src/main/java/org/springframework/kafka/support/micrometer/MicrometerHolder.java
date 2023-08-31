@@ -59,23 +59,6 @@ public final class MicrometerHolder {
 	 * @param name the value of the 'name' tag.
 	 * @param timerName the timer name.
 	 * @param timerDesc the timer description.
-	 * @param tags additional tags.
-	 * @deprecated in favor of
-	 * {@link #MicrometerHolder(ApplicationContext, String, String, String, Function)}.
-	 */
-	@Deprecated
-	public MicrometerHolder(@Nullable ApplicationContext context, String name,
-			String timerName, String timerDesc, Map<String, String> tags) {
-
-		this(context, name, timerName, timerDesc, cr -> tags);
-	}
-
-	/**
-	 * Create an instance with the provided properties.
-	 * @param context the application context from which to obtain the meter registry.
-	 * @param name the value of the 'name' tag.
-	 * @param timerName the timer name.
-	 * @param timerDesc the timer description.
 	 * @param tagsProvider the tags provider.
 	 * @since 2.9.7
 	 */

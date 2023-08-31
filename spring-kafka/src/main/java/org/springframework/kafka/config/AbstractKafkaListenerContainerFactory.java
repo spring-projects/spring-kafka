@@ -26,7 +26,6 @@ import org.apache.commons.logging.LogFactory;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
@@ -48,7 +47,6 @@ import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
-import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.util.Assert;
 
@@ -66,15 +64,11 @@ import org.springframework.util.Assert;
  * @see AbstractMessageListenerContainer
  */
 public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMessageListenerContainer<K, V>, K, V>
-		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware, InitializingBean,
-			ApplicationContextAware {
+		implements KafkaListenerContainerFactory<C>, ApplicationEventPublisherAware, ApplicationContextAware {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR protected
 
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null); // NOSONAR
-
-	@SuppressWarnings("deprecation")
-	private org.springframework.kafka.listener.GenericErrorHandler<?> errorHandler;
 
 	private CommonErrorHandler commonErrorHandler;
 
@@ -156,23 +150,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
-	 * Set the message converter to use if dynamic argument type matching is needed.
-	 * @param messageConverter the converter.
-	 * @deprecated since 2.9.6 in favor of
-	 * {@link #setBatchMessageConverter(BatchMessageConverter)} and
-	 * {@link #setRecordMessageConverter(RecordMessageConverter)}.
-	 */
-	@Deprecated
-	public void setMessageConverter(MessageConverter messageConverter) {
-		if (messageConverter instanceof RecordMessageConverter) {
-			setRecordMessageConverter((RecordMessageConverter) messageConverter);
-		}
-		else {
-			setBatchMessageConverter((BatchMessageConverter) messageConverter);
-		}
-	}
-
-	/**
 	 * Set the message converter to use if dynamic argument type matching is needed for
 	 * record listeners.
 	 * @param recordMessageConverter the converter.
@@ -245,30 +222,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 							+ "never be used and will consume unnecessary resources.");
 		}
 		this.replyTemplate = replyTemplate;
-	}
-
-	/**
-	 * Set the error handler to call when the listener throws an exception.
-	 * @param errorHandler the error handler.
-	 * @since 2.2
-	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
-	 * @see #setCommonErrorHandler(CommonErrorHandler)
-	 */
-	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
-	public void setErrorHandler(org.springframework.kafka.listener.ErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
-	/**
-	 * Set the batch error handler to call when the listener throws an exception.
-	 * @param errorHandler the error handler.
-	 * @since 2.2
-	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
-	 * @see #setCommonErrorHandler(CommonErrorHandler)
-	 */
-	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
-	public void setBatchErrorHandler(org.springframework.kafka.listener.BatchErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
 	}
 
 	/**
@@ -396,23 +349,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.threadNameSupplier = threadNameSupplier;
 	}
 
-	@SuppressWarnings("deprecation")
-	@Override
-	public void afterPropertiesSet() {
-		if (this.commonErrorHandler == null && this.errorHandler != null) {
-			if (Boolean.TRUE.equals(this.batchListener)) {
-				Assert.state(this.errorHandler instanceof org.springframework.kafka.listener.BatchErrorHandler,
-						() -> "The error handler must be a BatchErrorHandler, not " +
-								this.errorHandler.getClass().getName());
-			}
-			else {
-				Assert.state(this.errorHandler instanceof org.springframework.kafka.listener.ErrorHandler,
-						() -> "The error handler must be an ErrorHandler, not " +
-								this.errorHandler.getClass().getName());
-			}
-		}
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
@@ -479,7 +415,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 						properties::setAckTime)
 				.acceptIfNotNull(this.containerProperties.getSubBatchPerPartition(),
 						properties::setSubBatchPerPartition)
-				.acceptIfNotNull(this.errorHandler, instance::setGenericErrorHandler)
 				.acceptIfNotNull(this.commonErrorHandler, instance::setCommonErrorHandler)
 				.acceptIfNotNull(this.missingTopicsFatal, instance.getContainerProperties()::setMissingTopicsFatal)
 				.acceptIfNotNull(this.changeConsumerThreadName, instance::setChangeConsumerThreadName)

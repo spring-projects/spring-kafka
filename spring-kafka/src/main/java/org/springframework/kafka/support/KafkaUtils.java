@@ -152,7 +152,7 @@ public final class KafkaUtils {
 	 * @since 2.7.12
 	 * @deprecated - no longer used.
 	 */
-	@Deprecated
+	@Deprecated(since = "3.1", forRemoval = true) // 3.2
 	public static void setLogOnlyMetadata(boolean onlyMeta) {
 	}
 

@@ -1,4 +1,113 @@
 [[migration]]
+=== What's New in 3.0 Since 2.9
+
+[[x30-kafka-client]]
+==== Kafka Client Version
+
+This version requires the 3.3.1 `kafka-clients`.
+
+[[x30-eos]]
+==== Exactly Once Semantics
+
+`EOSMode.V1` (aka `ALPHA`) is no longer supported.
+
+IMPORTANT: When using transactions, the minimum broker version is 2.5.
+
+See <<exactly-once>> and https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics[KIP-447] for more information.
+
+[[x30-obs]]
+==== Observation
+
+Enabling observation for timers and tracing using Micrometer is now supported.
+See <<observation>> for more information.
+
+[[x30-Native]]
+==== Native Images
+
+Support for creating native images is provided.
+See <<native-images>> for more information.
+
+[[x30-global-embedded-kafka]]
+==== Global Single Embedded Kafka
+
+The embedded Kafka (`EmbeddedKafkaBroker`) can now be start as a single global instance for the whole test plan.
+See <<same-broker-multiple-tests>> for more information.
+
+[[x30-retryable]]
+==== Retryable Topics Changes
+
+This feature is no longer considered experimental (as far as its API is concerned), the feature itself has been supported since 2.7, but with a greater than normal possibility of breaking API changes.
+
+The bootstrapping of <<retry-topic>> infrastructure beans has changed in this release to avoid some timing problems that occurred in some application regarding application initialization.
+
+You can now set a different `concurrency` for the retry containers; by default, the concurrency is the same as the main container.
+
+`@RetryableTopic` can now be used as a meta-annotation on custom annotations, including support for `@AliasFor` properties.
+
+See <<retry-config>> for more information.
+
+The default replication factor for the retry topics is now `-1` (use broker default).
+If your broker is earlier that version 2.4, you will now need to explicitly set the property.
+
+You can now configure multiple `@RetryableTopic` listeners on the same topic in the same application context.
+Previously, this was not possible.
+See <<multi-retry>> for more information.
+
+There are breaking API changes in `RetryTopicConfigurationSupport`; specifically, if you override the bean definition methods for `destinationTopicResolver`, `kafkaConsumerBackoffManager` and/or `retryTopicConfigurer`;
+these methods now require an `ObjectProvider<RetryTopicComponentFactory>` parameter.
+
+[[x30-lc-changes]]
+==== Listener Container Changes
+
+Events related to consumer authentication and authorization failures are now published by the container.
+See <<events>> for more information.
+
+You can now customize the thread names used by consumer threads.
+See <<container-thread-naming>> for more information.
+
+The container property `restartAfterAuthException` has been added.
+See <<container-props>> for more information.
+
+[[x30-template-changes]]
+==== `KafkaTemplate` Changes
+
+The futures returned by this class are now `CompletableFuture` s instead of `ListenableFuture` s.
+See <<kafka-template>>.
+
+[[x30-rkt-changes]]
+==== `ReplyingKafkaTemplate` Changes
+
+The futures returned by this class are now `CompletableFuture` s instead of `ListenableFuture` s.
+See <<replying-template>> and <<exchanging-messages>>.
+
+[[x30-listener]]
+==== `@KafkaListener` Changes
+
+You can now use a custom correlation header which will be echoed in any reply message.
+See the note at the end of <<replying-template>> for more information.
+
+You can now manually commit parts of a batch before the entire batch is processed.
+See <<committing-offsets>> for more information.
+
+[[x30-headers]]
+==== `KafkaHeaders` Changes
+
+Four constants in `KafkaHeaders` that were deprecated in 2.9.x have now been removed.
+
+* Instead of `MESSAGE_KEY`, use `KEY`.
+
+* Instead of `PARTITION_ID`, use `PARTITION`
+
+Similarly, `RECEIVED_MESSAGE_KEY` is replaced by `RECEIVED_KEY` and `RECEIVED_PARTITION_ID` is replaced by `RECEIVED_PARTITION`.
+
+[[x30-testing]]
+==== Testing Changes
+
+Version 3.0.7 introduced a `MockConsumerFactory` and `MockProducerFactory`.
+See <<mock-cons-prod>> for more information.
+
+Starting with version 3.0.10, the embedded Kafka broker, by default, sets the Spring Boot property `spring.kafka.bootstrap-servers` to the address(es) of the embedded broker(s).
+
 === What's New in 2.9 since 2.8
 
 [[x29-kafka-client]]

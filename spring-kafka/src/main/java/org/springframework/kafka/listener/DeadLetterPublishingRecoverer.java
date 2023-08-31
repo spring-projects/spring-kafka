@@ -867,7 +867,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @see #setHeaderNamesSupplier(Supplier)
 	 */
 	@Nullable
-	@Deprecated(since = "3.0.9", forRemoval = true)
+	@Deprecated(since = "3.0.9", forRemoval = true) // 3.2
 	protected HeaderNames getHeaderNames() {
 		return null;
 	}
