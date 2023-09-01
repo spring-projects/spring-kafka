@@ -497,7 +497,7 @@ asciidoctorPdf {
 
 	asciidoctorj {
 		sourceDir "$buildDir/asciidoc"
-		inputs.dir(sourceDir)
+		inputs.dir(sourceDir).withPathSensitivity(PathSensitivity.RELATIVE)
 		sources {
 			include 'index.adoc'
 		}
