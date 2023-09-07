@@ -12,7 +12,7 @@ Examples:
 NOTE: The default behavior is to create separate retry topics for each attempt, appended with an index value: retry-0, retry-1, ..., retry-n.
 Therefore, by default the number of retry topics is the configured `maxAttempts` minus 1.
 
-You can <<retry-topics-and-dlt-suffixes,configure the suffixes>>, choose whether to append <<append-index-or-delay,the attempt index or delay>>, use a <<single-topic-fixed-delay,single retry topic when using fixed backoff>>, and use a <<single-topic-maxinterval-delay,single retry topic for the attempts with the maxInterval>> when using exponential backoffs.
+You can xref:retrytopic/topic-naming.adoc#retry-topics-and-dlt-suffixes[configure the suffixes], choose whether to append xref:retrytopic/topic-naming.adoc#append-index-or-delay[the attempt index or delay], use a xref:retrytopic/topic-naming.adoc#single-topic-fixed-delay[single retry topic when using fixed backoff], and use a xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[single retry topic for the attempts with the maxInterval] when using exponential backoffs.
 
 [[retry-topics-and-dlt-suffixes]]
 == Retry Topics and Dlt Suffixes

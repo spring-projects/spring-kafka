@@ -25,7 +25,7 @@ When using group management, `onPartitionsAssigned` is called when partitions ar
 You can use this method, for example, for setting initial offsets for the partitions, by calling the callback.
 You can also use this method to associate this thread's callback with the assigned partitions (see the example below).
 You must use the callback argument, not the one passed into `registerSeekCallback`.
-Starting with version 2.5.5, this method is called, even when using <<manual-assignment,manual partition assignment>>.
+Starting with version 2.5.5, this method is called, even when using xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[manual partition assignment].
 
 `onPartitionsRevoked` is called when the container is stopped or Kafka revokes assignments.
 You should discard this thread's callback and remove any associations to the revoked partitions.
@@ -66,7 +66,7 @@ NOTE: When seeking to the same timestamp for multiple partitions in the `onIdleC
 When called from other locations, the container will gather all timestamp seek requests and make one call to `offsetsForTimes`.
 
 You can also perform seek operations from `onIdleContainer()` when an idle container is detected.
-See <<idle-containers>> for how to enable idle container detection.
+See xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers] for how to enable idle container detection.
 
 NOTE: The `seekToBeginning` method that accepts a collection is useful, for example, when processing a compacted topic and you wish to seek to the beginning every time the application is started:
 

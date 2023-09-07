@@ -42,7 +42,7 @@ Starting with versions 2.9.8, 3.0.6, you can provide a `KafkaTemplate.setMicrome
 [[micrometer-native]]
 == Micrometer Native Metrics
 
-Starting with version 2.5, the framework provides <<factory-listeners>> to manage a Micrometer `KafkaClientMetrics` instance whenever producers and consumers are created and closed.
+Starting with version 2.5, the framework provides xref:kafka/connecting.adoc#factory-listeners[Factory Listeners] to manage a Micrometer `KafkaClientMetrics` instance whenever producers and consumers are created and closed.
 
 To enable this feature, simply add the listeners to your producer and consumer factories:
 
@@ -90,14 +90,14 @@ double count = this.meterRegistry.get("kafka.producer.node.incoming.byte.total")
 ----
 ====
 
-A similar listener is provided for the `StreamsBuilderFactoryBean` - see <<streams-micrometer>>.
+A similar listener is provided for the `StreamsBuilderFactoryBean` - see xref:streams.adoc#streams-micrometer[KafkaStreams Micrometer Support].
 
 [[observation]]
 == Micrometer Observation
 
 Using Micrometer for observation is now supported, since version 3.0, for the `KafkaTemplate` and listener containers.
 
-Set `observationEnabled` to `true` on the `KafkaTemplate` and `ContainerProperties` to enable observation; this will disable <<micrometer,Micrometer Timers>> because the timers will now be managed with each observation.
+Set `observationEnabled` to `true` on the `KafkaTemplate` and `ContainerProperties` to enable observation; this will disable xref:kafka/micrometer.adoc[Micrometer Timers] because the timers will now be managed with each observation.
 
 Refer to https://micrometer.io/docs/tracing[Micrometer Tracing] for more information.
 
@@ -107,7 +107,7 @@ The default implementations add the `bean.name` tag for template observations an
 
 You can either subclass `DefaultKafkaTemplateObservationConvention` or `DefaultKafkaListenerObservationConvention` or provide completely new implementations.
 
-See <<observation-gen>> for details of the default observations that are recorded.
+See xref:appendix.adoc#observation-gen[Micrometer Observation Documentation] for details of the default observations that are recorded.
 
 Starting with version 3.0.6, you can add dynamic tags to the timers and traces, based on information in the consumer or producer records.
 To do so, add a custom `KafkaListenerObservationConvention` and/or `KafkaTemplateObservationConvention` to the listener container properties or `KafkaTemplate` respectively.

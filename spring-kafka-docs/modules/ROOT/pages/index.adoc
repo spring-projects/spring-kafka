@@ -41,7 +41,7 @@ This first part of the reference documentation is a high-level overview of Sprin
 == Reference
 
 This part of the reference documentation details the various components that comprise Spring for Apache Kafka.
-The <<kafka,main chapter>> covers the core classes to develop a Kafka application with Spring.
+The xref:kafka.adoc[main chapter] covers the core classes to develop a Kafka application with Spring.
 
 
 

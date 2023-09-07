@@ -2,5 +2,5 @@
 = Using Spring for Apache Kafka
 
 This section offers detailed explanations of the various concerns that impact using Spring for Apache Kafka.
-For a quick but less detailed introduction, see <<quick-tour>>.
+For a quick but less detailed introduction, see xref:quick-tour.adoc[Quick Tour].
 

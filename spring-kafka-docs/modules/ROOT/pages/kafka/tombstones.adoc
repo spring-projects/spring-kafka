@@ -57,8 +57,8 @@ static class MultiListenerBean {
 
 Note that the argument is `null`, not `KafkaNull`.
 
-TIP: See <<tip-assign-all-parts>>.
+TIP: See xref:tips.adoc[Manually Assigning All Partitions].
 
 IMPORTANT: This feature requires the use of a `KafkaNullAwarePayloadArgumentResolver` which the framework will configure when using the default `MessageHandlerMethodFactory`.
-When using a custom `MessageHandlerMethodFactory`, see <<custom-arg-resolve>>.
+When using a custom `MessageHandlerMethodFactory`, see xref:kafka/serdes.adoc#custom-arg-resolve[Adding custom `HandlerMethodArgumentResolver` to `@KafkaListener`].
 

@@ -271,16 +271,16 @@ public class Application {
 ----
 ====
 
-The corresponding `@KafkaListener` s for this example are shown in <<annotation-properties>>.
+The corresponding `@KafkaListener` s for this example are shown in xref:kafka/receiving-messages/listener-annotation.adoc#annotation-properties[Annotation Properties].
 
-For another technique to achieve similar results, but with the additional capability of sending different types to the same topic, see <<delegating-serialization>>.
+For another technique to achieve similar results, but with the additional capability of sending different types to the same topic, see xref:kafka/serdes.adoc#delegating-serialization[Delegating Serializer and Deserializer].
 
 [[producer-factory]]
 == Using `DefaultKafkaProducerFactory`
 
-As seen in <<kafka-template>>, a `ProducerFactory` is used to create the producer.
+As seen in xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`], a `ProducerFactory` is used to create the producer.
 
-When not using <<transactions>>, by default, the `DefaultKafkaProducerFactory` creates a singleton producer used by all clients, as recommended in the `KafkaProducer` javadocs.
+When not using xref:kafka/transactions.adoc[Transactions], by default, the `DefaultKafkaProducerFactory` creates a singleton producer used by all clients, as recommended in the `KafkaProducer` javadocs.
 However, if you call `flush()` on the template, this can cause delays for other threads using the same producer.
 Starting with version 2.3, the `DefaultKafkaProducerFactory` has a new property `producerPerThread`.
 When set to `true`, the factory will create (and cache) a separate producer for each thread, to avoid this issue.
@@ -289,9 +289,9 @@ IMPORTANT: When `producerPerThread` is `true`, user code **must** call `closeThr
 This will physically close the producer and remove it from the `ThreadLocal`.
 Calling `reset()` or `destroy()` will not clean up these producers.
 
-Also see <<tx-template-mixed>>.
+Also see xref:kafka/transactions.adoc#tx-template-mixed[`KafkaTemplate` Transactional and non-Transactional Publishing].
 
-When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in <<kafka-template>>), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer` s share the same instances).
+When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`]), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer` s share the same instances).
 Alternatively you can provide `Supplier<Serializer>` s (starting with version 2.3) that will be used to obtain separate `Serializer` instances for each `Producer`:
 
 ====
@@ -345,7 +345,7 @@ RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record,
 ----
 ====
 
-(Also see <<exchanging-messages>>).
+(Also see xref:kafka/sending-messages.adoc#exchanging-messages[Request/Reply with `Message<?>` s]).
 
 The result is a `CompletableFuture` that is asynchronously populated with the result (or an exception, for a timeout).
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
@@ -428,7 +428,7 @@ public class KRequestingApplication {
 
 Note that we can use Boot's auto-configured container factory to create the reply container.
 
-If a non-trivial deserializer is being used for replies, consider using an <<error-handling-deserializer,`ErrorHandlingDeserializer`>> that delegates to your configured deserializer.
+If a non-trivial deserializer is being used for replies, consider using an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`] that delegates to your configured deserializer.
 When so configured, the `RequestReplyFuture` will be completed exceptionally and you can catch the `ExecutionException`, with the `DeserializationException` in its `cause` property.
 
 Starting with version 2.6.7, in addition to detecting `DeserializationException` s, the template will call the `replyErrorChecker` function, if provided.
@@ -513,7 +513,7 @@ public class KReplyingApplication {
 
 The `@KafkaListener` infrastructure echoes the correlation ID and determines the reply topic.
 
-See <<annotation-send-to>> for more information about sending replies.
+See xref:kafka/receiving-messages/annotation-send-to.adoc[Forwarding Listener Results using `@SendTo`] for more information about sending replies.
 The template uses the default header `KafKaHeaders.REPLY_TOPIC` to indicate the topic to which the reply goes.
 
 Starting with version 2.2, the template tries to detect the reply topic or partition from the configured reply container.
@@ -672,7 +672,7 @@ public Message<?> messageReturn(String in) {
 [[aggregating-request-reply]]
 == Aggregating Multiple Replies
 
-The template in <<replying-template>> is strictly for a single request/reply scenario.
+The template in xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTemplate`] is strictly for a single request/reply scenario.
 For cases where multiple receivers of a single message return a reply, you can use the `AggregatingReplyingKafkaTemplate`.
 This is an implementation of the client-side of the https://www.enterpriseintegrationpatterns.com/patterns/messaging/BroadcastAggregate.html[Scatter-Gather Enterprise Integration Pattern].
 
@@ -728,7 +728,7 @@ IMPORTANT: The listener container for the replies MUST be configured with `AckMo
 To avoid any possibility of losing messages, the template only commits offsets when there are zero requests outstanding, i.e. when the last outstanding request is released by the release strategy.
 After a rebalance, it is possible for duplicate reply deliveries; these will be ignored for any in-flight requests; you may see error log messages when duplicate replies are received for already released replies.
 
-NOTE: If you use an <<error-handling-deserializer,`ErrorHandlingDeserializer`>> with this aggregating template, the framework will not automatically detect `DeserializationException` s.
+NOTE: If you use an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`] with this aggregating template, the framework will not automatically detect `DeserializationException` s.
 Instead, the record (with a `null` value) will be returned intact, with the deserialization exception(s) in headers.
 It is recommended that applications call the utility method `ReplyingKafkaTemplate.checkDeserialization()` method to determine if a deserialization exception occurred.
 See its javadocs for more information.

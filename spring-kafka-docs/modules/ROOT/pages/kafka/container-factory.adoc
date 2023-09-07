@@ -1,7 +1,7 @@
 [[container-factory]]
 = Container factory
 
-As discussed in <<kafka-listener-annotation>>, a `ConcurrentKafkaListenerContainerFactory` is used to create containers for annotated methods.
+As discussed in xref:kafka/receiving-messages/listener-annotation.adoc[`@KafkaListener` Annotation], a `ConcurrentKafkaListenerContainerFactory` is used to create containers for annotated methods.
 
 Starting with version 2.2, you can use the same factory to create any `ConcurrentMessageListenerContainer`.
 This might be useful if you want to create several containers with similar properties or you wish to use some externally configured factory, such as the one provided by Spring Boot auto-configuration.

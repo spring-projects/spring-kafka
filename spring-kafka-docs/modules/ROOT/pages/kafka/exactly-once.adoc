@@ -6,7 +6,7 @@ When so configured, the container starts a transaction before invoking the liste
 Any `KafkaTemplate` operations performed by the listener participate in the transaction.
 If the listener successfully processes the record (or multiple records, when using a `BatchMessageListener`), the container sends the offset(s) to the transaction by using `producer.sendOffsetsToTransaction()`), before the transaction manager commits the transaction.
 If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back record(s) can be retrieved on the next poll.
-See <<after-rollback>> for more information and for handling records that repeatedly fail.
+See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information and for handling records that repeatedly fail.
 
 Using transactions enables Exactly Once Semantics (EOS).
 

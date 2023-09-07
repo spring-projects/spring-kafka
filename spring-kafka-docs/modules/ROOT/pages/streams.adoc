@@ -158,7 +158,7 @@ streamsBuilderFactoryBean.addListener(new KafkaStreamsMicrometerListener(meterRe
 [[serde]]
 == Streams JSON Serialization and Deserialization
 
-For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring for Apache Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes>>.
+For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring for Apache Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion].
 The `JsonSerde` implementation provides the same configuration options through its constructor (target type or `ObjectMapper`).
 In the following example, we use the `JsonSerde` to serialize and deserialize the `Cat` payload of a Kafka stream (the `JsonSerde` can be used in a similar fashion wherever an instance is required):
 
@@ -318,7 +318,7 @@ Version 2.3 introduced the `RecoveringDeserializationExceptionHandler` which can
 Refer to the Kafka documentation about `DeserializationExceptionHandler`, of which the `RecoveringDeserializationExceptionHandler` is an implementation.
 The `RecoveringDeserializationExceptionHandler` is configured with a `ConsumerRecordRecoverer` implementation.
 The framework provides the `DeadLetterPublishingRecoverer` which sends the failed record to a dead-letter topic.
-See <<dead-letters>> for more information about this recoverer.
+See xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter Records] for more information about this recoverer.
 
 To configure the recoverer, add the following properties to your streams configuration:
 

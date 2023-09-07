@@ -1,5 +1,5 @@
 [[retrying-deliveries]]
 = Retrying Deliveries
 
-See the `DefaultErrorHandler` in <<annotation-error-handling>>.
+See the `DefaultErrorHandler` in xref:kafka/annotation-error-handling.adoc[Handling Exceptions].
 

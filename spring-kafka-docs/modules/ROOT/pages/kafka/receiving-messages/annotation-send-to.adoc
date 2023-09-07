@@ -116,7 +116,7 @@ public ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerCon
 When you use `@SendTo`, you must configure the `ConcurrentKafkaListenerContainerFactory` with a `KafkaTemplate` in its `replyTemplate` property to perform the send.
 Spring Boot will automatically wire in its auto configured template (or any if a single instance is present).
 
-NOTE: Unless you use <<replying-template,request/reply semantics>> only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition or key.
+NOTE: Unless you use xref:kafka/sending-messages.adoc#replying-template[request/reply semantics] only the simple `send(topic, value)` method is used, so you may wish to create a subclass to generate the partition or key.
 The following example shows how to do so:
 
 ====
@@ -187,7 +187,7 @@ public KafkaListenerErrorHandler voidSendToErrorHandler() {
 ----
 =====
 
-See <<annotation-error-handling>> for more information.
+See xref:kafka/annotation-error-handling.adoc[Handling Exceptions] for more information.
 ====
 
 NOTE: If a listener method returns an `Iterable`, by default a record for each element as the value is sent.

@@ -19,7 +19,7 @@ An error message is also logged when this condition occurs.
 * `ConsumerResumedEvent`: published by each consumer when the container is resumed.
 * `ConsumerStoppingEvent`: published by each consumer just before stopping.
 * `ConsumerStoppedEvent`: published after the consumer is closed.
-See <<thread-safety>>.
+See xref:kafka/thread-safety.adoc[Thread Safety].
 * `ConsumerRetryAuthEvent`: published when authentication or authorization of a consumer fails and is being retried.
 * `ConsumerRetryAuthSuccessfulEvent`: published when authentication or authorization has been retried successfully. Can only occur when there has been a `ConsumerRetryAuthEvent` before.
 * `ContainerStoppedEvent`: published when all consumers have stopped.
@@ -37,7 +37,7 @@ The `ListenerContainerIdleEvent` has the following properties:
 * `consumer`: A reference to the Kafka `Consumer` object.
 For example, if the consumer's `pause()` method was previously called, it can `resume()` when the event is received.
 * `paused`: Whether the container is currently paused.
-See <<pause-resume>> for more information.
+See xref:kafka/pause-resume.adoc[Pausing and Resuming Listener Containers] for more information.
 
 The `ListenerContainerNoLongerIdleEvent` has the same properties, except `idleTime` and `paused`.
 
@@ -52,7 +52,7 @@ The `ListenerContainerPartitionIdleEvent` has the following properties:
 * `consumer`: A reference to the Kafka `Consumer` object.
 For example, if the consumer's `pause()` method was previously called, it can `resume()` when the event is received.
 * `paused`: Whether that partition consumption is currently paused for that consumer.
-See <<pause-resume>> for more information.
+See xref:kafka/pause-resume.adoc[Pausing and Resuming Listener Containers] for more information.
 
 The `ListenerContainerPartitionNoLongerIdleEvent` has the same properties, except `idleTime` and `paused`.
 
@@ -67,7 +67,7 @@ The `NonResponsiveConsumerEvent` has the following properties:
 * `consumer`: A reference to the Kafka `Consumer` object.
 For example, if the consumer's `pause()` method was previously called, it can `resume()` when the event is received.
 * `paused`: Whether the container is currently paused.
-See <<pause-resume>> for more information.
+See xref:kafka/pause-resume.adoc[Pausing and Resuming Listener Containers] for more information.
 
 The `ConsumerPausedEvent`, `ConsumerResumedEvent`, and `ConsumerStopping` events have the following properties:
 
@@ -182,7 +182,7 @@ The next example combines `@KafkaListener` and `@EventListener` into a single cl
 You should understand that the application listener gets events for all containers, so you may need to check the listener ID if you want to take specific action based on which container is idle.
 You can also use the `@EventListener` `condition` for this purpose.
 
-See <<events>> for information about event properties.
+See xref:kafka/events.adoc[Application Events] for information about event properties.
 
 The event is normally published on the consumer thread, so it is safe to interact with the `Consumer` object.
 

@@ -76,10 +76,10 @@ These error handlers can handle errors for both record and batch listeners, allo
 `CommonErrorHandler` implementations to replace most legacy framework error handler implementations are provided and the legacy error handlers deprecated.
 The legacy interfaces are still supported by listener containers and listener container factories; they will be deprecated in a future release.
 
-See <<migrating-legacy-eh>> for information to migrate custom error handlers to `CommonErrorHandler`.
+See xref:kafka/annotation-error-handling.adoc#migrating-legacy-eh[Migrating Custom Legacy Error Handler Implementations to `CommonErrorHandler`] for information to migrate custom error handlers to `CommonErrorHandler`.
 
 When transactions are being used, no error handlers are configured, by default, so that the exception will roll back the transaction.
-Error handling for transactional containers are handled by the <<after-rollback,`AfterRollbackProcessor`>>.
+Error handling for transactional containers are handled by the xref:kafka/annotation-error-handling.adoc#after-rollback[`AfterRollbackProcessor`].
 If you provide a custom error handler when using transactions, it must throw an exception if you want the transaction rolled back.
 
 This interface has a default method `isAckAfterHandle()` which is called by the container to determine whether the offset(s) should be committed if the error handler returns without throwing an exception; it returns true by default.
@@ -129,7 +129,7 @@ If you are using Spring Boot, you simply need to add the error handler as a `@Be
 [[backoff-handlers]]
 == Back Off Handlers
 
-Error handlers such as the <<default-eh>> use a `BackOff` to determine how long to wait before retrying a delivery.
+Error handlers such as the xref:kafka/annotation-error-handling.adoc#default-eh[DefaultErrorHandler] use a `BackOff` to determine how long to wait before retrying a delivery.
 Starting with version 2.9, you can configure a custom `BackOffHandler`.
 The default handler simply suspends the thread until the back off time passes (or the container is stopped).
 The framework also provides the `ContainerPausingBackOffHandler` which pauses the listener container until the back off time passes and then resumes the container.
@@ -140,10 +140,10 @@ Note that the resolution of the actual back off time will be affected by the `po
 == DefaultErrorHandler
 
 This new error handler replaces the `SeekToCurrentErrorHandler` and `RecoveringBatchErrorHandler`, which have been the default error handlers for several releases now.
-One difference is that the fallback behavior for batch listeners (when an exception other than a `BatchListenerFailedException` is thrown) is the equivalent of the <<retrying-batch-eh>>.
+One difference is that the fallback behavior for batch listeners (when an exception other than a `BatchListenerFailedException` is thrown) is the equivalent of the xref:kafka/annotation-error-handling.adoc#retrying-batch-eh[Retrying Complete Batches].
 
 IMPORTANT: Starting with version 2.9, the `DefaultErrorHandler` can be configured to provide the same semantics as seeking the unprocessed record offsets as discussed below, but without actually seeking.
-Instead, the records are retained by the listener container and resubmitted to the listener after the error handler exits (and after performing a single paused `poll()`, to keep the consumer alive; if <<retry-topic>> or a `ContainerPausingBackOffHandler` are being used, the pause may extend over multiple polls).
+Instead, the records are retained by the listener container and resubmitted to the listener after the error handler exits (and after performing a single paused `poll()`, to keep the consumer alive; if xref:retrytopic.adoc[Non-Blocking Retries] or a `ContainerPausingBackOffHandler` are being used, the pause may extend over multiple polls).
 The error handler returns a result to the container that indicates whether the current failing record can be resubmitted, or if it was recovered and then it will not be sent to the listener again.
 To enable this mode, set the property `seekAfterError` to `false`.
 
@@ -206,7 +206,7 @@ To enable this mode, set the property `seekAfterError` to `false`.
 
 
 The default recoverer logs the failed record after retries are exhausted.
-You can use a custom recoverer, or one provided by the framework such as the <<dead-letters,`DeadLetterPublishingRecoverer`>>.
+You can use a custom recoverer, or one provided by the framework such as the xref:kafka/annotation-error-handling.adoc#dead-letters[`DeadLetterPublishingRecoverer`].
 
 When using a POJO batch listener (e.g. `List<Thing>`), and you don't have the full consumer record to add to the exception, you can just add the index of the record that failed:
 
@@ -229,10 +229,10 @@ public void listen(List<Thing> things) {
 
 When the container is configured with `AckMode.MANUAL_IMMEDIATE`, the error handler can be configured to commit the offset of recovered records; set the `commitRecovered` property to `true`.
 
-See also <<dead-letters>>.
+See also xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter Records].
 
 When using transactions, similar functionality is provided by the `DefaultAfterRollbackProcessor`.
-See <<after-rollback>>.
+See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor].
 
 The `DefaultErrorHandler` considers certain exceptions to be fatal, and retries are skipped for such exceptions; the recoverer is invoked on the first failure.
 The exceptions that are considered fatal, by default, are:
@@ -315,7 +315,7 @@ When `false` (the default before version 2.9), the exception type is not conside
 
 Starting with version 2.9, this is now `true` by default.
 
-Also see <<delivery-header>>.
+Also see xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Attempts Header].
 
 [[batch-listener-conv-errors]]
 == Conversion Errors with Batch Error Handlers
@@ -477,12 +477,12 @@ AfterRollbackProcessor<String, String> processor =
 ====
 
 When you do not use transactions, you can achieve similar functionality by configuring a `DefaultErrorHandler`.
-See <<error-handlers>>.
+See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Handlers].
 
 IMPORTANT: Recovery is not possible with a batch listener, since the framework has no knowledge about which record in the batch keeps failing.
 In such cases, the application listener must handle a record that keeps failing.
 
-See also <<dead-letters>>.
+See also xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter Records].
 
 Starting with version 2.2.5, the `DefaultAfterRollbackProcessor` can be invoked in a new transaction (started after the failed transaction rolls back).
 Then, if you are using the `DeadLetterPublishingRecoverer` to publish a failed record, the processor will send the recovered record's offset in the original topic/partition to the transaction.
@@ -536,7 +536,7 @@ public DefaultAfterRollbackProcessor errorHandler(BiConsumer<ConsumerRecord<?, ?
 ----
 ====
 
-Also see <<delivery-header>>.
+Also see xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Attempts Header].
 
 IMPORTANT: With current `kafka-clients`, the container cannot detect whether a `ProducerFencedException` is caused by a rebalance or if the producer's `transactional.id` has been revoked due to a timeout or expiry.
 Because, in most cases, it is caused by a rebalance, the container does not call the `AfterRollbackProcessor` (because it's not appropriate to seek the partitions because we no longer are assigned them).
@@ -696,7 +696,7 @@ Key exceptions are only caused by `DeserializationException` s so there is no `D
 There are two mechanisms to add more headers.
 
 1. Subclass the recoverer and override `createProducerRecord()` - call `super.createProducerRecord()` and add more headers.
-2. Provide a `BiFunction` to receive the consumer record and exception, returning a `Headers` object; headers from there will be copied to the final producer record; also see <<dlpr-headers>>.
+2. Provide a `BiFunction` to receive the consumer record and exception, returning a `Headers` object; headers from there will be copied to the final producer record; also see xref:kafka/annotation-error-handling.adoc#dlpr-headers[Managing Dead Letter Record Headers].
 Use `setHeadersFunction()` to set the `BiFunction`.
 
 The second is simpler to implement but the first has more information available, including the already assembled standard headers.
@@ -737,7 +737,7 @@ To revert to the previous behavior, set the error handler's `resetStateOnRecover
 Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
 By default, the exception type is not considered.
 
-Starting with version 2.3, the recoverer can also be used with Kafka Streams - see <<streams-deser-recovery>> for more information.
+Starting with version 2.3, the recoverer can also be used with Kafka Streams - see xref:streams.adoc#streams-deser-recovery[Recovery from Deserialization Exceptions] for more information.
 
 The `ErrorHandlingDeserializer` adds the deserialization exception(s) in headers `ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER` and `ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER` (using java serialization).
 By default, these headers are not retained in the message published to the dead letter topic.
@@ -778,7 +778,7 @@ You can disable this check by setting the `verifyPartition` property to `false`.
 [[dlpr-headers]]
 == Managing Dead Letter Record Headers
 
-Referring to <<dead-letters>> above, the `DeadLetterPublishingRecoverer` has two properties used to manage headers when those headers already exist (such as when reprocessing a dead letter record that failed, including when using <<retry-topic>>).
+Referring to xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter Records] above, the `DeadLetterPublishingRecoverer` has two properties used to manage headers when those headers already exist (such as when reprocessing a dead letter record that failed, including when using xref:retrytopic.adoc[Non-Blocking Retries]).
 
 * `appendOriginalHeaders` (default `true`)
 * `stripPreviousExceptionHeaders` (default `true` since version 2.8)
@@ -817,9 +817,9 @@ recoverer.setExceptionHeadersCreator((kafkaHeaders, exception, isKey, headerName
 ====
 
 Also starting with version 2.8.4, you can now provide multiple headers functions, via the `addHeadersFunction` method.
-This allows additional functions to apply, even if another function  has already been registered, for example, when using <<retry-topic>>.
+This allows additional functions to apply, even if another function  has already been registered, for example, when using xref:retrytopic.adoc[Non-Blocking Retries].
 
-Also see <<retry-headers>> with <<retry-topic>>.
+Also see xref:retrytopic/features.adoc#retry-headers[Failure Header Management] with xref:retrytopic.adoc[Non-Blocking Retries].
 
 [[exp-backoff]]
 == `ExponentialBackOffWithMaxRetries` Implementation

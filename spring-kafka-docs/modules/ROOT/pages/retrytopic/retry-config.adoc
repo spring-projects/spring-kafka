@@ -7,7 +7,7 @@ This enables the feature to bootstrap properly and gives access to injecting som
 NOTE: It is not necessary to also add `@EnableKafka`, if you add this annotation, because `@EnableKafkaRetryTopic` is meta-annotated with `@EnableKafka`.
 
 Also, starting with that version, for more advanced configuration of the feature's components and global features, the `RetryTopicConfigurationSupport` class should be extended in a `@Configuration` class, and the appropriate methods overridden.
-For more details refer to <<retry-topic-global-settings>>.
+For more details refer to xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features].
 
 By default, the containers for the retry topics will have the same concurrency as the main container.
 Starting with version 3.0, you can set a different `concurrency` for the retry containers (either on the annotation, or in `RetryConfigurationBuilder`).
@@ -114,7 +114,7 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<String, MyOtherPo
 NOTE: The retry topics' and dlt's consumers will be assigned to a consumer group with a group id that is the combination of the one with you provide in the `groupId` parameter of the `@KafkaListener` annotation with the topic's suffix.
 If you don't provide any they'll all belong to the same group, and rebalance on a retry topic will cause an unnecessary rebalance on the main topic.
 
-IMPORTANT: If the consumer is configured with an <<error-handling-deserializer,`ErrorHandlingDeserializer`>>, to handle deserilialization exceptions, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
+IMPORTANT: If the consumer is configured with an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`], to handle deserilialization exceptions, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
 The generic value type of the template should be `Object`.
 One technique is to use the `DelegatingByTypeSerializer`; an example follows:
 

@@ -131,9 +131,9 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyOtherPojo> t
 NOTE: The default behavior is retrying on all exceptions and not traversing causes.
 
 Since 2.8.3 there's a global list of fatal exceptions which will cause the record to be sent to the DLT without any retries.
-See <<default-eh>> for the default list of fatal exceptions.
+See xref:kafka/annotation-error-handling.adoc#default-eh[DefaultErrorHandler] for the default list of fatal exceptions.
 You can add or remove exceptions to and from this list by overriding the `configureNonBlockingRetries` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
-See <<retry-topic-global-settings>> for more information.
+See xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features] for more information.
 
 ====
 [source, java]
@@ -237,10 +237,10 @@ By default, it explicitly sets `appendOriginalHeaders` to `false` and leaves `st
 This means that only the first "original" and last exception headers are retained with the default configuration.
 This is to avoid creation of excessively large messages (due to the stack trace header, for example) when many retry steps are involved.
 
-See <<dlpr-headers>> for more information.
+See xref:kafka/annotation-error-handling.adoc#dlpr-headers[Managing Dead Letter Record Headers] for more information.
 
 To reconfigure the framework to use different settings for these properties, configure a `DeadLetterPublishingRecoverer` customizer by overriding the `configureCustomizers` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
-See <<retry-topic-global-settings>> for more details.
+See xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features] for more details.
 
 ====
 [source, java]
@@ -263,7 +263,7 @@ Starting with version 2.9.5, if the `Headers` returned by the function contains 
 [[custom-dlpr]]
 == Custom DeadLetterPublishingRecoverer
 
-As can be seen in <<retry-headers>> it is possible to customize the default `DeadLetterPublishingRecoverer` instances created by the framework.
+As can be seen in xref:retrytopic/features.adoc#retry-headers[Failure Header Management] it is possible to customize the default `DeadLetterPublishingRecoverer` instances created by the framework.
 However, for some use cases, it is necessary to subclass the `DeadLetterPublishingRecoverer`, for example to override `createProducerRecord()` to modify the contents sent to the retry (or dead-letter) topics.
 Starting with version 3.0.9, you can override the `RetryConfigurationSupport.configureDeadLetterPublishingContainerFactory()` method to provide a `DeadLetterPublisherCreator` instance, for example:
 

@@ -204,7 +204,7 @@ The following lists describes the action taken by the container for each `AckMod
 After that, the same semantics as `BATCH` are applied.
 * `MANUAL_IMMEDIATE`: Commit the offset immediately when the `Acknowledgment.acknowledge()` method is called by the listener.
 
-When using <<transactions, transactions>>, the offset(s) are sent to the transaction and the semantics are equivalent to `RECORD` or `BATCH`, depending on the listener type (record or batch).
+When using xref:kafka/transactions.adoc[transactions], the offset(s) are sent to the transaction and the semantics are equivalent to `RECORD` or `BATCH`, depending on the listener type (record or batch).
 
 NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener` or a `BatchAcknowledgingMessageListener`.
 See <<message-listeners, Message Listeners>>.
@@ -239,7 +239,7 @@ NOTE: If you want to commit a partial batch, using `nack()`, When using transact
 
 IMPORTANT: `nack()` can only be called on the consumer thread that invokes your listener.
 
-IMPORTANT: `nack()` is not allowed when using <<ooo-commits, Out of Order Commits>>.
+IMPORTANT: `nack()` is not allowed when using xref:kafka/receiving-messages/ooo-commits.adoc[Out of Order Commits].
 
 With a record listener, when `nack()` is called, any pending offsets are committed, the remaining records from the last poll are discarded, and seeks are performed on their partitions so that the failed record and unprocessed records are redelivered on the next `poll()`.
 The consumer can be paused before redelivery, by setting the `sleep` argument.
@@ -248,7 +248,7 @@ This is similar functionality to throwing an exception when the container is con
 When using a batch listener, you can specify the index within the batch where the failure occurred.
 When `nack()` is called, offsets will be committed for records before the index and seeks are performed on the partitions for the failed and discarded records so that they will be redelivered on the next `poll()`.
 
-See <<error-handlers>> for more information.
+See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Handlers] for more information.
 
 IMPORTANT: The consumer is paused during the sleep so that we continue to poll the broker to keep the consumer alive.
 The actual sleep time, and its resolution, depends on the container's `pollTimeout` which defaults to 5 seconds.

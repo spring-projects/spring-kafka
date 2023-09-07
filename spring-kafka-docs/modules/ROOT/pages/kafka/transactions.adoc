@@ -21,9 +21,9 @@ The `transactional.id` property of each producer is `transactionIdPrefix` + `n`,
 In previous versions of Spring for Apache Kafka, the `transactional.id` was generated differently for transactions started by a listener container with a record-based listener, to support fencing zombies, which is not necessary any more, with `EOSMode.V2` being the only option starting with 3.0.
 For applications running with multiple instances, the `transactionIdPrefix` must be unique per instance.
 
-Also see <<exactly-once>>.
+Also see xref:kafka/exactly-once.adoc[Exactly Once Semantics].
 
-Also see <<transaction-id-prefix>>.
+Also see xref:kafka/transactions.adoc#transaction-id-prefix[`transactionIdPrefix`].
 
 With Spring Boot, it is only necessary to set the `spring.kafka.producer.transaction-id-prefix` property - Boot will automatically configure a `KafkaTransactionManager` bean and wire it into the listener container.
 
@@ -48,7 +48,7 @@ You must configure the `KafkaTemplate` to use the same `ProducerFactory` as the 
 [[transaction-synchronization]]
 == Transaction Synchronization
 
-This section refers to producer-only transactions (transactions not started by a listener container); see <<container-transaction-manager>> for information about chaining transactions when the container starts the transaction.
+This section refers to producer-only transactions (transactions not started by a listener container); see xref:kafka/transactions.adoc#container-transaction-manager[Using Consumer-Initiated Transactions] for information about chaining transactions when the container starts the transaction.
 
 If you want to send records to kafka and perform some database updates, you can use normal Spring transaction management with, say, a `DataSourceTransactionManager`.
 
@@ -67,7 +67,7 @@ The interceptor for the `@Transactional` annotation starts the transaction and t
 When the method exits, the database transaction will commit followed by the Kafka transaction.
 If you wish the commits to be performed in the reverse order (Kafka first), use nested `@Transactional` methods, with the outer method configured to use the `DataSourceTransactionManager`, and the inner method configured to use the `KafkaTransactionManager`.
 
-See <<ex-jdbc-sync>> for examples of an application that synchronizes JDBC and Kafka transactions in Kafka-first or DB-first configurations.
+See xref:tips.adoc#ex-jdbc-sync[Examples of Kafka Transactions with Other Transaction Managers] for examples of an application that synchronizes JDBC and Kafka transactions in Kafka-first or DB-first configurations.
 
 NOTE: Starting with versions 2.5.17, 2.6.12, 2.7.9 and 2.8.0, if the commit fails on the synchronized transaction (after the primary transaction has committed), the exception will be thrown to the caller.
 Previously, this was silently ignored (logged at debug).
@@ -79,7 +79,7 @@ Applications should take remedial action, if necessary, to compensate for the co
 The `ChainedKafkaTransactionManager` is now deprecated, since version 2.7; see the javadocs for its super class `ChainedTransactionManager` for more information.
 Instead, use a `KafkaTransactionManager` in the container to start the Kafka transaction and annotate the listener method with `@Transactional` to start the other transaction.
 
-See <<ex-jdbc-sync>> for an example application that chains JDBC and Kafka transactions.
+See xref:tips.adoc#ex-jdbc-sync[Examples of Kafka Transactions with Other Transaction Managers] for an example application that chains JDBC and Kafka transactions.
 
 [[kafkatemplate-local-transactions]]
 == `KafkaTemplate` Local Transactions
@@ -119,7 +119,7 @@ The transaction can be started by a `TransactionTemplate`, a `@Transactional` me
 Any attempt to use the template outside the scope of a transaction results in the template throwing an `IllegalStateException`.
 Starting with version 2.4.3, you can set the template's `allowNonTransactional` property to `true`.
 In that case, the template will allow the operation to run without a transaction, by calling the `ProducerFactory` 's `createNonTransactionalProducer()` method; the producer will be cached, or thread-bound, as normal for reuse.
-See <<producer-factory>>.
+See xref:kafka/sending-messages.adoc#producer-factory[Using `DefaultKafkaProducerFactory`].
 
 [[transactions-batch]]
 == Transactions with Batch Listeners
@@ -127,7 +127,7 @@ See <<producer-factory>>.
 When a listener fails while transactions are being used, the `AfterRollbackProcessor` is invoked to take some action after the rollback occurs.
 When using the default `AfterRollbackProcessor` with a record listener, seeks are performed so that the failed record will be redelivered.
 With a batch listener, however, the whole batch will be redelivered because the framework doesn't know which record in the batch failed.
-See <<after-rollback>> for more information.
+See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information.
 
 When using a batch listener, version 2.4.2 introduced an alternative mechanism to deal with failures while processing a batch; the `BatchToRecordAdapter`.
 When a container factory with `batchListener` set to true is configured with a `BatchToRecordAdapter`, the listener is invoked with one record at a time.

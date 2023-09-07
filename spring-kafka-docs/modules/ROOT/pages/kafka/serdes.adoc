@@ -113,23 +113,23 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 === Configuration Properties
 
 * `JsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to disable this feature on the `JsonSerializer` (sets the `addTypeInfo` property).
-* `JsonSerializer.TYPE_MAPPINGS` (default `empty`): See <<serdes-mapping-types>>.
+* `JsonSerializer.TYPE_MAPPINGS` (default `empty`): See xref:kafka/serdes.adoc#serdes-mapping-types[Mapping Types].
 * `JsonDeserializer.USE_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to ignore headers set by the serializer.
 * `JsonDeserializer.REMOVE_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to retain headers set by the serializer.
 * `JsonDeserializer.KEY_DEFAULT_TYPE`: Fallback type for deserialization of keys if no header information is present.
 * `JsonDeserializer.VALUE_DEFAULT_TYPE`: Fallback type for deserialization of values if no header information is present.
 * `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`): Comma-delimited list of package patterns allowed for deserialization.
 `*` means deserialize all.
-* `JsonDeserializer.TYPE_MAPPINGS` (default `empty`): See <<serdes-mapping-types>>.
-* `JsonDeserializer.KEY_TYPE_METHOD` (default `empty`): See <<serdes-type-methods>>.
-* `JsonDeserializer.VALUE_TYPE_METHOD` (default `empty`): See <<serdes-type-methods>>.
+* `JsonDeserializer.TYPE_MAPPINGS` (default `empty`): See xref:kafka/serdes.adoc#serdes-mapping-types[Mapping Types].
+* `JsonDeserializer.KEY_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
+* `JsonDeserializer.VALUE_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
 
 Starting with version 2.2, the type information headers (if added by the serializer) are removed by the deserializer.
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
-See also <<tip-json>>.
+See also xref:tips.adoc#tip-json[Customizing the JsonSerializer and JsonDeserializer].
 
-IMPORTANT: Starting with version 2.8, if you construct the serializer or deserializer programmatically as shown in <<prog-json>>, the above properties will be applied by the factories, as long as you have not set any properties explicitly (using `set*()` methods or using the fluent API).
+IMPORTANT: Starting with version 2.8, if you construct the serializer or deserializer programmatically as shown in xref:kafka/serdes.adoc#prog-json[Programmatic Construction], the above properties will be applied by the factories, as long as you have not set any properties explicitly (using `set*()` methods or using the fluent API).
 Previously, when creating programmatically, the configuration properties were never applied; this is still the case if you explicitly set properties on the object directly.
 
 [[serdes-mapping-types]]
@@ -300,7 +300,7 @@ public ConsumerFactory<MyKeyType, MyValueType> cf() {
 ----
 ====
 
-To provide type mapping programmatically, similar to <<serdes-type-methods>>, use the `typeFunction` property.
+To provide type mapping programmatically, similar to xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types], use the `typeFunction` property.
 
 ====
 .Example
@@ -312,7 +312,7 @@ JsonDeserializer<Object> deser = new JsonDeserializer<>()
 ----
 ====
 
-Alternatively, as long as you don't use the fluent API to configure properties, or set them using `set*()` methods, the factories will configure the serializer/deserializer using the configuration properties; see <<serdes-json-config>>.
+Alternatively, as long as you don't use the fluent API to configure properties, or set them using `set*()` methods, the factories will configure the serializer/deserializer using the configuration properties; see xref:kafka/serdes.adoc#serdes-json-config[Configuration Properties].
 
 [[delegating-serialization]]
 == Delegating Serializer and Deserializer
@@ -353,7 +353,7 @@ NOTE: Starting with version 2.5.1, it is not necessary to set the selector heade
 Instead, the serializer will set the header to the class name of the type.
 It is not necessary to configure serializers or deserializers for these types, they will be created (once) dynamically.
 
-For another technique to send different types to different topics, see <<routing-template>>.
+For another technique to send different types to different topics, see xref:kafka/sending-messages.adoc#routing-template[Using `RoutingKafkaTemplate`].
 
 [[by-type]]
 === By Type
@@ -479,7 +479,7 @@ On the consumer side, you can configure a `JsonMessageConverter`; it can handle 
 (`byte[]` and `Bytes` are more efficient because they avoid an unnecessary `byte[]` to `String` conversion).
 You can also configure the specific subclass of `JsonMessageConverter` corresponding to the deserializer, if you so wish.
 
-On the producer side, when you use Spring Integration or the `KafkaTemplate.send(Message<?> message)` method (see <<kafka-template>>), you must configure a message converter that is compatible with the configured Kafka `Serializer`.
+On the producer side, when you use Spring Integration or the `KafkaTemplate.send(Message<?> message)` method (see xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`]), you must configure a message converter that is compatible with the configured Kafka `Serializer`.
 
 * `StringJsonMessageConverter` with `StringSerializer`
 * `BytesJsonMessageConverter` with `BytesSerializer`
@@ -720,13 +720,13 @@ Consider using a `DelegatingByTypeSerializer` configured to use a `ByteArraySeri
 == Payload Conversion with Batch Listeners
 
 You can also use a `JsonMessageConverter` within a `BatchMessagingMessageConverter` to convert batch messages when you use a batch listener container factory.
-See <<serdes>> and <<messaging-message-conversion>> for more information.
+See xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion] and xref:kafka/serdes.adoc#messaging-message-conversion[Spring Messaging Message Conversion] for more information.
 
 By default, the type for the conversion is inferred from the listener argument.
 If you configure the `JsonMessageConverter` with a `DefaultJackson2TypeMapper` that has its `TypePrecedence` set to `TYPE_ID` (instead of the default `INFERRED`), the converter uses the type information in headers (if present) instead.
 This allows, for example, listener methods to be declared with interfaces instead of concrete classes.
 Also, the type converter supports mapping, so the deserialization can be to a different type than the source (as long as the data is compatible).
-This is also useful when you use <<class-level-kafkalistener,class-level `@KafkaListener` instances>> where the payload must have already been converted to determine which method to invoke.
+This is also useful when you use xref:kafka/receiving-messages/class-level-kafkalistener.adoc[class-level `@KafkaListener` instances] where the payload must have already been converted to determine which method to invoke.
 The following example creates beans that use this method:
 
 ====
@@ -829,5 +829,5 @@ You can also completely replace the framework's argument resolution by adding a 
 If you do this, and your application needs to handle tombstone records, with a `null` `value()` (e.g. from a compacted topic), you should add a `KafkaNullAwarePayloadArgumentResolver` to the factory; it must be the last resolver because it supports all types and can match arguments without a `@Payload` annotation.
 If you are using a `DefaultMessageHandlerMethodFactory`, set this resolver as the last custom resolver; the factory will ensure that this resolver will be used before the standard `PayloadMethodArgumentResolver`, which has no knowledge of `KafkaNull` payloads.
 
-See also <<tombstones>>.
+See also xref:kafka/tombstones.adoc[Null Payloads and Log Compaction of 'Tombstone' Records].
 

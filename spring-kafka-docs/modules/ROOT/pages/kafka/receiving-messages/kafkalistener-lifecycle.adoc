@@ -5,7 +5,7 @@ The listener containers created for `@KafkaListener` annotations are not beans i
 Instead, they are registered with an infrastructure bean of type `KafkaListenerEndpointRegistry`.
 This bean is automatically declared by the framework and manages the containers' lifecycles; it will auto-start any containers that have `autoStartup` set to `true`.
 All containers created by all container factories must be in the same `phase`.
-See <<container-auto-startup>> for more information.
+See xref:kafka/receiving-messages/message-listener-container.adoc#container-auto-startup[Listener Container Auto Startup] for more information.
 You can manage the lifecycle programmatically by using the registry.
 Starting or stopping the registry will start or stop all the registered containers.
 Alternatively, you can get a reference to an individual container by using its `id` attribute.

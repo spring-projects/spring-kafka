@@ -18,7 +18,7 @@
 
 |[[ackMode]]<<ackMode,`ackMode`>>
 |BATCH
-|Controls how often offsets are committed - see <<committing-offsets>>.
+|Controls how often offsets are committed - see xref:kafka/receiving-messages/message-listener-container.adoc#committing-offsets[Committing Offsets].
 
 |[[ackTime]]<<ackTime,`ackTime`>>
 |5000
@@ -31,7 +31,7 @@ See the javadocs for `ContainerProperties.AssignmentCommitOption` for more infor
 
 |[[asyncAcks]]<<asyncAcks,`asyncAcks`>>
 |false
-|Enable out-of-order commits (see <<ooo-commits>>); the consumer is paused and commits are deferred until gaps are filled.
+|Enable out-of-order commits (see xref:kafka/receiving-messages/ooo-commits.adoc[Manually Committing Offsets]); the consumer is paused and commits are deferred until gaps are filled.
 
 |[[authExceptionRetryInterval]]<<authExceptionRetryInterval,`authExceptionRetryInterval`>>
 |`null`
@@ -67,7 +67,7 @@ Useful when the consumer code cannot determine that an `ErrorHandlingDeserialize
 
 |[[consumerRebalanceListener]]<<consumerRebalanceListener,`consumerRebalanceListener`>>
 |`null`
-|A rebalance listener; see <<rebalance-listeners>>.
+|A rebalance listener; see xref:kafka/receiving-messages/rebalance-listeners.adoc[Rebalancing Listeners].
 
 |[[consumerStartTimout]]<<consumerStartTimout,`consumerStartTimout`>>
 |30s
@@ -80,11 +80,11 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 
 |[[deliveryAttemptHeader]]<<deliveryAttemptHeader,`deliveryAttemptHeader`>>
 |`false`
-|See <<delivery-header>>.
+|See xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Attempts Header].
 
 |[[eosMode]]<<eosMode,`eosMode`>>
 |`V2`
-|Exactly Once Semantics mode; see <<exactly-once>>.
+|Exactly Once Semantics mode; see xref:kafka/exactly-once.adoc[Exactly Once Semantics].
 
 |[[fixTxOffsets]]<<fixTxOffsets,`fixTxOffsets`>>
 |`false`
@@ -112,12 +112,12 @@ The time to process a batch of records plus this value must be less than the `ma
 
 |[[idleEventInterval]]<<idleEventInterval,`idleEventInterval`>>
 |`null`
-|When set, enables publication of `ListenerContainerIdleEvent` s, see <<events>> and <<idle-containers>>.
+|When set, enables publication of `ListenerContainerIdleEvent` s, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
 Also see `idleBeforeDataMultiplier`.
 
 |[[idlePartitionEventInterval]]<<idlePartitionEventInterval,`idlePartitionEventInterval`>>
 |`null`
-|When set, enables publication of `ListenerContainerIdlePartitionEvent` s, see <<events>> and <<idle-containers>>.
+|When set, enables publication of `ListenerContainerIdlePartitionEvent` s, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
 
 |[[kafkaConsumerProperties]]<<kafkaConsumerProperties,`kafkaConsumerProperties`>>
 |None
@@ -188,7 +188,7 @@ See `monitorInterval`.
 |[[stopContainerWhenFenced]]<<stopContainerWhenFenced,`stopContainerWhenFenced`>>
 |`false`
 |Stop the listener container if a `ProducerFencedException` is thrown.
-See <<after-rollback>> for more information.
+See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information.
 
 |[[stopImmediate]]<<stopImmediate,`stopImmediate`>>
 |`false`
@@ -215,7 +215,7 @@ Mutually exclusive; at least one must be provided; enforced by `ContainerPropert
 
 |[[transactionManager]]<<transactionManager,`transactionManager`>>
 |`null`
-|See <<transactions>>.
+|See xref:kafka/transactions.adoc[Transactions].
 |===
 
 [[alc-props]]
@@ -250,7 +250,7 @@ Also see `interceptBeforeTx`.
 |[[commonErrorHandler]]<<commonErrorHandler,`commonErrorHandler`>>
 |See desc.
 |`DefaultErrorHandler` or `null` when a `transactionManager` is provided when a `DefaultAfterRollbackProcessor` is used.
-See <<error-handlers>>.
+See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Handlers].
 
 |[[containerProperties]]<<containerProperties,`containerProperties`>>
 |`ContainerProperties`

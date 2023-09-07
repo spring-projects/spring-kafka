@@ -2,8 +2,8 @@
 = Connecting to Kafka
 
 * `KafkaAdmin` - see <<configuring-topics>>
-* `ProducerFactory` - see <<sending-messages>>
-* `ConsumerFactory` - see <<receiving-messages>>
+* `ProducerFactory` - see xref:kafka/sending-messages.adoc[Sending Messages]
+* `ConsumerFactory` - see xref:kafka/receiving-messages.adoc[Receiving Messages]
 
 Starting with version 2.5, each of these extends `KafkaResourceFactory`.
 This allows changing the bootstrap servers at runtime by adding a `Supplier<String>` to their configuration:  `setBootstrapServersSupplier(() -> ...)`.
@@ -60,5 +60,5 @@ In each case, the `id` is created by appending the `client-id` property (obtaine
 
 These listeners can be used, for example, to create and bind a Micrometer `KafkaClientMetrics` instance when a new client is created (and close it when the client is closed).
 
-The framework provides listeners that do exactly that; see <<micrometer-native>>.
+The framework provides listeners that do exactly that; see xref:kafka/micrometer.adoc#micrometer-native[Micrometer Native Metrics].
 

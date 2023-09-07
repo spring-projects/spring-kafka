@@ -34,9 +34,9 @@ Starting with version 2.1.3, you can designate a `@KafkaHandler` method as the d
 At most, one method can be so designated.
 When using `@KafkaHandler` methods, the payload must have already been converted to the domain object (so the match can be performed).
 Use a custom deserializer, the `JsonDeserializer`, or the `JsonMessageConverter` with its `TypePrecedence` set to `TYPE_ID`.
-See <<serdes>> for more information.
+See xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion] for more information.
 
-IMPORTANT: Due to some limitations in the way Spring resolves method arguments, a default `@KafkaHandler` cannot receive discrete headers; it must use the `ConsumerRecordMetadata` as discussed in <<consumer-record-metadata>>.
+IMPORTANT: Due to some limitations in the way Spring resolves method arguments, a default `@KafkaHandler` cannot receive discrete headers; it must use the `ConsumerRecordMetadata` as discussed in xref:kafka/receiving-messages/listener-annotation.adoc#consumer-record-metadata[Consumer Record Metadata].
 
 For example:
 

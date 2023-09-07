@@ -115,7 +115,7 @@ Exceptions that are considered fatal are:
 
 You can add exceptions to and remove exceptions from this list using methods on the `DestinationTopicResolver` bean.
 
-See <<retry-topic-ex-classifier>> for more information.
+See xref:retrytopic/features.adoc#retry-topic-ex-classifier[Exception Classifier] for more information.
 
 
 [[configuring-no-dlt]]

@@ -108,7 +108,7 @@ public void listen(ConsumerRecord<?, ?> record) {
 
 You can specify each partition in the `partitions` or `partitionOffsets` attribute but not both.
 
-As with most annotation properties, you can use SpEL expressions; for an example of how to generate a large list of partitions, see <<tip-assign-all-parts>>.
+As with most annotation properties, you can use SpEL expressions; for an example of how to generate a large list of partitions, see xref:tips.adoc[Manually Assigning All Partitions].
 
 Starting with version 2.5.5, you can apply an initial offset to all assigned partitions:
 
@@ -236,7 +236,7 @@ This contains all the data from the `ConsumerRecord` except the key and value.
 
 Starting with version 1.1, you can configure `@KafkaListener` methods to receive the entire batch of consumer records received from the consumer poll.
 
-IMPORTANT: <<retry-topic>> are not supported with batch listeners.
+IMPORTANT: xref:retrytopic.adoc[Non-Blocking Retries] are not supported with batch listeners.
 
 To configure the listener container factory to create batch listeners, you can set the `batchListener` property.
 The following example shows how to do so:
@@ -249,14 +249,14 @@ public KafkaListenerContainerFactory<?> batchFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
             new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
-    factory.setBatchListener(true);  // <<<<<<<<<<<<<<<<<<<<<<<<<
-    return factory;
+    factory.setBatchListener(true);  // <<<<<<<<<<<<<<<<<<<<<<<<<  
+   return factory;
 }
 ----
 ====
 
 NOTE: Starting with version 2.8, you can override the factory's `batchListener` propery using the `batch` property on the `@KafkaListener` annotation.
-This, together with the changes to <<error-handlers>> allows the same factory to be used for both record and batch listeners.
+This, together with the changes to xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Handlers] allows the same factory to be used for both record and batch listeners.
 
 NOTE: Starting with version 2.9.6, the container factory has separate setters for the `recordMessageConverter` and `batchMessageConverter` properties.
 Previously, there was only one property `messageConverter` which applied to both record and batch listeners.
@@ -316,7 +316,7 @@ public void listen16(List<Message<?>> list, Acknowledgment ack, Consumer<?, ?> c
 No conversion is performed on the payloads in this case.
 
 If the `BatchMessagingMessageConverter` is configured with a `RecordMessageConverter`, you can also add a generic type to the `Message` parameter and the payloads are converted.
-See <<payload-conversion-with-batch>> for more information.
+See xref:kafka/serdes.adoc#payload-conversion-with-batch[Payload Conversion with Batch Listeners] for more information.
 
 You can also receive a list of `ConsumerRecord<?, ?>` objects, but it must be the only parameter (aside from optional `Acknowledgment`, when using manual commits and `Consumer<?, ?>` parameters) defined on the method.
 The following example shows how to do so:
@@ -444,7 +444,7 @@ The properties are specified as individual strings with the normal Java `Propert
 ----
 ====
 
-The following is an example of the corresponding listeners for the example in <<routing-template>>.
+The following is an example of the corresponding listeners for the example in xref:kafka/sending-messages.adoc#routing-template[Using `RoutingKafkaTemplate`].
 
 ====
 [source, java]

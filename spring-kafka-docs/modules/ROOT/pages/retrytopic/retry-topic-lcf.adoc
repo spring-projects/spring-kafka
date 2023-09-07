@@ -38,7 +38,7 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> 
 
 IMPORTANT: Since 2.8.3 you can use the same factory for retryable and non-retryable topics.
 
-If you need to revert the factory configuration behavior to prior 2.8.3, you can override the `configureRetryTopicConfigurer` method of a `@Configuration` class that extends `RetryTopicConfigurationSupport` as explained in <<retry-topic-global-settings>> and set `useLegacyFactoryConfigurer` to `true`, such as:
+If you need to revert the factory configuration behavior to prior 2.8.3, you can override the `configureRetryTopicConfigurer` method of a `@Configuration` class that extends `RetryTopicConfigurationSupport` as explained in xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features] and set `useLegacyFactoryConfigurer` to `true`, such as:
 
 ====
 [source, java]

@@ -50,7 +50,7 @@ Since it does not have access to the consumer properties, you must use the overl
 ====
 
 A JUnit 4 `@Rule` wrapper for the `EmbeddedKafkaBroker` is provided to create an embedded Kafka and an embedded Zookeeper server.
-(See <<embedded-kafka-annotation>> for information about using `@EmbeddedKafka` with JUnit 5).
+(See xref:testing.adoc#embedded-kafka-annotation[@EmbeddedKafka Annotation] for information about using `@EmbeddedKafka` with JUnit 5).
 The following listing shows the signatures of those methods:
 
 ====
@@ -381,8 +381,8 @@ There are several ways to use an embedded broker in a Spring Boot application te
 
 They include:
 
-* <<kafka-testing-junit4-class-rule>>
-* <<kafka-testing-embeddedkafka-annotation>>
+* xref:testing.adoc#kafka-testing-junit4-class-rule[JUnit4 Class Rule]
+* xref:testing.adoc#kafka-testing-embeddedkafka-annotation[`@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean]
 
 [[kafka-testing-junit4-class-rule]]
 === JUnit4 Class Rule

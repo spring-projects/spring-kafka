@@ -3,7 +3,7 @@
 
 There are several ways to set the initial offset for a partition.
 
-When manually assigning partitions, you can set the initial offset (if desired) in the configured `TopicPartitionOffset` arguments (see <<message-listener-container>>).
+When manually assigning partitions, you can set the initial offset (if desired) in the configured `TopicPartitionOffset` arguments (see xref:kafka/receiving-messages/message-listener-container.adoc[Message Listener Containers]).
 You can also seek to a specific offset at any time.
 
 When you use group management where the broker assigns partitions:

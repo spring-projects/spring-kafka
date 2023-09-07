@@ -6,7 +6,7 @@ For example, you can have a set of exceptions that would likely trigger errors o
 
 To configure blocking retries, override the `configureBlockingRetries` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport` and add the exceptions you want to retry, along with the `BackOff` to be used.
 The default `BackOff` is a `FixedBackOff` with no delay and 9 attempts.
-See <<retry-topic-global-settings>> for more information.
+See xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features] for more information.
 
 ====
 [source, java]
