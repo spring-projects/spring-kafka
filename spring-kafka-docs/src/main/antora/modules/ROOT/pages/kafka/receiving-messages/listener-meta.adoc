@@ -1,0 +1,36 @@
+[[kafka-listener-meta]]
+= `@KafkaListener` as a Meta Annotation
+
+Starting with version 2.2, you can now use `@KafkaListener` as a meta annotation.
+The following example shows how to do so:
+
+[source, java]
+----
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@KafkaListener
+public @interface MyThreeConsumersListener {
+
+    @AliasFor(annotation = KafkaListener.class, attribute = "id")
+    String id();
+
+    @AliasFor(annotation = KafkaListener.class, attribute = "topics")
+    String[] topics();
+
+    @AliasFor(annotation = KafkaListener.class, attribute = "concurrency")
+    String concurrency() default "3";
+
+}
+----
+
+You must alias at least one of `topics`, `topicPattern`, or `topicPartitions` (and, usually, `id` or `groupId` unless you have specified a `group.id` in the consumer factory configuration).
+The following example shows how to do so:
+
+[source, java]
+----
+@MyThreeConsumersListener(id = "my.group", topics = "my.topic")
+public void listen1(String in) {
+    ...
+}
+----
+

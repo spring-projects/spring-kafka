@@ -1,0 +1,17 @@
+[[change-kboe-logging-level]]
+= Changing KafkaBackOffException Logging Level
+:page-section-summary-toc: 1
+
+When a message in the retry topic is not due for consumption, a `KafkaBackOffException` is thrown.
+Such exceptions are logged by default at `DEBUG` level, but you can change this behavior by setting an error handler customizer in the `ListenerContainerFactoryConfigurer` in a `@Configuration` class.
+
+For example, to change the logging level to WARN you might add:
+
+[source, java]
+----
+@Override
+protected void configureCustomizers(CustomizersConfigurer customizersConfigurer) {
+    customizersConfigurer.customizeErrorHandler(defaultErrorHandler ->
+            defaultErrorHandler.setLogLevel(KafkaException.Level.WARN))
+}
+----

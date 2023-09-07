@@ -1,0 +1,157 @@
+[[quick-tour]]
+= Quick Tour
+
+Prerequisites: You must install and run Apache Kafka.
+Then you must put the Spring for Apache Kafka (`spring-kafka`) JAR and all of its dependencies on your class path.
+The easiest way to do that is to declare a dependency in your build tool.
+
+If you are not using Spring Boot, declare the `spring-kafka` jar as a dependency in your project.
+
+
+[tabs]
+======
+Maven::
++
+[source,xml,subs="+attributes",role="primary"]
+----
+<dependency>
+  <groupId>org.springframework.kafka</groupId>
+  <artifactId>spring-kafka</artifactId>
+  <version>{project-version}</version>
+</dependency>
+----
+
+Gradle::
++
+[source,groovy,subs="+attributes",role="secondary"]
+----
+compile 'org.springframework.kafka:spring-kafka:{project-version}'
+----
+======
+
+IMPORTANT: When using Spring Boot, (and you haven't used start.spring.io to create your project), omit the version and Boot will automatically bring in the correct version that is compatible with your Boot version:
+
+[tabs]
+======
+Maven::
++
+[source,xml,subs="+attributes",role="primary"]
+----
+<dependency>
+  <groupId>org.springframework.kafka</groupId>
+  <artifactId>spring-kafka</artifactId>
+</dependency>
+----
+
+Gradle::
++
+[source,groovy,subs="+attributes",role="secondary"]
+----
+compile 'org.springframework.kafka:spring-kafka'
+----
+======
+
+However, the quickest way to get started is to use https://start.spring.io[start.spring.io] (or the wizards in Spring Tool Suits and Intellij IDEA) and create a project, selecting 'Spring for Apache Kafka' as a dependency.
+
+[[compatibility]]
+== Compatibility
+
+This quick tour works with the following versions:
+
+* Apache Kafka Clients 3.3.x
+* Spring Framework 6.0.x
+* Minimum Java version: 17
+
+[[getting-started]]
+== Getting Started
+
+The simplest way to get started is to use https://start.spring.io[start.spring.io] (or the wizards in Spring Tool Suits and Intellij IDEA) and create a project, selecting 'Spring for Apache Kafka' as a dependency.
+Refer to the https://docs.spring.io/spring-boot/docs/current/reference/html/messaging.html#messaging.kafka[Spring Boot documentation] for more information about its opinionated auto configuration of the infrastructure beans.
+
+Here is a minimal consumer application.
+
+[[spring-boot-consumer-app]]
+=== Spring Boot Consumer App
+
+.Application
+[tabs]
+======
+Java::
++
+[source, java, role="primary"]
+----
+include::{java-examples}/started/consumer/Application.java[tag=startedConsumer]
+----
+
+Kotlin::
++
+[source, kotlin, role="secondary"]
+----
+include::{kotlin-examples}/started/consumer/Application.kt[tag=startedConsumer]
+----
+======
+
+.application.properties
+[source, properties]
+----
+spring.kafka.consumer.auto-offset-reset=earliest
+----
+
+The `NewTopic` bean causes the topic to be created on the broker; it is not needed if the topic already exists.
+
+[[spring-boot-producer-app]]
+=== Spring Boot Producer App
+
+.Application
+[tabs]
+======
+Java::
++
+[source,java,role="primary"]
+----
+include::{java-examples}/started/producer/Application.java[tag=startedProducer]
+----
+
+Kotlin::
++
+[source,kotlin,role="secondary"]
+----
+include::{kotlin-examples}/started/producer/Application.kt[tag=startedProducer]
+----
+======
+
+[[with-java-configuration-no-spring-boot]]
+=== With Java Configuration (No Spring Boot)
+
+IMPORTANT: Spring for Apache Kafka is designed to be used in a Spring Application Context.
+For example, if you create the listener container yourself outside of a Spring context, not all functions will work unless you satisfy all of the `...Aware` interfaces that the container implements.
+
+Here is an example of an application that does not use Spring Boot; it has both a `Consumer` and `Producer`.
+
+.Without Boot
+[tabs]
+======
+Java::
++
+[source,java,role="primary"]
+----
+include::{java-examples}/started/noboot/Sender.java[tag=startedNoBootSender]
+
+include::{java-examples}/started/noboot/Listener.java[tag=startedNoBootListener]
+
+include::{java-examples}/started/noboot/Config.java[tag=startedNoBootConfig]
+----
+
+Kotlin::
++
+[source,kotlin,role="secondary"]
+----
+include::{kotlin-examples}/started/noboot/Sender.kt[tag=startedNoBootSender]
+
+include::{kotlin-examples}/started/noboot/Listener.kt[tag=startedNoBootListener]
+
+include::{kotlin-examples}/started/noboot/Config.kt[tag=startedNoBootConfig]
+----
+======
+
+As you can see, you have to define several infrastructure beans when not using Spring Boot.

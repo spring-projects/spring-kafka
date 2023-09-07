@@ -1,0 +1,23 @@
+[[kerberos]]
+= JAAS and Kerberos
+:page-section-summary-toc: 1
+
+Starting with version 2.0, a `KafkaJaasLoginModuleInitializer` class has been added to assist with Kerberos configuration.
+You can add this bean, with the desired configuration, to your application context.
+The following example configures such a bean:
+
+[source, java]
+----
+@Bean
+public KafkaJaasLoginModuleInitializer jaasConfig() throws IOException {
+    KafkaJaasLoginModuleInitializer jaasConfig = new KafkaJaasLoginModuleInitializer();
+    jaasConfig.setControlFlag("REQUIRED");
+    Map<String, String> options = new HashMap<>();
+    options.put("useKeyTab", "true");
+    options.put("storeKey", "true");
+    options.put("keyTab", "/etc/security/keytabs/kafka_client.keytab");
+    options.put("principal", "kafka-client-1@EXAMPLE.COM");
+    jaasConfig.setOptions(options);
+    return jaasConfig;
+}
+----

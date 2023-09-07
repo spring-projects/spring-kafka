@@ -1,0 +1,29 @@
+[[multi-retry]]
+= Multiple Listeners, Same Topic(s)
+
+Starting with version 3.0, it is now possible to configure multiple listeners on the same topic(s).
+In order to do this, you must use custom topic naming to isolate the retry topics from each other.
+This is best shown with an example:
+
+[source, java]
+----
+@RetryableTopic(...
+        retryTopicSuffix = "-listener1", dltTopicSuffix = "-listener1-dlt",
+        topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE)
+@KafkaListener(id = "listener1", groupId = "group1", topics = TWO_LISTENERS_TOPIC, ...)
+void listen1(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+    ...
+}
+
+@RetryableTopic(...
+        retryTopicSuffix = "-listener2", dltTopicSuffix = "-listener2-dlt",
+        topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE)
+@KafkaListener(id = "listener2", groupId = "group2", topics = TWO_LISTENERS_TOPIC, ...)
+void listen2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+    ...
+}
+----
+
+The `topicSuffixingStrategy` is optional.
+The framework will configure and use a separate set of retry topics for each listener.
+
