@@ -1,0 +1,25 @@
+name: shell # FIXME: Change to your project name typically just remove spring- from the artifact name
+version: true
+title: Spring Shell # FIXME: Change to the title of your Project's docs
+nav:
+  - modules/ROOT/nav.adoc
+ext:
+  collector:
+    run:
+      # FIXME Change "command" to the command that generates your antora.yml and other antora resources
+      # See https://gitlab.com/antora/antora-collector-extension/-/blob/main/docs/modules/ROOT/pages/configuration-keys.adoc?ref_type=heads#collector-reference
+      # HINT: Maven is typically something like:
+      # ./mvnw validate process-resources -am -Pantora-process-resources
+      command: gradlew -q "-Dorg.gradle.jvmargs=-Xmx3g -XX:+HeapDumpOnOutOfMemoryError" :spring-shell-docs:generateAntoraYml
+      local: true
+    scan:
+      # FIXME Change "dir" to the location that generated files are at
+      # See https://gitlab.com/antora/antora-collector-extension/-/blob/main/docs/modules/ROOT/pages/configuration-keys.adoc?ref_type=heads#collector-reference
+      # HINT: Maven is typically something like:
+      # target/classes/antora-resources/
+      dir: ./build/generated-antora-resources
+
+asciidoc:
+  attributes:
+    attribute-missing: 'warn'
+    chomp: 'all'
