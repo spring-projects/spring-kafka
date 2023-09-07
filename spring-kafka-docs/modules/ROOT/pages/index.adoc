@@ -1,7 +1,5 @@
 [[spring-kafka-reference]]
 = Spring for Apache Kafka
-:toc: left
-:toclevels: 4
 :numbered:
 :icons: font
 :hide-uri-scheme:
