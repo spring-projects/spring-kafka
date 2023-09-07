@@ -54,11 +54,8 @@ The test scope dependencies are only needed if you are using the embedded Kafka 
 [[observation-gen]]
 = Micrometer Observation Documentation
 
-include::../docs/generated/metrics.adoc[]
 
-include::../docs/generated/spans.adoc[]
 
-include::../docs/generated/conventions.adoc[]
 
 [appendix]
 [[native-images]]
@@ -74,4 +71,3 @@ Some examples can be seen in the https://github.com/spring-projects/spring-aot-s
 [[history]]
 = Change History
 
-include::./changes-since-1.0.adoc[]
