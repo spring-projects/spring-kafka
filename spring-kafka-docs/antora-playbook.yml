@@ -6,27 +6,25 @@ antora:
     - '@antora/collector-extension'
     - '@antora/atlas-extension'
     - require: '@springio/antora-extensions/root-component-extension'
-      root_component_name: 'shell' # FIXME: Change this to match `name:` in antora.yml
+      root_component_name: 'kafka'
       # FIXME: Run antora once using this extension to migrate to the Asciidoc Tabs syntax
       # and then remove this extension
     - require: '@springio/antora-extensions/tabs-migration-extension'
       unwrap_example_block: always
       save_result: true
 site:
-  title: Spring Shell # FIXME: Change to your Project's title
-  url: https://docs.spring.io/spring-shell/reference/ # FIXME: Change to your Project's URL
+  title: Spring Kafka
+  url: https://docs.spring.io/spring-kafka/reference/
 content:
   sources:
-    - url: ./..
+    - url: ./../../../../
       branches: HEAD
-      # FIXME: Change this to the path to the directory containing antora.yml in your project
       # See https://docs.antora.org/antora/latest/playbook/content-source-start-path/#start-path-key
-      start_path: spring-shell-docs
+      start_path: spring-kafka-docs/src/main/antora
       worktrees: true
 asciidoc:
   attributes:
-    # FIXME: Change to your stackoverflow URL or remove
-    page-stackoverflow-url: https://stackoverflow.com/tags/spring-shell
+    page-stackoverflow-url: https://stackoverflow.com/tags/spring-kafka
     page-pagination: ''
     hide-uri-scheme: '@'
     tabs-sync-option: '@'
@@ -43,4 +41,4 @@ runtime:
     format: pretty
 ui:
   bundle:
-    url: https://github.com/spring-io/antora-ui-spring/releases/download/v0.3.4/ui-bundle.zip
+    url: https://github.com/spring-io/antora-ui-spring/releases/download/v0.3.5/ui-bundle.zip
