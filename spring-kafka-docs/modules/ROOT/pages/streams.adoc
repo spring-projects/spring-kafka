@@ -5,6 +5,7 @@ Starting with version 1.1.4, Spring for Apache Kafka provides first-class suppor
 To use it from a Spring application, the `kafka-streams` jar must be present on classpath.
 It is an optional dependency of the Spring for Apache Kafka project and is not downloaded transitively.
 
+[[basics]]
 ==== Basics
 
 The reference Apache Kafka Streams documentation suggests the following way of using the API:
@@ -182,6 +183,7 @@ stream.through(new JsonSerde<>(MyKeyType.class)
 ----
 ====
 
+[[using-kafkastreambrancher]]
 ==== Using `KafkaStreamBrancher`
 
 The `KafkaStreamBrancher` class introduces a more convenient way to build conditional branches on top of `KStream`.
@@ -344,6 +346,7 @@ public DeadLetterPublishingRecoverer recoverer() {
 
 Of course, the `recoverer()` bean can be your own implementation of `ConsumerRecordRecoverer`.
 
+[[kafka-streams-example]]
 ==== Kafka Streams Example
 
 The following example combines all the topics we have covered in this chapter:

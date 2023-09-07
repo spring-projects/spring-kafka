@@ -172,6 +172,7 @@ This section covers how to send messages.
 
 This section covers how to use `KafkaTemplate` to send messages.
 
+[[overview]]
 ====== Overview
 
 The `KafkaTemplate` wraps a producer and provides convenience methods to send data to Kafka topics.
@@ -338,6 +339,7 @@ If you wish to block the sending thread to await the result, you can invoke the 
 If you have set a `linger.ms`, you may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush` parameter that causes the template to `flush()` on each send.
 Flushing is only needed if you have set the `linger.ms` producer property and want to immediately send a partial batch.
 
+[[examples]]
 ====== Examples
 
 This section shows examples of sending messages to Kafka:
@@ -1442,6 +1444,7 @@ public void listen(ConsumerRecord<?, ?> record) {
 
 The initial offset will be applied to all 6 partitions.
 
+[[manual-acknowledgment]]
 ====== Manual Acknowledgment
 
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.
@@ -2312,6 +2315,7 @@ Starting with version 2.3.5, set the `splitIterables` property on `@KafkaListene
 This requires a suitable serializer in the reply template's producer configuration.
 However, if the reply is `Iterable<Message<?>>` the property is ignored and each message is sent separately.
 
+[[filtering-messages]]
 ===== Filtering Messages
 
 In certain scenarios, such as rebalancing, a message that has already been processed may be redelivered.
@@ -2785,6 +2789,7 @@ Also see `interceptBeforeTx`.
 There are several techniques that can be used to create listener containers at runtime.
 This section explores some of those techniques.
 
+[[messagelistener-implementations]]
 ===== MessageListener Implementations
 
 If you implement your own listener directly, you can simply use the container factory to create a raw container for that listener:
@@ -2805,6 +2810,7 @@ include::{kotlin-examples}/dynamic/Application.kt[tag=create]
 ----
 ====
 
+[[prototype-beans]]
 ===== Prototype Beans
 
 Containers for methods annotated with `@KafkaListener` can be created dynamically by declaring the bean as prototype:
@@ -3005,6 +3011,7 @@ Receiving such an event lets you stop the containers, thus waking the consumer s
 
 Starting with version 2.6.2, if a container has published a `ListenerContainerIdleEvent`, it will publish a `ListenerContainerNoLongerIdleEvent` when a record is subsequently received.
 
+[[event-consumption]]
 ===== Event Consumption
 
 You can capture these events by implementing `ApplicationListener` -- either a general listener or one narrowed to only receive this specific event.
@@ -3050,11 +3057,13 @@ Instead, you should hand off the event to a different thread that can then stop 
 Also, you should not `stop()` the container instance if it is a child container.
 You should stop the concurrent container instead.
 
+[[current-positions-when-idle]]
 ====== Current Positions when Idle
 
 Note that you can obtain the current positions when idle is detected by implementing `ConsumerSeekAware` in your listener.
 See `onIdleContainer()` in <<seek>>.
 
+[[topic/partition-initial-offset]]
 ==== Topic/Partition Initial Offset
 
 There are several ways to set the initial offset for a partition.
@@ -3373,6 +3382,7 @@ If you change the multicaster to use an async executor, thread cleanup is not ef
 [[micrometer]]
 ==== Monitoring
 
+[[monitoring-listener-performance]]
 ===== Monitoring Listener Performance
 
 Starting with version 2.3, the listener container will automatically create and update Micrometer `Timer` s for the listener, if `Micrometer` is detected on the class path, and a single `MeterRegistry` is present in the application context.
@@ -3392,6 +3402,7 @@ Starting with versions 2.9.8, 3.0.6, you can provide a function in `ContainerPro
 
 NOTE: With the concurrent container, timers are created for each thread and the `name` tag is suffixed with `-n` where n is `0` to `concurrency-1`.
 
+[[monitoring-kafkatemplate-performance]]
 ===== Monitoring KafkaTemplate Performance
 
 Starting with version 2.5, the template will automatically create and update Micrometer `Timer` s for send operations, if `Micrometer` is detected on the class path, and a single `MeterRegistry` is present in the application context.
@@ -3488,6 +3499,7 @@ The `record` property in both observation contexts contains the `ConsumerRecord`
 
 This section describes how Spring for Apache Kafka supports transactions.
 
+[[overview]]
 ===== Overview
 
 The 0.11.0.0 client library added support for transactions.
@@ -3516,6 +3528,7 @@ This is useful when using transactional producers that might lay idle for the br
 With current `kafka-clients`, this can cause a `ProducerFencedException` without a rebalance.
 By setting the `maxAge` to less than `transactional.id.expiration.ms`, the factory will refresh the producer if it is past it's max age.
 
+[[using-kafkatransactionmanager]]
 ===== Using `KafkaTransactionManager`
 
 The `KafkaTransactionManager` is an implementation of Spring Framework's `PlatformTransactionManager`.
@@ -3528,6 +3541,7 @@ If a transaction is active, any `KafkaTemplate` operations performed within the 
 The manager commits or rolls back the transaction, depending on success or failure.
 You must configure the `KafkaTemplate` to use the same `ProducerFactory` as the transaction manager.
 
+[[transaction-synchronization]]
 ===== Transaction Synchronization
 
 This section refers to producer-only transactions (transactions not started by a listener container); see <<container-transaction-manager>> for information about chaining transactions when the container starts the transaction.
@@ -3563,6 +3577,7 @@ Instead, use a `KafkaTransactionManager` in the container to start the Kafka tra
 
 See <<ex-jdbc-sync>> for an example application that chains JDBC and Kafka transactions.
 
+[[kafkatemplate-local-transactions]]
 ===== `KafkaTemplate` Local Transactions
 
 You can use the `KafkaTemplate` to execute a series of operations within a local transaction.
@@ -3840,6 +3855,7 @@ Received test
 ----
 ====
 
+[[producer-interceptor-managed-in-spring]]
 ==== Producer Interceptor Managed in Spring
 
 Starting with version 3.0.0, when it comes to a producer interceptor, you can let Spring manage it directly as a bean instead of providing the class name of the interceptor to the Apache Kafka producer configuration.
@@ -4006,6 +4022,7 @@ Also since version 2.7 `ConsumerPartitionPausedEvent` and `ConsumerPartitionResu
 [[serdes]]
 ==== Serialization, Deserialization, and Message Conversion
 
+[[overview]]
 ===== Overview
 
 Apache Kafka provides a high-level API for serializing and deserializing record values as well as their keys.
@@ -4321,6 +4338,7 @@ Alternatively, as long as you don't use the fluent API to configure properties, 
 [[delegating-serialization]]
 ===== Delegating Serializer and Deserializer
 
+[[using-headers]]
 ====== Using Headers
 
 Version 2.3 introduced the `DelegatingSerializer` and `DelegatingDeserializer`, which allow producing and consuming records with different key and/or value types.
@@ -4358,6 +4376,7 @@ It is not necessary to configure serializers or deserializers for these types, t
 
 For another technique to send different types to different topics, see <<routing-template>>.
 
+[[by-type]]
 ====== By Type
 
 Version 2.8 introduced the `DelegatingByTypeSerializer`.
@@ -4379,6 +4398,7 @@ public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> conf
 Starting with version 2.8.3, you can configure the serializer to check if the map key is assignable from the target object, useful when a delegate serializer can serialize sub classes.
 In this case, if there are amiguous matches, an ordered `Map`, such as a `LinkedHashMap` should be provided.
 
+[[by-topic]]
 ====== By Topic
 
 Starting with version 2.8, the `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` allow selection of a serializer/deserializer based on the topic name.
@@ -4777,6 +4797,7 @@ public void listen1(List<Message<Foo>> fooMessages) {
 ----
 ====
 
+[[conversionservice-customization]]
 ===== `ConversionService` Customization
 
 Starting with version 2.1.1, the `org.springframework.core.convert.ConversionService` used by the default `o.s.messaging.handler.annotation.support.MessageHandlerMethodFactory` to resolve parameters for the invocation of a listener method is supplied with all beans that implement any of the following interfaces:
@@ -5452,6 +5473,7 @@ IMPORTANT: This mechanism cannot be used with transactions.
 
 While waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
+[[container-stopping-error-handlers]]
 ===== Container Stopping Error Handlers
 
 The `CommonContainerStoppingErrorHandler` stops the container if the listener throws an exception.

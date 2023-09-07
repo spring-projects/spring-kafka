@@ -138,6 +138,7 @@ This is now the default value for this property (starting with version 3.0.10).
 With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)`, you can provide additional properties for the Kafka servers.
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
 
+[[configuring-topics]]
 ==== Configuring Topics
 
 The following example configuration creates topics called `cat` and `hat` with five partitions, a topic called `thing1` with 10 partitions, and a topic called `thing2` with 15 partitions:
@@ -352,6 +353,7 @@ A stand-alone (not Spring test context) broker will be created if the class anno
 IMPORTANT: When there is a Spring test application context available, the topics and broker properties can contain property placeholders, which will be resolved as long as the property is defined somewhere.
 If there is no Spring context available, these placeholders won't be resolved.
 
+[[embedded-broker-in-springboottest-annotations]]
 ==== Embedded Broker in `@SpringBootTest` Annotations
 
 https://start.spring.io/[Spring Initializr] now automatically adds the `spring-kafka-test` dependency in test scope to the project configuration.
@@ -441,6 +443,7 @@ public class MyApplicationTests {
 
 NOTE: The `bootstrapServersProperty` is automatically set to `spring.kafka.bootstrap-servers`, by default, starting with version 3.0.10.
 
+[[hamcrest-matchers]]
 ==== Hamcrest Matchers
 
 The `o.s.kafka.test.hamcrest.KafkaMatchers` provides the following matchers:
@@ -491,6 +494,7 @@ public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(TimestampType type, lon
 ----
 ====
 
+[[assertj-conditions]]
 ==== AssertJ Conditions
 
 You can use the following AssertJ conditions:
@@ -547,6 +551,7 @@ public static Condition<ConsumerRecord<?, ?>> timestamp(TimestampType type, long
 ----
 ====
 
+[[example]]
 ==== Example
 
 The following example brings together most of the topics covered in this chapter:

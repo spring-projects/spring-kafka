@@ -55,6 +55,7 @@ This quick tour works with the following versions:
 * Spring Framework 6.0.x
 * Minimum Java version: 17
 
+[[getting-started]]
 ==== Getting Started
 
 The simplest way to get started is to use https://start.spring.io[start.spring.io] (or the wizards in Spring Tool Suits and Intellij IDEA) and create a project, selecting 'Spring for Apache Kafka' as a dependency.
@@ -62,6 +63,7 @@ Refer to the https://docs.spring.io/spring-boot/docs/current/reference/html/mess
 
 Here is a minimal consumer application.
 
+[[spring-boot-consumer-app]]
 ===== Spring Boot Consumer App
 
 .Application
@@ -88,6 +90,7 @@ spring.kafka.consumer.auto-offset-reset=earliest
 
 The `NewTopic` bean causes the topic to be created on the broker; it is not needed if the topic already exists.
 
+[[spring-boot-producer-app]]
 ===== Spring Boot Producer App
 
 .Application
@@ -104,6 +107,7 @@ include::{kotlin-examples}/started/producer/Application.kt[tag=startedProducer]
 ----
 ====
 
+[[with-java-configuration-no-spring-boot]]
 ===== With Java Configuration (No Spring Boot)
 
 IMPORTANT: Spring for Apache Kafka is designed to be used in a Spring Application Context.
