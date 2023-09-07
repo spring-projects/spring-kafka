@@ -24,8 +24,6 @@ plugins {
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.0.10.RELEASE' apply false
 	id 'com.jfrog.artifactory' version '4.33.1' apply false
-	id 'org.asciidoctor.jvm.pdf' version '3.3.2'
-	id 'org.asciidoctor.jvm.convert' version '3.3.2'
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -45,7 +43,6 @@ ext {
 	linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
 	linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
-	springAsciidoctorBackendsVersion = '0.0.7'
 
 	javadocLinks = [
 		'https://docs.oracle.com/en/java/javase/17/docs/api/',
@@ -54,8 +51,8 @@ ext {
 
 
 	if (gitPresent) {
-		modifiedFiles =
-			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
+		modifiedFiles =  providers.provider {
+			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') } }
 	}
 
 	assertjVersion = '3.24.2'
@@ -249,7 +246,7 @@ configure(javaProjects) { subproject ->
 	task updateCopyrights {
 		onlyIf { !isCI }
 		if (gitPresent) {
-			inputs.files(modifiedFiles.filter { f -> f.path.contains(subproject.name) })
+			inputs.files(modifiedFiles.map(files -> files.filter { f -> f.path.contains(subproject.name) }))
 		}
 		outputs.dir('build/classes')
 
@@ -454,20 +451,11 @@ sonarqube {
 }
 
 configurations {
-	asciidoctorExtensions
 	micrometerDocs
 }
 
 dependencies {
-	asciidoctorExtensions "io.spring.asciidoctor.backends:spring-asciidoctor-backends:${springAsciidoctorBackendsVersion}"
 	micrometerDocs "io.micrometer:micrometer-docs-generator:$micrometerDocsVersion"
-}
-
-task prepareAsciidocBuild(type: Sync) {
-	dependsOn configurations.asciidoctorExtensions
-	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-	from 'spring-kafka-docs/src/main/asciidoc/','spring-kafka-docs/src/main/java','spring-kafka-docs/src/main/kotlin'
-	into "$buildDir/asciidoc"
 }
 
 def observationInputDir = file('spring-kafka/src/main/java/org/springframework/kafka/support/micrometer').absolutePath
@@ -489,78 +477,6 @@ task filterMetricsDocsContent(type: Copy) {
 	rename { filename -> filename.replace '_', '' }
 	filter { line -> line.replaceAll('org.springframework.kafka.support.micrometer.', '').replaceAll('^Fully qualified n', 'N') }
 }
-
-asciidoctorPdf {
-	dependsOn prepareAsciidocBuild, filterMetricsDocsContent
-	baseDirFollowsSourceFile()
-	configurations 'asciidoctorExtensions'
-
-	asciidoctorj {
-		sourceDir "$buildDir/asciidoc"
-		inputs.dir(sourceDir).withPathSensitivity(PathSensitivity.RELATIVE)
-		sources {
-			include 'index.adoc'
-		}
-		options doctype: 'book'
-		attributes 'icons': 'font',
-		'sectanchors': '',
-		'sectnums': '',
-		'toc': '',
-		'source-highlighter' : 'coderay',
-		revnumber: project.version,
-		'project-version': project.version
-	}
-}
-
-asciidoctorj {
-	version = '2.4.1'
-	// fatalWarnings ".*"
-	options doctype: 'book', eruby: 'erubis'
-	attributes([
-			icons: 'font',
-			idprefix: '',
-			idseparator: '-',
-			docinfo: 'shared',
-			revnumber: project.version,
-			sectanchors: '',
-			sectnums: '',
-			'source-highlighter': 'highlight.js',
-			highlightjsdir: 'js/highlight',
-			'highlightjs-theme': 'googlecode',
-			stylesdir: 'css/',
-			stylesheet: 'stylesheet.css',
-			'spring-version': project.version,
-			'project-version': project.version,
-			'java-examples': 'org/springframework/kafka/jdocs',
-			'kotlin-examples': 'org/springframework/kafka/kdocs'
-	])
-}
-
-asciidoctor {
-	dependsOn asciidoctorPdf
-	baseDirFollowsSourceFile()
-	configurations 'asciidoctorExtensions'
-	sourceDir = file("$buildDir/asciidoc")
-	outputOptions {
-		backends "spring-html"
-	}
-	sources {
-		include '*.adoc'
-	}
-	resources {
-		from(sourceDir) {
-			include 'images/*', 'css/**', 'js/**'
-		}
-	}
-
-}
-
-task reference(dependsOn: asciidoctor) {
-	group = 'Documentation'
-	description = 'Generate the reference documentation'
-}
-
-reference.onlyIf { "$System.env.NO_REFERENCE_TASK" != 'true' || project.hasProperty('ignoreEnvToStopReference') }
 
 task api(type: Javadoc) {
 	group = 'Documentation'
@@ -588,7 +504,7 @@ task api(type: Javadoc) {
 	destinationDir = new File(buildDir, 'api')
 }
 
-task docsZip(type: Zip, dependsOn: [reference]) {
+task docsZip(type: Zip, dependsOn: ['antora']) {
 	group = 'Distribution'
 	archiveClassifier = 'docs'
 	description = "Builds -${archiveClassifier} archive containing api and reference " +
@@ -602,14 +518,8 @@ task docsZip(type: Zip, dependsOn: [reference]) {
 		into 'api'
 	}
 
-	from ('build/docs/asciidoc') {
-		into 'reference/html'
-	}
-
-	from ('build/docs/asciidocPdf') {
-		include 'index.pdf'
-		rename 'index.pdf', 'spring-kafka-reference.pdf'
-		into 'reference/pdf'
+	from ('build/site') {
+		into 'reference/'
 	}
 }
 
