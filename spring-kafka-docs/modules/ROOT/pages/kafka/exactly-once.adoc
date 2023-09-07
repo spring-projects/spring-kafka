@@ -1,0 +1,27 @@
+[[exactly-once]]
+= Exactly Once Semantics
+
+You can provide a listener container with a `KafkaAwareTransactionManager` instance.
+When so configured, the container starts a transaction before invoking the listener.
+Any `KafkaTemplate` operations performed by the listener participate in the transaction.
+If the listener successfully processes the record (or multiple records, when using a `BatchMessageListener`), the container sends the offset(s) to the transaction by using `producer.sendOffsetsToTransaction()`), before the transaction manager commits the transaction.
+If the listener throws an exception, the transaction is rolled back and the consumer is repositioned so that the rolled-back record(s) can be retrieved on the next poll.
+See <<after-rollback>> for more information and for handling records that repeatedly fail.
+
+Using transactions enables Exactly Once Semantics (EOS).
+
+This means that, for a `read->process-write` sequence, it is guaranteed that the **sequence** is completed exactly once.
+(The read and process are have at least once semantics).
+
+Spring for Apache Kafka version 3.0 and later only supports `EOSMode.V2`:
+
+* `V2` - aka fetch-offset-request fencing (since version 2.5)
+
+IMPORTANT: This requires the brokers to be version 2.5 or later.
+
+With mode `V2`, it is not necessary to have a producer for each `group.id/topic/partition` because consumer metadata is sent along with the offsets to the transaction and the broker can determine if the producer is fenced using that information instead.
+
+Refer to https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics[KIP-447] for more information.
+
+`V2` was previously `BETA`; the `EOSMode` has been changed to align the framework with https://cwiki.apache.org/confluence/display/KAFKA/KIP-732%3A+Deprecate+eos-alpha+and+replace+eos-beta+with+eos-v2[KIP-732].
+

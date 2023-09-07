@@ -1,0 +1,94 @@
+[[configuring-topics]]
+= Configuring Topics
+
+If you define a `KafkaAdmin` bean in your application context, it can automatically add topics to the broker.
+To do so, you can add a `NewTopic` `@Bean` for each topic to the application context.
+Version 2.3 introduced a new class `TopicBuilder` to make creation of such beans more convenient.
+The following example shows how to do so:
+
+====
+[source, java, indent=0, role="primary"]
+.Java
+----
+include:../:{java-examples}/topics/Config.java[tag=topicBeans]
+----
+[source, kotlin, indent=0, role="secondary"]
+.Kotlin
+----
+include:../:{kotlin-examples}/topics/Config.kt[tag=topicBeans]
+----
+====
+
+Starting with version 2.6, you can omit `partitions()` and/or `replicas()` and the broker defaults will be applied to those properties.
+The broker version must be at least 2.4.0 to support this feature - see https://cwiki.apache.org/confluence/display/KAFKA/KIP-464%3A+Defaults+for+AdminClient%23createTopic[KIP-464].
+
+====
+[source, java, indent=0, role="primary"]
+.Java
+----
+include:../:{java-examples}/topics/Config.java[tag=brokerProps]
+----
+[source, kotlin, indent=0, role="secondary"]
+.Kotlin
+----
+include:../:{kotlin-examples}/topics/Config.kt[tag=brokerProps]
+----
+====
+
+Starting with version 2.7, you can declare multiple `NewTopic` s in a single `KafkaAdmin.NewTopics` bean definition:
+
+====
+[source, java, indent=0, role="primary"]
+.Java
+----
+include:../:{java-examples}/topics/Config.java[tag=newTopicsBean]
+----
+[source, kotlin, indent=0, role="secondary"]
+.Kotlin
+----
+include:../:{kotlin-examples}/topics/Config.kt[tag=newTopicsBean]
+----
+====
+
+
+IMPORTANT: When using Spring Boot, a `KafkaAdmin` bean is automatically registered so you only need the `NewTopic` (and/or `NewTopics`) `@Bean` s.
+
+By default, if the broker is not available, a message is logged, but the context continues to load.
+You can programmatically invoke the admin's `initialize()` method to try again later.
+If you wish this condition to be considered fatal, set the admin's `fatalIfBrokerNotAvailable` property to `true`.
+The context then fails to initialize.
+
+NOTE: If the broker supports it (1.0.0 or higher), the admin increases the number of partitions if it is found that an existing topic has fewer partitions than the `NewTopic.numPartitions`.
+
+Starting with version 2.7, the `KafkaAdmin` provides methods to create and examine topics at runtime.
+
+* `createOrModifyTopics`
+* `describeTopics`
+
+For more advanced features, you can use the `AdminClient` directly.
+The following example shows how to do so:
+
+====
+[source, java]
+----
+@Autowired
+private KafkaAdmin admin;
+
+...
+
+    AdminClient client = AdminClient.create(admin.getConfigurationProperties());
+    ...
+    client.close();
+----
+====
+
+Starting with versions 2.9.10, 3.0.9, you can provide a `Predicate<NewTopic>` which can be used to determine whether a particular `NewTopic` bean should be considered for creation or modification.
+This is useful, for example, if you have multiple `KafkaAdmin` instances pointing to different clusters and you wish to select those topics that should be created or modified by each admin.
+
+====
+[source, java]
+----
+admin.setCreateOrModifyTopic(nt -> !nt.name().equals("dontCreateThisOne"));
+----
+====
+

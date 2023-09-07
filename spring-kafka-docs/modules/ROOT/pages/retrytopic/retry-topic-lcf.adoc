@@ -1,0 +1,52 @@
+[[retry-topic-lcf]]
+= Specifying a ListenerContainerFactory
+
+By default the RetryTopic configuration will use the provided factory from the `@KafkaListener` annotation, but you can specify a different one to be used to create the retry topic and dlt listener containers.
+
+For the `@RetryableTopic` annotation you can provide the factory's bean name, and using the `RetryTopicConfiguration` bean you can either provide the bean name or the instance itself.
+
+====
+[source, java]
+----
+@RetryableTopic(listenerContainerFactory = "my-retry-topic-factory")
+@KafkaListener(topics = "my-annotated-topic")
+public void processMessage(MyPojo message) {
+        // ... message processing
+}
+----
+[source, java]
+----
+@Bean
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template,
+        ConcurrentKafkaListenerContainerFactory<Integer, MyPojo> factory) {
+
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .listenerFactory(factory)
+            .create(template);
+}
+
+@Bean
+public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .listenerFactory("my-retry-topic-factory")
+            .create(template);
+}
+----
+====
+
+IMPORTANT: Since 2.8.3 you can use the same factory for retryable and non-retryable topics.
+
+If you need to revert the factory configuration behavior to prior 2.8.3, you can override the `configureRetryTopicConfigurer` method of a `@Configuration` class that extends `RetryTopicConfigurationSupport` as explained in <<retry-topic-global-settings>> and set `useLegacyFactoryConfigurer` to `true`, such as:
+
+====
+[source, java]
+----
+@Override
+protected Consumer<RetryTopicConfigurer> configureRetryTopicConfigurer() {
+    return rtc -> rtc.useLegacyFactoryConfigurer(true);
+}
+----
+====
+

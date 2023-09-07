@@ -1,0 +1,14 @@
+[[topic/partition-initial-offset]]
+= Topic/Partition Initial Offset
+
+There are several ways to set the initial offset for a partition.
+
+When manually assigning partitions, you can set the initial offset (if desired) in the configured `TopicPartitionOffset` arguments (see <<message-listener-container>>).
+You can also seek to a specific offset at any time.
+
+When you use group management where the broker assigns partitions:
+
+* For a new `group.id`, the initial offset is determined by the `auto.offset.reset` consumer property (`earliest` or `latest`).
+* For an existing group ID, the initial offset is the current offset for that group ID.
+You can, however, seek to a specific offset during initialization (or at any time thereafter).
+

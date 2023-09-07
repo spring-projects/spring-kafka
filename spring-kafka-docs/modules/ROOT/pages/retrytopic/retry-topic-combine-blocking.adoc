@@ -1,0 +1,56 @@
+[[retry-topic-combine-blocking]]
+= Combining Blocking and Non-Blocking Retries
+
+Starting in 2.8.4 you can configure the framework to use both blocking and non-blocking retries in conjunction.
+For example, you can have a set of exceptions that would likely trigger errors on the next records as well, such as `DatabaseAccessException`, so you can retry the same record a few times before sending it to the retry topic, or straight to the DLT.
+
+To configure blocking retries, override the `configureBlockingRetries` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport` and add the exceptions you want to retry, along with the `BackOff` to be used.
+The default `BackOff` is a `FixedBackOff` with no delay and 9 attempts.
+See <<retry-topic-global-settings>> for more information.
+
+====
+[source, java]
+----
+
+@Override
+protected void configureBlockingRetries(BlockingRetriesConfigurer blockingRetries) {
+    blockingRetries
+            .retryOn(MyBlockingRetryException.class, MyOtherBlockingRetryException.class)
+            .backOff(new FixedBackOff(3000, 5));
+}
+
+----
+====
+
+NOTE: In combination with the global retryable topic's fatal exceptions classification, you can configure the framework for any behavior you'd like, such as having some exceptions trigger both blocking and non-blocking retries, trigger only one kind or the other, or go straight to the DLT without retries of any kind.
+
+Here's an example with both configurations working together:
+
+====
+[source, java]
+----
+@Override
+protected void configureBlockingRetries(BlockingRetriesConfigurer blockingRetries) {
+    blockingRetries
+            .retryOn(ShouldRetryOnlyBlockingException.class, ShouldRetryViaBothException.class)
+            .backOff(new FixedBackOff(50, 3));
+}
+
+@Override
+protected void manageNonBlockingFatalExceptions(List<Class<? extends Throwable>> nonBlockingFatalExceptions) {
+    nonBlockingFatalExceptions.add(ShouldSkipBothRetriesException.class);
+}
+
+----
+====
+
+In this example:
+
+* `ShouldRetryOnlyBlockingException.class` would retry only via blocking and, if all retries fail, would go straight to the DLT.
+* `ShouldRetryViaBothException.class` would retry via blocking, and if all blocking retries fail would be forwarded to the  next retry topic for another set of attempts.
+* `ShouldSkipBothRetriesException.class` would never be retried in any way and would go straight to the DLT if the first processing attempt failed.
+
+IMPORTANT: Note that the blocking retries behavior is allowlist - you add the exceptions you do want to retry that way; while the non-blocking retries classification is geared towards FATAL exceptions and as such is denylist - you add the exceptions you don't want to do non-blocking retries, but to send directly to the DLT instead.
+
+IMPORTANT: The non-blocking exception classification behavior also depends on the specific topic's configuration.
+

@@ -1,0 +1,11 @@
+[[pause-resume-partitions]]
+= Pausing and Resuming Partitions on Listener Containers
+
+Since version 2.7 you can pause and resume the consumption of specific partitions assigned to that consumer by using the `pausePartition(TopicPartition topicPartition)` and `resumePartition(TopicPartition topicPartition)` methods in the listener containers.
+The pausing and resuming takes place respectively before and after the `poll()` similar to the `pause()` and `resume()` methods.
+The `isPartitionPauseRequested()` method returns true if pause for that partition has been requested.
+The `isPartitionPaused()` method returns true if that partition has effectively been paused.
+
+Also since version 2.7 `ConsumerPartitionPausedEvent` and `ConsumerPartitionResumedEvent` instances are published with the container as the `source` property and the `TopicPartition` instance.
+
+

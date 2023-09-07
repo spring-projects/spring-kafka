@@ -1,0 +1,12 @@
+[[access-topic-info-runtime]]
+= Accessing Topics' Information at Runtime
+
+Since 2.9, you can access information regarding the topic chain at runtime by injecting the provided `DestinationTopicContainer` bean.
+This interface provides methods to look up the next topic in the chain or the DLT for a topic if configured, as well as useful properties such as the topic's name, delay and type.
+
+As a real-world use-case example, you can use such information so a console application can resend a record from the DLT to the first retry topic in the chain after the cause of the failed processing, e.g. bug / inconsistent state, has been resolved.
+
+IMPORTANT: The `DestinationTopic` provided by the `DestinationTopicContainer#getNextDestinationTopicFor()` method corresponds to the next topic registered in the chain for the input topic.
+The actual topic the message will be forwarded to may differ due to different factors such as exception classification, number of attempts or single-topic fixed-delay strategies.
+Use the `DestinationTopicResolver` interface if you need to weigh in these factors.
+

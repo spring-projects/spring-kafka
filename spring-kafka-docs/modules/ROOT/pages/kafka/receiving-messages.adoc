@@ -1,0 +1,5 @@
+[[receiving-messages]]
+= Receiving Messages
+
+You can receive messages by configuring a `MessageListenerContainer` and providing a message listener or by using the `@KafkaListener` annotation.
+

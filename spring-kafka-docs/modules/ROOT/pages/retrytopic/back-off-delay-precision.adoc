@@ -1,0 +1,15 @@
+[[back-off-delay-precision]]
+= Back Off Delay Precision
+
+[[overview-and-guarantees]]
+== Overview and Guarantees
+
+All message processing and backing off is handled by the consumer thread, and, as such, delay precision is guaranteed on a best-effort basis.
+If one message's processing takes longer than the next message's back off period for that consumer, the next message's delay will be higher than expected.
+Also, for short delays (about 1s or less), the maintenance work the thread has to do, such as committing offsets, may delay the message processing execution.
+The precision can also be affected if the retry topic's consumer is handling more than one partition, because we rely on waking up the consumer from polling and having full pollTimeouts to make timing adjustments.
+
+That being said, for consumers handling a single partition the message's processing should occur approximately at its exact due time for most situations.
+
+IMPORTANT: It is guaranteed that a message will never be processed before its due time.
+
