@@ -1,5 +1,5 @@
 [[retry-topic]]
-=== Non-Blocking Retries
+= Non-Blocking Retries
 
 Version 2.9 changed the mechanism to bootstrap infrastructure beans; see <<retry-config>> for the two mechanisms that are now required to bootstrap the feature.
 
@@ -9,7 +9,7 @@ Since 2.7 Spring for Apache Kafka offers support for that via the `@RetryableTop
 IMPORTANT: Non-blocking retries are not supported with <<batch-listeners>>.
 
 [[how-the-pattern-works]]
-==== How The Pattern Works
+== How The Pattern Works
 
 If message processing fails, the message is forwarded to a retry topic with a back off timestamp.
 The retry topic consumer then checks the timestamp and if it's not due it pauses the consumption for that topic's partition.
@@ -42,10 +42,10 @@ protected void configureCustomizers(CustomizersConfigurer customizersConfigurer)
 In addition, before those versions, using the default (logging) DLT handler was not compatible with any kind of manual `AckMode`, regardless of the `asyncAcks` property.
 
 [[back-off-delay-precision]]
-==== Back Off Delay Precision
+== Back Off Delay Precision
 
 [[overview-and-guarantees]]
-===== Overview and Guarantees
+=== Overview and Guarantees
 
 All message processing and backing off is handled by the consumer thread, and, as such, delay precision is guaranteed on a best-effort basis.
 If one message's processing takes longer than the next message's back off period for that consumer, the next message's delay will be higher than expected.
@@ -57,7 +57,7 @@ That being said, for consumers handling a single partition the message's process
 IMPORTANT: It is guaranteed that a message will never be processed before its due time.
 
 [[retry-config]]
-==== Configuration
+== Configuration
 
 Starting with version 2.9, for default configuration, the `@EnableKafkaRetryTopic` annotation should be used in a `@Configuration` annotated class.
 This enables the feature to bootstrap properly and gives access to injecting some of the feature's components to be looked up at runtime.
@@ -73,7 +73,7 @@ Starting with version 3.0, you can set a different `concurrency` for the retry c
 IMPORTANT: Only one of the above techniques can be used, and only one `@Configuration` class can extend `RetryTopicConfigurationSupport`.
 
 [[using-the-retryabletopic-annotation]]
-===== Using the `@RetryableTopic` annotation
+=== Using the `@RetryableTopic` annotation
 
 To configure the retry topic and dlt for a `@KafkaListener` annotated method, you just have to add the `@RetryableTopic` annotation to it and Spring for Apache Kafka will bootstrap all the necessary topics and consumers with the default configurations.
 
@@ -122,7 +122,7 @@ static @interface MetaAnnotatedRetryableTopic {
 ====
 
 [[using-retrytopicconfiguration-beans]]
-===== Using `RetryTopicConfiguration` beans
+=== Using `RetryTopicConfiguration` beans
 
 You can also configure the non-blocking retry support by creating `RetryTopicConfiguration` beans in a `@Configuration` annotated class.
 
@@ -197,7 +197,7 @@ IMPORTANT: Multiple `@KafkaListener` annotations can be used for the same topic 
 It's best to use a single `RetryTopicConfiguration` bean for configuration of such topics; if multiple `@RetryableTopic` annotations are being used for the same topic, all of them should have the same values, otherwise one of them will be applied to all of that topic's listeners and the other annotations' values will be ignored.
 
 [[retry-topic-global-settings]]
-===== Configuring Global Settings and Features
+=== Configuring Global Settings and Features
 
 Since 2.9, the previous bean overriding approach for configuring components has been removed (without deprecation, due to the aforementioned experimental nature of the API).
 This does not change the `RetryTopicConfiguration` beans approach - only infrastructure components' configurations.
@@ -272,7 +272,7 @@ By default, all values of retry headers (number of attempts, timestamps) are ret
 Starting with version 2.9.6, if you want to retain just the last value of these headers, use the `configureDeadLetterPublishingContainerFactory()` method shown above to set the factory's `retainAllRetryHeaderValues` property to `false`.
 
 [[programmatic-construction]]
-==== Programmatic Construction
+== Programmatic Construction
 
 The feature is designed to be used with `@KafkaListener`; however, several users have requested information on how to configure non-blocking retries programmatically.
 The following Spring Boot application provides an example of how to do so.
@@ -363,12 +363,12 @@ IMPORTANT: Auto creation of topics will only occur if the configuration is proce
 To configure containers at runtime, the topics will need to be created using some other technique.
 
 [[features]]
-==== Features
+== Features
 
 Most of the features are available both for the `@RetryableTopic` annotation and the `RetryTopicConfiguration` beans.
 
 [[backoff-configuration]]
-===== BackOff Configuration
+=== BackOff Configuration
 
 The BackOff configuration relies on the `BackOffPolicy` interface from the `Spring Retry` project.
 
@@ -429,7 +429,7 @@ If your back off policy requires delays with values bigger than that, adjust the
 IMPORTANT: The first attempt counts against `maxAttempts`, so if you provide a `maxAttempts` value of 4 there'll be the original attempt plus 3 retries.
 
 [[global-timeout]]
-===== Global timeout
+=== Global timeout
 
 You can set the global timeout for the retrying process.
 If that time is reached, the next time the consumer throws an exception the message goes straight to the DLT, or just ends the processing if no DLT is available.
@@ -462,7 +462,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 NOTE: The default is having no timeout set, which can also be achieved by providing -1 as the timout value.
 
 [[retry-topic-ex-classifier]]
-===== Exception Classifier
+=== Exception Classifier
 
 You can specify which exceptions you want to retry on and which not to.
 You can also set it to traverse the causes to lookup nested exceptions.
@@ -515,7 +515,7 @@ NOTE: To disable fatal exceptions' classification, just clear the provided list.
 
 
 [[include-and-exclude-topics]]
-===== Include and Exclude Topics
+=== Include and Exclude Topics
 
 You can decide which topics will and will not be handled by a `RetryTopicConfiguration` bean via the .includeTopic(String topic), .includeTopics(Collection<String> topics) .excludeTopic(String topic) and .excludeTopics(Collection<String> topics) methods.
 
@@ -544,7 +544,7 @@ NOTE: The default behavior is to include all topics.
 
 
 [[topics-autocreation]]
-===== Topics AutoCreation
+=== Topics AutoCreation
 
 Unless otherwise specified the framework will auto create the required topics using `NewTopic` beans that are consumed by the `KafkaAdmin` bean.
 You can specify the number of partitions and the replication factor with which the topics will be created, and you can turn this feature off.
@@ -592,7 +592,7 @@ NOTE: By default the topics are autocreated with one partition and a replication
 If your broker version is earlier than 2.4, you will need to set an explicit value.
 
 [[retry-headers]]
-===== Failure Header Management
+=== Failure Header Management
 
 When considering how to manage failure headers (original headers and exception headers), the framework delegates to the `DeadLetterPublishingRecover` to decide whether to append or replace the headers.
 
@@ -625,7 +625,7 @@ By default, any headers added will be cumulative - Kafka headers can contain mul
 Starting with version 2.9.5, if the `Headers` returned by the function contains a header of type `DeadLetterPublishingRecoverer.SingleRecordHeader`, then any existing values for that header will be removed and only the new single value will remain.
 
 [[custom-dlpr]]
-===== Custom DeadLetterPublishingRecoverer
+=== Custom DeadLetterPublishingRecoverer
 
 As can be seen in <<retry-headers>> it is possible to customize the default `DeadLetterPublishingRecoverer` instances created by the framework.
 However, for some use cases, it is necessary to subclass the `DeadLetterPublishingRecoverer`, for example to override `createProducerRecord()` to modify the contents sent to the retry (or dead-letter) topics.
@@ -648,7 +648,7 @@ protected Consumer<DeadLetterPublishingRecovererFactory>
 It is recommended that you use the provided resolvers when constructing the custom instance.
 
 [[retry-topic-combine-blocking]]
-==== Combining Blocking and Non-Blocking Retries
+== Combining Blocking and Non-Blocking Retries
 
 Starting in 2.8.4 you can configure the framework to use both blocking and non-blocking retries in conjunction.
 For example, you can have a set of exceptions that would likely trigger errors on the next records as well, such as `DatabaseAccessException`, so you can retry the same record a few times before sending it to the retry topic, or straight to the DLT.
@@ -704,7 +704,7 @@ IMPORTANT: Note that the blocking retries behavior is allowlist - you add the ex
 IMPORTANT: The non-blocking exception classification behavior also depends on the specific topic's configuration.
 
 [[accessing-delivery-attempts]]
-==== Accessing Delivery Attempts
+== Accessing Delivery Attempts
 
 To access blocking and non-blocking delivery attempts, add these headers to your `@KafkaListener` method signature:
 
@@ -737,7 +737,7 @@ Use `accessor.getBlockingRetryDeliveryAttempt()` and `accessor.getNonBlockingRet
 The accessor will throw an `IllegalStateException` if blocking retries are not enabled; for non-blocking retries, the accessor returns `1` for the initial delivery.
 
 [[topic-naming]]
-==== Topic Naming
+== Topic Naming
 
 Retry topics and DLT are named by suffixing the main topic with a provided or default value, appended by either the delay or index for that topic.
 
@@ -753,7 +753,7 @@ Therefore, by default the number of retry topics is the configured `maxAttempts`
 You can <<retry-topics-and-dlt-suffixes,configure the suffixes>>, choose whether to append <<append-index-or-delay,the attempt index or delay>>, use a <<single-topic-fixed-delay,single retry topic when using fixed backoff>>, and use a <<single-topic-maxinterval-delay,single retry topic for the attempts with the maxInterval>> when using exponential backoffs.
 
 [[retry-topics-and-dlt-suffixes]]
-===== Retry Topics and Dlt Suffixes
+=== Retry Topics and Dlt Suffixes
 
 You can specify the suffixes that will be used by the retry and dlt topics.
 
@@ -785,7 +785,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyOtherPojo> t
 NOTE: The default suffixes are "-retry" and "-dlt", for retry topics and dlt respectively.
 
 [[append-index-or-delay]]
-===== Appending the Topic's Index or Delay
+=== Appending the Topic's Index or Delay
 
 You can either append the topic's index or delay values after the suffix.
 
@@ -816,7 +816,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 NOTE: The default behavior is to suffix with the delay values, except for fixed delay configurations with multiple topics, in which case the topics are suffixed with the topic's index.
 
 [[single-topic-fixed-delay]]
-===== Single Topic for Fixed Delay Retries
+=== Single Topic for Fixed Delay Retries
 
 If you're using fixed delay policies such as `FixedBackOffPolicy` or `NoBackOffPolicy` you can use a single topic to accomplish the non-blocking retries.
 This topic will be suffixed with the provided or default suffix, and will not have either the index or the delay values appended.
@@ -853,7 +853,7 @@ NOTE: The default behavior is creating separate retry topics for each attempt, a
 
 
 [[single-topic-maxinterval-delay]]
-===== Single Topic for maxInterval Exponential Delay 
+=== Single Topic for maxInterval Exponential Delay 
 
 If you're using exponential backoff policy (`ExponentialBackOffPolicy`), you can use a single retry topic to accomplish the non-blocking retries of the attempts whose delays are the configured `maxInterval`.
 
@@ -914,7 +914,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 ====
 
 [[custom-naming-strategies]]
-===== Custom naming strategies
+=== Custom naming strategies
 
 More complex naming strategies can be accomplished by registering a bean that implements `RetryTopicNamesProviderFactory`.
 The default implementation is `SuffixingRetryTopicNamesProviderFactory` and a different implementation can be registered in the following way:
@@ -965,7 +965,7 @@ public class CustomRetryTopicNamesProviderFactory implements RetryTopicNamesProv
 ====
 
 [[multi-retry]]
-==== Multiple Listeners, Same Topic(s)
+== Multiple Listeners, Same Topic(s)
 
 Starting with version 3.0, it is now possible to configure multiple listeners on the same topic(s).
 In order to do this, you must use custom topic naming to isolate the retry topics from each other.
@@ -996,14 +996,14 @@ The `topicSuffixingStrategy` is optional.
 The framework will configure and use a separate set of retry topics for each listener.
 
 [[dlt-strategies]]
-==== Dlt Strategies
+== Dlt Strategies
 
 The framework provides a few strategies for working with DLTs.
 You can provide a method for DLT processing, use the default logging method, or have no DLT at all.
 Also you can choose what happens if DLT processing fails.
 
 [[dlt-processing-method]]
-===== Dlt Processing Method
+=== Dlt Processing Method
 
 You can specify the method used to process the DLT for the topic, as well as the behavior if that processing fails.
 
@@ -1064,7 +1064,7 @@ When using the `@RetryableTopic` annotation, set the `autoStartDltHandler` prope
 You can later start the DLT handler via the `KafkaListenerEndpointRegistry`.
 
 [[dlt-failure-behavior]]
-===== DLT Failure Behavior
+=== DLT Failure Behavior
 
 Should the DLT processing fail, there are two possible behaviors available: `ALWAYS_RETRY_ON_ERROR` and `FAIL_ON_ERROR`.
 
@@ -1116,7 +1116,7 @@ See <<retry-topic-ex-classifier>> for more information.
 
 
 [[configuring-no-dlt]]
-===== Configuring No DLT
+=== Configuring No DLT
 
 The framework also provides the possibility of not configuring a DLT for the topic.
 In this case after retrials are exhausted the processing simply ends.
@@ -1146,7 +1146,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> templ
 ====
 
 [[retry-topic-lcf]]
-==== Specifying a ListenerContainerFactory
+== Specifying a ListenerContainerFactory
 
 By default the RetryTopic configuration will use the provided factory from the `@KafkaListener` annotation, but you can specify a different one to be used to create the retry topic and dlt listener containers.
 
@@ -1198,7 +1198,7 @@ protected Consumer<RetryTopicConfigurer> configureRetryTopicConfigurer() {
 ====
 
 [[access-topic-info-runtime]]
-==== Accessing Topics' Information at Runtime
+== Accessing Topics' Information at Runtime
 
 Since 2.9, you can access information regarding the topic chain at runtime by injecting the provided `DestinationTopicContainer` bean.
 This interface provides methods to look up the next topic in the chain or the DLT for a topic if configured, as well as useful properties such as the topic's name, delay and type.
@@ -1210,7 +1210,7 @@ The actual topic the message will be forwarded to may differ due to different fa
 Use the `DestinationTopicResolver` interface if you need to weigh in these factors.
 
 [[change-kboe-logging-level]]
-==== Changing KafkaBackOffException Logging Level
+== Changing KafkaBackOffException Logging Level
 
 When a message in the retry topic is not due for consumption, a `KafkaBackOffException` is thrown.
 Such exceptions are logged by default at `DEBUG` level, but you can change this behavior by setting an error handler customizer in the `ListenerContainerFactoryConfigurer` in a `@Configuration` class.

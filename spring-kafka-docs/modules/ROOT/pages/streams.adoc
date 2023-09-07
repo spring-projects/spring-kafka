@@ -1,12 +1,12 @@
 [[streams-kafka-streams]]
-=== Apache Kafka Streams Support
+= Apache Kafka Streams Support
 
 Starting with version 1.1.4, Spring for Apache Kafka provides first-class support for https://kafka.apache.org/documentation/streams[Kafka Streams].
 To use it from a Spring application, the `kafka-streams` jar must be present on classpath.
 It is an optional dependency of the Spring for Apache Kafka project and is not downloaded transitively.
 
 [[basics]]
-==== Basics
+== Basics
 
 The reference Apache Kafka Streams documentation suggests the following way of using the API:
 
@@ -45,7 +45,7 @@ Once a `KafkaStreams` instance has been closed by `streams.close()`, it cannot b
 Instead, a new `KafkaStreams` instance to restart stream processing must be created.
 
 [[streams-spring]]
-==== Spring Management
+== Spring Management
 
 To simplify using Kafka Streams from the Spring application context perspective and use the lifecycle management through a container, the Spring for Apache Kafka introduces `StreamsBuilderFactoryBean`.
 This is an `AbstractFactoryBean` implementation to expose a `StreamsBuilder` singleton instance as a bean.
@@ -143,7 +143,7 @@ Default no-op implementations are provided to avoid having to implement both met
 A `CompositeKafkaStreamsInfrastructureCustomizer` is provided, for when you need to apply multiple customizers.
 
 [[streams-micrometer]]
-==== KafkaStreams Micrometer Support
+== KafkaStreams Micrometer Support
 
 Introduced in version 2.5.3, you can configure a `KafkaStreamsMicrometerListener` to automatically register micrometer meters for the `KafkaStreams` object managed by the factory bean:
 
@@ -156,7 +156,7 @@ streamsBuilderFactoryBean.addListener(new KafkaStreamsMicrometerListener(meterRe
 ====
 
 [[serde]]
-==== Streams JSON Serialization and Deserialization
+== Streams JSON Serialization and Deserialization
 
 For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring for Apache Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in <<serdes>>.
 The `JsonSerde` implementation provides the same configuration options through its constructor (target type or `ObjectMapper`).
@@ -184,7 +184,7 @@ stream.through(new JsonSerde<>(MyKeyType.class)
 ====
 
 [[using-kafkastreambrancher]]
-==== Using `KafkaStreamBrancher`
+== Using `KafkaStreamBrancher`
 
 The `KafkaStreamBrancher` class introduces a more convenient way to build conditional branches on top of `KStream`.
 
@@ -220,7 +220,7 @@ new KafkaStreamBrancher<String, String>()
 ====
 
 [[streams-config]]
-==== Configuration
+== Configuration
 
 To configure the Kafka Streams environment, the `StreamsBuilderFactoryBean` requires a `KafkaStreamsConfiguration` instance.
 See the Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs[documentation] for all possible options.
@@ -239,7 +239,7 @@ Starting with version 2.1.2, the factory bean has additional constructors, takin
 Starting with version 2.7, the default is to never clean up local state.
 
 [[streams-header-enricher]]
-==== Header Enricher
+== Header Enricher
 
 Version 3.0 added the `HeaderEnricherProcessor` extension of `ContextualProcessor`; providing the same functionality as the deprecated `HeaderEnricher` which implemented the deprecated `Transformer` interface.
 This can be used to add headers within the stream processing; the header values are SpEL expressions; the root object of the expression evaluation has 3 properties:
@@ -289,7 +289,7 @@ stream
 ====
 
 [[streams-messaging]]
-==== `MessagingProcessor`
+== `MessagingProcessor`
 
 Version 3.0 added the `MessagingProcessor` extension of `ContextualProcessor`; providing the same functionality as the deprecated `MessagingTransformer` which implemented the deprecated `Transformer` interface.
 This allows a Kafka Streams topology to interact with a Spring Messaging component, such as a Spring Integration flow.
@@ -312,7 +312,7 @@ It also requires a `MessagingMessageConverter` to convert the key, value and met
 See https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#streams-integration[[Calling a Spring Integration Flow from a `KStream`]] for more information.
 
 [[streams-deser-recovery]]
-==== Recovery from Deserialization Exceptions
+== Recovery from Deserialization Exceptions
 
 Version 2.3 introduced the `RecoveringDeserializationExceptionHandler` which can take some action when a deserialization exception occurs.
 Refer to the Kafka documentation about `DeserializationExceptionHandler`, of which the `RecoveringDeserializationExceptionHandler` is an implementation.
@@ -347,7 +347,7 @@ public DeadLetterPublishingRecoverer recoverer() {
 Of course, the `recoverer()` bean can be your own implementation of `ConsumerRecordRecoverer`.
 
 [[kafka-streams-example]]
-==== Kafka Streams Example
+== Kafka Streams Example
 
 The following example combines all the topics we have covered in this chapter:
 

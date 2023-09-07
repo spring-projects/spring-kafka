@@ -1,16 +1,16 @@
 [[testing]]
-=== Testing Applications
+= Testing Applications
 
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
 [[ktu]]
-==== KafkaTestUtils
+== KafkaTestUtils
 
 `o.s.kafka.test.utils.KafkaTestUtils` provides a number of static helper methods to consume records, retrieve various record offsets, and others.
 Refer to its https://docs.spring.io/spring-kafka/docs/current/api/org/springframework/kafka/test/utils/KafkaTestUtils.html[Javadocs] for complete details.
 
 [[junit]]
-==== JUnit
+== JUnit
 
 `o.s.kafka.test.utils.KafkaTestUtils` also provides some static methods to set up producer and consumer properties.
 The following listing shows those method signatures:
@@ -139,7 +139,7 @@ With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)`, you can pr
 See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
 
 [[configuring-topics]]
-==== Configuring Topics
+== Configuring Topics
 
 The following example configuration creates topics called `cat` and `hat` with five partitions, a topic called `thing1` with 10 partitions, and a topic called `thing2` with 15 partitions:
 
@@ -166,7 +166,7 @@ By default, `addTopics` will throw an exception when problems arise (such as add
 Version 2.6 added a new version of that method that returns a `Map<String, Exception>`; the key is the topic name and the value is `null` for success, or an `Exception` for a failure.
 
 [[same-broker-multiple-tests]]
-==== Using the Same Broker(s) for Multiple Test Classes
+== Using the Same Broker(s) for Multiple Test Classes
 
 You can use the same broker for multiple test classes with something similar to the following:
 
@@ -247,7 +247,7 @@ NOTE: `spring-kafka-test` has transitive dependencies on `junit-jupiter-api` and
 If you wish to use the embedded broker and are NOT using JUnit, you may wish to exclude these dependencies.
 
 [[embedded-kafka-annotation]]
-==== @EmbeddedKafka Annotation
+== @EmbeddedKafka Annotation
 We generally recommend that you use the rule as a `@ClassRule` to avoid starting and stopping the broker between tests (and use a different topic for each test).
 Starting with version 2.0, if you use Spring's test application context caching, you can also declare a `EmbeddedKafkaBroker` bean, so a single broker can be used across multiple test classes.
 For convenience, we provide a test class-level annotation called `@EmbeddedKafka` to register the `EmbeddedKafkaBroker` bean.
@@ -323,7 +323,7 @@ Properties defined by `brokerProperties` override properties found in `brokerPro
 You can use the `@EmbeddedKafka` annotation with JUnit 4 or JUnit 5.
 
 [[embedded-kafka-junit5]]
-==== @EmbeddedKafka Annotation with JUnit5
+== @EmbeddedKafka Annotation with JUnit5
 
 Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit5.
 When used with the `@SpringJunitConfig` annotation, the embedded broker is added to the test application context.
@@ -354,7 +354,7 @@ IMPORTANT: When there is a Spring test application context available, the topics
 If there is no Spring context available, these placeholders won't be resolved.
 
 [[embedded-broker-in-springboottest-annotations]]
-==== Embedded Broker in `@SpringBootTest` Annotations
+== Embedded Broker in `@SpringBootTest` Annotations
 
 https://start.spring.io/[Spring Initializr] now automatically adds the `spring-kafka-test` dependency in test scope to the project configuration.
 
@@ -385,7 +385,7 @@ They include:
 * <<kafka-testing-embeddedkafka-annotation>>
 
 [[kafka-testing-junit4-class-rule]]
-===== JUnit4 Class Rule
+=== JUnit4 Class Rule
 
 The following example shows how to use a JUnit4 class rule to create an embedded broker:
 
@@ -417,7 +417,7 @@ public class MyApplicationTests {
 Notice that, since this is a Spring Boot application, we override the broker list property to set Boot's property.
 
 [[kafka-testing-embeddedkafka-annotation]]
-===== `@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean
+=== `@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean
 
 The following example shows how to use an `@EmbeddedKafka` Annotation to create an embedded broker:
 
@@ -444,7 +444,7 @@ public class MyApplicationTests {
 NOTE: The `bootstrapServersProperty` is automatically set to `spring.kafka.bootstrap-servers`, by default, starting with version 3.0.10.
 
 [[hamcrest-matchers]]
-==== Hamcrest Matchers
+== Hamcrest Matchers
 
 The `o.s.kafka.test.hamcrest.KafkaMatchers` provides the following matchers:
 
@@ -495,7 +495,7 @@ public static Matcher<ConsumerRecord<?, ?>> hasTimestamp(TimestampType type, lon
 ====
 
 [[assertj-conditions]]
-==== AssertJ Conditions
+== AssertJ Conditions
 
 You can use the following AssertJ conditions:
 
@@ -552,7 +552,7 @@ public static Condition<ConsumerRecord<?, ?>> timestamp(TimestampType type, long
 ====
 
 [[example]]
-==== Example
+== Example
 
 The following example brings together most of the topics covered in this chapter:
 
@@ -634,7 +634,7 @@ assertThat(received).has(allOf(keyValue(2, "baz"), partition(0)));
 ====
 
 [[mock-cons-prod]]
-==== Mock Consumer and Producer
+== Mock Consumer and Producer
 
 The `kafka-clients` library provides `MockConsumer` and `MockProducer` classes for testing purposes.
 
