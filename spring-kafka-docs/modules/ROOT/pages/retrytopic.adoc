@@ -1,5 +1,6 @@
 [[retry-topic]]
 = Non-Blocking Retries
+:page-section-summary-toc: 1
 
 Version 2.9 changed the mechanism to bootstrap infrastructure beans; see xref:retrytopic/retry-config.adoc[Configuration] for the two mechanisms that are now required to bootstrap the feature.
 

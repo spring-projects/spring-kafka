@@ -1,5 +1,6 @@
 [[kerberos]]
 = JAAS and Kerberos
+:page-section-summary-toc: 1
 
 Starting with version 2.0, a `KafkaJaasLoginModuleInitializer` class has been added to assist with Kerberos configuration.
 You can add this bean, with the desired configuration, to your application context.

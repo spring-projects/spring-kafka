@@ -1,5 +1,6 @@
 [[topic/partition-initial-offset]]
 = Topic/Partition Initial Offset
+:page-section-summary-toc: 1
 
 There are several ways to set the initial offset for a partition.
 

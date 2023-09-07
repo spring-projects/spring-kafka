@@ -1,5 +1,6 @@
 [[kafka-template-receive]]
 = Using `KafkaTemplate` to Receive
+:page-section-summary-toc: 1
 
 This section covers how to use `KafkaTemplate` to receive messages.
 

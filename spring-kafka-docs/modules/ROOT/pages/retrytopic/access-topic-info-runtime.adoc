@@ -1,5 +1,6 @@
 [[access-topic-info-runtime]]
 = Accessing Topics' Information at Runtime
+:page-section-summary-toc: 1
 
 Since 2.9, you can access information regarding the topic chain at runtime by injecting the provided `DestinationTopicContainer` bean.
 This interface provides methods to look up the next topic in the chain or the DLT for a topic if configured, as well as useful properties such as the topic's name, delay and type.

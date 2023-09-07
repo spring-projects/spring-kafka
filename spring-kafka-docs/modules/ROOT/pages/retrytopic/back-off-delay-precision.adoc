@@ -1,5 +1,6 @@
 [[back-off-delay-precision]]
 = Back Off Delay Precision
+:page-section-summary-toc: 1
 
 [[overview-and-guarantees]]
 == Overview and Guarantees

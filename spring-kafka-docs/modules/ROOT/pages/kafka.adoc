@@ -1,5 +1,6 @@
 [[kafka]]
 = Using Spring for Apache Kafka
+:page-section-summary-toc: 1
 
 This section offers detailed explanations of the various concerns that impact using Spring for Apache Kafka.
 For a quick but less detailed introduction, see xref:quick-tour.adoc[Quick Tour].

@@ -1,5 +1,6 @@
 [[retrying-deliveries]]
 = Retrying Deliveries
+:page-section-summary-toc: 1
 
 See the `DefaultErrorHandler` in xref:kafka/annotation-error-handling.adoc[Handling Exceptions].
 

@@ -1,5 +1,6 @@
 [[container-thread-naming]]
 = Container Thread Naming
+:page-section-summary-toc: 1
 
 A `TaskExecutor` is used to invoke the consumer and the listener.
 You can provide a custom executor by setting the `consumerExecutor` property of the container's `ContainerProperties`.

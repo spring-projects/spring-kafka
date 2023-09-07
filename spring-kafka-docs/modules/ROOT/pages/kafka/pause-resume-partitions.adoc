@@ -1,5 +1,6 @@
 [[pause-resume-partitions]]
 = Pausing and Resuming Partitions on Listener Containers
+:page-section-summary-toc: 1
 
 Since version 2.7 you can pause and resume the consumption of specific partitions assigned to that consumer by using the `pausePartition(TopicPartition topicPartition)` and `resumePartition(TopicPartition topicPartition)` methods in the listener containers.
 The pausing and resuming takes place respectively before and after the `poll()` similar to the `pause()` and `resume()` methods.

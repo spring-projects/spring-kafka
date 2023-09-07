@@ -1,5 +1,6 @@
 [[thread-safety]]
 = Thread Safety
+:page-section-summary-toc: 1
 
 When using a concurrent message listener container, a single listener instance is invoked on all consumer threads.
 Listeners, therefore, need to be thread-safe, and it is preferable to use stateless listeners.
