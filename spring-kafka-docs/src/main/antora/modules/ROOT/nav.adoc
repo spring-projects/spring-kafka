@@ -1,5 +1,4 @@
 * xref:index.adoc[]
-* xref:preface.adoc[]
 * xref:whats-new.adoc[]
 * xref:introduction.adoc[]
 ** xref:quick-tour.adoc[]
