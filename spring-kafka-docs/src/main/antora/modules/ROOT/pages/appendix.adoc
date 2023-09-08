@@ -1,5 +1,7 @@
+= Appendix
+
 [[update-deps]]
-= Override Spring Boot Dependencies
+== Override Spring Boot Dependencies
 
 When using Spring for Apache Kafka in a Spring Boot application, the Apache Kafka dependency versions are determined by Spring Boot's dependency management.
 If you wish to use a different version of `kafka-clients` or `kafka-streams`, and use the embedded kafka broker for testing, you need to override their version used by Spring Boot dependency management; set the `kafka.version` property.
@@ -55,14 +57,14 @@ The test scope dependencies are only needed if you are using the embedded Kafka 
 
 [appendix]
 [[observation-gen]]
-= Micrometer Observation Documentation
+== Micrometer Observation Documentation
 
 
 
 
 [appendix]
 [[native-images]]
-= Native Images
+== Native Images
 
 https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#aot[Spring AOT] native hints are provided to assist in developing native images for Spring applications that use Spring for Apache Kafka, including hints for AVRO generated classes used in `@KafkaListener` s.
 
@@ -72,5 +74,5 @@ Some examples can be seen in the https://github.com/spring-projects/spring-aot-s
 
 [appendix]
 [[history]]
-= Change History
+== Change History
 

@@ -1,5 +1,7 @@
+= Tips
+
 [[tip-assign-all-parts]]
-= Manually Assigning All Partitions
+== Manually Assigning All Partitions
 
 Let's say you want to always read all records from all partitions (such as when using a compacted topic to load a distributed cache), it can be useful to manually assign the partitions and not use Kafka's group management.
 Doing so can be unwieldy when there are many partitions, because you have to list the partitions.
@@ -45,7 +47,7 @@ You should also set the container's `AckMode` to `MANUAL` to prevent the contain
 However, starting with version 2.5.5, as shown above, you can apply an initial offset to all partitions; see xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[Explicit Partition Assignment] for more information.
 
 [[ex-jdbc-sync]]
-= Examples of Kafka Transactions with Other Transaction Managers
+== Examples of Kafka Transactions with Other Transaction Managers
 
 The following Spring Boot application is an example of chaining database and Kafka transactions.
 The listener container starts the Kafka transaction and the `@Transactional` annotation starts the DB transaction.
@@ -161,7 +163,7 @@ public void sendToKafka(String in) {
 ----
 
 [[tip-json]]
-= Customizing the JsonSerializer and JsonDeserializer
+== Customizing the JsonSerializer and JsonDeserializer
 
 The serializer and deserializer support a number of cusomizations using properties, see xref:kafka/serdes.adoc#json-serde[JSON] for more information.
 The `kafka-clients` code, not Spring, instantiates these objects, unless you inject them directly into the consumer and producer factories.
