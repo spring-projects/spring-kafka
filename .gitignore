@@ -1,0 +1,11 @@
+/.gradle/
+/.idea/*
+/.settings/
+/.classpath
+/.project
+/build/
+/node_modules/
+/package-lock.json
+/*.iml
+/*.ipr
+/*.iws
